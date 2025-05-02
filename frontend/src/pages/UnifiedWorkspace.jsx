@@ -17,10 +17,8 @@ import {
   Share2,
   FileArchive,
   Wrench,
-  BrainCircuit,
 } from 'lucide-react';
 import GoalComposer from '../components/AutoRunner/GoalComposer';
-import UserMemoryPanel from '../components/UserMemoryPanel';
 import PlanApproval from '../components/AutoRunner/PlanApproval';
 import ExecutionTimeline from '../components/AutoRunner/ExecutionTimeline';
 import ProofPanel from '../components/AutoRunner/ProofPanel';
@@ -365,25 +363,6 @@ export default function UnifiedWorkspace() {
   const lastCanonicalUrlRewriteRef = useRef('');
   const mdOnlyPreviewInjectedRef = useRef('');
   const [zipBusy, setZipBusy] = useState(false);
-  const [liveUrl, setLiveUrl] = useState(null);   // Phase 3
-  const [showMemoryPanel, setShowMemoryPanel] = useState(false); // Phase 6
-
-  useEffect(() => {
-    const url = job?.live_url || null;
-    if (url) setLiveUrl(url);
-  }, [job?.live_url]);
-
-  useEffect(() => {
-    if (!events.length) return;
-    for (const ev of events) {
-      const t = ev?.type || ev?.event_type;
-      if (t === 'live_url') { const url = ev?.payload?.url || ev?.url; if (url) setLiveUrl(url); }
-    }
-  }, [events]);
-
-  useEffect(() => {
-    if (job?.status === 'running' || job?.status === 'planning') setLiveUrl(null);
-  }, [job?.status]);
   /** Dedupes job-workspace body prefetch for Sandpack (paths + pull generation). */
   const sandpackWorkspaceFetchKeyRef = useRef('');
 
@@ -2026,21 +2005,9 @@ export default function App() {
 
           </div>
 
-          {showMemoryPanel && (
-            <UserMemoryPanel token={token} apiBase={API} onClose={() => setShowMemoryPanel(false)} />
-          )}
           <ActiveStepBanner activity={currentActivity} jobStatus={job?.status} />
 
           <div className="arp-center-pane-composer">
-          {liveUrl && (
-            <div className="uw-live-url-banner">
-              <span className="uw-live-url-icon">🚀</span>
-              <span className="uw-live-url-label">Your app is live —</span>
-              <a href={liveUrl} target="_blank" rel="noopener noreferrer" className="uw-live-url-link">{liveUrl}</a>
-              <button className="uw-live-url-dismiss" onClick={() => setLiveUrl(null)} aria-label="Dismiss">✕</button>
-            </div>
-          )}
-
             <GoalComposer
               goal={goal}
               onGoalChange={setGoal}
@@ -2136,15 +2103,6 @@ export default function App() {
                   }}
                 >
                   <Wrench size={16} />
-                </button>
-                <button
-                  type="button"
-                  className={`arp-topbar-btn arp-toolbar-icon-btn${showMemoryPanel ? ' arp-topbar-btn--active' : ''}`}
-                  title="Build memory — company, stack, brand color"
-                  aria-label="Build memory"
-                  onClick={() => setShowMemoryPanel(p => !p)}
-                >
-                  <BrainCircuit size={16} />
                 </button>
                 <button
                   type="button"
