@@ -28,6 +28,10 @@ class APIAgent(BaseAgent):
         """
         Make HTTP request.
         
+        Security Note: This agent makes requests to user-provided URLs.
+        In production, implement URL allowlisting or blocklisting to prevent SSRF attacks.
+        Consider restricting access to internal networks (localhost, 127.0.0.1, 10.0.0.0/8, etc.).
+        
         Expected context:
         {
             "method": "GET|POST|PUT|DELETE",
@@ -42,6 +46,11 @@ class APIAgent(BaseAgent):
         headers = context.get("headers", {})
         body = context.get("body")
         params = context.get("params")
+        
+        # Security Note: URL validation should be implemented here in production
+        # Example: Check against allowlist, block internal IPs, etc.
+        if not url:
+            return {"error": "URL is required", "success": False}
         
         async with httpx.AsyncClient() as client:
             try:
