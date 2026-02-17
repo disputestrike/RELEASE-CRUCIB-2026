@@ -1,6 +1,6 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, BackgroundTasks, File, UploadFile, Form, Request, WebSocket, WebSocketDisconnect, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi.responses import StreamingResponse, Response, RedirectResponse
+from fastapi.responses import StreamingResponse, Response, RedirectResponse, FileResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from middleware import (
@@ -51,6 +51,7 @@ import bcrypt
 import asyncio
 import random
 import json
+import subprocess
 import tempfile
 import base64
 import zipfile
@@ -58,6 +59,9 @@ import io
 from urllib.parse import quote, urlencode
 
 from agent_dag import AGENT_DAG, get_execution_phases, build_context_from_previous_agents, get_system_prompt_for_agent
+from real_agent_runner import REAL_AGENT_NAMES, run_real_agent, persist_agent_output, run_real_post_step
+from agent_real_behavior import run_agent_real_behavior
+from project_state import load_state, WORKSPACE_ROOT
 from agent_resilience import AgentError, get_criticality, get_timeout, generate_fallback
 from code_quality import score_generated_code
 try:
@@ -106,18 +110,36 @@ app = FastAPI(title="CrucibAI Platform")
 api_router = APIRouter(prefix="/api")
 security = HTTPBearer(auto_error=False)
 
-JWT_SECRET = os.environ.get('JWT_SECRET')
-if not JWT_SECRET:
-    logger.warning("JWT_SECRET not set in environment. Using a temporary secret for this session.")
-    import secrets
-    JWT_SECRET = secrets.token_urlsafe(32)
-JWT_ALGORITHM = "HS256"
 LLM_API_KEY = os.environ.get('OPENAI_API_KEY') or os.environ.get('LLM_API_KEY')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# JWT_SECRET must be set in production; fallback is per-process and invalidates tokens on restart
+JWT_SECRET = os.environ.get('JWT_SECRET')
+if not JWT_SECRET:
+    logger.warning("JWT_SECRET not set in environment. Using a temporary secret for this session.")
+    import secrets
+    JWT_SECRET = secrets.token_urlsafe(32)
+JWT_ALGORITHM = "HS256"
+
+# Build event stream (SSE): project_id -> list of events (max 500). Wired to orchestration.
+_build_events: Dict[str, List[Dict[str, Any]]] = {}
+_BUILD_EVENTS_MAX = 500
+
+def emit_build_event(project_id: str, event_type: str, **kwargs: Any) -> None:
+    """Emit event for SSE stream. Called from orchestration so UI can show Manus-style timeline."""
+    if project_id not in _build_events:
+        _build_events[project_id] = []
+    lst = _build_events[project_id]
+    ev = {"id": len(lst), "ts": datetime.now(timezone.utc).isoformat(), "type": event_type, **kwargs}
+    lst.append(ev)
+    if len(lst) > _BUILD_EVENTS_MAX:
+        _build_events[project_id] = lst[-_BUILD_EVENTS_MAX:]
+        for i, e in enumerate(_build_events[project_id]):
+            e["id"] = i
 
 # ==================== MODELS ====================
 
@@ -681,11 +703,16 @@ def _filter_chain_by_keys(chain: list, effective_keys: Optional[Dict[str, str]] 
 
 
 def _get_model_chain(model_key: str, message: str, effective_keys: Optional[Dict[str, str]] = None):
-    """Get list of (provider, model) to try. effective_keys = merged user Settings + server .env keys."""
+    """Get list of (provider, model) to try. effective_keys = merged user Settings + server .env keys.
+    When PREFER_LARGEST_MODEL=1, use largest available model first (better quality for all agents)."""
     if model_key == "auto":
-        task_type = detect_task_type(message)
-        primary = MODEL_CONFIG.get(task_type, MODEL_CONFIG["general"])
-        chain = [primary] + [c for c in MODEL_FALLBACK_CHAINS if (c["provider"], c["model"]) != (primary["provider"], primary["model"])]
+        # Model scale: prefer largest available when set (best for quality across 120 agents)
+        if os.environ.get("PREFER_LARGEST_MODEL", "").strip().lower() in ("1", "true", "yes"):
+            chain = _filter_chain_by_keys(MODEL_FALLBACK_CHAINS, effective_keys) or MODEL_FALLBACK_CHAINS
+        else:
+            task_type = detect_task_type(message)
+            primary = MODEL_CONFIG.get(task_type, MODEL_CONFIG["general"])
+            chain = [primary] + [c for c in MODEL_FALLBACK_CHAINS if (c["provider"], c["model"]) != (primary["provider"], primary["model"])]
     else:
         chain = MODEL_CHAINS.get(model_key)
         if not chain:
@@ -2492,6 +2519,169 @@ async def get_project(project_id: str, user: dict = Depends(get_current_user)):
     return {"project": project}
 
 
+@api_router.get("/projects/{project_id}/state")
+async def get_project_state(project_id: str, user: dict = Depends(get_current_user)):
+    """Return structured project state (plan, requirements, stack, reports, tool_log) for UI and debugging."""
+    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    state = load_state(project_id)
+    return {"state": state}
+
+
+@api_router.get("/projects/{project_id}/events")
+async def stream_build_events(
+    project_id: str,
+    last_id: int = Query(0, description="Last event id received"),
+    user: dict = Depends(get_current_user),
+):
+    """SSE stream of build events (agent_started, agent_completed, phase_started, build_completed). Wired to orchestration."""
+    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    async def event_generator():
+        seen = last_id
+        while True:
+            events = _build_events.get(project_id, [])
+            for ev in events:
+                if ev.get("id", 0) >= seen:
+                    yield f"data: {json.dumps(ev)}\n\n"
+                    seen = ev.get("id", 0) + 1
+            project_doc = await db.projects.find_one({"id": project_id}, {"status": 1})
+            if project_doc and project_doc.get("status") in ("completed", "failed"):
+                yield f"data: {json.dumps({'type': 'stream_end', 'status': project_doc['status']})}\n\n"
+                break
+            await asyncio.sleep(0.5)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+    )
+
+
+@api_router.get("/projects/{project_id}/events/snapshot")
+async def get_build_events_snapshot(project_id: str, user: dict = Depends(get_current_user)):
+    """One-shot fetch of all build events (for UI timeline). Wired to same store as SSE."""
+    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    events = _build_events.get(project_id, [])
+    return {"events": events}
+
+
+def _project_workspace_path(project_id: str) -> Path:
+    safe_id = project_id.replace("/", "_").replace("\\", "_")
+    return WORKSPACE_ROOT / safe_id
+
+
+def _create_preview_token(project_id: str, user_id: str) -> str:
+    """Short-lived JWT so iframe can load preview without Bearer header."""
+    payload = {"project_id": project_id, "user_id": user_id, "purpose": "preview", "exp": datetime.now(timezone.utc) + timedelta(minutes=2)}
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def _verify_preview_token(token: str) -> tuple:
+    """Returns (project_id, user_id) or raises."""
+    payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    if payload.get("purpose") != "preview":
+        raise jwt.InvalidTokenError("Invalid purpose")
+    return payload["project_id"], payload["user_id"]
+
+
+@api_router.get("/settings/capabilities")
+async def get_settings_capabilities(user: dict = Depends(get_current_user)):
+    """Returns sandbox (Docker) availability and other capabilities for UI polish."""
+    sandbox_available = False
+    try:
+        proc = subprocess.run(
+            ["docker", "run", "--rm", "hello-world"],
+            capture_output=True,
+            timeout=10,
+        )
+        sandbox_available = proc.returncode == 0
+    except Exception:
+        pass
+    return {
+        "sandbox_available": sandbox_available,
+        "sandbox_default": os.environ.get("RUN_IN_SANDBOX", "1").strip().lower() in ("1", "true", "yes"),
+    }
+
+
+@api_router.get("/projects/{project_id}/preview-token")
+async def get_preview_token(project_id: str, user: dict = Depends(get_current_user)):
+    """Get short-lived token for iframe preview URL. Wired to preview."""
+    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    t = _create_preview_token(project_id, user["id"])
+    base = os.environ.get("API_BASE_URL", "").rstrip("/") or "http://localhost:8000"
+    return {"token": t, "url": f"{base}/api/projects/{project_id}/preview?preview_token={t}"}
+
+
+@api_router.get("/projects/{project_id}/preview")
+@api_router.get("/projects/{project_id}/preview/{path:path}")
+async def serve_preview(
+    project_id: str,
+    path: str = "",
+    preview_token: Optional[str] = Query(None, description="From GET /projects/{id}/preview-token"),
+):
+    """Serve workspace files for live preview (iframe). Requires preview_token from /preview-token (auth)."""
+    if not preview_token:
+        raise HTTPException(status_code=401, detail="preview_token required (get from /projects/{id}/preview-token)")
+    try:
+        pid, user_id = _verify_preview_token(preview_token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid or expired preview token")
+    if pid != project_id:
+        raise HTTPException(status_code=403, detail="Token project mismatch")
+    project = await db.projects.find_one({"id": project_id, "user_id": user_id})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    root = _project_workspace_path(project_id).resolve()
+    if not root.exists():
+        raise HTTPException(status_code=404, detail="No workspace yet")
+    path = (path or "").strip().lstrip("/").replace("\\", "/")
+    if ".." in path or path.startswith("/"):
+        raise HTTPException(status_code=400, detail="Invalid path")
+    full = (root / path).resolve()
+    try:
+        full.relative_to(root)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Path outside workspace")
+    if full.is_dir():
+        full = full / "index.html"
+    if not full.exists():
+        if not path:
+            return Response(
+                content="""<!DOCTYPE html><html><head><meta charset="utf-8"><title>Building...</title></head><body style="display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;font-family:system-ui;background:#0f172a;color:#94a3b8;">Building your app... Agents are writing files.</body></html>""",
+                media_type="text/html",
+            )
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(full)
+
+
+@api_router.get("/projects/{project_id}/workspace/files")
+async def list_workspace_files(project_id: str, user: dict = Depends(get_current_user)):
+    """List files in project workspace (view files in task). Wired to workspace."""
+    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    root = _project_workspace_path(project_id).resolve()
+    if not root.exists():
+        return {"files": []}
+    files = []
+    for p in root.rglob("*"):
+        if p.is_file() and "node_modules" not in str(p) and "__pycache__" not in str(p):
+            try:
+                rel = p.relative_to(root)
+                files.append(str(rel).replace("\\", "/"))
+            except ValueError:
+                pass
+    return {"files": sorted(files)[:500]}
+
+
 async def _build_project_deploy_zip(project_id: str, user_id: str):
     """Build deploy ZIP for a project. Raises HTTPException if not found or no deploy_files."""
     project = await db.projects.find_one({"id": project_id, "user_id": user_id})
@@ -3053,6 +3243,18 @@ async def _run_single_agent_with_context(
     """Run one agent with context from previous agents. Returns {output, tokens_used, status} or raises."""
     if agent_name not in AGENT_DAG:
         return {"output": "", "tokens_used": 0, "status": "skipped", "reason": "Unknown agent"}
+    # Real tool agents: execute real tools (File, Browser, API, Database, Deployment) from DAG context
+    if agent_name in REAL_AGENT_NAMES:
+        real_result = await run_real_agent(
+            agent_name, project_id, user_id, previous_outputs, project_prompt
+        )
+        if real_result is not None:
+            persist_agent_output(project_id, agent_name, real_result)
+            try:
+                run_agent_real_behavior(agent_name, project_id, real_result, previous_outputs)
+            except Exception as e:
+                logger.warning("run_agent_real_behavior %s: %s", agent_name, e)
+            return real_result
     system_msg = get_system_prompt_for_agent(agent_name)
     enhanced_message = build_context_from_previous_agents(agent_name, previous_outputs, project_prompt)
     response, _ = await _call_llm_with_fallback(
@@ -3072,7 +3274,14 @@ async def _run_single_agent_with_context(
             design_desc = enhanced_message[:1000] if enhanced_message else project_prompt[:500]
             images = await generate_images_for_app(design_desc, prompts_dict if prompts_dict else None)
             out = json.dumps(images) if images else out
-            return {"output": out, "tokens_used": tokens_used, "status": "completed", "result": out, "code": out, "images": images}
+            result = {"output": out, "tokens_used": tokens_used, "status": "completed", "result": out, "code": out, "images": images}
+            result = await run_real_post_step(agent_name, project_id, previous_outputs, result)
+            persist_agent_output(project_id, agent_name, result)
+            try:
+                run_agent_real_behavior(agent_name, project_id, result, previous_outputs)
+            except Exception as e:
+                logger.warning("run_agent_real_behavior %s: %s", agent_name, e)
+            return result
         except Exception as e:
             logger.warning("Image generation agent failed: %s", e)
     # Video Generation: LLM returns JSON search queries -> Pexels finds videos
@@ -3082,11 +3291,25 @@ async def _run_single_agent_with_context(
             design_desc = enhanced_message[:1000] if enhanced_message else project_prompt[:500]
             videos = await generate_videos_for_app(design_desc, queries_dict if queries_dict else None)
             out = json.dumps(videos) if videos else out
-            return {"output": out, "tokens_used": tokens_used, "status": "completed", "result": out, "code": out, "videos": videos}
+            result = {"output": out, "tokens_used": tokens_used, "status": "completed", "result": out, "code": out, "videos": videos}
+            result = await run_real_post_step(agent_name, project_id, previous_outputs, result)
+            persist_agent_output(project_id, agent_name, result)
+            try:
+                run_agent_real_behavior(agent_name, project_id, result, previous_outputs)
+            except Exception as e:
+                logger.warning("run_agent_real_behavior %s: %s", agent_name, e)
+            return result
         except Exception as e:
             logger.warning("Video generation agent failed: %s", e)
 
-    return {"output": out, "tokens_used": tokens_used, "status": "completed", "result": out, "code": out}
+    result = {"output": out, "tokens_used": tokens_used, "status": "completed", "result": out, "code": out}
+    result = await run_real_post_step(agent_name, project_id, previous_outputs, result)
+    persist_agent_output(project_id, agent_name, result)
+    try:
+        run_agent_real_behavior(agent_name, project_id, result, previous_outputs)
+    except Exception as e:
+        logger.warning("run_agent_real_behavior %s: %s", agent_name, e)
+    return result
 
 
 async def _run_single_agent_with_retry(
@@ -3246,20 +3469,24 @@ async def run_orchestration_v2(project_id: str, user_id: str):
     model_chain = _get_model_chain("auto", prompt, effective_keys=effective)
     if not (effective.get("openai") or effective.get("anthropic")):
         await db.projects.update_one({"id": project_id}, {"$set": {"status": "failed", "completed_at": datetime.now(timezone.utc).isoformat()}})
+        emit_build_event(project_id, "build_completed", status="failed", message="No API keys")
         return
     await db.projects.update_one({"id": project_id}, {"$set": {"status": "running", "current_phase": 0, "progress_percent": 0}})
     phases = get_execution_phases(AGENT_DAG)
+    emit_build_event(project_id, "build_started", phases=len(phases), message="Orchestration started")
     results: Dict[str, Dict[str, Any]] = {}
     total_used = 0
     suggest_retry_phase: Optional[int] = None
     suggest_retry_reason: Optional[str] = None
     for phase_idx, agent_names in enumerate(phases):
+        emit_build_event(project_id, "phase_started", phase=phase_idx, agents=agent_names, message=f"Phase {phase_idx + 1}: {', '.join(agent_names)}")
         progress_pct = int((phase_idx + 1) / len(phases) * 100)
         await db.projects.update_one(
             {"id": project_id},
             {"$set": {"current_phase": phase_idx, "current_agent": ",".join(agent_names), "progress_percent": progress_pct, "tokens_used": total_used}},
         )
         for agent_name in agent_names:
+            emit_build_event(project_id, "agent_started", agent=agent_name, message=f"{agent_name} started")
             await db.agent_status.update_one(
                 {"project_id": project_id, "agent_name": agent_name},
                 {"$set": {"project_id": project_id, "agent_name": agent_name, "status": "running", "progress": 0, "tokens_used": 0, "started_at": datetime.now(timezone.utc).isoformat()}},
@@ -3283,6 +3510,7 @@ async def run_orchestration_v2(project_id: str, user_id: str):
                 crit = get_criticality(name)
                 if crit == "critical":
                     await db.projects.update_one({"id": project_id}, {"$set": {"status": "failed", "completed_at": datetime.now(timezone.utc).isoformat()}})
+                    emit_build_event(project_id, "build_completed", status="failed", agent=name, message=str(r))
                     results[name] = {"output": "", "status": "failed", "reason": str(r)}
                 else:
                     fallback = generate_fallback(name)
@@ -3292,6 +3520,7 @@ async def run_orchestration_v2(project_id: str, user_id: str):
                 total_used += r.get("tokens_used", 0)
                 if (r.get("status") or "").lower() in ("skipped", "failed", "failed_with_fallback"):
                     phase_fail_count += 1
+            emit_build_event(project_id, "agent_completed", agent=name, tokens=results[name].get("tokens_used", 0), status=results[name].get("status", ""), message=f"{name} completed")
             out_snippet = (results[name].get("output") or results[name].get("result") or "")[:200]
             await db.agent_status.update_one(
                 {"project_id": project_id, "agent_name": name},
@@ -3310,6 +3539,18 @@ async def run_orchestration_v2(project_id: str, user_id: str):
         project = await db.projects.find_one({"id": project_id})
         if project and project.get("status") == "failed":
             return
+    # Bounded autonomy loop: re-run tests/security once if they failed (self-heal)
+    try:
+        from autonomy_loop import run_bounded_autonomy_loop
+        autonomy_result = run_bounded_autonomy_loop(project_id, results, emit_event=emit_build_event)
+        if autonomy_result.get("iterations"):
+            await db.project_logs.insert_one({
+                "id": str(uuid.uuid4()), "project_id": project_id, "agent": "AutonomyLoop",
+                "message": f"Self-heal: re-ran tests={autonomy_result.get('ran_tests')}, security={autonomy_result.get('ran_security')}",
+                "level": "info", "created_at": datetime.now(timezone.utc).isoformat()
+            })
+    except Exception as e:
+        logger.warning("autonomy loop: %s", e)
     fe = (results.get("Frontend Generation") or {}).get("output") or ""
     be = (results.get("Backend Generation") or {}).get("output") or ""
     db_schema = (results.get("Database Agent") or {}).get("output") or ""
@@ -3351,6 +3592,7 @@ async def run_orchestration_v2(project_id: str, user_id: str):
     if suggest_retry_phase is None:
         update_op["$unset"] = {"suggest_retry_phase": "", "suggest_retry_reason": ""}
     await db.projects.update_one({"id": project_id}, update_op)
+    emit_build_event(project_id, "build_completed", status="completed", tokens=total_used, message="Build completed")
     project = await db.projects.find_one({"id": project_id})
     if project and project.get("tokens_allocated"):
         refund = project["tokens_allocated"] - total_used

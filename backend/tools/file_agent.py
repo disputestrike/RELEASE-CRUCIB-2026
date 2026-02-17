@@ -19,14 +19,31 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from agents.base_agent import BaseAgent
 
 
+def _resolve_under_workspace(workspace: Path, path: str) -> Path:
+    """Resolve path strictly under workspace to prevent path traversal. Raises ValueError if outside."""
+    base = workspace.resolve()
+    p = (base / path).resolve()
+    try:
+        p.relative_to(base)
+    except ValueError:
+        raise ValueError(f"Path escapes workspace: {path}")
+    return p
+
+
 class FileAgent(BaseAgent):
     """File system operations agent"""
     
     def __init__(self, llm_client, config):
         super().__init__(llm_client, config)
         self.name = "FileAgent"
-        self.workspace = Path(config.get("workspace", "./workspace"))
-        self.workspace.mkdir(exist_ok=True)
+        self.workspace = Path(config.get("workspace", "./workspace")).resolve()
+        self.workspace.mkdir(parents=True, exist_ok=True)
+    
+    def _safe_path(self, path: str) -> Path:
+        path = (path or "").strip().lstrip("/")
+        if ".." in path or path.startswith("/"):
+            raise ValueError(f"Invalid path: {path}")
+        return _resolve_under_workspace(self.workspace, path)
     
     async def execute(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -65,7 +82,7 @@ class FileAgent(BaseAgent):
     
     def _read_file(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """Read file content"""
-        filepath = self.workspace / context.get("path")
+        filepath = self._safe_path(context.get("path", ""))
         
         with open(filepath, 'r') as f:
             content = f.read()
@@ -79,7 +96,7 @@ class FileAgent(BaseAgent):
     
     def _write_file(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """Write content to file"""
-        filepath = self.workspace / context.get("path")
+        filepath = self._safe_path(context.get("path", ""))
         content = context.get("content", "")
         
         # Create parent directories
@@ -96,8 +113,8 @@ class FileAgent(BaseAgent):
     
     def _move_file(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """Move/rename file"""
-        source = self.workspace / context.get("path")
-        destination = self.workspace / context.get("destination")
+        source = self._safe_path(context.get("path", ""))
+        destination = self._safe_path(context.get("destination", ""))
         
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(source), str(destination))
@@ -110,7 +127,7 @@ class FileAgent(BaseAgent):
     
     def _delete_file(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """Delete file"""
-        filepath = self.workspace / context.get("path")
+        filepath = self._safe_path(context.get("path", ""))
         
         if filepath.is_file():
             filepath.unlink()
@@ -124,7 +141,7 @@ class FileAgent(BaseAgent):
     
     def _list_directory(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """List directory contents"""
-        dirpath = self.workspace / context.get("path", ".")
+        dirpath = self._safe_path(context.get("path", ".") or ".")
         
         files = []
         for item in dirpath.iterdir():
@@ -143,7 +160,7 @@ class FileAgent(BaseAgent):
     
     def _create_directory(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """Create directory"""
-        dirpath = self.workspace / context.get("path")
+        dirpath = self._safe_path(context.get("path", ""))
         dirpath.mkdir(parents=True, exist_ok=True)
         
         return {

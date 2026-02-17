@@ -656,6 +656,32 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* Who builds better? Faster? More helpful? — value prop (where we win) */}
+      <section id="who-builds-better" className="py-20 px-6">
+        <div className="max-w-5xl mx-auto">
+          <span className="text-xs uppercase tracking-wider text-kimi-muted">Why CrucibAI</span>
+          <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-2">Who Builds Better Products? Who Builds Faster? Which Is More Helpful?</h2>
+          <p className="text-kimi-muted mb-10">That&apos;s where we win.</p>
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="p-6 rounded-xl border border-white/10 bg-kimi-bg hover:border-kimi-accent/30 transition">
+              <h3 className="text-lg font-semibold text-kimi-text mb-3">Better</h3>
+              <p className="text-sm text-kimi-muted mb-3">Structured plans, 120 verifiable agents, quality score, and full audit trail. You see every step and every artifact.</p>
+              <p className="text-xs text-kimi-accent font-medium">CrucibAI → structure, visibility, verifiable steps</p>
+            </div>
+            <div className="p-6 rounded-xl border border-white/10 bg-kimi-bg hover:border-kimi-accent/30 transition">
+              <h3 className="text-lg font-semibold text-kimi-text mb-3">Faster</h3>
+              <p className="text-sm text-kimi-muted mb-3">Parallel DAG: many agents run per phase. No artificial delay. Self-heal retries tests and security once if needed.</p>
+              <p className="text-xs text-kimi-accent font-medium">CrucibAI → parallel, no fake latency, self-heal</p>
+            </div>
+            <div className="p-6 rounded-xl border border-white/10 bg-kimi-bg hover:border-kimi-accent/30 transition">
+              <h3 className="text-lg font-semibold text-kimi-text mb-3">More helpful for everyone</h3>
+              <p className="text-sm text-kimi-muted mb-3">Plan-first, one prompt to full app, visible progress. Works for non-devs and power users alike.</p>
+              <p className="text-xs text-kimi-accent font-medium">CrucibAI → one prompt, full visibility, for all users</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Use cases */}
       <section className="py-20 px-6">
         <div className="max-w-4xl mx-auto">

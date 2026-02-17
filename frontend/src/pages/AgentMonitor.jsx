@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Bot, CheckCircle, Clock, AlertCircle, Play, Pause,
-  Zap, ArrowLeft, ExternalLink, Download, RefreshCw
+  Zap, ArrowLeft, ExternalLink, Download, RefreshCw, ChevronDown, ChevronRight, Database, Code, List, Eye
 } from 'lucide-react';
 import { useAuth, API } from '../App';
 import axios from 'axios';
@@ -18,6 +18,11 @@ const AgentMonitor = () => {
   const [agents, setAgents] = useState([]);
   const [phases, setPhases] = useState([]);
   const [logs, setLogs] = useState([]);
+  const [projectState, setProjectState] = useState(null);
+  const [statePanelOpen, setStatePanelOpen] = useState(false);
+  const [buildEvents, setBuildEvents] = useState([]);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [workspaceFiles, setWorkspaceFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [polling, setPolling] = useState(true);
   const [retrying, setRetrying] = useState(false);
@@ -42,7 +47,24 @@ const AgentMonitor = () => {
         setAgents(agentsRes.data.statuses);
         setLogs(logsRes.data.logs);
         setPhases(phasesRes.data?.phases || []);
-        
+        try {
+          const stateRes = await axios.get(`${API}/projects/${id}/state`, { headers: { Authorization: `Bearer ${token}` } });
+          setProjectState(stateRes.data?.state || null);
+        } catch (_) {
+          setProjectState(null);
+        }
+        try {
+          const eventsRes = await axios.get(`${API}/projects/${id}/events/snapshot`, { headers: { Authorization: `Bearer ${token}` } });
+          setBuildEvents(eventsRes.data?.events || []);
+        } catch (_) {
+          setBuildEvents([]);
+        }
+        try {
+          const filesRes = await axios.get(`${API}/projects/${id}/workspace/files`, { headers: { Authorization: `Bearer ${token}` } });
+          setWorkspaceFiles(filesRes.data?.files || []);
+        } catch (_) {
+          setWorkspaceFiles([]);
+        }
         if (projectRes.data.project.status === 'completed' || projectRes.data.project.status === 'failed') {
           setPolling(false);
         }
@@ -62,6 +84,13 @@ const AgentMonitor = () => {
     
     return () => clearInterval(interval);
   }, [id, token, polling]);
+
+  useEffect(() => {
+    if (!project?.id || !token) return;
+    axios.get(`${API}/projects/${id}/preview-token`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => setPreviewUrl(r.data?.url || null))
+      .catch(() => setPreviewUrl(null));
+  }, [id, project?.id, token]);
 
   const getAgentStatus = (agentName) => {
     return agents.find(a => a.agent_name === agentName) || { status: 'idle', progress: 0, tokens_used: 0 };
@@ -222,8 +251,56 @@ const AgentMonitor = () => {
               View Live
             </a>
           )}
+          <Link
+            to={`/app/workspace?projectId=${id}`}
+            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg font-medium transition border border-white/20"
+          >
+            <Code className="w-4 h-4" />
+            Open in Workspace
+          </Link>
         </div>
       </div>
+
+      {/* Live preview (workspace files served with preview token) */}
+      {previewUrl && (
+        <div className="p-4 rounded-xl border border-white/10 bg-[#0a0a0a]">
+          <h3 className="text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
+            <Eye className="w-4 h-4" /> Live preview (workspace)
+          </h3>
+          <div className="rounded-lg overflow-hidden border border-white/10 bg-black" style={{ minHeight: 280 }}>
+            <iframe
+              title="Preview"
+              src={previewUrl}
+              className="w-full h-[280px] border-0"
+              sandbox="allow-scripts"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Event timeline (SSE-style: agent_started, agent_completed) */}
+      {buildEvents.length > 0 && (
+        <div className="p-4 rounded-xl border border-white/10 bg-[#0a0a0a]">
+          <h3 className="text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
+            <List className="w-4 h-4" /> Event timeline
+          </h3>
+          <div className="max-h-48 overflow-y-auto space-y-1 text-xs font-mono">
+            {buildEvents.slice(-80).map((ev, i) => (
+              <div key={ev.id ?? i} className="flex gap-2 text-gray-300">
+                <span className="text-gray-500 shrink-0">{ev.ts ? new Date(ev.ts).toLocaleTimeString() : ''}</span>
+                <span className={ev.type === 'agent_completed' ? 'text-green-400' : ev.type === 'agent_started' ? 'text-blue-400' : 'text-amber-400'}>
+                  {ev.type === 'agent_started' && `${ev.agent || 'agent'} started`}
+                  {ev.type === 'agent_completed' && `${ev.agent || 'agent'} completed`}
+                  {ev.type === 'phase_started' && (ev.message || 'phase')}
+                  {ev.type === 'build_started' && 'Build started'}
+                  {ev.type === 'build_completed' && `Build ${ev.status || 'done'}`}
+                  {!['agent_started','agent_completed','phase_started','build_started','build_completed'].includes(ev.type) && (ev.message || ev.type)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Progress */}
       <div className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10">
@@ -327,6 +404,101 @@ const AgentMonitor = () => {
             </div>
           );
         })}
+      </div>
+
+      {/* Build state (plan, requirements, stack, tool_log) — demo of real agent outputs */}
+      <div className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10">
+        <button
+          type="button"
+          onClick={() => setStatePanelOpen((o) => !o)}
+          className="flex items-center gap-2 w-full text-left font-semibold text-lg mb-2 hover:text-gray-300 transition"
+        >
+          {statePanelOpen ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+          <Database className="w-5 h-5 text-blue-400" />
+          Build state (plan, requirements, stack, reports)
+        </button>
+        {statePanelOpen && (
+          <div className="mt-4 space-y-4 text-sm border-t border-white/10 pt-4">
+            {!projectState ? (
+              <p className="text-gray-500">No state yet. State is written as agents run (plan, requirements, stack, tool results).</p>
+            ) : (
+              <>
+                {Array.isArray(projectState.plan) && projectState.plan.length > 0 && (
+                  <div>
+                    <h4 className="text-gray-400 font-medium mb-1">Plan</h4>
+                    <ul className="list-disc list-inside text-gray-300 space-y-0.5">
+                      {projectState.plan.slice(0, 15).map((item, i) => (
+                        <li key={i}>{typeof item === 'string' ? item : JSON.stringify(item)}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {projectState.requirements && Object.keys(projectState.requirements).length > 0 && (
+                  <div>
+                    <h4 className="text-gray-400 font-medium mb-1">Requirements</h4>
+                    <pre className="bg-black/30 p-3 rounded overflow-x-auto text-gray-300 whitespace-pre-wrap max-h-32 overflow-y-auto">
+                      {JSON.stringify(projectState.requirements, null, 2)}
+                    </pre>
+                  </div>
+                )}
+                {projectState.stack && Object.keys(projectState.stack).length > 0 && (
+                  <div>
+                    <h4 className="text-gray-400 font-medium mb-1">Stack</h4>
+                    <pre className="bg-black/30 p-3 rounded overflow-x-auto text-gray-300 whitespace-pre-wrap max-h-24 overflow-y-auto">
+                      {JSON.stringify(projectState.stack, null, 2)}
+                    </pre>
+                  </div>
+                )}
+                {(projectState.memory_summary || '').toString().trim() && (
+                  <div>
+                    <h4 className="text-gray-400 font-medium mb-1">Memory summary</h4>
+                    <p className="text-gray-300">{String(projectState.memory_summary).slice(0, 500)}</p>
+                  </div>
+                )}
+                {Array.isArray(projectState.tool_log) && projectState.tool_log.length > 0 && (
+                  <div>
+                    <h4 className="text-gray-400 font-medium mb-1">Tool runs (last {Math.min(10, projectState.tool_log.length)})</h4>
+                    <ul className="space-y-1 text-gray-300">
+                      {projectState.tool_log.slice(-10).reverse().map((entry, i) => (
+                        <li key={i} className="flex gap-2">
+                          <span className="text-blue-400 font-mono text-xs">{entry.agent || 'agent'}</span>
+                          <span className="truncate">{typeof entry.output_preview === 'string' ? entry.output_preview.slice(0, 80) : ''}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {(projectState.security_report || projectState.ux_report || projectState.performance_report || '').toString().trim() && (
+                  <div>
+                    <h4 className="text-gray-400 font-medium mb-1">Reports</h4>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {projectState.security_report && (
+                        <p className="text-gray-300 text-xs"><strong className="text-amber-400">Security:</strong> {String(projectState.security_report).slice(0, 200)}…</p>
+                      )}
+                      {projectState.ux_report && (
+                        <p className="text-gray-300 text-xs"><strong className="text-purple-400">UX:</strong> {String(projectState.ux_report).slice(0, 200)}…</p>
+                      )}
+                      {projectState.performance_report && (
+                        <p className="text-gray-300 text-xs"><strong className="text-green-400">Perf:</strong> {String(projectState.performance_report).slice(0, 200)}…</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {workspaceFiles.length > 0 && (
+                  <div>
+                    <h4 className="text-gray-400 font-medium mb-1">Files in workspace</h4>
+                    <ul className="text-gray-300 text-xs font-mono space-y-0.5 max-h-32 overflow-y-auto">
+                      {workspaceFiles.slice(0, 50).map((f, i) => (
+                        <li key={i}>{f}</li>
+                      ))}
+                      {workspaceFiles.length > 50 && <li className="text-gray-500">… +{workspaceFiles.length - 50} more</li>}
+                    </ul>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Logs */}

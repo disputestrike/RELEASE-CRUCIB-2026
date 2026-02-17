@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Sparkles, LayoutDashboard, FolderPlus, Coins, FileOutput, 
   Library, Settings, LogOut, Menu, X, ChevronRight,
-  Zap, Bell, MessageSquare, LayoutGrid, BookOpen, Key, Keyboard, CreditCard, FileText, Shield, ScrollText
+  Zap, Bell, MessageSquare, LayoutGrid, BookOpen, Key, Keyboard, CreditCard, FileText, Shield, ScrollText, BarChart3
 } from 'lucide-react';
 
 const Layout = () => {
@@ -40,6 +40,7 @@ const Layout = () => {
     { name: 'Learn', href: '/app/learn', icon: BookOpen },
     { name: 'Env', href: '/app/env', icon: Key },
     { name: 'Shortcuts', href: '/app/shortcuts', icon: Keyboard },
+    { name: 'Benchmarks', href: '/benchmarks', icon: BarChart3 },
     { name: 'Add payments', href: '/app/payments-wizard', icon: CreditCard },
     { name: 'Settings', href: '/app/settings', icon: Settings },
     { name: 'Audit Log', href: '/app/audit-log', icon: ScrollText }

@@ -33,6 +33,7 @@ const Settings = () => {
   const [mfaDisablePassword, setMfaDisablePassword] = useState('');
   const [mfaLoading, setMfaLoading] = useState(false);
   const [mfaError, setMfaError] = useState(null);
+  const [capabilities, setCapabilities] = useState({ sandbox_available: null, sandbox_default: true });
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -89,6 +90,14 @@ const Settings = () => {
       axios.get(`${API}/mfa/status`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => setMfaStatus(r.data.mfa_enabled))
         .catch(() => {});
+    }
+  }, [token, activeTab]);
+
+  useEffect(() => {
+    if (token && activeTab === 'general') {
+      axios.get(`${API}/settings/capabilities`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => setCapabilities(r.data))
+        .catch(() => setCapabilities({ sandbox_available: false, sandbox_default: true }));
     }
   }, [token, activeTab]);
 
@@ -263,6 +272,24 @@ const Settings = () => {
                     </span>
                   </button>
                 ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Sandbox (runs)</label>
+              <p className="text-sm text-gray-500 mb-2">Tests and security checks run in an isolated environment when Docker is available.</p>
+              <div className="flex items-center gap-2 text-sm">
+                {capabilities.sandbox_available === true && (
+                  <span className="text-green-400" data-testid="sandbox-available">Sandbox (Docker): available</span>
+                )}
+                {capabilities.sandbox_available === false && (
+                  <span className="text-amber-400">Sandbox (Docker): not available — runs use host</span>
+                )}
+                {capabilities.sandbox_available === null && activeTab === 'general' && (
+                  <span className="text-gray-500">Checking…</span>
+                )}
+                {capabilities.sandbox_default !== undefined && capabilities.sandbox_available === true && (
+                  <span className="text-gray-500">· Default: {capabilities.sandbox_default ? 'on' : 'off'}</span>
+                )}
               </div>
             </div>
           </div>
