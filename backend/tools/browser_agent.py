@@ -67,7 +67,7 @@ class BrowserAgent(BaseAgent):
                 
             except Exception as e:
                 await self.browser.close()
-                return {"error": str(e)}
+                return {"error": str(e), "success": False}
     
     async def _navigate(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """Navigate to URL"""
