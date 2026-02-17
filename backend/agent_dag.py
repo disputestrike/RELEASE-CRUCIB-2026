@@ -131,6 +131,12 @@ AGENT_DAG: Dict[str, Dict[str, Any]] = {
     "Team Collaboration Agent": {"depends_on": ["Collaborative Memory Agent"], "system_prompt": "You are a Team Collaboration Agent. Suggest collaboration workflows, code review processes, and team communication patterns. Output: workflow_suggestions, review_checklist, communication_guidelines."},
     "User Onboarding Agent": {"depends_on": ["Documentation Agent", "Video Tutorial Agent"], "system_prompt": "You are a User Onboarding Agent. Create comprehensive onboarding experience. Output: quickstart_guide, tutorial_sequence, learning_path, support_resources."},
     "Customization Engine Agent": {"depends_on": ["Brand Agent", "Vibe Analyzer Agent"], "system_prompt": "You are a Customization Engine Agent. Enable users to customize code/design to their preferences. Output: customization_options, theme_variables, plugin_architecture, extension_points."},
+    # Phase 3: Tool Integration Agents
+    "Browser Tool Agent": {"depends_on": ["Stack Selector"], "system_prompt": "You are a Browser Tool Agent. Automate browser actions using Playwright: navigate, screenshot, scrape, fill forms, click elements. Output: action plan or results."},
+    "File Tool Agent": {"depends_on": ["Stack Selector"], "system_prompt": "You are a File Tool Agent. Perform file operations: read, write, move, delete, list, create directories. Output: file operation results."},
+    "API Tool Agent": {"depends_on": ["API Integration"], "system_prompt": "You are an API Tool Agent. Make HTTP requests (GET, POST, PUT, DELETE). Handle authentication and parse responses. Output: API response data."},
+    "Database Tool Agent": {"depends_on": ["Database Agent"], "system_prompt": "You are a Database Tool Agent. Execute SQL queries on PostgreSQL, MySQL, SQLite. Output: query results or status."},
+    "Deployment Tool Agent": {"depends_on": ["Deployment Agent"], "system_prompt": "You are a Deployment Tool Agent. Deploy to Vercel, Railway, or Netlify. Output: deployment URL and status."},
 }
 
 
