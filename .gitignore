@@ -90,3 +90,11 @@ frontend/node_modules/.cache/default-development/2.pack_
 *.env
 *.env.*
 backend/logs/
+
+# Workspace directories for tool agents
+workspace/
+backend/workspace/
+*.png
+*.jpg
+*.jpeg
+screenshots/
