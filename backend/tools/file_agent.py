@@ -12,7 +12,11 @@ Can:
 from pathlib import Path
 import shutil
 from typing import Dict, Any, List
-from backend.agents.base_agent import BaseAgent
+import sys
+
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from agents.base_agent import BaseAgent
 
 
 class FileAgent(BaseAgent):
@@ -52,7 +56,7 @@ class FileAgent(BaseAgent):
             elif action == "mkdir":
                 result = self._create_directory(context)
             else:
-                result = {"error": f"Unknown action: {action}"}
+                result = {"error": f"Unknown action: {action}", "success": False}
             
             return result
             

@@ -12,7 +12,12 @@ Can:
 from playwright.async_api import async_playwright, Browser, Page
 from typing import Dict, Any, List
 import base64
-from backend.agents.base_agent import BaseAgent
+import sys
+from pathlib import Path
+
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from agents.base_agent import BaseAgent
 
 
 class BrowserAgent(BaseAgent):

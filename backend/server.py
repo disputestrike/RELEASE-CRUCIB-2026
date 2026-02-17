@@ -4293,35 +4293,35 @@ async def health():
 @api_router.post("/tools/browser")
 async def use_browser_tool(request: dict):
     """Execute browser action"""
-    from backend.tools.browser_agent import BrowserAgent
+    from tools.browser_agent import BrowserAgent
     agent = BrowserAgent(llm_client=None, config={})
     return await agent.run(request)
 
 @api_router.post("/tools/file")
 async def use_file_tool(request: dict):
     """Execute file operation"""
-    from backend.tools.file_agent import FileAgent
+    from tools.file_agent import FileAgent
     agent = FileAgent(llm_client=None, config={"workspace": "./workspace"})
     return await agent.run(request)
 
 @api_router.post("/tools/api")
 async def use_api_tool(request: dict):
     """Make HTTP request"""
-    from backend.tools.api_agent import APIAgent
+    from tools.api_agent import APIAgent
     agent = APIAgent(llm_client=None, config={})
     return await agent.run(request)
 
 @api_router.post("/tools/database")
 async def use_database_tool(request: dict):
     """Execute SQL query"""
-    from backend.tools.database_operations_agent import DatabaseOperationsAgent
+    from tools.database_operations_agent import DatabaseOperationsAgent
     agent = DatabaseOperationsAgent(llm_client=None, config={})
     return await agent.run(request)
 
 @api_router.post("/tools/deploy")
 async def use_deployment_tool(request: dict):
     """Deploy application"""
-    from backend.tools.deployment_operations_agent import DeploymentOperationsAgent
+    from tools.deployment_operations_agent import DeploymentOperationsAgent
     agent = DeploymentOperationsAgent(llm_client=None, config={})
     return await agent.run(request)
 

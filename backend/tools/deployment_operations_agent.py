@@ -6,7 +6,12 @@ Supports: Vercel, Railway, Netlify
 import httpx
 import subprocess
 from typing import Dict, Any
-from backend.agents.base_agent import BaseAgent
+import sys
+from pathlib import Path
+
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from agents.base_agent import BaseAgent
 
 
 class DeploymentOperationsAgent(BaseAgent):
