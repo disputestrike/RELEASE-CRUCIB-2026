@@ -108,9 +108,15 @@ security = HTTPBearer(auto_error=False)
 
 JWT_SECRET = os.environ.get('JWT_SECRET')
 if not JWT_SECRET:
-    logger.warning("JWT_SECRET not set in environment. Using a temporary secret for this session.")
-    import secrets
-    JWT_SECRET = secrets.token_urlsafe(32)
+    # CRITICAL: Fail fast in production - never use random secrets
+    import sys
+    error_msg = "FATAL: JWT_SECRET environment variable is not set. This is required for production. Set JWT_SECRET in your .env file."
+    logger.error(error_msg)
+    if os.environ.get('ENVIRONMENT') == 'production':
+        sys.exit(1)
+    # Development only: use a fixed dev secret
+    logger.warning("Development mode: Using fixed dev secret. NEVER use this in production.")
+    JWT_SECRET = "dev-secret-key-only-for-development-never-production"
 JWT_ALGORITHM = "HS256"
 LLM_API_KEY = os.environ.get('OPENAI_API_KEY') or os.environ.get('LLM_API_KEY')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
@@ -569,16 +575,21 @@ def verify_password(plain: str, hashed: str) -> bool:
     except Exception as e:
         logger.error(f"Unexpected error during password verification: {e}")
     
-    # Legacy: SHA-256 hashes (64-char hex)
+    # Legacy: SHA-256 hashes (64-char hex) - DEPRECATED
+    # WARNING: SHA-256 without salt is cryptographically weak
+    # Set a deadline to force migration to bcrypt
     if len(hashed) == 64 and all(c in "0123456789abcdef" for c in hashed.lower()):
+        logger.warning(f"SECURITY: SHA-256 password hash detected. Please migrate to bcrypt by 2026-06-01.")
         import hashlib
         return hashlib.sha256(plain.encode()).hexdigest() == hashed
     return False
 
 def create_token(user_id: str) -> str:
+    # SECURITY: Use 1-hour access tokens (not 30 days)
+    # Implement refresh tokens for longer sessions
     payload = {
         "user_id": user_id,
-        "exp": datetime.now(timezone.utc) + timedelta(days=30)
+        "exp": datetime.now(timezone.utc) + timedelta(hours=1)
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
@@ -1512,6 +1523,7 @@ async def enterprise_contact(data: EnterpriseContact):
 # ==================== AUTH ROUTES ====================
 
 @api_router.post("/auth/register")
+@api_router.post("/auth/signup")  # Alias for compatibility
 async def register(data: UserRegister, request: Request):
     if _is_disposable_email(data.email):
         raise HTTPException(status_code=400, detail="Disposable email addresses are not allowed.")

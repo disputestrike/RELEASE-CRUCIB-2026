@@ -57,10 +57,20 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     
     def _get_identifier(self, request: Request) -> str:
         """Get unique identifier for rate limiting"""
+        # SECURITY: Use user_id or IP, NOT full token (memory leak)
         # Try to get user ID from token
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
-            return auth_header[7:]  # Return token as identifier
+            # Extract user_id from token instead of using full token
+            token = auth_header[7:]
+            try:
+                import jwt
+                payload = jwt.decode(token, options={"verify_signature": False})
+                user_id = payload.get("user_id")
+                if user_id:
+                    return f"user_{user_id}"
+            except:
+                pass  # Fall through to IP
         
         # Fall back to IP address
         client_ip = request.client.host if request.client else "unknown"
@@ -92,14 +102,18 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        # SECURITY: Strict CSP without unsafe-inline/unsafe-eval
+        # For production, use nonces or hashes for inline scripts
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
-            "style-src 'self' 'unsafe-inline'; "
+            "script-src 'self'; "  # No unsafe-inline or unsafe-eval
+            "style-src 'self'; "   # No unsafe-inline
             "img-src 'self' data: https:; "
             "font-src 'self' data:; "
             "connect-src 'self' https:; "
-            "frame-ancestors 'none'"
+            "frame-ancestors 'none'; "
+            "base-uri 'self'; "
+            "form-action 'self'"
         )
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = (
@@ -166,7 +180,13 @@ class CORSMiddleware(BaseHTTPMiddleware):
         max_age: int = 3600
     ):
         super().__init__(app)
-        self.allow_origins = allow_origins or ["*"]
+        # CRITICAL: Never allow * with credentials in production
+        if allow_origins is None:
+            allow_origins = os.environ.get('CORS_ORIGINS', 'http://localhost:3000').split(',')
+            if "*" in allow_origins and allow_credentials:
+                logger.error("SECURITY: CORS with allow_credentials=True and allow_origins=['*'] is a vulnerability!")
+                allow_origins = ["http://localhost:3000"]
+        self.allow_origins = allow_origins
         self.allow_methods = allow_methods or ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
         self.allow_headers = allow_headers or [
             "Content-Type",

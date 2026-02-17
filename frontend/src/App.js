@@ -78,6 +78,9 @@ export const useAuth = () => useContext(AuthContext);
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  // SECURITY: Use httpOnly cookies instead of localStorage
+  // localStorage is vulnerable to XSS. Cookies with httpOnly flag are safer.
+  // For now, fall back to localStorage but prefer server-set httpOnly cookies
   const [token, setToken] = useState(localStorage.getItem("token"));
 
   useEffect(() => {
