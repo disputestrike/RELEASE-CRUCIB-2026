@@ -101,8 +101,8 @@ class UserUpdateValidator(BaseValidator):
 class ChatMessageValidator(BaseValidator):
     message: str = Field(..., min_length=1, max_length=10000)
     session_id: Optional[str] = Field(None, max_length=100)
-    model: Optional[str] = Field("auto", regex="^(auto|gpt-4o|claude|gemini)$")
-    mode: Optional[str] = Field(None, regex="^(thinking|normal)?$")
+    model: Optional[str] = Field("auto", pattern="^(auto|gpt-4o|claude|gemini)$")
+    mode: Optional[str] = Field(None, pattern="^(thinking|normal)?$")
     
     @validator('message')
     def validate_message_not_spam(cls, v):
@@ -116,7 +116,7 @@ class ChatMessageValidator(BaseValidator):
 class ProjectCreateValidator(BaseValidator):
     name: str = Field(..., min_length=3, max_length=100)
     description: str = Field(..., min_length=10, max_length=5000)
-    project_type: str = Field(..., regex="^(web|mobile|desktop|api|bot|other)$")
+    project_type: str = Field(..., pattern="^(web|mobile|desktop|api|bot|other)$")
     requirements: Dict[str, Any] = Field(default_factory=dict)
     estimated_tokens: Optional[int] = Field(None, ge=0, le=1000000)
     
@@ -139,7 +139,7 @@ class ProjectCreateValidator(BaseValidator):
 class ProjectUpdateValidator(BaseValidator):
     name: Optional[str] = Field(None, min_length=3, max_length=100)
     description: Optional[str] = Field(None, min_length=10, max_length=5000)
-    status: Optional[str] = Field(None, regex="^(draft|in_progress|completed|archived)$")
+    status: Optional[str] = Field(None, pattern="^(draft|in_progress|completed|archived)$")
 
 # ==================== BUILD MODELS ====================
 
@@ -161,7 +161,7 @@ class BuildPlanRequestValidator(BaseValidator):
 
 class FileUploadValidator(BaseValidator):
     filename: str = Field(..., max_length=255)
-    file_type: str = Field(..., regex="^(image|document|code|video|audio)$")
+    file_type: str = Field(..., pattern="^(image|document|code|video|audio)$")
     file_size: int = Field(..., ge=1, le=100*1024*1024)  # 100MB max
     
     @validator('filename')
@@ -217,7 +217,7 @@ class RAGQueryValidator(BaseValidator):
 # ==================== PAYMENT MODELS ====================
 
 class TokenPurchaseValidator(BaseValidator):
-    bundle: str = Field(..., regex="^(starter|pro|enterprise|custom)$")
+    bundle: str = Field(..., pattern="^(starter|pro|enterprise|custom)$")
     quantity: Optional[int] = Field(1, ge=1, le=1000)
     promo_code: Optional[str] = Field(None, max_length=50)
 
@@ -232,9 +232,9 @@ class DeployTokensUpdateValidator(BaseValidator):
 class EnterpriseContactValidator(BaseValidator):
     company: str = Field(..., min_length=2, max_length=200)
     email: EmailStr
-    team_size: Optional[str] = Field(None, regex="^(1-10|11-50|51-100|100\\+)$")
-    use_case: Optional[str] = Field(None, regex="^(agency|startup|enterprise|other)$")
-    budget: Optional[str] = Field(None, regex="^(10K|50K|100K|custom)$")
+    team_size: Optional[str] = Field(None, pattern="^(1-10|11-50|51-100|100\\+)$")
+    use_case: Optional[str] = Field(None, pattern="^(agency|startup|enterprise|other)$")
+    budget: Optional[str] = Field(None, pattern="^(10K|50K|100K|custom)$")
     message: Optional[str] = Field(None, max_length=5000)
 
 # ==================== VALIDATION HELPER FUNCTIONS ====================
