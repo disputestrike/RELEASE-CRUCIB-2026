@@ -146,18 +146,19 @@ class TestTokenEndpoints:
 
 
 class TestAgentsEndpoints:
-    """GET /api/agents."""
+    """GET /api/agents (user-created agents; requires auth)."""
 
-    async def test_get_agents(self, app_client):
+    async def test_get_agents_unauth_401(self, app_client):
         r = await app_client.get("/api/agents")
+        assert r.status_code == 401
+
+    async def test_get_agents_with_auth(self, app_client, auth_headers):
+        r = await app_client.get("/api/agents", headers=auth_headers)
         assert r.status_code == 200
         data = r.json()
-        assert "agents" in data
-        assert len(data["agents"]) > 0
-        agent_names = [a["name"] for a in data["agents"]]
-        assert "Planner" in agent_names
-        assert "Frontend Generation" in agent_names
-        assert "Backend Generation" in agent_names
+        assert "items" in data
+        assert "total" in data
+        assert isinstance(data["items"], list)
 
 
 class TestPatternsEndpoints:

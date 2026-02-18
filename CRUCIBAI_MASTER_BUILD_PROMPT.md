@@ -68,6 +68,11 @@ You are building CrucibAI to be the **greatest AI app builder**: the most except
 - [ ] **Errors:** No silent `pass` in except blocks; log and return or re-raise appropriately.
 - [ ] **Docs & UI:** Copy matches behavior; “web + mobile,” “store pack,” “120 agents” are accurate.
 - [ ] **Rate/rank:** Update RATE_RANK_TOP50 (or equivalent) and comparison docs so CrucibAI is positioned clearly vs. competitors.
+- [ ] **Agents and automations:** User agents (schedule, webhook) run via executor; run_agent step calls build swarm; POST /agents/from-description; webhooks use secret; no fake steps in critical path.
+- [ ] **Import and bring code:** POST /projects/import (paste, zip, git); Workspace loads by projectId; security scan on project; dependency-audit optional.
+- [ ] **Run verification:** Backend: `cd backend && pytest tests -v --tb=short`. Frontend: `cd frontend && npm test -- --watchAll=false`. Security: `cd backend && python -m security_audit`. CI: enterprise-tests.yml passes.
+
+**Source of truth:** docs/CODEBASE_SOURCE_OF_TRUTH.md. **Route/API audit:** docs/LAUNCH_SEQUENCE_AUDIT.md.
 
 ---
 

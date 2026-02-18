@@ -3,34 +3,80 @@ Advanced middleware for CrucibAI
 Includes rate limiting, security headers, CORS, and request tracking
 """
 
+import os
 import time
 import logging
 from typing import Dict, Optional, Callable
 from collections import defaultdict
 from datetime import datetime, timedelta
 from fastapi import Request, Response
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 import asyncio
 
 logger = logging.getLogger(__name__)
 
+# Stricter limits for auth/payment (per path, per identifier)
+STRICT_RATE_LIMITS: Dict[str, int] = {
+    "/api/auth/register": 5,
+    "/api/auth/login": 20,
+    "/api/stripe/create-checkout-session": 10,
+}
+
+
+class HTTPSRedirectMiddleware(BaseHTTPMiddleware):
+    """When HTTPS_REDIRECT=1, redirect HTTP to HTTPS using X-Forwarded-Proto (for production behind proxy)."""
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        if os.environ.get("HTTPS_REDIRECT", "").strip().lower() not in ("1", "true", "yes"):
+            return await call_next(request)
+        proto = (request.headers.get("X-Forwarded-Proto") or request.url.scheme or "").strip().lower()
+        if proto == "https":
+            return await call_next(request)
+        host = request.headers.get("X-Forwarded-Host") or request.headers.get("Host") or request.url.netloc or "localhost"
+        url = f"https://{host}{request.url.path}"
+        if request.url.query:
+            url += f"?{request.url.query}"
+        return RedirectResponse(url=url, status_code=301)
+
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """
-    Rate limiting middleware with per-IP and per-user tracking
+    Rate limiting middleware with per-IP and per-user tracking.
+    Stricter limits for auth and payment endpoints (register, login, checkout).
     """
     
     def __init__(self, app, requests_per_minute: int = 60):
         super().__init__(app)
         self.requests_per_minute = requests_per_minute
         self.request_times: Dict[str, list] = defaultdict(list)
+        self.strict_times: Dict[str, list] = defaultdict(list)
         self.cleanup_task = None
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        # Get identifier (user_id or IP)
+        path = (request.url.path or "").rstrip("/")
+        if not path.startswith("/api/"):
+            path_for_key = path
+        else:
+            path_for_key = "/api/" + path[4:].split("?")[0].rstrip("/")
         identifier = self._get_identifier(request)
+        strict_limit = STRICT_RATE_LIMITS.get(path_for_key)
+
+        # Stricter limit for auth/payment
+        if strict_limit is not None:
+            key = f"strict_{path_for_key}_{identifier}"
+            if not self._check_limit(key, strict_limit, self.strict_times):
+                return JSONResponse(
+                    status_code=429,
+                    content={
+                        "error": "Rate limit exceeded",
+                        "message": f"Maximum {strict_limit} requests per minute for this endpoint",
+                        "retry_after": 60
+                    }
+                )
+            self.strict_times[key].append(time.time())
         
-        # Check rate limit
+        # Global rate limit
         if not self._check_rate_limit(identifier):
             return JSONResponse(
                 status_code=429,
@@ -41,28 +87,25 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 }
             )
         
-        # Add request timestamp
         self.request_times[identifier].append(time.time())
-        
-        # Process request
         response = await call_next(request)
-        
-        # Add rate limit headers
         response.headers["X-RateLimit-Limit"] = str(self.requests_per_minute)
         response.headers["X-RateLimit-Remaining"] = str(
             self.requests_per_minute - len(self.request_times[identifier])
         )
-        
         return response
     
+    def _check_limit(self, key: str, limit: int, bucket: Dict[str, list]) -> bool:
+        now = time.time()
+        minute_ago = now - 60
+        bucket[key] = [t for t in bucket[key] if t > minute_ago]
+        return len(bucket[key]) < limit
+
     def _get_identifier(self, request: Request) -> str:
         """Get unique identifier for rate limiting"""
-        # Try to get user ID from token
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
-            return auth_header[7:]  # Return token as identifier
-        
-        # Fall back to IP address
+            return auth_header[7:]
         client_ip = request.client.host if request.client else "unknown"
         return f"ip_{client_ip}"
     
@@ -70,13 +113,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         """Check if identifier has exceeded rate limit"""
         now = time.time()
         minute_ago = now - 60
-        
-        # Remove old requests
         self.request_times[identifier] = [
             t for t in self.request_times[identifier] if t > minute_ago
         ]
-        
-        # Check limit
         return len(self.request_times[identifier]) < self.requests_per_minute
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):

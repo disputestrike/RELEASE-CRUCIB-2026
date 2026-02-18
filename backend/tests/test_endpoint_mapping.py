@@ -11,7 +11,7 @@ PUBLIC_OR_UNAUTH = [
     {"name": "Root", "method": "GET", "path": "/api/", "expect_status": 200},
     {"name": "Tokens bundles", "method": "GET", "path": "/api/tokens/bundles", "expect_status": 200, "expect_keys": ["bundles"]},
     {"name": "Build phases", "method": "GET", "path": "/api/build/phases", "expect_status": 200},
-    {"name": "Agents list", "method": "GET", "path": "/api/agents", "expect_status": 200},
+    {"name": "Agent definitions (public)", "method": "GET", "path": "/api/agents", "expect_status": 200, "expect_keys": ["agents"]},
     {"name": "Templates", "method": "GET", "path": "/api/templates", "expect_status": 200},
     {"name": "Patterns", "method": "GET", "path": "/api/patterns", "expect_status": 200},
     {"name": "Examples", "method": "GET", "path": "/api/examples", "expect_status": 200, "expect_keys": ["examples"]},

@@ -11,7 +11,7 @@ PUBLIC_GET = [
     ("/api/health", ["status"]),
     ("/api/tokens/bundles", ["bundles"]),
     ("/api/build/phases", None),
-    ("/api/agents", None),
+    ("/api/agents/templates", None),
     ("/api/templates", None),
     ("/api/patterns", None),
     ("/api/examples", ["examples"]),
@@ -20,6 +20,7 @@ PUBLIC_GET = [
 
 # Routes that REQUIRE AUTH - expect 401 without token
 AUTH_GET = [
+    "/api/agents",
     "/api/auth/me",
     "/api/projects",
     "/api/tokens/history",

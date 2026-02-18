@@ -250,7 +250,7 @@ const LandingPage = () => {
   ];
 
   const comparisonRows = [
-    { tool: 'CrucibAI', bestFor: 'Apps + plan-first + design-to-code', strongest: 'Agentic. Full automation, 120-agent swarm, minimal supervision, design-to-code', pick: 'You want agentic build: describe it, we do it — one workspace, minimal supervision' },
+    { tool: 'CrucibAI', bestFor: 'Websites, mobile, agents, automation — just about everything', strongest: 'The same AI that builds your app runs inside your automations. 120-agent swarm, prompt-to-automation (describe it, we create it), minimal supervision', pick: 'You want one platform: build apps, run automations (describe in plain language), ship web + mobile — we do it all' },
     { tool: 'Kimi (Kimi.ai)', bestFor: 'Long-context chat, research', strongest: 'Very long context, summarization', pick: 'You need long-document Q&A or research; less focused on app building' },
     { tool: 'Cursor', bestFor: 'In-IDE coding', strongest: 'Composer, codebase context', pick: 'You code daily in an IDE and want AI inside the editor' },
     { tool: 'Manus / Bolt', bestFor: 'Agentic app building', strongest: 'Natural language to app', pick: 'You want a similar build-from-prompt experience' },
@@ -536,8 +536,11 @@ const LandingPage = () => {
           <p className="text-kimi-body text-kimi-secondary mb-6 leading-relaxed">
             CrucibAI is Inevitable AI — and it&apos;s agentic. Full automation: describe your vision, we build it. Minimal supervision. Plan-first flow, 120-agent swarm, full transparency: every phase, every agent, no black boxes. No surprises, no hidden limitations.
           </p>
+          <p className="text-kimi-body text-kimi-secondary mb-4 leading-relaxed">
+            <strong className="text-kimi-text">The same AI that builds your app runs inside your automations.</strong> Websites, mobile apps, agents &amp; automations — just about everything. One platform: build from a prompt, create agents that run on schedule or webhook (or describe what you want in plain language and we create the automation), and ship to web or App Store. Better than N8N, Zapier, and no-code builders for full-stack outcomes.
+          </p>
           <ul className="grid sm:grid-cols-2 gap-3 text-kimi-body text-kimi-muted">
-            {['Research & summarization (docs)', 'Coding & debugging', 'Multimodal (text + images + files)', 'Plan-first agentic workflow', 'Templates & patterns', '120-agent swarm (frontend, backend, tests, deploy)', '99.2% success', 'Export to PDF and Excel (reports, spreadsheets, invoices)'].map((item, i) => (
+            {['Websites &amp; web apps', 'Mobile apps (iOS &amp; Android)', 'Create &amp; run your own agents (schedule, webhooks)', 'Research & summarization (docs)', 'Coding & debugging', 'Multimodal (text + images + files)', 'Plan-first agentic workflow', 'Templates & patterns', '120-agent swarm (frontend, backend, tests, deploy)', '99.2% success', 'Export to PDF and Excel (reports, spreadsheets, invoices)'].map((item, i) => (
               <li key={i} className="flex items-center gap-2"><span className="text-kimi-accent">•</span> {item}</li>
             ))}
           </ul>
@@ -575,7 +578,8 @@ const LandingPage = () => {
         <div className="max-w-4xl mx-auto text-center">
           <div className="py-8 px-8 rounded-2xl border-2 border-kimi-accent/40 bg-kimi-accent/10">
             <p className="text-2xl md:text-3xl font-bold text-kimi-text mb-2">This is agentic.</p>
-            <p className="text-lg text-kimi-muted">Full automation — we do it for you. Describe what you want; our 120-agent swarm builds it. Minimal supervision. Just like the best agentic builders: we ship, you stay in control.</p>
+            <p className="text-lg text-kimi-muted mb-4">Full automation — we do it for you. Describe what you want; our 120-agent swarm builds it. Minimal supervision. Just like the best agentic builders: we ship, you stay in control.</p>
+            <p className="text-base font-medium text-kimi-text">The same AI that builds your app runs inside your automations — schedule or webhook, with our agents as steps. Describe your automation in plain language and we create it.</p>
           </div>
         </div>
       </section>
@@ -593,8 +597,9 @@ const LandingPage = () => {
               { title: 'Websites & stores', desc: 'Portfolios, e-commerce, and custom web apps. Export to ZIP or GitHub.', cta: 'Build a website' },
               { title: 'Mobile apps', desc: 'iOS and Android with Expo. Store submission pack for App Store and Play Store.', cta: 'Build a mobile app' },
               { title: 'E‑commerce & checkout', desc: 'Stores, carts, payments. Full automation from product list to checkout.', cta: 'Build an e‑commerce store' },
-              { title: 'API & automation', desc: 'Integrations, webhooks, bots. Agentic pipelines that run for you.', cta: 'Build API or automation' },
-              { title: 'For everyone', desc: 'Web, mobile, no code. One platform — agentic build for all.', cta: 'Get started' }
+              { title: 'API & automation', desc: 'Integrations, webhooks, bots. Create agents that run on schedule or webhook.', cta: 'Build API or automation' },
+              { title: 'Your own agents', desc: 'Create agents that run on schedule or webhook. Post, scrape, notify, integrate — like N8N or Zapier, with our AI.', cta: 'Create an agent' },
+              { title: 'For everyone', desc: 'Web, mobile, agents, no code. One platform — just about everything.', cta: 'Get started' }
             ].map((item, i) => (
               <div key={i} className="p-5 rounded-xl border border-white/10 bg-kimi-bg hover:border-white/20 transition">
                 <h3 className="text-lg font-semibold text-kimi-text mb-2">{item.title}</h3>
@@ -893,7 +898,9 @@ const LandingPage = () => {
             <div>
               <div className="text-xs text-kimi-muted uppercase tracking-wider mb-4">Resources</div>
               <ul className="space-y-3 text-sm">
+                <li><Link to="/blog" className="text-kimi-muted hover:text-kimi-text transition">Blog</Link></li>
                 <li><Link to="/learn" className="text-kimi-muted hover:text-kimi-text transition">Learn</Link></li>
+                <li><Link to="/security" className="text-kimi-muted hover:text-kimi-text transition">Security &amp; Trust</Link></li>
                 <li><Link to="/benchmarks" className="text-kimi-muted hover:text-kimi-text transition">Benchmarks</Link></li>
                 <li><Link to="/shortcuts" className="text-kimi-muted hover:text-kimi-text transition">Shortcuts</Link></li>
                 <li><Link to="/prompts" className="text-kimi-muted hover:text-kimi-text transition">Prompt Library</Link></li>

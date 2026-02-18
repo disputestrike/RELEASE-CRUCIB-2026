@@ -3,7 +3,8 @@
 **Purpose:** Verify every route, every connection, frontend ↔ backend ↔ admin. No broken links, no unwired features, no placeholders in critical path. Security and full functionality at the level of top global apps.
 
 **Date:** February 2026  
-**Reference:** CRUCIBAI_MASTER_BUILD_PROMPT.md, FULL_AUDIT_REPORT.md
+**Reference:** CRUCIBAI_MASTER_BUILD_PROMPT.md, FULL_AUDIT_REPORT.md  
+**Use with:** docs/CODEBASE_SOURCE_OF_TRUTH.md (structure, scale, critical paths). Run backend tests, frontend tests, and `python -m security_audit`; CI: .github/workflows/enterprise-tests.yml.
 
 ---
 

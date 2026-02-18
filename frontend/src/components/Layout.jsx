@@ -31,6 +31,7 @@ const Layout = () => {
   const navigation = [
     { name: 'Dashboard', href: '/app', icon: LayoutDashboard },
     { name: 'New Project', href: '/app/projects/new', icon: FolderPlus },
+    { name: 'Agents', href: '/app/agents', icon: Zap },
     { name: 'Credit Center', href: '/app/tokens', icon: Coins },
     { name: 'Exports', href: '/app/exports', icon: FileOutput },
     { name: 'Docs / Slides / Sheets', href: '/app/generate', icon: FileText },

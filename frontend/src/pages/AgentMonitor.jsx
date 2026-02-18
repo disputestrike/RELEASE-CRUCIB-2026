@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Bot, CheckCircle, Clock, AlertCircle, Play, Pause,
-  Zap, ArrowLeft, ExternalLink, Download, RefreshCw, ChevronDown, ChevronRight, Database, Code, List, Eye
+  Zap, ArrowLeft, ExternalLink, Download, RefreshCw, ChevronDown, ChevronRight, Database, Code, List, Eye, ShieldCheck
 } from 'lucide-react';
 import { useAuth, API } from '../App';
 import axios from 'axios';
@@ -26,6 +26,8 @@ const AgentMonitor = () => {
   const [loading, setLoading] = useState(true);
   const [polling, setPolling] = useState(true);
   const [retrying, setRetrying] = useState(false);
+  const [dependencyAudit, setDependencyAudit] = useState(null);
+  const [dependencyAuditLoading, setDependencyAuditLoading] = useState(false);
 
   const agentLayers = {
     planning: ['Planner', 'Requirements Clarifier', 'Stack Selector'],
@@ -196,6 +198,64 @@ const AgentMonitor = () => {
         <div className="p-4 rounded-xl border border-white/10 bg-[#0a0a0a]">
           <h3 className="text-sm font-medium text-gray-400 mb-2">Code quality</h3>
           <QualityScore score={project.quality_score} />
+        </div>
+      )}
+      {/* Security scan summary (from last run in Workspace) */}
+      {project.last_security_scan && (project.last_security_scan.passed != null || project.last_security_scan.failed != null) && (
+        <div className="p-4 rounded-xl border border-white/10 bg-[#0a0a0a]">
+          <h3 className="text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4" /> Security scan
+          </h3>
+          <p className="text-sm text-gray-300">
+            {project.last_security_scan.passed ?? 0} PASS, {project.last_security_scan.failed ?? 0} FAIL
+            {project.last_security_scan.at && (
+              <span className="text-gray-500 ml-2">(last run from Workspace)</span>
+            )}
+          </p>
+          <Link to={`/app/workspace?projectId=${id}`} className="text-sm text-blue-400 hover:text-blue-300 mt-1 inline-block">Run again in Workspace →</Link>
+        </div>
+      )}
+      {/* Optional: dependency audit (npm / pip) */}
+      {(project.status === 'completed' || workspaceFiles.length > 0) && (
+        <div className="p-4 rounded-xl border border-white/10 bg-[#0a0a0a]">
+          <h3 className="text-sm font-medium text-gray-400 mb-2">Dependency audit</h3>
+          {dependencyAuditLoading && <p className="text-sm text-gray-500">Running npm/pip audit…</p>}
+          {!dependencyAuditLoading && !dependencyAudit && (
+            <button
+              type="button"
+              onClick={async () => {
+                setDependencyAuditLoading(true);
+                try {
+                  const { data } = await axios.get(`${API}/projects/${id}/dependency-audit`, { headers: { Authorization: `Bearer ${token}` } });
+                  setDependencyAudit(data);
+                } catch (_) {
+                  setDependencyAudit({ npm: { error: 'Request failed' }, pip: null });
+                } finally {
+                  setDependencyAuditLoading(false);
+                }
+              }}
+              className="text-sm text-blue-400 hover:text-blue-300"
+            >
+              Run dependency audit (npm / pip)
+            </button>
+          )}
+          {!dependencyAuditLoading && dependencyAudit && (
+            <div className="text-sm text-gray-300 space-y-1">
+              {dependencyAudit.npm && (
+                <p>
+                  npm: {dependencyAudit.npm.error ? dependencyAudit.npm.error : `${dependencyAudit.npm.critical ?? 0} critical, ${dependencyAudit.npm.high ?? 0} high`}
+                  {dependencyAudit.npm.ok && !dependencyAudit.npm.error && ' — OK'}
+                </p>
+              )}
+              {dependencyAudit.pip && (
+                <p>
+                  pip: {dependencyAudit.pip.error ? dependencyAudit.pip.error : `${dependencyAudit.pip.critical ?? 0} critical, ${dependencyAudit.pip.high ?? 0} high`}
+                  {dependencyAudit.pip.ok && !dependencyAudit.pip.error && ' — OK'}
+                </p>
+              )}
+              {(!dependencyAudit.npm && !dependencyAudit.pip) && dependencyAudit.message && <p>{dependencyAudit.message}</p>}
+            </div>
+          )}
         </div>
       )}
       {/* 10/10: Phase retry suggestion when Quality phase had many failures */}

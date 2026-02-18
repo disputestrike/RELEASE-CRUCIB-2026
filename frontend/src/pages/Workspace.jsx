@@ -330,6 +330,7 @@ const Workspace = () => {
   const [projectBuildProgress, setProjectBuildProgress] = useState({ phase: 0, agent: '', progress: 0, status: '', tokens_used: 0 });
   const fileInputRef = useRef(null);
   const chatEndRef = useRef(null);
+  const workspaceFilesLoadedForProject = useRef(null);
 
   useEffect(() => {
     axios.get(`${API}/build/phases`).then(r => setBuildPhases(r.data.phases || [])).catch(() => {});
@@ -346,6 +347,36 @@ const Workspace = () => {
       setFiles(stateFiles);
     }
   }, [location.state]);
+
+  // Load imported project files from workspace when opening with projectId (e.g. after Import)
+  useEffect(() => {
+    if (!projectIdFromUrl || !token || !API || workspaceFilesLoadedForProject.current === projectIdFromUrl) return;
+    const headers = { Authorization: `Bearer ${token}` };
+    axios.get(`${API}/projects/${projectIdFromUrl}/workspace/files`, { headers })
+      .then((r) => {
+        const list = r.data?.files || [];
+        if (list.length === 0) return;
+        workspaceFilesLoadedForProject.current = projectIdFromUrl;
+        return Promise.all(
+          list.map((path) =>
+            axios.get(`${API}/projects/${projectIdFromUrl}/workspace/file`, { params: { path }, headers })
+              .then((f) => ({ path: f.data.path, content: f.data.content }))
+              .catch(() => null)
+          )
+        ).then((results) => {
+          const loaded = results.filter(Boolean).reduce((acc, { path, content }) => {
+            const key = path.startsWith('/') ? path : `/${path}`;
+            acc[key] = { code: content };
+            return acc;
+          }, {});
+          if (Object.keys(loaded).length > 0) {
+            setFiles(loaded);
+            setActiveFile((current) => (current && loaded[current] ? current : Object.keys(loaded).sort()[0]));
+          }
+        });
+      })
+      .catch(() => {});
+  }, [projectIdFromUrl, token, API]);
 
   useEffect(() => {
     if (token) {
@@ -866,7 +897,9 @@ Respond with ONLY the complete App.js code, nothing else.`;
     setToolsLoading(true);
     setToolsReport(null);
     try {
-      const res = await axios.post(`${API}/ai/security-scan`, { files: payload }, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      const body = { files: payload };
+      if (projectIdFromUrl && token) body.project_id = projectIdFromUrl;
+      const res = await axios.post(`${API}/ai/security-scan`, body, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
       setToolsReport({ type: 'security', data: res.data });
       addLog('Security scan completed', 'info', 'system');
     } catch (e) {

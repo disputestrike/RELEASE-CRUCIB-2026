@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, BackgroundTasks, File, UploadFile, Form, Request, WebSocket, WebSocketDisconnect, Query
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, BackgroundTasks, File, UploadFile, Form, Request, WebSocket, WebSocketDisconnect, Query, Body
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import StreamingResponse, Response, RedirectResponse, FileResponse
 from dotenv import load_dotenv
@@ -8,7 +8,8 @@ from middleware import (
     SecurityHeadersMiddleware,
     RequestTrackerMiddleware,
     RequestValidationMiddleware,
-    PerformanceMonitoringMiddleware
+    PerformanceMonitoringMiddleware,
+    HTTPSRedirectMiddleware,
 )
 from error_handlers import (
     CrucibError,
@@ -52,7 +53,9 @@ import asyncio
 import random
 import json
 import re
+import secrets
 import subprocess
+import sys
 import tempfile
 import base64
 import zipfile
@@ -61,6 +64,17 @@ from urllib.parse import quote, urlencode
 
 from agent_dag import AGENT_DAG, get_execution_phases, build_context_from_previous_agents, get_system_prompt_for_agent
 from real_agent_runner import REAL_AGENT_NAMES, run_real_agent, persist_agent_output, run_real_post_step
+from automation.models import AgentCreate, AgentUpdate, TriggerConfig, ActionConfig
+from automation.constants import (
+    CREDITS_PER_AGENT_RUN,
+    INTERNAL_USER_ID,
+    MAX_CONCURRENT_RUNS_PER_USER,
+    MAX_RUNS_PER_HOUR_PER_USER,
+    WEBHOOK_IDEMPOTENCY_SECONDS,
+    WEBHOOK_RATE_LIMIT_PER_MINUTE,
+)
+from automation.executor import run_actions
+from automation.schedule import next_run_at, is_one_time
 from agent_real_behavior import run_agent_real_behavior
 from project_state import load_state, WORKSPACE_ROOT
 from agent_resilience import AgentError, get_criticality, get_timeout, generate_fallback
@@ -281,6 +295,7 @@ class ProjectEnvBody(BaseModel):
 
 class SecurityScanBody(BaseModel):
     files: Dict[str, str]
+    project_id: Optional[str] = None  # when set, store result on project for AgentMonitor badge
 
 class OptimizeBody(BaseModel):
     code: str
@@ -289,6 +304,16 @@ class OptimizeBody(BaseModel):
 class ShareCreateBody(BaseModel):
     project_id: str
     read_only: bool = True
+
+
+class ProjectImportBody(BaseModel):
+    """Import project from paste, ZIP (base64), or Git URL."""
+    name: Optional[str] = None
+    source: str  # "paste" | "zip" | "git"
+    files: Optional[List[Dict[str, Any]]] = None  # for paste: [{"path": str, "code": str}]
+    zip_base64: Optional[str] = None  # for zip: base64-encoded zip bytes
+    git_url: Optional[str] = None  # for git: e.g. https://github.com/owner/repo
+
 
 class GenerateContentRequest(BaseModel):
     """CrucibAI for Docs/Slides/Sheets (C1–C3)."""
@@ -2440,6 +2465,495 @@ async def agent_run_generic(data: AgentGenericRunBody, user: dict = Depends(get_
     )
     return {"agent": data.agent_name, "result": response, "model_used": model_used}
 
+
+# ==================== AGENTS & AUTOMATION (user-defined agents, runs, webhook) ====================
+
+INTERNAL_RUN_TOKEN = os.environ.get("CRUCIBAI_INTERNAL_TOKEN", "")
+
+
+class RunInternalBody(BaseModel):
+    """Body for run-internal (worker calling back to run an agent)."""
+    agent_name: str
+    prompt: str
+    user_id: str
+
+
+@api_router.post("/agents/run-internal")
+async def agents_run_internal(data: RunInternalBody, request: Request):
+    """Internal: worker calls this to run an agent by name (validates X-Internal-Token). No user JWT."""
+    token = (request.headers.get("X-Internal-Token") or "").strip()
+    if not INTERNAL_RUN_TOKEN or token != INTERNAL_RUN_TOKEN:
+        raise HTTPException(status_code=401, detail="Invalid or missing X-Internal-Token")
+    agent_name = data.agent_name
+    if agent_name not in AGENT_DAG:
+        raise HTTPException(status_code=404, detail=f"Unknown agent: {agent_name}")
+    if data.user_id == INTERNAL_USER_ID:
+        user = None
+        user_keys = {}
+    else:
+        user = await db.users.find_one({"id": data.user_id})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        user_keys = await get_workspace_api_keys(user)
+    effective = _effective_api_keys(user_keys)
+    system = get_system_prompt_for_agent(agent_name) or f"You are {agent_name}. Fulfill the request."
+    response, model_used = await _call_llm_with_fallback(
+        message=data.prompt,
+        system_message=system,
+        session_id=str(uuid.uuid4()),
+        model_chain=_get_model_chain("auto", data.prompt, effective_keys=effective),
+        api_keys=effective,
+    )
+    return {"result": response, "model_used": model_used}
+
+
+# Webhook idempotency: (agent_id, idempotency_key) -> last run_id (in-memory for single process; use Redis in multi-instance)
+_webhook_idempotency: Dict[str, str] = {}
+_webhook_rate: Dict[str, List[float]] = {}  # agent_id -> list of timestamps
+
+
+def _check_webhook_rate_limit(agent_id: str) -> bool:
+    """True if under limit (100/min)."""
+    now = datetime.now(timezone.utc).timestamp()
+    if agent_id not in _webhook_rate:
+        _webhook_rate[agent_id] = []
+    lst = _webhook_rate[agent_id]
+    lst[:] = [t for t in lst if now - t < 60]
+    if len(lst) >= WEBHOOK_RATE_LIMIT_PER_MINUTE:
+        return False
+    lst.append(now)
+    return True
+
+
+@api_router.post("/agents/webhook/{agent_id}")
+async def agents_webhook_trigger(agent_id: str, request: Request, secret: Optional[str] = Query(None)):
+    """Trigger agent run via webhook. Query param secret= or header X-Webhook-Secret. Returns 202 + run_id."""
+    raw_secret = secret or request.headers.get("X-Webhook-Secret") or ""
+    idempotency_key = request.headers.get("Idempotency-Key", "").strip()
+    agent = await db.user_agents.find_one({"id": agent_id})
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    if not agent.get("enabled"):
+        raise HTTPException(status_code=400, detail="Agent is disabled")
+    cfg = agent.get("trigger_config") or {}
+    if cfg.get("type") != "webhook":
+        raise HTTPException(status_code=400, detail="Agent is not webhook-triggered")
+    if (cfg.get("webhook_secret") or "").strip() != raw_secret.strip():
+        raise HTTPException(status_code=401, detail="Invalid webhook secret")
+    if not _check_webhook_rate_limit(agent_id):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+    now_iso = datetime.now(timezone.utc).isoformat()
+    if idempotency_key:
+        key = f"{agent_id}:{idempotency_key}"
+        if key in _webhook_idempotency:
+            run_id = _webhook_idempotency[key]
+            return Response(status_code=202, content=json.dumps({"run_id": run_id}), media_type="application/json")
+    user_id = agent.get("user_id") or ""
+    if user_id and user_id != INTERNAL_USER_ID:
+        cred = _user_credits(await db.users.find_one({"id": user_id}) or {})
+        if cred < CREDITS_PER_AGENT_RUN:
+            raise HTTPException(status_code=402, detail="Insufficient credits for agent run")
+        running = await db.agent_runs.count_documents({"user_id": user_id, "status": "running"})
+        if running >= MAX_CONCURRENT_RUNS_PER_USER:
+            raise HTTPException(status_code=429, detail="Too many concurrent runs")
+    run_id = str(uuid.uuid4())
+    await db.agent_runs.insert_one({
+        "id": run_id, "agent_id": agent_id, "user_id": user_id,
+        "triggered_at": now_iso, "triggered_by": "webhook", "status": "running",
+        "started_at": now_iso, "output_summary": {}, "log_lines": [],
+    })
+    if user_id and user_id != INTERNAL_USER_ID:
+        await db.users.update_one({"id": user_id}, {"$inc": {"credit_balance": -CREDITS_PER_AGENT_RUN}})
+    async def _run_agent_cb(uid: str, aname: str, prompt: str):
+        u = await db.users.find_one({"id": uid})
+        uk = await get_workspace_api_keys(u)
+        eff = _effective_api_keys(uk)
+        sys_p = get_system_prompt_for_agent(aname) or f"You are {aname}."
+        r, _ = await _call_llm_with_fallback(
+            message=prompt, system_message=sys_p, session_id=str(uuid.uuid4()),
+            model_chain=_get_model_chain("auto", prompt, effective_keys=eff), api_keys=eff,
+        )
+        return {"result": r}
+    try:
+        status, output_summary, log_lines, _ = await run_actions(
+            agent, user_id, run_id, [], run_agent_callback=_run_agent_cb,
+        )
+    except Exception as e:
+        status, output_summary, log_lines = "failed", {"error": str(e)}, [str(e)]
+    finished = datetime.now(timezone.utc).isoformat()
+    await db.agent_runs.update_one(
+        {"id": run_id},
+        {"$set": {"status": status, "finished_at": finished, "output_summary": output_summary, "log_lines": log_lines[-1000:]}},
+    )
+    if idempotency_key:
+        _webhook_idempotency[f"{agent_id}:{idempotency_key}"] = run_id
+    return Response(status_code=202, content=json.dumps({"run_id": run_id}), media_type="application/json")
+
+
+@api_router.post("/agents", response_model=None)
+async def agents_create(data: AgentCreate, request: Request, user: dict = Depends(get_current_user)):
+    """Create a user agent (schedule or webhook + actions)."""
+    await _ensure_credit_balance(user["id"])
+    agent_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    trigger = data.trigger
+    trigger_type = trigger.type
+    trigger_config = {"type": trigger_type}
+    if trigger_type == "schedule":
+        trigger_config["cron_expression"] = trigger.cron_expression
+        trigger_config["run_at"] = trigger.run_at
+        next_ = next_run_at(cron_expression=trigger.cron_expression, run_at=trigger.run_at)
+        trigger_config["next_run_at"] = next_.isoformat() if next_ else None
+    else:
+        webhook_secret = trigger.webhook_secret or secrets.token_urlsafe(24)
+        trigger_config["webhook_secret"] = webhook_secret
+    actions = [{"type": a.type, "config": a.config, "approval_required": a.approval_required} for a in data.actions]
+    doc = {
+        "id": agent_id, "user_id": user["id"], "name": data.name, "description": data.description or "",
+        "trigger_type": trigger_type, "trigger_config": trigger_config,
+        "actions": actions, "enabled": data.enabled,
+        "created_at": now, "updated_at": now, "next_run_at": trigger_config.get("next_run_at"),
+    }
+    await db.user_agents.insert_one(doc)
+    base_url = os.environ.get("FRONTEND_URL", request.base_url.rstrip("/")).rstrip("/")
+    webhook_url = f"{base_url}/api/agents/webhook/{agent_id}?secret={trigger_config.get('webhook_secret', '')}" if trigger_type == "webhook" else None
+    return {"id": agent_id, "user_id": user["id"], "name": doc["name"], "description": doc["description"], "trigger_type": trigger_type, "trigger_config": trigger_config, "actions": actions, "enabled": doc["enabled"], "created_at": now, "updated_at": now, "webhook_url": webhook_url}
+
+
+@api_router.get("/agents")
+async def agents_list(user: dict = Depends(get_current_user), limit: int = Query(50, le=100), offset: int = Query(0, ge=0)):
+    """List current user's agents."""
+    cursor = db.user_agents.find({"user_id": user["id"]}).sort("updated_at", -1).skip(offset).limit(limit)
+    items = await cursor.to_list(length=limit)
+    out = []
+    for a in items:
+        last = await db.agent_runs.find_one({"agent_id": a["id"]}, sort=[("triggered_at", -1)], projection={"status": 1, "triggered_at": 1})
+        run_count = await db.agent_runs.count_documents({"agent_id": a["id"]})
+        tc = dict(a.get("trigger_config") or {})
+        tc.pop("webhook_secret", None)
+        out.append({
+            "id": a["id"], "user_id": a["user_id"], "name": a["name"], "description": a.get("description"),
+            "trigger_type": a["trigger_type"], "trigger_config": tc,
+            "actions": a.get("actions", []), "enabled": a.get("enabled", True),
+            "created_at": a["created_at"], "updated_at": a["updated_at"],
+            "run_count": run_count, "last_run_at": last["triggered_at"] if last else None, "last_run_status": last.get("status") if last else None,
+        })
+    return {"items": out, "total": await db.user_agents.count_documents({"user_id": user["id"]})}
+
+
+@api_router.get("/agents/{agent_id}")
+async def agents_get(agent_id: str, user: dict = Depends(get_current_user)):
+    """Get one agent (own only)."""
+    agent = await db.user_agents.find_one({"id": agent_id, "user_id": user["id"]})
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    last = await db.agent_runs.find_one({"agent_id": agent_id}, sort=[("triggered_at", -1)], projection={"status": 1, "triggered_at": 1})
+    run_count = await db.agent_runs.count_documents({"agent_id": agent_id})
+    base = os.environ.get("FRONTEND_URL", "").rstrip("/")
+    webhook_url = f"{base}/api/agents/webhook/{agent_id}?secret={agent.get('trigger_config', {}).get('webhook_secret', '')}" if agent.get("trigger_type") == "webhook" else None
+    return {
+        "id": agent["id"], "user_id": agent["user_id"], "name": agent["name"], "description": agent.get("description"),
+        "trigger_type": agent["trigger_type"], "trigger_config": agent.get("trigger_config", {}),
+        "actions": agent.get("actions", []), "enabled": agent.get("enabled", True),
+        "created_at": agent["created_at"], "updated_at": agent["updated_at"],
+        "webhook_url": webhook_url, "run_count": run_count, "last_run_at": last["triggered_at"] if last else None, "last_run_status": last.get("status") if last else None,
+    }
+
+
+@api_router.patch("/agents/{agent_id}")
+async def agents_update(agent_id: str, data: AgentUpdate, user: dict = Depends(get_current_user)):
+    """Update agent (partial)."""
+    agent = await db.user_agents.find_one({"id": agent_id, "user_id": user["id"]})
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    now = datetime.now(timezone.utc).isoformat()
+    updates = {"updated_at": now}
+    if data.name is not None:
+        updates["name"] = data.name
+    if data.description is not None:
+        updates["description"] = data.description
+    if data.enabled is not None:
+        updates["enabled"] = data.enabled
+    if data.trigger is not None:
+        tc = {"type": data.trigger.type, "cron_expression": data.trigger.cron_expression, "run_at": data.trigger.run_at, "webhook_secret": data.trigger.webhook_secret or (agent.get("trigger_config") or {}).get("webhook_secret")}
+        if data.trigger.type == "schedule":
+            next_ = next_run_at(cron_expression=data.trigger.cron_expression, run_at=data.trigger.run_at)
+            tc["next_run_at"] = next_.isoformat() if next_ else None
+        updates["trigger_config"] = tc
+        updates["trigger_type"] = data.trigger.type
+        updates["next_run_at"] = tc.get("next_run_at")
+    if data.actions is not None:
+        updates["actions"] = [{"type": a.type, "config": a.config, "approval_required": a.approval_required} for a in data.actions]
+    await db.user_agents.update_one({"id": agent_id, "user_id": user["id"]}, {"$set": updates})
+    return {"ok": True, "id": agent_id}
+
+
+@api_router.delete("/agents/{agent_id}")
+async def agents_delete(agent_id: str, user: dict = Depends(get_current_user)):
+    """Delete agent (own only)."""
+    r = await db.user_agents.delete_one({"id": agent_id, "user_id": user["id"]})
+    if r.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return {"ok": True, "id": agent_id}
+
+
+@api_router.get("/agents/{agent_id}/runs")
+async def agents_runs_list(agent_id: str, user: dict = Depends(get_current_user), limit: int = Query(50, le=100), offset: int = Query(0, ge=0)):
+    """List runs for an agent (own only)."""
+    agent = await db.user_agents.find_one({"id": agent_id, "user_id": user["id"]})
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    cursor = db.agent_runs.find({"agent_id": agent_id}).sort("triggered_at", -1).skip(offset).limit(limit)
+    runs = await cursor.to_list(length=limit)
+    out = []
+    for r in runs:
+        started = r.get("started_at")
+        finished = r.get("finished_at")
+        dur = None
+        if started and finished:
+            try:
+                from dateutil import parser as date_parser
+                d1 = date_parser.isoparse(started)
+                d2 = date_parser.isoparse(finished)
+                dur = (d2 - d1).total_seconds()
+            except Exception:
+                pass
+        out.append({"id": r["id"], "agent_id": r["agent_id"], "user_id": r["user_id"], "triggered_at": r["triggered_at"], "triggered_by": r.get("triggered_by", "schedule"), "status": r["status"], "started_at": started, "finished_at": finished, "duration_seconds": dur, "error_message": r.get("error_message"), "output_summary": r.get("output_summary"), "step_index": r.get("step_index")})
+    return {"items": out, "total": await db.agent_runs.count_documents({"agent_id": agent_id})}
+
+
+@api_router.get("/agents/runs/{run_id}")
+async def agents_run_get(run_id: str, user: dict = Depends(get_current_user)):
+    """Get single run (own only, via agent ownership)."""
+    run = await db.agent_runs.find_one({"id": run_id})
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+    agent = await db.user_agents.find_one({"id": run["agent_id"], "user_id": user["id"]})
+    if not agent:
+        raise HTTPException(status_code=403, detail="Access denied")
+    started = run.get("started_at")
+    finished = run.get("finished_at")
+    dur = None
+    if started and finished:
+        try:
+            from dateutil import parser as date_parser
+            d1 = date_parser.isoparse(started)
+            d2 = date_parser.isoparse(finished)
+            dur = (d2 - d1).total_seconds()
+        except Exception:
+            pass
+    return {"id": run["id"], "agent_id": run["agent_id"], "user_id": run["user_id"], "triggered_at": run["triggered_at"], "triggered_by": run.get("triggered_by"), "status": run["status"], "started_at": started, "finished_at": finished, "duration_seconds": dur, "error_message": run.get("error_message"), "output_summary": run.get("output_summary"), "step_index": run.get("step_index")}
+
+
+@api_router.get("/agents/runs/{run_id}/logs")
+async def agents_run_logs(run_id: str, user: dict = Depends(get_current_user)):
+    """Get log lines for a run (own only)."""
+    run = await db.agent_runs.find_one({"id": run_id})
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+    agent = await db.user_agents.find_one({"id": run["agent_id"], "user_id": user["id"]})
+    if not agent:
+        raise HTTPException(status_code=403, detail="Access denied")
+    return {"run_id": run_id, "log_lines": run.get("log_lines", [])}
+
+
+@api_router.post("/agents/{agent_id}/run")
+async def agents_trigger_run(agent_id: str, user: dict = Depends(get_current_user)):
+    """Trigger a run now (manual). Returns run_id."""
+    agent = await db.user_agents.find_one({"id": agent_id, "user_id": user["id"]})
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    cred = _user_credits(user)
+    if cred < CREDITS_PER_AGENT_RUN:
+        raise HTTPException(status_code=402, detail=f"Insufficient credits. Need {CREDITS_PER_AGENT_RUN}, have {cred}.")
+    now_iso = datetime.now(timezone.utc).isoformat()
+    run_id = str(uuid.uuid4())
+    await db.agent_runs.insert_one({"id": run_id, "agent_id": agent_id, "user_id": user["id"], "triggered_at": now_iso, "triggered_by": "manual", "status": "running", "started_at": now_iso, "output_summary": {}, "log_lines": []})
+    await db.users.update_one({"id": user["id"]}, {"$inc": {"credit_balance": -CREDITS_PER_AGENT_RUN}})
+    async def _run_agent_cb(uid: str, aname: str, prompt: str):
+        u = await db.users.find_one({"id": uid})
+        uk = await get_workspace_api_keys(u)
+        eff = _effective_api_keys(uk)
+        sys_p = get_system_prompt_for_agent(aname) or f"You are {aname}."
+        r, _ = await _call_llm_with_fallback(message=prompt, system_message=sys_p, session_id=str(uuid.uuid4()), model_chain=_get_model_chain("auto", prompt, effective_keys=eff), api_keys=eff)
+        return {"result": r}
+    try:
+        status, output_summary, log_lines, _ = await run_actions(agent, user["id"], run_id, [], run_agent_callback=_run_agent_cb)
+    except Exception as e:
+        status, output_summary, log_lines = "failed", {"error": str(e)}, [str(e)]
+    finished = datetime.now(timezone.utc).isoformat()
+    await db.agent_runs.update_one({"id": run_id}, {"$set": {"status": status, "finished_at": finished, "output_summary": output_summary, "log_lines": log_lines[-1000:]}})
+    return {"run_id": run_id, "status": status}
+
+
+# Templates (pre-built agent definitions)
+AGENT_TEMPLATES = [
+    {"slug": "daily-digest", "name": "Daily digest", "description": "Generate a short daily summary and optionally email it.", "trigger": {"type": "schedule", "cron_expression": "0 9 * * *"}, "actions": [{"type": "run_agent", "config": {"agent_name": "Content Agent", "prompt": "Summarize the key updates for today in 3 bullet points."}}]},
+    {"slug": "youtube-poster", "name": "YouTube poster", "description": "Post or schedule content (placeholder: use HTTP action to your API).", "trigger": {"type": "schedule", "cron_expression": "0 17 * * *"}, "actions": [{"type": "http", "config": {"method": "POST", "url": "https://httpbin.org/post", "body": {"message": "Scheduled post"}}}]},
+    {"slug": "lead-finder", "name": "Lead finder", "description": "Scrape and filter leads; notify via Slack.", "trigger": {"type": "webhook"}, "actions": [{"type": "run_agent", "config": {"agent_name": "Scraping Agent", "prompt": "Suggest 2-3 data sources for B2B leads."}}, {"type": "slack", "config": {"text": "New lead run completed.", "webhook_url": ""}}]},
+    {"slug": "inbox-summarizer", "name": "Inbox summarizer", "description": "Webhook + Content Agent + email.", "trigger": {"type": "webhook"}, "actions": [{"type": "run_agent", "config": {"agent_name": "Content Agent", "prompt": "Summarize the following in 3 bullets."}}, {"type": "email", "config": {"to": "", "subject": "Summary", "body": "{{steps.0.output}}"}}]},
+    {"slug": "status-checker", "name": "Status page checker", "description": "Schedule HTTP check; Slack on failure.", "trigger": {"type": "schedule", "cron_expression": "0 */6 * * *"}, "actions": [{"type": "http", "config": {"method": "GET", "url": "https://api.github.com/zen"}}, {"type": "slack", "config": {"text": "Status check completed.", "webhook_url": ""}}]},
+]
+
+
+@api_router.get("/agents/templates")
+async def agents_templates_list():
+    """List agent templates (no auth required for listing)."""
+    return {"templates": [{"slug": t["slug"], "name": t["name"], "description": t["description"]} for t in AGENT_TEMPLATES]}
+
+
+@api_router.get("/agents/templates/{slug}")
+async def agents_template_get(slug: str):
+    """Get one template by slug."""
+    t = next((x for x in AGENT_TEMPLATES if x["slug"] == slug), None)
+    if not t:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return t
+
+
+class FromTemplateBody(BaseModel):
+    template_slug: str
+    overrides: Optional[Dict[str, Any]] = None
+
+
+class FromDescriptionBody(BaseModel):
+    """Prompt-to-automation: natural language description of the automation."""
+    description: str
+
+
+@api_router.post("/agents/from-description")
+async def agents_from_description(data: FromDescriptionBody, request: Request, user: dict = Depends(get_current_user)):
+    """Create an agent from a natural language description (prompt-to-automation). Uses LLM to produce trigger + actions, then creates the agent."""
+    cred = _user_credits(user)
+    if cred < MIN_CREDITS_FOR_LLM:
+        raise HTTPException(status_code=402, detail=f"Insufficient credits. Need at least {MIN_CREDITS_FOR_LLM} for prompt-to-automation. Buy more in Credit Center.")
+    await _ensure_credit_balance(user["id"])
+    user_keys = await get_workspace_api_keys(user)
+    effective = _effective_api_keys(user_keys)
+    model_chain = _get_model_chain("auto", data.description, effective_keys=effective)
+    system = """You are an automation designer. Given the user's description of an automation, output ONLY a single valid JSON object (no markdown, no code fence, no explanation) with exactly these keys:
+- "name": short title for the agent (e.g. "Daily summary")
+- "description": one sentence describing what it does
+- "trigger": object with "type" ("schedule" or "webhook"). If schedule, add "cron_expression": standard 5-field cron, e.g. "0 9 * * *" for 9am daily, "0 */6 * * *" for every 6 hours, "0 0 * * *" for midnight daily
+- "actions": array of action objects. Each has "type" and "config".
+  Action types: "http" (config: method, url, optional headers, optional body), "email" (to, subject, body; body can use {{steps.0.output}} for previous step output), "slack" (webhook_url, text), "run_agent" (agent_name: one of Content Agent, Scraping Agent, etc.; prompt: string, can use {{steps.0.output}}).
+  For "every day at 9am" use cron_expression "0 9 * * *". For "every 6 hours" use "0 */6 * * *". For webhook use trigger type "webhook" and no cron.
+Output only the JSON object, nothing else."""
+    try:
+        response, _ = await _call_llm_with_fallback(
+            message=data.description,
+            system_message=system,
+            session_id=str(uuid.uuid4()),
+            model_chain=model_chain,
+            api_keys=effective,
+        )
+    except Exception as e:
+        logger.exception("agents_from_description LLM failed")
+        raise HTTPException(status_code=502, detail=f"Could not generate automation: {str(e)}")
+    raw = (response or "").strip()
+    json_str = raw
+    if "```" in raw:
+        m = re.search(r"```(?:json)?\s*([\s\S]*?)```", raw)
+        if m:
+            json_str = m.group(1).strip()
+    try:
+        spec = json.loads(json_str)
+    except json.JSONDecodeError as e:
+        logger.warning("agents_from_description invalid JSON: %s", raw[:500])
+        raise HTTPException(status_code=422, detail="Generated spec was not valid JSON. Try a clearer description.")
+    name = (spec.get("name") or "My automation").strip() or "My automation"
+    description = (spec.get("description") or "").strip()
+    trigger_spec = spec.get("trigger") or {}
+    trigger_type = (trigger_spec.get("type") or "schedule").lower()
+    if trigger_type not in ("schedule", "webhook"):
+        trigger_type = "schedule"
+    if trigger_type == "schedule":
+        cron = (trigger_spec.get("cron_expression") or "0 9 * * *").strip()
+        trigger_config = TriggerConfig(type="schedule", cron_expression=cron or "0 9 * * *", run_at=None, webhook_secret=None)
+    else:
+        trigger_config = TriggerConfig(type="webhook", cron_expression=None, run_at=None, webhook_secret=None)
+    actions_spec = spec.get("actions") or []
+    if not actions_spec:
+        actions_spec = [{"type": "http", "config": {"method": "GET", "url": "https://httpbin.org/get"}}]
+    action_configs = []
+    for a in actions_spec[:20]:
+        if not isinstance(a, dict):
+            continue
+        atype = (a.get("type") or "http").lower()
+        aconfig = a.get("config") or a
+        if not isinstance(aconfig, dict):
+            aconfig = {}
+        action_configs.append(ActionConfig(type=atype, config=aconfig, approval_required=a.get("approval_required", False)))
+    if not action_configs:
+        action_configs = [ActionConfig(type="http", config={"method": "GET", "url": "https://httpbin.org/get"}, approval_required=False)]
+    create = AgentCreate(name=name, description=description or None, trigger=trigger_config, actions=action_configs, enabled=True)
+    deduct = 3
+    if cred >= deduct:
+        await db.users.update_one({"id": user["id"]}, {"$inc": {"credit_balance": -deduct}})
+    return await agents_create(create, request, user)
+
+
+@api_router.post("/agents/from-template")
+async def agents_from_template(data: FromTemplateBody, request: Request, user: dict = Depends(get_current_user)):
+    """Create an agent from a template (overrides: name, description, trigger, actions)."""
+    t = next((x for x in AGENT_TEMPLATES if x["slug"] == data.template_slug), None)
+    if not t:
+        raise HTTPException(status_code=404, detail="Template not found")
+    overrides = data.overrides or {}
+    name = overrides.get("name") or t["name"]
+    description = overrides.get("description") or t.get("description", "")
+    trigger = overrides.get("trigger") or t["trigger"]
+    actions = overrides.get("actions") or t["actions"]
+    trigger_config = TriggerConfig(**trigger) if isinstance(trigger, dict) else trigger
+    action_configs = [ActionConfig(**a) if isinstance(a, dict) else a for a in actions]
+    create = AgentCreate(name=name, description=description, trigger=trigger_config, actions=action_configs, enabled=True)
+    return await agents_create(create, request, user)
+
+
+# Approval (human-in-the-loop)
+@api_router.post("/agents/runs/{run_id}/approve")
+async def agents_run_approve(run_id: str, user: dict = Depends(get_current_user), comment: Optional[str] = Body(None)):
+    """Resume a run that is waiting_approval (owner only)."""
+    run = await db.agent_runs.find_one({"id": run_id})
+    if not run or run["user_id"] != user["id"]:
+        raise HTTPException(status_code=404, detail="Run not found")
+    if run.get("status") != "waiting_approval":
+        raise HTTPException(status_code=400, detail="Run is not waiting for approval")
+    agent = await db.user_agents.find_one({"id": run["agent_id"], "user_id": user["id"]})
+    if not agent:
+        raise HTTPException(status_code=403, detail="Access denied")
+    step_index = (run.get("step_index") or 0) + 1
+    steps_context = [s.get("output") for s in (run.get("output_summary") or {}).get("steps", [])]
+    steps_context = [{"output": x} for x in steps_context]
+    async def _run_agent_cb(uid: str, aname: str, prompt: str):
+        u = await db.users.find_one({"id": uid})
+        uk = await get_workspace_api_keys(u)
+        eff = _effective_api_keys(uk)
+        sys_p = get_system_prompt_for_agent(aname) or f"You are {aname}."
+        r, _ = await _call_llm_with_fallback(message=prompt, system_message=sys_p, session_id=str(uuid.uuid4()), model_chain=_get_model_chain("auto", prompt, effective_keys=eff), api_keys=eff)
+        return {"result": r}
+    try:
+        status, output_summary, log_lines, _ = await run_actions(agent, user["id"], run_id, steps_context, run_agent_callback=_run_agent_cb, resume_from_step=step_index)
+    except Exception as e:
+        status, output_summary, log_lines = "failed", {"error": str(e)}, [str(e)]
+    finished = datetime.now(timezone.utc).isoformat()
+    await db.agent_runs.update_one({"id": run_id}, {"$set": {"status": status, "finished_at": finished, "output_summary": output_summary, "log_lines": run.get("log_lines", []) + log_lines, "step_index": None}})
+    return {"ok": True, "run_id": run_id, "status": status}
+
+
+@api_router.post("/agents/runs/{run_id}/reject")
+async def agents_run_reject(run_id: str, user: dict = Depends(get_current_user), comment: Optional[str] = Body(None)):
+    """Cancel a run that is waiting_approval."""
+    run = await db.agent_runs.find_one({"id": run_id})
+    if not run or run["user_id"] != user["id"]:
+        raise HTTPException(status_code=404, detail="Run not found")
+    if run.get("status") != "waiting_approval":
+        raise HTTPException(status_code=400, detail="Run is not waiting for approval")
+    finished = datetime.now(timezone.utc).isoformat()
+    await db.agent_runs.update_one({"id": run_id}, {"$set": {"status": "cancelled", "finished_at": finished}})
+    return {"ok": True, "run_id": run_id, "status": "cancelled"}
+
+
 # ==================== PROJECT ROUTES ====================
 
 FREE_TIER_MAX_PROJECTS = 3
@@ -2522,6 +3036,128 @@ async def create_project(
 async def get_projects(user: dict = Depends(get_current_user)):
     projects = await db.projects.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(100)
     return {"projects": projects}
+
+
+def _safe_import_path(path: str) -> str:
+    """Return a safe relative path for import (no .., no absolute)."""
+    p = (path or "").strip().replace("\\", "/").lstrip("/")
+    if ".." in p or p.startswith("/"):
+        return ""
+    return p[:500]  # limit length
+
+
+@api_router.post("/projects/import")
+async def import_project(data: ProjectImportBody, user: dict = Depends(get_current_user)):
+    """Import a project from paste (files), ZIP (base64), or Git URL. Creates project and writes files to workspace."""
+    project_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    name = (data.name or "Imported project").strip() or "Imported project"
+    project = {
+        "id": project_id,
+        "user_id": user["id"],
+        "name": name,
+        "description": "Imported from paste, ZIP, or Git.",
+        "project_type": "fullstack",
+        "requirements": {"prompt": "", "imported": True},
+        "status": "imported",
+        "tokens_allocated": 0,
+        "tokens_used": 0,
+        "created_at": now,
+        "completed_at": now,
+        "live_url": None,
+    }
+    await db.projects.insert_one(project)
+    root = _project_workspace_path(project_id).resolve()
+    root.mkdir(parents=True, exist_ok=True)
+    written = 0
+    if data.source == "paste" and data.files:
+        for item in data.files[:200]:
+            path = _safe_import_path(item.get("path") or "")
+            if not path:
+                continue
+            content = item.get("code") or item.get("content") or ""
+            if len(content) > 2 * 1024 * 1024:
+                continue
+            full = (root / path).resolve()
+            try:
+                full.relative_to(root)
+            except ValueError:
+                continue
+            full.parent.mkdir(parents=True, exist_ok=True)
+            full.write_text(content[:2 * 1024 * 1024], encoding="utf-8", errors="replace")
+            written += 1
+    elif data.source == "zip" and data.zip_base64:
+        try:
+            raw = base64.b64decode(data.zip_base64, validate=True)
+            if len(raw) > 10 * 1024 * 1024:
+                raise HTTPException(status_code=413, detail="ZIP too large (max 10MB)")
+            with zipfile.ZipFile(io.BytesIO(raw), "r") as zf:
+                for info in zf.infolist()[:500]:
+                    if info.is_dir():
+                        continue
+                    path = _safe_import_path(info.filename)
+                    if not path or "node_modules" in path or "__pycache__" in path:
+                        continue
+                    full = (root / path).resolve()
+                    try:
+                        full.relative_to(root)
+                    except ValueError:
+                        continue
+                    full.parent.mkdir(parents=True, exist_ok=True)
+                    full.write_bytes(zf.read(info))
+                    written += 1
+        except zipfile.BadZipFile:
+            raise HTTPException(status_code=400, detail="Invalid ZIP file")
+    elif data.source == "git" and data.git_url:
+        url = (data.git_url or "").strip()
+        if not url.startswith("http"):
+            raise HTTPException(status_code=400, detail="Git URL must be HTTPS")
+        try:
+            import httpx
+            if "github.com" in url:
+                u = url.rstrip("/").replace("https://github.com/", "").replace(".git", "")
+                parts = u.split("/")
+                if len(parts) >= 2:
+                    archive_url = f"https://github.com/{parts[0]}/{parts[1]}/archive/refs/heads/main.zip"
+                else:
+                    archive_url = f"https://github.com/{parts[0]}/{parts[1]}/archive/refs/heads/master.zip"
+            else:
+                raise HTTPException(status_code=400, detail="Only GitHub URLs supported for now")
+            async with httpx.AsyncClient() as client:
+                r = await client.get(archive_url, timeout=30)
+                if r.status_code != 200:
+                    r = await client.get(archive_url.replace("/main.zip", "/master.zip"), timeout=30)
+                if r.status_code != 200:
+                    raise HTTPException(status_code=400, detail="Could not fetch repo archive")
+                raw = r.content
+                if len(raw) > 15 * 1024 * 1024:
+                    raise HTTPException(status_code=413, detail="Repo archive too large (max 15MB)")
+                with zipfile.ZipFile(io.BytesIO(raw), "r") as zf:
+                    for info in zf.infolist()[:500]:
+                        if info.is_dir():
+                            continue
+                        parts = info.filename.replace("\\", "/").split("/")
+                        name_part = "/".join(parts[1:]) if len(parts) > 1 else info.filename
+                        path = _safe_import_path(name_part)
+                        if not path or "node_modules" in path or "__pycache__" in path:
+                            continue
+                        full = (root / path).resolve()
+                        try:
+                            full.relative_to(root)
+                        except ValueError:
+                            continue
+                        full.parent.mkdir(parents=True, exist_ok=True)
+                        full.write_bytes(zf.read(info))
+                        written += 1
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.exception("Git import failed: %s", e)
+            raise HTTPException(status_code=400, detail=f"Git import failed: {str(e)[:200]}")
+    else:
+        raise HTTPException(status_code=400, detail="Provide source and files, zip_base64, or git_url")
+    return {"project_id": project_id, "project": {k: v for k, v in project.items() if k != "_id"}, "files_written": written}
+
 
 @api_router.get("/projects/{project_id}")
 async def get_project(project_id: str, user: dict = Depends(get_current_user)):
@@ -2692,6 +3328,104 @@ async def list_workspace_files(project_id: str, user: dict = Depends(get_current
             except ValueError:
                 pass
     return {"files": sorted(files)[:500]}
+
+
+@api_router.get("/projects/{project_id}/workspace/file")
+async def get_workspace_file_content(
+    project_id: str,
+    path: str = Query(..., description="Relative file path in workspace"),
+    user: dict = Depends(get_current_user),
+):
+    """Get content of a single file in project workspace (for import/open in Workspace)."""
+    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    root = _project_workspace_path(project_id).resolve()
+    path = (path or "").strip().replace("\\", "/").lstrip("/")
+    if ".." in path or not path:
+        raise HTTPException(status_code=400, detail="Invalid path")
+    full = (root / path).resolve()
+    try:
+        full.relative_to(root)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Path outside workspace")
+    if not full.exists() or not full.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    try:
+        content = full.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        raise HTTPException(status_code=400, detail="File not readable as text")
+    return {"path": path, "content": content}
+
+
+@api_router.get("/projects/{project_id}/dependency-audit")
+async def get_project_dependency_audit(project_id: str, user: dict = Depends(get_current_user)):
+    """Optional: run npm audit and/or pip-audit in project workspace and return summary (high/critical counts)."""
+    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    root = _project_workspace_path(project_id).resolve()
+    if not root.exists():
+        return {"npm": None, "pip": None, "message": "No workspace files yet"}
+    out = {"npm": None, "pip": None}
+
+    def _run_npm_audit() -> Optional[Dict[str, Any]]:
+        pkg = root / "package.json"
+        if not pkg.exists():
+            return None
+        try:
+            r = subprocess.run(
+                ["npm", "audit", "--json"],
+                cwd=str(root),
+                capture_output=True,
+                text=True,
+                timeout=60,
+                env={**os.environ, "CI": "1"},
+            )
+            if r.stdout:
+                data = json.loads(r.stdout)
+                meta = data.get("metadata", {}) or {}
+                counts = meta.get("vulnerabilities", {}) or {}
+                return {
+                    "critical": counts.get("critical", 0) or 0,
+                    "high": counts.get("high", 0) or 0,
+                    "moderate": counts.get("moderate", 0) or 0,
+                    "low": counts.get("low", 0) or 0,
+                    "info": counts.get("info", 0) or 0,
+                    "ok": (counts.get("critical", 0) or 0) == 0 and (counts.get("high", 0) or 0) == 0,
+                }
+            return {"ok": True, "critical": 0, "high": 0}
+        except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError) as e:
+            return {"error": str(e)[:200]}
+        except Exception as e:
+            return {"error": str(e)[:200]}
+
+    def _run_pip_audit() -> Optional[Dict[str, Any]]:
+        req = root / "requirements.txt"
+        if not req.exists():
+            return None
+        try:
+            r = subprocess.run(
+                [sys.executable, "-m", "pip_audit", "-r", str(req), "--format", "json", "--require-hashes", "false"],
+                cwd=str(root),
+                capture_output=True,
+                text=True,
+                timeout=90,
+            )
+            if r.stdout:
+                data = json.loads(r.stdout)
+                deps = data.get("dependencies", {}) or {}
+                total = sum(len((d.get("vulns") or [])) for d in deps.values() if isinstance(d, dict))
+                return {"critical": total, "high": 0, "ok": total == 0}
+            return {"ok": True, "critical": 0, "high": 0}
+        except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError) as e:
+            return {"error": str(e)[:200]}
+        except Exception as e:
+            return {"error": str(e)[:200]}
+
+    out["npm"] = await asyncio.to_thread(_run_npm_audit)
+    out["pip"] = await asyncio.to_thread(_run_pip_audit)
+    return out
 
 
 async def _build_project_deploy_zip(project_id: str, user_id: str):
@@ -4477,16 +5211,45 @@ async def save_project_as_template(project_id: str, body: dict, user: dict = Dep
 
 # ==================== SECURITY SCAN / OPTIMIZE / A11Y / DESIGN FROM URL ====================
 
+def _parse_security_checklist_summary(text: str) -> tuple[int, int]:
+    """Return (passed_count, failed_count) from checklist lines containing PASS/FAIL."""
+    passed = failed = 0
+    for line in (text or "").split("\n")[:15]:
+        line_lower = line.upper()
+        if "PASS" in line_lower and "FAIL" not in line_lower[:line_lower.index("PASS") + 4]:
+            passed += 1
+        elif "FAIL" in line_lower:
+            failed += 1
+    return passed, failed
+
+
 @api_router.post("/ai/security-scan")
 async def security_scan(data: SecurityScanBody, user: dict = Depends(get_optional_user)):
-    """Return a short security checklist for the provided files. Uses your Settings keys when set."""
+    """Return a short security checklist for the provided files. Uses your Settings keys when set. If project_id is set and user is authenticated, store result on project for AgentMonitor."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
     code = " ".join(data.files.values())[:6000]
     model_chain = _get_model_chain("auto", code, effective_keys=effective)
     prompt = f"Review this code for security. List 3-5 checklist items (e.g. 'No secrets in client code', 'Auth on API'). For each say PASS or FAIL and one line reason. Code:\n{code}"
     response, _ = await _call_llm_with_fallback(message=prompt, system_message="Reply with a short checklist. Use PASS/FAIL.", session_id=str(uuid.uuid4()), model_chain=model_chain, api_keys=effective)
-    return {"report": response, "checklist": response.split("\n")[:8]}
+    checklist = response.split("\n")[:8] if response else []
+    passed, failed = _parse_security_checklist_summary(response or "")
+    if data.project_id and user:
+        project = await db.projects.find_one({"id": data.project_id, "user_id": user["id"]})
+        if project:
+            await db.projects.update_one(
+                {"id": data.project_id, "user_id": user["id"]},
+                {"$set": {
+                    "last_security_scan": {
+                        "report": response,
+                        "checklist": checklist,
+                        "passed": passed,
+                        "failed": failed,
+                        "at": datetime.now(timezone.utc).isoformat(),
+                    }
+                }}
+            )
+    return {"report": response, "checklist": checklist, "passed": passed, "failed": failed}
 
 @api_router.post("/ai/optimize")
 async def optimize_code(data: OptimizeBody, user: dict = Depends(get_optional_user)):
@@ -4695,7 +5458,9 @@ app.add_middleware(PerformanceMonitoringMiddleware)
 app.add_middleware(RequestValidationMiddleware)
 app.add_middleware(RequestTrackerMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
-app.add_middleware(RateLimitMiddleware, requests_per_minute=100)
+app.add_middleware(RateLimitMiddleware, requests_per_minute=int(os.environ.get("RATE_LIMIT_PER_MINUTE", "100")))
+if os.environ.get("HTTPS_REDIRECT", "").strip().lower() in ("1", "true", "yes"):
+    app.add_middleware(HTTPSRedirectMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
@@ -4773,6 +5538,21 @@ async def seed_examples_if_empty():
             logger.info("Seeded 5 examples: todo-app, blog-platform, ecommerce-store, project-management, analytics-dashboard")
     except Exception as e:
         logger.warning(f"Seed examples: {e}")
+
+
+@app.on_event("startup")
+async def seed_internal_agents_if_requested():
+    """Seed 5 internal (dogfooding) agents when SEED_INTERNAL_AGENTS=1."""
+    if not os.environ.get("SEED_INTERNAL_AGENTS"):
+        return
+    try:
+        from automation.seed_internal import seed_internal_agents
+        n = await seed_internal_agents(db)
+        if n:
+            logger.info("Seeded %s internal automation agents", n)
+    except Exception as e:
+        logger.warning("Seed internal agents: %s", e)
+
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

@@ -4,7 +4,7 @@ import { useAuth } from '../App';
 import PublicNav from '../components/PublicNav';
 import PublicFooter from '../components/PublicFooter';
 import {
-  Code2, Zap, Layout, FileCode, BookOpen, Keyboard, Shield, Download,
+  Code2, Zap, Bot, Layout, FileCode, BookOpen, Keyboard, Shield, Download,
   GitBranch, Palette, MessageSquare, BarChart3, ShoppingCart, Layers
 } from 'lucide-react';
 
@@ -12,6 +12,7 @@ const features = [
   { icon: MessageSquare, title: 'Describe & build', desc: 'Tell us what you want in plain English. Our AI turns your idea into a working app in minutes.' },
   { icon: Code2, title: 'Production-ready code', desc: 'Get React, Tailwind, and modern stack. Clean, maintainable code you can own and deploy.' },
   { icon: Zap, title: '120-agent swarm', desc: 'Planning, frontend, backend, tests, security, deployment—each step powered by specialized agents.' },
+  { icon: Bot, title: 'Create & run agents', desc: 'The same AI that builds your app runs inside your automations. Describe what you want in plain language — we create the agent (schedule, webhook, steps). Or build from templates.' },
   { icon: Layout, title: 'Templates', desc: 'Start from dashboards, blogs, SaaS shells, and more. One click to customize and ship.' },
   { icon: FileCode, title: 'Pattern library', desc: 'Reusable patterns: auth, payments, APIs. Save tokens and time on every project.' },
   { icon: BookOpen, title: 'Prompt library', desc: 'Proven prompts for e‑commerce, landing pages, task managers. Copy, tweak, and build.' },
@@ -35,7 +36,7 @@ export default function Features() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Benefits</span>
           <h1 className="text-kimi-section font-bold text-kimi-text mt-2 mb-4">Why your outcome is inevitable</h1>
-          <p className="text-kimi-muted max-w-xl mx-auto">120-agent swarm, 99.2% success, full transparency. Not promises — measured.</p>
+          <p className="text-kimi-muted max-w-xl mx-auto">The same AI that builds your app runs inside your automations. Web, mobile, agents — one platform. 120-agent swarm, 99.2% success, full transparency. Not promises — measured.</p>
         </motion.div>
         {/* Proof strip */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 py-4 px-4 rounded-xl border border-white/10 bg-kimi-bg-card mb-16">
@@ -46,6 +47,7 @@ export default function Features() {
           <span className="text-sm text-kimi-muted">Typically under 72 hours</span>
           <span className="text-sm text-kimi-muted">Full transparency</span>
           <span className="text-sm text-kimi-muted">Minimal supervision</span>
+          <span className="text-sm text-kimi-muted">Web + mobile + agents</span>
           <span className="text-sm font-medium text-kimi-text">Not promises. Measured.</span>
         </motion.div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">

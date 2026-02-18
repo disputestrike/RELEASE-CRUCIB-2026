@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Plus, Zap, FolderOpen, Clock, CheckCircle, 
   AlertCircle, TrendingUp, Bot, ArrowRight, Play,
-  Share2, Copy, Bookmark
+  Share2, Copy, Bookmark, Upload, X, Github
 } from 'lucide-react';
 import { useAuth, API } from '../App';
 import axios from 'axios';
@@ -12,11 +12,20 @@ import DeployButton from '../components/DeployButton';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const { user, token } = useAuth();
   const [stats, setStats] = useState(null);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionFeedback, setActionFeedback] = useState(null);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importSource, setImportSource] = useState('paste');
+  const [importName, setImportName] = useState('');
+  const [pasteFiles, setPasteFiles] = useState([{ path: '/App.js', code: '' }]);
+  const [zipFile, setZipFile] = useState(null);
+  const [gitUrl, setGitUrl] = useState('');
+  const [importLoading, setImportLoading] = useState(false);
+  const [importError, setImportError] = useState(null);
 
   const handleShare = async (e, projectId) => {
     e.preventDefault();
@@ -59,6 +68,53 @@ const Dashboard = () => {
     } catch (err) {
       setActionFeedback({ type: 'error', msg: err.response?.data?.detail || 'Save failed' });
       setTimeout(() => setActionFeedback(null), 3000);
+    }
+  };
+
+  const handleImportSubmit = async (e) => {
+    e.preventDefault();
+    setImportError(null);
+    setImportLoading(true);
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      let body = { source: importSource, name: importName || undefined };
+      if (importSource === 'paste') {
+        const files = pasteFiles.filter((f) => (f.path || '').trim() && (f.code || '').trim());
+        if (files.length === 0) {
+          setImportError('Add at least one file with path and code.');
+          setImportLoading(false);
+          return;
+        }
+        body.files = files.map((f) => ({ path: (f.path || '').trim().replace(/^\/+/, '') || 'App.js', code: (f.code || '').trim() }));
+      } else if (importSource === 'zip') {
+        if (!zipFile) {
+          setImportError('Choose a ZIP file to upload.');
+          setImportLoading(false);
+          return;
+        }
+        const buf = await zipFile.arrayBuffer();
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+        body.zip_base64 = base64;
+      } else {
+        const url = (gitUrl || '').trim();
+        if (!url) {
+          setImportError('Enter a GitHub repository URL.');
+          setImportLoading(false);
+          return;
+        }
+        body.git_url = url;
+      }
+      const { data } = await axios.post(`${API}/projects/import`, body, { headers });
+      setShowImportModal(false);
+      setImportName('');
+      setPasteFiles([{ path: '/App.js', code: '' }]);
+      setZipFile(null);
+      setGitUrl('');
+      navigate(`/app/workspace?projectId=${data.project_id}`);
+    } catch (err) {
+      setImportError(err.response?.data?.detail || err.message || 'Import failed');
+    } finally {
+      setImportLoading(false);
     }
   };
 
@@ -106,14 +162,25 @@ const Dashboard = () => {
           <h1 className="text-3xl font-bold mb-2 text-gray-900">Welcome back, {user?.name?.split(' ')[0]}!</h1>
           <p className="text-gray-600">Here's what's happening with your projects.</p>
         </div>
-        <Link
-          to="/app/projects/new"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-blue-500 hover:bg-blue-600 rounded-lg font-medium transition neon-blue"
-          data-testid="new-project-btn"
-        >
-          <Plus className="w-5 h-5" />
-          New Project
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowImportModal(true)}
+            className="inline-flex items-center gap-2 px-5 py-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg font-medium transition border border-gray-300"
+            data-testid="import-project-btn"
+          >
+            <Upload className="w-5 h-5" />
+            Import project
+          </button>
+          <Link
+            to="/app/projects/new"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-500 hover:bg-blue-600 rounded-lg font-medium transition neon-blue"
+            data-testid="new-project-btn"
+          >
+            <Plus className="w-5 h-5" />
+            New Project
+          </Link>
+        </div>
       </div>
 
       {/* Stats Grid */}
@@ -290,6 +357,64 @@ const Dashboard = () => {
           </>
         )}
       </motion.div>
+
+      {/* Import project modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowImportModal(false)}>
+          <div className="bg-[#111] border border-white/10 rounded-xl max-w-lg w-full max-h-[90vh] overflow-auto shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-white mb-2">Import project</h3>
+              <p className="text-sm text-gray-400 mb-4">Bring your code from paste, a ZIP file, or a GitHub repo. We create a project and open it in the Workspace.</p>
+              <form onSubmit={handleImportSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Project name (optional)</label>
+                  <input type="text" value={importName} onChange={e => setImportName(e.target.value)} placeholder="Imported project" className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white" />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Source</label>
+                  <div className="flex gap-2">
+                    {['paste', 'zip', 'git'].map(s => (
+                      <button key={s} type="button" onClick={() => setImportSource(s)} className={`px-3 py-1.5 rounded text-sm capitalize ${importSource === s ? 'bg-blue-600 text-white' : 'bg-white/10 text-gray-400 hover:text-white'}`}>{s === 'git' ? 'GitHub URL' : s}</button>
+                    ))}
+                  </div>
+                </div>
+                {importSource === 'paste' && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <label className="text-sm text-gray-400">Files (path + code)</label>
+                      <button type="button" onClick={() => setPasteFiles(prev => [...prev, { path: '', code: '' }])} className="text-xs text-blue-400 hover:text-blue-300">+ Add file</button>
+                    </div>
+                    {pasteFiles.map((f, i) => (
+                      <div key={i} className="flex gap-2 items-start">
+                        <input value={f.path} onChange={e => setPasteFiles(prev => prev.map((x, j) => j === i ? { ...x, path: e.target.value } : x))} placeholder="e.g. /App.js" className="flex-1 min-w-0 px-2 py-1.5 rounded bg-black/30 border border-white/10 text-white text-sm font-mono" />
+                        <button type="button" onClick={() => setPasteFiles(prev => prev.filter((_, j) => j !== i))} className="p-1.5 text-gray-400 hover:text-red-400" title="Remove"><X className="w-4 h-4" /></button>
+                        <textarea value={f.code} onChange={e => setPasteFiles(prev => prev.map((x, j) => j === i ? { ...x, code: e.target.value } : x))} placeholder="Code..." className="flex-[2] min-w-0 px-2 py-1.5 rounded bg-black/30 border border-white/10 text-white text-sm font-mono min-h-[60px]" rows={3} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {importSource === 'zip' && (
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">ZIP file (max 10MB)</label>
+                    <input type="file" accept=".zip" onChange={e => setZipFile(e.target.files?.[0] || null)} className="w-full text-sm text-gray-400 file:mr-2 file:py-2 file:px-3 file:rounded file:border-0 file:bg-white/10 file:text-white" />
+                  </div>
+                )}
+                {importSource === 'git' && (
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-1">GitHub repo URL</label>
+                    <input type="url" value={gitUrl} onChange={e => setGitUrl(e.target.value)} placeholder="https://github.com/owner/repo" className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white" />
+                  </div>
+                )}
+                {importError && <p className="text-sm text-red-400">{importError}</p>}
+                <div className="flex gap-2 justify-end pt-2">
+                  <button type="button" onClick={() => setShowImportModal(false)} className="px-4 py-2 rounded border border-white/20 text-gray-300 hover:bg-white/5">Cancel</button>
+                  <button type="submit" disabled={importLoading} className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50">{importLoading ? 'Importing…' : 'Import'}</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

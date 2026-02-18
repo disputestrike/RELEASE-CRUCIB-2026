@@ -45,6 +45,7 @@ import ShortcutCheatsheet from "./pages/ShortcutCheatsheet";
 import PaymentsWizard from "./pages/PaymentsWizard";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
+import Security from "./pages/Security";
 import Aup from "./pages/Aup";
 import Dmca from "./pages/Dmca";
 import Cookies from "./pages/Cookies";
@@ -58,6 +59,7 @@ import LearnPublic from "./pages/LearnPublic";
 import ShortcutsPublic from "./pages/ShortcutsPublic";
 import PromptsPublic from "./pages/PromptsPublic";
 import Benchmarks from "./pages/Benchmarks";
+import Blog from "./pages/Blog";
 import GenerateContent from "./pages/GenerateContent";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminUsers from "./pages/AdminUsers";
@@ -66,6 +68,7 @@ import AdminBilling from "./pages/AdminBilling";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import AdminLegal from "./pages/AdminLegal";
 import AuditLog from "./pages/AuditLog";
+import AgentsPage from "./pages/AgentsPage";
 
 // Empty REACT_APP_BACKEND_URL => same-origin /api (for single-URL deploy on Railway)
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL !== undefined ? process.env.REACT_APP_BACKEND_URL : 'http://localhost:8000';
@@ -236,6 +239,7 @@ function App() {
           <Route path="/share/:token" element={<ShareView />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
+          <Route path="/security" element={<Security />} />
           <Route path="/aup" element={<Aup />} />
           <Route path="/dmca" element={<Dmca />} />
           <Route path="/cookies" element={<Cookies />} />
@@ -249,6 +253,7 @@ function App() {
           <Route path="/shortcuts" element={<ShortcutsPublic />} />
           <Route path="/prompts" element={<PromptsPublic />} />
           <Route path="/benchmarks" element={<Benchmarks />} />
+          <Route path="/blog" element={<Blog />} />
           <Route path="/app" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route index element={<Dashboard />} />
             <Route path="builder" element={<Builder />} />
@@ -266,6 +271,8 @@ function App() {
             <Route path="payments-wizard" element={<PaymentsWizard />} />
             <Route path="examples" element={<ExamplesGallery />} />
             <Route path="generate" element={<GenerateContent />} />
+            <Route path="agents" element={<AgentsPage />} />
+            <Route path="agents/:id" element={<AgentsPage />} />
             <Route path="settings" element={<Settings />} />
             <Route path="audit-log" element={<AuditLog />} />
             <Route path="admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />

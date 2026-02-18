@@ -2,6 +2,8 @@
 
 **If you see "Application failed to respond" (502)** on your Railway URL, the backend is exiting at startup because required environment variables are missing.
 
+> **Full picture:** For a concise “how the Railway deploy works” (single URL, frontend in Docker, placeholder env, scripts fix), see **`docs/DEPLOY_SUMMARY_RAILWAY.md`**.
+
 ---
 
 ## 1. Add required variables (one-time)
@@ -26,7 +28,9 @@
 |----------|-----|
 | `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` | Required for AI build/chat in the app |
 | `FRONTEND_URL` | Your frontend URL (e.g. `https://your-app.vercel.app`) for auth redirects and CORS |
-| `CORS_ORIGINS` | Comma-separated allowed origins; default `*` |
+| `CORS_ORIGINS` | Comma-separated allowed origins; **in production set to your frontend URL(s)** (e.g. `https://your-app.vercel.app`), not `*` |
+| `HTTPS_REDIRECT` | Set to `1` in production to redirect HTTP → HTTPS (when behind a proxy that sets `X-Forwarded-Proto`) |
+| `RATE_LIMIT_PER_MINUTE` | Optional; default 100. Stricter limits apply for auth/register (5), login (20), checkout (10). |
 
 ---
 

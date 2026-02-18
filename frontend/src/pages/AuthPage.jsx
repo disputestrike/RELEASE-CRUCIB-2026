@@ -85,7 +85,9 @@ const AuthPage = () => {
 
   const benefits = [
     'Plan-first build with 120-agent swarm',
-    'Agentic automation — from idea to shipped app',
+    'The same AI that builds your app runs inside your automations',
+    'Web, mobile, agents — one platform (websites, apps, automations)',
+    'Describe your automation in plain language — we create it (prompt-to-automation)',
     '99.2% success — measured, not promised',
     '50 free credits to start',
     'No credit card required'
@@ -93,7 +95,8 @@ const AuthPage = () => {
 
   const useCases = [
     { label: 'Web apps', desc: 'React, Tailwind, full-stack' },
-    { label: 'Mobile apps', desc: 'Cross-platform, PWA' },
+    { label: 'Mobile apps', desc: 'iOS & Android, Expo, store pack' },
+    { label: 'Agents & automation', desc: 'Schedule or webhook, your own agents' },
     { label: 'Dashboards', desc: 'Data, charts, admin' },
     { label: 'E‑commerce', desc: 'Stores, checkout, catalog' },
     { label: 'Landing pages', desc: 'Marketing, waitlist' },
