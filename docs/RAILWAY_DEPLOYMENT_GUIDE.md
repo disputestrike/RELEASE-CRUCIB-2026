@@ -4,6 +4,21 @@
 
 This guide explains how to deploy CrucibAI to Railway, a modern cloud platform for full-stack applications.
 
+**Recommended: Backend via Dockerfile.** The repo includes a root `Dockerfile` and `railway.json` that build and run the Python backend. In Railway: connect the repo, use the Dockerfile builder, **set required env vars** (see below), and deploy. The backend serves the API on `PORT` (Railway sets this automatically). For the frontend, build separately (e.g. static export) and point it to your backend URL, or serve the frontend from another service.
+
+### 502 Bad Gateway? → **See [RAILWAY_QUICKSTART.md](../RAILWAY_QUICKSTART.md)**
+
+If you see **"Application failed to respond"** (502) on your Railway URL, the app is crashing at startup. **Add these in Railway Dashboard → Your Project → Variables**, then redeploy:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MONGO_URL` | **Yes** | MongoDB connection string (e.g. from [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) free tier) |
+| `DB_NAME` | **Yes** | Database name (e.g. `crucibai`) |
+| `JWT_SECRET` | **Yes** (production) | Secret for JWT tokens; use a long random string (e.g. `openssl rand -hex 32`) |
+| `PORT` | Set by Railway | Do not override unless needed |
+
+Without `MONGO_URL` and `DB_NAME`, the server exits immediately. **Step-by-step:** [RAILWAY_QUICKSTART.md](../RAILWAY_QUICKSTART.md). Check **Deploy logs** in Railway for the exact error.
+
 ---
 
 ## Prerequisites

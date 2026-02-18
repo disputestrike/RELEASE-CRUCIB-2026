@@ -90,6 +90,14 @@ import qrcode
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
+# Required for startup (Railway 502 fix: set these in dashboard)
+_required_env = [k for k in ('MONGO_URL', 'DB_NAME') if not os.environ.get(k)]
+if _required_env:
+    import sys
+    print("FATAL: Missing required env: " + ", ".join(_required_env), file=sys.stderr)
+    print("Railway: Dashboard → Your Project → Variables → Add MONGO_URL, DB_NAME (and JWT_SECRET). See RAILWAY_QUICKSTART.md.", file=sys.stderr)
+    sys.exit(1)
+
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
