@@ -48,9 +48,10 @@ class ErrorBoundary extends React.Component {
       url: window.location.href
     };
 
-    // Send to backend or error tracking service
+    // Send to backend (wired to same API base as rest of app)
+    const apiBase = `${process.env.REACT_APP_BACKEND_URL || ''}/api`;
     try {
-      fetch('/api/errors/log', {
+      fetch(`${apiBase}/errors/log`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(errorData)

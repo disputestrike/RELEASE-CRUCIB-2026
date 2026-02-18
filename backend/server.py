@@ -4582,6 +4582,27 @@ async def root():
 async def health():
     return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
 
+# ==================== CLIENT ERROR LOGGING ====================
+
+@api_router.post("/errors/log")
+async def client_error_log(request: Request):
+    """Accept client-side error reports (ErrorBoundary). No auth required; rate-limited by middleware. Sanitized and logged only."""
+    try:
+        body = await request.json()
+        if isinstance(body, dict):
+            message = str(body.get("message", ""))[:2000]
+            stack = str(body.get("stack", ""))[:5000]
+            url = str(body.get("url", ""))[:500]
+            logger.warning(
+                "Client error: %s | url=%s | stack=%s",
+                message or "unknown",
+                url or request.url.path,
+                stack[:500] if stack else ""
+            )
+    except Exception:
+        pass
+    return {}
+
 # ==================== TOOL AGENTS ====================
 
 @api_router.post("/tools/browser")

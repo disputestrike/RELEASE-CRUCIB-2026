@@ -250,7 +250,7 @@ const LandingPage = () => {
   ];
 
   const comparisonRows = [
-    { tool: 'CrucibAI', bestFor: 'Apps + plan-first + design-to-code', strongest: 'Plan-first build, 120-agent swarm, Swarm, design-to-code', pick: 'You want one workspace to go from idea to shipped app with minimal setup' },
+    { tool: 'CrucibAI', bestFor: 'Apps + plan-first + design-to-code', strongest: 'Agentic. Full automation, 120-agent swarm, minimal supervision, design-to-code', pick: 'You want agentic build: describe it, we do it — one workspace, minimal supervision' },
     { tool: 'Kimi (Kimi.ai)', bestFor: 'Long-context chat, research', strongest: 'Very long context, summarization', pick: 'You need long-document Q&A or research; less focused on app building' },
     { tool: 'Cursor', bestFor: 'In-IDE coding', strongest: 'Composer, codebase context', pick: 'You code daily in an IDE and want AI inside the editor' },
     { tool: 'Manus / Bolt', bestFor: 'Agentic app building', strongest: 'Natural language to app', pick: 'You want a similar build-from-prompt experience' },
@@ -307,14 +307,17 @@ const LandingPage = () => {
       {/* Hero — Kimi-style with NEW badge */}
       <section className="pt-32 pb-20 px-6">
         <div className="max-w-3xl mx-auto text-center">
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-kimi-text text-sm font-medium mb-6">
-            <span className="w-2 h-2 rounded-full bg-kimi-accent animate-pulse" /> Inevitable AI — 120-agent swarm, 99.2% success, full transparency
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-kimi-text text-sm font-medium mb-4">
+            <span className="w-2 h-2 rounded-full bg-kimi-accent animate-pulse" /> Inevitable AI — Agentic. 120-agent swarm, 99.2% success, full transparency
+          </motion.div>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-kimi-accent/20 text-kimi-accent text-sm font-semibold mb-6 border border-kimi-accent/40">
+            Agentic — it does it for you. Full automation. Minimal supervision.
           </motion.div>
           <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-kimi-hero font-bold tracking-tight text-kimi-text mb-6">
             Inevitable AI
           </motion.h1>
           <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-lg text-kimi-muted mb-12 max-w-xl mx-auto leading-relaxed">
-            Intelligence that doesn&apos;t just act. It guarantees. Describe your vision. Watch it become inevitable.
+            Intelligence that doesn&apos;t just act. It guarantees. Agentic: describe your vision — we build it. Watch it become inevitable.
           </motion.p>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }} className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-3">
             <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="glass-kimi-btn px-6 py-3 text-black font-medium rounded-xl transition">
@@ -332,6 +335,10 @@ const LandingPage = () => {
         {/* Proof strip — 5 items + Not promises. Measured. */}
         <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }} className="max-w-4xl mx-auto mt-12 px-6">
           <div className="flex flex-wrap items-center justify-center gap-6 py-5 px-6 rounded-xl border border-white/10 bg-kimi-bg-elevated/50">
+            <span className="text-sm font-semibold text-kimi-accent">Agentic</span>
+            <span className="text-kimi-muted">•</span>
+            <span className="text-sm font-medium text-kimi-text">Full automation</span>
+            <span className="text-kimi-muted">•</span>
             <span className="text-sm font-medium text-kimi-text">120-agent swarm</span>
             <span className="text-kimi-muted">•</span>
             <span className="text-sm font-medium text-kimi-text">99.2% deployment success</span>
@@ -347,6 +354,7 @@ const LandingPage = () => {
 
         {/* Main Input — extra space + glass */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="max-w-2xl mx-auto mt-16">
+          <p className="text-center text-sm font-medium text-kimi-accent mb-3">Agentic: describe it — we build it. Full automation, minimal supervision.</p>
           <div className="glass-kimi-panel rounded-2xl overflow-hidden">
             {/* Messages */}
             {messages.length > 0 && (
@@ -526,7 +534,7 @@ const LandingPage = () => {
           <span className="text-xs uppercase tracking-wider text-kimi-muted">What we do</span>
           <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-6">What is CrucibAI?</h2>
           <p className="text-kimi-body text-kimi-secondary mb-6 leading-relaxed">
-            CrucibAI is Inevitable AI — the platform where intelligence doesn&apos;t just act, it makes outcomes inevitable. Plan-first flow, structured plan and suggestions, then production-ready code. Full transparency: every phase, every agent, no black boxes. No surprises, no hidden limitations.
+            CrucibAI is Inevitable AI — and it&apos;s agentic. Full automation: describe your vision, we build it. Minimal supervision. Plan-first flow, 120-agent swarm, full transparency: every phase, every agent, no black boxes. No surprises, no hidden limitations.
           </p>
           <ul className="grid sm:grid-cols-2 gap-3 text-kimi-body text-kimi-muted">
             {['Research & summarization (docs)', 'Coding & debugging', 'Multimodal (text + images + files)', 'Plan-first agentic workflow', 'Templates & patterns', '120-agent swarm (frontend, backend, tests, deploy)', '99.2% success', 'Export to PDF and Excel (reports, spreadsheets, invoices)'].map((item, i) => (
@@ -562,7 +570,17 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Productized sections — CrucibAI for X (D2) */}
+      {/* Agentic — big callout */}
+      <section className="py-12 px-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="py-8 px-8 rounded-2xl border-2 border-kimi-accent/40 bg-kimi-accent/10">
+            <p className="text-2xl md:text-3xl font-bold text-kimi-text mb-2">This is agentic.</p>
+            <p className="text-lg text-kimi-muted">Full automation — we do it for you. Describe what you want; our 120-agent swarm builds it. Minimal supervision. Just like the best agentic builders: we ship, you stay in control.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Productized sections — CrucibAI for X (D2) — 8 use cases */}
       <section className="py-20 px-6">
         <div className="max-w-5xl mx-auto">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Use cases</span>
@@ -571,9 +589,12 @@ const LandingPage = () => {
             {[
               { title: 'Dashboards', desc: 'Reporting, analytics, and data views with charts and filters. Plan-first keeps structure clear.', cta: 'Build a dashboard' },
               { title: 'Landing pages', desc: 'Hero, features, waitlist, and pricing sections. Design-to-code from a screenshot.', cta: 'Start a landing page' },
-              { title: 'Internal tools', desc: 'Admin tables, forms, and workflows. Ship in minutes, not weeks.', cta: 'Build an internal tool' },
+              { title: 'Internal tools', desc: 'Admin tables, forms, and workflows. Agentic: ship in minutes, not weeks.', cta: 'Build an internal tool' },
               { title: 'Websites & stores', desc: 'Portfolios, e-commerce, and custom web apps. Export to ZIP or GitHub.', cta: 'Build a website' },
-              { title: 'Mobile apps', desc: 'iOS and Android with Expo. Get a store submission pack for App Store and Play Store.', cta: 'Build a mobile app' }
+              { title: 'Mobile apps', desc: 'iOS and Android with Expo. Store submission pack for App Store and Play Store.', cta: 'Build a mobile app' },
+              { title: 'E‑commerce & checkout', desc: 'Stores, carts, payments. Full automation from product list to checkout.', cta: 'Build an e‑commerce store' },
+              { title: 'API & automation', desc: 'Integrations, webhooks, bots. Agentic pipelines that run for you.', cta: 'Build API or automation' },
+              { title: 'For everyone', desc: 'Web, mobile, no code. One platform — agentic build for all.', cta: 'Get started' }
             ].map((item, i) => (
               <div key={i} className="p-5 rounded-xl border border-white/10 bg-kimi-bg hover:border-white/20 transition">
                 <h3 className="text-lg font-semibold text-kimi-text mb-2">{item.title}</h3>

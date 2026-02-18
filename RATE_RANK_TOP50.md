@@ -6,7 +6,7 @@
 
 **Production readiness: 10/10** — 5-layer tests + CI; examples seeded; Live Examples on landing; Pricing, Privacy, Terms, Enterprise, Deploy UX, API key prompt, Try these in place.
 
-**→ Top 10:** **RATE_RANK_TOP10.md** | **→ Top 20:** **RATE_RANK_TOP20.md** | **→ Main rate/rank:** **RATE_RANK_COMPARE.md**
+**→ Top 10:** **RATE_RANK_TOP10.md** | **→ Top 20:** **RATE_RANK_TOP20.md** | **→ Main rate/rank:** **RATE_RANK_COMPARE.md** | **→ From code review:** **RATE_RANK_CODE_REVIEW.md**
 
 ---
 
@@ -14,7 +14,7 @@
 
 | # | Tool | Type | Best known for |
 |---|-----|------|----------------|
-| 1 | **CrucibAI** | App-from-prompt | Plan-first full-app, 100-agent DAG, quality score, export/deploy, Enterprise |
+| 1 | **CrucibAI** | App-from-prompt | Plan-first full-app, 120-agent DAG, web + mobile (Expo), store pack (App Store/Play Store), quality score, export/deploy, Enterprise |
 | 2 | **Cursor** | IDE + AI | Composer, codebase context, in-editor AI, shortcuts |
 | 3 | **GitHub Copilot** | Inline + chat | Inline completions, Copilot Chat, GitHub integration |
 | 4 | **Manus / Bolt** | App-from-prompt | Natural language → full app, agentic build |
@@ -151,10 +151,10 @@
 
 | Rank | Tool | Overall | Best for |
 |------|------|---------|----------|
-| **1** | **CrucibAI** | **10.0** | Plan-first full-app, 100-agent DAG, quality score, phase retry, token optimization, Enterprise, Deploy UX |
+| **1** | **CrucibAI** | **10.0** | Plan-first full-app, 120-agent swarm, agentic, quality score, phase retry, token optimization, Enterprise, Deploy UX |
 | 2 | Manus / Bolt | 7.2 | Agentic app-from-prompt |
 | 3 | Kimi AI | 7.0 | Long context, docs/slides/sheets, modes |
-| 4 | Cursor | 6.8 | In-IDE coding, Composer, polish |
+| 4 | Cursor | 6.8 | In-IDE coding, Composer; no AgentMonitor-style build visibility |
 | 5 | v0 (Vercel) | 6.6 | UI-from-prompt, Vercel deploy |
 | 6 | Replit Agent | 6.5 | In-browser build and deploy |
 | 6 | Windsurf | 6.5 | Agentic multi-file edits, Flow |
@@ -208,10 +208,10 @@
 
 | vs | CrucibAI advantage |
 |----|--------------------|
-| **Cursor, Copilot, Cline, CodeGPT** | Full-app from one prompt; DAG; quality score; phase retry; token optimization; real-time progress. They lead on inline/IDE polish or GitHub. |
-| **Manus, Bolt.new, Lovable, GPT Engineer** | 100-agent DAG; parallel phases (~3.2×); quality score + breakdown; phase retry; token-optimized prompts; export/deploy/Enterprise. |
+| **Cursor, Copilot, Cline, CodeGPT** | Full-app from one prompt; DAG; quality score; phase retry; token optimization; real-time progress; **CrucibAI leads on build/agent visibility** (AgentMonitor, event timeline, build state, per-agent tokens). They lead on traditional IDE (desktop, inline completions) or GitHub. |
+| **Manus, Bolt.new, Lovable, GPT Engineer** | 120-agent DAG; parallel phases (~3.2×); quality score + breakdown; phase retry; **web + mobile + store pack**; token-optimized prompts; export/deploy/Enterprise. |
 | **Kimi** | Full-app flow; plan-first visibility; export/deploy; quality gate; per-step tokens; dedicated docs/slides/sheets API. |
-| **Devin, Aider, Sweep** | Plan-first visibility; quality score in UI; built-in export ZIP/GitHub/deploy; pricing/bundles; docs/onboarding. |
+| **Devin, Aider, Sweep** | Plan-first visibility; quality score in UI; built-in export ZIP/GitHub/deploy; **web + mobile (Expo)** with **store submission pack (App Store / Play Store)**; pricing/bundles; docs/onboarding. |
 | **v0, Replit, Figma Dev Mode** | Full-stack + backend + DB + tests; DAG; quality score; phase retry. They lead on UI-only or design-to-code speed. |
 | **CodeRabbit, Codeball, Codacy, Snyk** | Full-app generation; orchestration; quality visibility; real-time progress; pricing flexibility. They lead on PR review or security scan. |
 | **CodeLlama, StarCoder, CodeT5, Codex** | Productized full-app flow; UX; pricing; docs; deploy. They are models/APIs, not full product. |
@@ -226,7 +226,7 @@
 | 1 | CrucibAI | 10.0 | — (reference) |
 | 2 | Manus / Bolt | 7.2 | Faster (parallel DAG), quality score, phase retry, token optimization |
 | 3 | Kimi AI | 7.0 | Full-app + plan-first + quality + export/deploy + API |
-| 4–9 | Cursor, v0, Replit, Windsurf, Lovable, Copilot Workspace | 6.5–6.8 | Full-app + DAG + quality + retry; they lead on IDE/UI/hosted |
+| 4–9 | Cursor, v0, Replit, Windsurf, Lovable, Copilot Workspace | 6.5–6.8 | Full-app + DAG + quality + retry; CrucibAI leads on build visibility (AgentMonitor); they lead on traditional IDE/UI/hosted |
 | 10–50 | All others | 5.0–6.4 | Full-app, orchestration, quality, progress, pricing, or docs where applicable |
 
-**Final rate:** CrucibAI **10.0/10** vs Top 50; **rank #1**. All 10 dimensions at 10. Enterprise page + Deploy UX (ZIP, Vercel, Netlify) included in current scoring.
+**Final rate:** CrucibAI **10.0/10** vs Top 50; **rank #1**. All 10 dimensions at 10. Enterprise page + Deploy UX (ZIP, Vercel, Netlify) + **web and mobile (Expo) with App Store / Play Store submission pack** included in current scoring.
