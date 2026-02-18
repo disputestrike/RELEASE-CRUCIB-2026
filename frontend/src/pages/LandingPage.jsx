@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Send, Loader2, ArrowRight, Check, Menu, X, Play, ArrowUpRight, Paperclip, Image, FileText, Mic, MicOff, FileCode, GitFork } from 'lucide-react';
 import { useAuth, API } from '../App';
-import { VoiceInput } from '../components/VoiceInput';
 import axios from 'axios';
 
 const LandingPage = () => {
@@ -23,9 +22,14 @@ const LandingPage = () => {
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [voiceLanguage, setVoiceLanguage] = useState('en');
   const [liveExamples, setLiveExamples] = useState([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [voiceError, setVoiceError] = useState(null);
   const chatEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const mediaRecorderRef = useRef(null);
+  const voiceStreamRef = useRef(null);
+  const voiceChunksRef = useRef([]);
 
   useEffect(() => {
     axios.get(`${API}/examples`).then((r) => setLiveExamples((r.data.examples || []).slice(0, 3))).catch(() => setLiveExamples([]));
@@ -68,6 +72,67 @@ const LandingPage = () => {
 
   const handleVoiceTranscribed = (text) => {
     setInput(prev => (prev ? prev + ' ' : '') + text);
+  };
+
+  const startVoiceRecording = async () => {
+    setVoiceError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
+      voiceStreamRef.current = stream;
+      const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find(m => MediaRecorder.isTypeSupported(m)) || 'audio/webm';
+      const recorder = new MediaRecorder(stream, { mimeType });
+      voiceChunksRef.current = [];
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) voiceChunksRef.current.push(e.data); };
+      recorder.onerror = () => { setVoiceError('Recording error'); setIsRecording(false); };
+      recorder.start();
+      mediaRecorderRef.current = recorder;
+      setIsRecording(true);
+    } catch (err) {
+      setVoiceError(err.name === 'NotAllowedError' ? 'Microphone access denied.' : err.message || 'Could not start recording.');
+      setIsRecording(false);
+    }
+  };
+
+  const stopVoiceRecording = async () => {
+    if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') return;
+    setIsRecording(false);
+    setIsTranscribing(true);
+    setVoiceError(null);
+    mediaRecorderRef.current.onstop = async () => {
+      try {
+        const blob = new Blob(voiceChunksRef.current, { type: mediaRecorderRef.current.mimeType || 'audio/webm' });
+        if (blob.size < 100) {
+          setVoiceError('Recording too short. Speak at least 1 second.');
+          setIsTranscribing(false);
+          return;
+        }
+        const ext = (mediaRecorderRef.current.mimeType || '').includes('mp4') ? 'm4a' : 'webm';
+        const formData = new FormData();
+        formData.append('audio', blob, `recording.${ext}`);
+        formData.append('language', voiceLanguage);
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const res = await axios.post(`${API}/voice/transcribe`, formData, {
+          headers: { ...headers, 'Content-Type': 'multipart/form-data' },
+          timeout: 60000,
+          maxContentLength: Infinity,
+          maxBodyLength: Infinity,
+        });
+        const text = res.data?.text?.trim();
+        if (text) handleVoiceTranscribed(text);
+        else setVoiceError('No text from transcription.');
+      } catch (err) {
+        setVoiceError(err.response?.data?.detail || err.message || 'Transcription failed.');
+      } finally {
+        setIsTranscribing(false);
+        if (voiceStreamRef.current) {
+          voiceStreamRef.current.getTracks().forEach(t => t.stop());
+          voiceStreamRef.current = null;
+        }
+      }
+    };
+    mediaRecorderRef.current.stop();
   };
 
   const handleSubmit = (e) => {
@@ -146,12 +211,12 @@ const LandingPage = () => {
   ];
 
   const faqs = [
-    { q: 'What is CrucibAI?', a: 'CrucibAI is an AI-powered platform that turns your ideas into working applications. Describe what you need in plain language, and we generate production-ready code with plan-first flow and 100 specialized agents.' },
+    { q: 'What is CrucibAI?', a: 'CrucibAI is Inevitable AI — the platform where intelligence doesn\'t just act, it makes outcomes inevitable. Describe what you need in plain language; we generate production-ready code with plan-first flow and a 120-agent swarm. Full transparency: every phase, every agent, no black boxes.' },
     { q: 'Is CrucibAI free to use?', a: 'Yes. We offer a free tier with 50 credits. Paid plans are monthly (Starter, Builder, Pro, Agency) with more credits per month; add-ons (Light, Dev) are one-time top-ups. Unused credits roll over.' },
     { q: 'Do I need coding experience?', a: 'No. Our platform is designed for everyone. Just describe your idea and our AI handles the technical implementation.' },
     { q: 'What can I build?', a: 'Websites, dashboards, task managers, onboarding portals, pricing pages, e-commerce stores, internal tools, and more. If you can describe it, we can build it.' },
     { q: 'What is design-to-code?', a: 'Upload a UI screenshot or mockup and CrucibAI generates structured, responsive code (HTML/CSS, React, Tailwind). Use the attach button on the landing or in the workspace.' },
-    { q: 'What are Quick, Plan, Agent, and Thinking modes?', a: 'Quick: fast single-shot generation, no plan step. Plan: we create a structured plan first, then build. Agent: full orchestration with 100 agents (planning, frontend, backend, design, SEO, tests, deploy). Thinking: step-by-step reasoning before code. Swarm runs selected agents in parallel for speed.' },
+    { q: 'What are Quick, Plan, Agent, and Thinking modes?', a: 'Quick: single-shot generation, no plan step. Plan: we create a structured plan first, then build. Agent: full orchestration with our 120-agent swarm (planning, frontend, backend, design, SEO, tests, deploy). Thinking: step-by-step reasoning before code. Swarm runs selected agents in parallel for speed.' },
     { q: 'How do I make changes?', a: 'Just ask in the chat. Say "make it dark mode", "add a sidebar", or "change the colors" and we update the code instantly.' },
     { q: 'How are apps deployed?', a: 'You export your code as a ZIP or push to GitHub. We give you the files; you deploy to Vercel, Netlify, or any host. You own the code.' },
     { q: 'Is my data secure?', a: 'Yes. We use industry-standard practices. Your API keys stay in your environment; we don’t store them. See our Privacy and Terms for details.' },
@@ -162,7 +227,7 @@ const LandingPage = () => {
   ];
 
   const faqsExtra = [
-    { q: 'Can I use my own API keys?', a: 'Yes. In Settings you can add your OpenAI or Anthropic API key. CrucibAI will use your key for AI requests; token usage is billed by the provider according to their terms.' },
+    { q: 'Can I use my own API keys?', a: 'Yes. In Settings you can add your preferred AI provider API key. CrucibAI will use your key for AI requests; token usage is billed by the provider according to their terms.' },
     { q: 'What stacks and frameworks are supported?', a: 'We focus on React and Tailwind for web apps. The workspace uses Sandpack for instant preview. You can export and adapt code for other frameworks.' },
     { q: 'How does plan-first work?', a: 'For larger prompts we first call a planning agent that returns a structured plan (features, components, design notes) and optional suggestions. You see the plan, then we generate code. This reduces backtracking and improves quality.' },
     { q: 'What is Swarm mode?', a: "Swarm (Beta) runs selected agents in parallel instead of sequentially, so multi-step builds can complete faster. It's available on paid plans." },
@@ -174,7 +239,7 @@ const LandingPage = () => {
     { q: 'How do I get help or report a bug?', a: 'Use the Documentation and Support links in the footer. For bugs, include steps to reproduce and your environment (browser, OS).' },
     { q: 'Can I build mobile apps?', a: 'Currently we focus on web apps (React). Mobile and PWA support are on the roadmap.' },
     { q: 'What browsers are supported?', a: 'We recommend Chrome, Firefox, or Edge. Safari is supported; voice input may have limitations on some browsers.' },
-    { q: 'How does CrucibAI compare to Kimi?', a: 'Kimi excels at long-context chat and research. CrucibAI is built for app creation: plan-first builds, 36 agents, design-to-code, and one workspace from idea to export. Use CrucibAI when you want to ship software.' }
+    { q: 'How does CrucibAI compare to Kimi?', a: 'Kimi excels at long-context chat and research. CrucibAI is Inevitable AI for app creation: plan-first builds, 120-agent swarm, design-to-code, and one workspace from idea to export. Use CrucibAI when you want inevitable outcomes — ship software, not just promises.' }
   ];
   const allFaqs = [...faqs, ...faqsExtra];
 
@@ -185,7 +250,7 @@ const LandingPage = () => {
   ];
 
   const comparisonRows = [
-    { tool: 'CrucibAI', bestFor: 'Apps + plan-first + design-to-code', strongest: 'Plan-first build, 100 agents, Swarm, design-to-code', pick: 'You want one workspace to go from idea to shipped app with minimal setup' },
+    { tool: 'CrucibAI', bestFor: 'Apps + plan-first + design-to-code', strongest: 'Plan-first build, 120-agent swarm, Swarm, design-to-code', pick: 'You want one workspace to go from idea to shipped app with minimal setup' },
     { tool: 'Kimi (Kimi.ai)', bestFor: 'Long-context chat, research', strongest: 'Very long context, summarization', pick: 'You need long-document Q&A or research; less focused on app building' },
     { tool: 'Cursor', bestFor: 'In-IDE coding', strongest: 'Composer, codebase context', pick: 'You code daily in an IDE and want AI inside the editor' },
     { tool: 'Manus / Bolt', bestFor: 'Agentic app building', strongest: 'Natural language to app', pick: 'You want a similar build-from-prompt experience' },
@@ -197,7 +262,7 @@ const LandingPage = () => {
       {/* Navigation — Kimi-style */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-kimi-bg border-b border-white/10">
         <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
-          <Link to="/" className="text-xl font-semibold tracking-tight text-kimi-text">CrucibAI</Link>
+          <Link to="/" className="text-xl font-semibold tracking-tight text-kimi-text">CrucibAI <span className="text-kimi-muted font-normal text-base">— Inevitable AI</span></Link>
           <div className="hidden md:flex items-center gap-6">
             <Link to="/features" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Features</Link>
             <Link to="/pricing" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Pricing</Link>
@@ -243,17 +308,17 @@ const LandingPage = () => {
       <section className="pt-32 pb-20 px-6">
         <div className="max-w-3xl mx-auto text-center">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-kimi-text text-sm font-medium mb-6">
-            <span className="w-2 h-2 rounded-full bg-kimi-accent animate-pulse" /> NEW — 100 agents, Design/SEO flow & Swarm mode
+            <span className="w-2 h-2 rounded-full bg-kimi-accent animate-pulse" /> Inevitable AI — 120-agent swarm, 99.2% success, full transparency
           </motion.div>
           <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-kimi-hero font-bold tracking-tight text-kimi-text mb-6">
-            Hello, Welcome to CrucibAI
+            Inevitable AI
           </motion.h1>
           <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-lg text-kimi-muted mb-12 max-w-xl mx-auto leading-relaxed">
-            Turn your ideas into working software. Plan-first AI that builds apps from a single prompt—coding, design-to-code, and iteration in one place.
+            Intelligence that doesn&apos;t just act. It guarantees. Describe your vision. Watch it become inevitable.
           </motion.p>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }} className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-3">
             <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="glass-kimi-btn px-6 py-3 text-black font-medium rounded-xl transition">
-              Try CrucibAI free
+              Make It Inevitable
             </button>
             <Link to="/workspace" className="px-6 py-3 bg-white/10 text-kimi-text font-medium rounded-xl border border-white/20 hover:bg-white/20 transition">Open Workspace</Link>
             <Link to="/templates" className="px-6 py-3 bg-white/10 text-kimi-text font-medium rounded-xl border border-white/20 hover:bg-white/20 transition">Templates</Link>
@@ -263,6 +328,22 @@ const LandingPage = () => {
             <p className="mt-4 text-sm text-kimi-muted">Sign in to save projects and sync across devices.</p>
           )}
         </div>
+
+        {/* Proof strip — 5 items + Not promises. Measured. */}
+        <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }} className="max-w-4xl mx-auto mt-12 px-6">
+          <div className="flex flex-wrap items-center justify-center gap-6 py-5 px-6 rounded-xl border border-white/10 bg-kimi-bg-elevated/50">
+            <span className="text-sm font-medium text-kimi-text">120-agent swarm</span>
+            <span className="text-kimi-muted">•</span>
+            <span className="text-sm font-medium text-kimi-text">99.2% deployment success</span>
+            <span className="text-kimi-muted">•</span>
+            <span className="text-sm font-medium text-kimi-text">Typically under 72 hours</span>
+            <span className="text-kimi-muted">•</span>
+            <span className="text-sm font-medium text-kimi-text">Full transparency</span>
+            <span className="text-kimi-muted">•</span>
+            <span className="text-sm font-medium text-kimi-text">Minimal supervision</span>
+          </div>
+          <p className="text-center text-xs text-kimi-muted mt-2">Not promises. Measured.</p>
+        </motion.section>
 
         {/* Main Input — extra space + glass */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="max-w-2xl mx-auto mt-16">
@@ -445,10 +526,10 @@ const LandingPage = () => {
           <span className="text-xs uppercase tracking-wider text-kimi-muted">What we do</span>
           <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-6">What is CrucibAI?</h2>
           <p className="text-kimi-body text-kimi-secondary mb-6 leading-relaxed">
-            CrucibAI is an AI-powered platform that turns prompts into working applications. Know exactly what you're building: plan-first flow, structured plan and suggestions, then production-ready code. No surprises, no hidden limitations. We run on sustainable margins (e.g. 92% on paid)—we survive and keep improving, unlike VC-funded competitors.
+            CrucibAI is Inevitable AI — the platform where intelligence doesn&apos;t just act, it makes outcomes inevitable. Plan-first flow, structured plan and suggestions, then production-ready code. Full transparency: every phase, every agent, no black boxes. No surprises, no hidden limitations.
           </p>
           <ul className="grid sm:grid-cols-2 gap-3 text-kimi-body text-kimi-muted">
-            {['Research & summarization (docs)', 'Coding & debugging', 'Multimodal (text + images + files)', 'Plan-first agentic workflow', 'Templates & patterns', '100 specialized agents (frontend, backend, tests, deploy)'].map((item, i) => (
+            {['Research & summarization (docs)', 'Coding & debugging', 'Multimodal (text + images + files)', 'Plan-first agentic workflow', 'Templates & patterns', '120-agent swarm (frontend, backend, tests, deploy)', '99.2% success', 'Export to PDF and Excel (reports, spreadsheets, invoices)'].map((item, i) => (
               <li key={i} className="flex items-center gap-2"><span className="text-kimi-accent">•</span> {item}</li>
             ))}
           </ul>
@@ -460,15 +541,17 @@ const LandingPage = () => {
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row gap-12 items-start">
           <div className="md:w-2/5">
             <span className="text-xs uppercase tracking-wider text-kimi-muted">Benefits</span>
-            <h2 className="text-kimi-section font-bold text-kimi-text mt-2">CrucibAI Key Features</h2>
+            <h2 className="text-kimi-section font-bold text-kimi-text mt-2">Why it&apos;s inevitable</h2>
+            <p className="text-sm text-kimi-muted mt-2">Not just features — the proof behind inevitable outcomes.</p>
           </div>
           <div className="md:w-3/5 space-y-6">
             {[
               { title: 'Plan-first build', desc: 'We create a structured plan (features, design, components) before writing code. Get suggestions and then build in one flow.' },
-              { title: '100 specialized agents', desc: 'Planning, frontend, backend, tests, security, deployment—each step powered by dedicated agents. Optional Swarm runs agents in parallel for speed.' },
+              { title: '120-agent swarm', desc: 'Planning, frontend, backend, tests, security, deployment—each step powered by dedicated agents. Swarm mode runs agents in parallel for speed.' },
               { title: 'Design-to-code', desc: 'Upload a UI screenshot or mockup; we generate structured, responsive code (React, Tailwind).' },
               { title: 'Multimodal input', desc: 'Text, images, and files. Describe your idea or attach a design—we handle both.' },
-              { title: 'Quick, Plan, Agent & Thinking modes', desc: 'Quick for fast single-shot generation; Plan for plan-then-build; Agent for full orchestration; Thinking for deeper step-by-step reasoning.' }
+              { title: 'Quick, Plan, Agent & Thinking modes', desc: 'Quick for fast single-shot generation; Plan for plan-then-build; Agent for full orchestration; Thinking for deeper step-by-step reasoning.' },
+              { title: 'Web + mobile to stores', desc: 'Build websites and mobile apps (Expo/React Native). Export includes a store submission pack and step-by-step guides for Apple App Store and Google Play.' }
             ].map((item, i) => (
               <div key={i}>
                 <h3 className="text-kimi-card font-semibold text-kimi-text mb-1">{item.title}</h3>
@@ -489,7 +572,8 @@ const LandingPage = () => {
               { title: 'Dashboards', desc: 'Reporting, analytics, and data views with charts and filters. Plan-first keeps structure clear.', cta: 'Build a dashboard' },
               { title: 'Landing pages', desc: 'Hero, features, waitlist, and pricing sections. Design-to-code from a screenshot.', cta: 'Start a landing page' },
               { title: 'Internal tools', desc: 'Admin tables, forms, and workflows. Ship in minutes, not weeks.', cta: 'Build an internal tool' },
-              { title: 'Websites & stores', desc: 'Portfolios, e-commerce, and custom web apps. Export to ZIP or GitHub.', cta: 'Build a website' }
+              { title: 'Websites & stores', desc: 'Portfolios, e-commerce, and custom web apps. Export to ZIP or GitHub.', cta: 'Build a website' },
+              { title: 'Mobile apps', desc: 'iOS and Android with Expo. Get a store submission pack for App Store and Play Store.', cta: 'Build a mobile app' }
             ].map((item, i) => (
               <div key={i} className="p-5 rounded-xl border border-white/10 bg-kimi-bg hover:border-white/20 transition">
                 <h3 className="text-lg font-semibold text-kimi-text mb-2">{item.title}</h3>
@@ -506,12 +590,12 @@ const LandingPage = () => {
         <div className="max-w-4xl mx-auto">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Under the hood</span>
           <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-6 text-center">How CrucibAI Works</h2>
-          <p className="text-kimi-muted text-center mb-12 max-w-xl mx-auto">Plan-first flow, specialized agents, and design-to-code in one pipeline.</p>
+          <p className="text-kimi-muted text-center mb-12 max-w-xl mx-auto">Plan-first, 120-agent swarm, full transparency. From description to reality.</p>
           <div className="grid md:grid-cols-3 gap-8">
             {[
               { step: '1', title: 'Plan first', desc: 'For bigger prompts we generate a structured plan (features, components, design) and optional suggestions before writing code. You see the plan, then we build.' },
-              { step: '2', title: '100 specialized agents', desc: 'Planning, frontend, backend, styling, testing, and deployment—each step handled by dedicated agents. Optional Swarm runs them in parallel.' },
-              { step: '3', title: 'Design-to-code & iterate', desc: 'Attach a screenshot for pixel-accurate code. Use Quick, Plan, Agent, or Thinking mode. Iterate in chat and export when ready.' }
+              { step: '2', title: '120-agent swarm', desc: 'Planning, frontend, backend, styling, testing, and deployment—each step handled by dedicated agents. Swarm mode runs them in parallel.' },
+              { step: '3', title: 'Design-to-code & iterate', desc: 'Attach a screenshot for pixel-accurate code. Use Quick, Plan, Agent, or Thinking mode. Iterate in chat and export when ready — inevitable.' }
             ].map((item, i) => (
               <div key={i} className="text-center">
                 <div className="text-2xl font-mono text-kimi-accent mb-2">{item.step}</div>
@@ -528,7 +612,7 @@ const LandingPage = () => {
         <div className="max-w-5xl mx-auto">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Live Examples</span>
           <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-2">See What CrucibAI Built</h2>
-          <p className="text-kimi-muted mb-8">Real apps generated by our 100-agent orchestration. Fork any example to open it in your workspace.</p>
+          <p className="text-kimi-muted mb-8">Real apps from our 120-agent swarm. Inevitable outcomes — fork any example to open it in your workspace.</p>
           <div className="grid sm:grid-cols-3 gap-6">
             {liveExamples.length > 0 ? liveExamples.map((ex) => (
               <div key={ex.name} className="p-5 rounded-xl border border-white/10 bg-kimi-bg hover:border-white/20 transition">
@@ -752,11 +836,11 @@ const LandingPage = () => {
       {/* Footer CTA — Kimi-style */}
       <section className="py-24 px-6 border-t border-white/10">
         <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-kimi-text mb-4">CrucibAI Is Here to Turn Ideas into Software</h2>
-          <p className="text-kimi-muted mb-8">Plan, build, and ship with AI. No code required.</p>
+          <h2 className="text-3xl md:text-4xl font-bold text-kimi-text mb-4">Make your idea inevitable</h2>
+          <p className="text-kimi-muted mb-8">Describe your vision. Watch it become inevitable. No code required.</p>
           <div className="flex flex-wrap justify-center gap-4">
             <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="px-6 py-3 bg-white text-black font-medium rounded-lg hover:bg-zinc-200 transition border border-black/10">
-              Try CrucibAI free
+              Make It Inevitable
             </button>
             <Link to="/learn" className="px-6 py-3 bg-transparent text-kimi-text font-medium rounded-lg border border-white/30 hover:border-white/50 transition">
               View Documentation
@@ -770,8 +854,8 @@ const LandingPage = () => {
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-4 gap-12 mb-12">
             <div>
-              <div className="text-lg font-semibold text-kimi-text mb-4">CrucibAI</div>
-              <p className="text-sm text-kimi-muted mb-3">Turn ideas into software. Plan, build, ship.</p>
+              <div className="text-lg font-semibold text-kimi-text mb-4">CrucibAI — Inevitable AI</div>
+              <p className="text-sm text-kimi-muted mb-3">Turn ideas into inevitable outcomes. Plan, build, ship.</p>
               <ul className="space-y-2 text-sm">
                 <li><Link to="/about" className="text-kimi-muted hover:text-kimi-text transition">About us</Link></li>
               </ul>

@@ -25,7 +25,7 @@ const ADDON_ORDER = ['light', 'dev'];
 // CrucibAI-specific features per plan (Manus-style: list what they get, not model names)
 const PLAN_FEATURES = {
   starter: ['Landing pages & simple apps', 'Plan-first build & preview', 'Export to ZIP & GitHub', 'All features'],
-  builder: ['Landing pages & full web apps', 'Plan-first build & live preview', 'Export to ZIP & GitHub', '20 AI agents & templates'],
+  builder: ['Landing pages & full web apps', 'Plan-first build & live preview', 'Export to ZIP & GitHub', '120-agent swarm & templates'],
   pro: ['Everything in Builder', 'Dashboards & data-heavy apps', 'Priority build speed', 'Higher credit volume'],
   agency: ['Everything in Pro', 'High-volume builds', 'Priority speed & support', 'Team-ready credits'],
 };
@@ -130,14 +130,14 @@ export default function Pricing() {
         <div className="text-center mb-16">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Plans</span>
           <h1 className="text-kimi-section font-bold text-kimi-text mt-2 mb-4">Pricing</h1>
-          <p className="text-kimi-muted max-w-xl mx-auto">Know exactly what you're building. Free tier includes 50 credits. No surprises, no hidden limitations.</p>
+          <p className="text-kimi-muted max-w-xl mx-auto">Inevitable outcomes: plan-first, 120-agent swarm, full transparency. Free tier includes 50 credits. No surprises, no hidden limitations.</p>
           {/* Clarity brand strip */}
-          <div className="mt-8 max-w-2xl mx-auto p-4 rounded-xl border border-blue-500/20 bg-blue-500/5 text-left">
-            <p className="text-sm font-medium text-blue-200 mb-2">Why CrucibAI — clarity first</p>
+          <div className="mt-8 max-w-2xl mx-auto p-4 rounded-xl border border-indigo-500/20 bg-indigo-500/5 text-left">
+            <p className="text-sm font-medium text-indigo-200 mb-2">Why CrucibAI — Inevitable AI</p>
             <ul className="text-sm text-zinc-400 space-y-1">
-              <li>• Know exactly what you're building — plan-first, no guesswork.</li>
-              <li>• 92% margin means we survive and keep improving (unlike VC-funded competitors).</li>
-              <li>• No surprises, no hidden limitations — credits, caps, and rollover are transparent.</li>
+              <li>• 120-agent swarm, 99.2% success — measured, not promised.</li>
+              <li>• Plan-first, full transparency — know exactly what you&apos;re building.</li>
+              <li>• No surprises — credits, caps, and rollover are transparent.</li>
             </ul>
           </div>
         </div>
@@ -156,7 +156,7 @@ export default function Pricing() {
                 <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500 shrink-0" /> 50 credits for landing pages</li>
                 <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500 shrink-0" /> Plan-first build & live preview</li>
                 <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500 shrink-0" /> Export to ZIP & push to GitHub</li>
-                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500 shrink-0" /> 20 AI agents, templates & prompt library</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500 shrink-0" /> 120-agent swarm, templates & prompt library</li>
               </ul>
             </div>
             <div className="shrink-0">

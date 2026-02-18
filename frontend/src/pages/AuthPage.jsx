@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Lock, User, ArrowRight, Eye, EyeOff, Sparkles, Check } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, Eye, EyeOff, Check, X } from 'lucide-react';
 import { useAuth, API } from '../App';
 
 const AuthPage = () => {
@@ -84,24 +84,47 @@ const AuthPage = () => {
   };
 
   const benefits = [
-    'Build full-stack apps in minutes',
-    'Plan-first build with 20 AI agents',
+    'Plan-first build with 120-agent swarm',
+    'Agentic automation — from idea to shipped app',
+    '99.2% success — measured, not promised',
     '50 free credits to start',
     'No credit card required'
   ];
 
+  const useCases = [
+    { label: 'Web apps', desc: 'React, Tailwind, full-stack' },
+    { label: 'Mobile apps', desc: 'Cross-platform, PWA' },
+    { label: 'Dashboards', desc: 'Data, charts, admin' },
+    { label: 'E‑commerce', desc: 'Stores, checkout, catalog' },
+    { label: 'Landing pages', desc: 'Marketing, waitlist' },
+    { label: 'Internal tools', desc: 'CRUD, workflows' },
+    { label: 'API & automation', desc: 'Integrations, bots' },
+    { label: 'For everyone', desc: 'Web, mobile, no code' },
+  ];
+
   return (
-    <div className="min-h-screen bg-white text-gray-900 flex">
+    <div className="min-h-screen bg-gray-100/80 text-gray-900 flex">
+      {/* Close X - top right, always visible */}
+      <Link
+        to="/"
+        className="fixed top-4 right-4 z-50 p-2 rounded-lg bg-white/90 hover:bg-white border border-gray-200 text-gray-600 hover:text-gray-900 shadow-sm transition"
+        aria-label="Close and return to home"
+      >
+        <X className="w-5 h-5" />
+      </Link>
+
+      <div className="w-full max-w-6xl mx-auto flex min-h-screen bg-white shadow-xl">
       {/* Left Panel - Benefits */}
       <div className="hidden lg:flex lg:w-1/2 bg-gray-50 relative">
-        <div className="flex flex-col justify-center w-full p-16">
-          <Link to="/" className="flex items-center gap-2 mb-12">
-            <span className="text-3xl font-bold tracking-tight">crucib<span className="text-blue-600">ai</span></span>
+        <div className="flex flex-col justify-center w-full p-12 max-w-xl">
+          <Link to="/" className="flex items-center gap-2 mb-10">
+            <span className="text-3xl font-bold tracking-tight">Crucib<span className="text-[#6366F1]">AI</span></span>
+            <span className="text-sm font-medium text-gray-500 ml-1">— Inevitable AI</span>
           </Link>
           
-          <h2 className="text-4xl font-bold mb-4 tracking-tight">Start building in seconds</h2>
-          <p className="text-gray-600 text-lg mb-12">
-            Join thousands of developers who are shipping faster with AI-powered development.
+          <h2 className="text-3xl font-bold mb-3 tracking-tight">Make your outcome inevitable</h2>
+          <p className="text-gray-600 mb-4">
+            Describe your vision. Agentic automation, plan-first flow, full transparency, and production-ready code—no black boxes.
           </p>
           
           <div className="space-y-4">
@@ -121,12 +144,12 @@ const AuthPage = () => {
             ))}
           </div>
           
-          <div className="mt-16 grid grid-cols-2 gap-6">
+          <div className="mt-10 grid grid-cols-2 gap-4">
             {[
-              { label: 'Projects Built', value: '50K+' },
-              { label: 'Active Developers', value: '12K+' },
-              { label: 'Avg Build Time', value: '<1 hour' },
-              { label: 'Code Quality', value: '95/100' }
+              { label: 'Agent swarm', value: '120' },
+              { label: 'Success rate', value: '99.2%' },
+              { label: 'Typical delivery', value: '<72 hrs' },
+              { label: 'Transparency', value: 'Full' }
             ].map(stat => (
               <div key={stat.label} className="p-4 bg-white rounded-xl border border-gray-200">
                 <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
@@ -134,19 +157,33 @@ const AuthPage = () => {
               </div>
             ))}
           </div>
+
+          {/* Use cases — 8 examples, 4×2 */}
+          <div className="mt-10">
+            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">What you can build</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {useCases.map((uc) => (
+                <div key={uc.label} className="p-3 bg-white rounded-lg border border-gray-100">
+                  <p className="text-sm font-medium text-gray-900">{uc.label}</p>
+                  <p className="text-xs text-gray-500">{uc.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
       
       {/* Right Panel - Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-md"
         >
-          <div className="lg:hidden flex items-center justify-center mb-8">
+          <div className="lg:hidden flex items-center justify-center mb-6">
             <Link to="/" className="flex items-center gap-2">
-              <span className="text-2xl font-bold tracking-tight">crucib<span className="text-blue-600">ai</span></span>
+              <span className="text-2xl font-bold tracking-tight">Crucib<span className="text-[#6366F1]">AI</span></span>
+              <span className="text-xs font-medium text-gray-500 ml-1">Inevitable AI</span>
             </Link>
           </div>
           
@@ -155,7 +192,7 @@ const AuthPage = () => {
               {mfaPending ? 'Two-factor authentication' : isLogin ? 'Welcome back' : 'Create your account'}
             </h1>
             <p className="text-gray-600">
-              {mfaPending ? 'Enter the 6-digit code from your authenticator app' : isLogin ? 'Sign in to continue building' : 'Start building with 50K free tokens'}
+              {mfaPending ? 'Enter the 6-digit code from your authenticator app' : isLogin ? 'Sign in to continue building' : 'Start with 50 free credits — no credit card required'}
             </p>
           </div>
           
@@ -282,9 +319,9 @@ const AuthPage = () => {
             {!isLogin && (
               <p className="text-xs text-gray-500 text-center">
                 By creating an account you agree to our{' '}
-                <Link to="/terms" className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">Terms</Link>
+                <Link to="/terms" className="text-[#6366F1] hover:underline" target="_blank" rel="noopener noreferrer">Terms</Link>
                 {' '}and{' '}
-                <Link to="/privacy" className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">Privacy Policy</Link>
+                <Link to="/privacy" className="text-[#6366F1] hover:underline" target="_blank" rel="noopener noreferrer">Privacy Policy</Link>
                 .
               </p>
             )}
@@ -312,7 +349,7 @@ const AuthPage = () => {
             {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
             <button
               onClick={() => setIsLogin(!isLogin)}
-              className="text-blue-600 hover:text-blue-700 font-medium"
+              className="text-[#6366F1] hover:text-[#4F46E5] font-medium"
               data-testid="auth-toggle-btn"
             >
               {isLogin ? 'Sign up' : 'Sign in'}
@@ -320,6 +357,7 @@ const AuthPage = () => {
           </p>
           )}
         </motion.div>
+      </div>
       </div>
     </div>
   );

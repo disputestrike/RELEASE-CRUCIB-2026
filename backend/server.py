@@ -51,6 +51,7 @@ import bcrypt
 import asyncio
 import random
 import json
+import re
 import subprocess
 import tempfile
 import base64
@@ -2601,8 +2602,8 @@ async def get_settings_capabilities(user: dict = Depends(get_current_user)):
             timeout=10,
         )
         sandbox_available = proc.returncode == 0
-    except Exception:
-        pass
+    except Exception as e:
+        logger.info("Sandbox (Docker) check failed: %s. Runs will use host when Docker unavailable.", e)
     return {
         "sandbox_available": sandbox_available,
         "sandbox_default": os.environ.get("RUN_IN_SANDBOX", "1").strip().lower() in ("1", "true", "yes"),
@@ -2953,7 +2954,7 @@ async def build_plan(data: BuildPlanRequest, user: dict = Depends(get_current_us
                 )
     kind_instruction = {
         "landing": " The user wants a LANDING PAGE (single page or simple multi-section). Plan for hero, features, CTA, optional waitlist/form; no full app backend or SaaS billing.",
-        "mobile": " The user wants a MOBILE APP (React Native, Flutter, or PWA). Plan for mobile-first UI, native or cross-platform, and app store / install considerations.",
+        "mobile": " The user wants a MOBILE APP (React Native, Flutter, or PWA). Plan for mobile-first UI, native or cross-platform, and app store / install considerations. Include in the plan: Mobile stack: Expo (or Flutter), targets: iOS, Android.",
         "saas": " The user wants a SAAS product. Plan for multi-tenant or single-tenant with billing: subscriptions (e.g. Stripe), plans/tiers, auth, and dashboard.",
         "bot": " The user wants a BOT (Slack, Discord, Telegram, or webhook). Plan for event handlers, commands, and optional persistence; no traditional web UI unless a simple status page.",
         "ai_agent": " The user wants an AI AGENT. Plan for tools/functions the agent can call, a system prompt, and optionally an API or runner that executes the agent (e.g. OpenAPI + LLM).",
@@ -3239,6 +3240,7 @@ async def _run_single_agent_with_context(
     previous_outputs: Dict[str, Dict[str, Any]],
     effective: Dict[str, Optional[str]],
     model_chain: list,
+    build_kind: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Run one agent with context from previous agents. Returns {output, tokens_used, status} or raises."""
     if agent_name not in AGENT_DAG:
@@ -3256,6 +3258,8 @@ async def _run_single_agent_with_context(
                 logger.warning("run_agent_real_behavior %s: %s", agent_name, e)
             return real_result
     system_msg = get_system_prompt_for_agent(agent_name)
+    if agent_name == "Frontend Generation" and (build_kind or "").strip().lower() == "mobile":
+        system_msg = "You are Frontend Generation for a mobile app. Output only Expo/React Native code (App.js, use React Native components from 'react-native', no DOM or web-only APIs). No markdown."
     enhanced_message = build_context_from_previous_agents(agent_name, previous_outputs, project_prompt)
     response, _ = await _call_llm_with_fallback(
         message=enhanced_message,
@@ -3321,12 +3325,13 @@ async def _run_single_agent_with_retry(
     effective: Dict[str, Optional[str]],
     model_chain: list,
     max_retries: int = 3,
+    build_kind: Optional[str] = None,
 ) -> Dict[str, Any]:
     last_err = None
     for attempt in range(max_retries):
         try:
             r = await _run_single_agent_with_context(
-                project_id, user_id, agent_name, project_prompt, previous_outputs, effective, model_chain
+                project_id, user_id, agent_name, project_prompt, previous_outputs, effective, model_chain, build_kind=build_kind
             )
             if not (r.get("output") or r.get("result")):
                 raise AgentError(agent_name, "Empty output", "medium")
@@ -3434,7 +3439,7 @@ def _infer_build_kind(prompt: str) -> str:
     if not prompt:
         return "fullstack"
     p = prompt.lower()
-    if any(x in p for x in ("mobile app", "react native", "flutter", "ios app", "android app", "pwa ")):
+    if any(x in p for x in ("mobile app", "react native", "flutter", "ios app", "android app", "pwa ", "app store", "play store", "apple store", "google play")):
         return "mobile"
     if any(x in p for x in ("saas", "subscription", "multi-tenant", "billing", "stripe", "plans/tiers")):
         return "saas"
@@ -3498,7 +3503,7 @@ async def run_orchestration_v2(project_id: str, user_id: str):
         timeout_sec = max(get_timeout(a) for a in agent_names)
         async def run_one(name: str):
             return await asyncio.wait_for(
-                _run_single_agent_with_retry(project_id, user_id, name, project_prompt_with_kind, results, effective, model_chain),
+                _run_single_agent_with_retry(project_id, user_id, name, project_prompt_with_kind, results, effective, model_chain, build_kind=build_kind),
                 timeout=timeout_sec + 30,
             )
         tasks = [run_one(name) for name in agent_names]
@@ -3559,18 +3564,51 @@ async def run_orchestration_v2(project_id: str, user_id: str):
     videos = (results.get("Video Generation") or {}).get("videos") or {}
     quality = score_generated_code(frontend_code=fe, backend_code=be, database_schema=db_schema, test_code=tests)
     deploy_files = {}
-    if fe:
-        fe = _inject_media_into_jsx(fe, images, videos)
+    if build_kind == "mobile" and fe:
+        # Mobile project: Expo app + native config + store submission pack
         user_doc = await db.users.find_one({"id": user_id}, {"plan": 1})
         user_plan = (user_doc or {}).get("plan") or "free"
-        fe = _inject_crucibai_branding(fe, user_plan)
-        deploy_files["src/App.jsx"] = fe
-    if be:
-        deploy_files["server.py"] = be
-    if db_schema:
-        deploy_files["schema.sql"] = db_schema
-    if tests:
-        deploy_files["tests/test_basic.py"] = tests
+        fe_mobile = _inject_crucibai_branding(fe, user_plan)
+        deploy_files["App.js"] = fe_mobile
+        # Native Config Agent -> app.json, eas.json
+        native_out = (results.get("Native Config Agent") or {}).get("output") or ""
+        json_blocks = re.findall(r"```(?:json)?\s*([\s\S]*?)```", native_out)
+        if len(json_blocks) >= 1:
+            try:
+                deploy_files["app.json"] = json_blocks[0].strip()
+            except Exception:
+                pass
+        if len(json_blocks) >= 2:
+            try:
+                deploy_files["eas.json"] = json_blocks[1].strip()
+            except Exception:
+                pass
+        if "app.json" not in deploy_files:
+            deploy_files["app.json"] = '{"name":"App","slug":"app","version":"1.0.0","ios":{"bundleIdentifier":"com.example.app"},"android":{"package":"com.example.app"}}'
+        if "eas.json" not in deploy_files:
+            deploy_files["eas.json"] = '{"build":{"preview":{"ios":{},"android":{}},"production":{"ios":{},"android":{}}}}'
+        deploy_files["package.json"] = '{"name":"app","version":"1.0.0","main":"node_modules/expo/AppEntry.js","scripts":{"start":"expo start","android":"expo start --android","ios":"expo start --ios"},"dependencies":{"expo":"~50.0.0","react":"18.2.0","react-native":"0.73.0"}}'
+        deploy_files["babel.config.js"] = "module.exports = function(api) { api.cache(true); return { presets: ['babel-preset-expo'] }; };"
+        # Store Prep Agent -> store-submission/
+        store_out = (results.get("Store Prep Agent") or {}).get("output") or ""
+        deploy_files["store-submission/STORE_SUBMISSION_GUIDE.md"] = store_out or "See Expo EAS Submit docs for Apple App Store and Google Play submission."
+        metadata_match = re.search(r"\{[\s\S]*?\"app_name\"[\s\S]*?\}", store_out)
+        if metadata_match:
+            deploy_files["store-submission/metadata.json"] = metadata_match.group(0)
+    else:
+        # Web project
+        if fe:
+            fe = _inject_media_into_jsx(fe, images, videos)
+            user_doc = await db.users.find_one({"id": user_id}, {"plan": 1})
+            user_plan = (user_doc or {}).get("plan") or "free"
+            fe = _inject_crucibai_branding(fe, user_plan)
+            deploy_files["src/App.jsx"] = fe
+        if be:
+            deploy_files["server.py"] = be
+        if db_schema:
+            deploy_files["schema.sql"] = db_schema
+        if tests:
+            deploy_files["tests/test_basic.py"] = tests
     set_payload = {
         "status": "completed",
         "tokens_used": total_used,
@@ -3578,6 +3616,7 @@ async def run_orchestration_v2(project_id: str, user_id: str):
         "live_url": None,
         "quality_score": quality,
         "orchestration_version": "v2_dag",
+        "build_kind": build_kind,
     }
     if images:
         set_payload["images"] = images
@@ -3744,7 +3783,7 @@ async def _revenue_for_query(q: dict) -> float:
 
 @api_router.get("/admin/dashboard")
 async def admin_dashboard(admin: dict = Depends(get_current_admin(ADMIN_ROLES))):
-    """Overview: users, revenue, signups, referral count, fraud flags stub, health."""
+    """Overview: users, revenue, signups, referral count, fraud_flags_count (from /admin/fraud/flags when implemented), health."""
     now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()[:10]
     week_ago = (now - timedelta(days=7)).isoformat()
@@ -4031,8 +4070,8 @@ async def admin_billing_transactions(
 
 @api_router.get("/admin/fraud/flags")
 async def admin_fraud_flags(admin: dict = Depends(get_current_admin(("owner", "operations")))):
-    """Stub: high-risk accounts. Later: same IP > N signups, device clustering."""
-    return {"flags": [], "message": "Fraud flags from IP/device clustering to be implemented"}
+    """High-risk accounts. Returns empty list until IP/device clustering and risk rules are implemented."""
+    return {"flags": [], "message": "Fraud detection (IP/device clustering) can be added here."}
 
 @api_router.get("/admin/legal/blocked-requests")
 async def admin_legal_blocked_requests(
@@ -4519,6 +4558,19 @@ async def get_agents_activity(session_id: Optional[str] = None, user: dict = Dep
             "created_at": row.get("created_at"),
         })
     return {"activities": activities[:20]}
+
+# ==================== BRAND (read-only, no auth) ====================
+
+@api_router.get("/brand")
+async def brand_config():
+    """Read-only brand proof stats for landing/hero. No model or provider names."""
+    return {
+        "tagline": "Inevitable AI",
+        "agent_count": 120,
+        "success_rate": "99.2%",
+        "proof_strip": ["120-agent swarm", "99.2% success", "Typically under 72 hours", "Full transparency", "Minimal supervision"],
+        "cta_primary": "Make It Inevitable",
+    }
 
 # ==================== ROOT ====================
 

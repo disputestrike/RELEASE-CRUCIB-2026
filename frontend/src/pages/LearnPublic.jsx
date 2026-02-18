@@ -25,7 +25,7 @@ export default function LearnPublic() {
             <BookOpen className="w-8 h-8 text-blue-400" />
           </div>
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight">Learn CrucibAI</h1>
+            <h1 className="text-3xl font-semibold tracking-tight">Learn CrucibAI — Inevitable AI</h1>
             <p className="text-zinc-500">Quick tips to build apps with AI. No coding required.</p>
           </div>
         </motion.div>

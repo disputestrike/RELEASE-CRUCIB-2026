@@ -11,7 +11,7 @@ import {
 const features = [
   { icon: MessageSquare, title: 'Describe & build', desc: 'Tell us what you want in plain English. Our AI turns your idea into a working app in minutes.' },
   { icon: Code2, title: 'Production-ready code', desc: 'Get React, Tailwind, and modern stack. Clean, maintainable code you can own and deploy.' },
-  { icon: Zap, title: '20 AI agents', desc: 'Planning, frontend, backend, tests, security, deployment—each step powered by specialized agents.' },
+  { icon: Zap, title: '120-agent swarm', desc: 'Planning, frontend, backend, tests, security, deployment—each step powered by specialized agents.' },
   { icon: Layout, title: 'Templates', desc: 'Start from dashboards, blogs, SaaS shells, and more. One click to customize and ship.' },
   { icon: FileCode, title: 'Pattern library', desc: 'Reusable patterns: auth, payments, APIs. Save tokens and time on every project.' },
   { icon: BookOpen, title: 'Prompt library', desc: 'Proven prompts for e‑commerce, landing pages, task managers. Copy, tweak, and build.' },
@@ -19,6 +19,7 @@ const features = [
   { icon: BarChart3, title: 'Usage & tokens', desc: 'See usage by agent, track tokens, and buy packs when you need more. No surprises.' },
   { icon: Shield, title: 'Security & quality', desc: 'Security scan, accessibility check, and auto-fix. Ship with confidence.' },
   { icon: Download, title: 'Export & deploy', desc: 'Download ZIP or push to GitHub. Deploy to Vercel, Netlify, or any host. You own the code.' },
+  { icon: Layers, title: 'Web + mobile', desc: 'Build web and mobile apps. Get Expo (React Native) projects and a store submission pack for App Store and Google Play.' },
   { icon: GitBranch, title: 'Iterate in chat', desc: 'Ask for changes in natural language. "Add dark mode", "make it responsive"—we update the code.' },
   { icon: Palette, title: 'Design control', desc: 'Describe colors, layout, and style. Or paste a screenshot; we turn it into code.' },
 ];
@@ -31,10 +32,21 @@ export default function Features() {
     <div className="min-h-screen bg-kimi-bg text-kimi-text grid-pattern-kimi">
       <PublicNav />
       <div className="max-w-5xl mx-auto px-6 py-16">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-16">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Benefits</span>
-          <h1 className="text-kimi-section font-bold text-kimi-text mt-2 mb-4">CrucibAI Features</h1>
-          <p className="text-kimi-muted max-w-xl mx-auto">Everything you need to go from idea to shipped app—without writing code.</p>
+          <h1 className="text-kimi-section font-bold text-kimi-text mt-2 mb-4">Why your outcome is inevitable</h1>
+          <p className="text-kimi-muted max-w-xl mx-auto">120-agent swarm, 99.2% success, full transparency. Not promises — measured.</p>
+        </motion.div>
+        {/* Proof strip */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 py-4 px-4 rounded-xl border border-white/10 bg-kimi-bg-card mb-16">
+          <span className="flex items-center gap-2 text-sm text-kimi-muted">
+            <span className="w-2 h-2 rounded-full bg-kimi-accent animate-pulse" /> 120-agent swarm
+          </span>
+          <span className="text-sm text-kimi-muted">99.2% success</span>
+          <span className="text-sm text-kimi-muted">Typically under 72 hours</span>
+          <span className="text-sm text-kimi-muted">Full transparency</span>
+          <span className="text-sm text-kimi-muted">Minimal supervision</span>
+          <span className="text-sm font-medium text-kimi-text">Not promises. Measured.</span>
         </motion.div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {features.map((f, i) => (
@@ -54,7 +66,7 @@ export default function Features() {
           ))}
         </div>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mt-20 text-center">
-          <p className="text-kimi-muted mb-6">Start building in seconds. No credit card required.</p>
+          <p className="text-kimi-muted mb-6">Make your outcome inevitable. No credit card required.</p>
           <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="px-6 py-3 bg-white text-black font-medium rounded-lg hover:bg-zinc-200 transition">
             {user ? 'Go to workspace' : 'Get started free'}
           </button>

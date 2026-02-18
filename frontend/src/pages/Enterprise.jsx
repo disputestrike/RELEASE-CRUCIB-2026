@@ -73,7 +73,7 @@ export default function Enterprise() {
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Enterprise</span>
           <h1 className="text-kimi-section font-bold text-kimi-text mt-2 mb-4">CrucibAI for Enterprise — Scale AI App Generation Across Your Team</h1>
           <p className="text-kimi-muted max-w-xl mx-auto">
-            Custom plans, volume credits, SSO, and dedicated support. Tell us your needs and we&apos;ll get back within 24 hours.
+            Inevitable outcomes at scale: custom plans, volume credits, SSO, and dedicated support. Tell us your needs and we&apos;ll get back within 24 hours.
           </p>
         </motion.div>
 

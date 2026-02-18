@@ -19,7 +19,7 @@ export default function Benchmarks() {
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Performance</span>
           <h1 className="text-kimi-section font-bold text-kimi-text mt-2 mb-4">CrucibAI Benchmark Report</h1>
           <p className="text-kimi-muted max-w-xl mx-auto">
-            Speed, token usage, and quality metrics for our 20-agent DAG orchestration.
+            Speed, token usage, and quality metrics for our 120-agent swarm and DAG orchestration.
           </p>
         </motion.div>
 
