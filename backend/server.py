@@ -91,20 +91,18 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 # Required for startup (Railway: set these in Dashboard → Service → Variables)
-_required_env = [k for k in ('MONGO_URL', 'DB_NAME') if not os.environ.get(k)]
-if _required_env:
+# Placeholder defaults allow container to start for deploy testing; DB operations will fail until real values are set.
+if not os.environ.get('MONGO_URL'):
+    os.environ.setdefault('MONGO_URL', 'mongodb://localhost:27017')
     import sys
-    print("FATAL: Missing required env: " + ", ".join(_required_env), file=sys.stderr)
-    print("", file=sys.stderr)
-    print("ACTION: Railway Dashboard → Your service → Variables → Add:", file=sys.stderr)
-    print("  MONGO_URL  = your MongoDB URI (e.g. from MongoDB Atlas)", file=sys.stderr)
-    print("  DB_NAME    = crucibai (or any name)", file=sys.stderr)
-    print("  JWT_SECRET = run: openssl rand -hex 32", file=sys.stderr)
-    print("Then click Redeploy. See RAILWAY_FIRST_DEPLOY.md or RAILWAY_QUICKSTART.md in repo.", file=sys.stderr)
-    sys.exit(1)
+    print("WARNING: MONGO_URL not set. Using placeholder for deploy test. Set MONGO_URL in Railway Variables for real DB.", file=sys.stderr)
+if not os.environ.get('DB_NAME'):
+    os.environ.setdefault('DB_NAME', 'crucibai')
+    import sys
+    print("WARNING: DB_NAME not set. Using placeholder 'crucibai'. Set DB_NAME in Railway Variables for real DB.", file=sys.stderr)
 
 mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
+client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000)
 db = client[os.environ['DB_NAME']]
 audit_logger = AuditLogger(db) if AuditLogger else None
 
