@@ -5,7 +5,9 @@
 # Stage 1: build frontend (same-origin API: REACT_APP_BACKEND_URL="" => /api)
 FROM node:20-alpine AS frontend
 WORKDIR /app
+# Copy package files + scripts so postinstall (patch-ajv-formats.js) can run
 COPY frontend/package.json frontend/package-lock.json frontend/yarn.lock* ./
+COPY frontend/scripts ./scripts
 RUN npm ci --omit=optional 2>/dev/null || yarn install --frozen-lockfile
 COPY frontend/ ./
 ENV REACT_APP_BACKEND_URL=
