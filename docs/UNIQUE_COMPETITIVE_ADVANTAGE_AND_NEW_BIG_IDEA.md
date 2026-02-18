@@ -125,6 +125,8 @@ When you approve, we can:
 ## Implementation status (post-approval)
 
 - **One-liner in marketing:** Added to Landing (What is CrucibAI, Agentic callout, comparison), Features (subtitle, Create & run agents card), Auth (benefits). Copy: "The same AI that builds your app runs inside your automations" and "Describe your automation in plain language — we create it (prompt-to-automation)."
+- **Messaging and brand voice:** **docs/MESSAGING_AND_BRAND_VOICE.md** — "Say it as we do": Monday→Friday line, "You run the ads; we built the stack," what we don't say (no "AI runs your company" literal). Use for landing, features, blog, sales.
+- **Gaps and integrations:** **docs/GAPS_AND_INTEGRATIONS_REVIEW.md** — Ads gap (Meta/Google): Option A (current message), Option B (HTTP to user endpoint to call ad APIs), Option C (future native). Other integrations scanned; recommendation to document Option B and keep Option C as roadmap.
 - **Prompt-to-automation (Option 1):** Implemented.
   - **Backend:** `POST /api/agents/from-description` with body `{ "description": "..." }`. Uses LLM to produce JSON spec (name, description, trigger, actions), parses and validates, creates agent via existing `agents_create`. Credits: 3 deducted for the LLM call.
   - **Frontend:** Agents list has a "Describe your automation" block (textarea + "Create from description" button). Create Agent modal has two tabs: **Describe** (plain language → same endpoint) and **Configure** (manual form). On success, list refreshes and user is navigated to the new agent.

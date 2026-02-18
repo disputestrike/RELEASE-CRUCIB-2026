@@ -49,8 +49,8 @@ This starts the backend in a new window and the frontend in the current terminal
 ## If something isn’t working
 
 - **“localhost refused to connect”**  
-  - Use **http://localhost:3000** (frontend) or **http://localhost:8000** (backend).  
-  - Make sure you started both the backend and frontend (two terminals).
+  - **Open the full URL:** **http://localhost:3000** (frontend) or **http://localhost:8000** (backend). Do not use `http://localhost` alone (nothing runs on port 80).  
+  - Make sure you started both the backend and frontend (two terminals), or run **`.\run-dev.ps1`** from the repo root (PowerShell).
 
 - **“Something is already running on port 3000”**  
   - A dev server is probably already running. Open **http://localhost:3000**.  

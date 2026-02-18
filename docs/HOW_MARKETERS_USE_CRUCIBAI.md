@@ -66,6 +66,15 @@ So marketers can **describe the outcome**; we create the automation (no need to 
 
 We don’t replace your ad spend or channels; we help you **own the destination** (sites, pages, forms) and **automate the follow-up** (agents, run_agent, webhooks).
 
+### Closing the loop: push creatives to Meta / Google Ads
+
+We produce the **copy and creatives** (Content Agent, Workspace); we don’t have a built-in “post to Meta/Google” button. You can still connect the two:
+
+- **Manual:** Copy our generated headlines, body, and CTA into Meta Ads Manager or Google Ads.
+- **Automated:** Add an **HTTP** step in your agent that POSTs to **your** endpoint (e.g. a small server or Zapier/Make) with the Content Agent output. Your endpoint holds Meta/Google API credentials and creates the ad or campaign. So “run Content Agent → HTTP to my ad-proxy → ads go live” is possible today without us storing ad-platform tokens.
+
+See **docs/GAPS_AND_INTEGRATIONS_REVIEW.md** for options and roadmap.
+
 ---
 
 ## 4. Marketing agency use cases
@@ -84,4 +93,6 @@ We don’t replace your ad spend or channels; we help you **own the destination*
 - **Agencies** use it for client deliverables, internal tools, and client automations — one platform for “what’s in front of people” and “what happens after they show up.”
 - **We are a tool for marketing** in the sense that we help people who spend money (on ads, tools, time) to **make money** by shipping assets and workflows faster and keeping quality consistent across build and automation.
 
-For product capabilities and differentiators, see **docs/UNIQUE_COMPETITIVE_ADVANTAGE_AND_NEW_BIG_IDEA.md**. For pricing and plans, see the Pricing page and **docs/PRICING_REVIEW_AND_SUSTAINABILITY.md**.
+**Say it as we do:** See **docs/MESSAGING_AND_BRAND_VOICE.md** for locked lines (Monday→Friday, “You run the ads; we built the stack,” one-liner).
+
+For product capabilities and differentiators, see **docs/UNIQUE_COMPETITIVE_ADVANTAGE_AND_NEW_BIG_IDEA.md**. For pricing and plans, see the Pricing page and **docs/PRICING_REVIEW_AND_SUSTAINABILITY.md**. For the ads gap and integration options, see **docs/GAPS_AND_INTEGRATIONS_REVIEW.md**.

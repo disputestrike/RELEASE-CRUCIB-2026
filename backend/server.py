@@ -2641,6 +2641,22 @@ async def agents_list(user: dict = Depends(get_current_user), limit: int = Query
     return {"items": out, "total": await db.user_agents.count_documents({"user_id": user["id"]})}
 
 
+# Templates (public) — must be registered before /agents/{agent_id} so /agents/templates is not matched as agent_id
+@api_router.get("/agents/templates")
+async def agents_templates_list():
+    """List agent templates (no auth required for listing)."""
+    return {"templates": [{"slug": t["slug"], "name": t["name"], "description": t["description"]} for t in AGENT_TEMPLATES]}
+
+
+@api_router.get("/agents/templates/{slug}")
+async def agents_template_get(slug: str):
+    """Get one template by slug."""
+    t = next((x for x in AGENT_TEMPLATES if x["slug"] == slug), None)
+    if not t:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return t
+
+
 @api_router.get("/agents/{agent_id}")
 async def agents_get(agent_id: str, user: dict = Depends(get_current_user)):
     """Get one agent (own only)."""
@@ -2786,7 +2802,7 @@ async def agents_trigger_run(agent_id: str, user: dict = Depends(get_current_use
     return {"run_id": run_id, "status": status}
 
 
-# Templates (pre-built agent definitions)
+# Pre-built agent templates (referenced by agents_templates_list / agents_template_get above)
 AGENT_TEMPLATES = [
     {"slug": "daily-digest", "name": "Daily digest", "description": "Generate a short daily summary and optionally email it.", "trigger": {"type": "schedule", "cron_expression": "0 9 * * *"}, "actions": [{"type": "run_agent", "config": {"agent_name": "Content Agent", "prompt": "Summarize the key updates for today in 3 bullet points."}}]},
     {"slug": "youtube-poster", "name": "YouTube poster", "description": "Post or schedule content (placeholder: use HTTP action to your API).", "trigger": {"type": "schedule", "cron_expression": "0 17 * * *"}, "actions": [{"type": "http", "config": {"method": "POST", "url": "https://httpbin.org/post", "body": {"message": "Scheduled post"}}}]},
@@ -2794,21 +2810,6 @@ AGENT_TEMPLATES = [
     {"slug": "inbox-summarizer", "name": "Inbox summarizer", "description": "Webhook + Content Agent + email.", "trigger": {"type": "webhook"}, "actions": [{"type": "run_agent", "config": {"agent_name": "Content Agent", "prompt": "Summarize the following in 3 bullets."}}, {"type": "email", "config": {"to": "", "subject": "Summary", "body": "{{steps.0.output}}"}}]},
     {"slug": "status-checker", "name": "Status page checker", "description": "Schedule HTTP check; Slack on failure.", "trigger": {"type": "schedule", "cron_expression": "0 */6 * * *"}, "actions": [{"type": "http", "config": {"method": "GET", "url": "https://api.github.com/zen"}}, {"type": "slack", "config": {"text": "Status check completed.", "webhook_url": ""}}]},
 ]
-
-
-@api_router.get("/agents/templates")
-async def agents_templates_list():
-    """List agent templates (no auth required for listing)."""
-    return {"templates": [{"slug": t["slug"], "name": t["name"], "description": t["description"]} for t in AGENT_TEMPLATES]}
-
-
-@api_router.get("/agents/templates/{slug}")
-async def agents_template_get(slug: str):
-    """Get one template by slug."""
-    t = next((x for x in AGENT_TEMPLATES if x["slug"] == slug), None)
-    if not t:
-        raise HTTPException(status_code=404, detail="Template not found")
-    return t
 
 
 class FromTemplateBody(BaseModel):

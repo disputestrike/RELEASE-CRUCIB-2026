@@ -11,16 +11,16 @@ PUBLIC_GET = [
     ("/api/health", ["status"]),
     ("/api/tokens/bundles", ["bundles"]),
     ("/api/build/phases", None),
-    ("/api/agents/templates", None),
+    ("/api/agents", ["agents"]),  # public: build-swarm definitions
+    ("/api/agents/templates", ["templates"]),
     ("/api/templates", None),
     ("/api/patterns", None),
     ("/api/examples", ["examples"]),
     ("/api/prompts/templates", None),
 ]
 
-# Routes that REQUIRE AUTH - expect 401 without token
+# Routes that REQUIRE AUTH - expect 401 without token (GET /api/agents is public definitions; user list is same path but first route wins)
 AUTH_GET = [
-    "/api/agents",
     "/api/auth/me",
     "/api/projects",
     "/api/tokens/history",

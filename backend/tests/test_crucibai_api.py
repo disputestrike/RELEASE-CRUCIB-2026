@@ -146,19 +146,21 @@ class TestTokenEndpoints:
 
 
 class TestAgentsEndpoints:
-    """GET /api/agents (user-created agents; requires auth)."""
+    """GET /api/agents returns public build-swarm definitions (no auth)."""
 
     async def test_get_agents_unauth_401(self, app_client):
         r = await app_client.get("/api/agents")
-        assert r.status_code == 401
+        assert r.status_code == 200
+        data = r.json()
+        assert "agents" in data
+        assert isinstance(data["agents"], list)
 
     async def test_get_agents_with_auth(self, app_client, auth_headers):
         r = await app_client.get("/api/agents", headers=auth_headers)
         assert r.status_code == 200
         data = r.json()
-        assert "items" in data
-        assert "total" in data
-        assert isinstance(data["items"], list)
+        assert "agents" in data
+        assert isinstance(data["agents"], list)
 
 
 class TestPatternsEndpoints:

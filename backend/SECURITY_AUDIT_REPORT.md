@@ -1,14 +1,14 @@
 # CrucibAI Security Audit Report
-Generated: 2026-02-15T13:49:13.652979
+Generated: 2026-02-18T14:06:35.080343
 
 ## Executive Summary
 
 This report documents the security audit findings for CrucibAI.
 
 **Total Checks:** 44
-**Passed:** 37
-**Failed:** 7
-**Pass Rate:** 84.1%
+**Passed:** 35
+**Failed:** 9
+**Pass Rate:** 79.5%
 
 ## Findings by Severity
 
@@ -21,6 +21,14 @@ This report documents the security audit findings for CrucibAI.
 - **MONGO_URL not configured**
   - Category: Environment
   - Recommendation: Set MONGO_URL in .env file
+
+- **JWT_SECRET not configured**
+  - Category: Environment
+  - Recommendation: Set JWT_SECRET in .env file
+
+- **OPENAI_API_KEY not configured**
+  - Category: Environment
+  - Recommendation: Set OPENAI_API_KEY in .env file
 
 - **ANTHROPIC_API_KEY not configured**
   - Category: Environment
@@ -36,8 +44,6 @@ This report documents the security audit findings for CrucibAI.
 
 ## Passed Security Checks
 
-✅ JWT_SECRET is set
-✅ OPENAI_API_KEY is set
 ✅ JWT_VALIDATION implemented
 ✅ PASSWORD_HASHING implemented
 ✅ RATE_LIMITING implemented
@@ -77,6 +83,8 @@ This report documents the security audit findings for CrucibAI.
 ## Items Requiring Review
 
 ❌ MONGO_URL is NOT set
+❌ JWT_SECRET is NOT set
+❌ OPENAI_API_KEY is NOT set
 ❌ ANTHROPIC_API_KEY is NOT set
 ❌ GROQ_API_KEY is NOT set
 ❌ STRIPE_API_KEY is NOT set

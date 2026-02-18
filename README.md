@@ -3,10 +3,10 @@
 **State the idea. We build it.** No product limit: web apps, mobile apps (Expo + App Store / Play Store pack), SaaS, bots, agents, dashboards, landing pages. **The same AI that builds your app runs inside your automations** (schedule, webhook, run_agent). Bring your code (paste, ZIP, Git) → we stand it up, you fix, continue, or rebuild. One platform for builds and automations.
 
 **Local app (after starting backend + frontend):**  
-**http://localhost:3000**  
+Open **http://localhost:3000** in your browser (do not use `http://localhost` alone).  
 Backend API: http://localhost:8000  
 
-How to run: see **[RUN.md](RUN.md)**. Vision: **[BUILD_ANYTHING.md](BUILD_ANYTHING.md)**.
+**To start:** Run **`.\run-dev.ps1`** from the repo root (PowerShell), or see **[RUN.md](RUN.md)** for two-terminal steps. Vision: **[BUILD_ANYTHING.md](BUILD_ANYTHING.md)**.
 
 **Deploy on Railway (backend):**  
 1. Connect this repo to Railway.  

@@ -327,7 +327,7 @@ This report documents the security audit findings for CrucibAI.
     
     def run_full_audit(self) -> str:
         """Run complete security audit"""
-        print("🔒 Starting Security Audit...")
+        print("Starting Security Audit...")
         
         # Run all checks
         self.check_environment_variables()
@@ -341,18 +341,23 @@ This report documents the security audit findings for CrucibAI.
         report = self.generate_report()
         
         # Save report
-        with open('SECURITY_AUDIT_REPORT.md', 'w') as f:
+        with open('SECURITY_AUDIT_REPORT.md', 'w', encoding='utf-8') as f:
             f.write(report)
         
-        print("✅ Security audit complete!")
-        print(f"📊 Passed: {len(self.passed_checks)}")
-        print(f"⚠️  Failed: {len(self.failed_checks)}")
-        print(f"🔍 Findings: {len(self.findings)}")
+        print("Security audit complete!")
+        print(f"Passed: {len(self.passed_checks)}")
+        print(f"Failed: {len(self.failed_checks)}")
+        print(f"Findings: {len(self.findings)}")
         
         return report
 
 if __name__ == "__main__":
+    import sys
     audit = SecurityAudit()
     report = audit.run_full_audit()
     print("\n" + "="*50)
-    print(report)
+    enc = getattr(sys.stdout, "encoding", None) or "utf-8"
+    try:
+        print(report)
+    except UnicodeEncodeError:
+        print(report.encode(enc, errors="replace").decode(enc))
