@@ -254,6 +254,7 @@ function App() {
           <Route path="/prompts" element={<PromptsPublic />} />
           <Route path="/benchmarks" element={<Benchmarks />} />
           <Route path="/blog" element={<Blog />} />
+          <Route path="/blog/:slug" element={<Blog />} />
           <Route path="/app" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route index element={<Dashboard />} />
             <Route path="builder" element={<Builder />} />
