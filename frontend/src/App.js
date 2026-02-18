@@ -67,8 +67,9 @@ import AdminAnalytics from "./pages/AdminAnalytics";
 import AdminLegal from "./pages/AdminLegal";
 import AuditLog from "./pages/AuditLog";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
-export const API = `${BACKEND_URL}/api`;
+// Empty REACT_APP_BACKEND_URL => same-origin /api (for single-URL deploy on Railway)
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL !== undefined ? process.env.REACT_APP_BACKEND_URL : 'http://localhost:8000';
+export const API = BACKEND_URL ? `${BACKEND_URL}/api` : '/api';
 
 // Auth Context
 const AuthContext = createContext(null);

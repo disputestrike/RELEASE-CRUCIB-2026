@@ -4684,6 +4684,12 @@ async def websocket_project_progress(websocket: WebSocket, project_id: str):
     except WebSocketDisconnect:
         pass
 
+# Serve frontend static (Docker/Railway: frontend built and copied to /app/static)
+_static_dir = Path(__file__).resolve().parent / "static"
+if _static_dir.exists():
+    from fastapi.staticfiles import StaticFiles
+    app.mount("/", StaticFiles(directory=str(_static_dir), html=True), name="frontend")
+
 # Add security and performance middleware (order matters - added in reverse)
 app.add_middleware(PerformanceMonitoringMiddleware)
 app.add_middleware(RequestValidationMiddleware)
