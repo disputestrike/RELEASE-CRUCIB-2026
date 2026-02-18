@@ -22,6 +22,8 @@ STATE_WRITERS: Dict[str, str] = {
     "Planner": "plan",
     "Requirements Clarifier": "requirements",
     "Stack Selector": "stack",
+    "Native Config Agent": "native_config",
+    "Store Prep Agent": "store_prep",
     "Design Agent": "design_spec",
     "Brand Agent": "brand_spec",
     "Memory Agent": "memory_summary",
@@ -41,6 +43,7 @@ STATE_WRITERS: Dict[str, str] = {
 # Agent -> default workspace-relative path for artifact write
 ARTIFACT_PATHS: Dict[str, str] = {
     "Frontend Generation": "src/App.jsx",
+    "Store Prep Agent": "store-submission/STORE_SUBMISSION_GUIDE.md",
     "Backend Generation": "server.py",
     "Database Agent": "schema.sql",
     "API Integration": "api/client.js",
@@ -193,7 +196,7 @@ def run_agent_real_behavior(
         out = json.dumps(out)
     out_str = (out if isinstance(out, str) else str(out)).strip()
 
-    # 1) State writers: parse if JSON-ish, else store as text/list
+    # 1) State writers: parse if JSON-ish, else store as text/list (do not return if also in ARTIFACT_PATHS so artifact is written)
     if agent_name in STATE_WRITERS:
         key = STATE_WRITERS[agent_name]
         value = out_str
@@ -209,7 +212,8 @@ def run_agent_real_behavior(
             update_state(project_id, {key: value})
         except Exception as e:
             logger.warning("state write %s: %s", agent_name, e)
-        return
+        if agent_name not in ARTIFACT_PATHS:
+            return
 
     # 2) Tool runners that already ran in run_real_post_step: write result to state
     if agent_name in TOOL_RUNNER_STATE_KEYS and agent_name in POST_STEP_AGENTS:

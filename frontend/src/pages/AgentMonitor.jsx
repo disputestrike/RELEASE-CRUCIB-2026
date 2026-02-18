@@ -222,11 +222,16 @@ const AgentMonitor = () => {
           </Link>
           <div>
             <h1 className="text-2xl font-bold">{project.name}</h1>
-            <p className="text-gray-400">{project.project_type}</p>
+            <p className="text-gray-400">{project.project_type}{project.build_kind === 'mobile' ? ' · Mobile (Expo)' : ''}</p>
           </div>
         </div>
         
         <div className="flex items-center gap-3">
+          {project.build_kind === 'mobile' && (
+            <span className="px-3 py-1.5 rounded-full text-sm font-medium bg-violet-500/20 text-violet-300" data-testid="mobile-badge">
+              Mobile project — includes App Store &amp; Play Store guide
+            </span>
+          )}
           <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${
             project.status === 'completed' ? 'bg-green-500/20 text-green-400' :
             project.status === 'running' ? 'bg-blue-500/20 text-blue-400' :

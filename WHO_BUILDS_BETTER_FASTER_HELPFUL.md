@@ -36,6 +36,7 @@ Others: sequential flows or one long chain. We’re **faster** because we parall
 - **One prompt → full app:** From “build a todo app” to runnable app, deploy, and export. No need to know the stack or which agent to call.
 - **Visible progress:** Event timeline, Build state, Live preview, ManusComputer. Users see “what’s running” and “what was produced.” Less confusion, more trust.
 - **Works for everyone:** Free tier, templates, examples. You don’t need to be a dev to get a working app; devs get full control (workspace, state, deploy).
+- **Web + mobile to stores:** Build websites and mobile apps (Expo/React Native). Export includes a store submission pack and step-by-step guides for Apple App Store and Google Play.
 
 Others: either expert-only (IDE, raw agents) or opaque (one box, no visibility). We’re **more helpful** because we’re built for all users and we show the work.
 

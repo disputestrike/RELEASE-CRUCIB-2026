@@ -90,7 +90,7 @@
 | **1** | **CrucibAI** | **10.0** | Plan-first full-app, 100-agent DAG, quality score, phase retry, token optimization, Enterprise, Deploy UX |
 | 2 | Manus / Bolt | 7.2 | Agentic app-from-prompt |
 | 3 | Kimi AI | 7.0 | Long context, docs/slides/sheets, modes |
-| 4 | Cursor | 6.8 | In-IDE coding, Composer, polish |
+| 4 | Cursor | 6.8 | In-IDE coding, Composer; no AgentMonitor-style build visibility |
 | 5 | v0 (Vercel) | 6.6 | UI-from-prompt, Vercel deploy |
 | 6 | Replit Agent | 6.5 | In-browser build and deploy |
 | 6 | Windsurf | 6.5 | Agentic multi-file edits, Flow |
@@ -114,7 +114,7 @@
 
 | vs | CrucibAI advantage |
 |----|--------------------|
-| **Cursor** | Full-app from one prompt; DAG; quality score; phase retry; token optimization. Cursor wins on in-IDE polish. |
+| **Cursor** | Full-app from one prompt; DAG; quality score; phase retry; token optimization. CrucibAI leads on build/agent visibility (AgentMonitor); Cursor leads on traditional in-IDE. |
 | **Copilot** | Full-stack app; 20-agent phases; quality visibility; real-time progress. Copilot wins on inline + GitHub. |
 | **Manus / Bolt** | Parallel phases (~3.2×); quality score + breakdown; phase retry; token-optimized prompts. |
 | **Kimi** | Full-app flow; plan-first visibility; export/deploy; quality gate; per-step tokens; dedicated docs/slides/sheets API. |
@@ -135,7 +135,7 @@
 | 1 | CrucibAI | 10.0 | — (reference) |
 | 2 | Manus / Bolt | 7.2 | Faster (parallel DAG), quality score, phase retry, token optimization |
 | 3 | Kimi AI | 7.0 | Full-app + plan-first + quality + export/deploy + API |
-| 4 | Cursor | 6.8 | Full-app + orchestration + quality; Cursor better UX/polish |
+| 4 | Cursor | 6.8 | Full-app + orchestration + quality; CrucibAI better build visibility (AgentMonitor) |
 | 5 | v0 | 6.6 | Full-stack + agents + quality; v0 better UI-only speed |
 | 6–8 | Replit, Windsurf, Lovable | 6.5 | Full-app + DAG + quality + retry |
 | 9–20 | ChatGPT, Copilot, Codeium, … | 5.1–6.2 | Full-app, orchestration, quality, progress, pricing, docs |

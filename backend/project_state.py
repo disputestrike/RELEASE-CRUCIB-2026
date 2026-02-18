@@ -44,6 +44,8 @@ DEFAULT_STATE: Dict[str, Any] = {
     "lighthouse_report": "",
     "dependency_audit": "",
     "scrape_urls": [],
+    "native_config": "",
+    "store_prep": "",
 }
 
 

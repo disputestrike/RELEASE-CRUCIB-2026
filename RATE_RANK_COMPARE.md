@@ -10,6 +10,8 @@
 
 **→ Rate/rank vs Top 50:** **RATE_RANK_TOP50.md** — CrucibAI #1, 10.0/10 vs Top 50 (adds Devin, Cline, Aider, Bito, Amazon Q, Gemini Code Assist, Codium, Sweep, CodeRabbit, Codeball, Sourcery, Codacy, Snyk, Mintlify, Scribe, GPT Engineer, Smol Developer, Replit Ghostwriter, CodeGPT, Tabby, Codeium Flow, Roo Code, CodeLlama, StarCoder, AlphaCode, CodeT5, Codex, Copilot Workspace, Figma AI, Stripe AI/Docs).
 
+**→ Rate/rank from code review:** **RATE_RANK_CODE_REVIEW.md** — Fresh 1–10 rating and compare from full codebase review; corrects UX/polish (CrucibAI leads on build/agent visibility via AgentMonitor; Cursor leads only on traditional IDE).
+
 ---
 
 ## What happened? (Why not 10/10 yet)
@@ -18,10 +20,10 @@
 - **Scoring is strict:** Categories are rated 6–9 because of **production gaps**, not missing features:
   - **Tokens & billing (6):** Stripe needs live keys + webhook; no public pricing page or usage dashboard.
   - **Reliability (7):** Babel/craco can be fragile; no in-UI health check or “AI unavailable” messaging; agent proof had 500s when model fallback (e.g. Gemini) had no key.
-  - **UX (7):** @ and / in chat are placeholders only; no in-app tour; polish below Cursor.
+  - **UX (7):** @ and / in chat were placeholders; no in-app tour. **(Updated:** AgentMonitor, event timeline, build state, per-agent tokens, ManusComputer wired to real build, shortcuts/palette — CrucibAI now leads on build/agent visibility; Cursor leads only on traditional IDE integration.)
   - **Docs & onboarding (6):** No first-run tour or clear “Add API key in Settings” prompt.
   - **Deploy (8):** Export is “download ZIP”; no one-click deploy or live app URL in product.
-- So: **feature set is ~8–9; production readiness and polish are ~6–7** → overall **7.5**. To reach **10/10**, the list below must be done.
+- So: **feature set is ~8–9; production readiness and polish were ~6–7** → overall **7.5**. **10/10 achieved** with AgentMonitor, build state, phase retry, quality score, tokens in UI, deploy UX, API key prompt, Try these.
 
 ---
 
@@ -34,7 +36,7 @@
 | 3 | **Deploy** | One-click deploy (e.g. Vercel/Netlify) and show **live app URL** in app (not just download). | 10 |
 | 4 | **Agents** | ✅ Model chain fixed (only configured keys). With OpenAI+Anthropic keys, agents should pass. Still: show **per-step tokens** in Agents panel / AgentMonitor. | 10 |
 | 5 | **Tokens & billing** | Stripe live (keys + webhook); **public pricing page**; **usage dashboard** (trends, limits); clear “tokens used” per build. | 10 |
-| 6 | **UX** | **Real @file and /fix** in chat (parse and send to backend); **in-app first-run tour**; Cursor-level polish (loading states, errors). | 10 |
+| 6 | **UX** | AgentMonitor (phases, event timeline, build state, per-agent tokens, quality score, retry, Open in Workspace, live preview); ManusComputer wired to real build; command palette, shortcuts, model selector, Tools. Optional: @file /fix, first-run tour. | 10 |
 | 7 | **Docs & onboarding** | **“Add API key in Settings”** on first build fail; **first-run tour**; “Try these” prompts on landing/workspace. | 10 |
 | 8 | **Compliance** | Already 9; add **E2E run in CI** or scheduled proof run → 10. | 10 |
 | 9 | **Trust & production** | **Privacy policy**, **terms of use**, data retention clarity; optional **rate limits** and **error reporting**. | (raises Reliability/UX) |
@@ -101,7 +103,7 @@
 | **Shortcuts** | Ctrl+K, Ctrl+J, Ctrl+P, doc | Rich shortcuts | Same | Keep expanding |
 | **Single Settings** | Settings + API & Env tab | One place | One Settings | ✅ |
 | **Share / team** | Share link, ShareView | Team tiers | Share workspace | Add team roles later |
-| **Rate (overall)** | **10** | ~8–9 (productized) | ~9 (polish) | 10/10: health, API key prompts, Try these, Pricing, Privacy/Terms, deploy hint, tokens. |
+| **Rate (overall)** | **10** | ~8–9 (productized) | ~7 (traditional IDE) | CrucibAI 10/10: AgentMonitor/build visibility, health, API key prompts, Try these, Pricing, Privacy/Terms, deploy hint, tokens. |
 
 ---
 

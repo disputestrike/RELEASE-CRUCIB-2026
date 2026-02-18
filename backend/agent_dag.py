@@ -12,7 +12,9 @@ from typing import Dict, List, Any
 AGENT_DAG: Dict[str, Dict[str, Any]] = {
     "Planner": {"depends_on": [], "system_prompt": "You are a Planner. Decompose the request into 3-7 executable tasks. Numbered list only."},
     "Requirements Clarifier": {"depends_on": ["Planner"], "system_prompt": "You are a Requirements Clarifier. Ask 2-4 clarifying questions. One per line."},
-    "Stack Selector": {"depends_on": ["Requirements Clarifier"], "system_prompt": "You are a Stack Selector. Recommend tech stack (frontend, backend, DB). Short bullets."},
+    "Stack Selector": {"depends_on": ["Requirements Clarifier"], "system_prompt": "You are a Stack Selector. Recommend tech stack (frontend, backend, DB). Short bullets. When build is mobile, recommend Expo (React Native) or Flutter and say 'Mobile stack: Expo' or 'Flutter', targets: iOS, Android."},
+    "Native Config Agent": {"depends_on": ["Stack Selector"], "system_prompt": "You are a Native Config Agent for mobile apps. For an Expo app, output ONLY two valid JSON objects. First block: app.json with keys name, slug, version, ios.bundleIdentifier, android.package, and optional splash/image. Second block: eas.json with build profiles (preview, production) for iOS and Android. Use code blocks: ```json ... ``` for each. No other text."},
+    "Store Prep Agent": {"depends_on": ["Frontend Generation", "Native Config Agent"], "system_prompt": "You are a Store Prep Agent for app store submission. Output 1) A JSON object with app_name, short_description, long_description, keywords (array), icon_sizes_apple, icon_sizes_android, screenshot_sizes_apple, screenshot_sizes_android. 2) SUBMIT_TO_APPLE.md: step-by-step guide for App Store Connect (signing, screenshots, metadata, review). 3) SUBMIT_TO_GOOGLE.md: step-by-step for Google Play Console. Use clear section headers. Plain text or markdown."},
     "Frontend Generation": {"depends_on": ["Stack Selector"], "system_prompt": "You are Frontend Generation. Output only complete React/JSX code. No markdown."},
     "Backend Generation": {"depends_on": ["Stack Selector"], "system_prompt": "You are Backend Generation. Output only backend code (e.g. FastAPI/Express). No markdown."},
     "Database Agent": {"depends_on": ["Backend Generation"], "system_prompt": "You are a Database Agent. Output schema and migration steps. Plain text or SQL."},
@@ -148,7 +150,9 @@ CONTEXT_MAX_CHARS_OPTIMIZED = 1200
 OPTIMIZED_SYSTEM_PROMPTS: Dict[str, str] = {
     "Planner": "Planner. 3–7 tasks. Numbered list only.",
     "Requirements Clarifier": "Requirements. 2–4 clarifying questions. One per line.",
-    "Stack Selector": "Stack. Recommend frontend, backend, DB. Short bullets.",
+    "Stack Selector": "Stack. Recommend frontend, backend, DB. If mobile: Expo or Flutter, iOS/Android. Short bullets.",
+    "Native Config Agent": "Native Config. Expo app.json and eas.json only. Two JSON code blocks.",
+    "Store Prep Agent": "Store Prep. JSON metadata + SUBMIT_TO_APPLE.md + SUBMIT_TO_GOOGLE.md content.",
     "Frontend Generation": "Frontend. React/JSX code only. No markdown.",
     "Backend Generation": "Backend. FastAPI/Express code only. No markdown.",
     "Database Agent": "Database. Schema and migrations. Plain text or SQL.",

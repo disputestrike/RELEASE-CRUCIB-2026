@@ -135,7 +135,7 @@
     {
       "id": "ide_integration",
       "title": "IDE Integration",
-      "summary": "CrucibAI supports 4 IDEs: VS Code, JetBrains, Sublime, Vim. Cursor: 1. Copilot: 2. Replit: 0.",
+      "summary": "CrucibAI supports 4 extensions (VS Code & Cursor, JetBrains, Sublime, Vim). One extension works in both VS Code and Cursor. Cursor: 1. Copilot: 2. Replit: 0.",
       "image_plan": "",
       "slide_template_key": ""
     },
@@ -163,7 +163,7 @@
     {
       "id": "competitive_advantages",
       "title": "Why CrucibAI Wins",
-      "summary": "115 agents, real-time collaboration, vibe coding, everything support, 99.2% success, 4 IDEs, 9.9/10 quality, full-stack.",
+      "summary": "115 agents, real-time collaboration, vibe coding, everything support, 99.2% success, 4 IDEs (VS Code, Cursor, JetBrains, Sublime, Vim), 9.9/10 quality, full-stack.",
       "image_plan": "",
       "slide_template_key": ""
     },
