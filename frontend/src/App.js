@@ -57,6 +57,7 @@ import TemplatesPublic from "./pages/TemplatesPublic";
 import PatternsPublic from "./pages/PatternsPublic";
 import LearnPublic from "./pages/LearnPublic";
 import DocsPage from "./pages/DocsPage";
+import TutorialsPage from "./pages/TutorialsPage";
 import ShortcutsPublic from "./pages/ShortcutsPublic";
 import PromptsPublic from "./pages/PromptsPublic";
 import Benchmarks from "./pages/Benchmarks";
@@ -257,6 +258,7 @@ function App() {
           <Route path="/learn" element={<LearnPublic />} />
           <Route path="/docs" element={<DocsPage />} />
           <Route path="/documentation" element={<DocsPage />} />
+          <Route path="/tutorials" element={<TutorialsPage />} />
           <Route path="/shortcuts" element={<ShortcutsPublic />} />
           <Route path="/prompts" element={<PromptsPublic />} />
           <Route path="/benchmarks" element={<Benchmarks />} />
