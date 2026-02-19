@@ -1,0 +1,188 @@
+/* Premium Button Component */
+
+.premium-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* ============================================
+   SIZE VARIANTS
+   ============================================ */
+
+.premium-button-sm {
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.premium-button-md {
+  padding: 12px 24px;
+  font-size: 14px;
+}
+
+.premium-button-lg {
+  padding: 16px 32px;
+  font-size: 16px;
+}
+
+/* ============================================
+   STYLE VARIANTS
+   ============================================ */
+
+/* Primary button */
+.premium-button-primary {
+  background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.premium-button-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+}
+
+.premium-button-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* Secondary button */
+.premium-button-secondary {
+  background: #F3F1ED;
+  color: #1A1A1A;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.premium-button-secondary:hover:not(:disabled) {
+  background: #FFFFFF;
+  border-color: #3B82F6;
+  color: #3B82F6;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Outline button */
+.premium-button-outline {
+  background: transparent;
+  color: #3B82F6;
+  border: 2px solid #3B82F6;
+}
+
+.premium-button-outline:hover:not(:disabled) {
+  background: #EFF6FF;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+/* Ghost button */
+.premium-button-ghost {
+  background: transparent;
+  color: #666666;
+  border: none;
+}
+
+.premium-button-ghost:hover:not(:disabled) {
+  background: #F3F1ED;
+  color: #3B82F6;
+}
+
+/* ============================================
+   STATES
+   ============================================ */
+
+/* Loading state */
+.premium-button.loading {
+  pointer-events: none;
+}
+
+.button-loader {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #FFFFFF;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.premium-button-secondary.loading .button-loader {
+  border-color: rgba(0, 0, 0, 0.1);
+  border-top-color: #3B82F6;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Disabled state */
+.premium-button:disabled,
+.premium-button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* ============================================
+   ICON STYLING
+   ============================================ */
+
+.premium-button svg {
+  flex-shrink: 0;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 768px) {
+  .premium-button-md {
+    padding: 10px 20px;
+    font-size: 13px;
+  }
+
+  .premium-button-lg {
+    padding: 12px 24px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .premium-button {
+    width: 100%;
+  }
+
+  .premium-button-md,
+  .premium-button-lg {
+    padding: 12px 16px;
+  }
+}
+
+/* ============================================
+   ACCESSIBILITY
+   ============================================ */
+
+.premium-button:focus-visible {
+  outline: 2px solid #3B82F6;
+  outline-offset: 2px;
+}
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  .premium-button {
+    transition: none;
+  }
+
+  .button-loader {
+    animation: none;
+    border-top-color: transparent;
+  }
+}

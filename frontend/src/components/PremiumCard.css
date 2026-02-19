@@ -1,0 +1,93 @@
+/* Premium Card Component */
+
+.premium-card {
+  padding: 24px;
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Hover effect */
+.premium-card:hover {
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-4px);
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+/* Icon styling */
+.premium-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+  border-radius: 12px;
+  color: #3B82F6;
+  margin-bottom: 16px;
+  transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.premium-card:hover .premium-card-icon {
+  background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+  color: #FFFFFF;
+  transform: scale(1.1);
+}
+
+/* Title styling */
+.premium-card-title {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1A1A1A;
+  font-family: 'Outfit', sans-serif;
+}
+
+/* Description styling */
+.premium-card-description {
+  margin: 0 0 16px 0;
+  font-size: 13px;
+  color: #888888;
+  line-height: 1.5;
+}
+
+/* Content area */
+.premium-card-content {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Gradient variant */
+.premium-card.gradient-blue {
+  background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+.premium-card.gradient-blue:hover {
+  background: linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .premium-card {
+    padding: 20px;
+  }
+
+  .premium-card:hover {
+    transform: translateY(-2px);
+  }
+
+  .premium-card-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .premium-card-title {
+    font-size: 14px;
+  }
+}
