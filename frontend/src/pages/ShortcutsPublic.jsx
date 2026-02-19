@@ -50,7 +50,7 @@ export default function ShortcutsPublic() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="mt-10 text-center">
           <button
             onClick={() => navigate(user ? '/app/shortcuts' : '/auth?mode=register')}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-white text-black font-medium rounded-lg hover:bg-zinc-200 transition"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-white text-zinc-900 font-medium rounded-lg hover:bg-zinc-200 transition"
           >
             {user ? 'Open in app' : 'Get started free'}
             <ArrowRight className="w-4 h-4" />

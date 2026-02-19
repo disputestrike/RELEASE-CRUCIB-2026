@@ -290,7 +290,7 @@ const LandingPage = () => {
             ) : (
               <button onClick={() => navigate('/auth')} className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Sign in</button>
             )}
-            <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="px-4 py-2 bg-white text-black text-sm font-medium rounded-lg hover:bg-zinc-200 transition">Get started free</button>
+            <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="px-4 py-2 bg-white text-zinc-900 text-sm font-medium rounded-lg hover:bg-zinc-200 transition">Get started free</button>
           </div>
           <button className="md:hidden text-kimi-text" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -309,7 +309,7 @@ const LandingPage = () => {
               <Link to="/prompts" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Prompts</Link>
               <Link to="/learn" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Documentation</Link>
               <Link to="/blog" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Blog</Link>
-              <button onClick={() => { navigate(user ? '/app' : '/auth?mode=register'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-black rounded-lg font-medium mt-4">Get started</button>
+              <button onClick={() => { navigate(user ? '/app' : '/auth?mode=register'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-zinc-900 rounded-lg font-medium mt-4">Get started</button>
             </div>
           </motion.div>
         )}
@@ -328,7 +328,7 @@ const LandingPage = () => {
             The only platform where the same AI that builds your app runs inside your automations. Web apps, mobile apps, and automations — one platform, one AI, no switching tools.
           </motion.p>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }} className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-3">
-            <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="glass-kimi-btn px-6 py-3 text-black font-medium rounded-xl transition">
+            <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="glass-kimi-btn px-6 py-3 text-zinc-900 font-medium rounded-xl transition">
               Make It Inevitable
             </button>
             <Link to="/app/workspace" className="px-6 py-3 bg-white/10 text-kimi-text font-medium rounded-xl border border-white/20 hover:bg-white/20 transition">Open Workspace</Link>
@@ -360,7 +360,7 @@ const LandingPage = () => {
                   <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[80%] px-4 py-3 rounded-xl text-sm ${
                       msg.role === 'user' 
-                        ? 'bg-white text-black' 
+                        ? 'bg-white text-zinc-900' 
                         : msg.error 
                           ? 'bg-red-500/10 text-red-400'
                           : 'bg-zinc-800 text-zinc-200'
@@ -472,7 +472,7 @@ const LandingPage = () => {
                 <button
                   type="submit"
                   disabled={(!input.trim() && !attachedFiles.some(f => f.type?.startsWith('image/'))) || isBuilding}
-                  className="px-6 py-4 bg-white text-black rounded-xl text-base font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:bg-zinc-200 transition shrink-0"
+                  className="px-6 py-4 bg-white text-zinc-900 rounded-xl text-base font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:bg-zinc-200 transition shrink-0"
                 >
                   {isBuilding ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
@@ -670,7 +670,7 @@ const LandingPage = () => {
             </div>
           </div>
           <div className="mt-10 text-center">
-            <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="px-6 py-3 bg-white text-black font-medium rounded-lg hover:bg-zinc-200 transition">
+            <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="px-6 py-3 bg-white text-zinc-900 font-medium rounded-lg hover:bg-zinc-200 transition">
               {user ? 'Import in Dashboard' : 'Get started free'}
             </button>
           </div>
@@ -989,7 +989,7 @@ const LandingPage = () => {
           <h2 className="text-3xl md:text-4xl font-bold text-kimi-text mb-4">Your idea is inevitable. Start Monday.</h2>
           <p className="text-kimi-muted mb-8">50 free credits. No credit card. Describe it today. Ship it Friday.</p>
           <div className="flex flex-wrap justify-center gap-4">
-            <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="px-6 py-3 bg-white text-black font-medium rounded-lg hover:bg-zinc-200 transition border border-black/10">
+            <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="px-6 py-3 bg-white text-zinc-900 font-medium rounded-lg hover:bg-zinc-200 transition border border-black/10">
               Make It Inevitable
             </button>
             <Link to="/learn" className="px-6 py-3 bg-transparent text-kimi-text font-medium rounded-lg border border-white/30 hover:border-white/50 transition">

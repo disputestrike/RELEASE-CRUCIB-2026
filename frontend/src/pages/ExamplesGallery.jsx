@@ -83,7 +83,7 @@ export default function ExamplesGallery() {
         )}
 
         {selected && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setSelected(null)}>
+          <div className="fixed inset-0 bg-zinc-900/80 flex items-center justify-center z-50 p-4" onClick={() => setSelected(null)}>
             <div className="bg-zinc-900 rounded-xl border border-zinc-700 max-w-2xl w-full max-h-[80vh] overflow-auto p-6" onClick={(e) => e.stopPropagation()}>
               <h2 className="text-xl font-bold mb-2">{selected.name}</h2>
               <p className="text-zinc-400 text-sm mb-4">{selected.prompt}</p>

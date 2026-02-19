@@ -125,11 +125,11 @@ const TokenCenter = () => {
             <p className="text-gray-500 mt-2">credits available</p>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div className="p-4 bg-black/30 rounded-lg">
+            <div className="p-4 bg-zinc-900/30 rounded-lg">
               <p className="text-sm text-gray-500">Total Used</p>
               <p className="text-2xl font-bold">{usage?.total_used?.toLocaleString() || 0}</p>
             </div>
-            <div className="p-4 bg-black/30 rounded-lg">
+            <div className="p-4 bg-zinc-900/30 rounded-lg">
               <p className="text-sm text-gray-500">Plan</p>
               <p className="text-2xl font-bold capitalize">{user?.plan || 'Free'}</p>
             </div>
@@ -145,7 +145,7 @@ const TokenCenter = () => {
           </h2>
           <p className="text-sm text-gray-500 mb-3">Share your link. When they sign up, they get 100 credits. You get 100 credits too if you're on the free plan (max 10 referrals/month).</p>
           <div className="flex flex-wrap items-center gap-2">
-            <code className="px-3 py-2 bg-black/30 rounded-lg text-sm text-gray-300 break-all">
+            <code className="px-3 py-2 bg-zinc-900/30 rounded-lg text-sm text-gray-300 break-all">
               {typeof window !== 'undefined' ? `${window.location.origin}/auth?ref=${referralCode}` : `/auth?ref=${referralCode}`}
             </code>
             <button

@@ -88,7 +88,7 @@ export default function PatternsPublic() {
         <div className="mt-12 text-center">
           <button
             onClick={() => navigate(user ? '/app/patterns' : '/auth?mode=register')}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-white text-black font-medium rounded-lg hover:bg-zinc-200 transition"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-white text-zinc-900 font-medium rounded-lg hover:bg-zinc-200 transition"
           >
             {user ? 'Open in app' : 'Get started to use patterns'}
             <ArrowRight className="w-4 h-4" />

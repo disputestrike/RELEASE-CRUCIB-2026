@@ -116,7 +116,7 @@ export default function AgentsPage() {
             <div className="mt-2 text-sm text-[#666666]">Trigger: {agent.trigger_type}</div>
             {agent.webhook_url && (
               <div className="mt-3 flex items-center gap-2">
-                <code className="text-xs bg-black/30 px-2 py-1 rounded truncate max-w-md">{agent.webhook_url}</code>
+                <code className="text-xs bg-zinc-900/30 px-2 py-1 rounded truncate max-w-md">{agent.webhook_url}</code>
                 <button onClick={() => copyWebhook(agent.webhook_url)} className="p-1 rounded hover:bg-white/10">
                   {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
                 </button>
@@ -151,7 +151,7 @@ export default function AgentsPage() {
               </div>
             </div>
             {logRunId && (
-              <div className="mt-4 p-4 rounded bg-black/30 border border-white/10 font-mono text-xs text-gray-300 max-h-48 overflow-auto">
+              <div className="mt-4 p-4 rounded bg-zinc-900/30 border border-white/10 font-mono text-xs text-gray-300 max-h-48 overflow-auto">
                 <div className="flex justify-between items-center mb-2">
                   <span>Run logs</span>
                   <button onClick={() => setLogRunId(null)} className="text-[#666666] hover:text-[#1A1A1A]">Close</button>
@@ -204,7 +204,7 @@ function DescribeAndCreate({ onCreated }) {
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         placeholder="e.g. Every morning at 9, summarize key updates and email them to me."
-        className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-[#1A1A1A] placeholder-gray-500 min-h-[80px] text-sm"
+        className="w-full px-3 py-2 rounded bg-zinc-900/30 border border-white/10 text-[#1A1A1A] placeholder-gray-500 min-h-[80px] text-sm"
         rows={3}
       />
       {error && <p className="text-red-400 text-xs">{error}</p>}
@@ -260,7 +260,7 @@ function CreateAgentModal({ onClose, onCreated }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/70" onClick={onClose}>
       <div className="bg-[#111] border border-white/10 rounded-xl p-6 max-w-md w-full shadow-xl max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-lg font-semibold text-[#1A1A1A] mb-4">Create Agent</h3>
         <div className="flex gap-2 mb-4 border-b border-white/10 pb-2">
@@ -271,7 +271,7 @@ function CreateAgentModal({ onClose, onCreated }) {
           <>
             <p className="text-xs text-[#666666] mb-2">Describe what you want in plain language. We create the automation.</p>
             <form onSubmit={handleDescribeSubmit} className="space-y-3">
-              <textarea value={describeText} onChange={(e) => setDescribeText(e.target.value)} placeholder="e.g. Every morning at 9, summarize key updates and email them to me." className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-[#1A1A1A] placeholder-gray-500 min-h-[100px] text-sm" />
+              <textarea value={describeText} onChange={(e) => setDescribeText(e.target.value)} placeholder="e.g. Every morning at 9, summarize key updates and email them to me." className="w-full px-3 py-2 rounded bg-zinc-900/30 border border-white/10 text-[#1A1A1A] placeholder-gray-500 min-h-[100px] text-sm" />
               {describeError && <p className="text-red-400 text-sm">{describeError}</p>}
               <div className="flex gap-2 justify-end">
                 <button type="button" onClick={onClose} className="px-4 py-2 rounded border border-white/20 text-gray-300 hover:bg-white/5">Cancel</button>
@@ -284,15 +284,15 @@ function CreateAgentModal({ onClose, onCreated }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm text-[#666666] mb-1">Name</label>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-[#1A1A1A]" placeholder="My Agent" />
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-3 py-2 rounded bg-zinc-900/30 border border-white/10 text-[#1A1A1A]" placeholder="My Agent" />
           </div>
           <div>
             <label className="block text-sm text-[#666666] mb-1">Description</label>
-            <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-[#1A1A1A]" placeholder="Optional" />
+            <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full px-3 py-2 rounded bg-zinc-900/30 border border-white/10 text-[#1A1A1A]" placeholder="Optional" />
           </div>
           <div>
             <label className="block text-sm text-[#666666] mb-1">Trigger</label>
-            <select value={triggerType} onChange={(e) => setTriggerType(e.target.value)} className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-[#1A1A1A]">
+            <select value={triggerType} onChange={(e) => setTriggerType(e.target.value)} className="w-full px-3 py-2 rounded bg-zinc-900/30 border border-white/10 text-[#1A1A1A]">
               <option value="schedule">Schedule (cron)</option>
               <option value="webhook">Webhook</option>
             </select>
@@ -300,13 +300,13 @@ function CreateAgentModal({ onClose, onCreated }) {
           {triggerType === 'schedule' && (
             <div>
               <label className="block text-sm text-[#666666] mb-1">Cron (e.g. 0 9 * * * = 9am daily)</label>
-              <input type="text" value={cronExpression} onChange={(e) => setCronExpression(e.target.value)} className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-[#1A1A1A] font-mono" />
+              <input type="text" value={cronExpression} onChange={(e) => setCronExpression(e.target.value)} className="w-full px-3 py-2 rounded bg-zinc-900/30 border border-white/10 text-[#1A1A1A] font-mono" />
             </div>
           )}
           {triggerType === 'webhook' && (
             <div>
               <label className="block text-sm text-[#666666] mb-1">Webhook secret (optional)</label>
-              <input type="text" value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)} className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-[#1A1A1A]" placeholder="Auto-generated if empty" />
+              <input type="text" value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)} className="w-full px-3 py-2 rounded bg-zinc-900/30 border border-white/10 text-[#1A1A1A]" placeholder="Auto-generated if empty" />
             </div>
           )}
           {error && <p className="text-red-400 text-sm">{error}</p>}

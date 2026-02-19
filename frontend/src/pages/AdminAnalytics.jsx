@@ -163,14 +163,14 @@ const AdminAnalytics = () => {
             type="date"
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
-            className="bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm"
+            className="bg-zinc-900/30 border border-white/10 rounded-lg px-3 py-2 text-sm"
           />
           <span className="text-[#666666]">to</span>
           <input
             type="date"
             value={toDate}
             onChange={(e) => setToDate(e.target.value)}
-            className="bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm"
+            className="bg-zinc-900/30 border border-white/10 rounded-lg px-3 py-2 text-sm"
           />
         </div>
         {!fromDate && !toDate && mode === 'daily' && (
@@ -179,7 +179,7 @@ const AdminAnalytics = () => {
             <select
               value={days}
               onChange={(e) => setDays(parseInt(e.target.value, 10))}
-              className="bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm"
+              className="bg-zinc-900/30 border border-white/10 rounded-lg px-3 py-2 text-sm"
             >
               <option value={7}>7 days</option>
               <option value={14}>14 days</option>

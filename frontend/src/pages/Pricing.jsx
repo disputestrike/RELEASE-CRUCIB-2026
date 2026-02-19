@@ -170,7 +170,7 @@ export default function Pricing() {
               <p className="text-zinc-500 text-sm mb-4">No credit card required</p>
               <button
                 onClick={() => navigate(user ? '/app' : '/auth?mode=register')}
-                className="w-full md:w-auto px-6 py-3 bg-white text-black font-medium rounded-lg hover:bg-zinc-200 transition"
+                className="w-full md:w-auto px-6 py-3 bg-white text-zinc-900 font-medium rounded-lg hover:bg-zinc-200 transition"
               >
                 {user ? 'Go to Workspace' : 'Get started free'}
               </button>
@@ -185,14 +185,14 @@ export default function Pricing() {
           <button
             type="button"
             onClick={() => setBillingPeriod('monthly')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${billingPeriod === 'monthly' ? 'bg-white text-black' : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'}`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${billingPeriod === 'monthly' ? 'bg-white text-zinc-900' : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'}`}
           >
             Monthly
           </button>
           <button
             type="button"
             onClick={() => setBillingPeriod('annual')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${billingPeriod === 'annual' ? 'bg-white text-black' : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'}`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${billingPeriod === 'annual' ? 'bg-white text-zinc-900' : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'}`}
           >
             Annual <span className="text-green-400 text-xs">Save 17%</span>
           </button>

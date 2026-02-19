@@ -360,7 +360,7 @@ const Dashboard = () => {
 
       {/* Import project modal */}
       {showImportModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowImportModal(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/60 p-4" onClick={() => setShowImportModal(false)}>
           <div className="bg-[#111] border border-white/10 rounded-xl max-w-lg w-full max-h-[90vh] overflow-auto shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="p-6">
               <h3 className="text-lg font-semibold text-[#1A1A1A] mb-2">Import project</h3>
@@ -368,7 +368,7 @@ const Dashboard = () => {
               <form onSubmit={handleImportSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm text-[#666666] mb-1">Project name (optional)</label>
-                  <input type="text" value={importName} onChange={e => setImportName(e.target.value)} placeholder="Imported project" className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-[#1A1A1A]" />
+                  <input type="text" value={importName} onChange={e => setImportName(e.target.value)} placeholder="Imported project" className="w-full px-3 py-2 rounded bg-zinc-900/30 border border-white/10 text-[#1A1A1A]" />
                 </div>
                 <div>
                   <label className="block text-sm text-[#666666] mb-2">Source</label>
@@ -386,9 +386,9 @@ const Dashboard = () => {
                     </div>
                     {pasteFiles.map((f, i) => (
                       <div key={i} className="flex gap-2 items-start">
-                        <input value={f.path} onChange={e => setPasteFiles(prev => prev.map((x, j) => j === i ? { ...x, path: e.target.value } : x))} placeholder="e.g. /App.js" className="flex-1 min-w-0 px-2 py-1.5 rounded bg-black/30 border border-white/10 text-[#1A1A1A] text-sm font-mono" />
+                        <input value={f.path} onChange={e => setPasteFiles(prev => prev.map((x, j) => j === i ? { ...x, path: e.target.value } : x))} placeholder="e.g. /App.js" className="flex-1 min-w-0 px-2 py-1.5 rounded bg-zinc-900/30 border border-white/10 text-[#1A1A1A] text-sm font-mono" />
                         <button type="button" onClick={() => setPasteFiles(prev => prev.filter((_, j) => j !== i))} className="p-1.5 text-[#666666] hover:text-red-400" title="Remove"><X className="w-4 h-4" /></button>
-                        <textarea value={f.code} onChange={e => setPasteFiles(prev => prev.map((x, j) => j === i ? { ...x, code: e.target.value } : x))} placeholder="Code..." className="flex-[2] min-w-0 px-2 py-1.5 rounded bg-black/30 border border-white/10 text-[#1A1A1A] text-sm font-mono min-h-[60px]" rows={3} />
+                        <textarea value={f.code} onChange={e => setPasteFiles(prev => prev.map((x, j) => j === i ? { ...x, code: e.target.value } : x))} placeholder="Code..." className="flex-[2] min-w-0 px-2 py-1.5 rounded bg-zinc-900/30 border border-white/10 text-[#1A1A1A] text-sm font-mono min-h-[60px]" rows={3} />
                       </div>
                     ))}
                   </div>
@@ -402,7 +402,7 @@ const Dashboard = () => {
                 {importSource === 'git' && (
                   <div>
                     <label className="block text-sm text-[#666666] mb-1">GitHub repo URL</label>
-                    <input type="url" value={gitUrl} onChange={e => setGitUrl(e.target.value)} placeholder="https://github.com/owner/repo" className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-[#1A1A1A]" />
+                    <input type="url" value={gitUrl} onChange={e => setGitUrl(e.target.value)} placeholder="https://github.com/owner/repo" className="w-full px-3 py-2 rounded bg-zinc-900/30 border border-white/10 text-[#1A1A1A]" />
                   </div>
                 )}
                 {importError && <p className="text-sm text-red-400">{importError}</p>}

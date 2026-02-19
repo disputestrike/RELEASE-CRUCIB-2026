@@ -9,7 +9,7 @@ export default function PublicFooter() {
         <h2 className="text-2xl md:text-3xl font-bold text-kimi-text mb-3">Your idea is inevitable. Start Monday.</h2>
         <p className="text-kimi-muted mb-6">50 free credits. No credit card. Describe it today. Ship it Friday.</p>
         <div className="flex flex-wrap justify-center gap-4">
-          <button onClick={() => navigate('/auth?mode=register')} className="px-6 py-3 bg-white text-black font-medium rounded-lg hover:bg-zinc-200 transition border border-black/10">
+          <button onClick={() => navigate('/auth?mode=register')} className="px-6 py-3 bg-white text-zinc-900 font-medium rounded-lg hover:bg-zinc-200 transition border border-black/10">
             Make It Inevitable
           </button>
           <Link to="/learn" className="px-6 py-3 bg-transparent text-kimi-text font-medium rounded-lg border border-white/30 hover:border-white/50 transition">

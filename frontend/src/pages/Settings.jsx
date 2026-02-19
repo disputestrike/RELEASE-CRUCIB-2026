@@ -649,7 +649,7 @@ const Settings = () => {
                 <p className="text-sm text-[#666666]">Scan with your authenticator app, then enter the 6-digit code below.</p>
                 {mfaQrCode && <img src={mfaQrCode} alt="QR Code" className="w-48 h-48 border border-white/10 rounded p-2 bg-white" />}
                 {mfaSecret && (
-                  <div className="flex items-center gap-2 p-2 bg-black/30 rounded">
+                  <div className="flex items-center gap-2 p-2 bg-zinc-900/30 rounded">
                     <code className="text-sm font-mono text-gray-300 break-all flex-1">{mfaSecret}</code>
                     <button type="button" onClick={() => navigator.clipboard.writeText(mfaSecret)} className="p-1 hover:bg-white/10 rounded"><Copy className="w-4 h-4" /></button>
                   </div>
@@ -684,7 +684,7 @@ const Settings = () => {
                 <p className="text-green-400 font-medium">2FA enabled. Save these backup codes in a safe place.</p>
                 <div className="flex flex-wrap gap-2 max-h-32 overflow-auto">
                   {mfaBackupCodes.map((c, i) => (
-                    <div key={i} className="flex items-center gap-1 px-2 py-1 bg-black/30 rounded font-mono text-sm">
+                    <div key={i} className="flex items-center gap-1 px-2 py-1 bg-zinc-900/30 rounded font-mono text-sm">
                       <span>{c}</span>
                       <button type="button" onClick={() => navigator.clipboard.writeText(c)}><Copy className="w-3 h-3 text-[#666666]" /></button>
                     </div>

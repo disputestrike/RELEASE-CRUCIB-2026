@@ -36,6 +36,22 @@ if (config.enableHealthCheck) {
 const webpackConfig = {
   // Disable ESLint plugin (patched in postinstall so craco checks enable before getPlugin — no warning)
   eslint: { enable: false },
+  // Strip react-refresh babel plugin in production to prevent build error
+  babel: {
+    plugins: [],
+    loaderOptions: (babelLoaderOptions) => {
+      if (process.env.NODE_ENV === 'production' && babelLoaderOptions.plugins) {
+        babelLoaderOptions.plugins = babelLoaderOptions.plugins.filter(
+          (plugin) => {
+            const name = Array.isArray(plugin) ? plugin[0] : plugin;
+            if (typeof name === 'string') return !name.includes('react-refresh');
+            return true;
+          }
+        );
+      }
+      return babelLoaderOptions;
+    },
+  },
   webpack: {
     alias: {
       '@': path.resolve(__dirname, 'src'),

@@ -1179,7 +1179,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
       />
       {/* Command palette (Ctrl+K / Cmd+K) */}
       {commandPaletteOpen && (
-        <div className="fixed inset-0 z-[200] flex items-start justify-center pt-[15vh] bg-black/40 backdrop-blur-sm" onClick={() => setCommandPaletteOpen(false)}>
+        <div className="fixed inset-0 z-[200] flex items-start justify-center pt-[15vh] bg-zinc-900/40 backdrop-blur-sm" onClick={() => setCommandPaletteOpen(false)}>
           <div className="w-full max-w-lg bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="px-4 py-2 border-b border-gray-200 text-xs text-gray-500">Command palette</div>
             <div className="max-h-80 overflow-y-auto">
@@ -1212,7 +1212,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
 
       {/* File search (Ctrl+P) */}
       {fileSearchOpen && (
-        <div className="fixed inset-0 z-[200] flex items-start justify-center pt-[20vh] bg-black/40 backdrop-blur-sm" onClick={() => setFileSearchOpen(false)}>
+        <div className="fixed inset-0 z-[200] flex items-start justify-center pt-[20vh] bg-zinc-900/40 backdrop-blur-sm" onClick={() => setFileSearchOpen(false)}>
           <div className="w-full max-w-md bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="px-4 py-2 border-b border-gray-200 text-xs text-gray-500">Open file (Ctrl+P)</div>
             <div className="max-h-60 overflow-y-auto">
@@ -1891,12 +1891,12 @@ Respond with ONLY the complete App.js code, nothing else.`;
 
       {/* One-click deploy modal */}
       {showDeployModal && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowDeployModal(false)}>
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-zinc-900/50 backdrop-blur-sm" onClick={() => setShowDeployModal(false)}>
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6 border border-gray-200" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Deploy your app</h3>
             <p className="text-sm text-gray-600 mb-4">Your deploy ZIP has been downloaded (or use the download again from Ctrl+K → Deploy). Upload it to one of these platforms:</p>
             <div className="flex flex-col gap-2">
-              <a href="https://vercel.com/new" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-black text-[#1A1A1A] text-sm font-medium hover:bg-gray-800">
+              <a href="https://vercel.com/new" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-zinc-900 text-white text-sm font-medium hover:bg-gray-800">
                 Deploy with Vercel
               </a>
               <a href="https://app.netlify.com/drop" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-emerald-600 text-[#1A1A1A] text-sm font-medium hover:bg-emerald-700">

@@ -51,7 +51,7 @@ const ManusComputer = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ duration: 0.2 }}
-            className="bg-black/90 border border-blue-500/50 rounded-lg p-4 w-80 shadow-2xl backdrop-blur-sm"
+            className="bg-zinc-900/90 border border-blue-500/50 rounded-lg p-4 w-80 shadow-2xl backdrop-blur-sm"
           >
             {/* Header */}
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-blue-500/20">

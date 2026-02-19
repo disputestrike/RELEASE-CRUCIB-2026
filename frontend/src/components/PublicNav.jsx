@@ -8,7 +8,7 @@ export default function PublicNav() {
 
   const navBg = 'bg-[var(--kimi-bg)] border-b border-white/10';
   const linkClass = 'text-kimi-nav text-kimi-muted hover:text-kimi-text transition flex items-center gap-2';
-  const ctaClass = 'px-4 py-2 bg-white text-black text-sm font-medium rounded-lg hover:bg-zinc-200 transition';
+  const ctaClass = 'px-4 py-2 bg-white text-zinc-900 text-sm font-medium rounded-lg hover:bg-zinc-200 transition';
 
   return (
     <nav className={navBg}>

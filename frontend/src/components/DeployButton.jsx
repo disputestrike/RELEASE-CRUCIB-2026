@@ -233,7 +233,7 @@ export default function DeployButton({ projectId, variant = 'dropdown', onFeedba
       )}
 
       {showInstructions && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80" onClick={() => setShowInstructions(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/80" onClick={() => setShowInstructions(false)}>
           <div className="bg-[#0a0a0a] border border-white/10 rounded-xl max-w-lg w-full max-h-[80vh] overflow-hidden shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="p-4 border-b border-white/10 flex items-center justify-between">
               <h3 className="font-semibold">Deploy instructions</h3>

@@ -137,7 +137,7 @@ export default function Enterprise() {
               <button
                 type="button"
                 onClick={() => navigate(user ? '/app' : '/')}
-                className="px-6 py-3 bg-white text-black font-medium rounded-lg hover:bg-zinc-200 transition"
+                className="px-6 py-3 bg-white text-zinc-900 font-medium rounded-lg hover:bg-zinc-200 transition"
               >
                 {user ? 'Back to workspace' : 'Back to home'}
               </button>
@@ -223,7 +223,7 @@ export default function Enterprise() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-white text-black font-medium rounded-lg hover:bg-zinc-200 transition disabled:opacity-60"
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-white text-zinc-900 font-medium rounded-lg hover:bg-zinc-200 transition disabled:opacity-60"
               >
                 {loading ? 'Sending…' : 'Send request'}
                 <Send className="w-4 h-4" />

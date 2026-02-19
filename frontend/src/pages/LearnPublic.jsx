@@ -101,7 +101,7 @@ export default function LearnPublic() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mt-12 text-center">
           <button
             onClick={() => navigate(user ? '/app' : '/auth?mode=register')}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-white text-black font-medium rounded-lg hover:bg-zinc-200 transition"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-white text-zinc-900 font-medium rounded-lg hover:bg-zinc-200 transition"
           >
             {user ? 'Go to workspace' : 'Get started free'}
             <ArrowRight className="w-4 h-4" />
