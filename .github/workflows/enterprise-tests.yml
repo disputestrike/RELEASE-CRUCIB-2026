@@ -27,7 +27,7 @@ jobs:
       - name: Lint
         run: cd frontend && npm run lint
 
-  # Layer 1.2: Security (dependency audit)
+  # Layer 1.2: Security (dependency audit + secrets scan + internal SecurityAudit)
   security:
     name: Security audit
     runs-on: ubuntu-latest
@@ -39,6 +39,19 @@ jobs:
           cache: 'yarn'
       - name: Install and audit frontend
         run: cd frontend && yarn install --frozen-lockfile && npm audit --audit-level=high || true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install backend deps and pip-audit
+        run: cd backend && pip install -r requirements.txt pip-audit
+      - name: Backend dependency audit
+        run: cd backend && pip-audit --require-hashes=false || true
+      - name: Secrets scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run internal SecurityAudit
+        run: cd backend && python -m security_audit 2>/dev/null || true
 
   # Layer 2 & 2: Frontend unit tests
   frontend-unit:

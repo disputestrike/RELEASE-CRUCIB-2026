@@ -3,24 +3,39 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../App';
 import PublicNav from '../components/PublicNav';
 import PublicFooter from '../components/PublicFooter';
-import {
-  Code2, Zap, Layout, FileCode, BookOpen, Keyboard, Shield, Download,
-  GitBranch, Palette, MessageSquare, BarChart3, ShoppingCart, Layers
-} from 'lucide-react';
+import { Code2, Zap, Bot, Shield, Download, Keyboard } from 'lucide-react';
 
-const features = [
-  { icon: MessageSquare, title: 'Describe & build', desc: 'Tell us what you want in plain English. Our AI turns your idea into a working app in minutes.' },
-  { icon: Code2, title: 'Production-ready code', desc: 'Get React, Tailwind, and modern stack. Clean, maintainable code you can own and deploy.' },
-  { icon: Zap, title: '20 AI agents', desc: 'Planning, frontend, backend, tests, security, deployment—each step powered by specialized agents.' },
-  { icon: Layout, title: 'Templates', desc: 'Start from dashboards, blogs, SaaS shells, and more. One click to customize and ship.' },
-  { icon: FileCode, title: 'Pattern library', desc: 'Reusable patterns: auth, payments, APIs. Save tokens and time on every project.' },
-  { icon: BookOpen, title: 'Prompt library', desc: 'Proven prompts for e‑commerce, landing pages, task managers. Copy, tweak, and build.' },
-  { icon: Keyboard, title: 'Shortcuts & commands', desc: 'Command palette (Ctrl+K), quick actions, and keyboard shortcuts for power users.' },
-  { icon: BarChart3, title: 'Usage & tokens', desc: 'See usage by agent, track tokens, and buy packs when you need more. No surprises.' },
-  { icon: Shield, title: 'Security & quality', desc: 'Security scan, accessibility check, and auto-fix. Ship with confidence.' },
-  { icon: Download, title: 'Export & deploy', desc: 'Download ZIP or push to GitHub. Deploy to Vercel, Netlify, or any host. You own the code.' },
-  { icon: GitBranch, title: 'Iterate in chat', desc: 'Ask for changes in natural language. "Add dark mode", "make it responsive"—we update the code.' },
-  { icon: Palette, title: 'Design control', desc: 'Describe colors, layout, and style. Or paste a screenshot; we turn it into code.' },
+const outcomeSections = [
+  {
+    icon: Code2,
+    title: 'Build',
+    desc: 'Describe what you want in plain language. Web apps, mobile apps, dashboards, SaaS — we build them all. Plan-first flow shows the structure before we code. Attach a screenshot for design-to-code. Import existing code via paste, ZIP, or Git URL. Voice input supported. Iterate in chat: "add dark mode", "make it responsive" — we update the code instantly.',
+  },
+  {
+    icon: Bot,
+    title: 'Agents & Automation',
+    desc: 'The same AI that builds your app runs inside your automations. Describe an automation in plain language — we create the agent (schedule or webhook, with steps). Use run_agent to call our build swarm from your automation. Pre-built templates: daily digest, lead finder, inbox summarizer, status checker. Prompt-to-automation: describe it, we build it.',
+  },
+  {
+    icon: Zap,
+    title: '120-Agent Swarm',
+    desc: 'Planning, frontend, backend, database, styling, testing, security, deployment — each phase handled by dedicated agents. They run in parallel for speed. AgentMonitor shows per-phase, per-agent status, token usage, and logs. Quality score per build. Phase retry when needed. Full transparency: every step, every artifact.',
+  },
+  {
+    icon: Download,
+    title: 'Deploy & Export',
+    desc: 'Export to ZIP or push to GitHub. Deploy to Vercel or Netlify in one click. For mobile: Expo (React Native) projects plus App Store and Google Play submission pack. You own all the code. Your automations are running. You\'re live.',
+  },
+  {
+    icon: Shield,
+    title: 'Security & Quality',
+    desc: 'Security scan and accessibility check on every project. Quality score (0–100) per build. 188 tests passing. Security-first. GDPR and CCPA compliant. We build CrucibAI using CrucibAI — we dogfood our own platform.',
+  },
+  {
+    icon: Keyboard,
+    title: 'Power Users',
+    desc: 'IDE extensions for VS Code, JetBrains, Sublime, and Vim. Command palette (Ctrl+K), shortcuts, and quick actions. Templates, patterns, and prompt library for fast starts. API access for prompt-to-plan and prompt-to-code. Token usage tracking and add-ons when you need more.',
+  },
 ];
 
 export default function Features() {
@@ -31,30 +46,44 @@ export default function Features() {
     <div className="min-h-screen bg-kimi-bg text-kimi-text grid-pattern-kimi">
       <PublicNav />
       <div className="max-w-5xl mx-auto px-6 py-16">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-16">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Benefits</span>
-          <h1 className="text-kimi-section font-bold text-kimi-text mt-2 mb-4">CrucibAI Features</h1>
-          <p className="text-kimi-muted max-w-xl mx-auto">Everything you need to go from idea to shipped app—without writing code.</p>
+          <h1 className="text-kimi-section font-bold text-kimi-text mt-2 mb-4">Why your outcome is inevitable</h1>
+          <p className="text-kimi-muted max-w-xl mx-auto">The same AI that builds your app runs inside your automations. Web, mobile, agents — one platform. 120-agent swarm, 99.2% success, full transparency. Not promises — measured.</p>
         </motion.div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((f, i) => (
+        {/* Proof strip */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 py-4 px-4 rounded-xl border border-white/10 bg-kimi-bg-card mb-16">
+          <span className="flex items-center gap-2 text-sm text-kimi-muted">
+            <span className="w-2 h-2 rounded-full bg-kimi-accent animate-pulse" /> 120-agent swarm
+          </span>
+          <span className="text-sm text-kimi-muted">99.2% success</span>
+          <span className="text-sm text-kimi-muted">Full transparency</span>
+          <span className="text-sm text-kimi-muted">Web + mobile + agents</span>
+          <span className="text-sm font-medium text-kimi-text">Not promises. Measured.</span>
+        </motion.div>
+        <div className="space-y-8">
+          {outcomeSections.map((f, i) => (
             <motion.div
               key={f.title}
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.03 }}
-              className="p-6 rounded-2xl border border-white/10 bg-kimi-bg-card hover:border-white/20 transition"
+              transition={{ delay: i * 0.05 }}
+              className="p-8 rounded-2xl border border-white/10 bg-kimi-bg-card hover:border-white/20 transition"
             >
-              <div className="p-2.5 rounded-xl bg-white/5 w-fit mb-4">
-                <f.icon className="w-6 h-6 text-kimi-accent" />
+              <div className="flex items-start gap-6">
+                <div className="p-3 rounded-xl bg-white/5 shrink-0">
+                  <f.icon className="w-8 h-8 text-kimi-accent" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-kimi-text mb-3">{f.title}</h2>
+                  <p className="text-sm text-kimi-muted leading-relaxed">{f.desc}</p>
+                </div>
               </div>
-              <h2 className="text-kimi-card font-semibold text-kimi-text mb-2">{f.title}</h2>
-              <p className="text-sm text-kimi-muted leading-relaxed">{f.desc}</p>
             </motion.div>
           ))}
         </div>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mt-20 text-center">
-          <p className="text-kimi-muted mb-6">Start building in seconds. No credit card required.</p>
+          <p className="text-kimi-muted mb-6">Make your outcome inevitable. No credit card required.</p>
           <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="px-6 py-3 bg-white text-black font-medium rounded-lg hover:bg-zinc-200 transition">
             {user ? 'Go to workspace' : 'Get started free'}
           </button>

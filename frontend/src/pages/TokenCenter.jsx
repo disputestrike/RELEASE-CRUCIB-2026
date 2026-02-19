@@ -16,18 +16,26 @@ const TokenCenter = () => {
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(null);
   const [activeTab, setActiveTab] = useState('purchase');
+  const [referralCode, setReferralCode] = useState(null);
+  const [referralStats, setReferralStats] = useState(null);
+  const [referralCopied, setReferralCopied] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [bundlesRes, historyRes, usageRes] = await Promise.all([
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const [bundlesRes, historyRes, usageRes, codeRes, statsRes] = await Promise.all([
           axios.get(`${API}/tokens/bundles`),
-          axios.get(`${API}/tokens/history`, { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get(`${API}/tokens/usage`, { headers: { Authorization: `Bearer ${token}` } })
+          axios.get(`${API}/tokens/history`, { headers }),
+          axios.get(`${API}/tokens/usage`, { headers }),
+          token ? axios.get(`${API}/referrals/code`, { headers }).catch(() => ({ data: {} })) : Promise.resolve({ data: {} }),
+          token ? axios.get(`${API}/referrals/stats`, { headers }).catch(() => ({ data: {} })) : Promise.resolve({ data: {} })
         ]);
         setBundles(bundlesRes.data.bundles);
         setHistory(historyRes.data.history);
         setUsage(usageRes.data);
+        setReferralCode(codeRes.data?.code ?? null);
+        setReferralStats(statsRes.data ? { this_month: statsRes.data.this_month, total: statsRes.data.total, cap: statsRes.data.cap } : null);
       } catch (e) {
         console.error(e);
       } finally {

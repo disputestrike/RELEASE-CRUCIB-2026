@@ -1,1 +1,3 @@
-web: cd backend && python server.py
+# Backend only. When Dockerfile is used, WORKDIR is /app and server.py is there — no cd needed.
+# For non-Docker (e.g. repo root), run: cd backend && python3 -m uvicorn server:app ...
+web: python3 -m uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000}

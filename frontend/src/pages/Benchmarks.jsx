@@ -19,7 +19,7 @@ export default function Benchmarks() {
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Performance</span>
           <h1 className="text-kimi-section font-bold text-kimi-text mt-2 mb-4">CrucibAI Benchmark Report</h1>
           <p className="text-kimi-muted max-w-xl mx-auto">
-            Speed, token usage, and quality metrics for our 20-agent DAG orchestration.
+            Speed, token usage, and quality metrics for our 120-agent swarm and DAG orchestration.
           </p>
         </motion.div>
 
@@ -41,6 +41,11 @@ export default function Benchmarks() {
             </motion.div>
           ))}
         </div>
+
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.35 }} className="rounded-2xl border border-white/10 bg-kimi-bg-card p-6 mb-8">
+          <h2 className="text-lg font-semibold text-kimi-text mb-4">Methodology</h2>
+          <p className="text-kimi-muted text-sm mb-4">We measure build time (wall clock), token usage per phase, and quality score (0–100) across our 120-agent DAG. Parallel phases are compared to sequential runs. Token savings use optional short prompts vs. full prompts. Quality is scored by automated checks (lint, structure) plus manual spot-checks on a sample of builds.</p>
+        </motion.div>
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="rounded-2xl border border-white/10 bg-kimi-bg-card p-6">
           <h2 className="text-lg font-semibold text-kimi-text mb-4">Summary</h2>

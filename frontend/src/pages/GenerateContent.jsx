@@ -7,7 +7,7 @@ import axios from "axios";
 import { useAuth } from "../App";
 import { FileText, Presentation, Table, Loader2, Download } from "lucide-react";
 
-const API = `${process.env.REACT_APP_BACKEND_URL || "http://localhost:8000"}/api`;
+const API = process.env.REACT_APP_BACKEND_URL === '' ? '/api' : `${process.env.REACT_APP_BACKEND_URL || "http://localhost:8000"}/api`;
 
 const tabs = [
   { id: "doc", label: "Docs", icon: FileText, formatOptions: [{ value: "markdown", label: "Markdown" }, { value: "plain", label: "Plain text" }] },

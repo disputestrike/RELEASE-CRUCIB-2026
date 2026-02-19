@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Sparkles, LayoutDashboard, FolderPlus, Coins, FileOutput, 
   Library, Settings, LogOut, Menu, X, ChevronRight,
-  Zap, Bell, MessageSquare, LayoutGrid, BookOpen, Key, Keyboard, CreditCard, FileText, Shield, ScrollText
+  Zap, Bell, MessageSquare, LayoutGrid, BookOpen, Key, Keyboard, CreditCard, FileText, Shield, ScrollText, BarChart3, Code2
 } from 'lucide-react';
 
 const Layout = () => {
@@ -30,7 +30,9 @@ const Layout = () => {
 
   const navigation = [
     { name: 'Dashboard', href: '/app', icon: LayoutDashboard },
+    { name: 'Workspace', href: '/app/workspace', icon: Code2 },
     { name: 'New Project', href: '/app/projects/new', icon: FolderPlus },
+    { name: 'Agents', href: '/app/agents', icon: Zap },
     { name: 'Credit Center', href: '/app/tokens', icon: Coins },
     { name: 'Exports', href: '/app/exports', icon: FileOutput },
     { name: 'Docs / Slides / Sheets', href: '/app/generate', icon: FileText },
@@ -40,6 +42,7 @@ const Layout = () => {
     { name: 'Learn', href: '/app/learn', icon: BookOpen },
     { name: 'Env', href: '/app/env', icon: Key },
     { name: 'Shortcuts', href: '/app/shortcuts', icon: Keyboard },
+    { name: 'Benchmarks', href: '/benchmarks', icon: BarChart3 },
     { name: 'Add payments', href: '/app/payments-wizard', icon: CreditCard },
     { name: 'Settings', href: '/app/settings', icon: Settings },
     { name: 'Audit Log', href: '/app/audit-log', icon: ScrollText }
@@ -121,7 +124,12 @@ const Layout = () => {
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
               <Sparkles className="w-6 h-6" />
             </div>
-            {sidebarOpen && <span className="text-xl font-bold">CrucibAI</span>}
+            {sidebarOpen && (
+              <span className="flex flex-col">
+                <span className="text-xl font-bold">CrucibAI</span>
+                <span className="text-xs text-zinc-400">Inevitable AI</span>
+              </span>
+            )}
           </Link>
           <button 
             onClick={() => setSidebarOpen(!sidebarOpen)}

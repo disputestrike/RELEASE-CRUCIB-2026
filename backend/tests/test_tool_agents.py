@@ -228,12 +228,14 @@ async def test_api_agent_unknown_method():
 
 def test_database_agent_import():
     """DatabaseOperationsAgent can be imported."""
+    pytest.importorskip("asyncpg")
     from tools.database_operations_agent import DatabaseOperationsAgent
     assert DatabaseOperationsAgent is not None
 
 
 def test_database_agent_init():
     """DatabaseOperationsAgent initializes correctly."""
+    pytest.importorskip("asyncpg")
     from tools.database_operations_agent import DatabaseOperationsAgent
     agent = DatabaseOperationsAgent(llm_client=None, config={})
     assert agent.name == "DatabaseOperationsAgent"
@@ -242,6 +244,7 @@ def test_database_agent_init():
 @pytest.mark.asyncio
 async def test_database_agent_sqlite_create_table():
     """DatabaseOperationsAgent can execute SQLite queries."""
+    pytest.importorskip("asyncpg")
     from tools.database_operations_agent import DatabaseOperationsAgent
     
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -261,6 +264,7 @@ async def test_database_agent_sqlite_create_table():
 @pytest.mark.asyncio
 async def test_database_agent_sqlite_insert_select():
     """DatabaseOperationsAgent can insert and select from SQLite."""
+    pytest.importorskip("asyncpg")
     from tools.database_operations_agent import DatabaseOperationsAgent
     
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -299,6 +303,7 @@ async def test_database_agent_sqlite_insert_select():
 @pytest.mark.asyncio
 async def test_database_agent_unknown_db_type():
     """DatabaseOperationsAgent returns error for unknown database type."""
+    pytest.importorskip("asyncpg")
     from tools.database_operations_agent import DatabaseOperationsAgent
     agent = DatabaseOperationsAgent(llm_client=None, config={})
     

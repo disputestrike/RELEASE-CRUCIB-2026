@@ -12,7 +12,9 @@ from typing import Dict, List, Any
 AGENT_DAG: Dict[str, Dict[str, Any]] = {
     "Planner": {"depends_on": [], "system_prompt": "You are a Planner. Decompose the request into 3-7 executable tasks. Numbered list only."},
     "Requirements Clarifier": {"depends_on": ["Planner"], "system_prompt": "You are a Requirements Clarifier. Ask 2-4 clarifying questions. One per line."},
-    "Stack Selector": {"depends_on": ["Requirements Clarifier"], "system_prompt": "You are a Stack Selector. Recommend tech stack (frontend, backend, DB). Short bullets."},
+    "Stack Selector": {"depends_on": ["Requirements Clarifier"], "system_prompt": "You are a Stack Selector. Recommend tech stack (frontend, backend, DB). Short bullets. When build is mobile, recommend Expo (React Native) or Flutter and say 'Mobile stack: Expo' or 'Flutter', targets: iOS, Android."},
+    "Native Config Agent": {"depends_on": ["Stack Selector"], "system_prompt": "You are a Native Config Agent for mobile apps. For an Expo app, output ONLY two valid JSON objects. First block: app.json with keys name, slug, version, ios.bundleIdentifier, android.package, and optional splash/image. Second block: eas.json with build profiles (preview, production) for iOS and Android. Use code blocks: ```json ... ``` for each. No other text."},
+    "Store Prep Agent": {"depends_on": ["Frontend Generation", "Native Config Agent"], "system_prompt": "You are a Store Prep Agent for app store submission. Output 1) A JSON object with app_name, short_description, long_description, keywords (array), icon_sizes_apple, icon_sizes_android, screenshot_sizes_apple, screenshot_sizes_android. 2) SUBMIT_TO_APPLE.md: step-by-step guide for App Store Connect (signing, screenshots, metadata, review). 3) SUBMIT_TO_GOOGLE.md: step-by-step for Google Play Console. Use clear section headers. Plain text or markdown."},
     "Frontend Generation": {"depends_on": ["Stack Selector"], "system_prompt": "You are Frontend Generation. Output only complete React/JSX code. No markdown."},
     "Backend Generation": {"depends_on": ["Stack Selector"], "system_prompt": "You are Backend Generation. Output only backend code (e.g. FastAPI/Express). No markdown."},
     "Database Agent": {"depends_on": ["Backend Generation"], "system_prompt": "You are a Database Agent. Output schema and migration steps. Plain text or SQL."},
@@ -120,6 +122,7 @@ AGENT_DAG: Dict[str, Dict[str, Any]] = {
     "Voice Context Agent": {"depends_on": ["Planner", "Requirements Clarifier"], "system_prompt": "You are a Voice Context Agent. Convert voice/speech input to code context. Extract intent, emotion, urgency, and technical requirements from natural language. Output structured requirements."},
     "Video Tutorial Agent": {"depends_on": ["Documentation Agent", "Frontend Generation"], "system_prompt": "You are a Video Tutorial Agent. Generate video tutorial scripts and storyboards. Output: scene descriptions, narration, code highlights, timing. Markdown format."},
     "Aesthetic Reasoner Agent": {"depends_on": ["Design Agent", "Frontend Generation"], "system_prompt": "You are an Aesthetic Reasoner. Evaluate code and design for beauty, elegance, and visual harmony. Suggest improvements for aesthetic quality. Output: beauty_score (1-10), improvements, reasoning."},
+    "Team Preferences": {"depends_on": ["Planner"], "system_prompt": "You are a Team Preferences Agent. Capture team preferences for style and conventions. Output: preferences, conventions."},
     "Collaborative Memory Agent": {"depends_on": ["Memory Agent", "Team Preferences"], "system_prompt": "You are a Collaborative Memory Agent. Remember team preferences, past decisions, and project patterns. Output: team_style, preferred_patterns, past_decisions, recommendations."},
     "Real-time Feedback Agent": {"depends_on": ["Frontend Generation", "Backend Generation"], "system_prompt": "You are a Real-time Feedback Agent. Adapt to user reactions and feedback instantly. Suggest quick improvements based on user sentiment. Output: feedback_analysis, quick_fixes, priority_improvements."},
     "Mood Detection Agent": {"depends_on": ["Planner"], "system_prompt": "You are a Mood Detection Agent. Detect user mood and intent from interactions. Output: user_mood, confidence_level, recommended_approach, tone_adjustment."},
@@ -131,12 +134,12 @@ AGENT_DAG: Dict[str, Dict[str, Any]] = {
     "Team Collaboration Agent": {"depends_on": ["Collaborative Memory Agent"], "system_prompt": "You are a Team Collaboration Agent. Suggest collaboration workflows, code review processes, and team communication patterns. Output: workflow_suggestions, review_checklist, communication_guidelines."},
     "User Onboarding Agent": {"depends_on": ["Documentation Agent", "Video Tutorial Agent"], "system_prompt": "You are a User Onboarding Agent. Create comprehensive onboarding experience. Output: quickstart_guide, tutorial_sequence, learning_path, support_resources."},
     "Customization Engine Agent": {"depends_on": ["Brand Agent", "Vibe Analyzer Agent"], "system_prompt": "You are a Customization Engine Agent. Enable users to customize code/design to their preferences. Output: customization_options, theme_variables, plugin_architecture, extension_points."},
-    # Phase 3: Tool Integration Agents
+    # Phase 3: Tool Integration Agents (REAL execution: wired in real_agent_runner.py)
     "Browser Tool Agent": {"depends_on": ["Stack Selector"], "system_prompt": "You are a Browser Tool Agent. Automate browser actions using Playwright: navigate, screenshot, scrape, fill forms, click elements. Output: action plan or results."},
-    "File Tool Agent": {"depends_on": ["Stack Selector"], "system_prompt": "You are a File Tool Agent. Perform file operations: read, write, move, delete, list, create directories. Output: file operation results."},
+    "File Tool Agent": {"depends_on": ["Frontend Generation", "Backend Generation"], "system_prompt": "You are a File Tool Agent. Writes generated frontend/backend/schema/tests to project workspace. (Real agent executes this.)"},
     "API Tool Agent": {"depends_on": ["API Integration"], "system_prompt": "You are an API Tool Agent. Make HTTP requests (GET, POST, PUT, DELETE). Handle authentication and parse responses. Output: API response data."},
-    "Database Tool Agent": {"depends_on": ["Database Agent"], "system_prompt": "You are a Database Tool Agent. Execute SQL queries on PostgreSQL, MySQL, SQLite. Output: query results or status."},
-    "Deployment Tool Agent": {"depends_on": ["Deployment Agent"], "system_prompt": "You are a Deployment Tool Agent. Deploy to Vercel, Railway, or Netlify. Output: deployment URL and status."},
+    "Database Tool Agent": {"depends_on": ["Database Agent"], "system_prompt": "You are a Database Tool Agent. Applies schema to project SQLite. (Real agent executes this.)"},
+    "Deployment Tool Agent": {"depends_on": ["Deployment Agent", "File Tool Agent"], "system_prompt": "You are a Deployment Tool Agent. Deploys from project workspace to Vercel/Railway/Netlify. (Real agent executes this.)"},
 }
 
 
@@ -148,7 +151,9 @@ CONTEXT_MAX_CHARS_OPTIMIZED = 1200
 OPTIMIZED_SYSTEM_PROMPTS: Dict[str, str] = {
     "Planner": "Planner. 3–7 tasks. Numbered list only.",
     "Requirements Clarifier": "Requirements. 2–4 clarifying questions. One per line.",
-    "Stack Selector": "Stack. Recommend frontend, backend, DB. Short bullets.",
+    "Stack Selector": "Stack. Recommend frontend, backend, DB. If mobile: Expo or Flutter, iOS/Android. Short bullets.",
+    "Native Config Agent": "Native Config. Expo app.json and eas.json only. Two JSON code blocks.",
+    "Store Prep Agent": "Store Prep. JSON metadata + SUBMIT_TO_APPLE.md + SUBMIT_TO_GOOGLE.md content.",
     "Frontend Generation": "Frontend. React/JSX code only. No markdown.",
     "Backend Generation": "Backend. FastAPI/Express code only. No markdown.",
     "Database Agent": "Database. Schema and migrations. Plain text or SQL.",
@@ -285,14 +290,11 @@ def get_system_prompt_for_agent(agent_name: str) -> str:
 
 def topological_sort(dag: Dict[str, Dict[str, Any]]) -> List[str]:
     """Kahn's algorithm: return execution order respecting dependencies. Raises if cycle."""
-    in_degree = {n: 0 for n in dag}
-    for node, cfg in dag.items():
-        for dep in cfg.get("depends_on", []):
-            if dep in dag:
-                in_degree[node] += 1
-    # Actually we need deps to point TO the node, so "node depends on dep" => edge dep -> node
-    # So in_degree[node] = number of deps that must run first = len(depends_on)
-    in_degree = {n: len(cfg.get("depends_on", [])) for n, cfg in dag.items()}
+    # Only count deps that exist in dag (missing refs like "Team Preferences" would otherwise block)
+    in_degree = {
+        n: len([d for d in cfg.get("depends_on", []) if d in dag])
+        for n, cfg in dag.items()
+    }
     q = deque([n for n, d in in_degree.items() if d == 0])
     order = []
     while q:
@@ -311,6 +313,7 @@ def topological_sort(dag: Dict[str, Dict[str, Any]]) -> List[str]:
 def get_execution_phases(dag: Dict[str, Dict[str, Any]]) -> List[List[str]]:
     """Group agents into phases: each phase can run in parallel (no dep within phase)."""
     order = topological_sort(dag)
+    dag_nodes = set(dag.keys())
     phases: List[List[str]] = []
     completed = set()
     while len(completed) < len(order):
@@ -319,7 +322,8 @@ def get_execution_phases(dag: Dict[str, Dict[str, Any]]) -> List[List[str]]:
             if node in completed:
                 continue
             deps = set(dag[node].get("depends_on", []))
-            if deps <= completed:
+            # Only require deps that exist in the DAG to be completed
+            if (deps & dag_nodes) <= completed:
                 ready.append(node)
         if not ready:
             raise ValueError("DAG cycle or missing nodes")

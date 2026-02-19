@@ -1,6 +1,6 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, BackgroundTasks, File, UploadFile, Form, Request, WebSocket, WebSocketDisconnect, Query
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, BackgroundTasks, File, UploadFile, Form, Request, WebSocket, WebSocketDisconnect, Query, Body
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi.responses import StreamingResponse, Response, RedirectResponse
+from fastapi.responses import StreamingResponse, Response, RedirectResponse, FileResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from middleware import (
@@ -8,7 +8,8 @@ from middleware import (
     SecurityHeadersMiddleware,
     RequestTrackerMiddleware,
     RequestValidationMiddleware,
-    PerformanceMonitoringMiddleware
+    PerformanceMonitoringMiddleware,
+    HTTPSRedirectMiddleware,
 )
 from error_handlers import (
     CrucibError,
@@ -51,6 +52,10 @@ import bcrypt
 import asyncio
 import random
 import json
+import re
+import secrets
+import subprocess
+import sys
 import tempfile
 import base64
 import zipfile
@@ -58,6 +63,20 @@ import io
 from urllib.parse import quote, urlencode
 
 from agent_dag import AGENT_DAG, get_execution_phases, build_context_from_previous_agents, get_system_prompt_for_agent
+from real_agent_runner import REAL_AGENT_NAMES, run_real_agent, persist_agent_output, run_real_post_step
+from automation.models import AgentCreate, AgentUpdate, TriggerConfig, ActionConfig
+from automation.constants import (
+    CREDITS_PER_AGENT_RUN,
+    INTERNAL_USER_ID,
+    MAX_CONCURRENT_RUNS_PER_USER,
+    MAX_RUNS_PER_HOUR_PER_USER,
+    WEBHOOK_IDEMPOTENCY_SECONDS,
+    WEBHOOK_RATE_LIMIT_PER_MINUTE,
+)
+from automation.executor import run_actions
+from automation.schedule import next_run_at, is_one_time
+from agent_real_behavior import run_agent_real_behavior
+from project_state import load_state, WORKSPACE_ROOT
 from agent_resilience import AgentError, get_criticality, get_timeout, generate_fallback
 from code_quality import score_generated_code
 try:
@@ -82,11 +101,22 @@ import hashlib
 import pyotp
 import qrcode
 
-ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
+ROOT_DIR = Path(__file__).resolve().parent
+load_dotenv(ROOT_DIR / '.env', override=True)
+
+# Required for startup (Railway: set these in Dashboard → Service → Variables)
+# Placeholder defaults allow container to start for deploy testing; DB operations will fail until real values are set.
+if not os.environ.get('MONGO_URL'):
+    os.environ.setdefault('MONGO_URL', 'mongodb://localhost:27017')
+    import sys
+    print("WARNING: MONGO_URL not set. Using placeholder for deploy test. Set MONGO_URL in Railway Variables for real DB.", file=sys.stderr)
+if not os.environ.get('DB_NAME'):
+    os.environ.setdefault('DB_NAME', 'crucibai')
+    import sys
+    print("WARNING: DB_NAME not set. Using placeholder 'crucibai'. Set DB_NAME in Railway Variables for real DB.", file=sys.stderr)
 
 mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
+client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000)
 db = client[os.environ['DB_NAME']]
 audit_logger = AuditLogger(db) if AuditLogger else None
 
@@ -106,24 +136,36 @@ app = FastAPI(title="CrucibAI Platform")
 api_router = APIRouter(prefix="/api")
 security = HTTPBearer(auto_error=False)
 
-JWT_SECRET = os.environ.get('JWT_SECRET')
-if not JWT_SECRET:
-    # CRITICAL: Fail fast in production - never use random secrets
-    import sys
-    error_msg = "FATAL: JWT_SECRET environment variable is not set. This is required for production. Set JWT_SECRET in your .env file."
-    logger.error(error_msg)
-    if os.environ.get('ENVIRONMENT') == 'production':
-        sys.exit(1)
-    # Development only: use a fixed dev secret
-    logger.warning("Development mode: Using fixed dev secret. NEVER use this in production.")
-    JWT_SECRET = "dev-secret-key-only-for-development-never-production"
-JWT_ALGORITHM = "HS256"
 LLM_API_KEY = os.environ.get('OPENAI_API_KEY') or os.environ.get('LLM_API_KEY')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# JWT_SECRET must be set in production; fallback is per-process and invalidates tokens on restart
+JWT_SECRET = os.environ.get('JWT_SECRET')
+if not JWT_SECRET:
+    logger.warning("JWT_SECRET not set in environment. Using a temporary secret for this session.")
+    import secrets
+    JWT_SECRET = secrets.token_urlsafe(32)
+JWT_ALGORITHM = "HS256"
+
+# Build event stream (SSE): project_id -> list of events (max 500). Wired to orchestration.
+_build_events: Dict[str, List[Dict[str, Any]]] = {}
+_BUILD_EVENTS_MAX = 500
+
+def emit_build_event(project_id: str, event_type: str, **kwargs: Any) -> None:
+    """Emit event for SSE stream. Called from orchestration so UI can show Manus-style timeline."""
+    if project_id not in _build_events:
+        _build_events[project_id] = []
+    lst = _build_events[project_id]
+    ev = {"id": len(lst), "ts": datetime.now(timezone.utc).isoformat(), "type": event_type, **kwargs}
+    lst.append(ev)
+    if len(lst) > _BUILD_EVENTS_MAX:
+        _build_events[project_id] = lst[-_BUILD_EVENTS_MAX:]
+        for i, e in enumerate(_build_events[project_id]):
+            e["id"] = i
 
 # ==================== MODELS ====================
 
@@ -253,6 +295,7 @@ class ProjectEnvBody(BaseModel):
 
 class SecurityScanBody(BaseModel):
     files: Dict[str, str]
+    project_id: Optional[str] = None  # when set, store result on project for AgentMonitor badge
 
 class OptimizeBody(BaseModel):
     code: str
@@ -261,6 +304,16 @@ class OptimizeBody(BaseModel):
 class ShareCreateBody(BaseModel):
     project_id: str
     read_only: bool = True
+
+
+class ProjectImportBody(BaseModel):
+    """Import project from paste, ZIP (base64), or Git URL."""
+    name: Optional[str] = None
+    source: str  # "paste" | "zip" | "git"
+    files: Optional[List[Dict[str, Any]]] = None  # for paste: [{"path": str, "code": str}]
+    zip_base64: Optional[str] = None  # for zip: base64-encoded zip bytes
+    git_url: Optional[str] = None  # for git: e.g. https://github.com/owner/repo
+
 
 class GenerateContentRequest(BaseModel):
     """CrucibAI for Docs/Slides/Sheets (C1–C3)."""
@@ -692,11 +745,16 @@ def _filter_chain_by_keys(chain: list, effective_keys: Optional[Dict[str, str]] 
 
 
 def _get_model_chain(model_key: str, message: str, effective_keys: Optional[Dict[str, str]] = None):
-    """Get list of (provider, model) to try. effective_keys = merged user Settings + server .env keys."""
+    """Get list of (provider, model) to try. effective_keys = merged user Settings + server .env keys.
+    When PREFER_LARGEST_MODEL=1, use largest available model first (better quality for all agents)."""
     if model_key == "auto":
-        task_type = detect_task_type(message)
-        primary = MODEL_CONFIG.get(task_type, MODEL_CONFIG["general"])
-        chain = [primary] + [c for c in MODEL_FALLBACK_CHAINS if (c["provider"], c["model"]) != (primary["provider"], primary["model"])]
+        # Model scale: prefer largest available when set (best for quality across 120 agents)
+        if os.environ.get("PREFER_LARGEST_MODEL", "").strip().lower() in ("1", "true", "yes"):
+            chain = _filter_chain_by_keys(MODEL_FALLBACK_CHAINS, effective_keys) or MODEL_FALLBACK_CHAINS
+        else:
+            task_type = detect_task_type(message)
+            primary = MODEL_CONFIG.get(task_type, MODEL_CONFIG["general"])
+            chain = [primary] + [c for c in MODEL_FALLBACK_CHAINS if (c["provider"], c["model"]) != (primary["provider"], primary["model"])]
     else:
         chain = MODEL_CHAINS.get(model_key)
         if not chain:
@@ -1786,10 +1844,11 @@ async def auth_google_redirect(request: Request, redirect: Optional[str] = None)
 @api_router.get("/auth/google/callback")
 async def auth_google_callback(request: Request, code: Optional[str] = None, state: Optional[str] = None):
     """Exchange Google code for tokens, create or find user, redirect to frontend with JWT."""
+    frontend_base = (os.environ.get("FRONTEND_URL") or os.environ.get("CORS_ORIGINS") or "http://localhost:3000").strip().split(",")[0].strip().rstrip("/")
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
         raise HTTPException(status_code=503, detail="Google sign-in is not configured")
     if not code:
-        return RedirectResponse(url=f"{FRONTEND_URL}/auth?error=no_code")
+        return RedirectResponse(url=f"{frontend_base}/auth?error=no_code")
     base = str(request.base_url).rstrip("/")
     callback = f"{base}/api/auth/google/callback"
     async with __import__("httpx").AsyncClient() as client:
@@ -1806,11 +1865,11 @@ async def auth_google_callback(request: Request, code: Optional[str] = None, sta
         )
     if r.status_code != 200:
         logger.warning(f"Google token exchange failed: {r.text}")
-        return RedirectResponse(url=f"{FRONTEND_URL}/auth?error=google_failed")
+        return RedirectResponse(url=f"{frontend_base}/auth?error=google_failed")
     data = r.json()
     id_token = data.get("id_token") or data.get("access_token")
     if not id_token:
-        return RedirectResponse(url=f"{FRONTEND_URL}/auth?error=no_token")
+        return RedirectResponse(url=f"{frontend_base}/auth?error=no_token")
     try:
         payload = jwt.decode(id_token, options={"verify_signature": False})
     except Exception:
@@ -1818,7 +1877,7 @@ async def auth_google_callback(request: Request, code: Optional[str] = None, sta
     email = (payload.get("email") or "").strip()
     name = (payload.get("name") or payload.get("given_name") or email.split("@")[0] or "User").strip()
     if not email:
-        return RedirectResponse(url=f"{FRONTEND_URL}/auth?error=no_email")
+        return RedirectResponse(url=f"{frontend_base}/auth?error=no_email")
     user = await db.users.find_one({"email": email}, {"_id": 0})
     if not user:
         user_id = str(uuid.uuid4())
@@ -1855,7 +1914,7 @@ async def auth_google_callback(request: Request, code: Optional[str] = None, sta
             logger.debug(f"Invalid JWT token: {e}")
         except Exception as e:
             logger.error(f"Unexpected error in JWT verification: {e}")
-    target = f"{FRONTEND_URL}/auth?token={token}"
+    target = f"{frontend_base}/auth?token={token}"
     if redirect_path and redirect_path.startswith("/"):
         target += f"&redirect={quote(redirect_path)}"
     return RedirectResponse(url=target)
@@ -2413,6 +2472,496 @@ async def agent_run_generic(data: AgentGenericRunBody, user: dict = Depends(get_
     )
     return {"agent": data.agent_name, "result": response, "model_used": model_used}
 
+
+# ==================== AGENTS & AUTOMATION (user-defined agents, runs, webhook) ====================
+
+INTERNAL_RUN_TOKEN = os.environ.get("CRUCIBAI_INTERNAL_TOKEN", "")
+
+
+class RunInternalBody(BaseModel):
+    """Body for run-internal (worker calling back to run an agent)."""
+    agent_name: str
+    prompt: str
+    user_id: str
+
+
+@api_router.post("/agents/run-internal")
+async def agents_run_internal(data: RunInternalBody, request: Request):
+    """Internal: worker calls this to run an agent by name (validates X-Internal-Token). No user JWT."""
+    token = (request.headers.get("X-Internal-Token") or "").strip()
+    if not INTERNAL_RUN_TOKEN or token != INTERNAL_RUN_TOKEN:
+        raise HTTPException(status_code=401, detail="Invalid or missing X-Internal-Token")
+    agent_name = data.agent_name
+    if agent_name not in AGENT_DAG:
+        raise HTTPException(status_code=404, detail=f"Unknown agent: {agent_name}")
+    if data.user_id == INTERNAL_USER_ID:
+        user = None
+        user_keys = {}
+    else:
+        user = await db.users.find_one({"id": data.user_id})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        user_keys = await get_workspace_api_keys(user)
+    effective = _effective_api_keys(user_keys)
+    system = get_system_prompt_for_agent(agent_name) or f"You are {agent_name}. Fulfill the request."
+    response, model_used = await _call_llm_with_fallback(
+        message=data.prompt,
+        system_message=system,
+        session_id=str(uuid.uuid4()),
+        model_chain=_get_model_chain("auto", data.prompt, effective_keys=effective),
+        api_keys=effective,
+    )
+    return {"result": response, "model_used": model_used}
+
+
+# Webhook idempotency: (agent_id, idempotency_key) -> last run_id (in-memory for single process; use Redis in multi-instance)
+_webhook_idempotency: Dict[str, str] = {}
+_webhook_rate: Dict[str, List[float]] = {}  # agent_id -> list of timestamps
+
+
+def _check_webhook_rate_limit(agent_id: str) -> bool:
+    """True if under limit (100/min)."""
+    now = datetime.now(timezone.utc).timestamp()
+    if agent_id not in _webhook_rate:
+        _webhook_rate[agent_id] = []
+    lst = _webhook_rate[agent_id]
+    lst[:] = [t for t in lst if now - t < 60]
+    if len(lst) >= WEBHOOK_RATE_LIMIT_PER_MINUTE:
+        return False
+    lst.append(now)
+    return True
+
+
+@api_router.post("/agents/webhook/{agent_id}")
+async def agents_webhook_trigger(agent_id: str, request: Request, secret: Optional[str] = Query(None)):
+    """Trigger agent run via webhook. Query param secret= or header X-Webhook-Secret. Returns 202 + run_id."""
+    raw_secret = secret or request.headers.get("X-Webhook-Secret") or ""
+    idempotency_key = request.headers.get("Idempotency-Key", "").strip()
+    agent = await db.user_agents.find_one({"id": agent_id})
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    if not agent.get("enabled"):
+        raise HTTPException(status_code=400, detail="Agent is disabled")
+    cfg = agent.get("trigger_config") or {}
+    if cfg.get("type") != "webhook":
+        raise HTTPException(status_code=400, detail="Agent is not webhook-triggered")
+    if (cfg.get("webhook_secret") or "").strip() != raw_secret.strip():
+        raise HTTPException(status_code=401, detail="Invalid webhook secret")
+    if not _check_webhook_rate_limit(agent_id):
+        raise HTTPException(status_code=429, detail="Rate limit exceeded")
+    now_iso = datetime.now(timezone.utc).isoformat()
+    if idempotency_key:
+        key = f"{agent_id}:{idempotency_key}"
+        if key in _webhook_idempotency:
+            run_id = _webhook_idempotency[key]
+            return Response(status_code=202, content=json.dumps({"run_id": run_id}), media_type="application/json")
+    user_id = agent.get("user_id") or ""
+    if user_id and user_id != INTERNAL_USER_ID:
+        cred = _user_credits(await db.users.find_one({"id": user_id}) or {})
+        if cred < CREDITS_PER_AGENT_RUN:
+            raise HTTPException(status_code=402, detail="Insufficient credits for agent run")
+        running = await db.agent_runs.count_documents({"user_id": user_id, "status": "running"})
+        if running >= MAX_CONCURRENT_RUNS_PER_USER:
+            raise HTTPException(status_code=429, detail="Too many concurrent runs")
+    run_id = str(uuid.uuid4())
+    await db.agent_runs.insert_one({
+        "id": run_id, "agent_id": agent_id, "user_id": user_id,
+        "triggered_at": now_iso, "triggered_by": "webhook", "status": "running",
+        "started_at": now_iso, "output_summary": {}, "log_lines": [],
+    })
+    if user_id and user_id != INTERNAL_USER_ID:
+        await db.users.update_one({"id": user_id}, {"$inc": {"credit_balance": -CREDITS_PER_AGENT_RUN}})
+    async def _run_agent_cb(uid: str, aname: str, prompt: str):
+        u = await db.users.find_one({"id": uid})
+        uk = await get_workspace_api_keys(u)
+        eff = _effective_api_keys(uk)
+        sys_p = get_system_prompt_for_agent(aname) or f"You are {aname}."
+        r, _ = await _call_llm_with_fallback(
+            message=prompt, system_message=sys_p, session_id=str(uuid.uuid4()),
+            model_chain=_get_model_chain("auto", prompt, effective_keys=eff), api_keys=eff,
+        )
+        return {"result": r}
+    try:
+        status, output_summary, log_lines, _ = await run_actions(
+            agent, user_id, run_id, [], run_agent_callback=_run_agent_cb,
+        )
+    except Exception as e:
+        status, output_summary, log_lines = "failed", {"error": str(e)}, [str(e)]
+    finished = datetime.now(timezone.utc).isoformat()
+    await db.agent_runs.update_one(
+        {"id": run_id},
+        {"$set": {"status": status, "finished_at": finished, "output_summary": output_summary, "log_lines": log_lines[-1000:]}},
+    )
+    if idempotency_key:
+        _webhook_idempotency[f"{agent_id}:{idempotency_key}"] = run_id
+    return Response(status_code=202, content=json.dumps({"run_id": run_id}), media_type="application/json")
+
+
+@api_router.post("/agents", response_model=None)
+async def agents_create(data: AgentCreate, request: Request, user: dict = Depends(get_current_user)):
+    """Create a user agent (schedule or webhook + actions)."""
+    await _ensure_credit_balance(user["id"])
+    agent_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    trigger = data.trigger
+    trigger_type = trigger.type
+    trigger_config = {"type": trigger_type}
+    if trigger_type == "schedule":
+        trigger_config["cron_expression"] = trigger.cron_expression
+        trigger_config["run_at"] = trigger.run_at
+        next_ = next_run_at(cron_expression=trigger.cron_expression, run_at=trigger.run_at)
+        trigger_config["next_run_at"] = next_.isoformat() if next_ else None
+    else:
+        webhook_secret = trigger.webhook_secret or secrets.token_urlsafe(24)
+        trigger_config["webhook_secret"] = webhook_secret
+    actions = [{"type": a.type, "config": a.config, "approval_required": a.approval_required} for a in data.actions]
+    doc = {
+        "id": agent_id, "user_id": user["id"], "name": data.name, "description": data.description or "",
+        "trigger_type": trigger_type, "trigger_config": trigger_config,
+        "actions": actions, "enabled": data.enabled,
+        "created_at": now, "updated_at": now, "next_run_at": trigger_config.get("next_run_at"),
+    }
+    await db.user_agents.insert_one(doc)
+    base_url = os.environ.get("FRONTEND_URL", request.base_url.rstrip("/")).rstrip("/")
+    webhook_url = f"{base_url}/api/agents/webhook/{agent_id}?secret={trigger_config.get('webhook_secret', '')}" if trigger_type == "webhook" else None
+    return {"id": agent_id, "user_id": user["id"], "name": doc["name"], "description": doc["description"], "trigger_type": trigger_type, "trigger_config": trigger_config, "actions": actions, "enabled": doc["enabled"], "created_at": now, "updated_at": now, "webhook_url": webhook_url}
+
+
+@api_router.get("/agents")
+async def agents_list(user: dict = Depends(get_current_user), limit: int = Query(50, le=100), offset: int = Query(0, ge=0)):
+    """List current user's agents."""
+    cursor = db.user_agents.find({"user_id": user["id"]}).sort("updated_at", -1).skip(offset).limit(limit)
+    items = await cursor.to_list(length=limit)
+    out = []
+    for a in items:
+        last = await db.agent_runs.find_one({"agent_id": a["id"]}, sort=[("triggered_at", -1)], projection={"status": 1, "triggered_at": 1})
+        run_count = await db.agent_runs.count_documents({"agent_id": a["id"]})
+        tc = dict(a.get("trigger_config") or {})
+        tc.pop("webhook_secret", None)
+        out.append({
+            "id": a["id"], "user_id": a["user_id"], "name": a["name"], "description": a.get("description"),
+            "trigger_type": a["trigger_type"], "trigger_config": tc,
+            "actions": a.get("actions", []), "enabled": a.get("enabled", True),
+            "created_at": a["created_at"], "updated_at": a["updated_at"],
+            "run_count": run_count, "last_run_at": last["triggered_at"] if last else None, "last_run_status": last.get("status") if last else None,
+        })
+    return {"items": out, "total": await db.user_agents.count_documents({"user_id": user["id"]})}
+
+
+# Templates (public) — must be registered before /agents/{agent_id} so /agents/templates is not matched as agent_id
+@api_router.get("/agents/templates")
+async def agents_templates_list():
+    """List agent templates (no auth required for listing)."""
+    return {"templates": [{"slug": t["slug"], "name": t["name"], "description": t["description"]} for t in AGENT_TEMPLATES]}
+
+
+@api_router.get("/agents/templates/{slug}")
+async def agents_template_get(slug: str):
+    """Get one template by slug."""
+    t = next((x for x in AGENT_TEMPLATES if x["slug"] == slug), None)
+    if not t:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return t
+
+
+@api_router.get("/agents/{agent_id}")
+async def agents_get(agent_id: str, user: dict = Depends(get_current_user)):
+    """Get one agent (own only)."""
+    agent = await db.user_agents.find_one({"id": agent_id, "user_id": user["id"]})
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    last = await db.agent_runs.find_one({"agent_id": agent_id}, sort=[("triggered_at", -1)], projection={"status": 1, "triggered_at": 1})
+    run_count = await db.agent_runs.count_documents({"agent_id": agent_id})
+    base = os.environ.get("FRONTEND_URL", "").rstrip("/")
+    webhook_url = f"{base}/api/agents/webhook/{agent_id}?secret={agent.get('trigger_config', {}).get('webhook_secret', '')}" if agent.get("trigger_type") == "webhook" else None
+    return {
+        "id": agent["id"], "user_id": agent["user_id"], "name": agent["name"], "description": agent.get("description"),
+        "trigger_type": agent["trigger_type"], "trigger_config": agent.get("trigger_config", {}),
+        "actions": agent.get("actions", []), "enabled": agent.get("enabled", True),
+        "created_at": agent["created_at"], "updated_at": agent["updated_at"],
+        "webhook_url": webhook_url, "run_count": run_count, "last_run_at": last["triggered_at"] if last else None, "last_run_status": last.get("status") if last else None,
+    }
+
+
+@api_router.patch("/agents/{agent_id}")
+async def agents_update(agent_id: str, data: AgentUpdate, user: dict = Depends(get_current_user)):
+    """Update agent (partial)."""
+    agent = await db.user_agents.find_one({"id": agent_id, "user_id": user["id"]})
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    now = datetime.now(timezone.utc).isoformat()
+    updates = {"updated_at": now}
+    if data.name is not None:
+        updates["name"] = data.name
+    if data.description is not None:
+        updates["description"] = data.description
+    if data.enabled is not None:
+        updates["enabled"] = data.enabled
+    if data.trigger is not None:
+        tc = {"type": data.trigger.type, "cron_expression": data.trigger.cron_expression, "run_at": data.trigger.run_at, "webhook_secret": data.trigger.webhook_secret or (agent.get("trigger_config") or {}).get("webhook_secret")}
+        if data.trigger.type == "schedule":
+            next_ = next_run_at(cron_expression=data.trigger.cron_expression, run_at=data.trigger.run_at)
+            tc["next_run_at"] = next_.isoformat() if next_ else None
+        updates["trigger_config"] = tc
+        updates["trigger_type"] = data.trigger.type
+        updates["next_run_at"] = tc.get("next_run_at")
+    if data.actions is not None:
+        updates["actions"] = [{"type": a.type, "config": a.config, "approval_required": a.approval_required} for a in data.actions]
+    await db.user_agents.update_one({"id": agent_id, "user_id": user["id"]}, {"$set": updates})
+    return {"ok": True, "id": agent_id}
+
+
+@api_router.delete("/agents/{agent_id}")
+async def agents_delete(agent_id: str, user: dict = Depends(get_current_user)):
+    """Delete agent (own only)."""
+    r = await db.user_agents.delete_one({"id": agent_id, "user_id": user["id"]})
+    if r.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    return {"ok": True, "id": agent_id}
+
+
+@api_router.get("/agents/{agent_id}/runs")
+async def agents_runs_list(agent_id: str, user: dict = Depends(get_current_user), limit: int = Query(50, le=100), offset: int = Query(0, ge=0)):
+    """List runs for an agent (own only)."""
+    agent = await db.user_agents.find_one({"id": agent_id, "user_id": user["id"]})
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    cursor = db.agent_runs.find({"agent_id": agent_id}).sort("triggered_at", -1).skip(offset).limit(limit)
+    runs = await cursor.to_list(length=limit)
+    out = []
+    for r in runs:
+        started = r.get("started_at")
+        finished = r.get("finished_at")
+        dur = None
+        if started and finished:
+            try:
+                from dateutil import parser as date_parser
+                d1 = date_parser.isoparse(started)
+                d2 = date_parser.isoparse(finished)
+                dur = (d2 - d1).total_seconds()
+            except Exception:
+                pass
+        out.append({"id": r["id"], "agent_id": r["agent_id"], "user_id": r["user_id"], "triggered_at": r["triggered_at"], "triggered_by": r.get("triggered_by", "schedule"), "status": r["status"], "started_at": started, "finished_at": finished, "duration_seconds": dur, "error_message": r.get("error_message"), "output_summary": r.get("output_summary"), "step_index": r.get("step_index")})
+    return {"items": out, "total": await db.agent_runs.count_documents({"agent_id": agent_id})}
+
+
+@api_router.get("/agents/runs/{run_id}")
+async def agents_run_get(run_id: str, user: dict = Depends(get_current_user)):
+    """Get single run (own only, via agent ownership)."""
+    run = await db.agent_runs.find_one({"id": run_id})
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+    agent = await db.user_agents.find_one({"id": run["agent_id"], "user_id": user["id"]})
+    if not agent:
+        raise HTTPException(status_code=403, detail="Access denied")
+    started = run.get("started_at")
+    finished = run.get("finished_at")
+    dur = None
+    if started and finished:
+        try:
+            from dateutil import parser as date_parser
+            d1 = date_parser.isoparse(started)
+            d2 = date_parser.isoparse(finished)
+            dur = (d2 - d1).total_seconds()
+        except Exception:
+            pass
+    return {"id": run["id"], "agent_id": run["agent_id"], "user_id": run["user_id"], "triggered_at": run["triggered_at"], "triggered_by": run.get("triggered_by"), "status": run["status"], "started_at": started, "finished_at": finished, "duration_seconds": dur, "error_message": run.get("error_message"), "output_summary": run.get("output_summary"), "step_index": run.get("step_index")}
+
+
+@api_router.get("/agents/runs/{run_id}/logs")
+async def agents_run_logs(run_id: str, user: dict = Depends(get_current_user)):
+    """Get log lines for a run (own only)."""
+    run = await db.agent_runs.find_one({"id": run_id})
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+    agent = await db.user_agents.find_one({"id": run["agent_id"], "user_id": user["id"]})
+    if not agent:
+        raise HTTPException(status_code=403, detail="Access denied")
+    return {"run_id": run_id, "log_lines": run.get("log_lines", [])}
+
+
+@api_router.post("/agents/{agent_id}/run")
+async def agents_trigger_run(agent_id: str, user: dict = Depends(get_current_user)):
+    """Trigger a run now (manual). Returns run_id."""
+    agent = await db.user_agents.find_one({"id": agent_id, "user_id": user["id"]})
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    cred = _user_credits(user)
+    if cred < CREDITS_PER_AGENT_RUN:
+        raise HTTPException(status_code=402, detail=f"Insufficient credits. Need {CREDITS_PER_AGENT_RUN}, have {cred}.")
+    now_iso = datetime.now(timezone.utc).isoformat()
+    run_id = str(uuid.uuid4())
+    await db.agent_runs.insert_one({"id": run_id, "agent_id": agent_id, "user_id": user["id"], "triggered_at": now_iso, "triggered_by": "manual", "status": "running", "started_at": now_iso, "output_summary": {}, "log_lines": []})
+    await db.users.update_one({"id": user["id"]}, {"$inc": {"credit_balance": -CREDITS_PER_AGENT_RUN}})
+    async def _run_agent_cb(uid: str, aname: str, prompt: str):
+        u = await db.users.find_one({"id": uid})
+        uk = await get_workspace_api_keys(u)
+        eff = _effective_api_keys(uk)
+        sys_p = get_system_prompt_for_agent(aname) or f"You are {aname}."
+        r, _ = await _call_llm_with_fallback(message=prompt, system_message=sys_p, session_id=str(uuid.uuid4()), model_chain=_get_model_chain("auto", prompt, effective_keys=eff), api_keys=eff)
+        return {"result": r}
+    try:
+        status, output_summary, log_lines, _ = await run_actions(agent, user["id"], run_id, [], run_agent_callback=_run_agent_cb)
+    except Exception as e:
+        status, output_summary, log_lines = "failed", {"error": str(e)}, [str(e)]
+    finished = datetime.now(timezone.utc).isoformat()
+    await db.agent_runs.update_one({"id": run_id}, {"$set": {"status": status, "finished_at": finished, "output_summary": output_summary, "log_lines": log_lines[-1000:]}})
+    return {"run_id": run_id, "status": status}
+
+
+# Pre-built agent templates (referenced by agents_templates_list / agents_template_get above)
+AGENT_TEMPLATES = [
+    {"slug": "daily-digest", "name": "Daily digest", "description": "Generate a short daily summary and optionally email it.", "trigger": {"type": "schedule", "cron_expression": "0 9 * * *"}, "actions": [{"type": "run_agent", "config": {"agent_name": "Content Agent", "prompt": "Summarize the key updates for today in 3 bullet points."}}]},
+    {"slug": "youtube-poster", "name": "YouTube poster", "description": "Post or schedule content (placeholder: use HTTP action to your API).", "trigger": {"type": "schedule", "cron_expression": "0 17 * * *"}, "actions": [{"type": "http", "config": {"method": "POST", "url": "https://httpbin.org/post", "body": {"message": "Scheduled post"}}}]},
+    {"slug": "lead-finder", "name": "Lead finder", "description": "Scrape and filter leads; notify via Slack.", "trigger": {"type": "webhook"}, "actions": [{"type": "run_agent", "config": {"agent_name": "Scraping Agent", "prompt": "Suggest 2-3 data sources for B2B leads."}}, {"type": "slack", "config": {"text": "New lead run completed.", "webhook_url": ""}}]},
+    {"slug": "inbox-summarizer", "name": "Inbox summarizer", "description": "Webhook + Content Agent + email.", "trigger": {"type": "webhook"}, "actions": [{"type": "run_agent", "config": {"agent_name": "Content Agent", "prompt": "Summarize the following in 3 bullets."}}, {"type": "email", "config": {"to": "", "subject": "Summary", "body": "{{steps.0.output}}"}}]},
+    {"slug": "status-checker", "name": "Status page checker", "description": "Schedule HTTP check; Slack on failure.", "trigger": {"type": "schedule", "cron_expression": "0 */6 * * *"}, "actions": [{"type": "http", "config": {"method": "GET", "url": "https://api.github.com/zen"}}, {"type": "slack", "config": {"text": "Status check completed.", "webhook_url": ""}}]},
+]
+
+
+class FromTemplateBody(BaseModel):
+    template_slug: str
+    overrides: Optional[Dict[str, Any]] = None
+
+
+class FromDescriptionBody(BaseModel):
+    """Prompt-to-automation: natural language description of the automation."""
+    description: str
+
+
+@api_router.post("/agents/from-description")
+async def agents_from_description(data: FromDescriptionBody, request: Request, user: dict = Depends(get_current_user)):
+    """Create an agent from a natural language description (prompt-to-automation). Uses LLM to produce trigger + actions, then creates the agent."""
+    cred = _user_credits(user)
+    if cred < MIN_CREDITS_FOR_LLM:
+        raise HTTPException(status_code=402, detail=f"Insufficient credits. Need at least {MIN_CREDITS_FOR_LLM} for prompt-to-automation. Buy more in Credit Center.")
+    await _ensure_credit_balance(user["id"])
+    user_keys = await get_workspace_api_keys(user)
+    effective = _effective_api_keys(user_keys)
+    model_chain = _get_model_chain("auto", data.description, effective_keys=effective)
+    system = """You are an automation designer. Given the user's description of an automation, output ONLY a single valid JSON object (no markdown, no code fence, no explanation) with exactly these keys:
+- "name": short title for the agent (e.g. "Daily summary")
+- "description": one sentence describing what it does
+- "trigger": object with "type" ("schedule" or "webhook"). If schedule, add "cron_expression": standard 5-field cron, e.g. "0 9 * * *" for 9am daily, "0 */6 * * *" for every 6 hours, "0 0 * * *" for midnight daily
+- "actions": array of action objects. Each has "type" and "config".
+  Action types: "http" (config: method, url, optional headers, optional body), "email" (to, subject, body; body can use {{steps.0.output}} for previous step output), "slack" (webhook_url, text), "run_agent" (agent_name: one of Content Agent, Scraping Agent, etc.; prompt: string, can use {{steps.0.output}}).
+  For "every day at 9am" use cron_expression "0 9 * * *". For "every 6 hours" use "0 */6 * * *". For webhook use trigger type "webhook" and no cron.
+Output only the JSON object, nothing else."""
+    try:
+        response, _ = await _call_llm_with_fallback(
+            message=data.description,
+            system_message=system,
+            session_id=str(uuid.uuid4()),
+            model_chain=model_chain,
+            api_keys=effective,
+        )
+    except Exception as e:
+        logger.exception("agents_from_description LLM failed")
+        raise HTTPException(status_code=502, detail=f"Could not generate automation: {str(e)}")
+    raw = (response or "").strip()
+    json_str = raw
+    if "```" in raw:
+        m = re.search(r"```(?:json)?\s*([\s\S]*?)```", raw)
+        if m:
+            json_str = m.group(1).strip()
+    try:
+        spec = json.loads(json_str)
+    except json.JSONDecodeError as e:
+        logger.warning("agents_from_description invalid JSON: %s", raw[:500])
+        raise HTTPException(status_code=422, detail="Generated spec was not valid JSON. Try a clearer description.")
+    name = (spec.get("name") or "My automation").strip() or "My automation"
+    description = (spec.get("description") or "").strip()
+    trigger_spec = spec.get("trigger") or {}
+    trigger_type = (trigger_spec.get("type") or "schedule").lower()
+    if trigger_type not in ("schedule", "webhook"):
+        trigger_type = "schedule"
+    if trigger_type == "schedule":
+        cron = (trigger_spec.get("cron_expression") or "0 9 * * *").strip()
+        trigger_config = TriggerConfig(type="schedule", cron_expression=cron or "0 9 * * *", run_at=None, webhook_secret=None)
+    else:
+        trigger_config = TriggerConfig(type="webhook", cron_expression=None, run_at=None, webhook_secret=None)
+    actions_spec = spec.get("actions") or []
+    if not actions_spec:
+        actions_spec = [{"type": "http", "config": {"method": "GET", "url": "https://httpbin.org/get"}}]
+    action_configs = []
+    for a in actions_spec[:20]:
+        if not isinstance(a, dict):
+            continue
+        atype = (a.get("type") or "http").lower()
+        aconfig = a.get("config") or a
+        if not isinstance(aconfig, dict):
+            aconfig = {}
+        action_configs.append(ActionConfig(type=atype, config=aconfig, approval_required=a.get("approval_required", False)))
+    if not action_configs:
+        action_configs = [ActionConfig(type="http", config={"method": "GET", "url": "https://httpbin.org/get"}, approval_required=False)]
+    create = AgentCreate(name=name, description=description or None, trigger=trigger_config, actions=action_configs, enabled=True)
+    deduct = 3
+    if cred >= deduct:
+        await db.users.update_one({"id": user["id"]}, {"$inc": {"credit_balance": -deduct}})
+    return await agents_create(create, request, user)
+
+
+@api_router.post("/agents/from-template")
+async def agents_from_template(data: FromTemplateBody, request: Request, user: dict = Depends(get_current_user)):
+    """Create an agent from a template (overrides: name, description, trigger, actions)."""
+    t = next((x for x in AGENT_TEMPLATES if x["slug"] == data.template_slug), None)
+    if not t:
+        raise HTTPException(status_code=404, detail="Template not found")
+    overrides = data.overrides or {}
+    name = overrides.get("name") or t["name"]
+    description = overrides.get("description") or t.get("description", "")
+    trigger = overrides.get("trigger") or t["trigger"]
+    actions = overrides.get("actions") or t["actions"]
+    trigger_config = TriggerConfig(**trigger) if isinstance(trigger, dict) else trigger
+    action_configs = [ActionConfig(**a) if isinstance(a, dict) else a for a in actions]
+    create = AgentCreate(name=name, description=description, trigger=trigger_config, actions=action_configs, enabled=True)
+    return await agents_create(create, request, user)
+
+
+# Approval (human-in-the-loop)
+@api_router.post("/agents/runs/{run_id}/approve")
+async def agents_run_approve(run_id: str, user: dict = Depends(get_current_user), comment: Optional[str] = Body(None)):
+    """Resume a run that is waiting_approval (owner only)."""
+    run = await db.agent_runs.find_one({"id": run_id})
+    if not run or run["user_id"] != user["id"]:
+        raise HTTPException(status_code=404, detail="Run not found")
+    if run.get("status") != "waiting_approval":
+        raise HTTPException(status_code=400, detail="Run is not waiting for approval")
+    agent = await db.user_agents.find_one({"id": run["agent_id"], "user_id": user["id"]})
+    if not agent:
+        raise HTTPException(status_code=403, detail="Access denied")
+    step_index = (run.get("step_index") or 0) + 1
+    steps_context = [s.get("output") for s in (run.get("output_summary") or {}).get("steps", [])]
+    steps_context = [{"output": x} for x in steps_context]
+    async def _run_agent_cb(uid: str, aname: str, prompt: str):
+        u = await db.users.find_one({"id": uid})
+        uk = await get_workspace_api_keys(u)
+        eff = _effective_api_keys(uk)
+        sys_p = get_system_prompt_for_agent(aname) or f"You are {aname}."
+        r, _ = await _call_llm_with_fallback(message=prompt, system_message=sys_p, session_id=str(uuid.uuid4()), model_chain=_get_model_chain("auto", prompt, effective_keys=eff), api_keys=eff)
+        return {"result": r}
+    try:
+        status, output_summary, log_lines, _ = await run_actions(agent, user["id"], run_id, steps_context, run_agent_callback=_run_agent_cb, resume_from_step=step_index)
+    except Exception as e:
+        status, output_summary, log_lines = "failed", {"error": str(e)}, [str(e)]
+    finished = datetime.now(timezone.utc).isoformat()
+    await db.agent_runs.update_one({"id": run_id}, {"$set": {"status": status, "finished_at": finished, "output_summary": output_summary, "log_lines": run.get("log_lines", []) + log_lines, "step_index": None}})
+    return {"ok": True, "run_id": run_id, "status": status}
+
+
+@api_router.post("/agents/runs/{run_id}/reject")
+async def agents_run_reject(run_id: str, user: dict = Depends(get_current_user), comment: Optional[str] = Body(None)):
+    """Cancel a run that is waiting_approval."""
+    run = await db.agent_runs.find_one({"id": run_id})
+    if not run or run["user_id"] != user["id"]:
+        raise HTTPException(status_code=404, detail="Run not found")
+    if run.get("status") != "waiting_approval":
+        raise HTTPException(status_code=400, detail="Run is not waiting for approval")
+    finished = datetime.now(timezone.utc).isoformat()
+    await db.agent_runs.update_one({"id": run_id}, {"$set": {"status": "cancelled", "finished_at": finished}})
+    return {"ok": True, "run_id": run_id, "status": "cancelled"}
+
+
 # ==================== PROJECT ROUTES ====================
 
 FREE_TIER_MAX_PROJECTS = 3
@@ -2496,12 +3045,395 @@ async def get_projects(user: dict = Depends(get_current_user)):
     projects = await db.projects.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(100)
     return {"projects": projects}
 
+
+def _safe_import_path(path: str) -> str:
+    """Return a safe relative path for import (no .., no absolute)."""
+    p = (path or "").strip().replace("\\", "/").lstrip("/")
+    if ".." in p or p.startswith("/"):
+        return ""
+    return p[:500]  # limit length
+
+
+@api_router.post("/projects/import")
+async def import_project(data: ProjectImportBody, user: dict = Depends(get_current_user)):
+    """Import a project from paste (files), ZIP (base64), or Git URL. Creates project and writes files to workspace."""
+    project_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    name = (data.name or "Imported project").strip() or "Imported project"
+    project = {
+        "id": project_id,
+        "user_id": user["id"],
+        "name": name,
+        "description": "Imported from paste, ZIP, or Git.",
+        "project_type": "fullstack",
+        "requirements": {"prompt": "", "imported": True},
+        "status": "imported",
+        "tokens_allocated": 0,
+        "tokens_used": 0,
+        "created_at": now,
+        "completed_at": now,
+        "live_url": None,
+    }
+    await db.projects.insert_one(project)
+    root = _project_workspace_path(project_id).resolve()
+    root.mkdir(parents=True, exist_ok=True)
+    written = 0
+    if data.source == "paste" and data.files:
+        for item in data.files[:200]:
+            path = _safe_import_path(item.get("path") or "")
+            if not path:
+                continue
+            content = item.get("code") or item.get("content") or ""
+            if len(content) > 2 * 1024 * 1024:
+                continue
+            full = (root / path).resolve()
+            try:
+                full.relative_to(root)
+            except ValueError:
+                continue
+            full.parent.mkdir(parents=True, exist_ok=True)
+            full.write_text(content[:2 * 1024 * 1024], encoding="utf-8", errors="replace")
+            written += 1
+    elif data.source == "zip" and data.zip_base64:
+        try:
+            raw = base64.b64decode(data.zip_base64, validate=True)
+            if len(raw) > 10 * 1024 * 1024:
+                raise HTTPException(status_code=413, detail="ZIP too large (max 10MB)")
+            with zipfile.ZipFile(io.BytesIO(raw), "r") as zf:
+                for info in zf.infolist()[:500]:
+                    if info.is_dir():
+                        continue
+                    path = _safe_import_path(info.filename)
+                    if not path or "node_modules" in path or "__pycache__" in path:
+                        continue
+                    full = (root / path).resolve()
+                    try:
+                        full.relative_to(root)
+                    except ValueError:
+                        continue
+                    full.parent.mkdir(parents=True, exist_ok=True)
+                    full.write_bytes(zf.read(info))
+                    written += 1
+        except zipfile.BadZipFile:
+            raise HTTPException(status_code=400, detail="Invalid ZIP file")
+    elif data.source == "git" and data.git_url:
+        url = (data.git_url or "").strip()
+        if not url.startswith("http"):
+            raise HTTPException(status_code=400, detail="Git URL must be HTTPS")
+        try:
+            import httpx
+            if "github.com" in url:
+                u = url.rstrip("/").replace("https://github.com/", "").replace(".git", "")
+                parts = u.split("/")
+                if len(parts) >= 2:
+                    archive_url = f"https://github.com/{parts[0]}/{parts[1]}/archive/refs/heads/main.zip"
+                else:
+                    archive_url = f"https://github.com/{parts[0]}/{parts[1]}/archive/refs/heads/master.zip"
+            else:
+                raise HTTPException(status_code=400, detail="Only GitHub URLs supported for now")
+            async with httpx.AsyncClient() as client:
+                r = await client.get(archive_url, timeout=30)
+                if r.status_code != 200:
+                    r = await client.get(archive_url.replace("/main.zip", "/master.zip"), timeout=30)
+                if r.status_code != 200:
+                    raise HTTPException(status_code=400, detail="Could not fetch repo archive")
+                raw = r.content
+                if len(raw) > 15 * 1024 * 1024:
+                    raise HTTPException(status_code=413, detail="Repo archive too large (max 15MB)")
+                with zipfile.ZipFile(io.BytesIO(raw), "r") as zf:
+                    for info in zf.infolist()[:500]:
+                        if info.is_dir():
+                            continue
+                        parts = info.filename.replace("\\", "/").split("/")
+                        name_part = "/".join(parts[1:]) if len(parts) > 1 else info.filename
+                        path = _safe_import_path(name_part)
+                        if not path or "node_modules" in path or "__pycache__" in path:
+                            continue
+                        full = (root / path).resolve()
+                        try:
+                            full.relative_to(root)
+                        except ValueError:
+                            continue
+                        full.parent.mkdir(parents=True, exist_ok=True)
+                        full.write_bytes(zf.read(info))
+                        written += 1
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.exception("Git import failed: %s", e)
+            raise HTTPException(status_code=400, detail=f"Git import failed: {str(e)[:200]}")
+    else:
+        raise HTTPException(status_code=400, detail="Provide source and files, zip_base64, or git_url")
+    return {"project_id": project_id, "project": {k: v for k, v in project.items() if k != "_id"}, "files_written": written}
+
+
 @api_router.get("/projects/{project_id}")
 async def get_project(project_id: str, user: dict = Depends(get_current_user)):
     project = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"_id": 0})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     return {"project": project}
+
+
+@api_router.get("/projects/{project_id}/state")
+async def get_project_state(project_id: str, user: dict = Depends(get_current_user)):
+    """Return structured project state (plan, requirements, stack, reports, tool_log) for UI and debugging."""
+    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    state = load_state(project_id)
+    return {"state": state}
+
+
+@api_router.get("/projects/{project_id}/events")
+async def stream_build_events(
+    project_id: str,
+    last_id: int = Query(0, description="Last event id received"),
+    user: dict = Depends(get_current_user),
+):
+    """SSE stream of build events (agent_started, agent_completed, phase_started, build_completed). Wired to orchestration."""
+    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    async def event_generator():
+        seen = last_id
+        while True:
+            events = _build_events.get(project_id, [])
+            for ev in events:
+                if ev.get("id", 0) >= seen:
+                    yield f"data: {json.dumps(ev)}\n\n"
+                    seen = ev.get("id", 0) + 1
+            project_doc = await db.projects.find_one({"id": project_id}, {"status": 1})
+            if project_doc and project_doc.get("status") in ("completed", "failed"):
+                yield f"data: {json.dumps({'type': 'stream_end', 'status': project_doc['status']})}\n\n"
+                break
+            await asyncio.sleep(0.5)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+    )
+
+
+@api_router.get("/projects/{project_id}/events/snapshot")
+async def get_build_events_snapshot(project_id: str, user: dict = Depends(get_current_user)):
+    """One-shot fetch of all build events (for UI timeline). Wired to same store as SSE."""
+    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    events = _build_events.get(project_id, [])
+    return {"events": events}
+
+
+def _project_workspace_path(project_id: str) -> Path:
+    safe_id = project_id.replace("/", "_").replace("\\", "_")
+    return WORKSPACE_ROOT / safe_id
+
+
+def _create_preview_token(project_id: str, user_id: str) -> str:
+    """Short-lived JWT so iframe can load preview without Bearer header."""
+    payload = {"project_id": project_id, "user_id": user_id, "purpose": "preview", "exp": datetime.now(timezone.utc) + timedelta(minutes=2)}
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def _verify_preview_token(token: str) -> tuple:
+    """Returns (project_id, user_id) or raises."""
+    payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    if payload.get("purpose") != "preview":
+        raise jwt.InvalidTokenError("Invalid purpose")
+    return payload["project_id"], payload["user_id"]
+
+
+@api_router.get("/settings/capabilities")
+async def get_settings_capabilities(user: dict = Depends(get_current_user)):
+    """Returns sandbox (Docker) availability and other capabilities for UI polish."""
+    sandbox_available = False
+    try:
+        proc = subprocess.run(
+            ["docker", "run", "--rm", "hello-world"],
+            capture_output=True,
+            timeout=10,
+        )
+        sandbox_available = proc.returncode == 0
+    except Exception as e:
+        logger.info("Sandbox (Docker) check failed: %s. Runs will use host when Docker unavailable.", e)
+    return {
+        "sandbox_available": sandbox_available,
+        "sandbox_default": os.environ.get("RUN_IN_SANDBOX", "1").strip().lower() in ("1", "true", "yes"),
+    }
+
+
+@api_router.get("/projects/{project_id}/preview-token")
+async def get_preview_token(project_id: str, user: dict = Depends(get_current_user)):
+    """Get short-lived token for iframe preview URL. Wired to preview."""
+    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    t = _create_preview_token(project_id, user["id"])
+    base = os.environ.get("API_BASE_URL", "").rstrip("/") or "http://localhost:8000"
+    return {"token": t, "url": f"{base}/api/projects/{project_id}/preview?preview_token={t}"}
+
+
+@api_router.get("/projects/{project_id}/preview")
+@api_router.get("/projects/{project_id}/preview/{path:path}")
+async def serve_preview(
+    project_id: str,
+    path: str = "",
+    preview_token: Optional[str] = Query(None, description="From GET /projects/{id}/preview-token"),
+):
+    """Serve workspace files for live preview (iframe). Requires preview_token from /preview-token (auth)."""
+    if not preview_token:
+        raise HTTPException(status_code=401, detail="preview_token required (get from /projects/{id}/preview-token)")
+    try:
+        pid, user_id = _verify_preview_token(preview_token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid or expired preview token")
+    if pid != project_id:
+        raise HTTPException(status_code=403, detail="Token project mismatch")
+    project = await db.projects.find_one({"id": project_id, "user_id": user_id})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    root = _project_workspace_path(project_id).resolve()
+    if not root.exists():
+        raise HTTPException(status_code=404, detail="No workspace yet")
+    path = (path or "").strip().lstrip("/").replace("\\", "/")
+    if ".." in path or path.startswith("/"):
+        raise HTTPException(status_code=400, detail="Invalid path")
+    full = (root / path).resolve()
+    try:
+        full.relative_to(root)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Path outside workspace")
+    if full.is_dir():
+        full = full / "index.html"
+    if not full.exists():
+        if not path:
+            return Response(
+                content="""<!DOCTYPE html><html><head><meta charset="utf-8"><title>Building...</title></head><body style="display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;font-family:system-ui;background:#0f172a;color:#94a3b8;">Building your app... Agents are writing files.</body></html>""",
+                media_type="text/html",
+            )
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(full)
+
+
+@api_router.get("/projects/{project_id}/workspace/files")
+async def list_workspace_files(project_id: str, user: dict = Depends(get_current_user)):
+    """List files in project workspace (view files in task). Wired to workspace."""
+    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    root = _project_workspace_path(project_id).resolve()
+    if not root.exists():
+        return {"files": []}
+    files = []
+    for p in root.rglob("*"):
+        if p.is_file() and "node_modules" not in str(p) and "__pycache__" not in str(p):
+            try:
+                rel = p.relative_to(root)
+                files.append(str(rel).replace("\\", "/"))
+            except ValueError:
+                pass
+    return {"files": sorted(files)[:500]}
+
+
+@api_router.get("/projects/{project_id}/workspace/file")
+async def get_workspace_file_content(
+    project_id: str,
+    path: str = Query(..., description="Relative file path in workspace"),
+    user: dict = Depends(get_current_user),
+):
+    """Get content of a single file in project workspace (for import/open in Workspace)."""
+    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    root = _project_workspace_path(project_id).resolve()
+    path = (path or "").strip().replace("\\", "/").lstrip("/")
+    if ".." in path or not path:
+        raise HTTPException(status_code=400, detail="Invalid path")
+    full = (root / path).resolve()
+    try:
+        full.relative_to(root)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Path outside workspace")
+    if not full.exists() or not full.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    try:
+        content = full.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        raise HTTPException(status_code=400, detail="File not readable as text")
+    return {"path": path, "content": content}
+
+
+@api_router.get("/projects/{project_id}/dependency-audit")
+async def get_project_dependency_audit(project_id: str, user: dict = Depends(get_current_user)):
+    """Optional: run npm audit and/or pip-audit in project workspace and return summary (high/critical counts)."""
+    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    root = _project_workspace_path(project_id).resolve()
+    if not root.exists():
+        return {"npm": None, "pip": None, "message": "No workspace files yet"}
+    out = {"npm": None, "pip": None}
+
+    def _run_npm_audit() -> Optional[Dict[str, Any]]:
+        pkg = root / "package.json"
+        if not pkg.exists():
+            return None
+        try:
+            r = subprocess.run(
+                ["npm", "audit", "--json"],
+                cwd=str(root),
+                capture_output=True,
+                text=True,
+                timeout=60,
+                env={**os.environ, "CI": "1"},
+            )
+            if r.stdout:
+                data = json.loads(r.stdout)
+                meta = data.get("metadata", {}) or {}
+                counts = meta.get("vulnerabilities", {}) or {}
+                return {
+                    "critical": counts.get("critical", 0) or 0,
+                    "high": counts.get("high", 0) or 0,
+                    "moderate": counts.get("moderate", 0) or 0,
+                    "low": counts.get("low", 0) or 0,
+                    "info": counts.get("info", 0) or 0,
+                    "ok": (counts.get("critical", 0) or 0) == 0 and (counts.get("high", 0) or 0) == 0,
+                }
+            return {"ok": True, "critical": 0, "high": 0}
+        except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError) as e:
+            return {"error": str(e)[:200]}
+        except Exception as e:
+            return {"error": str(e)[:200]}
+
+    def _run_pip_audit() -> Optional[Dict[str, Any]]:
+        req = root / "requirements.txt"
+        if not req.exists():
+            return None
+        try:
+            r = subprocess.run(
+                [sys.executable, "-m", "pip_audit", "-r", str(req), "--format", "json", "--require-hashes", "false"],
+                cwd=str(root),
+                capture_output=True,
+                text=True,
+                timeout=90,
+            )
+            if r.stdout:
+                data = json.loads(r.stdout)
+                deps = data.get("dependencies", {}) or {}
+                total = sum(len((d.get("vulns") or [])) for d in deps.values() if isinstance(d, dict))
+                return {"critical": total, "high": 0, "ok": total == 0}
+            return {"ok": True, "critical": 0, "high": 0}
+        except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError) as e:
+            return {"error": str(e)[:200]}
+        except Exception as e:
+            return {"error": str(e)[:200]}
+
+    out["npm"] = await asyncio.to_thread(_run_npm_audit)
+    out["pip"] = await asyncio.to_thread(_run_pip_audit)
+    return out
 
 
 async def _build_project_deploy_zip(project_id: str, user_id: str):
@@ -2775,7 +3707,7 @@ async def build_plan(data: BuildPlanRequest, user: dict = Depends(get_current_us
                 )
     kind_instruction = {
         "landing": " The user wants a LANDING PAGE (single page or simple multi-section). Plan for hero, features, CTA, optional waitlist/form; no full app backend or SaaS billing.",
-        "mobile": " The user wants a MOBILE APP (React Native, Flutter, or PWA). Plan for mobile-first UI, native or cross-platform, and app store / install considerations.",
+        "mobile": " The user wants a MOBILE APP (React Native, Flutter, or PWA). Plan for mobile-first UI, native or cross-platform, and app store / install considerations. Include in the plan: Mobile stack: Expo (or Flutter), targets: iOS, Android.",
         "saas": " The user wants a SAAS product. Plan for multi-tenant or single-tenant with billing: subscriptions (e.g. Stripe), plans/tiers, auth, and dashboard.",
         "bot": " The user wants a BOT (Slack, Discord, Telegram, or webhook). Plan for event handlers, commands, and optional persistence; no traditional web UI unless a simple status page.",
         "ai_agent": " The user wants an AI AGENT. Plan for tools/functions the agent can call, a system prompt, and optionally an API or runner that executes the agent (e.g. OpenAPI + LLM).",
@@ -3061,11 +3993,26 @@ async def _run_single_agent_with_context(
     previous_outputs: Dict[str, Dict[str, Any]],
     effective: Dict[str, Optional[str]],
     model_chain: list,
+    build_kind: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Run one agent with context from previous agents. Returns {output, tokens_used, status} or raises."""
     if agent_name not in AGENT_DAG:
         return {"output": "", "tokens_used": 0, "status": "skipped", "reason": "Unknown agent"}
+    # Real tool agents: execute real tools (File, Browser, API, Database, Deployment) from DAG context
+    if agent_name in REAL_AGENT_NAMES:
+        real_result = await run_real_agent(
+            agent_name, project_id, user_id, previous_outputs, project_prompt
+        )
+        if real_result is not None:
+            persist_agent_output(project_id, agent_name, real_result)
+            try:
+                run_agent_real_behavior(agent_name, project_id, real_result, previous_outputs)
+            except Exception as e:
+                logger.warning("run_agent_real_behavior %s: %s", agent_name, e)
+            return real_result
     system_msg = get_system_prompt_for_agent(agent_name)
+    if agent_name == "Frontend Generation" and (build_kind or "").strip().lower() == "mobile":
+        system_msg = "You are Frontend Generation for a mobile app. Output only Expo/React Native code (App.js, use React Native components from 'react-native', no DOM or web-only APIs). No markdown."
     enhanced_message = build_context_from_previous_agents(agent_name, previous_outputs, project_prompt)
     response, _ = await _call_llm_with_fallback(
         message=enhanced_message,
@@ -3084,7 +4031,14 @@ async def _run_single_agent_with_context(
             design_desc = enhanced_message[:1000] if enhanced_message else project_prompt[:500]
             images = await generate_images_for_app(design_desc, prompts_dict if prompts_dict else None)
             out = json.dumps(images) if images else out
-            return {"output": out, "tokens_used": tokens_used, "status": "completed", "result": out, "code": out, "images": images}
+            result = {"output": out, "tokens_used": tokens_used, "status": "completed", "result": out, "code": out, "images": images}
+            result = await run_real_post_step(agent_name, project_id, previous_outputs, result)
+            persist_agent_output(project_id, agent_name, result)
+            try:
+                run_agent_real_behavior(agent_name, project_id, result, previous_outputs)
+            except Exception as e:
+                logger.warning("run_agent_real_behavior %s: %s", agent_name, e)
+            return result
         except Exception as e:
             logger.warning("Image generation agent failed: %s", e)
     # Video Generation: LLM returns JSON search queries -> Pexels finds videos
@@ -3094,11 +4048,25 @@ async def _run_single_agent_with_context(
             design_desc = enhanced_message[:1000] if enhanced_message else project_prompt[:500]
             videos = await generate_videos_for_app(design_desc, queries_dict if queries_dict else None)
             out = json.dumps(videos) if videos else out
-            return {"output": out, "tokens_used": tokens_used, "status": "completed", "result": out, "code": out, "videos": videos}
+            result = {"output": out, "tokens_used": tokens_used, "status": "completed", "result": out, "code": out, "videos": videos}
+            result = await run_real_post_step(agent_name, project_id, previous_outputs, result)
+            persist_agent_output(project_id, agent_name, result)
+            try:
+                run_agent_real_behavior(agent_name, project_id, result, previous_outputs)
+            except Exception as e:
+                logger.warning("run_agent_real_behavior %s: %s", agent_name, e)
+            return result
         except Exception as e:
             logger.warning("Video generation agent failed: %s", e)
 
-    return {"output": out, "tokens_used": tokens_used, "status": "completed", "result": out, "code": out}
+    result = {"output": out, "tokens_used": tokens_used, "status": "completed", "result": out, "code": out}
+    result = await run_real_post_step(agent_name, project_id, previous_outputs, result)
+    persist_agent_output(project_id, agent_name, result)
+    try:
+        run_agent_real_behavior(agent_name, project_id, result, previous_outputs)
+    except Exception as e:
+        logger.warning("run_agent_real_behavior %s: %s", agent_name, e)
+    return result
 
 
 async def _run_single_agent_with_retry(
@@ -3110,12 +4078,13 @@ async def _run_single_agent_with_retry(
     effective: Dict[str, Optional[str]],
     model_chain: list,
     max_retries: int = 3,
+    build_kind: Optional[str] = None,
 ) -> Dict[str, Any]:
     last_err = None
     for attempt in range(max_retries):
         try:
             r = await _run_single_agent_with_context(
-                project_id, user_id, agent_name, project_prompt, previous_outputs, effective, model_chain
+                project_id, user_id, agent_name, project_prompt, previous_outputs, effective, model_chain, build_kind=build_kind
             )
             if not (r.get("output") or r.get("result")):
                 raise AgentError(agent_name, "Empty output", "medium")
@@ -3223,7 +4192,7 @@ def _infer_build_kind(prompt: str) -> str:
     if not prompt:
         return "fullstack"
     p = prompt.lower()
-    if any(x in p for x in ("mobile app", "react native", "flutter", "ios app", "android app", "pwa ")):
+    if any(x in p for x in ("mobile app", "react native", "flutter", "ios app", "android app", "pwa ", "app store", "play store", "apple store", "google play")):
         return "mobile"
     if any(x in p for x in ("saas", "subscription", "multi-tenant", "billing", "stripe", "plans/tiers")):
         return "saas"
@@ -3258,20 +4227,24 @@ async def run_orchestration_v2(project_id: str, user_id: str):
     model_chain = _get_model_chain("auto", prompt, effective_keys=effective)
     if not (effective.get("openai") or effective.get("anthropic")):
         await db.projects.update_one({"id": project_id}, {"$set": {"status": "failed", "completed_at": datetime.now(timezone.utc).isoformat()}})
+        emit_build_event(project_id, "build_completed", status="failed", message="No API keys")
         return
     await db.projects.update_one({"id": project_id}, {"$set": {"status": "running", "current_phase": 0, "progress_percent": 0}})
     phases = get_execution_phases(AGENT_DAG)
+    emit_build_event(project_id, "build_started", phases=len(phases), message="Orchestration started")
     results: Dict[str, Dict[str, Any]] = {}
     total_used = 0
     suggest_retry_phase: Optional[int] = None
     suggest_retry_reason: Optional[str] = None
     for phase_idx, agent_names in enumerate(phases):
+        emit_build_event(project_id, "phase_started", phase=phase_idx, agents=agent_names, message=f"Phase {phase_idx + 1}: {', '.join(agent_names)}")
         progress_pct = int((phase_idx + 1) / len(phases) * 100)
         await db.projects.update_one(
             {"id": project_id},
             {"$set": {"current_phase": phase_idx, "current_agent": ",".join(agent_names), "progress_percent": progress_pct, "tokens_used": total_used}},
         )
         for agent_name in agent_names:
+            emit_build_event(project_id, "agent_started", agent=agent_name, message=f"{agent_name} started")
             await db.agent_status.update_one(
                 {"project_id": project_id, "agent_name": agent_name},
                 {"$set": {"project_id": project_id, "agent_name": agent_name, "status": "running", "progress": 0, "tokens_used": 0, "started_at": datetime.now(timezone.utc).isoformat()}},
@@ -3283,7 +4256,7 @@ async def run_orchestration_v2(project_id: str, user_id: str):
         timeout_sec = max(get_timeout(a) for a in agent_names)
         async def run_one(name: str):
             return await asyncio.wait_for(
-                _run_single_agent_with_retry(project_id, user_id, name, project_prompt_with_kind, results, effective, model_chain),
+                _run_single_agent_with_retry(project_id, user_id, name, project_prompt_with_kind, results, effective, model_chain, build_kind=build_kind),
                 timeout=timeout_sec + 30,
             )
         tasks = [run_one(name) for name in agent_names]
@@ -3295,6 +4268,7 @@ async def run_orchestration_v2(project_id: str, user_id: str):
                 crit = get_criticality(name)
                 if crit == "critical":
                     await db.projects.update_one({"id": project_id}, {"$set": {"status": "failed", "completed_at": datetime.now(timezone.utc).isoformat()}})
+                    emit_build_event(project_id, "build_completed", status="failed", agent=name, message=str(r))
                     results[name] = {"output": "", "status": "failed", "reason": str(r)}
                 else:
                     fallback = generate_fallback(name)
@@ -3304,6 +4278,7 @@ async def run_orchestration_v2(project_id: str, user_id: str):
                 total_used += r.get("tokens_used", 0)
                 if (r.get("status") or "").lower() in ("skipped", "failed", "failed_with_fallback"):
                     phase_fail_count += 1
+            emit_build_event(project_id, "agent_completed", agent=name, tokens=results[name].get("tokens_used", 0), status=results[name].get("status", ""), message=f"{name} completed")
             out_snippet = (results[name].get("output") or results[name].get("result") or "")[:200]
             await db.agent_status.update_one(
                 {"project_id": project_id, "agent_name": name},
@@ -3322,6 +4297,18 @@ async def run_orchestration_v2(project_id: str, user_id: str):
         project = await db.projects.find_one({"id": project_id})
         if project and project.get("status") == "failed":
             return
+    # Bounded autonomy loop: re-run tests/security once if they failed (self-heal)
+    try:
+        from autonomy_loop import run_bounded_autonomy_loop
+        autonomy_result = run_bounded_autonomy_loop(project_id, results, emit_event=emit_build_event)
+        if autonomy_result.get("iterations"):
+            await db.project_logs.insert_one({
+                "id": str(uuid.uuid4()), "project_id": project_id, "agent": "AutonomyLoop",
+                "message": f"Self-heal: re-ran tests={autonomy_result.get('ran_tests')}, security={autonomy_result.get('ran_security')}",
+                "level": "info", "created_at": datetime.now(timezone.utc).isoformat()
+            })
+    except Exception as e:
+        logger.warning("autonomy loop: %s", e)
     fe = (results.get("Frontend Generation") or {}).get("output") or ""
     be = (results.get("Backend Generation") or {}).get("output") or ""
     db_schema = (results.get("Database Agent") or {}).get("output") or ""
@@ -3330,18 +4317,51 @@ async def run_orchestration_v2(project_id: str, user_id: str):
     videos = (results.get("Video Generation") or {}).get("videos") or {}
     quality = score_generated_code(frontend_code=fe, backend_code=be, database_schema=db_schema, test_code=tests)
     deploy_files = {}
-    if fe:
-        fe = _inject_media_into_jsx(fe, images, videos)
+    if build_kind == "mobile" and fe:
+        # Mobile project: Expo app + native config + store submission pack
         user_doc = await db.users.find_one({"id": user_id}, {"plan": 1})
         user_plan = (user_doc or {}).get("plan") or "free"
-        fe = _inject_crucibai_branding(fe, user_plan)
-        deploy_files["src/App.jsx"] = fe
-    if be:
-        deploy_files["server.py"] = be
-    if db_schema:
-        deploy_files["schema.sql"] = db_schema
-    if tests:
-        deploy_files["tests/test_basic.py"] = tests
+        fe_mobile = _inject_crucibai_branding(fe, user_plan)
+        deploy_files["App.js"] = fe_mobile
+        # Native Config Agent -> app.json, eas.json
+        native_out = (results.get("Native Config Agent") or {}).get("output") or ""
+        json_blocks = re.findall(r"```(?:json)?\s*([\s\S]*?)```", native_out)
+        if len(json_blocks) >= 1:
+            try:
+                deploy_files["app.json"] = json_blocks[0].strip()
+            except Exception:
+                pass
+        if len(json_blocks) >= 2:
+            try:
+                deploy_files["eas.json"] = json_blocks[1].strip()
+            except Exception:
+                pass
+        if "app.json" not in deploy_files:
+            deploy_files["app.json"] = '{"name":"App","slug":"app","version":"1.0.0","ios":{"bundleIdentifier":"com.example.app"},"android":{"package":"com.example.app"}}'
+        if "eas.json" not in deploy_files:
+            deploy_files["eas.json"] = '{"build":{"preview":{"ios":{},"android":{}},"production":{"ios":{},"android":{}}}}'
+        deploy_files["package.json"] = '{"name":"app","version":"1.0.0","main":"node_modules/expo/AppEntry.js","scripts":{"start":"expo start","android":"expo start --android","ios":"expo start --ios"},"dependencies":{"expo":"~50.0.0","react":"18.2.0","react-native":"0.73.0"}}'
+        deploy_files["babel.config.js"] = "module.exports = function(api) { api.cache(true); return { presets: ['babel-preset-expo'] }; };"
+        # Store Prep Agent -> store-submission/
+        store_out = (results.get("Store Prep Agent") or {}).get("output") or ""
+        deploy_files["store-submission/STORE_SUBMISSION_GUIDE.md"] = store_out or "See Expo EAS Submit docs for Apple App Store and Google Play submission."
+        metadata_match = re.search(r"\{[\s\S]*?\"app_name\"[\s\S]*?\}", store_out)
+        if metadata_match:
+            deploy_files["store-submission/metadata.json"] = metadata_match.group(0)
+    else:
+        # Web project
+        if fe:
+            fe = _inject_media_into_jsx(fe, images, videos)
+            user_doc = await db.users.find_one({"id": user_id}, {"plan": 1})
+            user_plan = (user_doc or {}).get("plan") or "free"
+            fe = _inject_crucibai_branding(fe, user_plan)
+            deploy_files["src/App.jsx"] = fe
+        if be:
+            deploy_files["server.py"] = be
+        if db_schema:
+            deploy_files["schema.sql"] = db_schema
+        if tests:
+            deploy_files["tests/test_basic.py"] = tests
     set_payload = {
         "status": "completed",
         "tokens_used": total_used,
@@ -3349,6 +4369,7 @@ async def run_orchestration_v2(project_id: str, user_id: str):
         "live_url": None,
         "quality_score": quality,
         "orchestration_version": "v2_dag",
+        "build_kind": build_kind,
     }
     if images:
         set_payload["images"] = images
@@ -3363,6 +4384,7 @@ async def run_orchestration_v2(project_id: str, user_id: str):
     if suggest_retry_phase is None:
         update_op["$unset"] = {"suggest_retry_phase": "", "suggest_retry_reason": ""}
     await db.projects.update_one({"id": project_id}, update_op)
+    emit_build_event(project_id, "build_completed", status="completed", tokens=total_used, message="Build completed")
     project = await db.projects.find_one({"id": project_id})
     if project and project.get("tokens_allocated"):
         refund = project["tokens_allocated"] - total_used
@@ -3514,7 +4536,7 @@ async def _revenue_for_query(q: dict) -> float:
 
 @api_router.get("/admin/dashboard")
 async def admin_dashboard(admin: dict = Depends(get_current_admin(ADMIN_ROLES))):
-    """Overview: users, revenue, signups, referral count, fraud flags stub, health."""
+    """Overview: users, revenue, signups, referral count, fraud_flags_count (from /admin/fraud/flags when implemented), health."""
     now = datetime.now(timezone.utc)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()[:10]
     week_ago = (now - timedelta(days=7)).isoformat()
@@ -3801,8 +4823,8 @@ async def admin_billing_transactions(
 
 @api_router.get("/admin/fraud/flags")
 async def admin_fraud_flags(admin: dict = Depends(get_current_admin(("owner", "operations")))):
-    """Stub: high-risk accounts. Later: same IP > N signups, device clustering."""
-    return {"flags": [], "message": "Fraud flags from IP/device clustering to be implemented"}
+    """High-risk accounts. Returns empty list until IP/device clustering and risk rules are implemented."""
+    return {"flags": [], "message": "Fraud detection (IP/device clustering) can be added here."}
 
 @api_router.get("/admin/legal/blocked-requests")
 async def admin_legal_blocked_requests(
@@ -4197,16 +5219,45 @@ async def save_project_as_template(project_id: str, body: dict, user: dict = Dep
 
 # ==================== SECURITY SCAN / OPTIMIZE / A11Y / DESIGN FROM URL ====================
 
+def _parse_security_checklist_summary(text: str) -> tuple[int, int]:
+    """Return (passed_count, failed_count) from checklist lines containing PASS/FAIL."""
+    passed = failed = 0
+    for line in (text or "").split("\n")[:15]:
+        line_lower = line.upper()
+        if "PASS" in line_lower and "FAIL" not in line_lower[:line_lower.index("PASS") + 4]:
+            passed += 1
+        elif "FAIL" in line_lower:
+            failed += 1
+    return passed, failed
+
+
 @api_router.post("/ai/security-scan")
 async def security_scan(data: SecurityScanBody, user: dict = Depends(get_optional_user)):
-    """Return a short security checklist for the provided files. Uses your Settings keys when set."""
+    """Return a short security checklist for the provided files. Uses your Settings keys when set. If project_id is set and user is authenticated, store result on project for AgentMonitor."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
     code = " ".join(data.files.values())[:6000]
     model_chain = _get_model_chain("auto", code, effective_keys=effective)
     prompt = f"Review this code for security. List 3-5 checklist items (e.g. 'No secrets in client code', 'Auth on API'). For each say PASS or FAIL and one line reason. Code:\n{code}"
     response, _ = await _call_llm_with_fallback(message=prompt, system_message="Reply with a short checklist. Use PASS/FAIL.", session_id=str(uuid.uuid4()), model_chain=model_chain, api_keys=effective)
-    return {"report": response, "checklist": response.split("\n")[:8]}
+    checklist = response.split("\n")[:8] if response else []
+    passed, failed = _parse_security_checklist_summary(response or "")
+    if data.project_id and user:
+        project = await db.projects.find_one({"id": data.project_id, "user_id": user["id"]})
+        if project:
+            await db.projects.update_one(
+                {"id": data.project_id, "user_id": user["id"]},
+                {"$set": {
+                    "last_security_scan": {
+                        "report": response,
+                        "checklist": checklist,
+                        "passed": passed,
+                        "failed": failed,
+                        "at": datetime.now(timezone.utc).isoformat(),
+                    }
+                }}
+            )
+    return {"report": response, "checklist": checklist, "passed": passed, "failed": failed}
 
 @api_router.post("/ai/optimize")
 async def optimize_code(data: OptimizeBody, user: dict = Depends(get_optional_user)):
@@ -4290,6 +5341,19 @@ async def get_agents_activity(session_id: Optional[str] = None, user: dict = Dep
         })
     return {"activities": activities[:20]}
 
+# ==================== BRAND (read-only, no auth) ====================
+
+@api_router.get("/brand")
+async def brand_config():
+    """Read-only brand proof stats for landing/hero. No model or provider names."""
+    return {
+        "tagline": "Inevitable AI",
+        "agent_count": 120,
+        "success_rate": "99.2%",
+        "proof_strip": ["120-agent swarm", "99.2% success", "Typically under 72 hours", "Full transparency", "Minimal supervision"],
+        "cta_primary": "Make It Inevitable",
+    }
+
 # ==================== ROOT ====================
 
 @api_router.get("/")
@@ -4299,6 +5363,27 @@ async def root():
 @api_router.get("/health")
 async def health():
     return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
+
+# ==================== CLIENT ERROR LOGGING ====================
+
+@api_router.post("/errors/log")
+async def client_error_log(request: Request):
+    """Accept client-side error reports (ErrorBoundary). No auth required; rate-limited by middleware. Sanitized and logged only."""
+    try:
+        body = await request.json()
+        if isinstance(body, dict):
+            message = str(body.get("message", ""))[:2000]
+            stack = str(body.get("stack", ""))[:5000]
+            url = str(body.get("url", ""))[:500]
+            logger.warning(
+                "Client error: %s | url=%s | stack=%s",
+                message or "unknown",
+                url or request.url.path,
+                stack[:500] if stack else ""
+            )
+    except Exception:
+        pass
+    return {}
 
 # ==================== TOOL AGENTS ====================
 
@@ -4370,16 +5455,26 @@ async def websocket_project_progress(websocket: WebSocket, project_id: str):
     except WebSocketDisconnect:
         pass
 
+# Serve frontend static (Docker/Railway: frontend built and copied to /app/static)
+_static_dir = Path(__file__).resolve().parent / "static"
+if _static_dir.exists():
+    from fastapi.staticfiles import StaticFiles
+    app.mount("/", StaticFiles(directory=str(_static_dir), html=True), name="frontend")
+
 # Add security and performance middleware (order matters - added in reverse)
 app.add_middleware(PerformanceMonitoringMiddleware)
 app.add_middleware(RequestValidationMiddleware)
 app.add_middleware(RequestTrackerMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
-app.add_middleware(RateLimitMiddleware, requests_per_minute=100)
+app.add_middleware(RateLimitMiddleware, requests_per_minute=int(os.environ.get("RATE_LIMIT_PER_MINUTE", "100")))
+if os.environ.get("HTTPS_REDIRECT", "").strip().lower() in ("1", "true", "yes"):
+    app.add_middleware(HTTPSRedirectMiddleware)
+_cors_origins = os.environ.get('CORS_ORIGINS', '*').strip()
+CORS_ORIGINS_LIST = [o.strip() for o in _cors_origins.split(',') if o.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=CORS_ORIGINS_LIST,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["Content-Type", "Authorization", "X-Requested-With", "X-Request-ID"],
 )
@@ -4453,6 +5548,21 @@ async def seed_examples_if_empty():
             logger.info("Seeded 5 examples: todo-app, blog-platform, ecommerce-store, project-management, analytics-dashboard")
     except Exception as e:
         logger.warning(f"Seed examples: {e}")
+
+
+@app.on_event("startup")
+async def seed_internal_agents_if_requested():
+    """Seed 5 internal (dogfooding) agents when SEED_INTERNAL_AGENTS=1."""
+    if not os.environ.get("SEED_INTERNAL_AGENTS"):
+        return
+    try:
+        from automation.seed_internal import seed_internal_agents
+        n = await seed_internal_agents(db)
+        if n:
+            logger.info("Seeded %s internal automation agents", n)
+    except Exception as e:
+        logger.warning("Seed internal agents: %s", e)
+
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

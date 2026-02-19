@@ -57,9 +57,9 @@ While website builders generate generic templates and static layouts, **CrucibAI
 
 ### 4. IDE Integration (We Win 4x)
 **Website Builders:** No IDE integration  
-**CrucibAI:** 4 IDE extensions (VS Code, JetBrains, Sublime, Vim)
+**CrucibAI:** 4 IDE extensions — **VS Code & Cursor** (one extension works in both), JetBrains, Sublime, Vim.
 
-**Why it matters:** Developers live in their IDEs. We meet them there. Website builders force you to their interface.
+**Why it matters:** Developers live in their IDEs. We meet them there. Use CrucibAI from VS Code or Cursor with the same extension; no separate install needed for Cursor. Website builders force you to their interface.
 
 ### 5. Vibe Coding (We Win Uniquely)
 **Website Builders:** No vibe coding  
@@ -107,7 +107,7 @@ While website builders generate generic templates and static layouts, **CrucibAI
 > "Real-time collaboration built in. See your teammates' cursors. Edit together. Build faster."
 
 **Message 4: IDE Integration**
-> "Your IDE, your way. VS Code, JetBrains, Sublime, Vim. We meet developers where they work."
+> "Your IDE, your way. VS Code, Cursor, JetBrains, Sublime, Vim. One extension covers VS Code and Cursor. We meet developers where they work."
 
 **Message 5: Vibe Coding**
 > "Natural language development. Describe what you want. 115 agents build it. Outcome guaranteed."
@@ -159,7 +159,7 @@ While website builders generate generic templates and static layouts, **CrucibAI
 
 ### Tier 4: Developers
 **Message:** "Your AI coding copilot. In your IDE. Always ready"  
-**Proof:** 4 IDE integrations, vibe coding, natural language  
+**Proof:** 4 IDE integrations (VS Code & Cursor, JetBrains, Sublime, Vim), vibe coding, natural language  
 **Price:** Free tier, $9/month pro
 
 ---

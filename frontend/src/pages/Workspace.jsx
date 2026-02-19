@@ -315,6 +315,7 @@ const Workspace = () => {
   const [fileSearchOpen, setFileSearchOpen] = useState(false);
   const [lastTokensUsed, setLastTokensUsed] = useState(0);
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(false); // collapsed by default; View → "Show code / files" for devs
+  const [showFirstRunBanner, setShowFirstRunBanner] = useState(() => !localStorage.getItem('crucibai_first_run'));
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
   const [splitEditor, setSplitEditor] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState(null); // 'file' | 'edit' | 'view' | 'go' | 'run' | 'terminal' | 'help' | null
@@ -325,8 +326,11 @@ const Workspace = () => {
   const [qualityGateResult, setQualityGateResult] = useState(null); // { passed, score, verdict } after build
   const [tokensPerStep, setTokensPerStep] = useState({ plan: 0, generate: 0 });
   const [showDeployModal, setShowDeployModal] = useState(false);
+  const projectIdFromUrl = searchParams.get('projectId');
+  const [projectBuildProgress, setProjectBuildProgress] = useState({ phase: 0, agent: '', progress: 0, status: '', tokens_used: 0 });
   const fileInputRef = useRef(null);
   const chatEndRef = useRef(null);
+  const workspaceFilesLoadedForProject = useRef(null);
 
   useEffect(() => {
     axios.get(`${API}/build/phases`).then(r => setBuildPhases(r.data.phases || [])).catch(() => {});
@@ -344,6 +348,36 @@ const Workspace = () => {
     }
   }, [location.state]);
 
+  // Load imported project files from workspace when opening with projectId (e.g. after Import)
+  useEffect(() => {
+    if (!projectIdFromUrl || !token || !API || workspaceFilesLoadedForProject.current === projectIdFromUrl) return;
+    const headers = { Authorization: `Bearer ${token}` };
+    axios.get(`${API}/projects/${projectIdFromUrl}/workspace/files`, { headers })
+      .then((r) => {
+        const list = r.data?.files || [];
+        if (list.length === 0) return;
+        workspaceFilesLoadedForProject.current = projectIdFromUrl;
+        return Promise.all(
+          list.map((path) =>
+            axios.get(`${API}/projects/${projectIdFromUrl}/workspace/file`, { params: { path }, headers })
+              .then((f) => ({ path: f.data.path, content: f.data.content }))
+              .catch(() => null)
+          )
+        ).then((results) => {
+          const loaded = results.filter(Boolean).reduce((acc, { path, content }) => {
+            const key = path.startsWith('/') ? path : `/${path}`;
+            acc[key] = { code: content };
+            return acc;
+          }, {});
+          if (Object.keys(loaded).length > 0) {
+            setFiles(loaded);
+            setActiveFile((current) => (current && loaded[current] ? current : Object.keys(loaded).sort()[0]));
+          }
+        });
+      })
+      .catch(() => {});
+  }, [projectIdFromUrl, token, API]);
+
   useEffect(() => {
     if (token) {
       axios.get(`${API}/agents/activity`, { headers: { Authorization: `Bearer ${token}` } })
@@ -351,6 +385,30 @@ const Workspace = () => {
         .catch(() => {});
     }
   }, [token, messages.length]);
+
+  // Wire real build progress when opened with projectId (from AgentMonitor "Open in Workspace")
+  useEffect(() => {
+    if (!projectIdFromUrl || !API) return;
+    const wsBase = (API || '').replace(/^http/, 'ws').replace(/\/api\/?$/, '');
+    const wsUrl = `${wsBase}/ws/projects/${projectIdFromUrl}/progress`;
+    let ws;
+    try {
+      ws = new WebSocket(wsUrl);
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          setProjectBuildProgress({
+            phase: data.phase ?? 0,
+            agent: data.agent ?? '',
+            progress: data.progress ?? 0,
+            status: data.status ?? '',
+            tokens_used: data.tokens_used ?? 0
+          });
+        } catch (_) {}
+      };
+    } catch (_) {}
+    return () => { try { if (ws) ws.close(); } catch (_) {} };
+  }, [projectIdFromUrl, API]);
 
   // Wire GET /ai/chat/history so session history can be loaded (e.g. on "New Agent" we keep sessionId; history loads for current session)
   useEffect(() => {
@@ -839,7 +897,9 @@ Respond with ONLY the complete App.js code, nothing else.`;
     setToolsLoading(true);
     setToolsReport(null);
     try {
-      const res = await axios.post(`${API}/ai/security-scan`, { files: payload }, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      const body = { files: payload };
+      if (projectIdFromUrl && token) body.project_id = projectIdFromUrl;
+      const res = await axios.post(`${API}/ai/security-scan`, body, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
       setToolsReport({ type: 'security', data: res.data });
       addLog('Security scan completed', 'info', 'system');
     } catch (e) {
@@ -1108,14 +1168,14 @@ Respond with ONLY the complete App.js code, nothing else.`;
 
   return (
     <div className="h-screen bg-[#FAF9F7] text-gray-900 flex flex-col overflow-hidden font-sans text-[13px] antialiased">
-      {/* Manus Computer Widget */}
+      {/* Manus Computer Widget — wired to real build when projectId in URL (from AgentMonitor Open in Workspace) */}
       <ManusComputer 
-        currentStep={versions.length > 0 ? Math.min(versions.length, 7) : 0}
-        totalSteps={7}
-        thinking={isBuilding ? "Analyzing your request and generating code..." : ""}
-        tokensUsed={versions.length * 1000}
-        tokensTotal={50000}
-        isActive={isBuilding || versions.length > 0}
+        currentStep={projectIdFromUrl ? (projectBuildProgress.phase + 1) : (versions.length > 0 ? Math.min(versions.length, 7) : 0)}
+        totalSteps={projectIdFromUrl ? 12 : 7}
+        thinking={projectIdFromUrl ? (projectBuildProgress.agent || 'Building...') : (isBuilding ? 'Analyzing your request and generating code...' : '')}
+        tokensUsed={projectIdFromUrl ? projectBuildProgress.tokens_used : (versions.length * 1000)}
+        tokensTotal={projectIdFromUrl ? 100000 : 50000}
+        isActive={projectIdFromUrl ? (projectBuildProgress.status === 'running' || (projectBuildProgress.progress > 0 && projectBuildProgress.progress < 100)) : (isBuilding || versions.length > 0)}
       />
       {/* Command palette (Ctrl+K / Cmd+K) */}
       {commandPaletteOpen && (
@@ -1289,6 +1349,26 @@ Respond with ONLY the complete App.js code, nothing else.`;
           </button>
         </div>
       </header>
+
+      {/* First-run banner (one-time) */}
+      {showFirstRunBanner && (
+        <div className="flex-shrink-0 px-3 py-2 bg-blue-50 border-b border-blue-100 flex items-center justify-between gap-3" data-testid="first-run-banner">
+          <p className="text-sm text-blue-900">
+            Describe your app in the chat and we&apos;ll build it with 120 specialized agents. Plan, code, test, and deploy in one flow.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              localStorage.setItem('crucibai_first_run', '1');
+              setShowFirstRunBanner(false);
+            }}
+            className="shrink-0 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 rounded transition"
+            aria-label="Dismiss"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">

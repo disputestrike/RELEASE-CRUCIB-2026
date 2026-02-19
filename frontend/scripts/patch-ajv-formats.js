@@ -56,4 +56,45 @@ module.exports = ESLintWebpackPlugin;
   fs.writeFileSync(eslintPluginPath, noop);
 }
 
+// --- Patch 4: craco eslint.js — when enable is false, skip getPlugin (avoids "Cannot find ESLint plugin" warning) ---
+const cracoEslintPath = path.join(root, 'node_modules', '@craco', 'craco', 'dist', 'lib', 'features', 'webpack', 'eslint.js');
+if (fs.existsSync(cracoEslintPath)) {
+  let content = fs.readFileSync(cracoEslintPath, 'utf8');
+  if (!content.includes('patched: check enable first')) {
+    // Also silence "Couldn't disabled ESLint" when plugin isn't in config (react-scripts patched)
+    content = content.replace(
+      '    else {\n        (0, logger_1.logError)("Couldn\'t disabled ESLint.");\n    }',
+      '    else { /* plugin not in config (expected when react-scripts patched) */ }'
+    );
+    const oldBlock = `    if (cracoConfig.eslint) {
+        var _a = (0, webpack_plugins_1.getPlugin)(webpackConfig, (0, webpack_plugins_1.pluginByName)('ESLintWebpackPlugin')), isFound = _a.isFound, match = _a.match;
+        if (!isFound) {
+            (0, logger_1.logError)('Cannot find ESLint plugin (ESLintWebpackPlugin).');
+            return webpackConfig;
+        }
+        var _b = cracoConfig.eslint, enable = _b.enable, mode = _b.mode, pluginOptions = _b.pluginOptions;
+        if (enable === false) {
+            disableEslint(webpackConfig);
+            return webpackConfig;
+        }
+`;
+    const newBlock = `    if (cracoConfig.eslint) {
+        var _b = cracoConfig.eslint, enable = _b.enable, mode = _b.mode, pluginOptions = _b.pluginOptions;
+        if (enable === false) {
+            disableEslint(webpackConfig);
+            return webpackConfig;
+        }
+        var _a = (0, webpack_plugins_1.getPlugin)(webpackConfig, (0, webpack_plugins_1.pluginByName)('ESLintWebpackPlugin')), isFound = _a.isFound, match = _a.match;
+        if (!isFound) {
+            (0, logger_1.logError)('Cannot find ESLint plugin (ESLintWebpackPlugin).');
+            return webpackConfig;
+        }
+`;
+    if (content.includes(oldBlock.split('\n')[1])) {
+      content = content.replace(oldBlock, newBlock);
+      fs.writeFileSync(cracoEslintPath, content);
+    }
+  }
+}
+
 process.exit(0);

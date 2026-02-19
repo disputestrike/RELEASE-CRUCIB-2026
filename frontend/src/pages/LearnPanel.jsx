@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { BookOpen, Code, Zap, Shield, Palette } from 'lucide-react';
 
 const sections = [
@@ -50,6 +51,18 @@ export default function LearnPanel() {
               </div>
             </div>
           ))}
+        </div>
+
+        <div className="mt-8 p-5 rounded-xl border border-zinc-800 bg-zinc-900/50">
+          <h2 className="font-semibold mb-2 flex items-center gap-2">
+            <Shield className="w-5 h-5 text-blue-400" /> Security &amp; accessibility
+          </h2>
+          <p className="text-sm text-zinc-400 mb-3">
+            When you build with us or bring existing code: run <strong className="text-zinc-300">Security scan</strong> and <strong className="text-zinc-300">Accessibility check</strong> in the Workspace (toolbar or commands). We return a short checklist and a11y report so you can fix issues before deploy.
+          </p>
+          <Link to="/security" className="text-sm text-blue-400 hover:text-blue-300">
+            How we keep the platform and your code safe →
+          </Link>
         </div>
       </div>
     </div>

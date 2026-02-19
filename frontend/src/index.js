@@ -1,16 +1,8 @@
+import "./resize-observer-patch";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
 import App from "./App";
-
-// Suppress benign ResizeObserver loop errors (browser quirk, does not break the app)
-const resizeObserverErr = (e) => {
-  if (e.message && (e.message.includes("ResizeObserver loop") || e.message.includes("ResizeObserver loop limit"))) {
-    e.stopImmediatePropagation();
-    return true;
-  }
-};
-window.addEventListener("error", resizeObserverErr);
 
 class ErrorBoundary extends React.Component {
   state = { hasError: false, error: null };

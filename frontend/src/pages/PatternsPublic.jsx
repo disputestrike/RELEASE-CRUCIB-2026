@@ -19,14 +19,14 @@ const CATEGORIES = [
 ];
 
 const FALLBACK_PATTERNS = [
-  { id: 'auth-jwt', name: 'JWT Authentication', category: 'auth', usage_count: 1250, tokens_saved: 45000 },
-  { id: 'stripe-checkout', name: 'Stripe Checkout Flow', category: 'payments', usage_count: 890, tokens_saved: 60000 },
-  { id: 'crud-api', name: 'RESTful CRUD API', category: 'backend', usage_count: 2100, tokens_saved: 35000 },
-  { id: 'responsive-dashboard', name: 'Responsive Dashboard', category: 'frontend', usage_count: 1560, tokens_saved: 80000 },
-  { id: 'social-oauth', name: 'Social OAuth (Google/GitHub)', category: 'auth', usage_count: 780, tokens_saved: 55000 },
-  { id: 'file-upload', name: 'File Upload with S3', category: 'storage', usage_count: 650, tokens_saved: 40000 },
-  { id: 'email-sendgrid', name: 'SendGrid Email', category: 'communications', usage_count: 920, tokens_saved: 30000 },
-  { id: 'realtime-ws', name: 'WebSocket Real-time', category: 'realtime', usage_count: 430, tokens_saved: 65000 },
+  { id: 'auth-jwt', name: 'JWT Authentication', desc: 'Login, signup, token refresh, protected routes.', category: 'auth', usage_count: 1250, tokens_saved: 45000 },
+  { id: 'stripe-checkout', name: 'Stripe Checkout Flow', desc: 'Pricing cards, checkout session, webhook handling.', category: 'payments', usage_count: 890, tokens_saved: 60000 },
+  { id: 'crud-api', name: 'RESTful CRUD API', desc: 'Create, read, update, delete with validation.', category: 'backend', usage_count: 2100, tokens_saved: 35000 },
+  { id: 'responsive-dashboard', name: 'Responsive Dashboard', desc: 'Sidebar, stats, charts, mobile-first layout.', category: 'frontend', usage_count: 1560, tokens_saved: 80000 },
+  { id: 'social-oauth', name: 'Social OAuth (Google/GitHub)', desc: 'OAuth flow, profile sync, session handling.', category: 'auth', usage_count: 780, tokens_saved: 55000 },
+  { id: 'file-upload', name: 'File Upload with S3', desc: 'Presigned URLs, progress, image preview.', category: 'storage', usage_count: 650, tokens_saved: 40000 },
+  { id: 'email-sendgrid', name: 'SendGrid Email', desc: 'Transactional emails, templates, delivery tracking.', category: 'communications', usage_count: 920, tokens_saved: 30000 },
+  { id: 'realtime-ws', name: 'WebSocket Real-time', desc: 'Live updates, presence, reconnection.', category: 'realtime', usage_count: 430, tokens_saved: 65000 },
 ];
 
 export default function PatternsPublic() {
@@ -48,8 +48,10 @@ export default function PatternsPublic() {
       <PublicNav />
       <div className="max-w-4xl mx-auto px-6 py-16">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
-          <h1 className="text-4xl font-semibold tracking-tight mb-4">Pattern Library</h1>
-          <p className="text-zinc-500">Reusable patterns to accelerate your projects. Sign up to use them in the workspace and save tokens.</p>
+          <span className="text-xs uppercase tracking-wider text-kimi-muted">Token savings</span>
+          <h1 className="text-4xl font-semibold tracking-tight mt-2 mb-4">Pattern Library</h1>
+          <p className="text-zinc-500 mb-2">Reusable patterns for auth, payments, APIs, storage, comms, and real-time. Each pattern saves tokens and time — no re-explaining common flows.</p>
+          <p className="text-sm text-zinc-500 border-l-2 border-kimi-accent/50 pl-4 py-1">Token savings per pattern are based on typical builds vs. describing from scratch. Use patterns to reduce costs and speed up builds.</p>
         </motion.div>
 
         <div className="flex flex-wrap gap-2 mb-8">
@@ -77,7 +79,8 @@ export default function PatternsPublic() {
               className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/30"
             >
               <h2 className="font-semibold mb-1">{p.name}</h2>
-              <p className="text-xs text-zinc-500 capitalize">{p.category} · ~{(p.tokens_saved / 1000).toFixed(0)}K tokens saved</p>
+              <p className="text-sm text-zinc-500 mb-1">{p.desc}</p>
+              <p className="text-xs text-zinc-600 capitalize">{p.category} · ~{(p.tokens_saved / 1000).toFixed(0)}K tokens saved</p>
             </motion.div>
           ))}
         </div>

@@ -103,12 +103,13 @@
 | IDE | Cursor | Copilot | Replit | CrucibAI |
 |-----|--------|---------|--------|----------|
 | **VS Code** | ✅ Native | ✅ Plugin | ❌ | ✅ Plugin |
+| **Cursor** | ✅ Native | ❌ | ❌ | ✅ Same extension as VS Code |
 | **JetBrains** | ❌ | ✅ Plugin | ❌ | ✅ Plugin |
 | **Sublime** | ❌ | ❌ | ❌ | ✅ Plugin |
 | **Vim** | ❌ | ❌ | ❌ | ✅ Plugin |
-| **Total** | 1 | 2 | 0 | **4** |
+| **Total** | 1 | 2 | 0 | **4 extensions, 5 IDEs (VS Code + Cursor)** |
 
-**Winner: CrucibAI** - 4 IDE integrations
+**Winner: CrucibAI** - 4 IDE extensions; works in VS Code and Cursor with one install (Cursor is VS Code–compatible).
 
 ---
 

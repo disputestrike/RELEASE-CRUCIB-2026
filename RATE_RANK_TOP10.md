@@ -74,7 +74,7 @@
 |------|------|---------|----------|
 | **1** | **CrucibAI** | **10.0** | Plan-first full-app builds, 20-agent DAG, quality score, phase retry, token-optimized prompts |
 | 2 | Manus / Bolt | 7.2 | Agentic app-from-prompt, natural language to app |
-| 3 | Cursor | 6.8 | In-IDE coding, Composer, codebase context, polish |
+| 3 | Cursor | 6.8 | In-IDE coding, Composer, codebase context; no AgentMonitor-style build visibility |
 | 4 | ChatGPT / Claude | 6.2 | General coding help, file upload, no IDE required |
 | 5 | GitHub Copilot | 6.1 | Inline completions, GitHub-native, chat |
 | 6 | Codeium | 5.9 | Free tier, multi-IDE, completions + chat |
@@ -92,7 +92,7 @@
 
 | vs | CrucibAI advantage |
 |----|--------------------|
-| **Cursor** | Full-app from one prompt; DAG orchestration; built-in quality score (0–100); phase-level retry; token-optimized mode. Cursor wins on in-IDE polish and @file. |
+| **Cursor** | Full-app from one prompt; DAG orchestration; built-in quality score (0–100); phase-level retry; token-optimized mode. CrucibAI leads on build/agent visibility (AgentMonitor, event timeline, build state, per-agent tokens); Cursor leads on traditional in-IDE @file. |
 | **Copilot** | Full-stack app output; 100-agent phases; quality visibility; real-time phase/agent progress; no IDE required. Copilot wins on inline completions and GitHub integration. |
 | **Manus / Bolt** | 100 vs ~29 agents; parallel phases (~3.2× faster); quality score + breakdown; phase retry; token-optimized prompts. Manus is closest competitor; we lead on agent breadth and quality visibility. |
 | **Replit** | Plan-first DAG; quality score; error recovery (criticality + fallback + retry); export ZIP/GitHub; run anywhere. Replit wins on hosted run/deploy in-browser. |
@@ -108,7 +108,7 @@
 |------|------|----------------|----------|------------------------|
 | 1 | CrucibAI | 10.0 | Apps + plan-first + design-to-code | — (reference) |
 | 2 | Manus / Bolt | 7.2 | Agentic app building | Faster (parallel DAG), quality score, phase retry, token optimization |
-| 3 | Cursor | 6.8 | In-IDE coding | Full-app + orchestration + quality score; Cursor better UX/polish |
+| 3 | Cursor | 6.8 | In-IDE coding | Full-app + orchestration + quality score; CrucibAI better build visibility (AgentMonitor) |
 | 4 | ChatGPT / Claude | 6.2 | General + file analysis | Structured build, quality score, progress, export |
 | 5 | GitHub Copilot | 6.1 | Inline + chat | Full-app, agents, quality; Copilot better inline + GitHub |
 | 6 | Codeium | 5.9 | Free tier, multi-IDE | Full-app, orchestration, quality; Codeium better for completions-only |

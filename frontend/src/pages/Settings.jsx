@@ -33,6 +33,7 @@ const Settings = () => {
   const [mfaDisablePassword, setMfaDisablePassword] = useState('');
   const [mfaLoading, setMfaLoading] = useState(false);
   const [mfaError, setMfaError] = useState(null);
+  const [capabilities, setCapabilities] = useState({ sandbox_available: null, sandbox_default: true });
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -89,6 +90,14 @@ const Settings = () => {
       axios.get(`${API}/mfa/status`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => setMfaStatus(r.data.mfa_enabled))
         .catch(() => {});
+    }
+  }, [token, activeTab]);
+
+  useEffect(() => {
+    if (token && activeTab === 'general') {
+      axios.get(`${API}/settings/capabilities`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => setCapabilities(r.data))
+        .catch(() => setCapabilities({ sandbox_available: false, sandbox_default: true }));
     }
   }, [token, activeTab]);
 
@@ -263,6 +272,24 @@ const Settings = () => {
                     </span>
                   </button>
                 ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Sandbox (runs)</label>
+              <p className="text-sm text-gray-500 mb-2">Tests and security checks run in an isolated environment when Docker is available.</p>
+              <div className="flex items-center gap-2 text-sm">
+                {capabilities.sandbox_available === true && (
+                  <span className="text-green-400" data-testid="sandbox-available">Sandbox (Docker): available</span>
+                )}
+                {capabilities.sandbox_available === false && (
+                  <span className="text-amber-400">Sandbox (Docker): not available — runs use host</span>
+                )}
+                {capabilities.sandbox_available === null && activeTab === 'general' && (
+                  <span className="text-gray-500">Checking…</span>
+                )}
+                {capabilities.sandbox_default !== undefined && capabilities.sandbox_available === true && (
+                  <span className="text-gray-500">· Default: {capabilities.sandbox_default ? 'on' : 'off'}</span>
+                )}
               </div>
             </div>
           </div>
@@ -545,6 +572,15 @@ const Settings = () => {
           className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10"
         >
           <h3 className="text-lg font-semibold mb-6">Security Settings</h3>
+
+          {/* Security & accessibility (trust page + Workspace scan/A11y) */}
+          <div className="mb-8 p-4 rounded-lg border border-white/10 bg-white/5">
+            <h4 className="font-medium text-gray-200 mb-2">Security &amp; accessibility</h4>
+            <p className="text-sm text-gray-400 mb-2">Run <strong className="text-gray-300">Security scan</strong> and <strong className="text-gray-300">Accessibility check</strong> in the Workspace on your code (built here or imported). We return a short checklist and a11y report.</p>
+            <Link to="/security" className="text-sm text-blue-400 hover:text-blue-300 inline-flex items-center gap-1">
+              How we keep the platform and your code safe <ExternalLink className="w-3 h-3" />
+            </Link>
+          </div>
 
           {/* Two-Factor Authentication */}
           <div className="space-y-4 mb-8">

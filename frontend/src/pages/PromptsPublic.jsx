@@ -46,8 +46,9 @@ export default function PromptsPublic() {
       <PublicNav />
       <div className="max-w-3xl mx-auto px-6 py-16">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
-          <h1 className="text-4xl font-semibold tracking-tight mb-4">Prompt Library</h1>
-          <p className="text-zinc-500">Proven prompts to start building. Copy and use in the workspace, or sign up to try them one-click.</p>
+          <span className="text-xs uppercase tracking-wider text-kimi-muted">Proven copy</span>
+          <h1 className="text-4xl font-semibold tracking-tight mt-2 mb-4">Prompt Library</h1>
+          <p className="text-zinc-500">Proven prompts for every use case — e-commerce, landing pages, task managers, auth, SaaS, and more. Copy, tweak, and build. Sign up to try them one-click in the workspace.</p>
         </motion.div>
 
         <div className="space-y-6">

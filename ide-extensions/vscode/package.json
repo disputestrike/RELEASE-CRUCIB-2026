@@ -1,7 +1,7 @@
 {
   "name": "crucibai",
   "displayName": "CrucibAI - Autonomous Code Generation",
-  "description": "115-agent autonomous AI code generation with vibe coding, voice input, and real-time collaboration",
+  "description": "115-agent autonomous AI code generation with vibe coding, voice input, and real-time collaboration. Works in VS Code and Cursor (same extension; Cursor is VS Code-compatible).",
   "version": "1.0.0",
   "publisher": "CrucibAI",
   "license": "MIT",
@@ -19,7 +19,9 @@
     "autonomous",
     "vibe-coding",
     "voice",
-    "collaboration"
+    "collaboration",
+    "cursor",
+    "vscode"
   ],
   "activationEvents": [
     "onStartupFinished"

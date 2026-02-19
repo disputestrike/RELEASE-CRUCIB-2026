@@ -6,11 +6,11 @@ export default function PublicFooter() {
     <footer className="mt-24 py-12 px-6 border-t border-white/10 bg-kimi-bg">
       {/* Footer CTA — Kimi-style */}
       <div className="max-w-2xl mx-auto text-center mb-16">
-        <h2 className="text-2xl md:text-3xl font-bold text-kimi-text mb-3">CrucibAI Is Here to Turn Ideas into Software</h2>
-        <p className="text-kimi-muted mb-6">Plan, build, and ship with AI. No code required.</p>
+        <h2 className="text-2xl md:text-3xl font-bold text-kimi-text mb-3">Your idea is inevitable. Start Monday.</h2>
+        <p className="text-kimi-muted mb-6">50 free credits. No credit card. Describe it today. Ship it Friday.</p>
         <div className="flex flex-wrap justify-center gap-4">
           <button onClick={() => navigate('/auth?mode=register')} className="px-6 py-3 bg-white text-black font-medium rounded-lg hover:bg-zinc-200 transition border border-black/10">
-            Try CrucibAI free
+            Make It Inevitable
           </button>
           <Link to="/learn" className="px-6 py-3 bg-transparent text-kimi-text font-medium rounded-lg border border-white/30 hover:border-white/50 transition">
             View Documentation
@@ -20,8 +20,8 @@ export default function PublicFooter() {
       <div className="max-w-6xl mx-auto">
         <div className="grid md:grid-cols-4 gap-12 mb-12">
           <div>
-            <div className="text-lg font-semibold text-kimi-text mb-4">CrucibAI</div>
-            <p className="text-sm text-kimi-muted mb-3">Turn ideas into software. No code required.</p>
+            <div className="text-lg font-semibold text-kimi-text mb-4">CrucibAI — Inevitable AI</div>
+            <p className="text-sm text-kimi-muted mb-3">Turn ideas into inevitable outcomes. No code required.</p>
             <ul className="space-y-2 text-sm">
               <li><Link to="/about" className="text-kimi-muted hover:text-kimi-text transition">About us</Link></li>
             </ul>
@@ -39,9 +39,13 @@ export default function PublicFooter() {
           <div>
             <div className="text-xs text-kimi-muted uppercase tracking-wider mb-4">Resources</div>
             <ul className="space-y-3 text-sm">
+              <li><Link to="/blog" className="text-kimi-muted hover:text-kimi-text transition">Blog</Link></li>
               <li><Link to="/learn" className="text-kimi-muted hover:text-kimi-text transition">Learn</Link></li>
               <li><Link to="/shortcuts" className="text-kimi-muted hover:text-kimi-text transition">Shortcuts</Link></li>
+              <li><Link to="/benchmarks" className="text-kimi-muted hover:text-kimi-text transition">Benchmarks</Link></li>
               <li><Link to="/prompts" className="text-kimi-muted hover:text-kimi-text transition">Prompt Library</Link></li>
+              <li><Link to="/security" className="text-kimi-muted hover:text-kimi-text transition">Security &amp; Trust</Link></li>
+              <li><a href="/#who-builds-better" className="text-kimi-muted hover:text-kimi-text transition">Why CrucibAI</a></li>
             </ul>
           </div>
           <div>
