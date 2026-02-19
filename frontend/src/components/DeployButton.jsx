@@ -177,7 +177,7 @@ export default function DeployButton({ projectId, variant = 'dropdown', onFeedba
             onClick={() => setOpen((o) => !o)}
             className={variant === 'icon'
               ? 'p-2 text-gray-500 hover:text-emerald-600 hover:bg-emerald-500/10 rounded-lg transition'
-              : 'inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm transition'
+              : 'inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-[#1A1A1A] font-medium text-sm transition'
             }
             title="Deploy (ZIP, Vercel, Netlify)"
           >
@@ -198,7 +198,7 @@ export default function DeployButton({ projectId, variant = 'dropdown', onFeedba
             type="button"
             onClick={handleDownloadZip}
             disabled={loading}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white text-sm font-medium"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-[#1A1A1A] text-sm font-medium"
           >
             <Download className="w-4 h-4" />
             {loading ? 'Preparing…' : 'Download Deploy ZIP'}
@@ -207,7 +207,7 @@ export default function DeployButton({ projectId, variant = 'dropdown', onFeedba
             type="button"
             onClick={() => handleOneClickDeploy('vercel')}
             disabled={deploying !== null}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white text-sm font-medium"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-[#1A1A1A] text-sm font-medium"
           >
             <ExternalLink className="w-4 h-4" />
             {deploying === 'vercel' ? 'Deploying…' : 'One-click Vercel'}
@@ -216,7 +216,7 @@ export default function DeployButton({ projectId, variant = 'dropdown', onFeedba
             type="button"
             onClick={() => handleOneClickDeploy('netlify')}
             disabled={deploying !== null}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white text-sm font-medium"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-[#1A1A1A] text-sm font-medium"
           >
             <ExternalLink className="w-4 h-4" />
             {deploying === 'netlify' ? 'Deploying…' : 'One-click Netlify'}

@@ -438,7 +438,7 @@ const LandingPage = () => {
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       placeholder={messages.length > 0 ? "Ask for changes..." : "What do you want to build?"}
-                      className="flex-1 bg-transparent text-white placeholder-zinc-500 outline-none resize-none min-h-[120px] text-base leading-relaxed"
+                      className="flex-1 bg-transparent text-[#1A1A1A] placeholder-zinc-500 outline-none resize-none min-h-[120px] text-base leading-relaxed"
                       disabled={isBuilding}
                       rows={5}
                     />

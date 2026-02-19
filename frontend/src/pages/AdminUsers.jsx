@@ -44,11 +44,11 @@ const AdminUsers = () => {
     <div className="space-y-6" data-testid="admin-users">
       <div>
         <h1 className="text-3xl font-bold">User management</h1>
-        <p className="text-gray-400 mt-1">Search and filter users</p>
+        <p className="text-[#666666] mt-1">Search and filter users</p>
       </div>
       <div className="flex flex-wrap gap-4">
         <div className="flex items-center gap-2 bg-white/5 rounded-lg border border-white/10 px-3 py-2">
-          <Search className="w-4 h-4 text-gray-400" />
+          <Search className="w-4 h-4 text-[#666666]" />
           <input
             type="text"
             placeholder="Email"
@@ -92,7 +92,7 @@ const AdminUsers = () => {
                   <td className="py-3 px-4">{u.email}</td>
                   <td className="py-3 px-4 capitalize">{u.plan || 'free'}</td>
                   <td className="py-3 px-4">{u.credit_balance ?? '-'}</td>
-                  <td className="py-3 px-4 text-gray-400">
+                  <td className="py-3 px-4 text-[#666666]">
                     {u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}
                   </td>
                   <td className="py-3 px-4">

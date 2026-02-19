@@ -89,8 +89,8 @@ const ProjectBuilder = () => {
           {[1, 2, 3].map(s => (
             <div key={s} className="flex items-center gap-2">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center font-medium transition-all ${
-                step > s ? 'bg-green-500 text-white' :
-                step === s ? 'bg-blue-500 text-white' :
+                step > s ? 'bg-green-500 text-[#1A1A1A]' :
+                step === s ? 'bg-blue-500 text-[#1A1A1A]' :
                 'bg-white/10 text-gray-500'
               }`}>
                 {step > s ? <Check className="w-4 h-4" /> : s}
@@ -111,7 +111,7 @@ const ProjectBuilder = () => {
           animate={{ opacity: 1, x: 0 }}
         >
           <h1 className="text-3xl font-bold mb-2">What would you like to build?</h1>
-          <p className="text-gray-400 mb-8">Select the type of project you want to create.</p>
+          <p className="text-[#666666] mb-8">Select the type of project you want to create.</p>
           
           <div className="grid md:grid-cols-2 gap-4">
             {projectTypes.map(type => (
@@ -130,7 +130,7 @@ const ProjectBuilder = () => {
                     formData.project_type === type.id ? 'bg-blue-500/20' : 'bg-white/5'
                   }`}>
                     <type.icon className={`w-6 h-6 ${
-                      formData.project_type === type.id ? 'text-blue-400' : 'text-gray-400'
+                      formData.project_type === type.id ? 'text-blue-400' : 'text-[#666666]'
                     }`} />
                   </div>
                   <div className="flex-1">
@@ -138,7 +138,7 @@ const ProjectBuilder = () => {
                     <p className="text-sm text-gray-500 mb-2">{type.desc}</p>
                     <div className="flex items-center gap-2 text-xs">
                       <Zap className="w-3 h-3 text-yellow-500" />
-                      <span className="text-gray-400">~{(type.tokens / 1000).toFixed(0)}K tokens</span>
+                      <span className="text-[#666666]">~{(type.tokens / 1000).toFixed(0)}K tokens</span>
                     </div>
                   </div>
                 </div>
@@ -155,7 +155,7 @@ const ProjectBuilder = () => {
           animate={{ opacity: 1, x: 0 }}
         >
           <h1 className="text-3xl font-bold mb-2">Tell us about your project</h1>
-          <p className="text-gray-400 mb-8">Describe what you want to build. The more detail, the better.</p>
+          <p className="text-[#666666] mb-8">Describe what you want to build. The more detail, the better.</p>
           
           <div className="space-y-6">
             <div>
@@ -259,7 +259,7 @@ const ProjectBuilder = () => {
           animate={{ opacity: 1, x: 0 }}
         >
           <h1 className="text-3xl font-bold mb-2">Review your project</h1>
-          <p className="text-gray-400 mb-8">Make sure everything looks good before we start generating.</p>
+          <p className="text-[#666666] mb-8">Make sure everything looks good before we start generating.</p>
           
           {error && (
             <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400">
@@ -283,7 +283,7 @@ const ProjectBuilder = () => {
               </div>
               <div>
                 <h3 className="text-xl font-semibold">{formData.name}</h3>
-                <p className="text-gray-400">{selectedType?.name}</p>
+                <p className="text-[#666666]">{selectedType?.name}</p>
               </div>
             </div>
             
@@ -317,11 +317,11 @@ const ProjectBuilder = () => {
                   <Zap className="w-5 h-5 text-yellow-500" />
                   <div>
                     <p className="font-medium">Estimated Token Cost</p>
-                    <p className="text-sm text-gray-400">~{((selectedType?.tokens || 0) / 1000).toFixed(0)}K tokens</p>
+                    <p className="text-sm text-[#666666]">~{((selectedType?.tokens || 0) / 1000).toFixed(0)}K tokens</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm text-gray-400">Your balance</p>
+                  <p className="text-sm text-[#666666]">Your balance</p>
                   <p className="font-bold text-lg">{user?.token_balance?.toLocaleString()}</p>
                 </div>
               </div>

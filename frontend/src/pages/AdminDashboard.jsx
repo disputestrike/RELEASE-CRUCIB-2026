@@ -57,7 +57,7 @@ const AdminDashboard = () => {
     <div className="space-y-8" data-testid="admin-dashboard">
       <div>
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-        <p className="text-gray-400 mt-1">Operational overview</p>
+        <p className="text-[#666666] mt-1">Operational overview</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {cards.map(({ label, value, icon: Icon, href }) => (
@@ -68,7 +68,7 @@ const AdminDashboard = () => {
             {href ? (
               <Link to={href} className="block">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-400">{label}</span>
+                  <span className="text-[#666666]">{label}</span>
                   <Icon className="w-5 h-5 text-blue-400" />
                 </div>
                 <p className="text-2xl font-bold mt-2">{value}</p>
@@ -76,7 +76,7 @@ const AdminDashboard = () => {
             ) : (
               <>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-400">{label}</span>
+                  <span className="text-[#666666]">{label}</span>
                   <Icon className="w-5 h-5 text-blue-400" />
                 </div>
                 <p className="text-2xl font-bold mt-2">{value}</p>

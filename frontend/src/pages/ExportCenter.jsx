@@ -87,7 +87,7 @@ const ExportCenter = () => {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold mb-2">Export Center</h1>
-        <p className="text-gray-400">Generate and download your project documentation in multiple formats.</p>
+        <p className="text-[#666666]">Generate and download your project documentation in multiple formats.</p>
       </div>
 
       {/* Deploy: one-click deploy ZIP, Vercel, Netlify */}
@@ -210,7 +210,7 @@ const ExportCenter = () => {
         {exports.length === 0 ? (
           <div className="text-center py-12">
             <Download className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400">No exports yet. Create your first export above.</p>
+            <p className="text-[#666666]">No exports yet. Create your first export above.</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -241,7 +241,7 @@ const ExportCenter = () => {
                     <span className={`px-2 py-1 text-xs rounded-full ${
                       exp.status === 'completed' ? 'bg-green-500/20 text-green-400' :
                       exp.status === 'processing' ? 'bg-blue-500/20 text-blue-400' :
-                      'bg-gray-500/20 text-gray-400'
+                      'bg-gray-500/20 text-[#666666]'
                     }`}>
                       {exp.status}
                     </span>

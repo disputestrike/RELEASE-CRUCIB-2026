@@ -53,7 +53,7 @@ export default function AuditLog() {
 
   return (
     <div className="p-6 max-w-5xl">
-      <h1 className="text-2xl font-bold text-white mb-6">Audit Log</h1>
+      <h1 className="text-2xl font-bold text-[#1A1A1A] mb-6">Audit Log</h1>
 
       <div className="mb-6 p-4 bg-[#0a0a0a] border border-white/10 rounded-xl">
         <h3 className="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
@@ -67,7 +67,7 @@ export default function AuditLog() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white"
+              className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-[#1A1A1A]"
             />
           </div>
           <div>
@@ -76,7 +76,7 @@ export default function AuditLog() {
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white"
+              className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-[#1A1A1A]"
             />
           </div>
           <button
@@ -90,11 +90,11 @@ export default function AuditLog() {
       </div>
 
       <div className="mb-4 p-3 bg-[#0a0a0a] border border-white/10 rounded-lg flex items-center gap-2">
-        <Filter className="w-4 h-4 text-gray-400" />
+        <Filter className="w-4 h-4 text-[#666666]" />
         <select
           value={actionFilter}
           onChange={(e) => setActionFilter(e.target.value)}
-          className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm"
+          className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-[#1A1A1A] text-sm"
         >
           <option value="">All actions</option>
           <option value="login">Login</option>
@@ -108,17 +108,17 @@ export default function AuditLog() {
       </div>
 
       {loading ? (
-        <p className="text-gray-400">Loading...</p>
+        <p className="text-[#666666]">Loading...</p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-white/10">
           <table className="w-full text-sm text-gray-300">
             <thead>
               <tr className="border-b border-white/10 bg-white/5">
-                <th className="px-4 py-3 text-left text-gray-400 font-medium">Time</th>
-                <th className="px-4 py-3 text-left text-gray-400 font-medium">Action</th>
-                <th className="px-4 py-3 text-left text-gray-400 font-medium">Resource</th>
-                <th className="px-4 py-3 text-left text-gray-400 font-medium">Status</th>
-                <th className="px-4 py-3 text-left text-gray-400 font-medium">IP</th>
+                <th className="px-4 py-3 text-left text-[#666666] font-medium">Time</th>
+                <th className="px-4 py-3 text-left text-[#666666] font-medium">Action</th>
+                <th className="px-4 py-3 text-left text-[#666666] font-medium">Resource</th>
+                <th className="px-4 py-3 text-left text-[#666666] font-medium">Status</th>
+                <th className="px-4 py-3 text-left text-[#666666] font-medium">IP</th>
               </tr>
             </thead>
             <tbody>
@@ -149,7 +149,7 @@ export default function AuditLog() {
         </div>
       )}
 
-      <div className="mt-4 flex items-center justify-between text-sm text-gray-400">
+      <div className="mt-4 flex items-center justify-between text-sm text-[#666666]">
         <span>
           Showing {skip + 1}–{Math.min(skip + limit, total)} of {total}
         </span>

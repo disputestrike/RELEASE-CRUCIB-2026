@@ -69,7 +69,7 @@ export const EverythingSupportMenu = ({ onSelect }) => {
             onClick={() => onSelect(option.id)}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className={`relative overflow-hidden p-6 rounded-lg bg-gradient-to-br ${option.color} text-white transition-all hover:shadow-lg`}
+            className={`relative overflow-hidden p-6 rounded-lg bg-gradient-to-br ${option.color} text-[#1A1A1A] transition-all hover:shadow-lg`}
           >
             {/* Background glow */}
             <div className="absolute inset-0 opacity-0 hover:opacity-20 bg-white transition-opacity" />
@@ -109,7 +109,7 @@ export const CodeGenerationOptions = ({ onGenerate, isLoading }) => {
 
   return (
     <div className="space-y-4 p-6 bg-slate-800 border border-slate-700 rounded-lg">
-      <h3 className="font-semibold text-white flex items-center gap-2">
+      <h3 className="font-semibold text-[#1A1A1A] flex items-center gap-2">
         <FileCode size={20} />
         Code Generation
       </h3>
@@ -138,7 +138,7 @@ export const CodeGenerationOptions = ({ onGenerate, isLoading }) => {
       <button
         onClick={() => onGenerate('code', selectedStack)}
         disabled={isLoading}
-        className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+        className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-[#1A1A1A] font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
       >
         {isLoading ? (
           <>
@@ -171,7 +171,7 @@ export const DocumentationGenerator = ({ onGenerate, isLoading }) => {
 
   return (
     <div className="space-y-4 p-6 bg-slate-800 border border-slate-700 rounded-lg">
-      <h3 className="font-semibold text-white flex items-center gap-2">
+      <h3 className="font-semibold text-[#1A1A1A] flex items-center gap-2">
         <FileText size={20} />
         Documentation
       </h3>
@@ -196,7 +196,7 @@ export const DocumentationGenerator = ({ onGenerate, isLoading }) => {
       <button
         onClick={() => onGenerate('docs', docType)}
         disabled={isLoading}
-        className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+        className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-[#1A1A1A] font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
       >
         {isLoading ? (
           <>
@@ -229,7 +229,7 @@ export const PresentationGenerator = ({ onGenerate, isLoading }) => {
 
   return (
     <div className="space-y-4 p-6 bg-slate-800 border border-slate-700 rounded-lg">
-      <h3 className="font-semibold text-white flex items-center gap-2">
+      <h3 className="font-semibold text-[#1A1A1A] flex items-center gap-2">
         <Presentation size={20} />
         Presentations
       </h3>
@@ -264,7 +264,7 @@ export const PresentationGenerator = ({ onGenerate, isLoading }) => {
       <button
         onClick={() => onGenerate('slides', slideCount)}
         disabled={isLoading}
-        className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+        className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-[#1A1A1A] font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
       >
         {isLoading ? (
           <>
@@ -319,7 +319,7 @@ export const ExportOptions = ({ onExport, isLoading }) => {
             key={exp.id}
             onClick={() => onExport(exp.id)}
             disabled={isLoading}
-            className={`p-6 rounded-lg text-white font-medium transition-all ${exp.color} disabled:opacity-50 flex flex-col items-center gap-3`}
+            className={`p-6 rounded-lg text-[#1A1A1A] font-medium transition-all ${exp.color} disabled:opacity-50 flex flex-col items-center gap-3`}
           >
             <Icon size={32} />
             <div>

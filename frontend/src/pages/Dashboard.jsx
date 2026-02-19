@@ -141,7 +141,7 @@ const Dashboard = () => {
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-gray-400">Loading dashboard...</p>
+          <p className="text-[#666666]">Loading dashboard...</p>
         </div>
       </div>
     );
@@ -287,7 +287,7 @@ const Dashboard = () => {
         {projects.length === 0 ? (
           <div className="text-center py-12">
             <FolderOpen className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400 mb-4">No projects yet</p>
+            <p className="text-[#666666] mb-4">No projects yet</p>
             <Link
               to="/app/projects/new"
               className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg font-medium transition"
@@ -320,7 +320,7 @@ const Dashboard = () => {
                     {project.status === 'completed' ? <CheckCircle className="w-5 h-5 text-green-400" /> :
                      project.status === 'running' ? <Play className="w-5 h-5 text-blue-400" /> :
                      project.status === 'failed' ? <AlertCircle className="w-5 h-5 text-red-400" /> :
-                     <Clock className="w-5 h-5 text-gray-400" />}
+                     <Clock className="w-5 h-5 text-[#666666]" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{project.name}</p>
@@ -337,7 +337,7 @@ const Dashboard = () => {
                       project.status === 'completed' ? 'bg-green-500/20 text-green-400' :
                       project.status === 'running' ? 'bg-blue-500/20 text-blue-400' :
                       project.status === 'failed' ? 'bg-red-500/20 text-red-400' :
-                      'bg-gray-500/20 text-gray-400'
+                      'bg-gray-500/20 text-[#666666]'
                     }`}>
                       {project.status}
                     </span>
@@ -363,52 +363,52 @@ const Dashboard = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowImportModal(false)}>
           <div className="bg-[#111] border border-white/10 rounded-xl max-w-lg w-full max-h-[90vh] overflow-auto shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="p-6">
-              <h3 className="text-lg font-semibold text-white mb-2">Import project</h3>
-              <p className="text-sm text-gray-400 mb-4">Bring your code from paste, a ZIP file, or a GitHub repo. We create a project and open it in the Workspace.</p>
+              <h3 className="text-lg font-semibold text-[#1A1A1A] mb-2">Import project</h3>
+              <p className="text-sm text-[#666666] mb-4">Bring your code from paste, a ZIP file, or a GitHub repo. We create a project and open it in the Workspace.</p>
               <form onSubmit={handleImportSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Project name (optional)</label>
-                  <input type="text" value={importName} onChange={e => setImportName(e.target.value)} placeholder="Imported project" className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white" />
+                  <label className="block text-sm text-[#666666] mb-1">Project name (optional)</label>
+                  <input type="text" value={importName} onChange={e => setImportName(e.target.value)} placeholder="Imported project" className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-[#1A1A1A]" />
                 </div>
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">Source</label>
+                  <label className="block text-sm text-[#666666] mb-2">Source</label>
                   <div className="flex gap-2">
                     {['paste', 'zip', 'git'].map(s => (
-                      <button key={s} type="button" onClick={() => setImportSource(s)} className={`px-3 py-1.5 rounded text-sm capitalize ${importSource === s ? 'bg-blue-600 text-white' : 'bg-white/10 text-gray-400 hover:text-white'}`}>{s === 'git' ? 'GitHub URL' : s}</button>
+                      <button key={s} type="button" onClick={() => setImportSource(s)} className={`px-3 py-1.5 rounded text-sm capitalize ${importSource === s ? 'bg-blue-600 text-[#1A1A1A]' : 'bg-white/10 text-[#666666] hover:text-[#1A1A1A]'}`}>{s === 'git' ? 'GitHub URL' : s}</button>
                     ))}
                   </div>
                 </div>
                 {importSource === 'paste' && (
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <label className="text-sm text-gray-400">Files (path + code)</label>
+                      <label className="text-sm text-[#666666]">Files (path + code)</label>
                       <button type="button" onClick={() => setPasteFiles(prev => [...prev, { path: '', code: '' }])} className="text-xs text-blue-400 hover:text-blue-300">+ Add file</button>
                     </div>
                     {pasteFiles.map((f, i) => (
                       <div key={i} className="flex gap-2 items-start">
-                        <input value={f.path} onChange={e => setPasteFiles(prev => prev.map((x, j) => j === i ? { ...x, path: e.target.value } : x))} placeholder="e.g. /App.js" className="flex-1 min-w-0 px-2 py-1.5 rounded bg-black/30 border border-white/10 text-white text-sm font-mono" />
-                        <button type="button" onClick={() => setPasteFiles(prev => prev.filter((_, j) => j !== i))} className="p-1.5 text-gray-400 hover:text-red-400" title="Remove"><X className="w-4 h-4" /></button>
-                        <textarea value={f.code} onChange={e => setPasteFiles(prev => prev.map((x, j) => j === i ? { ...x, code: e.target.value } : x))} placeholder="Code..." className="flex-[2] min-w-0 px-2 py-1.5 rounded bg-black/30 border border-white/10 text-white text-sm font-mono min-h-[60px]" rows={3} />
+                        <input value={f.path} onChange={e => setPasteFiles(prev => prev.map((x, j) => j === i ? { ...x, path: e.target.value } : x))} placeholder="e.g. /App.js" className="flex-1 min-w-0 px-2 py-1.5 rounded bg-black/30 border border-white/10 text-[#1A1A1A] text-sm font-mono" />
+                        <button type="button" onClick={() => setPasteFiles(prev => prev.filter((_, j) => j !== i))} className="p-1.5 text-[#666666] hover:text-red-400" title="Remove"><X className="w-4 h-4" /></button>
+                        <textarea value={f.code} onChange={e => setPasteFiles(prev => prev.map((x, j) => j === i ? { ...x, code: e.target.value } : x))} placeholder="Code..." className="flex-[2] min-w-0 px-2 py-1.5 rounded bg-black/30 border border-white/10 text-[#1A1A1A] text-sm font-mono min-h-[60px]" rows={3} />
                       </div>
                     ))}
                   </div>
                 )}
                 {importSource === 'zip' && (
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">ZIP file (max 10MB)</label>
-                    <input type="file" accept=".zip" onChange={e => setZipFile(e.target.files?.[0] || null)} className="w-full text-sm text-gray-400 file:mr-2 file:py-2 file:px-3 file:rounded file:border-0 file:bg-white/10 file:text-white" />
+                    <label className="block text-sm text-[#666666] mb-1">ZIP file (max 10MB)</label>
+                    <input type="file" accept=".zip" onChange={e => setZipFile(e.target.files?.[0] || null)} className="w-full text-sm text-[#666666] file:mr-2 file:py-2 file:px-3 file:rounded file:border-0 file:bg-white/10 file:text-[#1A1A1A]" />
                   </div>
                 )}
                 {importSource === 'git' && (
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">GitHub repo URL</label>
-                    <input type="url" value={gitUrl} onChange={e => setGitUrl(e.target.value)} placeholder="https://github.com/owner/repo" className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-white" />
+                    <label className="block text-sm text-[#666666] mb-1">GitHub repo URL</label>
+                    <input type="url" value={gitUrl} onChange={e => setGitUrl(e.target.value)} placeholder="https://github.com/owner/repo" className="w-full px-3 py-2 rounded bg-black/30 border border-white/10 text-[#1A1A1A]" />
                   </div>
                 )}
                 {importError && <p className="text-sm text-red-400">{importError}</p>}
                 <div className="flex gap-2 justify-end pt-2">
                   <button type="button" onClick={() => setShowImportModal(false)} className="px-4 py-2 rounded border border-white/20 text-gray-300 hover:bg-white/5">Cancel</button>
-                  <button type="submit" disabled={importLoading} className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-50">{importLoading ? 'Importing…' : 'Import'}</button>
+                  <button type="submit" disabled={importLoading} className="px-4 py-2 rounded bg-blue-600 text-[#1A1A1A] hover:bg-blue-500 disabled:opacity-50">{importLoading ? 'Importing…' : 'Import'}</button>
                 </div>
               </form>
             </div>

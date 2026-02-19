@@ -25,7 +25,7 @@ export default function ShareView() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+      <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
         <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -33,7 +33,7 @@ export default function ShareView() {
 
   if (error || !project) {
     return (
-      <div className="min-h-screen bg-[#050505] text-white flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#FAFAF8] text-[#1A1A1A] flex items-center justify-center p-4">
         <div className="text-center max-w-md">
           <AlertCircle className="w-12 h-12 text-amber-400 mx-auto mb-4" />
           <h1 className="text-xl font-semibold mb-2">Share not found</h1>
@@ -45,7 +45,7 @@ export default function ShareView() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white p-6">
+    <div className="min-h-screen bg-[#FAFAF8] text-[#1A1A1A] p-6">
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center gap-2 text-zinc-400 mb-2">
           {readOnly && <Lock className="w-4 h-4" />}

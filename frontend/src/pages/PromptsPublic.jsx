@@ -65,7 +65,7 @@ export default function PromptsPublic() {
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => copyPrompt(t.prompt, t.id)}
-                    className="p-2 text-zinc-400 hover:text-white rounded-lg transition"
+                    className="p-2 text-zinc-400 hover:text-[#1A1A1A] rounded-lg transition"
                     title="Copy prompt"
                   >
                     {copiedId === t.id ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}

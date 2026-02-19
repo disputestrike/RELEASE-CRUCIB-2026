@@ -64,7 +64,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center">
       <div className="text-center">
-        <h1 className="text-4xl font-bold text-white mb-4">
+        <h1 className="text-4xl font-bold text-[#1A1A1A] mb-4">
           Welcome to CrucibAI
         </h1>
         <p className="text-slate-400 text-lg">
@@ -163,7 +163,7 @@ const ConsolePanel = ({ logs, placeholder = "Terminal output will appear here. R
               'text-gray-600'
             }`}
           >
-            <span className="text-gray-400">[{log.time}]</span>
+            <span className="text-[#666666]">[{log.time}]</span>
             <span className="text-gray-500">{log.agent || 'system'}:</span>
             <span className="flex-1">{log.message}</span>
           </div>
@@ -1734,7 +1734,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[80%] px-3 py-2 rounded-lg text-sm ${
                   msg.role === 'user' 
-                    ? 'bg-blue-600 text-white' 
+                    ? 'bg-blue-600 text-[#1A1A1A]' 
                     : msg.error 
                       ? 'bg-red-50 text-red-700 border border-red-200'
                       : 'bg-white border border-gray-200 text-gray-800'
@@ -1804,7 +1804,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
 
         <div className="text-xs text-gray-500 mb-1.5 flex items-center justify-between flex-wrap gap-2">
           {files['/App.js']?.code && (
-            <button type="button" onClick={() => { handleExportDeploy(); setShowDeployModal(true); }} className="px-2 py-0.5 rounded text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700">
+            <button type="button" onClick={() => { handleExportDeploy(); setShowDeployModal(true); }} className="px-2 py-0.5 rounded text-xs font-medium bg-emerald-600 text-[#1A1A1A] hover:bg-emerald-700">
               One-click deploy
             </button>
           )}
@@ -1817,7 +1817,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
               { id: 'thinking', label: 'Thinking', title: 'Step-by-step reasoning, then code' },
               { id: 'swarm', label: 'Swarm (Beta)', title: 'Parallel agents: plan + suggestions at once (faster, uses more tokens)' }
             ].map(({ id, label, title }) => (
-              <button key={id} type="button" onClick={() => setBuildMode(id)} title={title} className={`px-2 py-0.5 rounded text-xs font-medium ${buildMode === id ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}>{label}</button>
+              <button key={id} type="button" onClick={() => setBuildMode(id)} title={title} className={`px-2 py-0.5 rounded text-xs font-medium ${buildMode === id ? 'bg-blue-600 text-[#1A1A1A]' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}>{label}</button>
             ))}
           </span>
           <span><kbd className="px-1 py-0.5 rounded bg-gray-200 text-gray-600">Ctrl+K</kbd></span>
@@ -1833,7 +1833,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
               disabled={isTranscribing}
               data-testid="voice-input-button"
               className={`p-2 rounded-md transition ${
-                isTranscribing ? 'text-gray-400 cursor-wait' : isRecording ? 'bg-red-100 text-red-600' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-200'
+                isTranscribing ? 'text-[#666666] cursor-wait' : isRecording ? 'bg-red-100 text-red-600' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-200'
               }`}
               title={isTranscribing ? 'Transcribing...' : isRecording ? 'Stop recording' : 'Voice input'}
             >
@@ -1874,7 +1874,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
             type="submit"
             disabled={!input.trim() || isBuilding}
             data-testid="submit-button"
-            className="relative z-10 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:bg-blue-700 transition flex items-center gap-2 shrink-0"
+            className="relative z-10 px-4 py-2.5 bg-blue-600 text-[#1A1A1A] rounded-lg text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:bg-blue-700 transition flex items-center gap-2 shrink-0"
             title={versions.length > 0 ? 'Send update' : 'Send & build'}
           >
             {isBuilding ? (
@@ -1896,13 +1896,13 @@ Respond with ONLY the complete App.js code, nothing else.`;
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Deploy your app</h3>
             <p className="text-sm text-gray-600 mb-4">Your deploy ZIP has been downloaded (or use the download again from Ctrl+K → Deploy). Upload it to one of these platforms:</p>
             <div className="flex flex-col gap-2">
-              <a href="https://vercel.com/new" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-black text-white text-sm font-medium hover:bg-gray-800">
+              <a href="https://vercel.com/new" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-black text-[#1A1A1A] text-sm font-medium hover:bg-gray-800">
                 Deploy with Vercel
               </a>
-              <a href="https://app.netlify.com/drop" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700">
+              <a href="https://app.netlify.com/drop" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-emerald-600 text-[#1A1A1A] text-sm font-medium hover:bg-emerald-700">
                 Deploy with Netlify
               </a>
-              <a href="https://railway.app/new" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-[#0B0D0E] text-white text-sm font-medium hover:bg-[#1a1d1f] border border-gray-600">
+              <a href="https://railway.app/new" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-[#0B0D0E] text-[#1A1A1A] text-sm font-medium hover:bg-[#1a1d1f] border border-gray-600">
                 Deploy with Railway
               </a>
             </div>

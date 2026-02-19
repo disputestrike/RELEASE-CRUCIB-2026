@@ -12,7 +12,7 @@ const shortcuts = [
 
 export default function ShortcutCheatsheet() {
   return (
-    <div className="min-h-screen bg-[#050505] text-white p-6">
+    <div className="min-h-screen bg-[#FAFAF8] text-[#1A1A1A] p-6">
       <div className="max-w-lg mx-auto">
         <div className="flex items-center gap-3 mb-8">
           <div className="p-3 rounded-xl bg-zinc-800">

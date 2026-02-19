@@ -104,7 +104,7 @@ const TokenCenter = () => {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold mb-2">Credit Center</h1>
-        <p className="text-gray-400">Buy credits and track your usage. 50 credits ≈ 1 landing page.</p>
+        <p className="text-[#666666]">Buy credits and track your usage. 50 credits ≈ 1 landing page.</p>
       </div>
 
       {/* Balance Card */}
@@ -115,7 +115,7 @@ const TokenCenter = () => {
       >
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div>
-            <p className="text-gray-400 mb-2 flex items-center gap-2">
+            <p className="text-[#666666] mb-2 flex items-center gap-2">
               <Zap className="w-5 h-5 text-yellow-500" />
               Current Balance
             </p>
@@ -140,7 +140,7 @@ const TokenCenter = () => {
       {/* Referral: share link (free tier only for referrer reward) */}
       {referralCode && (
         <div className="p-6 bg-white/5 rounded-xl border border-white/10">
-          <h2 className="text-lg font-semibold text-gray-200 flex items-center gap-2 mb-2">
+          <h2 className="text-lg font-semibold text-[#1A1A1A] flex items-center gap-2 mb-2">
             <Link2 className="w-5 h-5 text-blue-400" /> Invite friends — 100 credits each
           </h2>
           <p className="text-sm text-gray-500 mb-3">Share your link. When they sign up, they get 100 credits. You get 100 credits too if you're on the free plan (max 10 referrals/month).</p>
@@ -158,7 +158,7 @@ const TokenCenter = () => {
                   setTimeout(() => setReferralCopied(false), 2000);
                 }
               }}
-              className="flex items-center gap-1 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium"
+              className="flex items-center gap-1 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-[#1A1A1A] text-sm font-medium"
             >
               <Copy className="w-4 h-4" /> {referralCopied ? 'Copied!' : 'Copy link'}
             </button>
@@ -173,7 +173,7 @@ const TokenCenter = () => {
 
       {/* Pricing section heading */}
       <div className="mb-4">
-        <h2 className="text-xl font-semibold text-gray-200">Pricing & usage</h2>
+        <h2 className="text-xl font-semibold text-[#1A1A1A]">Pricing & usage</h2>
         <p className="text-sm text-gray-500">Credits for builds. Usage this period: {usage?.total_used?.toLocaleString() ?? 0} tokens</p>
       </div>
 
@@ -190,7 +190,7 @@ const TokenCenter = () => {
             className={`flex items-center gap-2 px-4 py-3 border-b-2 transition ${
               activeTab === tab.id
                 ? 'border-blue-500 text-blue-400'
-                : 'border-transparent text-gray-400 hover:text-white'
+                : 'border-transparent text-[#666666] hover:text-[#1A1A1A]'
             }`}
             data-testid={`tab-${tab.id}`}
           >
@@ -225,7 +225,7 @@ const TokenCenter = () => {
                   {['light', 'dev'].includes(bundle.key) ? ' one-time' : '/month'}
                 </span>
               </div>
-              <p className="text-gray-400 mb-6">
+              <p className="text-[#666666] mb-6">
                 <Zap className="w-4 h-4 inline mr-1 text-yellow-500" />
                 {(bundle.credits ?? (bundle.tokens / 1000)).toLocaleString()} credits
                 {!['light', 'dev'].includes(bundle.key) && ' per month'}
@@ -249,7 +249,7 @@ const TokenCenter = () => {
               <button
                 onClick={() => handleStripeCheckout(bundle.key)}
                 disabled={purchasing === `stripe-${bundle.key}`}
-                className="w-full mt-2 py-2 rounded-lg font-medium bg-emerald-600 hover:bg-emerald-500 text-white transition disabled:opacity-50"
+                className="w-full mt-2 py-2 rounded-lg font-medium bg-emerald-600 hover:bg-emerald-500 text-[#1A1A1A] transition disabled:opacity-50"
                 data-testid={`stripe-${bundle.key}-btn`}
               >
                 {purchasing === `stripe-${bundle.key}` ? (
@@ -269,7 +269,7 @@ const TokenCenter = () => {
           {history.length === 0 ? (
             <div className="text-center py-12">
               <History className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-              <p className="text-gray-400">No transactions yet</p>
+              <p className="text-[#666666]">No transactions yet</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -387,7 +387,7 @@ const TokenCenter = () => {
                       />
                     </div>
                   </div>
-                  <div className="text-right text-gray-400">
+                  <div className="text-right text-[#666666]">
                     {item.value.toLocaleString()}
                   </div>
                 </div>

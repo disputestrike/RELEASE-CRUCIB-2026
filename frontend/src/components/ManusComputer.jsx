@@ -61,7 +61,7 @@ const ManusComputer = ({
               </div>
               <button
                 onClick={() => setIsExpanded(false)}
-                className="text-gray-500 hover:text-white transition-colors"
+                className="text-gray-500 hover:text-[#1A1A1A] transition-colors"
               >
                 <ChevronUp className="w-4 h-4" />
               </button>
@@ -70,7 +70,7 @@ const ManusComputer = ({
             {/* Step Counter */}
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-gray-400">Progress</span>
+                <span className="text-[#666666]">Progress</span>
                 <span className="text-blue-400 font-bold">
                   {currentStep} / {totalSteps}
                 </span>
@@ -88,7 +88,7 @@ const ManusComputer = ({
             {/* Token Counter */}
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
-                <span className="text-gray-400 flex items-center gap-1">
+                <span className="text-[#666666] flex items-center gap-1">
                   <Zap className="w-3 h-3" /> Tokens
                 </span>
                 <span className="text-yellow-400 font-bold">
@@ -110,7 +110,7 @@ const ManusComputer = ({
               <div className="mb-3">
                 <div className="flex items-center gap-2 mb-2">
                   <Eye className="w-3 h-3 text-green-400 animate-pulse" />
-                  <span className="text-gray-400">Thinking</span>
+                  <span className="text-[#666666]">Thinking</span>
                 </div>
                 <div className="bg-gray-900/50 border border-green-500/20 rounded p-2 min-h-12 max-h-24 overflow-y-auto">
                   <p className="text-green-400/80 text-xs leading-relaxed">
@@ -134,7 +134,7 @@ const ManusComputer = ({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
             onClick={() => setIsExpanded(true)}
-            className="bg-gradient-to-br from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white rounded-full p-3 shadow-lg hover:shadow-xl transition-all flex items-center justify-center w-12 h-12 border border-blue-400/30"
+            className="bg-gradient-to-br from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-[#1A1A1A] rounded-full p-3 shadow-lg hover:shadow-xl transition-all flex items-center justify-center w-12 h-12 border border-blue-400/30"
           >
             <Cpu className="w-5 h-5 animate-pulse" />
           </motion.button>

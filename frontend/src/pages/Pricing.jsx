@@ -62,7 +62,7 @@ function OutcomeCalculator({ bundles, onSelectPlan }) {
             min={0}
             value={landings}
             onChange={(e) => setLandings(parseInt(e.target.value, 10) || 0)}
-            className="w-20 px-2 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-white"
+            className="w-20 px-2 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-[#1A1A1A]"
           />
         </label>
         <label className="flex items-center gap-2">
@@ -72,12 +72,12 @@ function OutcomeCalculator({ bundles, onSelectPlan }) {
             min={0}
             value={apps}
             onChange={(e) => setApps(parseInt(e.target.value, 10) || 0)}
-            className="w-20 px-2 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-white"
+            className="w-20 px-2 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-[#1A1A1A]"
           />
         </label>
       </div>
       <p className="text-sm text-zinc-400">
-        Estimated credits needed: <strong className="text-white">{needed}</strong>
+        Estimated credits needed: <strong className="text-[#1A1A1A]">{needed}</strong>
         {recommended && (
           <> — We recommend <strong className="text-blue-400">{bundles[recommended]?.name || recommended}</strong> ({recommendedCredits} credits/mo).</>
         )}
@@ -86,7 +86,7 @@ function OutcomeCalculator({ bundles, onSelectPlan }) {
         <button
           type="button"
           onClick={() => onSelectPlan(recommended)}
-          className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium"
+          className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-[#1A1A1A] text-sm font-medium"
         >
           Get {bundles[recommended]?.name || recommended}
         </button>
@@ -219,7 +219,7 @@ export default function Pricing() {
                 }`}
               >
                 {isBuilder && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-blue-500 text-white text-xs font-medium">
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-blue-500 text-[#1A1A1A] text-xs font-medium">
                     Popular
                   </span>
                 )}

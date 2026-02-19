@@ -61,15 +61,15 @@ export default function PromptLibrary() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white p-6">
+    <div className="min-h-screen bg-[#FAFAF8] text-[#1A1A1A] p-6">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-2xl font-bold mb-2">Prompt Library</h1>
         <p className="text-zinc-400 mb-6">Templates and your saved prompts.</p>
         {token && (
           <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50 mb-6">
             <h3 className="text-sm font-medium text-zinc-300 mb-3">Save new prompt</h3>
-            <input type="text" value={saveName} onChange={(e) => setSaveName(e.target.value)} placeholder="Name" className="w-full mb-2 px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 text-sm" />
-            <textarea value={savePrompt} onChange={(e) => setSavePrompt(e.target.value)} placeholder="Prompt text..." rows={2} className="w-full mb-2 px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 text-sm resize-none" />
+            <input type="text" value={saveName} onChange={(e) => setSaveName(e.target.value)} placeholder="Name" className="w-full mb-2 px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-[#1A1A1A] placeholder-zinc-500 text-sm" />
+            <textarea value={savePrompt} onChange={(e) => setSavePrompt(e.target.value)} placeholder="Prompt text..." rows={2} className="w-full mb-2 px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-[#1A1A1A] placeholder-zinc-500 text-sm resize-none" />
             <button type="button" onClick={handleSavePrompt} disabled={saving || !saveName.trim() || !savePrompt.trim()} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium disabled:opacity-50">
               {saveDone ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />} {saving ? 'Saving...' : saveDone ? 'Saved!' : 'Save prompt'}
             </button>
@@ -80,7 +80,7 @@ export default function PromptLibrary() {
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-4 py-2 rounded-lg text-sm capitalize ${tab === t ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-white'}`}
+              className={`px-4 py-2 rounded-lg text-sm capitalize ${tab === t ? 'bg-zinc-800 text-[#1A1A1A]' : 'text-zinc-400 hover:text-[#1A1A1A]'}`}
             >
               {t}
             </button>
@@ -92,7 +92,7 @@ export default function PromptLibrary() {
               <div className="flex items-center justify-between gap-2 mb-2">
                 <span className="font-medium">{t.name}</span>
                 <div className="flex gap-2">
-                  <button onClick={() => copyPrompt(t.prompt, t.id)} className="p-1.5 text-zinc-400 hover:text-white">
+                  <button onClick={() => copyPrompt(t.prompt, t.id)} className="p-1.5 text-zinc-400 hover:text-[#1A1A1A]">
                     {copiedId === t.id ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                   </button>
                   <button onClick={() => goToPrompt(t.prompt)} className="flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300">
@@ -108,7 +108,7 @@ export default function PromptLibrary() {
               <div className="flex items-center justify-between gap-2 mb-2">
                 <span className="font-medium">{p.name}</span>
                 <div className="flex gap-2">
-                  <button onClick={() => copyPrompt(p.prompt, p.id)} className="p-1.5 text-zinc-400 hover:text-white">
+                  <button onClick={() => copyPrompt(p.prompt, p.id)} className="p-1.5 text-zinc-400 hover:text-[#1A1A1A]">
                     {copiedId === p.id ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                   </button>
                   <button onClick={() => goToPrompt(p.prompt)} className="text-sm text-blue-400 hover:text-blue-300">Use</button>

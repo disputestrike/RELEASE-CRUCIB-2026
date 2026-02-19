@@ -34,7 +34,7 @@ export default function TemplatesGallery() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white p-6">
+    <div className="min-h-screen bg-[#FAFAF8] text-[#1A1A1A] p-6">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-2xl font-bold mb-2">Templates</h1>
         <p className="text-zinc-400 mb-8">Start from a template to build faster.</p>

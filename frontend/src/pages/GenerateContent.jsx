@@ -77,7 +77,7 @@ export default function GenerateContent() {
             key={t.id}
             type="button"
             onClick={() => { setActiveTab(t.id); setFormat(t.formatOptions[0]?.value || "markdown"); setContent(""); setError(null); }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-t font-medium text-sm ${activeTab === t.id ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-t font-medium text-sm ${activeTab === t.id ? "bg-blue-600 text-[#1A1A1A]" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
           >
             <t.icon className="w-4 h-4" />
             {t.label}
@@ -109,7 +109,7 @@ export default function GenerateContent() {
             type="button"
             onClick={handleGenerate}
             disabled={loading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+            className="px-4 py-2 bg-blue-600 text-[#1A1A1A] rounded-lg font-medium text-sm hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             Generate

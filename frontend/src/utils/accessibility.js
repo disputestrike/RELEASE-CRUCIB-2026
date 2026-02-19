@@ -251,7 +251,7 @@ export const SkipToMainLink = () => {
   return (
     <a
       href="#main-content"
-      className="sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 focus:bg-blue-600 focus:text-white focus:p-2 focus:z-50"
+      className="sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 focus:bg-blue-600 focus:text-[#1A1A1A] focus:p-2 focus:z-50"
     >
       Skip to main content
     </a>

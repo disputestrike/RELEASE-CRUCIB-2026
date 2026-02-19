@@ -1,0 +1,368 @@
+/* Manus Color Shading System */
+/* Complete color palette with proper shading for visual hierarchy */
+
+:root {
+  /* ============================================
+     PRIMARY BACKGROUNDS - WARM WHITE/BEIGE SCALE
+     ============================================ */
+  
+  /* Lightest - Used for hover states and subtle backgrounds */
+  --manus-bg-lightest: #FEFDFB;
+  
+  /* Light - Main background color (like Manus) */
+  --manus-bg-light: #FAFAF8;
+  
+  /* Light-Medium - Slightly darker for subtle differentiation */
+  --manus-bg-light-medium: #F9F8F6;
+  
+  /* Medium - For cards and elevated surfaces */
+  --manus-bg-medium: #F3F1ED;
+  
+  /* Medium-Dark - For input fields and secondary surfaces */
+  --manus-bg-medium-dark: #EBE8E2;
+  
+  /* Dark - For borders and subtle dividers */
+  --manus-bg-dark: #E0DCD5;
+  
+  /* Pure White - For elevated cards and modals */
+  --manus-white: #FFFFFF;
+  
+  /* ============================================
+     TEXT COLORS - DARK SCALE
+     ============================================ */
+  
+  /* Primary text - Darkest, most readable */
+  --manus-text-primary: #1A1A1A;
+  
+  /* Secondary text - Slightly lighter */
+  --manus-text-secondary: #3D3D3D;
+  
+  /* Muted text - For less important content */
+  --manus-text-muted: #666666;
+  
+  /* Light text - For disabled or placeholder text */
+  --manus-text-light: #888888;
+  
+  /* Very light text - For subtle hints */
+  --manus-text-very-light: #AAAAAA;
+  
+  /* ============================================
+     ACCENT COLORS
+     ============================================ */
+  
+  /* Primary accent - Professional blue */
+  --manus-accent-primary: #3B82F6;
+  
+  /* Accent hover - Darker blue */
+  --manus-accent-hover: #2563EB;
+  
+  /* Accent light - Light blue background */
+  --manus-accent-light: #EFF6FF;
+  
+  /* Accent very light - Very light blue background */
+  --manus-accent-very-light: #F0F9FF;
+  
+  /* ============================================
+     STATUS COLORS
+     ============================================ */
+  
+  /* Success - Green */
+  --manus-success: #16A34A;
+  --manus-success-light: #DCFCE7;
+  
+  /* Warning - Orange */
+  --manus-warning: #EA580C;
+  --manus-warning-light: #FFEDD5;
+  
+  /* Error - Red */
+  --manus-error: #DC2626;
+  --manus-error-light: #FEE2E2;
+  
+  /* Info - Blue */
+  --manus-info: #0284C7;
+  --manus-info-light: #E0F2FE;
+  
+  /* ============================================
+     BORDER & DIVIDER COLORS
+     ============================================ */
+  
+  /* Subtle border - Very light, almost invisible */
+  --manus-border-subtle: rgba(0, 0, 0, 0.03);
+  
+  /* Light border - Light gray */
+  --manus-border-light: rgba(0, 0, 0, 0.06);
+  
+  /* Medium border - Visible but subtle */
+  --manus-border-medium: rgba(0, 0, 0, 0.08);
+  
+  /* Dark border - More prominent */
+  --manus-border-dark: rgba(0, 0, 0, 0.12);
+  
+  /* ============================================
+     SHADOW COLORS
+     ============================================ */
+  
+  /* Subtle shadow - Very light */
+  --manus-shadow-subtle: rgba(0, 0, 0, 0.04);
+  
+  /* Light shadow - Light shadow */
+  --manus-shadow-light: rgba(0, 0, 0, 0.08);
+  
+  /* Medium shadow - Medium shadow */
+  --manus-shadow-medium: rgba(0, 0, 0, 0.12);
+  
+  /* Dark shadow - Dark shadow */
+  --manus-shadow-dark: rgba(0, 0, 0, 0.16);
+}
+
+/* ============================================
+   BACKGROUND UTILITY CLASSES
+   ============================================ */
+
+.bg-manus-lightest {
+  background-color: var(--manus-bg-lightest);
+}
+
+.bg-manus-light {
+  background-color: var(--manus-bg-light);
+}
+
+.bg-manus-light-medium {
+  background-color: var(--manus-bg-light-medium);
+}
+
+.bg-manus-medium {
+  background-color: var(--manus-bg-medium);
+}
+
+.bg-manus-medium-dark {
+  background-color: var(--manus-bg-medium-dark);
+}
+
+.bg-manus-dark {
+  background-color: var(--manus-bg-dark);
+}
+
+.bg-manus-white {
+  background-color: var(--manus-white);
+}
+
+/* ============================================
+   TEXT COLOR UTILITY CLASSES
+   ============================================ */
+
+.text-manus-primary {
+  color: var(--manus-text-primary);
+}
+
+.text-manus-secondary {
+  color: var(--manus-text-secondary);
+}
+
+.text-manus-muted {
+  color: var(--manus-text-muted);
+}
+
+.text-manus-light {
+  color: var(--manus-text-light);
+}
+
+.text-manus-very-light {
+  color: var(--manus-text-very-light);
+}
+
+/* ============================================
+   ACCENT COLOR UTILITY CLASSES
+   ============================================ */
+
+.text-manus-accent {
+  color: var(--manus-accent-primary);
+}
+
+.bg-manus-accent-light {
+  background-color: var(--manus-accent-light);
+}
+
+.bg-manus-accent-very-light {
+  background-color: var(--manus-accent-very-light);
+}
+
+/* ============================================
+   BORDER UTILITY CLASSES
+   ============================================ */
+
+.border-manus-subtle {
+  border-color: var(--manus-border-subtle);
+}
+
+.border-manus-light {
+  border-color: var(--manus-border-light);
+}
+
+.border-manus-medium {
+  border-color: var(--manus-border-medium);
+}
+
+.border-manus-dark {
+  border-color: var(--manus-border-dark);
+}
+
+/* ============================================
+   COMPONENT STYLING WITH PROPER SHADING
+   ============================================ */
+
+/* Cards with proper shading */
+.card-manus {
+  background-color: var(--manus-white);
+  border: 1px solid var(--manus-border-light);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px var(--manus-shadow-subtle);
+  transition: all 200ms ease-out;
+}
+
+.card-manus:hover {
+  box-shadow: 0 4px 12px var(--manus-shadow-light);
+  border-color: var(--manus-border-medium);
+}
+
+/* Elevated cards */
+.card-manus-elevated {
+  background-color: var(--manus-white);
+  border: 1px solid var(--manus-border-light);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px var(--manus-shadow-light);
+}
+
+.card-manus-elevated:hover {
+  box-shadow: 0 8px 24px var(--manus-shadow-medium);
+}
+
+/* Secondary cards with light background */
+.card-manus-secondary {
+  background-color: var(--manus-bg-light-medium);
+  border: 1px solid var(--manus-border-subtle);
+  border-radius: 12px;
+}
+
+.card-manus-secondary:hover {
+  background-color: var(--manus-bg-medium);
+}
+
+/* Input fields */
+.input-manus {
+  background-color: var(--manus-bg-medium);
+  border: 1px solid var(--manus-border-light);
+  border-radius: 8px;
+  color: var(--manus-text-primary);
+  padding: 10px 14px;
+  font-size: 14px;
+  transition: all 200ms ease-out;
+}
+
+.input-manus:focus {
+  outline: none;
+  background-color: var(--manus-white);
+  border-color: var(--manus-accent-primary);
+  box-shadow: 0 0 0 3px var(--manus-accent-light);
+}
+
+.input-manus::placeholder {
+  color: var(--manus-text-light);
+}
+
+/* Buttons */
+.btn-manus-primary {
+  background-color: var(--manus-accent-primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 200ms ease-out;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+}
+
+.btn-manus-primary:hover {
+  background-color: var(--manus-accent-hover);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  transform: translateY(-1px);
+}
+
+.btn-manus-secondary {
+  background-color: var(--manus-bg-medium);
+  color: var(--manus-text-primary);
+  border: 1px solid var(--manus-border-light);
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 200ms ease-out;
+}
+
+.btn-manus-secondary:hover {
+  background-color: var(--manus-white);
+  border-color: var(--manus-accent-primary);
+  color: var(--manus-accent-primary);
+}
+
+/* Dividers */
+.divider-manus {
+  height: 1px;
+  background-color: var(--manus-border-light);
+  margin: 16px 0;
+}
+
+/* Section backgrounds */
+.section-manus {
+  background-color: var(--manus-bg-light);
+  padding: 32px;
+  border-radius: 16px;
+}
+
+.section-manus-elevated {
+  background-color: var(--manus-white);
+  padding: 32px;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px var(--manus-shadow-subtle);
+}
+
+/* ============================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================ */
+
+@media (max-width: 768px) {
+  .section-manus,
+  .section-manus-elevated {
+    padding: 24px;
+    border-radius: 12px;
+  }
+}
+
+/* ============================================
+   ACCESSIBILITY
+   ============================================ */
+
+@media (prefers-color-scheme: dark) {
+  /* If dark mode is preferred, provide appropriate colors */
+  :root {
+    --manus-bg-light: #1A1A1A;
+    --manus-bg-light-medium: #242424;
+    --manus-bg-medium: #2D2D2D;
+    --manus-text-primary: #FAFAF8;
+    --manus-text-secondary: #E0E0E0;
+    --manus-text-muted: #999999;
+    --manus-border-light: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .card-manus,
+  .card-manus-elevated,
+  .input-manus,
+  .btn-manus-primary,
+  .btn-manus-secondary {
+    transition: none;
+  }
+}

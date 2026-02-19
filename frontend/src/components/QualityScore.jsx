@@ -17,7 +17,7 @@ export default function QualityScore({ score }) {
   return (
     <div className="p-4 rounded-lg bg-slate-900 border border-slate-700">
       <div className="flex items-center gap-3">
-        <div className={`w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-lg ${getColor(overall)}`}>
+        <div className={`w-14 h-14 rounded-full flex items-center justify-center text-[#1A1A1A] font-bold text-lg ${getColor(overall)}`}>
           {Math.round(overall)}
         </div>
         <div>

@@ -103,12 +103,12 @@ const AdminUserProfile = () => {
 
   return (
     <div className="space-y-8" data-testid="admin-user-profile">
-      <Link to="/app/admin/users" className="inline-flex items-center text-gray-400 hover:text-white">
+      <Link to="/app/admin/users" className="inline-flex items-center text-[#666666] hover:text-[#1A1A1A]">
         <ArrowLeft className="w-4 h-4 mr-2" /> Back to users
       </Link>
       <div>
         <h1 className="text-2xl font-bold">{profile.email}</h1>
-        <p className="text-gray-400">ID: {profile.id}</p>
+        <p className="text-[#666666]">ID: {profile.id}</p>
       </div>
       {message && (
         <div className={`p-4 rounded-lg ${message.includes('Granted') || message.includes('suspended') ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
@@ -120,11 +120,11 @@ const AdminUserProfile = () => {
           <h2 className="font-semibold mb-4 flex items-center gap-2">
             <Coins className="w-5 h-5" /> Balance & plan
           </h2>
-          <p><span className="text-gray-400">Credits:</span> {profile.credit_balance ?? '-'}</p>
-          <p><span className="text-gray-400">Plan:</span> {profile.plan || 'free'}</p>
-          <p><span className="text-gray-400">Created:</span> {profile.created_at ? new Date(profile.created_at).toLocaleString() : '-'}</p>
-          <p><span className="text-gray-400">Last login:</span> {profile.last_login ? new Date(profile.last_login).toLocaleString() : '-'}</p>
-          <p><span className="text-gray-400">Lifetime revenue:</span> ${profile.lifetime_revenue ?? 0}</p>
+          <p><span className="text-[#666666]">Credits:</span> {profile.credit_balance ?? '-'}</p>
+          <p><span className="text-[#666666]">Plan:</span> {profile.plan || 'free'}</p>
+          <p><span className="text-[#666666]">Created:</span> {profile.created_at ? new Date(profile.created_at).toLocaleString() : '-'}</p>
+          <p><span className="text-[#666666]">Last login:</span> {profile.last_login ? new Date(profile.last_login).toLocaleString() : '-'}</p>
+          <p><span className="text-[#666666]">Lifetime revenue:</span> ${profile.lifetime_revenue ?? 0}</p>
           {profile.suspended && (
             <p className="text-red-400 mt-2">Suspended: {profile.suspended_reason}</p>
           )}
@@ -133,8 +133,8 @@ const AdminUserProfile = () => {
           <h2 className="font-semibold mb-4 flex items-center gap-2">
             <FolderOpen className="w-5 h-5" /> Activity
           </h2>
-          <p><span className="text-gray-400">Projects:</span> {profile.projects_count ?? 0}</p>
-          <p><span className="text-gray-400">Referrals:</span> {profile.referral_count ?? 0}</p>
+          <p><span className="text-[#666666]">Projects:</span> {profile.projects_count ?? 0}</p>
+          <p><span className="text-[#666666]">Referrals:</span> {profile.referral_count ?? 0}</p>
         </div>
       </div>
       {profile.recent_ledger?.length > 0 && (

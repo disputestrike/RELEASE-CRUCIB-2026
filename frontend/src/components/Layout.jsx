@@ -66,7 +66,7 @@ const Layout = () => {
         className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
           isActive 
             ? 'bg-blue-500/20 text-blue-400 border-l-2 border-blue-500' 
-            : 'text-gray-400 hover:text-white hover:bg-white/5'
+            : 'text-[#666666] hover:text-[#1A1A1A] hover:bg-white/5'
         }`}
         data-testid={`nav-${item.name.toLowerCase().replace(' ', '-')}`}
       >
@@ -77,7 +77,7 @@ const Layout = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white dark">
+    <div className="min-h-screen bg-[#FAFAF8] text-[#1A1A1A] dark">
       {/* Mobile Header */}
       <header className="lg:hidden fixed top-0 left-0 right-0 h-16 glass z-50 flex items-center justify-between px-4">
         <Link to="/app" className="flex items-center gap-2">
@@ -98,7 +98,7 @@ const Layout = () => {
             initial={{ opacity: 0, x: '100%' }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: '100%' }}
-            className="lg:hidden fixed inset-0 z-40 bg-[#050505] pt-16"
+            className="lg:hidden fixed inset-0 z-40 bg-[#FAFAF8] pt-16"
           >
             <div className="p-4 space-y-2">
               {navigationWithAdmin.map(item => <NavItem key={item.name} item={item} mobile />)}
@@ -148,7 +148,7 @@ const Layout = () => {
         <div className={`p-4 border-t border-white/10 ${!sidebarOpen ? 'hidden' : ''}`}>
           <div className="p-4 bg-blue-500/10 rounded-lg border border-blue-500/30">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-400">Token balance</span>
+              <span className="text-sm text-[#666666]">Token balance</span>
               <Zap className="w-4 h-4 text-blue-400" />
             </div>
             <p className="text-2xl font-bold text-blue-400" data-testid="sidebar-token-balance">
@@ -161,10 +161,10 @@ const Layout = () => {
               <Link to="/pricing" className="text-xs text-blue-400 hover:text-blue-300 block">
                 Pricing plans
               </Link>
-              <Link to="/app/learn" className="text-xs text-gray-400 hover:text-white block">
+              <Link to="/app/learn" className="text-xs text-[#666666] hover:text-[#1A1A1A] block">
                 Documentation
               </Link>
-              <a href="mailto:support@crucibai.com" className="text-xs text-gray-400 hover:text-white block">
+              <a href="mailto:support@crucibai.com" className="text-xs text-[#666666] hover:text-[#1A1A1A] block">
                 Get help
               </a>
             </div>
@@ -188,7 +188,7 @@ const Layout = () => {
             )}
             <button 
               onClick={handleLogout}
-              className="p-2 hover:bg-red-500/10 text-gray-400 hover:text-red-400 rounded-lg transition"
+              className="p-2 hover:bg-red-500/10 text-[#666666] hover:text-red-400 rounded-lg transition"
               title="Logout"
               data-testid="desktop-logout-btn"
             >

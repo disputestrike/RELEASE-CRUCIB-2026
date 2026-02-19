@@ -128,7 +128,7 @@ const AgentMonitor = () => {
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-gray-400">Loading project...</p>
+          <p className="text-[#666666]">Loading project...</p>
         </div>
       </div>
     );
@@ -156,7 +156,7 @@ const AgentMonitor = () => {
       {/* Generated images + videos when build completed */}
       {project.status === 'completed' && (project.images || project.videos) && (
         <div className="p-4 rounded-xl border border-white/10 bg-[#0a0a0a]">
-          <h3 className="text-sm font-medium text-gray-400 mb-3">Generated media</h3>
+          <h3 className="text-sm font-medium text-[#666666] mb-3">Generated media</h3>
           {project.images && Object.keys(project.images).length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
               {project.images.hero && (
@@ -196,14 +196,14 @@ const AgentMonitor = () => {
       {/* Quality score (0–100 + breakdown) when build completed */}
       {project.status === 'completed' && project.quality_score && (
         <div className="p-4 rounded-xl border border-white/10 bg-[#0a0a0a]">
-          <h3 className="text-sm font-medium text-gray-400 mb-2">Code quality</h3>
+          <h3 className="text-sm font-medium text-[#666666] mb-2">Code quality</h3>
           <QualityScore score={project.quality_score} />
         </div>
       )}
       {/* Security scan summary (from last run in Workspace) */}
       {project.last_security_scan && (project.last_security_scan.passed != null || project.last_security_scan.failed != null) && (
         <div className="p-4 rounded-xl border border-white/10 bg-[#0a0a0a]">
-          <h3 className="text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
+          <h3 className="text-sm font-medium text-[#666666] mb-2 flex items-center gap-2">
             <ShieldCheck className="w-4 h-4" /> Security scan
           </h3>
           <p className="text-sm text-gray-300">
@@ -218,7 +218,7 @@ const AgentMonitor = () => {
       {/* Optional: dependency audit (npm / pip) */}
       {(project.status === 'completed' || workspaceFiles.length > 0) && (
         <div className="p-4 rounded-xl border border-white/10 bg-[#0a0a0a]">
-          <h3 className="text-sm font-medium text-gray-400 mb-2">Dependency audit</h3>
+          <h3 className="text-sm font-medium text-[#666666] mb-2">Dependency audit</h3>
           {dependencyAuditLoading && <p className="text-sm text-gray-500">Running npm/pip audit…</p>}
           {!dependencyAuditLoading && !dependencyAudit && (
             <button
@@ -282,7 +282,7 @@ const AgentMonitor = () => {
           </Link>
           <div>
             <h1 className="text-2xl font-bold">{project.name}</h1>
-            <p className="text-gray-400">{project.project_type}{project.build_kind === 'mobile' ? ' · Mobile (Expo)' : ''}</p>
+            <p className="text-[#666666]">{project.project_type}{project.build_kind === 'mobile' ? ' · Mobile (Expo)' : ''}</p>
           </div>
         </div>
         
@@ -296,7 +296,7 @@ const AgentMonitor = () => {
             project.status === 'completed' ? 'bg-green-500/20 text-green-400' :
             project.status === 'running' ? 'bg-blue-500/20 text-blue-400' :
             project.status === 'failed' ? 'bg-red-500/20 text-red-400' :
-            'bg-gray-500/20 text-gray-400'
+            'bg-gray-500/20 text-[#666666]'
           }`} data-testid="project-status">
             {project.status === 'running' && <span className="inline-block w-2 h-2 bg-blue-400 rounded-full mr-2 animate-pulse"></span>}
             {project.status}
@@ -329,7 +329,7 @@ const AgentMonitor = () => {
       {/* Live preview (workspace files served with preview token) */}
       {previewUrl && (
         <div className="p-4 rounded-xl border border-white/10 bg-[#0a0a0a]">
-          <h3 className="text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
+          <h3 className="text-sm font-medium text-[#666666] mb-2 flex items-center gap-2">
             <Eye className="w-4 h-4" /> Live preview (workspace)
           </h3>
           <div className="rounded-lg overflow-hidden border border-white/10 bg-black" style={{ minHeight: 280 }}>
@@ -346,7 +346,7 @@ const AgentMonitor = () => {
       {/* Event timeline (SSE-style: agent_started, agent_completed) */}
       {buildEvents.length > 0 && (
         <div className="p-4 rounded-xl border border-white/10 bg-[#0a0a0a]">
-          <h3 className="text-sm font-medium text-gray-400 mb-2 flex items-center gap-2">
+          <h3 className="text-sm font-medium text-[#666666] mb-2 flex items-center gap-2">
             <List className="w-4 h-4" /> Event timeline
           </h3>
           <div className="max-h-48 overflow-y-auto space-y-1 text-xs font-mono">
@@ -400,7 +400,7 @@ const AgentMonitor = () => {
 
         {phases.length > 0 && (
           <div className="mt-4 pt-4 border-t border-white/10">
-            <h4 className="text-sm font-medium text-gray-400 mb-2">Build phases</h4>
+            <h4 className="text-sm font-medium text-[#666666] mb-2">Build phases</h4>
             <div className="flex flex-wrap gap-2">
               {phases.map((p, i) => (
                 <span key={i} className="px-2 py-1 rounded bg-white/10 text-gray-300 text-xs">{typeof p === 'string' ? p : p?.name || p?.title || JSON.stringify(p)}</span>
@@ -490,7 +490,7 @@ const AgentMonitor = () => {
               <>
                 {Array.isArray(projectState.plan) && projectState.plan.length > 0 && (
                   <div>
-                    <h4 className="text-gray-400 font-medium mb-1">Plan</h4>
+                    <h4 className="text-[#666666] font-medium mb-1">Plan</h4>
                     <ul className="list-disc list-inside text-gray-300 space-y-0.5">
                       {projectState.plan.slice(0, 15).map((item, i) => (
                         <li key={i}>{typeof item === 'string' ? item : JSON.stringify(item)}</li>
@@ -500,7 +500,7 @@ const AgentMonitor = () => {
                 )}
                 {projectState.requirements && Object.keys(projectState.requirements).length > 0 && (
                   <div>
-                    <h4 className="text-gray-400 font-medium mb-1">Requirements</h4>
+                    <h4 className="text-[#666666] font-medium mb-1">Requirements</h4>
                     <pre className="bg-black/30 p-3 rounded overflow-x-auto text-gray-300 whitespace-pre-wrap max-h-32 overflow-y-auto">
                       {JSON.stringify(projectState.requirements, null, 2)}
                     </pre>
@@ -508,7 +508,7 @@ const AgentMonitor = () => {
                 )}
                 {projectState.stack && Object.keys(projectState.stack).length > 0 && (
                   <div>
-                    <h4 className="text-gray-400 font-medium mb-1">Stack</h4>
+                    <h4 className="text-[#666666] font-medium mb-1">Stack</h4>
                     <pre className="bg-black/30 p-3 rounded overflow-x-auto text-gray-300 whitespace-pre-wrap max-h-24 overflow-y-auto">
                       {JSON.stringify(projectState.stack, null, 2)}
                     </pre>
@@ -516,13 +516,13 @@ const AgentMonitor = () => {
                 )}
                 {(projectState.memory_summary || '').toString().trim() && (
                   <div>
-                    <h4 className="text-gray-400 font-medium mb-1">Memory summary</h4>
+                    <h4 className="text-[#666666] font-medium mb-1">Memory summary</h4>
                     <p className="text-gray-300">{String(projectState.memory_summary).slice(0, 500)}</p>
                   </div>
                 )}
                 {Array.isArray(projectState.tool_log) && projectState.tool_log.length > 0 && (
                   <div>
-                    <h4 className="text-gray-400 font-medium mb-1">Tool runs (last {Math.min(10, projectState.tool_log.length)})</h4>
+                    <h4 className="text-[#666666] font-medium mb-1">Tool runs (last {Math.min(10, projectState.tool_log.length)})</h4>
                     <ul className="space-y-1 text-gray-300">
                       {projectState.tool_log.slice(-10).reverse().map((entry, i) => (
                         <li key={i} className="flex gap-2">
@@ -535,7 +535,7 @@ const AgentMonitor = () => {
                 )}
                 {(projectState.security_report || projectState.ux_report || projectState.performance_report || '').toString().trim() && (
                   <div>
-                    <h4 className="text-gray-400 font-medium mb-1">Reports</h4>
+                    <h4 className="text-[#666666] font-medium mb-1">Reports</h4>
                     <div className="space-y-2 max-h-40 overflow-y-auto">
                       {projectState.security_report && (
                         <p className="text-gray-300 text-xs"><strong className="text-amber-400">Security:</strong> {String(projectState.security_report).slice(0, 200)}…</p>
@@ -551,7 +551,7 @@ const AgentMonitor = () => {
                 )}
                 {workspaceFiles.length > 0 && (
                   <div>
-                    <h4 className="text-gray-400 font-medium mb-1">Files in workspace</h4>
+                    <h4 className="text-[#666666] font-medium mb-1">Files in workspace</h4>
                     <ul className="text-gray-300 text-xs font-mono space-y-0.5 max-h-32 overflow-y-auto">
                       {workspaceFiles.slice(0, 50).map((f, i) => (
                         <li key={i}>{f}</li>

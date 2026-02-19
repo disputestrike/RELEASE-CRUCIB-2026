@@ -2,12 +2,12 @@ import { Link } from 'react-router-dom';
 
 export default function Terms() {
   return (
-    <div className="min-h-screen bg-[#050505] text-gray-200">
+    <div className="min-h-screen bg-[#FAFAF8] text-[#1A1A1A]">
       <div className="max-w-3xl mx-auto px-6 py-10">
-        <h1 className="text-3xl font-bold text-white mb-2">Terms of Use</h1>
-        <p className="text-sm text-gray-400 mb-8">Last updated: February 2026</p>
+        <h1 className="text-3xl font-bold text-[#1A1A1A] mb-2">Terms of Use</h1>
+        <p className="text-sm text-[#666666] mb-8">Last updated: February 2026</p>
 
-        <div className="space-y-6 text-gray-200 leading-relaxed">
+        <div className="space-y-6 text-[#1A1A1A] leading-relaxed">
           <p>Welcome to CrucibAI. By accessing or using our service, you agree to these Terms of Use. If you do not agree, do not use the service.</p>
           <div className="p-4 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-300">
             <p className="font-medium text-gray-100 mb-2">Please note:</p>
@@ -17,52 +17,52 @@ export default function Terms() {
             </ul>
           </div>
 
-          <h2 className="text-xl font-semibold text-white mt-8 mb-3">1. Artificial intelligence disclaimer</h2>
+          <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">1. Artificial intelligence disclaimer</h2>
           <p>You acknowledge that you are interacting with an AI system. AI systems are based on probabilistic models and may produce errors, inaccuracies, or outputs that are not unique. CrucibAI is not responsible for any misunderstandings or inaccuracies caused by AI. You are responsible for independently reviewing all outputs, exercising your own judgment before relying on them, and for any decisions or actions taken based on outputs. Outputs may contain errors, lack creative nuance, or reflect biases; you assume all risks of using them.</p>
 
-          <h2 className="text-xl font-semibold text-white mt-8 mb-3">2. Use of the service</h2>
+          <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">2. Use of the service</h2>
           <p>CrucibAI provides an AI-powered platform for building applications. You may use the service only in compliance with these terms and applicable laws. You are responsible for your account, your API keys, and all content you create or generate through the service.</p>
 
-          <h2 className="text-xl font-semibold text-white mt-8 mb-3">3. Age and eligibility (minors / COPPA)</h2>
+          <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">3. Age and eligibility (minors / COPPA)</h2>
           <p>You must be at least <strong className="text-gray-100">18 years old</strong> (or the age of majority in your jurisdiction), or if you are between 16 and 18 (or 13 and 18 in the United States), you may use the service only with the consent and supervision of a parent or legal guardian who agrees to these terms on your behalf. The service is not directed to children under 16 (or under 13 in the United States). By using the service, you represent that you meet these age requirements or have the required parental consent. We may terminate accounts that we learn do not meet these requirements.</p>
 
-          <h2 className="text-xl font-semibold text-white mt-8 mb-3">3. Accounts and security</h2>
+          <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">3. Accounts and security</h2>
           <p>You must provide accurate registration information and keep your account credentials secure. You are responsible for all activity under your account. Notify us immediately of any unauthorized use.</p>
 
-          <h2 className="text-xl font-semibold text-white mt-8 mb-3">5. Plans, tokens, and billing</h2>
+          <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">5. Plans, tokens, and billing</h2>
           <p>Use of the service may be subject to a plan (e.g. free, paid). Token consumption is metered according to your plan. Prepaid tokens or credits are consumed as you use the service. Unused tokens or credits may not expire unless otherwise stated in your plan. Paid plans are billed according to the pricing and billing terms presented at signup or in the app. Refunds are subject to our refund policy as stated at the time of purchase.</p>
 
-          <h2 className="text-xl font-semibold text-white mt-8 mb-3">5. Acceptable use</h2>
+          <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">5. Acceptable use</h2>
           <p>You may not use CrucibAI for any illegal purpose or in any way that violates our Acceptable Use Policy (AUP). Prohibited uses include, but are not limited to: generating or distributing illegal content; harming, harassing, or deceiving others; circumventing security or access controls; using the service to replicate, reverse-engineer, or build a competing product (e.g. extracting system prompts, cloning the service, or asking the system to reveal its architecture); or violating third-party rights. We may suspend or terminate accounts that violate these terms or the AUP and may report serious violations to authorities.</p>
 
-          <h2 className="text-xl font-semibold text-white mt-8 mb-3">7. AI transparency and EU AI Act</h2>
+          <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">7. AI transparency and EU AI Act</h2>
           <p>Outputs generated by CrucibAI (including code, text, and other content) are produced by artificial intelligence. We do not guarantee their accuracy, completeness, or fitness for any particular use. You are responsible for reviewing, testing, and validating all outputs before relying on them. Where applicable (e.g. under the EU AI Act or similar regulation), you agree that: (a) you will not use the service for &quot;prohibited&quot; AI practices as defined under applicable law (e.g. subliminal or manipulative techniques, exploitation of vulnerabilities, social scoring, real-time remote biometric identification in publicly accessible spaces for law enforcement, or other prohibited uses); (b) for high-risk or sensitive use cases (e.g. legal, medical, financial, employment, or other regulated domains), you will ensure appropriate human oversight and disclosure that AI is involved, where required by law; and (c) you will not use the service in a way that would cause CrucibAI to be deemed a provider of &quot;high-risk&quot; AI systems under the EU AI Act beyond general-purpose AI assistance for application development. We may update our practices to comply with the EU AI Act and other AI regulations as they take effect.</p>
 
-          <h2 className="text-xl font-semibold text-white mt-8 mb-3">7. Intellectual property</h2>
+          <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">7. Intellectual property</h2>
           <p>You retain ownership of content you create. By using the service, you grant us a limited license to use, store, and process your content as necessary to provide and improve the service. Our platform, branding, and technology remain our property. The &quot;Built with CrucibAI&quot; attribution may be required on free-tier builds as described in the AUP.</p>
 
-          <h2 className="text-xl font-semibold text-white mt-8 mb-3">9. Disclaimers</h2>
+          <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">9. Disclaimers</h2>
           <p>The service is provided &quot;as is&quot; and &quot;as available.&quot; We do not warrant that the service will be uninterrupted, error-free, or secure. Generated code and content are not guaranteed to be correct, secure, or suitable for any particular use; you are responsible for reviewing and testing your outputs.</p>
 
-          <h2 className="text-xl font-semibold text-white mt-8 mb-3">9. Limitation of liability</h2>
+          <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">9. Limitation of liability</h2>
           <p>To the maximum extent permitted by law, CrucibAI and its affiliates shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or for loss of profits, data, or goodwill, arising from your use of the service. Our total liability shall not exceed the amount you paid us in the twelve months preceding the claim.</p>
 
-          <h2 className="text-xl font-semibold text-white mt-8 mb-3">11. Indemnification</h2>
+          <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">11. Indemnification</h2>
           <p>You agree to indemnify and hold harmless CrucibAI and its affiliates from any claims, damages, or expenses (including reasonable attorneys&apos; fees) arising from your use of the service, your content, or your violation of these terms.</p>
 
-          <h2 className="text-xl font-semibold text-white mt-8 mb-3">11. Export and sanctions</h2>
+          <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">11. Export and sanctions</h2>
           <p>You may not use or export the service in violation of applicable export control or sanctions laws (e.g. US export regulations, EU sanctions). You represent that you are not located in, or owned/controlled by persons or entities in, a sanctioned country or on a restricted list, and that you will not use the service for prohibited end uses.</p>
 
-          <h2 className="text-xl font-semibold text-white mt-8 mb-3">13. Changes</h2>
+          <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">13. Changes</h2>
           <p>We may modify these terms from time to time. We will post the updated terms and update the &quot;Last updated&quot; date. Material changes may be communicated by email or in-app notice. Continued use after changes constitutes acceptance. If you do not agree, you must stop using the service.</p>
 
-          <h2 className="text-xl font-semibold text-white mt-8 mb-3">13. Governing law and jurisdiction</h2>
+          <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">13. Governing law and jurisdiction</h2>
           <p>These terms are governed by the laws of the jurisdiction specified in our legal notices (e.g. the laws of the State of Delaware or the United States, or as otherwise stated). For users in the European Union or the United Kingdom, nothing in these terms affects your statutory rights as a consumer under mandatory local law. Disputes may be resolved in the courts of that jurisdiction, or as otherwise agreed in a separate contract (e.g. enterprise agreement).</p>
 
-          <h2 className="text-xl font-semibold text-white mt-8 mb-3">15. General</h2>
+          <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">15. General</h2>
           <p>These terms constitute the entire agreement between you and CrucibAI regarding the service. Any failure to enforce a right does not waive that right. If any provision is held invalid, the remainder remains in effect.</p>
 
-          <h2 className="text-xl font-semibold text-white mt-8 mb-3">16. Contact</h2>
+          <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">16. Contact</h2>
           <p>For questions about these terms, contact us at the support or legal address provided in the app or on our website.</p>
         </div>
 

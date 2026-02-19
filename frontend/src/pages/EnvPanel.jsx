@@ -41,14 +41,14 @@ export default function EnvPanel() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-[#050505] text-white flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#FAFAF8] text-[#1A1A1A] flex items-center justify-center p-4">
         <p className="text-zinc-400">Sign in to manage environment variables.</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white p-6">
+    <div className="min-h-screen bg-[#FAFAF8] text-[#1A1A1A] p-6">
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center gap-3 mb-8">
           <div className="p-3 rounded-xl bg-zinc-800">
@@ -75,13 +75,13 @@ export default function EnvPanel() {
             value={newKey}
             onChange={(e) => setNewKey(e.target.value)}
             placeholder="KEY"
-            className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-500"
+            className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-[#1A1A1A] placeholder-zinc-500"
           />
           <input
             value={newVal}
             onChange={(e) => setNewVal(e.target.value)}
             placeholder="value"
-            className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-500"
+            className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-[#1A1A1A] placeholder-zinc-500"
           />
           <button
             onClick={addVar}

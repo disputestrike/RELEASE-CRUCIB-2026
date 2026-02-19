@@ -404,7 +404,7 @@ root.render(
                 <Download className="w-4 h-4" />
                 Download
               </button>
-              <button className="flex items-center gap-2 px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+              <button className="flex items-center gap-2 px-4 py-1.5 text-sm bg-blue-600 text-[#1A1A1A] rounded-lg hover:bg-blue-700 transition">
                 <Rocket className="w-4 h-4" />
                 Deploy
               </button>
@@ -426,7 +426,7 @@ root.render(
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm whitespace-nowrap ${
                   status === 'complete' ? 'bg-green-100 text-green-700' :
                   status === 'running' ? 'bg-blue-100 text-blue-700 animate-pulse' :
-                  'bg-gray-100 text-gray-400'
+                  'bg-gray-100 text-[#666666]'
                 }`}
               >
                 <span>{agent.icon}</span>
@@ -465,7 +465,7 @@ root.render(
                   <button
                     type="submit"
                     disabled={!prompt.trim() || isBuilding}
-                    className="w-full py-4 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-xl font-medium text-lg transition flex items-center justify-center gap-2"
+                    className="w-full py-4 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-[#1A1A1A] rounded-xl font-medium text-lg transition flex items-center justify-center gap-2"
                     data-testid="builder-start-btn"
                   >
                     {isBuilding ? (
@@ -591,7 +591,7 @@ root.render(
                           href={previewUrl} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+                          className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-blue-600 text-[#1A1A1A] rounded-lg text-sm hover:bg-blue-700"
                         >
                           <ExternalLink className="w-4 h-4" />
                           Open Preview
@@ -623,7 +623,7 @@ root.render(
                   <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[85%] p-3 rounded-xl text-sm ${
                       msg.role === 'user' 
-                        ? 'bg-gray-900 text-white' 
+                        ? 'bg-gray-900 text-[#1A1A1A]' 
                         : 'bg-gray-100 text-gray-800'
                     }`}>
                       <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -644,7 +644,7 @@ root.render(
                   <button
                     type="submit"
                     disabled={!chatInput.trim()}
-                    className="px-3 py-2 bg-gray-900 text-white rounded-lg disabled:bg-gray-300"
+                    className="px-3 py-2 bg-gray-900 text-[#1A1A1A] rounded-lg disabled:bg-gray-300"
                   >
                     <Send className="w-4 h-4" />
                   </button>
@@ -657,9 +657,9 @@ root.render(
 
       {/* Console */}
       {buildPhase !== 'idle' && (
-        <div className="h-36 bg-gray-900 text-white flex flex-col flex-shrink-0">
+        <div className="h-36 bg-gray-900 text-[#1A1A1A] flex flex-col flex-shrink-0">
           <div className="h-8 border-b border-gray-700 flex items-center px-3 bg-gray-800">
-            <span className="text-xs text-gray-400 flex items-center gap-2">
+            <span className="text-xs text-[#666666] flex items-center gap-2">
               <Terminal className="w-3 h-3" />
               Console
             </span>

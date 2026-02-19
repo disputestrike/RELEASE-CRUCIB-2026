@@ -110,7 +110,7 @@ export const CommandPalette = ({ commands = [], onCommandSelect }) => {
                     setSelectedIndex(0);
                   }}
                   onKeyDown={handleKeyDown}
-                  className="w-full bg-transparent text-white placeholder-slate-500 outline-none text-lg"
+                  className="w-full bg-transparent text-[#1A1A1A] placeholder-slate-500 outline-none text-lg"
                 />
               </div>
 
@@ -123,7 +123,7 @@ export const CommandPalette = ({ commands = [], onCommandSelect }) => {
                       onClick={() => handleSelect(command)}
                       className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
                         idx === selectedIndex
-                          ? 'bg-blue-600 text-white'
+                          ? 'bg-blue-600 text-[#1A1A1A]'
                           : 'hover:bg-slate-800 text-slate-300'
                       }`}
                     >
@@ -244,7 +244,7 @@ export const AIAutocomplete = ({ suggestions = [], onSelect, visible = false }) 
           onClick={() => onSelect(suggestion)}
           className={`w-full px-4 py-2 text-left text-sm transition-colors flex items-center gap-2 ${
             idx === selectedIdx
-              ? 'bg-blue-600 text-white'
+              ? 'bg-blue-600 text-[#1A1A1A]'
               : 'hover:bg-slate-700 text-slate-300'
           }`}
         >

@@ -11,7 +11,7 @@ class AppErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ minHeight: "100vh", background: "#050505", color: "#fff", padding: 24, fontFamily: "sans-serif" }}>
+        <div style={{ minHeight: "100vh", background: "#FAFAF8", color: "#1A1A1A", padding: 24, fontFamily: "sans-serif" }}>
           <h1 style={{ fontSize: 18 }}>Something went wrong</h1>
           <p style={{ color: "#888" }}>{this.state.error?.message || "Unknown error"}</p>
           <button onClick={() => window.location.reload()} style={{ marginTop: 16, padding: "8px 16px", cursor: "pointer" }}>Reload</button>
@@ -174,10 +174,10 @@ const ProtectedRoute = ({ children }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+      <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-gray-400">Loading...</p>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     );
@@ -196,7 +196,7 @@ const AdminRoute = ({ children }) => {
   const location = useLocation();
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+      <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
         <div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );

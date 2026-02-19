@@ -49,7 +49,7 @@ export default function AdminLegal() {
         <Link to="/app/admin" className="p-2 hover:bg-white/10 rounded-lg transition"><ArrowLeft className="w-5 h-5" /></Link>
         <div>
           <h1 className="text-2xl font-bold">Legal & AUP</h1>
-          <p className="text-gray-400 text-sm">Blocked build requests (Acceptable Use Policy)</p>
+          <p className="text-[#666666] text-sm">Blocked build requests (Acceptable Use Policy)</p>
         </div>
       </div>
 
@@ -63,7 +63,7 @@ export default function AdminLegal() {
         <div className="flex justify-center py-12"><div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>
       ) : (
         <div className="space-y-4">
-          {list.length === 0 && <p className="text-gray-400">No blocked requests</p>}
+          {list.length === 0 && <p className="text-[#666666]">No blocked requests</p>}
           {list.map((r) => (
             <div key={r.id} className="p-4 rounded-xl border border-white/10 bg-[#0a0a0a]">
               <div className="flex justify-between items-start gap-4 mb-2">

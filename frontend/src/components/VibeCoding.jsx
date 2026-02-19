@@ -128,7 +128,7 @@ export const VibeCodingInput = ({ onSubmit, isLoading = false, API }) => {
       {/* Vibe Coding Header */}
       <div className="flex items-center gap-2 mb-4">
         <Sparkles className="text-purple-400" size={20} />
-        <h3 className="text-lg font-semibold text-white">Vibe Coding</h3>
+        <h3 className="text-lg font-semibold text-[#1A1A1A]">Vibe Coding</h3>
         <span className="text-xs text-slate-400 ml-auto">Manus-style natural language</span>
       </div>
 
@@ -140,7 +140,7 @@ export const VibeCodingInput = ({ onSubmit, isLoading = false, API }) => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Describe what you want to build... (or use voice)"
-            className="w-full bg-slate-800 border border-slate-600 rounded-lg p-4 text-white placeholder-slate-500 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-24"
+            className="w-full bg-slate-800 border border-slate-600 rounded-lg p-4 text-[#1A1A1A] placeholder-slate-500 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-24"
           />
 
           {/* Voice Button */}
@@ -149,8 +149,8 @@ export const VibeCodingInput = ({ onSubmit, isLoading = false, API }) => {
             disabled={isLoading}
             className={`absolute bottom-3 right-3 p-2 rounded-lg transition-all ${
               isRecording
-                ? 'bg-red-500 text-white'
-                : 'bg-purple-500 hover:bg-purple-600 text-white'
+                ? 'bg-red-500 text-[#1A1A1A]'
+                : 'bg-purple-500 hover:bg-purple-600 text-[#1A1A1A]'
             } disabled:opacity-50`}
             title={isRecording ? 'Stop recording' : 'Start recording'}
           >
@@ -215,7 +215,7 @@ export const VibeCodingInput = ({ onSubmit, isLoading = false, API }) => {
                 <button
                   key={idx}
                   onClick={() => applySuggestion(suggestion)}
-                  className="w-full text-left p-3 bg-slate-700/50 hover:bg-slate-700 border border-slate-600 rounded-lg transition-colors text-sm text-slate-300 hover:text-white"
+                  className="w-full text-left p-3 bg-slate-700/50 hover:bg-slate-700 border border-slate-600 rounded-lg transition-colors text-sm text-slate-300 hover:text-[#1A1A1A]"
                 >
                   {suggestion.text}
                 </button>
@@ -229,7 +229,7 @@ export const VibeCodingInput = ({ onSubmit, isLoading = false, API }) => {
       <button
         onClick={handleSubmit}
         disabled={!input.trim() || isLoading}
-        className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium py-3 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-[#1A1A1A] font-medium py-3 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {isLoading ? (
           <>
@@ -269,7 +269,7 @@ export const VibeStyleSelector = ({ onStyleSelect }) => {
           className="p-4 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg transition-all text-center space-y-2 hover:border-purple-500"
         >
           <div className="text-2xl">{style.emoji}</div>
-          <div className="font-medium text-white text-sm">{style.name}</div>
+          <div className="font-medium text-[#1A1A1A] text-sm">{style.name}</div>
           <div className="text-xs text-slate-400">{style.description}</div>
         </button>
       ))}
@@ -288,7 +288,7 @@ export const VibePreset = ({ preset, onApply }) => {
       className="p-4 bg-slate-800 border border-slate-600 rounded-lg space-y-3"
     >
       <div className="flex items-center justify-between">
-        <h4 className="font-medium text-white">{preset.name}</h4>
+        <h4 className="font-medium text-[#1A1A1A]">{preset.name}</h4>
         <span className="text-2xl">{preset.emoji}</span>
       </div>
 
@@ -301,7 +301,7 @@ export const VibePreset = ({ preset, onApply }) => {
 
       <button
         onClick={() => onApply(preset)}
-        className="w-full bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium py-2 rounded-lg transition-colors"
+        className="w-full bg-purple-600 hover:bg-purple-700 text-[#1A1A1A] text-sm font-medium py-2 rounded-lg transition-colors"
       >
         Use This Vibe
       </button>

@@ -84,18 +84,18 @@ export default function Blog() {
 
   if (post) {
     return (
-      <div className="min-h-screen bg-[#050505] text-gray-200">
+      <div className="min-h-screen bg-[#FAFAF8] text-[#1A1A1A]">
         <PublicNav />
         <main className="max-w-3xl mx-auto px-6 py-16">
           <button
             type="button"
             onClick={() => navigate('/blog')}
-            className="text-gray-400 hover:text-white text-sm mb-8 transition"
+            className="text-[#666666] hover:text-[#1A1A1A] text-sm mb-8 transition"
           >
             ← Back to Blog
           </button>
           <article>
-            <h1 className="text-4xl font-bold text-white mb-2">{post.title}</h1>
+            <h1 className="text-4xl font-bold text-[#1A1A1A] mb-2">{post.title}</h1>
             <p className="text-gray-500 text-sm mb-10">{post.date}</p>
             <div className="space-y-6 text-gray-300 leading-relaxed">
               {post.body.map((paragraph, i) => (
@@ -115,17 +115,17 @@ export default function Blog() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-gray-200">
+    <div className="min-h-screen bg-[#FAFAF8] text-[#1A1A1A]">
       <PublicNav />
       <main className="max-w-3xl mx-auto px-6 py-16">
-        <h1 className="text-4xl font-bold text-white mb-2">Blog</h1>
-        <p className="text-gray-400 mb-12">Product updates, use cases, and how to get the most from CrucibAI — Inevitable AI.</p>
+        <h1 className="text-4xl font-bold text-[#1A1A1A] mb-2">Blog</h1>
+        <p className="text-[#666666] mb-12">Product updates, use cases, and how to get the most from CrucibAI — Inevitable AI.</p>
         <ul className="space-y-8">
           {POSTS.map((p) => (
             <li key={p.slug} className="border-b border-white/10 pb-8">
               <Link to={`/blog/${p.slug}`} className="block group" aria-label={p.title}>
-                <h2 className="text-xl font-semibold text-white group-hover:text-blue-400 transition mb-2">{p.title}</h2>
-                <p className="text-gray-400 text-sm mb-2">{p.excerpt}</p>
+                <h2 className="text-xl font-semibold text-[#1A1A1A] group-hover:text-blue-400 transition mb-2">{p.title}</h2>
+                <p className="text-[#666666] text-sm mb-2">{p.excerpt}</p>
                 <span className="text-xs text-gray-500">{p.date}</span>
               </Link>
             </li>

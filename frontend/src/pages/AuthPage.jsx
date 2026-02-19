@@ -272,7 +272,7 @@ const AuthPage = () => {
               <button
                 type="submit"
                 disabled={loading || mfaCode.length !== 6}
-                className="w-full py-3.5 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-xl font-medium transition"
+                className="w-full py-3.5 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-[#1A1A1A] rounded-xl font-medium transition"
               >
                 {loading ? <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : 'Verify'}
               </button>
@@ -290,7 +290,7 @@ const AuthPage = () => {
               <div>
                 <label className="block text-sm font-medium mb-2 text-gray-700">Name</label>
                 <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#666666]" />
                   <input
                     type="text"
                     value={formData.name}
@@ -307,7 +307,7 @@ const AuthPage = () => {
             <div>
               <label className="block text-sm font-medium mb-2 text-gray-700">Email</label>
               <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#666666]" />
                 <input
                   type="email"
                   value={formData.email}
@@ -323,7 +323,7 @@ const AuthPage = () => {
             <div>
               <label className="block text-sm font-medium mb-2 text-gray-700">Password</label>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#666666]" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={formData.password}
@@ -337,7 +337,7 @@ const AuthPage = () => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#666666] hover:text-gray-600"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -357,7 +357,7 @@ const AuthPage = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-xl font-medium transition flex items-center justify-center gap-2"
+              className="w-full py-3.5 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-[#1A1A1A] rounded-xl font-medium transition flex items-center justify-center gap-2"
               data-testid="auth-submit-btn"
             >
               {loading ? (

@@ -260,8 +260,8 @@ export const VoiceInput = ({
           flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium
           transition-all duration-200
           ${isRecording 
-            ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse' 
-            : 'bg-blue-500 hover:bg-blue-600 text-white'
+            ? 'bg-red-500 hover:bg-red-600 text-[#1A1A1A] animate-pulse' 
+            : 'bg-blue-500 hover:bg-blue-600 text-[#1A1A1A]'
           }
           ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
         `}

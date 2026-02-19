@@ -40,7 +40,7 @@ const AdminBilling = () => {
   return (
     <div className="space-y-6" data-testid="admin-billing">
       <div className="flex items-center gap-4">
-        <Link to="/app/admin" className="inline-flex items-center text-gray-400 hover:text-white">
+        <Link to="/app/admin" className="inline-flex items-center text-[#666666] hover:text-[#1A1A1A]">
           <ArrowLeft className="w-4 h-4 mr-2" /> Back
         </Link>
         <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -48,7 +48,7 @@ const AdminBilling = () => {
           Billing transactions
         </h1>
       </div>
-      <p className="text-gray-400">Who paid, when, amount (from Stripe webhook ledger).</p>
+      <p className="text-[#666666]">Who paid, when, amount (from Stripe webhook ledger).</p>
       {loading ? (
         <div className="flex justify-center py-12">
           <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
@@ -72,7 +72,7 @@ const AdminBilling = () => {
                   <td className="py-3 px-4">{t.bundle || '-'}</td>
                   <td className="py-3 px-4">{t.credits ?? '-'}</td>
                   <td className="py-3 px-4 text-green-400">${Number(t.price || 0).toFixed(2)}</td>
-                  <td className="py-3 px-4 text-gray-400">
+                  <td className="py-3 px-4 text-[#666666]">
                     {t.created_at ? new Date(t.created_at).toLocaleString() : '-'}
                   </td>
                 </tr>
