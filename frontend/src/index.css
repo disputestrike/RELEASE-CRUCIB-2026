@@ -8,39 +8,47 @@
 @import '@fontsource/inter/500.css';
 @import '@fontsource/jetbrains-mono/400.css';
 
-/* Kimi-style design tokens (public pages + app) */
+/* Manus-inspired design tokens (warm, professional, premium) */
 :root {
-  --kimi-bg: #000000;
-  --kimi-bg-elevated: #0a0a0a;
-  --kimi-bg-card: #111111;
-  --kimi-bg-input: #141415;
-  --kimi-text: #ffffff;
-  --kimi-text-muted: #d0d0d0;
-  --kimi-text-secondary: #e0e0e0;
-  --kimi-accent: #6366F1;
-  --kimi-border: rgba(255, 255, 255, 0.08);
-  --kimi-grid: rgba(255, 255, 255, 0.03);
+  /* Primary backgrounds - warm white/beige */
+  --kimi-bg: #FAFAF8;
+  --kimi-bg-elevated: #FFFFFF;
+  --kimi-bg-card: #F9F8F6;
+  --kimi-bg-input: #F3F1ED;
+  
+  /* Text colors - dark and readable */
+  --kimi-text: #1A1A1A;
+  --kimi-text-muted: #666666;
+  --kimi-text-secondary: #888888;
+  
+  /* Accent - professional blue */
+  --kimi-accent: #3B82F6;
+  
+  /* Borders - subtle and refined */
+  --kimi-border: rgba(0, 0, 0, 0.08);
+  --kimi-grid: rgba(0, 0, 0, 0.03);
 }
 
 :root {
-  --background: 0 0% 100%;
-  --foreground: 0 0% 9%;
+  /* Manus-inspired light theme */
+  --background: 0 0% 98%;
+  --foreground: 0 0% 10%;
   --card: 0 0% 100%;
-  --card-foreground: 0 0% 9%;
+  --card-foreground: 0 0% 10%;
   --popover: 0 0% 100%;
-  --popover-foreground: 0 0% 9%;
+  --popover-foreground: 0 0% 10%;
   --primary: 217 91% 60%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 240 4% 96%;
-  --secondary-foreground: 0 0% 9%;
-  --muted: 240 4% 96%;
-  --muted-foreground: 240 5% 46%;
-  --accent: 240 4% 96%;
-  --accent-foreground: 0 0% 9%;
+  --secondary: 0 0% 95%;
+  --secondary-foreground: 0 0% 15%;
+  --muted: 0 0% 92%;
+  --muted-foreground: 0 0% 50%;
+  --accent: 0 0% 94%;
+  --accent-foreground: 0 0% 15%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
-  --border: 240 6% 90%;
-  --input: 240 6% 90%;
+  --border: 0 0% 90%;
+  --input: 0 0% 95%;
   --ring: 217 91% 60%;
   --radius: 0.5rem;
   --chart-1: 217 91% 60%;
@@ -77,8 +85,8 @@ body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: white;
-  color: hsl(var(--foreground));
+  background: #FAFAF8;
+  color: #1A1A1A;
 }
 
 h1, h2, h3, h4, h5, h6 {
