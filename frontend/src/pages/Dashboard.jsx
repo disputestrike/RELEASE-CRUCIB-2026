@@ -286,10 +286,12 @@ const Dashboard = () => {
           <h3 className="text-lg font-semibold mb-6 text-gray-900">Quick Actions</h3>
           <div className="space-y-3">
             {[
-              { label: 'Create Website', icon: Plus, href: '/app/projects/new?type=website' },
-              { label: 'Create API', icon: Bot, href: '/app/projects/new?type=api' },
-              { label: 'Buy Tokens', icon: Zap, href: '/app/tokens' },
-              { label: 'View Patterns', icon: FolderOpen, href: '/app/patterns' }
+              { label: 'Open Workspace', icon: Plus, href: '/app/workspace' },
+              { label: 'New Project', icon: Bot, href: '/app/projects/new' },
+              { label: 'Browse Templates', icon: FolderOpen, href: '/app/templates' },
+              { label: 'View Agents', icon: Zap, href: '/app/agents' },
+              { label: 'Export Center', icon: FolderOpen, href: '/app/export' },
+              { label: 'Settings', icon: ArrowRight, href: '/app/settings' }
             ].map(action => (
               <Link
                 key={action.label}

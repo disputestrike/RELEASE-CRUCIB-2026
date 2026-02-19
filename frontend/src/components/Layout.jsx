@@ -8,6 +8,7 @@ import Layout3Column from './Layout3Column';
 import './Layout.css';
 import Sidebar from './Sidebar';
 import RightPanel from './RightPanel';
+import OnboardingTour from './OnboardingTour';
 
 const Layout = () => {
   const location = useLocation();
@@ -187,6 +188,9 @@ const Layout = () => {
         main={mainContent}
         rightPanel={rightPanelContent}
       />
+
+      {/* Onboarding Tour for first-time users */}
+      <OnboardingTour />
     </>
   );
 };
