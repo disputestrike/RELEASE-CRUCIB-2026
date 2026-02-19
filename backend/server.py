@@ -3455,6 +3455,18 @@ async def _build_project_deploy_zip(project_id: str, user_id: str):
     return buf
 
 
+@api_router.get("/projects/{project_id}/deploy/files")
+async def get_project_deploy_files_json(project_id: str, user: dict = Depends(get_current_user)):
+    """Return deploy_files as JSON dict for Sandpack preview auto-wire. Called by Workspace after build_completed."""
+    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    deploy_files = project.get("deploy_files") or {}
+    quality_score = project.get("quality_score")
+    status = project.get("status", "unknown")
+    return {"files": deploy_files, "status": status, "quality_score": quality_score}
+
+
 @api_router.get("/projects/{project_id}/deploy/zip")
 async def get_project_deploy_zip(project_id: str, user: dict = Depends(get_current_user)):
     """Download deploy ZIP for a completed project (Vercel/Netlify/Railway). Requires project to have deploy_files (stored at completion)."""
@@ -4384,7 +4396,7 @@ async def run_orchestration_v2(project_id: str, user_id: str):
     if suggest_retry_phase is None:
         update_op["$unset"] = {"suggest_retry_phase": "", "suggest_retry_reason": ""}
     await db.projects.update_one({"id": project_id}, update_op)
-    emit_build_event(project_id, "build_completed", status="completed", tokens=total_used, message="Build completed")
+    emit_build_event(project_id, "build_completed", status="completed", tokens=total_used, message="Build completed", deploy_files=deploy_files, quality_score=quality)
     project = await db.projects.find_one({"id": project_id})
     if project and project.get("tokens_allocated"):
         refund = project["tokens_allocated"] - total_used

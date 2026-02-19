@@ -406,6 +406,51 @@ const Workspace = () => {
             status: data.status ?? '',
             tokens_used: data.tokens_used ?? 0
           });
+          // AUTO-WIRE: When build completes, load deploy_files into Sandpack preview
+          if (data.type === 'build_completed' && data.status === 'completed') {
+            const deployFiles = data.deploy_files;
+            if (deployFiles && Object.keys(deployFiles).length > 0) {
+              const sandpackFiles = {};
+              for (const [filePath, content] of Object.entries(deployFiles)) {
+                const key = filePath.startsWith('/') ? filePath : `/${filePath}`;
+                sandpackFiles[key] = { code: content };
+              }
+              setFiles(prev => ({ ...prev, ...sandpackFiles }));
+              const mainFile = sandpackFiles['/src/App.jsx'] || sandpackFiles['/App.js'] || sandpackFiles['/App.jsx'];
+              if (mainFile) {
+                setActiveFile(sandpackFiles['/src/App.jsx'] ? '/src/App.jsx' : sandpackFiles['/App.js'] ? '/App.js' : '/App.jsx');
+              }
+              setVersions(v => [{ id: `v_${Date.now()}`, prompt: 'Orchestration build', files: { ...sandpackFiles }, time: new Date().toLocaleTimeString() }, ...v]);
+              setCurrentVersion(`v_${Date.now()}`);
+              addLog('Build completed! Files loaded into preview.', 'success', 'deploy');
+              setActivePanel('preview'); // Auto-switch to preview
+              setBuildProgress(100);
+              setIsBuilding(false);
+            } else {
+              // Fallback: fetch deploy_files from API
+              const headers = token ? { Authorization: `Bearer ${token}` } : {};
+              axios.get(`${API}/projects/${projectIdFromUrl}/deploy/files`, { headers })
+                .then(r => {
+                  const files = r.data?.files || {};
+                  if (Object.keys(files).length > 0) {
+                    const sandpackFiles = {};
+                    for (const [filePath, content] of Object.entries(files)) {
+                      const key = filePath.startsWith('/') ? filePath : `/${filePath}`;
+                      sandpackFiles[key] = { code: content };
+                    }
+                    setFiles(prev => ({ ...prev, ...sandpackFiles }));
+                    setVersions(v => [{ id: `v_${Date.now()}`, prompt: 'Orchestration build', files: { ...sandpackFiles }, time: new Date().toLocaleTimeString() }, ...v]);
+                    setCurrentVersion(`v_${Date.now()}`);
+                    setActivePanel('preview');
+                    addLog('Build completed! Files loaded from server.', 'success', 'deploy');
+                  }
+                  if (r.data?.quality_score) setQualityGateResult({ score: r.data.quality_score });
+                })
+                .catch(() => {});
+              setBuildProgress(100);
+              setIsBuilding(false);
+            }
+          }
         } catch (_) {}
       };
     } catch (_) {}
@@ -742,6 +787,24 @@ Respond with ONLY the complete App.js code, nothing else.`;
                   axios.post(`${API}/ai/quality-gate`, { code }).then(r => setQualityGateResult(r.data)).catch(() => setQualityGateResult(null));
                   return next;
                 });
+                setActivePanel('preview'); // AUTO-WIRE: switch to preview on build complete
+                // AUTO-WIRE: Also try to fetch multi-file deploy output if project exists
+                if (projectIdFromUrl) {
+                  const hdr = token ? { Authorization: `Bearer ${token}` } : {};
+                  axios.get(`${API}/projects/${projectIdFromUrl}/deploy/files`, { headers: hdr })
+                    .then(r => {
+                      const df = r.data?.files || {};
+                      if (Object.keys(df).length > 0) {
+                        const spFiles = {};
+                        for (const [fp, content] of Object.entries(df)) {
+                          spFiles[fp.startsWith('/') ? fp : `/${fp}`] = { code: content };
+                        }
+                        setFiles(prev => ({ ...prev, ...spFiles }));
+                        addLog(`Loaded ${Object.keys(df).length} files from orchestration.`, 'info', 'deploy');
+                      }
+                      if (r.data?.quality_score) setQualityGateResult({ score: r.data.quality_score });
+                    }).catch(() => {});
+                }
                 break;
               }
             } catch (_) {}
@@ -765,6 +828,24 @@ Respond with ONLY the complete App.js code, nothing else.`;
         setMessages(prev => prev.map((msg, i) => i === prev.length - 1 ? { role: 'assistant', content: 'Done! Your app is ready.', hasCode: true, planSuggestions } : msg));
         setTimeout(() => fetchSuggestNext(), 400);
         axios.post(`${API}/ai/quality-gate`, { code }).then(r => setQualityGateResult(r.data)).catch(() => setQualityGateResult(null));
+        setActivePanel('preview'); // AUTO-WIRE: switch to preview on build complete
+        // AUTO-WIRE: Also try to fetch multi-file deploy output if project exists
+        if (projectIdFromUrl) {
+          const hdr = token ? { Authorization: `Bearer ${token}` } : {};
+          axios.get(`${API}/projects/${projectIdFromUrl}/deploy/files`, { headers: hdr })
+            .then(r => {
+              const df = r.data?.files || {};
+              if (Object.keys(df).length > 0) {
+                const spFiles = {};
+                for (const [fp, content] of Object.entries(df)) {
+                  spFiles[fp.startsWith('/') ? fp : `/${fp}`] = { code: content };
+                }
+                setFiles(prev => ({ ...prev, ...spFiles }));
+                addLog(`Loaded ${Object.keys(df).length} files from orchestration.`, 'info', 'deploy');
+              }
+              if (r.data?.quality_score) setQualityGateResult({ score: r.data.quality_score });
+            }).catch(() => {});
+        }
       }
     } catch (error) {
       addLog(`Build failed: ${error.message}`, 'error', 'system');
