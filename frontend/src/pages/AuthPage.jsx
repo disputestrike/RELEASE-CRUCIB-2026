@@ -16,6 +16,7 @@ const AuthPage = () => {
   const [formData, setFormData] = useState({ name: '', email: '', password: '' });
   const [mfaPending, setMfaPending] = useState(null);
   const [mfaCode, setMfaCode] = useState('');
+  const [processingToken, setProcessingToken] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -27,10 +28,23 @@ const AuthPage = () => {
     const errorFromUrl = searchParams.get('error');
     if (errorFromUrl) {
       setError(errorFromUrl === 'no_code' ? 'Google sign-in was cancelled.' : errorFromUrl === 'google_failed' ? 'Google sign-in failed. Try again.' : 'Sign-in failed.');
-    } else if (tokenFromUrl && loginWithToken) {
-      loginWithToken(tokenFromUrl);
+      return;
     }
-  }, [user, searchParams, navigate, loginWithToken]);
+    if (tokenFromUrl && loginWithToken && !processingToken) {
+      setProcessingToken(true);
+      setError('');
+      loginWithToken(tokenFromUrl).catch((err) => {
+        const msg = err?.response?.status === 401
+          ? 'Session invalid. Please sign in again.'
+          : err?.message?.includes('Network') || err?.code === 'ERR_NETWORK'
+            ? 'Cannot reach server. Is the backend running on port 8000?'
+            : 'Sign-in failed. Please try again.';
+        setError(msg);
+        setProcessingToken(false);
+      });
+    }
+    // When user becomes set (e.g. after token login), navigate to app
+  }, [user, searchParams, navigate, loginWithToken, processingToken]);
 
   const handleGoogleSignIn = () => {
     const backendUrl = API.replace('/api', '');
@@ -105,6 +119,17 @@ const AuthPage = () => {
     { label: 'For everyone', desc: 'Web, mobile, no code' },
   ];
 
+  if (processingToken) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100/80">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-gray-600">Signing you in...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-100/80 text-gray-900 flex">
       {/* Close X - top right, always visible */}
@@ -125,9 +150,9 @@ const AuthPage = () => {
             <span className="text-sm font-medium text-gray-500 ml-1">— Inevitable AI</span>
           </Link>
           
-          <h2 className="text-3xl font-bold mb-3 tracking-tight">Make your outcome inevitable</h2>
+          <h2 className="text-3xl font-bold mb-3 tracking-tight">Describe your idea Monday. Ship it Friday.</h2>
           <p className="text-gray-600 mb-4">
-            Describe your vision. Agentic automation, plan-first flow, full transparency, and production-ready code—no black boxes.
+            We build CrucibAI using CrucibAI. Same 120-agent swarm, plan-first flow, full transparency, and production-ready code—no black boxes.
           </p>
           
           <div className="space-y-4">

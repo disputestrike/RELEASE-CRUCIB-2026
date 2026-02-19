@@ -34,7 +34,7 @@ if (config.enableHealthCheck) {
 }
 
 const webpackConfig = {
-  // Disable ESLint plugin entirely (avoids defaultMeta crash; use "npm run lint" separately)
+  // Disable ESLint plugin (patched in postinstall so craco checks enable before getPlugin — no warning)
   eslint: { enable: false },
   webpack: {
     alias: {

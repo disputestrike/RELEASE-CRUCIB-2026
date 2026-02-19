@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Sparkles, LayoutDashboard, FolderPlus, Coins, FileOutput, 
   Library, Settings, LogOut, Menu, X, ChevronRight,
-  Zap, Bell, MessageSquare, LayoutGrid, BookOpen, Key, Keyboard, CreditCard, FileText, Shield, ScrollText, BarChart3
+  Zap, Bell, MessageSquare, LayoutGrid, BookOpen, Key, Keyboard, CreditCard, FileText, Shield, ScrollText, BarChart3, Code2
 } from 'lucide-react';
 
 const Layout = () => {
@@ -30,6 +30,7 @@ const Layout = () => {
 
   const navigation = [
     { name: 'Dashboard', href: '/app', icon: LayoutDashboard },
+    { name: 'Workspace', href: '/app/workspace', icon: Code2 },
     { name: 'New Project', href: '/app/projects/new', icon: FolderPlus },
     { name: 'Agents', href: '/app/agents', icon: Zap },
     { name: 'Credit Center', href: '/app/tokens', icon: Coins },

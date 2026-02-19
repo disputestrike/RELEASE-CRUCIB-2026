@@ -144,6 +144,7 @@ const AuthProvider = ({ children }) => {
     } catch (e) {
       localStorage.removeItem("token");
       setToken(null);
+      throw e;
     }
   };
 

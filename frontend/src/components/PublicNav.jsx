@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
-import { Sparkles, CreditCard, Layout, FileText, HelpCircle, BookOpen } from 'lucide-react';
+import { Sparkles, CreditCard, Layout, FileText, BookOpen } from 'lucide-react';
 
 export default function PublicNav() {
   const navigate = useNavigate();
@@ -19,8 +19,8 @@ export default function PublicNav() {
           <Link to="/pricing" className={`${linkClass} hidden sm:flex`}><CreditCard className="w-4 h-4" /> Pricing</Link>
           <Link to="/templates" className={`${linkClass} hidden sm:flex`}><Layout className="w-4 h-4" /> Templates</Link>
           <Link to="/prompts" className={`${linkClass} hidden sm:flex`}><FileText className="w-4 h-4" /> Prompts</Link>
-          <a href="/#how" className={`${linkClass} hidden sm:flex`}><HelpCircle className="w-4 h-4" /> How it works</a>
           <Link to="/learn" className={`${linkClass} hidden sm:flex`}><BookOpen className="w-4 h-4" /> Documentation</Link>
+          <Link to="/blog" className={`${linkClass} hidden sm:flex`}>Blog</Link>
           {user ? (
             <Link to="/app" className={ctaClass}>Dashboard</Link>
           ) : (

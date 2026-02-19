@@ -140,6 +140,12 @@ export default function Pricing() {
               <li>• No surprises — credits, caps, and rollover are transparent.</li>
             </ul>
           </div>
+          {/* Lovable comparison */}
+          <div className="mt-6 max-w-2xl mx-auto p-4 rounded-xl border border-white/10 bg-zinc-900/50 text-left">
+            <p className="text-sm font-medium text-kimi-text mb-2">vs Lovable</p>
+            <p className="text-sm text-zinc-400 mb-2">Lovable charges $25/month for 100 credits — plus a separate bill for Lovable Cloud for deployment. CrucibAI: $12.99 for 100 credits. Add-ons (Light $7, Dev $30) when you need more — Lovable has no top-up.</p>
+            <p className="text-sm text-zinc-400">Half the price. Web, mobile, and automations in one platform.</p>
+          </div>
         </div>
 
         {/* Free tier */}
@@ -249,9 +255,14 @@ export default function Pricing() {
           })}
         </div>
 
+        {/* Agent templates note */}
+        <p className="text-center text-zinc-400 text-sm mt-8 max-w-2xl mx-auto">
+          Every paid plan includes 5 pre-built automation agent templates (daily digest, lead finder, inbox summarizer, status checker, YouTube poster). Describe your automation in plain language — we create it.
+        </p>
+
         {/* Add-ons */}
         <h2 className="text-lg font-semibold text-center mt-14 mb-2">Add-ons</h2>
-        <p className="text-zinc-500 text-center mb-6">One-time top-ups. Buy as many as you need, anytime—no limit. Credits roll over.</p>
+        <p className="text-zinc-500 text-center mb-6">One-time top-ups. Buy as many as you need, anytime—no limit. Credits roll over. Light (50 credits, $7) or Dev (250 credits, $30).</p>
         <div className="flex flex-wrap justify-center gap-6 max-w-2xl mx-auto">
           {ADDON_ORDER.filter((k) => addons[k]).map((key) => {
             const a = addons[key];

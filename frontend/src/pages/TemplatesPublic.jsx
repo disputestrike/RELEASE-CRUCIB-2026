@@ -33,8 +33,9 @@ export default function TemplatesPublic() {
       <PublicNav />
       <div className="max-w-4xl mx-auto px-6 py-16">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-12">
-          <h1 className="text-4xl font-semibold tracking-tight mb-4">Templates</h1>
-          <p className="text-zinc-500">Start from a template to build faster. Sign up free to use any template in the workspace.</p>
+          <span className="text-xs uppercase tracking-wider text-kimi-muted">Quick start</span>
+          <h1 className="text-4xl font-semibold tracking-tight mt-2 mb-4">Templates</h1>
+          <p className="text-zinc-500">Start from proven app templates — dashboards, blogs, SaaS shells, e-commerce, and more. One click to customize and ship. Sign up free to use any template in the workspace.</p>
         </motion.div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">

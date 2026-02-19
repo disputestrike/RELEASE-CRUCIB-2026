@@ -101,8 +101,8 @@ import hashlib
 import pyotp
 import qrcode
 
-ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
+ROOT_DIR = Path(__file__).resolve().parent
+load_dotenv(ROOT_DIR / '.env', override=True)
 
 # Required for startup (Railway: set these in Dashboard → Service → Variables)
 # Placeholder defaults allow container to start for deploy testing; DB operations will fail until real values are set.
@@ -1838,10 +1838,11 @@ async def auth_google_redirect(request: Request, redirect: Optional[str] = None)
 @api_router.get("/auth/google/callback")
 async def auth_google_callback(request: Request, code: Optional[str] = None, state: Optional[str] = None):
     """Exchange Google code for tokens, create or find user, redirect to frontend with JWT."""
+    frontend_base = (os.environ.get("FRONTEND_URL") or os.environ.get("CORS_ORIGINS") or "http://localhost:3000").strip().split(",")[0].strip().rstrip("/")
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
         raise HTTPException(status_code=503, detail="Google sign-in is not configured")
     if not code:
-        return RedirectResponse(url=f"{FRONTEND_URL}/auth?error=no_code")
+        return RedirectResponse(url=f"{frontend_base}/auth?error=no_code")
     base = str(request.base_url).rstrip("/")
     callback = f"{base}/api/auth/google/callback"
     async with __import__("httpx").AsyncClient() as client:
@@ -1858,11 +1859,11 @@ async def auth_google_callback(request: Request, code: Optional[str] = None, sta
         )
     if r.status_code != 200:
         logger.warning(f"Google token exchange failed: {r.text}")
-        return RedirectResponse(url=f"{FRONTEND_URL}/auth?error=google_failed")
+        return RedirectResponse(url=f"{frontend_base}/auth?error=google_failed")
     data = r.json()
     id_token = data.get("id_token") or data.get("access_token")
     if not id_token:
-        return RedirectResponse(url=f"{FRONTEND_URL}/auth?error=no_token")
+        return RedirectResponse(url=f"{frontend_base}/auth?error=no_token")
     try:
         payload = jwt.decode(id_token, options={"verify_signature": False})
     except Exception:
@@ -1870,7 +1871,7 @@ async def auth_google_callback(request: Request, code: Optional[str] = None, sta
     email = (payload.get("email") or "").strip()
     name = (payload.get("name") or payload.get("given_name") or email.split("@")[0] or "User").strip()
     if not email:
-        return RedirectResponse(url=f"{FRONTEND_URL}/auth?error=no_email")
+        return RedirectResponse(url=f"{frontend_base}/auth?error=no_email")
     user = await db.users.find_one({"email": email}, {"_id": 0})
     if not user:
         user_id = str(uuid.uuid4())
@@ -1907,7 +1908,7 @@ async def auth_google_callback(request: Request, code: Optional[str] = None, sta
             logger.debug(f"Invalid JWT token: {e}")
         except Exception as e:
             logger.error(f"Unexpected error in JWT verification: {e}")
-    target = f"{FRONTEND_URL}/auth?token={token}"
+    target = f"{frontend_base}/auth?token={token}"
     if redirect_path and redirect_path.startswith("/"):
         target += f"&redirect={quote(redirect_path)}"
     return RedirectResponse(url=target)
@@ -5462,10 +5463,12 @@ app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(RateLimitMiddleware, requests_per_minute=int(os.environ.get("RATE_LIMIT_PER_MINUTE", "100")))
 if os.environ.get("HTTPS_REDIRECT", "").strip().lower() in ("1", "true", "yes"):
     app.add_middleware(HTTPSRedirectMiddleware)
+_cors_origins = os.environ.get('CORS_ORIGINS', '*').strip()
+CORS_ORIGINS_LIST = [o.strip() for o in _cors_origins.split(',') if o.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=CORS_ORIGINS_LIST,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["Content-Type", "Authorization", "X-Requested-With", "X-Request-ID"],
 )

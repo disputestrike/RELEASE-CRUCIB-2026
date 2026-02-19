@@ -1,11 +1,18 @@
 import { Link } from 'react-router-dom';
+import PublicNav from '../components/PublicNav';
 
 export default function Security() {
   return (
     <div className="min-h-screen bg-[#050505] text-gray-200">
+      <PublicNav />
       <div className="max-w-3xl mx-auto px-6 py-10">
         <h1 className="text-3xl font-bold text-white mb-2">Security &amp; Trust</h1>
-        <p className="text-sm text-gray-400 mb-8">How we keep the platform and your code safe.</p>
+        <p className="text-sm text-gray-400 mb-6">How we keep the platform and your code safe.</p>
+
+        <div className="p-6 rounded-xl border border-indigo-500/20 bg-indigo-500/5 mb-10">
+          <p className="text-indigo-200 font-medium">We run CrucibAI on CrucibAI.</p>
+          <p className="text-gray-400 text-sm mt-2">Every feature we ship is built and tested with the same 120-agent swarm our customers use. 188 tests passing. Security-first. GDPR & CCPA compliant.</p>
+        </div>
 
         <div className="space-y-6 text-gray-200 leading-relaxed">
           <p>CrucibAI is built with security in mind. This page summarizes how we protect the platform and how we help you secure what you build.</p>
