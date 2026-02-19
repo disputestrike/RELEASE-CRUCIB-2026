@@ -43,8 +43,15 @@ const webpackConfig = {
       if (process.env.NODE_ENV === 'production' && babelLoaderOptions.plugins) {
         babelLoaderOptions.plugins = babelLoaderOptions.plugins.filter(
           (plugin) => {
-            const name = Array.isArray(plugin) ? plugin[0] : plugin;
-            if (typeof name === 'string') return !name.includes('react-refresh');
+            if (!plugin) return false;
+            const entry = Array.isArray(plugin) ? plugin[0] : plugin;
+            if (!entry) return false;
+            if (typeof entry === 'string') return !entry.includes('react-refresh');
+            // For require()'d modules, check the module path
+            try {
+              const mod = require.resolve('react-refresh/babel');
+              if (entry === require(mod)) return false;
+            } catch(e) {}
             return true;
           }
         );

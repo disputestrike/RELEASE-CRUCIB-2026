@@ -11,6 +11,15 @@ const FALLBACK_TEMPLATES = [
   { id: 'dashboard', name: 'Dashboard', description: 'Sidebar + stats cards + chart placeholder', prompt: 'Create a dashboard with a sidebar, stat cards, and a chart area. React and Tailwind.' },
   { id: 'blog', name: 'Blog', description: 'Blog layout with posts list and post detail', prompt: 'Build a blog with a list of posts and a post detail view. React and Tailwind.' },
   { id: 'saas-shell', name: 'SaaS shell', description: 'Auth shell with nav and settings', prompt: 'Create a SaaS app shell with top nav, user menu, and settings page. React and Tailwind.' },
+  { id: 'ecommerce', name: 'E-Commerce Store', description: 'Product grid, cart, checkout flow with Stripe', prompt: 'Build an e-commerce store with product listing, cart, and checkout. React and Tailwind.' },
+  { id: 'portfolio', name: 'Portfolio', description: 'Personal portfolio with projects, about, and contact', prompt: 'Create a personal portfolio site with hero, projects grid, about section, and contact form. React and Tailwind.' },
+  { id: 'landing-page', name: 'Landing Page', description: 'Marketing landing page with hero, features, pricing, CTA', prompt: 'Build a marketing landing page with hero section, features grid, pricing table, and CTA. React and Tailwind.' },
+  { id: 'crm', name: 'CRM Dashboard', description: 'Customer management with contacts, deals, pipeline', prompt: 'Create a CRM dashboard with contacts list, deals pipeline, and activity feed. React and Tailwind.' },
+  { id: 'chat-app', name: 'Chat Application', description: 'Real-time messaging with channels and direct messages', prompt: 'Build a chat application with sidebar channels, message list, and input. React and Tailwind.' },
+  { id: 'project-mgmt', name: 'Project Management', description: 'Kanban board with tasks, drag-and-drop, team view', prompt: 'Create a project management tool with kanban board, task cards, and team members. React and Tailwind.' },
+  { id: 'social-media', name: 'Social Feed', description: 'Social media feed with posts, likes, comments', prompt: 'Build a social media feed with post cards, like/comment buttons, and user profiles. React and Tailwind.' },
+  { id: 'admin-panel', name: 'Admin Panel', description: 'Full admin dashboard with users, roles, analytics', prompt: 'Create an admin panel with user management, role-based access, and analytics charts. React and Tailwind.' },
+  { id: 'api-docs', name: 'API Documentation', description: 'Interactive API docs with endpoints, code samples', prompt: 'Build an API documentation page with endpoint list, request/response examples, and code snippets. React and Tailwind.' },
 ];
 
 export default function TemplatesPublic() {
@@ -45,15 +54,15 @@ export default function TemplatesPublic() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
-              className="p-6 rounded-2xl border border-zinc-800 bg-zinc-900/30 hover:border-zinc-700 transition"
+              className="p-6 rounded-2xl border border-stone-200 bg-white hover:border-stone-300 shadow-sm transition"
             >
               <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 rounded-lg bg-zinc-800">
+                <div className="p-2 rounded-lg bg-blue-50">
                   <FileCode className="w-5 h-5 text-blue-400" />
                 </div>
                 <h2 className="font-semibold">{t.name}</h2>
               </div>
-              <p className="text-sm text-zinc-500 mb-6">{t.description}</p>
+              <p className="text-sm text-stone-500 mb-6">{t.description}</p>
               <button
                 onClick={handleUse}
                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition"

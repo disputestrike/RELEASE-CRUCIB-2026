@@ -9,6 +9,7 @@ import {
 import { useAuth, API } from '../App';
 import axios from 'axios';
 import DeployButton from '../components/DeployButton';
+import { Skeleton } from '../components/ui/skeleton';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 const Dashboard = () => {
@@ -138,10 +139,42 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-[#666666]">Loading dashboard...</p>
+      <div className="space-y-8 bg-[#FAF9F7] min-h-full p-6" data-testid="dashboard-skeleton">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-5 w-80" />
+          </div>
+          <div className="flex gap-3">
+            <Skeleton className="h-10 w-28" />
+            <Skeleton className="h-10 w-36" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="bg-white rounded-xl p-5 border border-stone-200">
+              <Skeleton className="h-4 w-24 mb-3" />
+              <Skeleton className="h-8 w-16 mb-2" />
+              <Skeleton className="h-3 w-12" />
+            </div>
+          ))}
+        </div>
+        <div className="bg-white rounded-xl p-6 border border-stone-200">
+          <Skeleton className="h-5 w-32 mb-4" />
+          <Skeleton className="h-48 w-full" />
+        </div>
+        <div className="space-y-3">
+          <Skeleton className="h-5 w-40 mb-4" />
+          {[1,2,3].map(i => (
+            <div key={i} className="bg-white rounded-xl p-5 border border-stone-200 flex items-center gap-4">
+              <Skeleton className="h-10 w-10 rounded-lg" />
+              <div className="flex-1">
+                <Skeleton className="h-4 w-48 mb-2" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+              <Skeleton className="h-8 w-20" />
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -233,8 +266,8 @@ const Dashboard = () => {
                 <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 12 }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 12 }} tickFormatter={(v) => `${(v/1000).toFixed(0)}K`} />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
-                  labelStyle={{ color: '#fff' }}
+                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', color: '#1a1a1a' }}
+                  labelStyle={{ color: '#1a1a1a' }}
                   formatter={(value) => [`${value.toLocaleString()} tokens`, 'Usage']}
                 />
                 <Area type="monotone" dataKey="tokens" stroke="#3B82F6" strokeWidth={2} fill="url(#tokenGradient)" />
@@ -277,7 +310,7 @@ const Dashboard = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6 }}
-        className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10"
+        className="p-6 bg-white rounded-xl border border-gray-200 shadow-sm"
       >
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-semibold">Recent Projects</h3>
@@ -328,8 +361,8 @@ const Dashboard = () => {
                   </div>
                   <div className="text-right shrink-0 flex items-center gap-2">
                     {project.status === 'completed' && project.quality_score?.overall_score != null && (
-                      <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-700 text-slate-200 text-xs font-medium" title="Code quality score">
-                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold bg-emerald-500/30 text-emerald-300">{Math.round(project.quality_score.overall_score)}</span>
+                      <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-stone-200 text-stone-700 text-xs font-medium" title="Code quality score">
+                        <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold bg-emerald-500/20 text-emerald-700">{Math.round(project.quality_score.overall_score)}</span>
                         Quality
                       </span>
                     )}
@@ -361,7 +394,7 @@ const Dashboard = () => {
       {/* Import project modal */}
       {showImportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/60 p-4" onClick={() => setShowImportModal(false)}>
-          <div className="bg-[#111] border border-white/10 rounded-xl max-w-lg w-full max-h-[90vh] overflow-auto shadow-xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white border border-gray-200 rounded-xl max-w-lg w-full max-h-[90vh] overflow-auto shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="p-6">
               <h3 className="text-lg font-semibold text-[#1A1A1A] mb-2">Import project</h3>
               <p className="text-sm text-[#666666] mb-4">Bring your code from paste, a ZIP file, or a GitHub repo. We create a project and open it in the Workspace.</p>

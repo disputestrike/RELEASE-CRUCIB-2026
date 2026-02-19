@@ -6,6 +6,8 @@ import {
   SandpackProvider,
   SandpackPreview,
 } from '@codesandbox/sandpack-react';
+import SandpackErrorBoundary from '../components/SandpackErrorBoundary';
+import '../components/SandpackErrorBoundary.css';
 import {
   ChevronDown,
   Send,
@@ -1545,11 +1547,38 @@ Respond with ONLY the complete App.js code, nothing else.`;
                   externalResources: ['https://cdn.tailwindcss.com'],
                 }}
               >
-                <SandpackPreview
-                  showNavigator={false}
-                  showRefreshButton={true}
-                  style={{ height: '100%' }}
-                />
+                <div style={{ position: 'relative', height: '100%' }}>
+                  <SandpackPreview
+                    showNavigator={false}
+                    showRefreshButton={true}
+                    style={{ height: '100%' }}
+                  />
+                  <SandpackErrorBoundary
+                    onAutoFix={async (errorMsg) => {
+                      addLog(`Auto-fix triggered: ${errorMsg}`, 'info', 'system');
+                      try {
+                        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+                        const res = await axios.post(`${API}/ai/explain-error`, {
+                          error: errorMsg,
+                          code: files['/App.js']?.code || ''
+                        }, { headers, timeout: 30000 });
+                        if (res.data.fixed_code) {
+                          setFiles(prev => ({ ...prev, '/App.js': { code: res.data.fixed_code } }));
+                          addLog('Auto-fix applied successfully', 'success', 'system');
+                          setLastError(null);
+                        }
+                      } catch (e) {
+                        addLog(`Auto-fix failed: ${e.message}`, 'error', 'system');
+                      }
+                    }}
+                    onError={(err) => {
+                      setLastError(err);
+                      addLog(`Preview error: ${err}`, 'error', 'preview');
+                    }}
+                    maxRetries={3}
+                    autoFixEnabled={true}
+                  />
+                </div>
               </SandpackProvider>
             )}
             
