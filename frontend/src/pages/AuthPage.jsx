@@ -260,7 +260,7 @@ const AuthPage = () => {
                   <button
                     type="button"
                     onClick={handleGithubSignIn}
-                    className="w-full py-3 bg-[#24292F] hover:bg-[#1B1F23] border border-[#24292F] rounded-lg font-medium transition flex items-center justify-center gap-3 text-white text-sm"
+                    className="w-full py-3 bg-white hover:bg-gray-50 border border-gray-200 rounded-lg font-medium transition flex items-center justify-center gap-3 text-gray-700 text-sm"
                     data-testid="auth-github-btn"
                   >
                     <Github className="w-5 h-5" />

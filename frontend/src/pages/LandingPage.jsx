@@ -275,7 +275,7 @@ const LandingPage = () => {
   return (
     <div className="min-h-screen bg-kimi-bg text-kimi-text grid-pattern-kimi">
       {/* Navigation — Kimi-style */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-kimi-bg border-b border-white/10">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-kimi-bg border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
           <Link to="/" className="text-xl font-semibold tracking-tight text-kimi-text">CrucibAI <span className="text-kimi-muted font-normal text-base">— Inevitable AI</span></Link>
           <div className="hidden md:flex items-center gap-6">
@@ -290,7 +290,7 @@ const LandingPage = () => {
             ) : (
               <button onClick={() => navigate('/auth')} className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Sign in</button>
             )}
-            <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="px-4 py-2 bg-white text-zinc-900 text-sm font-medium rounded-lg hover:bg-zinc-200 transition">Get started free</button>
+            <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="px-4 py-2 bg-white text-gray-900 text-sm font-medium rounded-lg hover:bg-gray-100 transition">Get started free</button>
           </div>
           <button className="md:hidden text-kimi-text" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -309,7 +309,7 @@ const LandingPage = () => {
               <Link to="/prompts" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Prompts</Link>
               <Link to="/learn" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Documentation</Link>
               <Link to="/blog" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Blog</Link>
-              <button onClick={() => { navigate(user ? '/app' : '/auth?mode=register'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-zinc-900 rounded-lg font-medium mt-4">Get started</button>
+              <button onClick={() => { navigate(user ? '/app' : '/auth?mode=register'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-gray-900 rounded-lg font-medium mt-4">Get started</button>
             </div>
           </motion.div>
         )}
@@ -328,10 +328,10 @@ const LandingPage = () => {
             The only platform where the same AI that builds your app runs inside your automations. Web apps, mobile apps, and automations — one platform, one AI, no switching tools.
           </motion.p>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }} className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-3">
-            <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="glass-kimi-btn px-6 py-3 text-zinc-900 font-medium rounded-xl transition">
+            <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="glass-kimi-btn px-6 py-3 text-gray-900 font-medium rounded-xl transition">
               Make It Inevitable
             </button>
-            <Link to="/app/workspace" className="px-6 py-3 bg-white/10 text-kimi-text font-medium rounded-xl border border-white/20 hover:bg-white/20 transition">Open Workspace</Link>
+            <Link to="/app/workspace" className="px-6 py-3 bg-gray-50 text-kimi-text font-medium rounded-xl border border-gray-200 hover:bg-gray-100 transition">Open Workspace</Link>
           </motion.div>
           {!user && (
             <p className="mt-4 text-sm text-kimi-muted">Sign in to save projects and sync across devices.</p>
@@ -340,7 +340,7 @@ const LandingPage = () => {
 
         {/* Hero stats — 4 items, remove 72 hours */}
         <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }} className="max-w-4xl mx-auto mt-12 px-6">
-          <div className="flex flex-wrap items-center justify-center gap-6 py-5 px-6 rounded-xl border border-white/10 bg-kimi-bg-elevated/50">
+          <div className="flex flex-wrap items-center justify-center gap-6 py-5 px-6 rounded-xl border border-gray-200 bg-kimi-bg-elevated/50">
             <span className="text-sm font-medium text-kimi-text">120 agents in parallel</span>
             <span className="text-sm font-medium text-kimi-text">99.2% deployment success</span>
             <span className="text-sm font-medium text-kimi-text">Half the price of Lovable</span>
@@ -360,14 +360,14 @@ const LandingPage = () => {
                   <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[80%] px-4 py-3 rounded-xl text-sm ${
                       msg.role === 'user' 
-                        ? 'bg-white text-zinc-900' 
+                        ? 'bg-white text-gray-900' 
                         : msg.error 
                           ? 'bg-red-500/10 text-red-400'
-                          : 'bg-zinc-800 text-zinc-200'
+                          : 'bg-gray-100 text-gray-700'
                     }`}>
                       {msg.isBuilding ? (
                         <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 border-2 border-zinc-500 border-t-white rounded-full animate-spin" />
+                          <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
                           <span>{msg.content}</span>
                         </div>
                       ) : (
@@ -383,7 +383,7 @@ const LandingPage = () => {
             {/* Progress */}
             {isBuilding && (
               <div className="px-5 pb-2">
-                <div className="h-0.5 bg-zinc-800 rounded-full overflow-hidden">
+                <div className="h-0.5 bg-gray-200 rounded-full overflow-hidden">
                   <motion.div 
                     className="h-full bg-white"
                     initial={{ width: 0 }}
@@ -397,7 +397,7 @@ const LandingPage = () => {
             {generatedCode && !isBuilding && (
               <div className="px-5 pb-4">
                 <div className="bg-kimi-bg rounded-lg overflow-hidden">
-                  <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-800">
+                  <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200">
                     <span className="text-xs text-kimi-muted font-mono">app.jsx</span>
                     <button onClick={downloadCode} className="text-xs text-kimi-muted hover:text-kimi-text transition">
                       Download
@@ -414,13 +414,13 @@ const LandingPage = () => {
             {attachedFiles.length > 0 && (
               <div className="px-4 pb-2 flex flex-wrap gap-2">
                 {attachedFiles.map((file, i) => (
-                  <div key={i} className="flex items-center gap-2 px-3 py-2 bg-zinc-800 rounded-lg text-sm">
+                  <div key={i} className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg text-sm">
                     {file.type?.startsWith('image/') ? (
                       <Image className="w-4 h-4 text-blue-400 shrink-0" />
                     ) : (
-                      <FileText className="w-4 h-4 text-zinc-400 shrink-0" />
+                      <FileText className="w-4 h-4 text-gray-400 shrink-0" />
                     )}
-                    <span className="text-zinc-300 max-w-[180px] truncate">{file.name}</span>
+                    <span className="text-gray-500 max-w-[180px] truncate">{file.name}</span>
                     <button type="button" onClick={() => removeLandingFile(i)} className="text-kimi-muted hover:text-kimi-text p-0.5">
                       <X className="w-4 h-4" />
                     </button>
@@ -433,12 +433,12 @@ const LandingPage = () => {
             <form onSubmit={handleSubmit} className="p-4">
               <div className="flex gap-2 items-end">
                 <div className="flex-1 flex flex-col gap-2">
-                  <div className="flex gap-2 px-4 py-3 bg-[#1C1C1E] rounded-xl border border-zinc-800 focus-within:ring-1 focus-within:ring-zinc-600 transition min-h-[160px]">
+                  <div className="flex gap-2 px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 focus-within:ring-1 focus-within:ring-gray-300 transition min-h-[160px]">
                     <textarea
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       placeholder={messages.length > 0 ? "Ask for changes..." : "What do you want to build?"}
-                      className="flex-1 bg-transparent text-[#1A1A1A] placeholder-zinc-500 outline-none resize-none min-h-[120px] text-base leading-relaxed"
+                      className="flex-1 bg-transparent text-gray-900 placeholder-gray-400 outline-none resize-none min-h-[120px] text-base leading-relaxed"
                       disabled={isBuilding}
                       rows={5}
                     />
@@ -446,7 +446,7 @@ const LandingPage = () => {
                       type="button"
                       onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
                       disabled={isBuilding || isTranscribing}
-                      className={`p-2.5 rounded-lg transition self-end shrink-0 ${isRecording ? 'bg-red-500/30 text-red-400 ring-2 ring-red-400/50' : 'text-kimi-muted hover:text-kimi-text hover:bg-zinc-700'}`}
+                      className={`p-2.5 rounded-lg transition self-end shrink-0 ${isRecording ? 'bg-red-500/30 text-red-400 ring-2 ring-red-400/50' : 'text-kimi-muted hover:text-kimi-text hover:bg-gray-100'}`}
                       title={isRecording ? 'Click to stop and transcribe' : 'Voice input — click to speak'}
                     >
                       {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
@@ -454,7 +454,7 @@ const LandingPage = () => {
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="p-2.5 rounded-lg text-kimi-muted hover:text-kimi-text hover:bg-zinc-700 transition self-end shrink-0"
+                      className="p-2.5 rounded-lg text-kimi-muted hover:text-kimi-text hover:bg-gray-100 transition self-end shrink-0"
                       title="Attach image or file"
                     >
                       <Paperclip className="w-5 h-5" />
@@ -472,7 +472,7 @@ const LandingPage = () => {
                 <button
                   type="submit"
                   disabled={(!input.trim() && !attachedFiles.some(f => f.type?.startsWith('image/'))) || isBuilding}
-                  className="px-6 py-4 bg-white text-zinc-900 rounded-xl text-base font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:bg-zinc-200 transition shrink-0"
+                  className="px-6 py-4 bg-white text-gray-900 rounded-xl text-base font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 transition shrink-0"
                 >
                   {isBuilding ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
@@ -512,7 +512,7 @@ const LandingPage = () => {
                         key={s}
                         type="button"
                         onClick={() => setInput(s)}
-                        className="px-3 py-1.5 text-xs text-kimi-muted bg-zinc-800/50 rounded-lg hover:bg-zinc-800 hover:text-kimi-text transition border border-zinc-800/50"
+                        className="px-3 py-1.5 text-xs text-kimi-muted bg-gray-100 rounded-lg hover:bg-gray-200 hover:text-kimi-text transition border border-gray-200"
                       >
                         {s}
                       </button>
@@ -531,13 +531,13 @@ const LandingPage = () => {
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Why CrucibAI</span>
           <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-12 text-center">One AI. Two superpowers. Nobody else has the bridge.</h2>
           <div className="grid md:grid-cols-2 gap-8 mb-8">
-            <div className="p-6 rounded-2xl border border-white/10 bg-kimi-bg-card">
+            <div className="p-6 rounded-2xl border border-gray-200 bg-kimi-bg-card">
               <h3 className="text-xl font-semibold text-kimi-accent mb-3">Build</h3>
               <p className="text-sm text-kimi-muted leading-relaxed">
                 Describe your app in plain language. Our 120-agent swarm plans, builds, tests, and deploys it. Watch every agent work in real time. Web apps, mobile apps, landing pages — production-ready code you own.
               </p>
             </div>
-            <div className="p-6 rounded-2xl border border-white/10 bg-kimi-bg-card">
+            <div className="p-6 rounded-2xl border border-gray-200 bg-kimi-bg-card">
               <h3 className="text-xl font-semibold text-kimi-accent mb-3">Automate</h3>
               <p className="text-sm text-kimi-muted leading-relaxed">
                 The same AI runs inside your automations. Daily digest. Lead follow-up. Content refresh. Describe what you want in one sentence — we create the agent. Schedule it, webhook it, chain the steps.
@@ -560,20 +560,20 @@ const LandingPage = () => {
             While competitors show you a spinner and hope for the best, CrucibAI shows you everything. Every agent, every phase, every decision — in real time. When the build is done, you have a quality score, a full audit trail, and code you own.
           </p>
           <div className="grid sm:grid-cols-3 gap-6 mb-10">
-            <div className="p-4 rounded-xl border border-white/10 bg-kimi-bg">
+            <div className="p-4 rounded-xl border border-gray-200 bg-kimi-bg">
               <h4 className="font-semibold text-kimi-text mb-2">Per-agent visibility</h4>
               <p className="text-sm text-kimi-muted">See exactly which of the 120 agents is running, what it&apos;s doing, and how many tokens it used. Nothing hidden.</p>
             </div>
-            <div className="p-4 rounded-xl border border-white/10 bg-kimi-bg">
+            <div className="p-4 rounded-xl border border-gray-200 bg-kimi-bg">
               <h4 className="font-semibold text-kimi-text mb-2">Quality score</h4>
               <p className="text-sm text-kimi-muted">Every build gets scored 0–100 across frontend, backend, tests, security, and deployment. You see the score before you ship.</p>
             </div>
-            <div className="p-4 rounded-xl border border-white/10 bg-kimi-bg">
+            <div className="p-4 rounded-xl border border-gray-200 bg-kimi-bg">
               <h4 className="font-semibold text-kimi-text mb-2">Phase retry</h4>
               <p className="text-sm text-kimi-muted">If a phase falls below quality threshold, we flag it and retry automatically. Self-healing builds, visible to you the entire time.</p>
             </div>
           </div>
-          <div className="rounded-xl border border-white/20 bg-zinc-900/50 p-8 flex items-center justify-center min-h-[280px]">
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-8 flex items-center justify-center min-h-[280px]">
             <p className="text-kimi-muted text-center text-sm">AgentMonitor — real-time agent status, phase progress, token usage, and quality score. <br /><span className="text-xs">Screenshot placeholder — add image when ready.</span></p>
           </div>
         </div>
@@ -623,22 +623,22 @@ const LandingPage = () => {
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Built for</span>
           <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-12 text-center">Whether you write code or not.</h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="p-6 rounded-xl border border-white/10 bg-kimi-bg hover:border-kimi-accent/30 transition">
+            <div className="p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
               <h3 className="font-semibold text-kimi-text mb-2">Marketers &amp; Agencies</h3>
               <p className="text-sm text-kimi-muted mb-4">Build landing pages, funnels, and blogs in hours. Automate lead digests, follow-up sequences, and content pipelines with the same AI. Monday prompt, Friday launch. No dev dependency.</p>
               <button onClick={() => startBuild('Landing page')} className="text-sm font-medium text-kimi-accent hover:text-kimi-text transition">→ Start building marketing stacks</button>
             </div>
-            <div className="p-6 rounded-xl border border-white/10 bg-kimi-bg hover:border-kimi-accent/30 transition">
+            <div className="p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
               <h3 className="font-semibold text-kimi-text mb-2">Founders &amp; Startups</h3>
               <p className="text-sm text-kimi-muted mb-4">Idea to deployed MVP without a dev team. Import existing code or start from scratch. Get web, mobile, and automation in one platform. Ship this week, iterate next week.</p>
               <button onClick={() => startBuild('MVP')} className="text-sm font-medium text-kimi-accent hover:text-kimi-text transition">→ Build your MVP</button>
             </div>
-            <div className="p-6 rounded-xl border border-white/10 bg-kimi-bg hover:border-kimi-accent/30 transition">
+            <div className="p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
               <h3 className="font-semibold text-kimi-text mb-2">Developers</h3>
               <p className="text-sm text-kimi-muted mb-4">Your IDE, our AI. Extensions for VSCode, JetBrains, Sublime, and Vim. Inject Stripe checkout in one command. Auto-generate README, API docs, and FAQ schema. Import any codebase — paste, ZIP, or Git URL.</p>
               <Link to="/features" className="text-sm font-medium text-kimi-accent hover:text-kimi-text transition">→ Extend your workflow</Link>
             </div>
-            <div className="p-6 rounded-xl border border-white/10 bg-kimi-bg hover:border-kimi-accent/30 transition">
+            <div className="p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
               <h3 className="font-semibold text-kimi-text mb-2">Product Teams</h3>
               <p className="text-sm text-kimi-muted mb-4">Prototype to production with approval workflows, step chaining, and webhook triggers. Every build has an audit trail and quality score. Enterprise-grade security without enterprise complexity.</p>
               <button onClick={() => startBuild('Internal tool')} className="text-sm font-medium text-kimi-accent hover:text-kimi-text transition">→ Build for your team</button>
@@ -656,21 +656,21 @@ const LandingPage = () => {
             Paste your code. Upload a ZIP. Drop a Git URL. We stand up your existing project in the workspace, run a security scan and accessibility check, and you keep building — with the full 120-agent swarm behind you.
           </p>
           <div className="grid sm:grid-cols-3 gap-6">
-            <div className="p-4 rounded-xl border border-white/10 bg-kimi-bg">
+            <div className="p-4 rounded-xl border border-gray-200 bg-kimi-bg">
               <h4 className="font-semibold text-kimi-text mb-2">Paste, ZIP, or Git</h4>
               <p className="text-sm text-kimi-muted">Any existing project. Any state. We import it, organize it, and open it in the workspace ready to continue.</p>
             </div>
-            <div className="p-4 rounded-xl border border-white/10 bg-kimi-bg">
+            <div className="p-4 rounded-xl border border-gray-200 bg-kimi-bg">
               <h4 className="font-semibold text-kimi-text mb-2">Security scan on import</h4>
               <p className="text-sm text-kimi-muted">We run a security check the moment your code arrives. Secrets in client code, auth on API, CORS configuration — you see the checklist before you build another line.</p>
             </div>
-            <div className="p-4 rounded-xl border border-white/10 bg-kimi-bg">
+            <div className="p-4 rounded-xl border border-gray-200 bg-kimi-bg">
               <h4 className="font-semibold text-kimi-text mb-2">Keep building with AI</h4>
               <p className="text-sm text-kimi-muted">Your existing codebase, our 120 agents. Ask for features, fixes, or a full rebuild. You own the code throughout.</p>
             </div>
           </div>
           <div className="mt-10 text-center">
-            <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="px-6 py-3 bg-white text-zinc-900 font-medium rounded-lg hover:bg-zinc-200 transition">
+            <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="px-6 py-3 bg-white text-gray-900 font-medium rounded-lg hover:bg-gray-100 transition">
               {user ? 'Import in Dashboard' : 'Get started free'}
             </button>
           </div>
@@ -693,7 +693,7 @@ const LandingPage = () => {
               { title: 'SaaS Products', desc: 'Full-stack SaaS with auth, Stripe subscriptions, user dashboard, and admin panel. Import the Auth + SaaS pattern and build from there.', cta: 'Start a SaaS' },
               { title: 'Docs, Slides & Sheets', desc: 'Generate README, API docs, FAQ schema, presentations, and CSV data — directly from your project or from a prompt.', cta: 'Generate documents' }
             ].map((item, i) => (
-              <div key={i} className="p-5 rounded-xl border border-white/10 bg-kimi-bg hover:border-white/20 transition">
+              <div key={i} className="p-5 rounded-xl border border-gray-200 bg-kimi-bg hover:border-gray-200 transition">
                 <h3 className="text-lg font-semibold text-kimi-text mb-2">{item.title}</h3>
                 <p className="text-sm text-kimi-muted mb-4">{item.desc}</p>
                 <button onClick={() => startBuild(item.cta)} className="text-sm font-medium text-kimi-accent hover:text-kimi-text transition">{item.cta} →</button>
@@ -715,7 +715,7 @@ const LandingPage = () => {
               { step: '3', title: '120 agents build in parallel', desc: 'Planning, frontend, backend, database, styling, testing, security, deployment — each phase handled by dedicated agents running in parallel. Watch them work in AgentMonitor.' },
               { step: '4', title: 'Ship what you own', desc: 'Export to ZIP or push to GitHub. Deploy to Vercel or Netlify in one click. You own all the code. Your automations are running. You\'re live.' }
             ].map((item, i) => (
-              <div key={i} className="p-6 rounded-xl border border-white/10 bg-kimi-bg">
+              <div key={i} className="p-6 rounded-xl border border-gray-200 bg-kimi-bg">
                 <div className="text-xl font-mono text-kimi-accent mb-2">{item.step}</div>
                 <h3 className="text-lg font-semibold text-kimi-text mb-2">{item.title}</h3>
                 <p className="text-sm text-kimi-muted">{item.desc}</p>
@@ -733,9 +733,9 @@ const LandingPage = () => {
           <p className="text-kimi-muted mb-8">Real apps from our 120-agent swarm. Inevitable outcomes — fork any example to open it in your workspace.</p>
           <div className="grid sm:grid-cols-3 gap-6">
             {liveExamples.length > 0 ? liveExamples.map((ex) => (
-              <div key={ex.name} className="p-5 rounded-xl border border-white/10 bg-kimi-bg hover:border-white/20 transition">
+              <div key={ex.name} className="p-5 rounded-xl border border-gray-200 bg-kimi-bg hover:border-gray-200 transition">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2 rounded-lg bg-white/10">
+                  <div className="p-2 rounded-lg bg-gray-50">
                     <FileCode className="w-5 h-5 text-kimi-accent" />
                   </div>
                   <div>
@@ -748,7 +748,7 @@ const LandingPage = () => {
                 )}
                 <button
                   onClick={() => user ? navigate(`/app/examples`) : navigate(`/auth?mode=register&redirect=${encodeURIComponent('/app/examples')}`)}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-white/10 text-kimi-text hover:bg-white/20 transition text-sm font-medium"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-gray-50 text-kimi-text hover:bg-gray-100 transition text-sm font-medium"
                 >
                   <GitFork className="w-4 h-4" />
                   {user ? 'View all examples & fork' : 'Sign in to fork'}
@@ -757,14 +757,14 @@ const LandingPage = () => {
             )) : (
               <>
                 {['Todo app with auth & CRUD', 'Blog platform with comments', 'E-commerce store with cart'].map((label, i) => (
-                  <div key={i} className="p-5 rounded-xl border border-white/10 bg-kimi-bg">
+                  <div key={i} className="p-5 rounded-xl border border-gray-200 bg-kimi-bg">
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="p-2 rounded-lg bg-white/10"><FileCode className="w-5 h-5 text-kimi-accent" /></div>
+                      <div className="p-2 rounded-lg bg-gray-50"><FileCode className="w-5 h-5 text-kimi-accent" /></div>
                       <h3 className="font-semibold text-kimi-text">{label}</h3>
                     </div>
                     <button
                       onClick={() => navigate(user ? '/app' : '/auth?mode=register')}
-                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-white/10 text-kimi-text hover:bg-white/20 transition text-sm"
+                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-gray-50 text-kimi-text hover:bg-gray-100 transition text-sm"
                     >
                       <ArrowRight className="w-4 h-4" /> {user ? 'Open workspace' : 'Get started'}
                     </button>
@@ -787,9 +787,9 @@ const LandingPage = () => {
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Access</span>
           <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-8">Where Can You Use CrucibAI?</h2>
           <p className="text-kimi-muted mb-8">Use CrucibAI in the browser, export your code, and deploy anywhere.</p>
-          <div className="space-y-0 border border-white/10 rounded-xl overflow-hidden">
+          <div className="space-y-0 border border-gray-200 rounded-xl overflow-hidden">
             {whereItems.map((item, i) => (
-              <div key={i} className="border-b border-white/10 last:border-0">
+              <div key={i} className="border-b border-gray-200 last:border-0">
                 <button onClick={() => setOpenWhere(openWhere === i ? null : i)} className="w-full px-6 py-4 flex items-center justify-between text-left text-kimi-text font-medium">
                   {item.title}
                   <ChevronDown className={`w-4 h-4 text-kimi-muted transition-transform ${openWhere === i ? 'rotate-180' : ''}`} />
@@ -817,7 +817,7 @@ const LandingPage = () => {
               { step: '3', title: '120 agents build in parallel', desc: 'Planning, frontend, backend, database, styling, testing, security, deployment — each phase handled by dedicated agents running in parallel. Watch them work in AgentMonitor.' },
               { step: '4', title: 'Ship what you own', desc: 'Export to ZIP or push to GitHub. Deploy to Vercel or Netlify in one click. You own all the code. Your automations are running. You\'re live.' }
             ].map((item, i) => (
-              <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="p-6 rounded-xl border border-white/10 bg-kimi-bg">
+              <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="p-6 rounded-xl border border-gray-200 bg-kimi-bg">
                 <div className="text-xl font-mono text-kimi-accent mb-2">{item.step}</div>
                 <h3 className="text-lg font-semibold text-kimi-text mb-2">{item.title}</h3>
                 <p className="text-sm text-kimi-muted leading-relaxed">{item.desc}</p>
@@ -832,10 +832,10 @@ const LandingPage = () => {
         <div className="max-w-5xl mx-auto">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Compare</span>
           <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-8">CrucibAI vs Lovable, Bolt, N8N, Cursor, FlutterFlow</h2>
-          <div className="overflow-x-auto rounded-xl border border-white/10">
+          <div className="overflow-x-auto rounded-xl border border-gray-200">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-white/10">
+                <tr className="border-b border-gray-200">
                   <th className="p-4 font-semibold text-kimi-text min-w-[120px]">Capability</th>
                   <th className="p-4 font-semibold text-kimi-text text-center min-w-[90px]">CrucibAI</th>
                   <th className="p-4 font-semibold text-kimi-muted text-center min-w-[90px]">Lovable</th>
@@ -847,7 +847,7 @@ const LandingPage = () => {
               </thead>
               <tbody>
                 {comparisonLabels.map(({ key, label }, i) => (
-                  <tr key={i} className="border-b border-white/10 last:border-0">
+                  <tr key={i} className="border-b border-gray-200 last:border-0">
                     <td className="p-4 text-kimi-text">{label}</td>
                     <td className="p-4 text-center">{comparisonData.crucibai[key] === true ? <Check className="w-5 h-5 text-kimi-accent mx-auto" /> : typeof comparisonData.crucibai[key] === 'string' ? <span className="text-kimi-accent font-medium">{comparisonData.crucibai[key]}</span> : '—'}</td>
                     <td className="p-4 text-center">{comparisonData.lovable[key] === true ? <Check className="w-5 h-5 text-kimi-muted mx-auto" /> : comparisonData.lovable[key] === false ? '—' : <span className="text-kimi-muted">{comparisonData.lovable[key]}</span>}</td>
@@ -894,17 +894,17 @@ const LandingPage = () => {
           <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-2">Who Builds Better Products? Who Builds Faster? Which Is More Helpful?</h2>
           <p className="text-kimi-muted mb-10">That&apos;s where we win.</p>
           <div className="grid md:grid-cols-3 gap-8">
-            <div className="p-6 rounded-xl border border-white/10 bg-kimi-bg hover:border-kimi-accent/30 transition">
+            <div className="p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
               <h3 className="text-lg font-semibold text-kimi-text mb-3">Better</h3>
               <p className="text-sm text-kimi-muted mb-3">Structured plans, 120 verifiable agents, quality score, and full audit trail. You see every step and every artifact.</p>
               <p className="text-xs text-kimi-accent font-medium">CrucibAI → structure, visibility, verifiable steps</p>
             </div>
-            <div className="p-6 rounded-xl border border-white/10 bg-kimi-bg hover:border-kimi-accent/30 transition">
+            <div className="p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
               <h3 className="text-lg font-semibold text-kimi-text mb-3">Faster</h3>
               <p className="text-sm text-kimi-muted mb-3">Parallel DAG: many agents run per phase. No artificial delay. Self-heal retries tests and security once if needed.</p>
               <p className="text-xs text-kimi-accent font-medium">CrucibAI → parallel, no fake latency, self-heal</p>
             </div>
-            <div className="p-6 rounded-xl border border-white/10 bg-kimi-bg hover:border-kimi-accent/30 transition">
+            <div className="p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
               <h3 className="text-lg font-semibold text-kimi-text mb-3">More helpful for everyone</h3>
               <p className="text-sm text-kimi-muted mb-3">Plan-first, one prompt to full app, visible progress. Works for non-devs and power users alike.</p>
               <p className="text-xs text-kimi-accent font-medium">CrucibAI → one prompt, full visibility, for all users</p>
@@ -957,9 +957,9 @@ const LandingPage = () => {
           <span className="text-xs uppercase tracking-wider text-kimi-muted">FAQ</span>
           <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-4 text-center">Frequently Asked Questions</h2>
           <p className="text-kimi-muted text-center mb-12">Everything you need to know about building with CrucibAI.</p>
-          <div className="space-y-0 border border-white/10 rounded-xl overflow-hidden">
+          <div className="space-y-0 border border-gray-200 rounded-xl overflow-hidden">
             {faqs.map((faq, i) => (
-              <div key={i} className="border-b border-white/10 last:border-0">
+              <div key={i} className="border-b border-gray-200 last:border-0">
                 <button onClick={() => setOpenFaq(openFaq === i ? null : i)} className="w-full py-5 px-6 flex items-center justify-between text-left">
                   <span className="flex items-center gap-3">
                     <span className="text-xs text-kimi-muted font-mono w-6">{i + 1}</span>
@@ -984,12 +984,12 @@ const LandingPage = () => {
       </section>
 
       {/* Final CTA */}
-      <section className="py-24 px-6 border-t border-white/10">
+      <section className="py-24 px-6 border-t border-gray-200">
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-kimi-text mb-4">Your idea is inevitable. Start Monday.</h2>
           <p className="text-kimi-muted mb-8">50 free credits. No credit card. Describe it today. Ship it Friday.</p>
           <div className="flex flex-wrap justify-center gap-4">
-            <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="px-6 py-3 bg-white text-zinc-900 font-medium rounded-lg hover:bg-zinc-200 transition border border-black/10">
+            <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="px-6 py-3 bg-white text-gray-900 font-medium rounded-lg hover:bg-gray-100 transition border border-black/10">
               Make It Inevitable
             </button>
             <Link to="/learn" className="px-6 py-3 bg-transparent text-kimi-text font-medium rounded-lg border border-white/30 hover:border-white/50 transition">
@@ -1000,7 +1000,7 @@ const LandingPage = () => {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-6 border-t border-white/10 bg-kimi-bg">
+      <footer className="py-12 px-6 border-t border-gray-200 bg-kimi-bg">
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-4 gap-12 mb-12">
             <div>
@@ -1043,7 +1043,7 @@ const LandingPage = () => {
               </ul>
             </div>
           </div>
-          <div className="pt-8 border-t border-white/10 text-center">
+          <div className="pt-8 border-t border-gray-200 text-center">
             <p className="text-xs text-kimi-muted">© 2026 CrucibAI. All rights reserved.</p>
           </div>
         </div>

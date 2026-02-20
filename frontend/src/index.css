@@ -160,10 +160,10 @@ code, pre, .mono {
 
 /* Kimi-style glass (frosted) for landing hero */
 .glass-kimi-panel {
-  background: rgba(20, 20, 21, 0.6);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(0, 0, 0, 0.08);
 }
 .glass-kimi-btn {
   background: rgba(255, 255, 255, 0.92);
@@ -193,8 +193,8 @@ code, pre, .mono {
 /* Grid pattern background */
 .grid-pattern {
   background-image: 
-    linear-gradient(var(--kimi-grid, rgba(255, 255, 255, 0.03)) 1px, transparent 1px),
-    linear-gradient(90deg, var(--kimi-grid, rgba(255, 255, 255, 0.03)) 1px, transparent 1px);
+    linear-gradient(var(--kimi-grid, rgba(0, 0, 0, 0.03)) 1px, transparent 1px),
+    linear-gradient(90deg, var(--kimi-grid, rgba(0, 0, 0, 0.03)) 1px, transparent 1px);
   background-size: 50px 50px;
 }
 
