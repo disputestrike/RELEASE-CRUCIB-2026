@@ -22,17 +22,17 @@
 }
 
 .error-boundary-fixing {
-  background: rgba(37, 99, 235, 0.9);
+  background: rgba(0, 0, 0, 0.9);
   color: #FFFFFF;
 }
 
 .error-boundary-error {
-  background: rgba(220, 38, 38, 0.9);
+  background: rgba(0, 0, 0, 0.9);
   color: #FFFFFF;
 }
 
 .error-boundary-fixed {
-  background: rgba(5, 150, 105, 0.9);
+  background: rgba(0, 0, 0, 0.9);
   color: #FFFFFF;
   animation: fadeOut 3s ease-in-out forwards;
 }

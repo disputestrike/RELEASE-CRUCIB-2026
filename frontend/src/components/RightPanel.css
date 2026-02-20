@@ -38,7 +38,7 @@
   border: none;
   border-bottom: 2px solid transparent;
   cursor: pointer;
-  color: #9CA3AF;
+  color: #999999;
   font-size: 12px;
   font-weight: 500;
   white-space: nowrap;
@@ -56,7 +56,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: #9CA3AF;
+  color: #999999;
   border-radius: 6px;
   transition: all 150ms ease;
   flex-shrink: 0;
@@ -88,7 +88,7 @@
   align-items: center;
   justify-content: center;
   padding: 48px 24px;
-  color: #9CA3AF;
+  color: #999999;
   text-align: center;
   flex: 1;
 }
@@ -99,12 +99,12 @@
   margin: 12px 0 4px;
   font-size: 14px;
   font-weight: 500;
-  color: #6B7280;
+  color: #808080;
 }
 
 .right-panel-empty-hint {
   font-size: 12px;
-  color: #9CA3AF;
+  color: #999999;
 }
 
 /* ============================================
@@ -116,7 +116,7 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: #F9FAFB;
+  background: #F5F5F4;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   flex-shrink: 0;
 }
@@ -131,7 +131,7 @@
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 6px;
   font-size: 12px;
-  color: #6B7280;
+  color: #808080;
 }
 
 .preview-dot {
@@ -159,7 +159,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: #9CA3AF;
+  color: #999999;
   border-radius: 4px;
   transition: all 150ms ease;
 }
@@ -206,7 +206,7 @@
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  color: #6B7280;
+  color: #808080;
   font-size: 12px;
   text-align: left;
   transition: all 150ms ease;
@@ -227,7 +227,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  background: #F9FAFB;
+  background: #F5F5F4;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   flex-shrink: 0;
 }
@@ -235,7 +235,7 @@
 .code-viewer-filename {
   font-size: 12px;
   font-weight: 500;
-  color: #6B7280;
+  color: #808080;
   font-family: 'Fira Code', 'JetBrains Mono', monospace;
 }
 
@@ -246,7 +246,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: #9CA3AF;
+  color: #999999;
   border-radius: 4px;
   transition: all 150ms ease;
 }
@@ -294,14 +294,14 @@
 }
 
 .terminal-text {
-  color: #374151;
+  color: #1A1A1A;
   word-break: break-all;
 }
 
-.terminal-line.error .terminal-text { color: #EF4444; }
+.terminal-line.error .terminal-text { color: #1A1A1A; }
 .terminal-line.warning .terminal-text { color: #808080; }
 .terminal-line.success .terminal-text { color: #1A1A1A; }
-.terminal-line.info .terminal-text { color: #60A5FA; }
+.terminal-line.info .terminal-text { color: #808080; }
 
 /* ============================================
    HISTORY TAB
@@ -321,7 +321,7 @@
   transition: all 150ms ease;
 }
 
-.history-item:hover { background: #F9FAFB; }
+.history-item:hover { background: #F5F5F4; }
 
 .history-item-header {
   display: flex;
@@ -352,14 +352,14 @@
   gap: 4px;
   padding-left: 28px;
   font-size: 11px;
-  color: #9CA3AF;
+  color: #999999;
   margin-top: 4px;
 }
 
 .history-summary {
   padding-left: 28px;
   font-size: 12px;
-  color: #6B7280;
+  color: #808080;
   margin: 4px 0 0;
   line-height: 1.4;
 }
@@ -389,7 +389,7 @@
 
 .tools-item:hover { background: #F5F5F4; color: #1A1A1A; }
 
-.tools-icon { color: #6B7280; }
+.tools-icon { color: #808080; }
 .tools-label { flex: 1; }
 .tools-arrow { color: #D1D5DB; }
 
@@ -403,7 +403,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #9CA3AF;
+  color: #999999;
   margin: 0 0 8px;
 }
 
@@ -476,12 +476,12 @@
   height: 32px;
   background: #F3F1ED;
   border-radius: 6px;
-  color: #666666;
+  color: #808080;
   flex-shrink: 0;
 }
 
 .tools-item-card:hover .tools-item-icon-wrap {
-  background: #E8E5DF;
+  background: #F5F5F4;
   color: #1A1A1A;
 }
 
@@ -501,7 +501,7 @@
 
 .tools-item-desc {
   font-size: 11px;
-  color: #9CA3AF;
+  color: #999999;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

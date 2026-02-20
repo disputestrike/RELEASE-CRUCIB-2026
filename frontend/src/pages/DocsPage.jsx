@@ -124,9 +124,9 @@ const API_SECTIONS = [
 
 const METHOD_COLORS = {
   GET: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
-  POST: 'bg-gray-200/20 text-#c0c0c0 border-gray-300/30',
+  POST: 'bg-gray-200/20 text-gray-500 border-gray-300/30',
   PUT: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-  PATCH: 'bg-gray-200/20 text-#c0c0c0 border-gray-300/30',
+  PATCH: 'bg-gray-200/20 text-gray-500 border-gray-300/30',
   DELETE: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
 };
 
@@ -167,7 +167,7 @@ export default function DocsPage() {
   const currentSection = filteredSections.find(s => s.id === activeSection) || filteredSections[0];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-gray-200">
+    <div className="min-h-screen bg-black text-gray-200">
       <PublicNav />
 
       <div className="max-w-7xl mx-auto px-6 py-12">
@@ -175,7 +175,7 @@ export default function DocsPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-3 rounded-xl bg-gray-200/20">
-              <BookOpen className="w-7 h-7 text-#c0c0c0" />
+              <BookOpen className="w-7 h-7 text-gray-500" />
             </div>
             <div>
               <h1 className="text-3xl font-bold tracking-tight">API Documentation</h1>
@@ -220,7 +220,7 @@ export default function DocsPage() {
                     onClick={() => setActiveSection(section.id)}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition ${
                       activeSection === section.id
-                        ? 'bg-gray-200/15 text-#c0c0c0 font-medium'
+                        ? 'bg-gray-200/15 text-gray-500 font-medium'
                         : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/50'
                     }`}
                   >
@@ -242,7 +242,7 @@ export default function DocsPage() {
                 animate={{ opacity: 1, y: 0 }}
               >
                 <div className="flex items-center gap-3 mb-2">
-                  <currentSection.icon size={24} className="text-#c0c0c0" />
+                  <currentSection.icon size={24} className="text-gray-500" />
                   <h2 className="text-2xl font-bold">{currentSection.title}</h2>
                 </div>
                 <p className="text-gray-500 mb-6">{currentSection.description}</p>
@@ -295,7 +295,7 @@ export default function DocsPage() {
                                 <span className="text-xs font-medium text-gray-500 uppercase">Response</span>
                                 <CopyButton text={ep.response} />
                               </div>
-                              <pre className="p-3 rounded-lg bg-zinc-950 border border-gray-800 text-xs font-mono text-#c0c0c0 overflow-x-auto">
+                              <pre className="p-3 rounded-lg bg-zinc-950 border border-gray-800 text-xs font-mono text-gray-500 overflow-x-auto">
                                 {ep.response}
                               </pre>
                             </div>

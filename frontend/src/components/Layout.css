@@ -79,7 +79,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: #9CA3AF;
+  color: #999999;
   border-radius: 6px;
   transition: all 150ms ease;
 }
@@ -142,7 +142,7 @@
 
 .status-green { color: #1A1A1A; }
 .status-amber { color: #808080; }
-.status-gray { color: #9CA3AF; }
+.status-gray { color: #999999; }
 
 .status-retry {
   background: none;

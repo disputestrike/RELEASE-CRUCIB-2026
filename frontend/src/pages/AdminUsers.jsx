@@ -44,11 +44,11 @@ const AdminUsers = () => {
     <div className="space-y-6" data-testid="admin-users">
       <div>
         <h1 className="text-3xl font-bold">User management</h1>
-        <p className="text-[#666666] mt-1">Search and filter users</p>
+        <p className="text-gray-600 mt-1">Search and filter users</p>
       </div>
       <div className="flex flex-wrap gap-4">
         <div className="flex items-center gap-2 bg-white/5 rounded-lg border border-white/10 px-3 py-2">
-          <Search className="w-4 h-4 text-[#666666]" />
+          <Search className="w-4 h-4 text-gray-600" />
           <input
             type="text"
             placeholder="Email"
@@ -92,13 +92,13 @@ const AdminUsers = () => {
                   <td className="py-3 px-4">{u.email}</td>
                   <td className="py-3 px-4 capitalize">{u.plan || 'free'}</td>
                   <td className="py-3 px-4">{u.credit_balance ?? '-'}</td>
-                  <td className="py-3 px-4 text-[#666666]">
+                  <td className="py-3 px-4 text-gray-600">
                     {u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}
                   </td>
                   <td className="py-3 px-4">
                     <Link
                       to={`/app/admin/users/${u.id}`}
-                      className="inline-flex items-center text-#c0c0c0 hover:text-#d0d0d0"
+                      className="inline-flex items-center text-gray-500 hover:text-gray-500"
                     >
                       <User className="w-4 h-4 mr-1" />
                       View

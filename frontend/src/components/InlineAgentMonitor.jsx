@@ -31,7 +31,7 @@ const AGENT_LAYERS = {
   },
   validation: {
     label: 'Validation',
-    color: '#FF8F5E',
+    color: '#1A1A1A',
     agents: ['Security Checker', 'Test Executor', 'UX Auditor', 'Performance Analyzer']
   },
   deployment: {
@@ -174,8 +174,8 @@ const InlineAgentMonitor = ({
                         <div className="iam-agent-icon">
                           {agent.status === 'completed' && <CheckCircle size={14} style={{ color: '#808080' }} />}
                           {agent.status === 'running' && <Loader2 size={14} className="iam-spin" style={{ color: layer.color }} />}
-                          {agent.status === 'failed' && <AlertCircle size={14} style={{ color: '#EF4444' }} />}
-                          {agent.status === 'idle' && <Clock size={14} style={{ color: '#9CA3AF' }} />}
+                          {agent.status === 'failed' && <AlertCircle size={14} style={{ color: '#1A1A1A' }} />}
+                          {agent.status === 'idle' && <Clock size={14} style={{ color: '#999999' }} />}
                         </div>
                         <span className="iam-agent-name">{agentName}</span>
                         {agent.status === 'running' && (
@@ -231,9 +231,9 @@ const InlineAgentMonitor = ({
       {/* Quality Score — shown after build completes (Test A-13) */}
       {!isBuilding && buildProgress >= 100 && qualityScore != null && (
         <div className="iam-quality-score">
-          <ShieldCheck size={16} style={{ color: qualityScore >= 80 ? '#808080' : qualityScore >= 50 ? '#999999' : '#EF4444' }} />
+          <ShieldCheck size={16} style={{ color: qualityScore >= 80 ? '#808080' : qualityScore >= 50 ? '#999999' : '#1A1A1A' }} />
           <span className="iam-quality-label">Quality Score</span>
-          <span className="iam-quality-value" style={{ color: qualityScore >= 80 ? '#808080' : qualityScore >= 50 ? '#999999' : '#EF4444' }}>
+          <span className="iam-quality-value" style={{ color: qualityScore >= 80 ? '#808080' : qualityScore >= 50 ? '#999999' : '#1A1A1A' }}>
             {qualityScore}/100
           </span>
         </div>

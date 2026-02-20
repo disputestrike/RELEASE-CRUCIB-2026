@@ -71,10 +71,10 @@
 .sidebar-search.focused {
   background: #FFFFFF;
   border-color: #1A1A1A;
-  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
 }
 
-.sidebar-search-icon { color: #9CA3AF; flex-shrink: 0; }
+.sidebar-search-icon { color: #999999; flex-shrink: 0; }
 
 .sidebar-search-input {
   flex: 1;
@@ -86,14 +86,14 @@
   min-width: 0;
 }
 
-.sidebar-search-input::placeholder { color: #9CA3AF; }
+.sidebar-search-input::placeholder { color: #999999; }
 
 .sidebar-search-clear {
   background: none;
   border: none;
   cursor: pointer;
   padding: 2px;
-  color: #9CA3AF;
+  color: #999999;
   display: flex;
   border-radius: 4px;
 }
@@ -102,7 +102,7 @@
 
 .sidebar-search-kbd {
   font-size: 11px;
-  color: #9CA3AF;
+  color: #999999;
   background: #E5E7EB;
   padding: 2px 6px;
   border-radius: 4px;
@@ -157,7 +157,7 @@
 /* Color variants */
 .color-black { color: #1A1A1A; }
 .color-brand { color: #1A1A1A; }
-.color-gray { color: #6B7280; }
+.color-gray { color: #808080; }
 .color-dark-gray { color: #4B5563; }
 
 /* ============================================
@@ -183,7 +183,7 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #9CA3AF;
+  color: #999999;
 }
 
 .sidebar-section-action {
@@ -193,7 +193,7 @@
   width: 22px;
   height: 22px;
   border-radius: 4px;
-  color: #9CA3AF;
+  color: #999999;
   background: transparent;
   border: none;
   cursor: pointer;
@@ -231,12 +231,12 @@
 .sidebar-item:hover { background: #F5F5F4; color: #1A1A1A; }
 .sidebar-item.active { background: #F5F5F4; color: #1A1A1A; font-weight: 600; }
 
-.sidebar-item-icon { flex-shrink: 0; color: #9CA3AF; }
+.sidebar-item-icon { flex-shrink: 0; color: #999999; }
 
 .sidebar-item-icon.status-completed { color: #1A1A1A; }
 .sidebar-item-icon.status-running { color: #1A1A1A; animation: pulse 2s infinite; }
 .sidebar-item-icon.status-failed { color: #1A1A1A; }
-.sidebar-item-icon.status-pending { color: #9CA3AF; }
+.sidebar-item-icon.status-pending { color: #999999; }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
@@ -253,7 +253,7 @@
 .sidebar-empty {
   padding: 8px 12px;
   font-size: 12px;
-  color: #9CA3AF;
+  color: #999999;
   font-style: italic;
 }
 
@@ -283,7 +283,7 @@
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  color: #6B7280;
+  color: #808080;
   font-size: 13px;
   font-weight: 500;
   transition: all 150ms ease;
@@ -315,7 +315,7 @@
   padding: 6px 12px 6px 24px;
   border-radius: 6px;
   text-decoration: none;
-  color: #6B7280;
+  color: #808080;
   font-size: 12px;
   transition: all 150ms ease;
 }
@@ -334,7 +334,7 @@
   margin: 4px 12px;
   padding: 10px 12px;
   background: linear-gradient(135deg, #F5F5F4, #F5F5F4);
-  border: 1px solid rgba(255, 107, 53, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 8px;
   text-decoration: none;
   color: #1A1A1A;
@@ -344,12 +344,12 @@
 
 .sidebar-token-balance:hover {
   border-color: #1A1A1A;
-  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.08);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
 }
 
 .sidebar-token-icon { color: #1A1A1A; }
 .sidebar-token-amount { font-size: 16px; font-weight: 700; color: #1A1A1A; }
-.sidebar-token-label { font-size: 12px; color: #6B7280; }
+.sidebar-token-label { font-size: 12px; color: #808080; }
 
 /* ============================================
    FOOTER
@@ -412,7 +412,7 @@
   text-overflow: ellipsis;
 }
 
-.sidebar-user-plan { font-size: 11px; color: #9CA3AF; }
+.sidebar-user-plan { font-size: 11px; color: #999999; }
 
 .sidebar-logout {
   display: flex;
@@ -424,7 +424,7 @@
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  color: #9CA3AF;
+  color: #999999;
   font-size: 13px;
   transition: all 150ms ease;
 }
@@ -474,7 +474,7 @@
   right: 10px;
   width: 8px;
   height: 8px;
-  background: #EF4444;
+  background: #1A1A1A;
   border-radius: 50%;
   border: 2px solid #FFFFFF;
 }

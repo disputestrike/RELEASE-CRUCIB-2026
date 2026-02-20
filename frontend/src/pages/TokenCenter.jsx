@@ -120,7 +120,7 @@ const TokenCenter = () => {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold mb-2">Credit Center</h1>
-        <p className="text-[#666666]">Buy credits and track your usage. 50 credits ≈ 1 landing page.</p>
+        <p className="text-gray-600">Buy credits and track your usage. 50 credits ≈ 1 landing page.</p>
       </div>
 
       {/* Balance Card */}
@@ -131,7 +131,7 @@ const TokenCenter = () => {
       >
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div>
-            <p className="text-[#666666] mb-2 flex items-center gap-2">
+            <p className="text-gray-600 mb-2 flex items-center gap-2">
               <Zap className="w-5 h-5 text-gray-200" />
               Current Balance
             </p>
@@ -206,7 +206,7 @@ const TokenCenter = () => {
             className={`flex items-center gap-2 px-4 py-3 border-b-2 transition ${
               activeTab === tab.id
                 ? 'border-gray-400 text-[#1A1A1A]'
-                : 'border-transparent text-[#666666] hover:text-[#1A1A1A]'
+                : 'border-transparent text-gray-600 hover:text-[#1A1A1A]'
             }`}
             data-testid={`tab-${tab.id}`}
           >
@@ -229,7 +229,7 @@ const TokenCenter = () => {
               className={`p-6 rounded-xl border transition-all ${
                 bundle.key === 'builder'
                   ? 'bg-gray-700/10 border-gray-400/50 scale-105'
-                  : 'bg-[#0a0a0a] border-white/10 hover:border-white/20'
+                  : 'bg-black border-white/10 hover:border-white/20'
               } ${addonFromPricing === bundle.key ? 'ring-2 ring-white/30' : ''}`}
             >
               {bundle.key === 'builder' && (
@@ -242,7 +242,7 @@ const TokenCenter = () => {
                   {['light', 'dev'].includes(bundle.key) ? ' one-time' : '/month'}
                 </span>
               </div>
-              <p className="text-[#666666] mb-6">
+              <p className="text-gray-600 mb-6">
                 <Zap className="w-4 h-4 inline mr-1 text-gray-200" />
                 {(bundle.credits ?? (bundle.tokens / 1000)).toLocaleString()} credits
                 {!['light', 'dev'].includes(bundle.key) && ' per month'}
@@ -282,11 +282,11 @@ const TokenCenter = () => {
 
       {/* History Tab */}
       {activeTab === 'history' && (
-        <div className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10">
+        <div className="p-6 bg-black rounded-xl border border-white/10">
           {history.length === 0 ? (
             <div className="text-center py-12">
               <History className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-              <p className="text-[#666666]">No transactions yet</p>
+              <p className="text-gray-600">No transactions yet</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -336,15 +336,15 @@ const TokenCenter = () => {
         <div className="space-y-6">
           {/* Usage trends (last 14 days) */}
           {(usage?.daily_trend?.length > 0) && (
-            <div className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10">
+            <div className="p-6 bg-black rounded-xl border border-white/10">
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-[#1A1A1A]" /> Usage trends
               </h3>
               <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={[...(usage.daily_trend || [])].reverse()} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                    <XAxis dataKey="date" tick={{ fill: '#9ca3af', fontSize: 11 }} tickFormatter={(v) => v.slice(5)} />
-                    <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} tickFormatter={(v) => (v >= 1000 ? `${(v/1000).toFixed(1)}k` : v)} />
+                    <XAxis dataKey="date" tick={{ fill: '#999999', fontSize: 11 }} tickFormatter={(v) => v.slice(5)} />
+                    <YAxis tick={{ fill: '#999999', fontSize: 11 }} tickFormatter={(v) => (v >= 1000 ? `${(v/1000).toFixed(1)}k` : v)} />
                     <Tooltip contentStyle={{ backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} formatter={(v) => [v?.toLocaleString(), 'Tokens']} labelFormatter={(l) => l} />
                     <Bar dataKey="tokens" fill="#1A1A1A" radius={[4, 4, 0, 0]} />
                   </BarChart>
@@ -353,7 +353,7 @@ const TokenCenter = () => {
             </div>
           )}
           <div className="grid lg:grid-cols-2 gap-6">
-          <div className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10">
+          <div className="p-6 bg-black rounded-xl border border-white/10">
             <h3 className="text-lg font-semibold mb-6">Usage by Agent</h3>
             {usageChartData.length > 0 ? (
               <div className="h-64">
@@ -386,7 +386,7 @@ const TokenCenter = () => {
             )}
           </div>
           
-          <div className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10">
+          <div className="p-6 bg-black rounded-xl border border-white/10">
             <h3 className="text-lg font-semibold mb-6">Top Consumers</h3>
             <div className="space-y-4">
               {usageChartData.slice(0, 5).map((item, i) => (
@@ -404,7 +404,7 @@ const TokenCenter = () => {
                       />
                     </div>
                   </div>
-                  <div className="text-right text-[#666666]">
+                  <div className="text-right text-gray-600">
                     {item.value.toLocaleString()}
                   </div>
                 </div>

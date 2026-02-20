@@ -95,7 +95,7 @@ export default function PromptLibrary() {
                   <button onClick={() => copyPrompt(t.prompt, t.id)} className="p-1.5 text-gray-400 hover:text-[#1A1A1A]">
                     {copiedId === t.id ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                   </button>
-                  <button onClick={() => goToPrompt(t.prompt)} className="flex items-center gap-1 text-sm text-#c0c0c0 hover:text-#d0d0d0">
+                  <button onClick={() => goToPrompt(t.prompt)} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-500">
                     <Plus className="w-4 h-4" /> Use
                   </button>
                 </div>
@@ -111,7 +111,7 @@ export default function PromptLibrary() {
                   <button onClick={() => copyPrompt(p.prompt, p.id)} className="p-1.5 text-gray-400 hover:text-[#1A1A1A]">
                     {copiedId === p.id ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                   </button>
-                  <button onClick={() => goToPrompt(p.prompt)} className="text-sm text-#c0c0c0 hover:text-#d0d0d0">Use</button>
+                  <button onClick={() => goToPrompt(p.prompt)} className="text-sm text-gray-500 hover:text-gray-500">Use</button>
                 </div>
               </div>
               <p className="text-sm text-gray-400 line-clamp-2">{p.prompt}</p>
@@ -121,7 +121,7 @@ export default function PromptLibrary() {
             <div key={i} className="p-4 rounded-xl border border-gray-800 bg-gray-900/50">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm text-gray-300 line-clamp-2 flex-1">{p.prompt}</p>
-                <button onClick={() => goToPrompt(p.prompt)} className="text-sm text-#c0c0c0 hover:text-#d0d0d0 shrink-0">Use</button>
+                <button onClick={() => goToPrompt(p.prompt)} className="text-sm text-gray-500 hover:text-gray-500 shrink-0">Use</button>
               </div>
             </div>
           )))}

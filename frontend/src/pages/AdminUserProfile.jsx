@@ -86,7 +86,7 @@ const AdminUserProfile = () => {
     return (
       <div className="p-8">
         <div className="rounded-lg border border-gray-500/30 bg-gray-500/10 p-4 text-gray-400">{error}</div>
-        <Link to="/app/admin/users" className="inline-flex items-center mt-4 text-#c0c0c0">
+        <Link to="/app/admin/users" className="inline-flex items-center mt-4 text-gray-500">
           <ArrowLeft className="w-4 h-4 mr-2" /> Back to users
         </Link>
       </div>
@@ -103,12 +103,12 @@ const AdminUserProfile = () => {
 
   return (
     <div className="space-y-8" data-testid="admin-user-profile">
-      <Link to="/app/admin/users" className="inline-flex items-center text-[#666666] hover:text-[#1A1A1A]">
+      <Link to="/app/admin/users" className="inline-flex items-center text-gray-600 hover:text-[#1A1A1A]">
         <ArrowLeft className="w-4 h-4 mr-2" /> Back to users
       </Link>
       <div>
         <h1 className="text-2xl font-bold">{profile.email}</h1>
-        <p className="text-[#666666]">ID: {profile.id}</p>
+        <p className="text-gray-600">ID: {profile.id}</p>
       </div>
       {message && (
         <div className={`p-4 rounded-lg ${message.includes('Granted') || message.includes('suspended') ? 'bg-gray-500/10 text-gray-400' : 'bg-gray-500/10 text-gray-400'}`}>
@@ -120,11 +120,11 @@ const AdminUserProfile = () => {
           <h2 className="font-semibold mb-4 flex items-center gap-2">
             <Coins className="w-5 h-5" /> Balance & plan
           </h2>
-          <p><span className="text-[#666666]">Credits:</span> {profile.credit_balance ?? '-'}</p>
-          <p><span className="text-[#666666]">Plan:</span> {profile.plan || 'free'}</p>
-          <p><span className="text-[#666666]">Created:</span> {profile.created_at ? new Date(profile.created_at).toLocaleString() : '-'}</p>
-          <p><span className="text-[#666666]">Last login:</span> {profile.last_login ? new Date(profile.last_login).toLocaleString() : '-'}</p>
-          <p><span className="text-[#666666]">Lifetime revenue:</span> ${profile.lifetime_revenue ?? 0}</p>
+          <p><span className="text-gray-600">Credits:</span> {profile.credit_balance ?? '-'}</p>
+          <p><span className="text-gray-600">Plan:</span> {profile.plan || 'free'}</p>
+          <p><span className="text-gray-600">Created:</span> {profile.created_at ? new Date(profile.created_at).toLocaleString() : '-'}</p>
+          <p><span className="text-gray-600">Last login:</span> {profile.last_login ? new Date(profile.last_login).toLocaleString() : '-'}</p>
+          <p><span className="text-gray-600">Lifetime revenue:</span> ${profile.lifetime_revenue ?? 0}</p>
           {profile.suspended && (
             <p className="text-gray-400 mt-2">Suspended: {profile.suspended_reason}</p>
           )}
@@ -133,8 +133,8 @@ const AdminUserProfile = () => {
           <h2 className="font-semibold mb-4 flex items-center gap-2">
             <FolderOpen className="w-5 h-5" /> Activity
           </h2>
-          <p><span className="text-[#666666]">Projects:</span> {profile.projects_count ?? 0}</p>
-          <p><span className="text-[#666666]">Referrals:</span> {profile.referral_count ?? 0}</p>
+          <p><span className="text-gray-600">Projects:</span> {profile.projects_count ?? 0}</p>
+          <p><span className="text-gray-600">Referrals:</span> {profile.referral_count ?? 0}</p>
         </div>
       </div>
       {profile.recent_ledger?.length > 0 && (

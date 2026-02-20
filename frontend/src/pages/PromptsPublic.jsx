@@ -89,7 +89,7 @@ export default function PromptsPublic() {
                   </button>
                   <button
                     onClick={() => tryPrompt(t.prompt)}
-                    className="flex items-center gap-1 text-sm text-#c0c0c0 hover:text-#d0d0d0"
+                    className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-500"
                   >
                     {user ? 'Use in workspace' : 'Get started to use'}
                     <ArrowRight className="w-4 h-4" />

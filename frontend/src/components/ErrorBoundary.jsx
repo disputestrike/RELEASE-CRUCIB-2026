@@ -84,7 +84,7 @@ class ErrorBoundary extends React.Component {
       const isDevelopment = process.env.NODE_ENV === 'development';
 
       return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-#f5f5f5 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
           <div className="max-w-md w-full">
             {/* Error Icon */}
             <div className="flex justify-center mb-6">
@@ -123,8 +123,8 @@ class ErrorBoundary extends React.Component {
 
               {/* Error Count Warning */}
               {this.state.errorCount > 3 && (
-                <div className="bg-#f5f5f5 border border-#e0e0e0 rounded-lg p-3 mb-4">
-                  <p className="text-xs text-#333333">
+                <div className="bg-gray-100 border border-gray-200 rounded-lg p-3 mb-4">
+                  <p className="text-xs text-gray-700">
                     Multiple errors detected. Please try reloading the page.
                   </p>
                 </div>

@@ -92,7 +92,7 @@ export default function GenerateContent() {
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder={activeTab === "doc" ? "e.g. Product requirements doc for a task management app" : activeTab === "slides" ? "e.g. 5-slide pitch deck for a fintech startup" : "e.g. Quarterly sales data for 4 regions, 3 months"}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-#f5f5f50 focus:border-gray-300 min-h-[80px]"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-300 min-h-[80px]"
             rows={3}
           />
         </div>

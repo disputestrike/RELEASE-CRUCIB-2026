@@ -211,7 +211,7 @@ const Settings = () => {
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition ${
                 activeTab === tab.id
                   ? 'bg-gray-700/20 text-[#1A1A1A] border border-gray-700/30'
-                  : 'text-[#666666] hover:bg-white/5 hover:text-[#1A1A1A] border border-transparent'
+                  : 'text-gray-600 hover:bg-white/5 hover:text-[#1A1A1A] border border-transparent'
               }`}
               data-testid={`settings-tab-${tab.id}`}
             >
@@ -230,7 +230,7 @@ const Settings = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10"
+          className="p-6 bg-black rounded-xl border border-white/10"
         >
           <h3 className="text-lg font-semibold mb-6">General</h3>
           <div className="space-y-8">
@@ -260,7 +260,7 @@ const Settings = () => {
                     className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition ${
                       theme === opt.id
                         ? 'border-gray-700 bg-gray-700/10 text-[#1A1A1A]'
-                        : 'border-white/10 bg-white/5 text-[#666666] hover:border-white/20'
+                        : 'border-white/10 bg-white/5 text-gray-600 hover:border-white/20'
                     }`}
                   >
                     {opt.preview}
@@ -299,13 +299,13 @@ const Settings = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10"
+          className="p-6 bg-black rounded-xl border border-white/10"
         >
           <h3 className="text-lg font-semibold mb-6">Usage</h3>
           <div className="space-y-6">
             <div className="p-4 bg-white/5 rounded-lg">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-[#666666]">Token balance</span>
+                <span className="text-sm text-gray-600">Token balance</span>
                 <span className="font-mono font-semibold" data-testid="settings-token-balance">
                   {(user?.token_balance ?? 0).toLocaleString()}
                 </span>
@@ -335,7 +335,7 @@ const Settings = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10"
+          className="p-6 bg-black rounded-xl border border-white/10"
         >
           <h3 className="text-lg font-semibold mb-6">Get help</h3>
           <div className="space-y-4">
@@ -372,7 +372,7 @@ const Settings = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10"
+          className="p-6 bg-black rounded-xl border border-white/10"
         >
           <h3 className="text-lg font-semibold mb-2">Workspace environment (API keys)</h3>
           <p className="text-sm text-gray-500 mb-4">Keys are stored per-user and used for AI builds. Never commit keys to git.</p>
@@ -457,7 +457,7 @@ const Settings = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10"
+          className="p-6 bg-black rounded-xl border border-white/10"
         >
           <h3 className="text-lg font-semibold mb-2">One-click deploy</h3>
           <p className="text-sm text-gray-500 mb-4">Add tokens to deploy directly to Vercel or Netlify without downloading a ZIP. Get tokens from Vercel (Account → Settings → Tokens) and Netlify (User settings → Applications → Personal access tokens).</p>
@@ -501,7 +501,7 @@ const Settings = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10"
+          className="p-6 bg-black rounded-xl border border-white/10"
         >
           <h3 className="text-lg font-semibold mb-6">Profile Information</h3>
           
@@ -551,7 +551,7 @@ const Settings = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium">Current Plan</p>
-                  <p className="text-sm text-[#666666] capitalize">{user?.plan || 'Free'}</p>
+                  <p className="text-sm text-gray-600 capitalize">{user?.plan || 'Free'}</p>
                 </div>
                 <a href="/app/tokens" className="text-[#1A1A1A] hover:underline text-sm">
                   Upgrade Plan →
@@ -567,7 +567,7 @@ const Settings = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10"
+          className="p-6 bg-black rounded-xl border border-white/10"
         >
           <h3 className="text-lg font-semibold mb-6">Notification Preferences</h3>
           
@@ -605,14 +605,14 @@ const Settings = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10"
+          className="p-6 bg-black rounded-xl border border-white/10"
         >
           <h3 className="text-lg font-semibold mb-6">Security Settings</h3>
 
           {/* Security & accessibility (trust page + Workspace scan/A11y) */}
           <div className="mb-8 p-4 rounded-lg border border-white/10 bg-white/5">
             <h4 className="font-medium text-[#1A1A1A] mb-2">Security &amp; accessibility</h4>
-            <p className="text-sm text-[#666666] mb-2">Run <strong className="text-gray-300">Security scan</strong> and <strong className="text-gray-300">Accessibility check</strong> in the Workspace on your code (built here or imported). We return a short checklist and a11y report.</p>
+            <p className="text-sm text-gray-600 mb-2">Run <strong className="text-gray-300">Security scan</strong> and <strong className="text-gray-300">Accessibility check</strong> in the Workspace on your code (built here or imported). We return a short checklist and a11y report.</p>
             <Link to="/security" className="text-sm text-[#1A1A1A] hover:underline inline-flex items-center gap-1">
               How we keep the platform and your code safe <ExternalLink className="w-3 h-3" />
             </Link>
@@ -633,7 +633,7 @@ const Settings = () => {
             {mfaStatus && !mfaSetupStep ? (
               <div className="p-4 bg-gray-500/10 border border-gray-500/30 rounded-lg">
                 <p className="text-gray-400 font-medium mb-3">2FA is enabled</p>
-                <p className="text-sm text-[#666666] mb-4">Your account is protected with two-factor authentication.</p>
+                <p className="text-sm text-gray-600 mb-4">Your account is protected with two-factor authentication.</p>
                 <button
                   type="button"
                   onClick={() => setMfaSetupStep('disable')}
@@ -644,7 +644,7 @@ const Settings = () => {
               </div>
             ) : mfaSetupStep === 'disable' ? (
               <div className="p-4 bg-white/5 rounded-lg space-y-3">
-                <p className="text-sm text-[#666666]">Enter your password to disable 2FA.</p>
+                <p className="text-sm text-gray-600">Enter your password to disable 2FA.</p>
                 <input
                   type="password"
                   value={mfaDisablePassword}
@@ -670,7 +670,7 @@ const Settings = () => {
               </div>
             ) : !mfaSetupStep ? (
               <div className="p-4 bg-white/5 rounded-lg">
-                <p className="text-sm text-[#666666] mb-4">Add an extra layer of security with an authenticator app (Google Authenticator, Authy, etc.).</p>
+                <p className="text-sm text-gray-600 mb-4">Add an extra layer of security with an authenticator app (Google Authenticator, Authy, etc.).</p>
                 <button
                   type="button"
                   onClick={handleMfaSetupStart}
@@ -682,7 +682,7 @@ const Settings = () => {
               </div>
             ) : mfaSetupStep === 'qr' ? (
               <div className="p-4 bg-white/5 rounded-lg space-y-4">
-                <p className="text-sm text-[#666666]">Scan with your authenticator app, then enter the 6-digit code below.</p>
+                <p className="text-sm text-gray-600">Scan with your authenticator app, then enter the 6-digit code below.</p>
                 {mfaQrCode && <img src={mfaQrCode} alt="QR Code" className="w-48 h-48 border border-white/10 rounded p-2 bg-white" />}
                 {mfaSecret && (
                   <div className="flex items-center gap-2 p-2 bg-gray-900/30 rounded">
@@ -722,7 +722,7 @@ const Settings = () => {
                   {mfaBackupCodes.map((c, i) => (
                     <div key={i} className="flex items-center gap-1 px-2 py-1 bg-gray-900/30 rounded font-mono text-sm">
                       <span>{c}</span>
-                      <button type="button" onClick={() => navigator.clipboard.writeText(c)}><Copy className="w-3 h-3 text-[#666666]" /></button>
+                      <button type="button" onClick={() => navigator.clipboard.writeText(c)}><Copy className="w-3 h-3 text-gray-600" /></button>
                     </div>
                   ))}
                 </div>
@@ -768,7 +768,7 @@ const Settings = () => {
             </div>
             <div className="p-4 bg-gray-500/10 border border-gray-500/30 rounded-lg">
               <h4 className="font-medium text-gray-400 mb-2">Danger Zone</h4>
-              <p className="text-sm text-[#666666] mb-4">Once you delete your account, there is no going back.</p>
+              <p className="text-sm text-gray-600 mb-4">Once you delete your account, there is no going back.</p>
               <button className="px-4 py-2 bg-gray-500/20 hover:bg-gray-500/30 text-gray-400 rounded-lg transition text-sm">
                 Delete Account
               </button>
@@ -782,7 +782,7 @@ const Settings = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10"
+          className="p-6 bg-black rounded-xl border border-white/10"
         >
           <h3 className="text-lg font-semibold mb-6">Billing & Usage</h3>
           
@@ -790,7 +790,7 @@ const Settings = () => {
             {/* Usage section (merged from usage tab) */}
             <div className="p-4 bg-white/5 rounded-lg">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-[#666666]">Token balance</span>
+                <span className="text-sm text-gray-600">Token balance</span>
                 <span className="font-mono font-semibold" data-testid="settings-token-balance">
                   {(user?.token_balance ?? 0).toLocaleString()}
                 </span>
@@ -831,8 +831,8 @@ const Settings = () => {
               <h4 className="font-medium mb-4">Payment Methods</h4>
               <div className="p-4 bg-white/5 rounded-lg flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <CreditCard className="w-6 h-6 text-[#666666]" />
-                  <span className="text-[#666666]">No payment method added</span>
+                  <CreditCard className="w-6 h-6 text-gray-600" />
+                  <span className="text-gray-600">No payment method added</span>
                 </div>
                 <button className="text-[#1A1A1A] hover:underline text-sm">
                   Add Method
@@ -848,7 +848,7 @@ const Settings = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10"
+          className="p-6 bg-black rounded-xl border border-white/10"
         >
           <h3 className="text-lg font-semibold mb-6">Data & Privacy</h3>
           <div className="space-y-6">

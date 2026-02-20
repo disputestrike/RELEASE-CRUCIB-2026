@@ -109,7 +109,7 @@ root.render(<App />);`,
 // File tree component
 const FileTree = ({ files, activeFile, onSelectFile, onAddFile }) => {
   const getFileIcon = (filename) => {
-    if (filename.endsWith('.js') || filename.endsWith('.jsx')) return <FileCode className="w-4 h-4 text-#c0c0c0" />;
+    if (filename.endsWith('.js') || filename.endsWith('.jsx')) return <FileCode className="w-4 h-4 text-gray-500" />;
     if (filename.endsWith('.css')) return <FileText className="w-4 h-4 text-gray-800" />;
     if (filename.endsWith('.html')) return <FileText className="w-4 h-4 text-gray-800" />;
     return <File className="w-4 h-4 text-gray-500" />;
@@ -174,7 +174,7 @@ const ConsolePanel = ({ logs, placeholder = "Terminal output will appear here. R
               'text-gray-600'
             }`}
           >
-            <span className="text-[#666666]">[{log.time}]</span>
+            <span className="text-gray-600">[{log.time}]</span>
             <span className="text-gray-500">{log.agent || 'system'}:</span>
             <span className="flex-1">{log.message}</span>
           </div>
@@ -1365,7 +1365,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
   };
 
   return (
-    <div className="h-full min-h-0 flex flex-col overflow-hidden bg-[#FAF9F7] text-gray-900 font-sans text-[13px] antialiased">
+    <div className="h-full min-h-0 flex flex-col overflow-hidden bg-[#F5F5F4] text-gray-900 font-sans text-[13px] antialiased">
       {/* Manus Computer Widget — wired to real build when projectId in URL (from AgentMonitor Open in Workspace) */}
       <ManusComputer 
         currentStep={projectIdFromUrl ? (projectBuildProgress.phase + 1) : (versions.length > 0 ? Math.min(versions.length, 7) : 0)}
@@ -1441,7 +1441,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
       {menuAnchor && <div className="fixed inset-0 z-40" onClick={() => setMenuAnchor(null)} aria-hidden />}
       {/* Menu bar – File, Edit, Selection, View, Go, Run, Terminal, Help (Developer mode only) */}
       {devMode && (
-      <div className="h-9 border-b border-stone-200 flex items-center px-2 gap-0 flex-shrink-0 text-[13px] relative z-50 bg-[#FAF9F7]">
+      <div className="h-9 border-b border-stone-200 flex items-center px-2 gap-0 flex-shrink-0 text-[13px] relative z-50 bg-[#F5F5F4]">
         {['File', 'Edit', 'Selection', 'View', 'Go', 'Run', 'Terminal', 'Help'].map((name) => (
           <div key={name} className="relative">
             <button
@@ -1523,7 +1523,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
       )}
 
       {/* Header – branding + Settings */}
-      <header className="h-11 border-b border-stone-200 flex items-center justify-between px-3 flex-shrink-0 bg-[#FAF9F7]">
+      <header className="h-11 border-b border-stone-200 flex items-center justify-between px-3 flex-shrink-0 bg-[#F5F5F4]">
         <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={() => navigate('/')}
@@ -1581,7 +1581,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
       <div className="flex-1 flex overflow-hidden">
         {/* Left: Agents panel (optional) */}
         {agentsPanelOpen && (
-          <div className="w-64 border-r border-stone-200 flex-shrink-0 overflow-y-auto bg-[#FAF9F7]">
+          <div className="w-64 border-r border-stone-200 flex-shrink-0 overflow-y-auto bg-[#F5F5F4]">
             <div className="p-3 border-b border-gray-200 flex items-center justify-between">
               <span className="text-xs font-medium text-gray-600">Agents</span>
               <button onClick={() => setAgentsPanelOpen(false)} className="text-gray-500 hover:text-gray-900">×</button>
@@ -1608,7 +1608,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
           <>
             {/* Left Sidebar – Code / Files */}
             {leftSidebarOpen && (
-              <div className="w-56 border-r border-stone-200 flex-shrink-0 overflow-y-auto flex flex-col bg-[#FAF9F7]">
+              <div className="w-56 border-r border-stone-200 flex-shrink-0 overflow-y-auto flex flex-col bg-[#F5F5F4]">
                 <div className="flex items-center justify-between px-2 py-1 border-b border-gray-200">
                   <span className="text-xs text-gray-500">Files</span>
                   <div className="flex items-center gap-1">
@@ -1631,7 +1631,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
             {/* Code Editor */}
             <div className="flex-1 flex flex-col min-w-0 bg-white">
               {/* Editor Tabs */}
-              <div className="h-10 border-b border-stone-200 flex items-center px-2 gap-1 flex-shrink-0 bg-[#FAF9F7]">
+              <div className="h-10 border-b border-stone-200 flex items-center px-2 gap-1 flex-shrink-0 bg-[#F5F5F4]">
                 {Object.keys(files).map(filename => (
                   <button
                     key={filename}
@@ -1740,7 +1740,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
         {rightSidebarOpen && (
         <div className="w-[42%] min-w-[320px] max-w-[560px] border-l border-stone-200 flex flex-col flex-shrink-0 bg-white" style={{ transition: 'width 0.3s ease' }}>
           {/* Manus-Style Panel Header — Section 06 */}
-          <div className="h-10 border-b border-stone-200 flex items-center px-2 gap-1 flex-shrink-0 bg-[#FAF9F7]">
+          <div className="h-10 border-b border-stone-200 flex items-center px-2 gap-1 flex-shrink-0 bg-[#F5F5F4]">
             {/* Tab selectors — PHASE 6: Simple mode shows only Preview */}
             <div className="flex items-center gap-1">
               {(devMode
@@ -1837,7 +1837,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
               <div className={mobileView ? 'w-[375px] h-full border-l border-r border-gray-200' : 'w-full h-full'}>
               {/* PHASE 5: Explicit loading state — no ambiguous dark screen */}
               {isBuilding && (
-                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#FAF9F7] text-gray-500">
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#F5F5F4] text-gray-500">
                   <div className="w-8 h-8 border-2 border-stone-300 rounded-full animate-spin" style={{ borderTopColor: 'var(--accent)' }} />
                   <span className="text-sm">Building…</span>
                 </div>
@@ -1996,7 +1996,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
 
       {/* Status bar — PHASE 6: Dev only (no token counter / errors in Simple) */}
       {devMode && (
-      <div className="h-6 border-t border-stone-200 flex items-center justify-between px-3 text-xs text-stone-600 flex-shrink-0 bg-[#FAF9F7]">
+      <div className="h-6 border-t border-stone-200 flex items-center justify-between px-3 text-xs text-stone-600 flex-shrink-0 bg-[#F5F5F4]">
         <div className="flex items-center gap-4">
           <span>{versions.length > 0 ? `Project · v${versions.length}` : 'New Project'}</span>
           <span>{currentVersion ? 'main' : '—'}</span>
@@ -2025,7 +2025,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
       )}
 
       {/* Bottom Chat Panel – Agent dropdown + input + Send */}
-      <div className="border-t border-stone-200 bg-[#FAF9F7] p-3 flex-shrink-0 relative z-[100] isolate">
+      <div className="border-t border-stone-200 bg-[#F5F5F4] p-3 flex-shrink-0 relative z-[100] isolate">
         {isBuilding && (
           <div className="mb-3">
             {currentPhase && (
@@ -2175,7 +2175,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
                 disabled={isTranscribing}
                 data-testid="voice-input-button"
                 className={`p-2 rounded-md transition ${
-                  isTranscribing ? 'text-[#666666] cursor-wait' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-200'
+                  isTranscribing ? 'text-gray-600 cursor-wait' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-200'
                 }`}
                 title={isTranscribing ? 'Transcribing...' : 'Voice input'}
               >
@@ -2219,7 +2219,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
             data-testid="submit-button"
             className="relative z-10 px-4 py-2.5 rounded-lg text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition flex items-center gap-2 shrink-0"
             style={{ background: '#1A1A1A', color: '#FFFFFF' }}
-            onMouseEnter={e => { if (!e.target.disabled) e.target.style.background = '#E05A25'; }}
+            onMouseEnter={e => { if (!e.target.disabled) e.target.style.background = '#1A1A1A'; }}
             onMouseLeave={e => { if (!e.target.disabled) e.target.style.background = '#1A1A1A'; }}
             title={versions.length > 0 ? 'Send update' : 'Send & build'}
           >
@@ -2248,7 +2248,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
               <a href="https://app.netlify.com/drop" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium text-white" style={{ background: '#1A1A1A' }}>
                 Deploy with Netlify
               </a>
-              <a href="https://railway.app/new" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-[#0B0D0E] text-white text-sm font-medium hover:bg-[#1a1d1f] border border-gray-600">
+              <a href="https://railway.app/new" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-[#1A1A1A] text-white text-sm font-medium hover:bg-[#1A1A1A] border border-gray-600">
                 Deploy with Railway
               </a>
             </div>

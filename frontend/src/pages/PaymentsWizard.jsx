@@ -65,7 +65,7 @@ export default function PaymentsWizard() {
                   </div>
                 </div>
               </div>
-              <button onClick={() => setStep(2)} className="px-4 py-2 rounded-lg bg-gray-200/20 text-#c0c0c0 hover:bg-gray-200/30">Next</button>
+              <button onClick={() => setStep(2)} className="px-4 py-2 rounded-lg bg-gray-200/20 text-gray-500 hover:bg-gray-200/30">Next</button>
             </>
           )}
           {step === 2 && (
@@ -99,7 +99,7 @@ export default function PaymentsWizard() {
                   </div>
                 </div>
               </div>
-              <button onClick={() => navigate('/workspace')} className="px-4 py-2 rounded-lg bg-gray-200/20 text-#c0c0c0 hover:bg-gray-200/30">Open Workspace</button>
+              <button onClick={() => navigate('/workspace')} className="px-4 py-2 rounded-lg bg-gray-200/20 text-gray-500 hover:bg-gray-200/30">Open Workspace</button>
             </>
           )}
         </div>

@@ -100,9 +100,9 @@ Output ONLY valid JSON in this exact format:
       "primary": "#1A1A1A",
       "secondary": "#808080",
       "accent": "#999999",
-      "neutral": {{"50": "#F9FAFB", "100": "#F3F4F6", "900": "#111827"}},
+      "neutral": {{"50": "#F9FAFB", "100": "#F3F4F6", "900": "#1A1A1A"}},
       "success": "#808080",
-      "error": "#EF4444",
+      "error": "#1A1A1A",
       "warning": "#999999"
     }},
     "typography": {{

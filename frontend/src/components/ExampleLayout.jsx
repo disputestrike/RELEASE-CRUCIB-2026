@@ -151,7 +151,7 @@ const exampleStyles = `
 .main-header p {
   margin: 0;
   font-size: 16px;
-  color: #666666;
+  color: #808080;
 }
 
 .main-body {
@@ -177,7 +177,7 @@ const exampleStyles = `
 .content-card p {
   margin: 0 0 12px 0;
   font-size: 14px;
-  color: #666666;
+  color: #808080;
 }
 
 .content-card ul {
@@ -189,13 +189,13 @@ const exampleStyles = `
 .content-card li {
   margin: 4px 0;
   font-size: 14px;
-  color: #666666;
+  color: #808080;
 }
 
 .preview-example {
   padding: 24px;
   text-align: center;
-  color: #888888;
+  color: #999999;
 }
 
 .preview-example h3 {

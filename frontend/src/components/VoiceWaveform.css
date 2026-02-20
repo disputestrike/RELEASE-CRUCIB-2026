@@ -48,13 +48,13 @@
 }
 
 .voice-btn-stop {
-  background: #F3F4F6;
-  color: #666666;
+  background: #F5F5F4;
+  color: #808080;
 }
 
 .voice-btn-stop:hover {
   background: #E5E7EB;
-  color: #333333;
+  color: #1A1A1A;
 }
 
 .voice-btn-confirm {
@@ -63,5 +63,5 @@
 }
 
 .voice-btn-confirm:hover {
-  background: #333333;
+  background: #1A1A1A;
 }

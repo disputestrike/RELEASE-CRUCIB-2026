@@ -179,21 +179,21 @@ export const VibeCodingInput = ({ onSubmit, isLoading = false, API }) => {
           >
             <div className="flex items-center gap-2 mb-3">
               <Palette size={16} className="text-[#1A1A1A]" />
-              <span className="font-medium text-#d0d0d0">Vibe Analysis</span>
+              <span className="font-medium text-gray-500">Vibe Analysis</span>
             </div>
 
             <div className="space-y-2 text-sm text-gray-300">
               <div>
                 <span className="text-gray-400">Style:</span>
-                <span className="ml-2 text-#d0d0d0 font-medium">{vibeAnalysis.style}</span>
+                <span className="ml-2 text-gray-500 font-medium">{vibeAnalysis.style}</span>
               </div>
               <div>
                 <span className="text-gray-400">Complexity:</span>
-                <span className="ml-2 text-#d0d0d0 font-medium">{vibeAnalysis.complexity}</span>
+                <span className="ml-2 text-gray-500 font-medium">{vibeAnalysis.complexity}</span>
               </div>
               <div>
                 <span className="text-gray-400">Tone:</span>
-                <span className="ml-2 text-#d0d0d0 font-medium">{vibeAnalysis.tone}</span>
+                <span className="ml-2 text-gray-500 font-medium">{vibeAnalysis.tone}</span>
               </div>
             </div>
           </motion.div>

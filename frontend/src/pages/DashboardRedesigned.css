@@ -38,7 +38,7 @@
 .dashboard-header p {
   margin: 0;
   font-size: 16px;
-  color: #666666;
+  color: #808080;
   font-family: 'Inter', sans-serif;
 }
 
@@ -56,12 +56,12 @@
   cursor: pointer;
   transition: all 200ms ease-in-out;
   flex-shrink: 0;
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .dashboard-new-project-btn:hover {
-  background: #333333;
-  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+  background: #1A1A1A;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
   transform: translateY(-1px);
 }
 
@@ -107,22 +107,22 @@
 }
 
 .stat-icon.projects {
-  background: #FFF3ED;
+  background: #F5F5F4;
   color: #1A1A1A;
 }
 
 .stat-icon.agents {
-  background: #FFF7F2;
-  color: #4A4A4A;
+  background: #F5F5F4;
+  color: #4B5563;
 }
 
 .stat-icon.deployments {
-  background: #FEF3C7;
+  background: #F5F5F4;
   color: #808080;
 }
 
 .stat-icon.uptime {
-  background: #DCFCE7;
+  background: #F5F5F4;
   color: #808080;
 }
 
@@ -136,7 +136,7 @@
   margin: 0;
   font-size: 12px;
   font-weight: 600;
-  color: #888888;
+  color: #999999;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -239,7 +239,7 @@
 }
 
 .view-all-link:hover {
-  background: #FFF3ED;
+  background: #F5F5F4;
 }
 
 /* ============================================
@@ -302,24 +302,24 @@
 }
 
 .status-badge.deployed {
-  background: #DCFCE7;
+  background: #F5F5F4;
   color: #808080;
 }
 
 .status-badge.building {
-  background: #FEF3C7;
+  background: #F5F5F4;
   color: #808080;
 }
 
 .status-badge.draft {
   background: #F3F1ED;
-  color: #888888;
+  color: #999999;
 }
 
 .project-description {
   margin: 0;
   font-size: 13px;
-  color: #666666;
+  color: #808080;
   line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -340,7 +340,7 @@
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #888888;
+  color: #999999;
 }
 
 .meta-item svg {
@@ -362,14 +362,14 @@
   border-radius: 6px;
   background: #F3F1ED;
   border: none;
-  color: #666666;
+  color: #808080;
   cursor: pointer;
   transition: all 200ms ease-in-out;
   flex-shrink: 0;
 }
 
 .action-btn:hover {
-  background: #E5E3E0;
+  background: #F5F5F4;
   color: #1A1A1A;
 }
 
@@ -389,7 +389,7 @@
   gap: 16px;
   padding: 60px 24px;
   text-align: center;
-  color: #888888;
+  color: #999999;
 }
 
 .empty-state svg {
@@ -407,7 +407,7 @@
 .empty-state p {
   margin: 0;
   font-size: 14px;
-  color: #666666;
+  color: #808080;
 }
 
 .empty-state-btn {
@@ -424,7 +424,7 @@
 }
 
 .empty-state-btn:hover {
-  background: #333333;
+  background: #1A1A1A;
   transform: translateY(-1px);
 }
 
@@ -438,7 +438,7 @@
   justify-content: center;
   padding: 60px 24px;
   font-size: 14px;
-  color: #888888;
+  color: #999999;
 }
 
 /* ============================================
@@ -465,7 +465,7 @@
 }
 
 .feedback-toast.error {
-  border-left: 3px solid #EF4444;
+  border-left: 3px solid #1A1A1A;
 }
 
 /* ============================================
@@ -479,7 +479,7 @@
   justify-content: center;
   gap: 12px;
   height: 100%;
-  color: #888888;
+  color: #999999;
   text-align: center;
 }
 
@@ -497,7 +497,7 @@
 .preview-placeholder p {
   margin: 0;
   font-size: 13px;
-  color: #666666;
+  color: #808080;
 }
 
 /* ============================================

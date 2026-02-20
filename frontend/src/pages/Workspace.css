@@ -12,27 +12,27 @@
   font-family: 'Fira Code', monospace;
   cursor: pointer;
   transition: all 0.15s ease;
-  border: 1px solid #E5E5E5;
+  border: 1px solid #D1D5DB;
   background: #FFFFFF;
-  color: #666666;
+  color: #808080;
 }
 
 .dev-toggle-btn:hover {
   border-color: #1A1A1A;
   color: #1A1A1A;
-  background: rgba(255, 107, 53, 0.05);
+  background: rgba(0, 0, 0, 0.02);
 }
 
 .dev-toggle-btn.active {
   border-color: #1A1A1A;
   color: #1A1A1A;
-  background: rgba(255, 107, 53, 0.1);
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .dev-toggle-btn.active:hover {
-  background: rgba(255, 107, 53, 0.15);
-  border-color: #333333;
-  color: #333333;
+  background: rgba(0, 0, 0, 0.08);
+  border-color: #1A1A1A;
+  color: #1A1A1A;
 }
 
 /* Simple mode chat area */

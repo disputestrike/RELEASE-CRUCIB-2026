@@ -87,14 +87,14 @@ const ExportCenter = () => {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold mb-2">Export Center</h1>
-        <p className="text-[#666666]">Generate and download your project documentation in multiple formats.</p>
+        <p className="text-gray-600">Generate and download your project documentation in multiple formats.</p>
       </div>
 
       {/* Deploy: one-click deploy ZIP, Vercel, Netlify */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10"
+        className="p-6 bg-black rounded-xl border border-white/10"
       >
         <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
           <Rocket className="w-5 h-5 text-gray-500" />
@@ -122,7 +122,7 @@ const ExportCenter = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10"
+        className="p-6 bg-black rounded-xl border border-white/10"
       >
         <h3 className="text-lg font-semibold mb-6">Create New Export</h3>
         <div className="grid md:grid-cols-3 gap-4">
@@ -192,7 +192,7 @@ const ExportCenter = () => {
             className={`p-4 rounded-xl border transition-all cursor-pointer ${
               selectedFormat === item.format
                 ? `bg-${getFormatColor(item.format)}-500/10 border-${getFormatColor(item.format)}-500/50`
-                : 'bg-[#0a0a0a] border-white/10 hover:border-white/20'
+                : 'bg-black border-white/10 hover:border-white/20'
             }`}
             onClick={() => setSelectedFormat(item.format)}
           >
@@ -204,13 +204,13 @@ const ExportCenter = () => {
       </div>
 
       {/* Exports List */}
-      <div className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10">
+      <div className="p-6 bg-black rounded-xl border border-white/10">
         <h3 className="text-lg font-semibold mb-6">Recent Exports</h3>
         
         {exports.length === 0 ? (
           <div className="text-center py-12">
             <Download className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-            <p className="text-[#666666]">No exports yet. Create your first export above.</p>
+            <p className="text-gray-600">No exports yet. Create your first export above.</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -240,8 +240,8 @@ const ExportCenter = () => {
                   <div className="flex items-center gap-3">
                     <span className={`px-2 py-1 text-xs rounded-full ${
                       exp.status === 'completed' ? 'bg-gray-500/20 text-gray-400' :
-                      exp.status === 'processing' ? 'bg-gray-200/20 text-#c0c0c0' :
-                      'bg-gray-500/20 text-[#666666]'
+                      exp.status === 'processing' ? 'bg-gray-200/20 text-gray-500' :
+                      'bg-gray-500/20 text-gray-600'
                     }`}>
                       {exp.status}
                     </span>

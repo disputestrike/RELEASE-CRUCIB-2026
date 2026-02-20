@@ -38,7 +38,7 @@ export default function ExamplesGallery() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FAFAF8] text-[#1A1A1A] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-#c0c0c0" />
+        <Loader2 className="w-8 h-8 animate-spin text-gray-500" />
       </div>
     );
   }
@@ -58,7 +58,7 @@ export default function ExamplesGallery() {
             >
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-2 rounded-lg bg-gray-800">
-                  <FileCode className="w-5 h-5 text-#c0c0c0" />
+                  <FileCode className="w-5 h-5 text-gray-500" />
                 </div>
                 <div>
                   <h2 className="font-semibold">{ex.name}</h2>
@@ -69,7 +69,7 @@ export default function ExamplesGallery() {
               <button
                 onClick={(e) => { e.stopPropagation(); forkExample(ex.name); }}
                 disabled={forking !== null}
-                className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-gray-200/20 text-#c0c0c0 hover:bg-gray-200/30 transition disabled:opacity-50"
+                className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-gray-200/20 text-gray-500 hover:bg-gray-200/30 transition disabled:opacity-50"
               >
                 {forking === ex.name ? <Loader2 className="w-4 h-4 animate-spin" /> : <GitFork className="w-4 h-4" />}
                 Fork & open in workspace

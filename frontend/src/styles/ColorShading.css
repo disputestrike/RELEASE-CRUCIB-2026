@@ -19,10 +19,10 @@
   --manus-bg-medium: #F3F1ED;
   
   /* Medium-Dark - For input fields and secondary surfaces */
-  --manus-bg-medium-dark: #EBE8E2;
+  --manus-bg-medium-dark: #F5F5F4;
   
   /* Dark - For borders and subtle dividers */
-  --manus-bg-dark: #E0DCD5;
+  --manus-bg-dark: #F5F5F4;
   
   /* Pure White - For elevated cards and modals */
   --manus-white: #FFFFFF;
@@ -35,13 +35,13 @@
   --manus-text-primary: #1A1A1A;
   
   /* Secondary text - Slightly lighter */
-  --manus-text-secondary: #3D3D3D;
+  --manus-text-secondary: #1A1A1A;
   
   /* Muted text - For less important content */
-  --manus-text-muted: #666666;
+  --manus-text-muted: #808080;
   
   /* Light text - For disabled or placeholder text */
-  --manus-text-light: #888888;
+  --manus-text-light: #999999;
   
   /* Very light text - For subtle hints */
   --manus-text-very-light: #AAAAAA;
@@ -62,19 +62,19 @@
   
   /* Success - Green */
   --manus-success: #1A1A1A;
-  --manus-success-light: #DCFCE7;
+  --manus-success-light: #F5F5F4;
   
   /* Warning - Gray */
   --manus-warning: #808080;
-  --manus-warning-light: #e0e0e0;
+  --manus-warning-light: #F5F5F4;
   
   /* Error - Red */
   --manus-error: #1A1A1A;
-  --manus-error-light: #FEE2E2;
+  --manus-error-light: #F5F5F4;
   
   /* Info - Blue */
-  --manus-info: #0284C7;
-  --manus-info-light: #E0F2FE;
+  --manus-info: #808080;
+  --manus-info-light: #F5F5F4;
   
   /* ============================================
      BORDER & DIVIDER COLORS
@@ -341,10 +341,10 @@
   /* If dark mode is preferred, provide appropriate colors */
   :root {
     --manus-bg-light: #1A1A1A;
-    --manus-bg-light-medium: #242424;
-    --manus-bg-medium: #2D2D2D;
+    --manus-bg-light-medium: #1A1A1A;
+    --manus-bg-medium: #1A1A1A;
     --manus-text-primary: #FAFAF8;
-    --manus-text-secondary: #E0E0E0;
+    --manus-text-secondary: #D1D5DB;
     --manus-text-muted: #999999;
     --manus-border-light: rgba(255, 255, 255, 0.1);
   }

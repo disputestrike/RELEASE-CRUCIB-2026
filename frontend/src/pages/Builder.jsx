@@ -165,7 +165,7 @@ const Builder = () => {
 /* Custom styles for ${plan.appName} */
 :root {
   --primary: #1A1A1A;
-  --secondary: #8b5cf6;
+  --secondary: #1A1A1A;
 }
 
 body {
@@ -350,7 +350,7 @@ root.render(
         <button
           onClick={() => setSelectedFile(item.path)}
           className={`w-full flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-gray-100 rounded transition ${
-            selectedFile === item.path ? 'bg-#f5f5f5 text-[#1A1A1A]' : 'text-gray-700'
+            selectedFile === item.path ? 'bg-gray-100 text-[#1A1A1A]' : 'text-gray-700'
           }`}
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
         >
@@ -425,8 +425,8 @@ root.render(
                 key={agent.id}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm whitespace-nowrap ${
                   status === 'complete' ? 'bg-gray-100 text-gray-700' :
-                  status === 'running' ? 'bg-#eeeeee text-#000000 animate-pulse' :
-                  'bg-gray-100 text-[#666666]'
+                  status === 'running' ? 'bg-gray-100 text-#000000 animate-pulse' :
+                  'bg-gray-100 text-gray-600'
                 }`}
               >
                 <span>{agent.icon}</span>
@@ -447,7 +447,7 @@ root.render(
             /* Initial Prompt Screen */
             <div className="flex-1 flex items-center justify-center p-8">
               <div className="max-w-2xl w-full text-center">
-                <div className="w-16 h-16 bg-#eeeeee rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
                   <Sparkles className="w-8 h-8 text-[#1A1A1A]" />
                 </div>
                 <h1 className="text-3xl font-bold mb-4">What do you want to build?</h1>
@@ -459,7 +459,7 @@ root.render(
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     placeholder="e.g., Build a task management app with drag-and-drop, user authentication, and dark mode..."
-                    className="w-full h-32 px-4 py-3 border border-gray-200 rounded-xl focus:border-gray-300 focus:ring-2 focus:ring-#f5f5f50/20 outline-none resize-none text-lg"
+                    className="w-full h-32 px-4 py-3 border border-gray-200 rounded-xl focus:border-gray-300 focus:ring-2 focus:ring-gray-400/20 outline-none resize-none text-lg"
                     data-testid="builder-prompt-input"
                   />
                   <button
@@ -492,7 +492,7 @@ root.render(
                     <button
                       key={example}
                       onClick={() => setPrompt(example)}
-                      className="p-3 border border-gray-200 rounded-lg hover:border-#d0d0d0 hover:bg-#f5f5f5 transition text-sm text-gray-600"
+                      className="p-3 border border-gray-200 rounded-lg hover:border-gray-300 hover:bg-gray-100 transition text-sm text-gray-600"
                     >
                       {example}
                     </button>
@@ -579,7 +579,7 @@ root.render(
               </div>
               <div className="flex-1 bg-white p-4">
                 {buildPhase === 'complete' ? (
-                  <div className="h-full border border-gray-200 rounded-lg overflow-hidden bg-gradient-to-br from-#f5f5f5 to-#f5f5f5 flex items-center justify-center">
+                  <div className="h-full border border-gray-200 rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 to-gray-100 flex items-center justify-center">
                     <div className="text-center">
                       <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Check className="w-8 h-8 text-gray-600" />
@@ -659,7 +659,7 @@ root.render(
       {buildPhase !== 'idle' && (
         <div className="h-36 bg-gray-900 text-[#1A1A1A] flex flex-col flex-shrink-0">
           <div className="h-8 border-b border-gray-700 flex items-center px-3 bg-gray-800">
-            <span className="text-xs text-[#666666] flex items-center gap-2">
+            <span className="text-xs text-gray-600 flex items-center gap-2">
               <Terminal className="w-3 h-3" />
               Console
             </span>
@@ -669,7 +669,7 @@ root.render(
               <div key={i} className={`py-0.5 ${
                 log.type === 'error' ? 'text-gray-400' :
                 log.type === 'success' ? 'text-gray-400' :
-                log.type === 'agent' ? 'text-#c0c0c0' :
+                log.type === 'agent' ? 'text-gray-500' :
                 'text-gray-300'
               }`}>
                 <span className="text-gray-500">[{log.timestamp}]</span> {log.message}

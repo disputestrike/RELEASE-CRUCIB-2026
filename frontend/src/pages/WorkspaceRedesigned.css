@@ -38,7 +38,7 @@
 .workspace-subtitle {
   margin: 0;
   font-size: 13px;
-  color: #888888;
+  color: #999999;
   font-family: 'Inter', sans-serif;
 }
 
@@ -57,7 +57,7 @@
   background: #F3F1ED;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 8px;
-  color: #666666;
+  color: #808080;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -66,12 +66,12 @@
 }
 
 .workspace-btn:hover {
-  background: #E5E3E0;
+  background: #F5F5F4;
   color: #1A1A1A;
 }
 
 .workspace-btn.active {
-  background: #FFF3ED;
+  background: #F5F5F4;
   color: #1A1A1A;
   border-color: #1A1A1A;
 }
@@ -116,7 +116,7 @@
 
 .agent-select:hover {
   border-color: rgba(0, 0, 0, 0.12);
-  background: #E5E3E0;
+  background: #F5F5F4;
 }
 
 .agent-select:focus {
@@ -198,7 +198,7 @@
 
 .message-system .message-content {
   background: transparent;
-  color: #888888;
+  color: #999999;
   text-align: center;
   font-size: 13px;
   font-style: italic;
@@ -209,9 +209,9 @@
 }
 
 .message-error .message-content {
-  background: #FEE2E2;
+  background: #F5F5F4;
   color: #1A1A1A;
-  border: 1px solid #FECACA;
+  border: 1px solid #E5E7EB;
   border-radius: 12px 12px 12px 4px;
   max-width: 70%;
 }
@@ -312,7 +312,7 @@
 .input-wrapper:focus-within {
   background: #FFFFFF;
   border-color: #1A1A1A;
-  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
 }
 
 .chat-input {
@@ -351,7 +351,7 @@
 }
 
 .send-btn:hover:not(:disabled) {
-  background: #333333;
+  background: #1A1A1A;
   transform: translateY(-1px);
 }
 
@@ -363,7 +363,7 @@
 .input-hint {
   margin: 0;
   font-size: 12px;
-  color: #888888;
+  color: #999999;
   font-style: italic;
 }
 
@@ -402,7 +402,7 @@
   height: 28px;
   background: transparent;
   border: none;
-  color: #666666;
+  color: #808080;
   cursor: pointer;
   border-radius: 4px;
   transition: all 200ms ease-in-out;
@@ -479,7 +479,7 @@
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
   line-height: 1.6;
-  color: #E0E0E0;
+  color: #D1D5DB;
   background: #1A1A1A;
 }
 
@@ -518,7 +518,7 @@
 
 .workspace-loading p {
   font-size: 14px;
-  color: #888888;
+  color: #999999;
 }
 
 /* ============================================

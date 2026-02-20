@@ -43,7 +43,7 @@
 .dashboard-greeting-sub {
   display: block;
   font-weight: 400;
-  color: #9CA3AF;
+  color: #999999;
   font-size: 16px;
   margin-top: 8px;
   text-align: center;
@@ -91,7 +91,7 @@
 }
 
 .dashboard-prompt-input::placeholder {
-  color: #9CA3AF;
+  color: #999999;
 }
 
 .dashboard-prompt-actions {
@@ -110,7 +110,7 @@
   border-radius: 10px;
   border: none;
   background: transparent;
-  color: #9CA3AF;
+  color: #999999;
   cursor: pointer;
   transition: all 150ms ease;
 }
@@ -146,12 +146,12 @@
 }
 
 .dashboard-prompt-submit:hover {
-  background: #333333;
+  background: #1A1A1A;
 }
 
 .dashboard-prompt-submit:disabled {
-  background: #E5E5E5;
-  color: #9CA3AF;
+  background: #D1D5DB;
+  color: #999999;
   cursor: not-allowed;
 }
 
@@ -183,7 +183,7 @@
   background: #F3F1ED;
   border-radius: 8px;
   font-size: 13px;
-  color: #666666;
+  color: #808080;
 }
 
 .dashboard-attached-name {
@@ -200,14 +200,14 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: #9CA3AF;
+  color: #999999;
   padding: 2px;
   border-radius: 4px;
 }
 
 .dashboard-attached-remove:hover {
-  color: #EF4444;
-  background: rgba(239, 68, 68, 0.1);
+  color: #1A1A1A;
+  background: rgba(0, 0, 0, 0.05);
 }
 
 /* ============================================
@@ -253,7 +253,7 @@
 .dashboard-chat-bubble.assistant {
   background: #FFFFFF;
   border: 1px solid rgba(0, 0, 0, 0.08);
-  color: #374151;
+  color: #1A1A1A;
   border-bottom-left-radius: 4px;
 }
 
@@ -270,7 +270,7 @@
   font-family: 'DM Sans', sans-serif;
   font-size: 13px;
   font-weight: 500;
-  color: #9CA3AF;
+  color: #999999;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -292,7 +292,7 @@
   border-radius: 20px;
   font-family: 'DM Sans', sans-serif;
   font-size: 13px;
-  color: #666666;
+  color: #808080;
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
@@ -305,7 +305,7 @@
 }
 
 .dashboard-chip-icon {
-  color: #9CA3AF;
+  color: #999999;
   flex-shrink: 0;
 }
 
@@ -357,7 +357,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: #9CA3AF;
+  color: #999999;
   padding: 4px;
   border-radius: 6px;
 }
@@ -381,7 +381,7 @@
   border-bottom: 2px solid transparent;
   font-family: 'DM Sans', sans-serif;
   font-size: 14px;
-  color: #9CA3AF;
+  color: #999999;
   cursor: pointer;
   transition: all 150ms ease;
 }
@@ -392,7 +392,7 @@
 }
 
 .dashboard-modal-tab:hover:not(.active) {
-  color: #666666;
+  color: #808080;
 }
 
 .dashboard-modal-form {
@@ -479,14 +479,14 @@
 
 .dashboard-modal-file-input {
   font-size: 14px;
-  color: #666666;
+  color: #808080;
 }
 
 .dashboard-modal-github {
   display: flex;
   align-items: center;
   gap: 12px;
-  color: #666666;
+  color: #808080;
 }
 
 .dashboard-modal-github .dashboard-modal-input {
@@ -495,8 +495,8 @@
 
 .dashboard-modal-error {
   padding: 10px 14px;
-  background: #FEF2F2;
-  border: 1px solid #FECACA;
+  background: #F5F5F4;
+  border: 1px solid #E5E7EB;
   border-radius: 8px;
   color: #1A1A1A;
   font-size: 13px;
@@ -520,11 +520,11 @@
 }
 
 .dashboard-modal-submit:hover {
-  background: #333333;
+  background: #1A1A1A;
 }
 
 .dashboard-modal-submit:disabled {
-  background: #9CA3AF;
+  background: #999999;
   cursor: not-allowed;
 }
 

@@ -90,7 +90,7 @@ export default function Blog() {
           <button
             type="button"
             onClick={() => navigate('/blog')}
-            className="text-[#666666] hover:text-[#1A1A1A] text-sm mb-8 transition"
+            className="text-gray-600 hover:text-[#1A1A1A] text-sm mb-8 transition"
           >
             ← Back to Blog
           </button>
@@ -104,7 +104,7 @@ export default function Blog() {
             </div>
           </article>
           <p className="mt-12">
-            <Link to="/blog" className="text-#c0c0c0 hover:text-#d0d0d0">
+            <Link to="/blog" className="text-gray-500 hover:text-gray-500">
               ← All posts
             </Link>
           </p>
@@ -119,20 +119,20 @@ export default function Blog() {
       <PublicNav />
       <main className="max-w-3xl mx-auto px-6 py-16">
         <h1 className="text-4xl font-bold text-[#1A1A1A] mb-2">Blog</h1>
-        <p className="text-[#666666] mb-12">Product updates, use cases, and how to get the most from CrucibAI — Inevitable AI.</p>
+        <p className="text-gray-600 mb-12">Product updates, use cases, and how to get the most from CrucibAI — Inevitable AI.</p>
         <ul className="space-y-8">
           {POSTS.map((p) => (
             <li key={p.slug} className="border-b border-white/10 pb-8">
               <Link to={`/blog/${p.slug}`} className="block group" aria-label={p.title}>
-                <h2 className="text-xl font-semibold text-[#1A1A1A] group-hover:text-#c0c0c0 transition mb-2">{p.title}</h2>
-                <p className="text-[#666666] text-sm mb-2">{p.excerpt}</p>
+                <h2 className="text-xl font-semibold text-[#1A1A1A] group-hover:text-gray-500 transition mb-2">{p.title}</h2>
+                <p className="text-gray-600 text-sm mb-2">{p.excerpt}</p>
                 <span className="text-xs text-gray-500">{p.date}</span>
               </Link>
             </li>
           ))}
         </ul>
         <p className="mt-12 text-sm text-gray-500">
-          More posts and SEO content coming. For docs and guides, see <Link to="/learn" className="text-#c0c0c0 hover:text-#d0d0d0">Learn</Link> and <Link to="/features" className="text-#c0c0c0 hover:text-#d0d0d0">Features</Link>.
+          More posts and SEO content coming. For docs and guides, see <Link to="/learn" className="text-gray-500 hover:text-gray-500">Learn</Link> and <Link to="/features" className="text-gray-500 hover:text-gray-500">Features</Link>.
         </p>
       </main>
       <PublicFooter />

@@ -121,7 +121,7 @@ export const CodeGenerationOptions = ({ onGenerate, isLoading }) => {
             onClick={() => setSelectedStack(stack.id)}
             className={`p-4 rounded-lg border-2 transition-all ${
               selectedStack === stack.id
-                ? 'border-gray-300 bg-gray-200/10 text-#d0d0d0'
+                ? 'border-gray-300 bg-gray-200/10 text-gray-500'
                 : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500'
             }`}
           >
@@ -339,7 +339,7 @@ export const ExportOptions = ({ onExport, isLoading }) => {
 export const GenerationStatus = ({ status, progress = 0, message = '' }) => {
   const statusConfig = {
     idle: { icon: null, color: 'text-gray-400', bg: 'bg-gray-800' },
-    generating: { icon: Loader2, color: 'text-#c0c0c0', bg: 'bg-black/20' },
+    generating: { icon: Loader2, color: 'text-gray-500', bg: 'bg-black/20' },
     success: { icon: CheckCircle, color: 'text-gray-400', bg: 'bg-gray-900/20' },
     error: { icon: AlertCircle, color: 'text-gray-400', bg: 'bg-gray-900/20' },
   };

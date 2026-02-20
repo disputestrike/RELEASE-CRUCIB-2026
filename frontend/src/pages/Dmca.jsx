@@ -5,13 +5,13 @@ export default function Dmca() {
     <div className="min-h-screen bg-[#FAFAF8] text-[#1A1A1A]">
       <div className="max-w-3xl mx-auto px-6 py-10">
         <h1 className="text-3xl font-bold text-[#1A1A1A] mb-2">DMCA & Copyright Policy</h1>
-        <p className="text-sm text-[#666666] mb-8">Last updated: February 2026</p>
+        <p className="text-sm text-gray-600 mb-8">Last updated: February 2026</p>
 
         <div className="space-y-6 text-[#1A1A1A] leading-relaxed">
           <p>CrucibAI respects intellectual property and complies with the Digital Millennium Copyright Act (DMCA) and other applicable copyright laws. This policy explains how we handle claims of copyright infringement and how you may submit a takedown notice or counter-notice.</p>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">1. Takedown notices</h2>
-          <p>If you are a copyright owner or authorized to act on their behalf and believe that content generated, hosted, or made available through CrucibAI infringes your copyright, you may submit a DMCA takedown notice. Your notice must be sent to <a href="mailto:dmca@crucibai.com" className="text-#c0c0c0 hover:text-#d0d0d0 underline">dmca@crucibai.com</a> and must include:</p>
+          <p>If you are a copyright owner or authorized to act on their behalf and believe that content generated, hosted, or made available through CrucibAI infringes your copyright, you may submit a DMCA takedown notice. Your notice must be sent to <a href="mailto:dmca@crucibai.com" className="text-gray-500 hover:text-gray-500 underline">dmca@crucibai.com</a> and must include:</p>
           <ul className="list-disc pl-6 space-y-2 text-gray-300">
             <li>Your full name, address, telephone number, and email address.</li>
             <li>A description of the copyrighted work you believe has been infringed.</li>
@@ -23,7 +23,7 @@ export default function Dmca() {
           <p>We will process valid notices promptly and may remove or disable access to the material in question. We may forward your notice to the user who posted the content and/or to third parties as required by law.</p>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">2. Counter-notice</h2>
-          <p>If your content was removed or disabled as a result of a DMCA notice and you believe the removal was mistaken or that you have the right to use the material, you may submit a counter-notice. Your counter-notice must be sent to <a href="mailto:dmca@crucibai.com" className="text-#c0c0c0 hover:text-#d0d0d0 underline">dmca@crucibai.com</a> and must include:</p>
+          <p>If your content was removed or disabled as a result of a DMCA notice and you believe the removal was mistaken or that you have the right to use the material, you may submit a counter-notice. Your counter-notice must be sent to <a href="mailto:dmca@crucibai.com" className="text-gray-500 hover:text-gray-500 underline">dmca@crucibai.com</a> and must include:</p>
           <ul className="list-disc pl-6 space-y-2 text-gray-300">
             <li>Your name, address, telephone number, and email address.</li>
             <li>Identification of the material that was removed or disabled and the location where it appeared before removal.</li>
@@ -40,10 +40,10 @@ export default function Dmca() {
           <p>Under the DMCA, any person who knowingly materially misrepresents that material is infringing, or that material was removed or disabled by mistake, may be liable for damages. We may seek damages and other remedies to the fullest extent permitted by law.</p>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">5. Contact</h2>
-          <p>For all DMCA and copyright-related inquiries, contact us at <a href="mailto:dmca@crucibai.com" className="text-#c0c0c0 hover:text-#d0d0d0 underline">dmca@crucibai.com</a>.</p>
+          <p>For all DMCA and copyright-related inquiries, contact us at <a href="mailto:dmca@crucibai.com" className="text-gray-500 hover:text-gray-500 underline">dmca@crucibai.com</a>.</p>
         </div>
 
-        <Link to="/" className="inline-flex items-center gap-1 mt-10 text-#c0c0c0 hover:text-#d0d0d0 font-medium">← Back to home</Link>
+        <Link to="/" className="inline-flex items-center gap-1 mt-10 text-gray-500 hover:text-gray-500 font-medium">← Back to home</Link>
       </div>
     </div>
   );

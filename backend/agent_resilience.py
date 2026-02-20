@@ -224,7 +224,7 @@ def generate_fallback(agent_name: str) -> str:
         "Layout Agent": "// Layout merge skipped; use frontend as-is.",
         "SEO Agent": "Meta, OG, sitemap: standard setup.",
         "Content Agent": "Hero, features, CTA: use default copy.",
-        "Brand Agent": '{"primary_color":"#3b82f6","font_heading":"Inter"}',
+        "Brand Agent": '{"primary_color":"#1A1A1A","font_heading":"Inter"}',
         "Documentation Agent": "README: see deployment agent output.",
         "Validation Agent": "Validation rules: standard form checks.",
         "Auth Setup Agent": "Auth: JWT recommended; see docs.",

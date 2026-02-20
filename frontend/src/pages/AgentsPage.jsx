@@ -70,13 +70,13 @@ export default function AgentsPage() {
       </div>
 
       {loading ? (
-        <div className="text-[#666666]">Loading agents...</div>
+        <div className="text-gray-600">Loading agents...</div>
       ) : !id ? (
         <div className="space-y-6">
           {/* Prompt-to-automation: describe in plain language */}
           <div className="p-4 rounded-xl border border-white/10 bg-white/5">
             <h2 className="text-sm font-semibold text-[#1A1A1A] mb-2">Describe your automation</h2>
-            <p className="text-xs text-[#666666] mb-3">The same AI that builds your app runs inside your automations. Describe what you want in plain language and we create the agent.</p>
+            <p className="text-xs text-gray-600 mb-3">The same AI that builds your app runs inside your automations. Describe what you want in plain language and we create the agent.</p>
             <DescribeAndCreate
               onCreated={(agentId) => {
                 setLoading(true);
@@ -89,7 +89,7 @@ export default function AgentsPage() {
           </div>
           <div className="space-y-2">
           {agents.length === 0 ? (
-            <p className="text-[#666666]">No agents yet. Create one to run tasks on a schedule or via webhook.</p>
+            <p className="text-gray-600">No agents yet. Create one to run tasks on a schedule or via webhook.</p>
           ) : (
             agents.map((a) => (
               <div
@@ -99,9 +99,9 @@ export default function AgentsPage() {
               >
                 <div>
                   <div className="font-medium text-[#1A1A1A]">{a.name}</div>
-                  <div className="text-sm text-[#666666]">{a.trigger_type} · {a.run_count ?? 0} runs</div>
+                  <div className="text-sm text-gray-600">{a.trigger_type} · {a.run_count ?? 0} runs</div>
                 </div>
-                <ChevronRight className="w-5 h-5 text-[#666666]" />
+                <ChevronRight className="w-5 h-5 text-gray-600" />
               </div>
             ))
           )}
@@ -109,11 +109,11 @@ export default function AgentsPage() {
         </div>
       ) : agent ? (
         <div className="space-y-6">
-          <button onClick={() => navigate('/app/agents')} className="text-[#666666] hover:text-[#1A1A1A] text-sm">← Back to list</button>
+          <button onClick={() => navigate('/app/agents')} className="text-gray-600 hover:text-[#1A1A1A] text-sm">← Back to list</button>
           <div className="p-4 rounded-lg bg-white/5 border border-white/10">
             <h2 className="text-lg font-semibold text-[#1A1A1A]">{agent.name}</h2>
-            {agent.description && <p className="text-[#666666] text-sm mt-1">{agent.description}</p>}
-            <div className="mt-2 text-sm text-[#666666]">Trigger: {agent.trigger_type}</div>
+            {agent.description && <p className="text-gray-600 text-sm mt-1">{agent.description}</p>}
+            <div className="mt-2 text-sm text-gray-600">Trigger: {agent.trigger_type}</div>
             {agent.webhook_url && (
               <div className="mt-3 flex items-center gap-2">
                 <code className="text-xs bg-gray-900/30 px-2 py-1 rounded truncate max-w-md">{agent.webhook_url}</code>
@@ -127,7 +127,7 @@ export default function AgentsPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left text-[#666666] border-b border-white/10">
+                    <tr className="text-left text-gray-600 border-b border-white/10">
                       <th className="pb-2 pr-4">Time</th>
                       <th className="pb-2 pr-4">Trigger</th>
                       <th className="pb-2 pr-4">Status</th>
@@ -138,11 +138,11 @@ export default function AgentsPage() {
                     {runs.map((r) => (
                       <tr key={r.id} className="border-b border-white/5">
                         <td className="py-2 pr-4 text-gray-300">{r.triggered_at ? new Date(r.triggered_at).toLocaleString() : '-'}</td>
-                        <td className="py-2 pr-4 text-[#666666]">{r.triggered_by || '-'}</td>
+                        <td className="py-2 pr-4 text-gray-600">{r.triggered_by || '-'}</td>
                         <td className="py-2 pr-4"><span className={r.status === 'success' ? 'text-gray-400' : r.status === 'failed' ? 'text-gray-400' : 'text-amber-400'}>{r.status}</span></td>
                         <td className="py-2">{r.duration_seconds != null ? `${r.duration_seconds.toFixed(1)}s` : '-'}</td>
                         <td>
-                          <button onClick={() => setLogRunId(logRunId === r.id ? null : r.id)} className="text-#c0c0c0 hover:underline text-xs">Logs</button>
+                          <button onClick={() => setLogRunId(logRunId === r.id ? null : r.id)} className="text-gray-500 hover:underline text-xs">Logs</button>
                         </td>
                       </tr>
                     ))}
@@ -154,7 +154,7 @@ export default function AgentsPage() {
               <div className="mt-4 p-4 rounded bg-gray-900/30 border border-white/10 font-mono text-xs text-gray-300 max-h-48 overflow-auto">
                 <div className="flex justify-between items-center mb-2">
                   <span>Run logs</span>
-                  <button onClick={() => setLogRunId(null)} className="text-[#666666] hover:text-[#1A1A1A]">Close</button>
+                  <button onClick={() => setLogRunId(null)} className="text-gray-600 hover:text-[#1A1A1A]">Close</button>
                 </div>
                 {(logLines.length ? logLines : ['No logs']).map((line, i) => (
                   <div key={i} className="whitespace-pre-wrap break-all">{line}</div>
@@ -264,12 +264,12 @@ function CreateAgentModal({ onClose, onCreated }) {
       <div className="bg-[#111] border border-white/10 rounded-xl p-6 max-w-md w-full shadow-xl max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-lg font-semibold text-[#1A1A1A] mb-4">Create Agent</h3>
         <div className="flex gap-2 mb-4 border-b border-white/10 pb-2">
-          <button type="button" onClick={() => setMode('describe')} className={`px-3 py-1.5 rounded text-sm ${mode === 'describe' ? 'bg-black text-[#1A1A1A]' : 'text-[#666666] hover:text-[#1A1A1A]'}`}>Describe</button>
-          <button type="button" onClick={() => setMode('configure')} className={`px-3 py-1.5 rounded text-sm ${mode === 'configure' ? 'bg-black text-[#1A1A1A]' : 'text-[#666666] hover:text-[#1A1A1A]'}`}>Configure</button>
+          <button type="button" onClick={() => setMode('describe')} className={`px-3 py-1.5 rounded text-sm ${mode === 'describe' ? 'bg-black text-[#1A1A1A]' : 'text-gray-600 hover:text-[#1A1A1A]'}`}>Describe</button>
+          <button type="button" onClick={() => setMode('configure')} className={`px-3 py-1.5 rounded text-sm ${mode === 'configure' ? 'bg-black text-[#1A1A1A]' : 'text-gray-600 hover:text-[#1A1A1A]'}`}>Configure</button>
         </div>
         {mode === 'describe' && (
           <>
-            <p className="text-xs text-[#666666] mb-2">Describe what you want in plain language. We create the automation.</p>
+            <p className="text-xs text-gray-600 mb-2">Describe what you want in plain language. We create the automation.</p>
             <form onSubmit={handleDescribeSubmit} className="space-y-3">
               <textarea value={describeText} onChange={(e) => setDescribeText(e.target.value)} placeholder="e.g. Every morning at 9, summarize key updates and email them to me." className="w-full px-3 py-2 rounded bg-gray-900/30 border border-white/10 text-[#1A1A1A] placeholder-gray-500 min-h-[100px] text-sm" />
               {describeError && <p className="text-gray-400 text-sm">{describeError}</p>}
@@ -283,15 +283,15 @@ function CreateAgentModal({ onClose, onCreated }) {
         {mode === 'configure' && (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm text-[#666666] mb-1">Name</label>
+            <label className="block text-sm text-gray-600 mb-1">Name</label>
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-3 py-2 rounded bg-gray-900/30 border border-white/10 text-[#1A1A1A]" placeholder="My Agent" />
           </div>
           <div>
-            <label className="block text-sm text-[#666666] mb-1">Description</label>
+            <label className="block text-sm text-gray-600 mb-1">Description</label>
             <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full px-3 py-2 rounded bg-gray-900/30 border border-white/10 text-[#1A1A1A]" placeholder="Optional" />
           </div>
           <div>
-            <label className="block text-sm text-[#666666] mb-1">Trigger</label>
+            <label className="block text-sm text-gray-600 mb-1">Trigger</label>
             <select value={triggerType} onChange={(e) => setTriggerType(e.target.value)} className="w-full px-3 py-2 rounded bg-gray-900/30 border border-white/10 text-[#1A1A1A]">
               <option value="schedule">Schedule (cron)</option>
               <option value="webhook">Webhook</option>
@@ -299,13 +299,13 @@ function CreateAgentModal({ onClose, onCreated }) {
           </div>
           {triggerType === 'schedule' && (
             <div>
-              <label className="block text-sm text-[#666666] mb-1">Cron (e.g. 0 9 * * * = 9am daily)</label>
+              <label className="block text-sm text-gray-600 mb-1">Cron (e.g. 0 9 * * * = 9am daily)</label>
               <input type="text" value={cronExpression} onChange={(e) => setCronExpression(e.target.value)} className="w-full px-3 py-2 rounded bg-gray-900/30 border border-white/10 text-[#1A1A1A] font-mono" />
             </div>
           )}
           {triggerType === 'webhook' && (
             <div>
-              <label className="block text-sm text-[#666666] mb-1">Webhook secret (optional)</label>
+              <label className="block text-sm text-gray-600 mb-1">Webhook secret (optional)</label>
               <input type="text" value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)} className="w-full px-3 py-2 rounded bg-gray-900/30 border border-white/10 text-[#1A1A1A]" placeholder="Auto-generated if empty" />
             </div>
           )}

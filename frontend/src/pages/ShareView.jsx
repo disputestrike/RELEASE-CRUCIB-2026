@@ -38,7 +38,7 @@ export default function ShareView() {
           <AlertCircle className="w-12 h-12 text-amber-400 mx-auto mb-4" />
           <h1 className="text-xl font-semibold mb-2">Share not found</h1>
           <p className="text-gray-400 mb-6">{error || 'This link may have expired.'}</p>
-          <Link to="/" className="text-[#1A1A1A] hover:text-#d0d0d0">Back to CrucibAI</Link>
+          <Link to="/" className="text-[#1A1A1A] hover:text-gray-500">Back to CrucibAI</Link>
         </div>
       </div>
     );
@@ -63,7 +63,7 @@ export default function ShareView() {
           )}
         </div>
         <p className="mt-8 text-gray-500 text-sm">This is a read-only share. Sign in to edit or duplicate.</p>
-        <Link to="/auth" className="inline-block mt-4 text-[#1A1A1A] hover:text-#d0d0d0">Sign in to CrucibAI</Link>
+        <Link to="/auth" className="inline-block mt-4 text-[#1A1A1A] hover:text-gray-500">Sign in to CrucibAI</Link>
       </div>
     </div>
   );
