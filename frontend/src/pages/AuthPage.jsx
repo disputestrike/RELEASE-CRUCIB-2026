@@ -410,19 +410,19 @@ const AuthPage = () => {
       </div>
 
       {/* Right Panel — Value Proposition (hidden on mobile) */}
-      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-[#1E3A5F] to-[#0F172A] relative overflow-hidden">
-        {/* Subtle grid pattern */}
-        <div className="absolute inset-0 opacity-[0.03]" style={{
-          backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
+      <div className="hidden lg:flex flex-1 bg-white border-l border-gray-100 relative overflow-hidden">
+        {/* Subtle dot pattern */}
+        <div className="absolute inset-0 opacity-[0.4]" style={{
+          backgroundImage: 'radial-gradient(circle at 1px 1px, #e5e7eb 1px, transparent 0)',
           backgroundSize: '32px 32px'
         }} />
 
         <div className="relative z-10 flex flex-col justify-center w-full max-w-lg mx-auto px-12">
           {/* Main headline */}
-          <h2 className="text-4xl font-bold text-white mb-4 tracking-tight leading-tight">
+          <h2 className="text-4xl font-bold text-gray-900 mb-4 tracking-tight leading-tight">
             {isLogin ? 'Pick up where you left off' : 'Turn ideas into apps that ship'}
           </h2>
-          <p className="text-[#94A3B8] text-lg mb-10 leading-relaxed">
+          <p className="text-gray-500 text-lg mb-10 leading-relaxed">
             {isLogin
               ? 'Your projects, agents, and builds are waiting.'
               : '120 AI agents plan, build, test, and deploy your app — while you watch every step.'}
@@ -446,7 +446,7 @@ const AuthPage = () => {
                 <div className="w-5 h-5 rounded-full bg-[#2563EB] flex items-center justify-center flex-shrink-0">
                   <Check className="w-3 h-3 text-white" />
                 </div>
-                <span className="text-white/90 text-sm">{item.text}</span>
+                <span className="text-gray-700 text-sm">{item.text}</span>
               </motion.div>
             ))}
           </div>
@@ -464,8 +464,8 @@ const AuthPage = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 + i * 0.1 }}
               >
-                <p className="text-2xl font-bold text-white">{stat.value}</p>
-                <p className="text-xs text-[#64748B] uppercase tracking-wider mt-1">{stat.label}</p>
+                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                <p className="text-xs text-gray-400 uppercase tracking-wider mt-1">{stat.label}</p>
               </motion.div>
             ))}
           </div>
@@ -475,18 +475,18 @@ const AuthPage = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.8 }}
-            className="mt-12 p-5 bg-white/5 rounded-xl border border-white/10"
+            className="mt-12 p-5 bg-gray-50 rounded-xl border border-gray-200"
           >
-            <p className="text-white/80 text-sm italic leading-relaxed">
+            <p className="text-gray-600 text-sm italic leading-relaxed">
               "We described our SaaS on Monday and had a working MVP by Thursday. The agent transparency is what sold us — we could see exactly what was being built."
             </p>
             <div className="mt-3 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-[#2563EB]/20 flex items-center justify-center">
-                <span className="text-[#60A5FA] text-xs font-bold">JM</span>
+              <div className="w-8 h-8 rounded-full bg-[#2563EB]/10 flex items-center justify-center">
+                <span className="text-[#2563EB] text-xs font-bold">JM</span>
               </div>
               <div>
-                <p className="text-white text-xs font-medium">Jordan M.</p>
-                <p className="text-[#64748B] text-xs">Founder, SaaS startup</p>
+                <p className="text-gray-900 text-xs font-medium">Jordan M.</p>
+                <p className="text-gray-400 text-xs">Founder, SaaS startup</p>
               </div>
             </div>
           </motion.div>
