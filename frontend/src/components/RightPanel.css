@@ -143,7 +143,7 @@
 
 .preview-dot.green { background: #059669; }
 .preview-dot.red { background: #1A1A1A; }
-.preview-dot.yellow { background: #808080; }
+.preview-dot.gray { background: #808080; }
 
 .preview-url-text {
   overflow: hidden;

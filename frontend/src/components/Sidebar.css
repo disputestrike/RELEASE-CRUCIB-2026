@@ -155,11 +155,10 @@
 }
 
 /* Color variants */
-.color-orange { color: #1A1A1A; }
+.color-black { color: #1A1A1A; }
 .color-brand { color: #1A1A1A; }
-.color-emerald { color: #059669; }
 .color-gray { color: #6B7280; }
-.color-indigo { color: #4F46E5; }
+.color-dark-gray { color: #4B5563; }
 
 /* ============================================
    SECTIONS (Projects, Tasks)
