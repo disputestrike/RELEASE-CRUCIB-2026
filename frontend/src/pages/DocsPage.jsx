@@ -125,7 +125,7 @@ const API_SECTIONS = [
 const METHOD_COLORS = {
   GET: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
   POST: 'bg-gray-200/20 text-gray-500 border-gray-300/30',
-  PUT: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+  PUT: 'bg-gray-700/20 text-gray-600 border-amber-500/30',
   PATCH: 'bg-gray-200/20 text-gray-500 border-gray-300/30',
   DELETE: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
 };
@@ -191,7 +191,7 @@ export default function DocsPage() {
           </div>
 
           {/* Auth note */}
-          <div className="mt-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-300">
+          <div className="mt-3 p-3 rounded-lg bg-gray-700/10 border border-amber-500/20 text-sm text-gray-600">
             <strong>Authentication:</strong> All endpoints (except /auth/register and /auth/login) require a Bearer token in the Authorization header: <code className="bg-gray-800 px-1.5 py-0.5 rounded text-xs">Authorization: Bearer YOUR_TOKEN</code>
           </div>
         </motion.div>
@@ -284,7 +284,7 @@ export default function DocsPage() {
                                   <span className="text-xs font-medium text-gray-500 uppercase">Request Body</span>
                                   <CopyButton text={ep.body} />
                                 </div>
-                                <pre className="p-3 rounded-lg bg-zinc-950 border border-gray-800 text-xs font-mono text-gray-400 overflow-x-auto">
+                                <pre className="p-3 rounded-lg bg-gray-700 border border-gray-800 text-xs font-mono text-gray-400 overflow-x-auto">
                                   {ep.body}
                                 </pre>
                               </div>
@@ -295,7 +295,7 @@ export default function DocsPage() {
                                 <span className="text-xs font-medium text-gray-500 uppercase">Response</span>
                                 <CopyButton text={ep.response} />
                               </div>
-                              <pre className="p-3 rounded-lg bg-zinc-950 border border-gray-800 text-xs font-mono text-gray-500 overflow-x-auto">
+                              <pre className="p-3 rounded-lg bg-gray-700 border border-gray-800 text-xs font-mono text-gray-500 overflow-x-auto">
                                 {ep.response}
                               </pre>
                             </div>

@@ -260,14 +260,14 @@ const AgentMonitor = () => {
       )}
       {/* 10/10: Phase retry suggestion when Quality phase had many failures */}
       {project.status === 'completed' && (project.suggest_retry_phase != null || project.suggest_retry_reason) && (
-        <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-amber-200 text-sm">
+        <div className="p-4 rounded-xl border border-gray-400/30 bg-gray-700/10 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-gray-600 text-sm">
             {project.suggest_retry_reason || 'Quality checks had issues. Retry code generation?'}
           </p>
           <button
             onClick={handleRetryPhase}
             disabled={retrying}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 text-gray-900 font-medium hover:bg-amber-400 transition disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-700 text-gray-900 font-medium hover:bg-gray-700 transition disabled:opacity-50"
           >
             {retrying ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
             {retrying ? 'Starting…' : 'Retry code generation'}
@@ -288,7 +288,7 @@ const AgentMonitor = () => {
         
         <div className="flex items-center gap-3">
           {project.build_kind === 'mobile' && (
-            <span className="px-3 py-1.5 rounded-full text-sm font-medium bg-violet-500/20 text-violet-300" data-testid="mobile-badge">
+            <span className="px-3 py-1.5 rounded-full text-sm font-medium bg-gray-700/20 text-gray-600" data-testid="mobile-badge">
               Mobile project — includes App Store &amp; Play Store guide
             </span>
           )}
@@ -353,7 +353,7 @@ const AgentMonitor = () => {
             {buildEvents.slice(-80).map((ev, i) => (
               <div key={ev.id ?? i} className="flex gap-2 text-gray-300">
                 <span className="text-gray-500 shrink-0">{ev.ts ? new Date(ev.ts).toLocaleTimeString() : ''}</span>
-                <span className={ev.type === 'agent_completed' ? 'text-gray-400' : ev.type === 'agent_started' ? 'text-gray-500' : 'text-amber-400'}>
+                <span className={ev.type === 'agent_completed' ? 'text-gray-400' : ev.type === 'agent_started' ? 'text-gray-500' : 'text-gray-600'}>
                   {ev.type === 'agent_started' && `${ev.agent || 'agent'} started`}
                   {ev.type === 'agent_completed' && `${ev.agent || 'agent'} completed`}
                   {ev.type === 'phase_started' && (ev.message || 'phase')}
@@ -538,7 +538,7 @@ const AgentMonitor = () => {
                     <h4 className="text-gray-600 font-medium mb-1">Reports</h4>
                     <div className="space-y-2 max-h-40 overflow-y-auto">
                       {projectState.security_report && (
-                        <p className="text-gray-300 text-xs"><strong className="text-amber-400">Security:</strong> {String(projectState.security_report).slice(0, 200)}…</p>
+                        <p className="text-gray-300 text-xs"><strong className="text-gray-600">Security:</strong> {String(projectState.security_report).slice(0, 200)}…</p>
                       )}
                       {projectState.ux_report && (
                         <p className="text-gray-300 text-xs"><strong className="text-gray-500">UX:</strong> {String(projectState.ux_report).slice(0, 200)}…</p>

@@ -58,7 +58,7 @@ export default function AgentsPage() {
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-[#1A1A1A] flex items-center gap-2">
-          <Zap className="w-7 h-7 text-amber-400" />
+          <Zap className="w-7 h-7 text-gray-600" />
           Agents & Automations
         </h1>
         <button
@@ -139,7 +139,7 @@ export default function AgentsPage() {
                       <tr key={r.id} className="border-b border-white/5">
                         <td className="py-2 pr-4 text-gray-300">{r.triggered_at ? new Date(r.triggered_at).toLocaleString() : '-'}</td>
                         <td className="py-2 pr-4 text-gray-600">{r.triggered_by || '-'}</td>
-                        <td className="py-2 pr-4"><span className={r.status === 'success' ? 'text-gray-400' : r.status === 'failed' ? 'text-gray-400' : 'text-amber-400'}>{r.status}</span></td>
+                        <td className="py-2 pr-4"><span className={r.status === 'success' ? 'text-gray-400' : r.status === 'failed' ? 'text-gray-400' : 'text-gray-600'}>{r.status}</span></td>
                         <td className="py-2">{r.duration_seconds != null ? `${r.duration_seconds.toFixed(1)}s` : '-'}</td>
                         <td>
                           <button onClick={() => setLogRunId(logRunId === r.id ? null : r.id)} className="text-gray-500 hover:underline text-xs">Logs</button>

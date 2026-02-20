@@ -449,7 +449,7 @@ const LandingPage = () => {
                       type="button"
                       onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
                       disabled={isBuilding || isTranscribing}
-                      className={`p-2.5 rounded-lg transition self-end shrink-0 ${isRecording ? 'bg-gray-500/30 text-gray-400 ring-2 ring-red-400/50' : 'text-kimi-muted hover:text-kimi-text hover:bg-gray-100'}`}
+                      className={`p-2.5 rounded-lg transition self-end shrink-0 ${isRecording ? 'bg-gray-500/30 text-gray-400 ring-2 ring-gray-400/50' : 'text-kimi-muted hover:text-kimi-text hover:bg-gray-100'}`}
                       title={isRecording ? 'Click to stop and transcribe' : 'Voice input — click to speak'}
                     >
                       {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}

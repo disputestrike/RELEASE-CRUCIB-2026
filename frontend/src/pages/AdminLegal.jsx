@@ -69,7 +69,7 @@ export default function AdminLegal() {
               <div className="flex justify-between items-start gap-4 mb-2">
                 <div>
                   <span className="text-xs text-gray-500">User: {r.user_id}</span>
-                  <span className="ml-3 px-2 py-0.5 rounded text-xs bg-amber-500/20 text-amber-400">{r.category || 'policy'}</span>
+                  <span className="ml-3 px-2 py-0.5 rounded text-xs bg-gray-700/20 text-gray-600">{r.category || 'policy'}</span>
                 </div>
                 <span className={`text-xs px-2 py-1 rounded ${r.status === 'reviewed' ? 'bg-gray-500/20' : 'bg-gray-500/20 text-gray-400'}`}>{r.status}</span>
               </div>
@@ -80,7 +80,7 @@ export default function AdminLegal() {
                   <button onClick={() => handleReview(r.id, 'false_positive')} className="flex items-center gap-1 px-3 py-1.5 rounded bg-gray-600 hover:bg-gray-700 text-sm">
                     <CheckCircle className="w-4 h-4" /> False positive
                   </button>
-                  <button onClick={() => handleReview(r.id, 'confirmed')} className="flex items-center gap-1 px-3 py-1.5 rounded bg-amber-600 hover:bg-amber-700 text-sm">
+                  <button onClick={() => handleReview(r.id, 'confirmed')} className="flex items-center gap-1 px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-700 text-sm">
                     <ShieldAlert className="w-4 h-4" /> Confirm
                   </button>
                   <button onClick={() => handleReview(r.id, 'escalated')} className="flex items-center gap-1 px-3 py-1.5 rounded bg-gray-600 hover:bg-gray-700 text-sm">

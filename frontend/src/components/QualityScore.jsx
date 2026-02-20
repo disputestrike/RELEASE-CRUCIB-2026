@@ -10,7 +10,7 @@ export default function QualityScore({ score }) {
 
   const getColor = (s) => {
     if (s >= 80) return "bg-gray-500";
-    if (s >= 60) return "bg-amber-500";
+    if (s >= 60) return "bg-gray-700";
     return "bg-gray-500";
   };
 

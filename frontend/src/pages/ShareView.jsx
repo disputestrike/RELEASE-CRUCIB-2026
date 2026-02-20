@@ -35,7 +35,7 @@ export default function ShareView() {
     return (
       <div className="min-h-screen bg-[#FAFAF8] text-[#1A1A1A] flex items-center justify-center p-4">
         <div className="text-center max-w-md">
-          <AlertCircle className="w-12 h-12 text-amber-400 mx-auto mb-4" />
+          <AlertCircle className="w-12 h-12 text-gray-600 mx-auto mb-4" />
           <h1 className="text-xl font-semibold mb-2">Share not found</h1>
           <p className="text-gray-400 mb-6">{error || 'This link may have expired.'}</p>
           <Link to="/" className="text-[#1A1A1A] hover:text-gray-500">Back to CrucibAI</Link>

@@ -280,7 +280,7 @@ const Settings = () => {
                   <span className="text-gray-400" data-testid="sandbox-available">Sandbox (Docker): available</span>
                 )}
                 {capabilities.sandbox_available === false && (
-                  <span className="text-amber-400">Sandbox (Docker): not available — runs use host</span>
+                  <span className="text-gray-600">Sandbox (Docker): not available — runs use host</span>
                 )}
                 {capabilities.sandbox_available === null && activeTab === 'general' && (
                   <span className="text-gray-500">Checking…</span>

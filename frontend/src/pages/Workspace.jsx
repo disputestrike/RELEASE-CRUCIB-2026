@@ -170,7 +170,7 @@ const ConsolePanel = ({ logs, placeholder = "Terminal output will appear here. R
             className={`flex items-start gap-2 ${
               log.type === 'error' ? 'text-gray-600' :
               log.type === 'success' ? 'text-gray-700' :
-              log.type === 'warning' ? 'text-amber-700' :
+              log.type === 'warning' ? 'text-gray-600' :
               'text-gray-600'
             }`}
           >
@@ -1427,11 +1427,11 @@ Respond with ONLY the complete App.js code, nothing else.`;
 
       {/* Paywall banner when low/zero tokens */}
       {user && (user.token_balance === 0 || (user.token_balance < 10000 && user.token_balance > 0)) && (
-        <div className="flex-shrink-0 px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 flex items-center justify-between">
-          <span className="text-sm text-amber-700">
+        <div className="flex-shrink-0 px-4 py-2 bg-gray-700/10 border-b border-amber-500/20 flex items-center justify-between">
+          <span className="text-sm text-gray-600">
             {user.token_balance === 0 ? 'Out of tokens.' : 'Running low on tokens.'} Get more to keep building.
           </span>
-          <button onClick={() => navigate('/app/tokens')} className="text-sm font-medium text-amber-700 hover:text-amber-800">
+          <button onClick={() => navigate('/app/tokens')} className="text-sm font-medium text-gray-600 hover:text-gray-600">
             Buy tokens
           </button>
         </div>
@@ -1954,7 +1954,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
                           <p className="text-gray-600">{toolsReport.data.error}</p>
                         ) : (
                           <>
-                            <p className={toolsReport.data.valid ? 'text-gray-700' : 'text-amber-700'}>
+                            <p className={toolsReport.data.valid ? 'text-gray-700' : 'text-gray-600'}>
                               {toolsReport.data.valid ? 'No issues found.' : 'Issues found. Fix available below.'}
                             </p>
                             {!toolsReport.data.valid && toolsReport.data.fixed_code && (
@@ -2013,7 +2013,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
             </span>
           )}
           {qualityGateResult != null && (
-            <span className={qualityGateResult.passed ? 'text-gray-600' : 'text-amber-600'} title="Quality gate">
+            <span className={qualityGateResult.passed ? 'text-gray-600' : 'text-gray-600'} title="Quality gate">
               Quality: {qualityGateResult.score}% {qualityGateResult.passed ? '✓' : '(review)'}
             </span>
           )}
@@ -2047,9 +2047,9 @@ Respond with ONLY the complete App.js code, nothing else.`;
 
         {/* Add API key banner when last message is key/network error */}
         {messages.some(m => m.error && (m.content || '').toLowerCase().includes('api key')) && (
-          <div className="mb-3 flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+          <div className="mb-3 flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg bg-gray-700 border border-amber-200 text-gray-600 text-sm">
             <span>Check Settings → API & Environment: your saved keys are used for builds. If you see errors, re-save your OpenAI or Anthropic key and try again.</span>
-            <button type="button" onClick={() => navigate('/app/settings')} className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-200 hover:bg-amber-300 font-medium text-amber-900">Open Settings</button>
+            <button type="button" onClick={() => navigate('/app/settings')} className="shrink-0 px-3 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-700 font-medium text-gray-600">Open Settings</button>
           </div>
         )}
 
