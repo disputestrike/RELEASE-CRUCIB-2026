@@ -7,7 +7,7 @@
   background: #FFFFFF;
   border-right: 1px solid rgba(0, 0, 0, 0.08);
   overflow: hidden;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 /* ============================================
@@ -106,7 +106,7 @@
   background: #E5E7EB;
   padding: 2px 6px;
   border-radius: 4px;
-  font-family: monospace;
+  font-family: 'Fira Code', monospace;
   flex-shrink: 0;
 }
 

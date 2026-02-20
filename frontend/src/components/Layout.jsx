@@ -10,13 +10,32 @@ import Sidebar from './Sidebar';
 import RightPanel from './RightPanel';
 import OnboardingTour from './OnboardingTour';
 
+/**
+ * Layout — Redesigned wrapper
+ * 
+ * Changes from spec:
+ * - Right panel hidden by default on non-workspace pages
+ * - Right panel auto-slides in when on workspace/project build views
+ * - Sidebar now receives only tasks (projects section removed per spec)
+ * - Center panel state is managed by child pages (Dashboard = EMPTY state)
+ */
+
 const Layout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, token } = useAuth();
   const [backendOk, setBackendOk] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [rightPanelVisible, setRightPanelVisible] = useState(true);
+
+  // Right panel: hidden by default, auto-shown on workspace/project views
+  const isWorkspaceView = ['/app/workspace', '/app/builder'].some(p => location.pathname.startsWith(p))
+    || location.pathname.match(/\/app\/projects\/[^/]+$/);
+  const [rightPanelVisible, setRightPanelVisible] = useState(isWorkspaceView);
+
+  // Auto-show/hide right panel based on route
+  useEffect(() => {
+    setRightPanelVisible(isWorkspaceView);
+  }, [isWorkspaceView]);
 
   // Data for sidebar
   const [projects, setProjects] = useState([]);
@@ -66,10 +85,6 @@ const Layout = () => {
     navigate('/');
   };
 
-  // Determine if we should show right panel (only in workspace/project views)
-  const showRightPanel = ['/app/workspace', '/app/builder'].some(p => location.pathname.startsWith(p))
-    || location.pathname.match(/\/app\/projects\/[^/]+$/);
-
   // Sidebar content
   const sidebarContent = (
     <Sidebar
@@ -80,8 +95,8 @@ const Layout = () => {
     />
   );
 
-  // Right panel content (only for workspace views)
-  const rightPanelContent = showRightPanel && rightPanelVisible ? (
+  // Right panel content (only for workspace views, hidden by default elsewhere)
+  const rightPanelContent = rightPanelVisible ? (
     <RightPanel
       preview={previewContent}
       code={codeContent}
@@ -104,8 +119,8 @@ const Layout = () => {
   // Main content
   const mainContent = (
     <div className="layout-main-wrapper">
-      {/* Top bar for non-workspace pages or right panel toggle */}
-      {showRightPanel && !rightPanelVisible && (
+      {/* Top bar toggle for right panel (only when panel is hidden on workspace views) */}
+      {isWorkspaceView && !rightPanelVisible && (
         <div className="layout-topbar">
           <button
             className="layout-panel-toggle"
@@ -130,6 +145,7 @@ const Layout = () => {
           setCodeFiles,
           setTerminalOutput,
           setBuildHistory,
+          setRightPanelVisible,
           backendOk,
           checkBackend,
         }} />

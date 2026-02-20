@@ -3,19 +3,22 @@ import {
   Eye, Code, Settings, Share2, Download, X, Terminal,
   History, Wrench, FolderTree, ChevronRight, FileOutput,
   Library, BookOpen, LayoutGrid, FileText, Copy, Check,
-  ExternalLink, RefreshCw
+  ExternalLink, RefreshCw, Puzzle, Github, Zap, Globe
 } from 'lucide-react';
 import './RightPanel.css';
 
 /**
- * Right Panel Component — Manus Management UI inspired
+ * Right Panel Component — Redesigned
  * 
  * Tabs:
  * - Preview (live Sandpack preview or iframe)
  * - Code (file tree + code viewer)
  * - Terminal (output log)
  * - History (build history for current task)
- * - Tools (Exports, Patterns, Prompts, Templates, Docs/Slides/Sheets)
+ * - Tools (Exports, Patterns, Prompts, Templates, IDE Extensions, Docs)
+ * 
+ * SPEC: Absorb Exports, Patterns, Templates, IDE Extensions into Tools tab
+ * so users don't need to navigate away from the workspace.
  */
 
 export const RightPanel = ({
@@ -49,12 +52,32 @@ export const RightPanel = ({
     { id: 'tools', label: 'Tools', icon: Wrench },
   ];
 
-  const toolItems = [
-    { label: 'Exports', icon: FileOutput, href: '/app/exports' },
-    { label: 'Patterns', icon: Library, href: '/app/patterns' },
-    { label: 'Prompts', icon: BookOpen, href: '/app/prompts' },
-    { label: 'Templates', icon: LayoutGrid, href: '/app/templates' },
-    { label: 'Docs / Slides / Sheets', icon: FileText, href: '/app/generate' },
+  // Tools tab: organized into sections per spec
+  const toolSections = [
+    {
+      title: 'Generate & Export',
+      items: [
+        { label: 'Exports', icon: FileOutput, href: '/app/exports', desc: 'Download ZIP, deploy packages' },
+        { label: 'Docs / Slides / Sheets', icon: FileText, href: '/app/generate', desc: 'Generate documents and presentations' },
+        { label: 'Push to GitHub', icon: Github, href: '#', action: 'github', desc: 'Export code to GitHub repository' },
+      ]
+    },
+    {
+      title: 'Libraries',
+      items: [
+        { label: 'Patterns', icon: Library, href: '/app/patterns', desc: 'Reusable code patterns' },
+        { label: 'Templates', icon: LayoutGrid, href: '/app/templates', desc: 'Project starter templates' },
+        { label: 'Prompt Library', icon: BookOpen, href: '/app/prompts', desc: 'Saved prompts for common tasks' },
+      ]
+    },
+    {
+      title: 'Integrations',
+      items: [
+        { label: 'IDE Extensions', icon: Puzzle, href: '/app/extensions', desc: 'VS Code, JetBrains, Vim plugins' },
+        { label: 'API & Webhooks', icon: Globe, href: '/app/env', desc: 'Environment variables and API keys' },
+        { label: 'Credit Center', icon: Zap, href: '/app/tokens', desc: 'Token balance and usage' },
+      ]
+    },
   ];
 
   const handleCopyCode = () => {
@@ -206,27 +229,38 @@ export const RightPanel = ({
           </div>
         )}
 
-        {/* Tools Tab */}
+        {/* Tools Tab — Redesigned with sections */}
         {activeTab === 'tools' && (
           <div className="right-panel-tab-content">
-            <div className="tools-list">
-              {toolItems.map((tool) => (
-                <a key={tool.href} href={tool.href} className="tools-item">
-                  <tool.icon size={18} className="tools-icon" />
-                  <span className="tools-label">{tool.label}</span>
-                  <ChevronRight size={14} className="tools-arrow" />
-                </a>
+            <div className="tools-redesigned">
+              {toolSections.map((section) => (
+                <div key={section.title} className="tools-section-group">
+                  <h4 className="tools-section-title">{section.title}</h4>
+                  <div className="tools-section-items">
+                    {section.items.map((tool) => (
+                      <a key={tool.label} href={tool.href} className="tools-item-card">
+                        <div className="tools-item-icon-wrap">
+                          <tool.icon size={16} />
+                        </div>
+                        <div className="tools-item-info">
+                          <span className="tools-item-label">{tool.label}</span>
+                          <span className="tools-item-desc">{tool.desc}</span>
+                        </div>
+                        <ChevronRight size={14} className="tools-item-arrow" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
               ))}
-            </div>
-            <div className="tools-section">
-              <h4 className="tools-section-title">Quick Actions</h4>
-              <div className="tools-actions">
-                <button className="tools-action-btn" onClick={onShare}>
-                  <Share2 size={16} />
+
+              {/* Quick Actions */}
+              <div className="tools-quick-actions">
+                <button className="tools-quick-btn" onClick={onShare}>
+                  <Share2 size={14} />
                   <span>Share</span>
                 </button>
-                <button className="tools-action-btn" onClick={onDownload}>
-                  <Download size={16} />
+                <button className="tools-quick-btn" onClick={onDownload}>
+                  <Download size={14} />
                   <span>Download</span>
                 </button>
               </div>

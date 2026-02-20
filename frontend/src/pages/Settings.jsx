@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   User, Mail, Lock, Bell, Shield, CreditCard, 
-  Moon, Sun, Save, Check, Key, ExternalLink, Zap, HelpCircle, FileText, BarChart3, Settings as SettingsIcon, Rocket, Copy, AlertCircle
+  Moon, Sun, Save, Check, Key, ExternalLink, Zap, HelpCircle, FileText, BarChart3, Settings as SettingsIcon, Rocket, Copy, AlertCircle, Database, Download
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth, API } from '../App';
@@ -191,13 +191,11 @@ const Settings = () => {
   const sidebarNav = [
     { id: 'profile', name: 'Account', icon: User },
     { id: 'general', name: 'General', icon: SettingsIcon },
-    { id: 'usage', name: 'Usage', icon: BarChart3 },
     { id: 'api', name: 'API & Environment', icon: Key },
-    { id: 'deploy', name: 'Deploy integrations', icon: Rocket },
     { id: 'notifications', name: 'Notifications', icon: Bell },
-    { id: 'billing', name: 'Billing', icon: CreditCard },
     { id: 'security', name: 'Security', icon: Shield },
-    { id: 'help', name: 'Get help', icon: HelpCircle }
+    { id: 'billing', name: 'Billing & Usage', icon: CreditCard },
+    { id: 'data', name: 'Data & Privacy', icon: Database },
   ];
 
   return (
@@ -412,6 +410,44 @@ const Settings = () => {
             <Link to="/app/env" className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300">
               <ExternalLink className="w-4 h-4" /> Full env panel
             </Link>
+          </div>
+
+          {/* Deploy integrations (merged from separate tab) */}
+          <div className="mt-8 pt-8 border-t border-white/10">
+            <h4 className="font-medium mb-2 flex items-center gap-2"><Rocket className="w-4 h-4 text-blue-400" /> One-click deploy tokens</h4>
+            <p className="text-sm text-gray-500 mb-4">Add tokens to deploy directly to Vercel or Netlify. Get tokens from Vercel (Account → Settings → Tokens) and Netlify (User settings → Applications → Personal access tokens).</p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Vercel token {deployTokensStatus.has_vercel && <span className="text-green-500 text-xs">(saved)</span>}</label>
+                <input
+                  type="password"
+                  value={deployTokens.vercel}
+                  onChange={(e) => setDeployTokens(prev => ({ ...prev, vercel: e.target.value }))}
+                  placeholder={deployTokensStatus.has_vercel ? "Leave blank to keep existing" : "Paste Vercel token"}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-blue-500 outline-none transition"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Netlify token {deployTokensStatus.has_netlify && <span className="text-green-500 text-xs">(saved)</span>}</label>
+                <input
+                  type="password"
+                  value={deployTokens.netlify}
+                  onChange={(e) => setDeployTokens(prev => ({ ...prev, netlify: e.target.value }))}
+                  placeholder={deployTokensStatus.has_netlify ? "Leave blank to keep existing" : "Paste Netlify token"}
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-blue-500 outline-none transition"
+                />
+              </div>
+            </div>
+            <div className="mt-4">
+              <button
+                onClick={handleSaveDeployTokens}
+                disabled={deploySaving || (!deployTokens.vercel && !deployTokens.netlify)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg font-medium transition disabled:opacity-50"
+              >
+                {deploySaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                {deploySaving ? 'Saving...' : deploySaved ? 'Saved!' : 'Save deploy tokens'}
+              </button>
+            </div>
           </div>
         </motion.div>
       )}
@@ -741,16 +777,27 @@ const Settings = () => {
         </motion.div>
       )}
 
-      {/* Billing Tab */}
+      {/* Billing & Usage Tab (merged) */}
       {activeTab === 'billing' && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10"
         >
-          <h3 className="text-lg font-semibold mb-6">Billing & Subscription</h3>
+          <h3 className="text-lg font-semibold mb-6">Billing & Usage</h3>
           
           <div className="space-y-6">
+            {/* Usage section (merged from usage tab) */}
+            <div className="p-4 bg-white/5 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-[#666666]">Token balance</span>
+                <span className="font-mono font-semibold" data-testid="settings-token-balance">
+                  {(user?.token_balance ?? 0).toLocaleString()}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500">Prepaid tokens for AI builds. Usage is deducted per request.</p>
+            </div>
+
             <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
               <div className="flex items-center justify-between mb-4">
                 <div>
@@ -764,10 +811,20 @@ const Settings = () => {
                   Upgrade
                 </a>
               </div>
-              <p className="text-sm text-[#666666]">Token balance: {user?.token_balance?.toLocaleString()}</p>
-              <Link to="/pricing" className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 text-sm mt-2">
-                <FileText className="w-4 h-4" /> Pricing plans
-              </Link>
+              <div className="flex flex-wrap gap-3">
+                <Link
+                  to="/app/tokens"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg font-medium text-sm transition"
+                >
+                  <Zap className="w-4 h-4" /> Buy more tokens
+                </Link>
+                <Link
+                  to="/pricing"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/15 rounded-lg font-medium text-sm transition"
+                >
+                  <FileText className="w-4 h-4" /> Pricing plans
+                </Link>
+              </div>
             </div>
 
             <div>
@@ -780,6 +837,89 @@ const Settings = () => {
                 <button className="text-blue-400 hover:text-blue-300 text-sm">
                   Add Method
                 </button>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Data & Privacy Tab (NEW) */}
+      {activeTab === 'data' && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10"
+        >
+          <h3 className="text-lg font-semibold mb-6">Data & Privacy</h3>
+          <div className="space-y-6">
+            {/* Data Export */}
+            <div className="p-4 bg-white/5 rounded-lg">
+              <h4 className="font-medium mb-2 flex items-center gap-2">
+                <Download className="w-4 h-4 text-blue-400" />
+                Export your data
+              </h4>
+              <p className="text-sm text-gray-500 mb-4">Download all your projects, prompts, and account data as a ZIP archive.</p>
+              <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg font-medium text-sm transition">
+                <Download className="w-4 h-4" /> Request data export
+              </button>
+            </div>
+
+            {/* Privacy Controls */}
+            <div className="p-4 bg-white/5 rounded-lg">
+              <h4 className="font-medium mb-2 flex items-center gap-2">
+                <Shield className="w-4 h-4 text-blue-400" />
+                Privacy controls
+              </h4>
+              <div className="space-y-4 mt-4">
+                {[
+                  { key: 'analytics', label: 'Usage analytics', desc: 'Allow anonymous usage data to improve CrucibAI' },
+                  { key: 'training', label: 'Model training', desc: 'Allow your prompts to be used for model improvement (anonymized)' },
+                  { key: 'crash', label: 'Crash reports', desc: 'Send crash reports to help fix bugs' },
+                ].map(item => (
+                  <div key={item.key} className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">{item.label}</p>
+                      <p className="text-xs text-gray-500">{item.desc}</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" defaultChecked className="sr-only peer" />
+                      <div className="w-11 h-6 bg-white/10 peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Data Retention */}
+            <div className="p-4 bg-white/5 rounded-lg">
+              <h4 className="font-medium mb-2 flex items-center gap-2">
+                <Database className="w-4 h-4 text-blue-400" />
+                Data retention
+              </h4>
+              <p className="text-sm text-gray-500 mb-2">Build logs and chat history are retained for 90 days. Projects are kept indefinitely until you delete them.</p>
+              <Link to="/privacy" className="text-sm text-blue-400 hover:text-blue-300 inline-flex items-center gap-1">
+                Read our privacy policy <ExternalLink className="w-3 h-3" />
+              </Link>
+            </div>
+
+            {/* Help link (moved from separate tab) */}
+            <div className="pt-4 border-t border-white/10">
+              <h4 className="font-medium mb-3">Need help?</h4>
+              <div className="flex flex-wrap gap-3">
+                <a
+                  href="/learn"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm transition"
+                >
+                  <FileText className="w-4 h-4 text-blue-400" /> Documentation
+                </a>
+                <a
+                  href="mailto:support@crucibai.com"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm transition"
+                >
+                  <HelpCircle className="w-4 h-4 text-blue-400" /> Contact support
+                </a>
               </div>
             </div>
           </div>

@@ -1495,6 +1495,16 @@
   resolved "https://registry.npmjs.org/@floating-ui/utils/-/utils-0.2.10.tgz"
   integrity sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==
 
+"@fontsource/dm-sans@^5.2.8":
+  version "5.2.8"
+  resolved "https://registry.npmjs.org/@fontsource/dm-sans/-/dm-sans-5.2.8.tgz"
+  integrity sha512-tlovG42m9ESG28WiHpLq3F5umAlm64rv0RkqTbYowRn70e9OlRr5a3yTJhrhrY+k5lftR/OFJjPzOLQzk8EfCA==
+
+"@fontsource/fira-code@^5.2.7":
+  version "5.2.7"
+  resolved "https://registry.npmjs.org/@fontsource/fira-code/-/fira-code-5.2.7.tgz"
+  integrity sha512-tnB9NNund9TwIym8/7DMJe573nlPEQb+fKUV5GL8TBYXjIhDvL0D7mgmNVNQUPhXp+R7RylQeiBdkA4EbOHPGQ==
+
 "@fontsource/inter@^5.2.8":
   version "5.2.8"
   resolved "https://registry.npmjs.org/@fontsource/inter/-/inter-5.2.8.tgz"

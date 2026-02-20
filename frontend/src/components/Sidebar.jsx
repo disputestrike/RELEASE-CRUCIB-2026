@@ -5,19 +5,22 @@ import {
   AlertCircle, Settings, LogOut, Zap, ChevronDown, ChevronRight,
   FileOutput, FileText, LayoutGrid, BookOpen, Key, Keyboard,
   CreditCard, ScrollText, BarChart3, Wrench, HelpCircle, Coins,
-  X, Bell
+  X, Bell, Home
 } from 'lucide-react';
 import './Sidebar.css';
 
 /**
- * Sidebar Component (Left Navigation) — Manus-inspired
+ * Sidebar Component (Left Navigation) — Redesigned
  * 
- * Primary: New Task, Agents, Search, Library
- * Projects list with status
- * All Tasks list with status
- * Engine Room toggle (advanced tools)
- * Token balance (click → Credit Center)
- * User profile + Settings + Logout
+ * SPEC: Reduce from 18 items to 4 pinned:
+ *   1. Home (→ prompt-first dashboard)
+ *   2. New Task (→ /app/workspace)
+ *   3. Agents (→ /app/agents)
+ *   4. Settings (→ /app/settings)
+ * 
+ * Below pinned: All Tasks list with status icons
+ * Engine Room: collapsed by default, power-user tools
+ * Footer: Token balance + user avatar + logout
  */
 
 export const Sidebar = ({ user, onLogout, projects = [], tasks = [] }) => {
@@ -28,15 +31,17 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks = [] }) => {
   const [searchFocused, setSearchFocused] = useState(false);
 
   const isActive = (path) => location.pathname === path;
+  const isActivePrefix = (path) => location.pathname.startsWith(path);
 
-  // Primary navigation — always visible
-  const primaryNav = [
-    { label: 'New Task', icon: Plus, href: '/app/projects/new', color: 'blue' },
-    { label: 'Workspace', icon: Wrench, href: '/app/workspace', color: 'emerald' },
-    { label: 'Agents', icon: Bot, href: '/app/agents', color: 'purple' },
+  // 4 pinned navigation items — spec requirement
+  const pinnedNav = [
+    { label: 'Home', icon: Home, href: '/app', exact: true },
+    { label: 'New Task', icon: Plus, href: '/app/workspace' },
+    { label: 'Agents', icon: Bot, href: '/app/agents' },
+    { label: 'Settings', icon: Settings, href: '/app/settings' },
   ];
 
-  // Engine Room — hidden by default, for power users
+  // Engine Room — collapsed by default, for power users
   const engineRoomItems = [
     { label: 'Credit Center', icon: Coins, href: '/app/tokens' },
     { label: 'Exports', icon: FileOutput, href: '/app/exports' },
@@ -52,17 +57,11 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks = [] }) => {
     { label: 'Audit Log', icon: ScrollText, href: '/app/audit-log' },
   ];
 
-  // Filter projects and tasks by search
-  const filteredProjects = useMemo(() => {
-    if (!searchQuery) return projects.slice(0, 10);
-    const q = searchQuery.toLowerCase();
-    return projects.filter(p => p.name?.toLowerCase().includes(q)).slice(0, 10);
-  }, [projects, searchQuery]);
-
+  // Filter tasks by search
   const filteredTasks = useMemo(() => {
-    if (!searchQuery) return tasks.slice(0, 15);
+    if (!searchQuery) return tasks.slice(0, 20);
     const q = searchQuery.toLowerCase();
-    return tasks.filter(t => t.name?.toLowerCase().includes(q)).slice(0, 15);
+    return tasks.filter(t => t.name?.toLowerCase().includes(q)).slice(0, 20);
   }, [tasks, searchQuery]);
 
   const filteredEngineItems = useMemo(() => {
@@ -109,7 +108,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks = [] }) => {
           <input
             id="sidebar-search"
             type="text"
-            placeholder="Search tasks, projects..."
+            placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={() => setSearchFocused(true)}
@@ -125,48 +124,24 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks = [] }) => {
         </div>
       </div>
 
-      {/* Primary Navigation */}
+      {/* 4 Pinned Navigation Items */}
       <nav className="sidebar-nav">
         <div className="sidebar-nav-section">
-          {primaryNav.map((item) => (
-            <Link
-              key={item.href}
-              to={item.href}
-              className={`sidebar-nav-item ${isActive(item.href) ? 'active' : ''}`}
-            >
-              <item.icon size={18} className={`sidebar-nav-icon color-${item.color}`} />
-              <span className="sidebar-nav-label">{item.label}</span>
-            </Link>
-          ))}
+          {pinnedNav.map((item) => {
+            const active = item.exact ? isActive(item.href) : isActivePrefix(item.href);
+            return (
+              <Link
+                key={item.href}
+                to={item.href}
+                className={`sidebar-nav-item ${active ? 'active' : ''}`}
+              >
+                <item.icon size={18} className="sidebar-nav-icon" />
+                <span className="sidebar-nav-label">{item.label}</span>
+              </Link>
+            );
+          })}
         </div>
       </nav>
-
-      {/* Projects Section */}
-      <div className="sidebar-section">
-        <div className="sidebar-section-header">
-          <h3 className="sidebar-section-title">Projects</h3>
-          <Link to="/app/projects/new" className="sidebar-section-action" title="New project">
-            <Plus size={16} />
-          </Link>
-        </div>
-        <div className="sidebar-section-items">
-          {filteredProjects.length > 0 ? (
-            filteredProjects.map((project) => (
-              <Link
-                key={project.id}
-                to={`/app/projects/${project.id}`}
-                className={`sidebar-item ${isActive(`/app/projects/${project.id}`) ? 'active' : ''}`}
-                title={project.name}
-              >
-                <FolderOpen size={14} className="sidebar-item-icon" />
-                <span className="sidebar-item-label">{project.name}</span>
-              </Link>
-            ))
-          ) : (
-            <div className="sidebar-empty">{searchQuery ? 'No matches' : 'No projects yet'}</div>
-          )}
-        </div>
-      </div>
 
       {/* All Tasks Section */}
       <div className="sidebar-section">
@@ -230,16 +205,6 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks = [] }) => {
 
       {/* Footer */}
       <div className="sidebar-footer">
-        <Link to="/app/settings" className="sidebar-footer-item">
-          <Settings size={18} />
-          <span>Settings</span>
-        </Link>
-
-        <button className="sidebar-footer-item sidebar-notification-btn" title="Notifications">
-          <Bell size={18} />
-          <span className="sidebar-notification-dot" />
-        </button>
-
         <div className="sidebar-user">
           <div className="sidebar-user-avatar">
             {user?.name?.charAt(0)?.toUpperCase() || 'U'}

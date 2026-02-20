@@ -56,6 +56,7 @@ import {
 import { useAuth, API } from '../App';
 import axios from 'axios';
 import ManusComputer from '../components/ManusComputer';
+import InlineAgentMonitor from '../components/InlineAgentMonitor';
 
 // Default React app template
 const DEFAULT_FILES = {
@@ -1531,24 +1532,36 @@ Respond with ONLY the complete App.js code, nothing else.`;
             </div>
           </div>
 
-          {/* Monaco Editor */}
+          {/* Monaco Editor OR InlineAgentMonitor during BUILD */}
           <div className="flex-1">
-            <Editor
-              height="100%"
-              language={activeFile.endsWith('.css') ? 'css' : 'javascript'}
-              value={files[activeFile]?.code || ''}
-              onChange={handleCodeChange}
-              theme="light"
-              options={{
-                minimap: { enabled: false },
-                fontSize: 13,
-                lineNumbers: 'on',
-                scrollBeyondLastLine: false,
-                wordWrap: 'on',
-                tabSize: 2,
-                padding: { top: 16 },
-              }}
-            />
+            {isBuilding ? (
+              <InlineAgentMonitor
+                isBuilding={isBuilding}
+                buildProgress={buildProgress}
+                currentPhase={currentPhase}
+                agentsActivity={agentsActivity}
+                buildEvents={[]}
+                tokensUsed={lastTokensUsed}
+                projectBuildProgress={projectBuildProgress}
+              />
+            ) : (
+              <Editor
+                height="100%"
+                language={activeFile.endsWith('.css') ? 'css' : 'javascript'}
+                value={files[activeFile]?.code || ''}
+                onChange={handleCodeChange}
+                theme="light"
+                options={{
+                  minimap: { enabled: false },
+                  fontSize: 13,
+                  lineNumbers: 'on',
+                  scrollBeyondLastLine: false,
+                  wordWrap: 'on',
+                  tabSize: 2,
+                  padding: { top: 16 },
+                }}
+              />
+            )}
           </div>
         </div>
 
