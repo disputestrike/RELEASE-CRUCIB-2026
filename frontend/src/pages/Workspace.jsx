@@ -1804,7 +1804,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
             {devMode && (
             <button
               className="ml-auto mr-1 px-3 py-1 rounded text-sm font-semibold transition"
-              style={{ background: 'var(--accent)', color: 'white' }}
+              style={{ background: '#1A1A1A', color: 'white' }}
               onMouseEnter={e => { e.target.style.background = 'var(--accent-hover)'; }}
               onMouseLeave={e => { e.target.style.background = 'var(--accent)'; }}
               onClick={() => setShowDeployModal(true)}
