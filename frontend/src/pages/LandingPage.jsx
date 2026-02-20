@@ -277,7 +277,10 @@ const LandingPage = () => {
       {/* Navigation — Kimi-style */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-kimi-bg border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
-          <Link to="/" className="text-xl font-semibold tracking-tight text-kimi-text">CrucibAI <span className="text-kimi-muted font-normal text-base">— Inevitable AI</span></Link>
+          <Link to="/" className="flex items-center gap-3">
+            <img src="/assets/logo.png" alt="CrucibAI" className="w-8 h-8" />
+            <span className="text-xl font-semibold tracking-tight text-kimi-text">CrucibAI <span className="text-kimi-muted font-normal text-base">— Inevitable AI</span></span>
+          </Link>
           <div className="hidden md:flex items-center gap-6">
             <Link to="/features" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Features</Link>
             <Link to="/pricing" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Pricing</Link>

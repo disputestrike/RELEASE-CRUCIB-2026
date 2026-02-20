@@ -173,9 +173,7 @@ const AuthPage = () => {
             {/* Logo */}
             <div className="mb-8">
               <Link to="/" className="inline-flex items-center gap-2">
-                <div className="w-8 h-8 bg-[#1A1A1A] rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">C</span>
-                </div>
+                <img src="/assets/logo.png" alt="CrucibAI" className="w-8 h-8" />
                 <span className="text-xl font-bold tracking-tight text-gray-900">
                   CrucibAI
                 </span>

@@ -94,9 +94,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks = [] }) => {
       {/* Header */}
       <div className="sidebar-header">
         <Link to="/app" className="sidebar-logo">
-          <div className="sidebar-logo-icon">
-            <LayoutGrid size={18} />
-          </div>
+          <img src="/assets/logo.png" alt="CrucibAI" className="sidebar-logo-icon" style={{width: '32px', height: '32px'}} />
           <div className="sidebar-logo-text">CrucibAI</div>
         </Link>
       </div>
