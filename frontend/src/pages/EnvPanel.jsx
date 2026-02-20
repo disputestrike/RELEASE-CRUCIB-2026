@@ -42,7 +42,7 @@ export default function EnvPanel() {
   if (!token) {
     return (
       <div className="min-h-screen bg-[#FAFAF8] text-[#1A1A1A] flex items-center justify-center p-4">
-        <p className="text-zinc-400">Sign in to manage environment variables.</p>
+        <p className="text-gray-400">Sign in to manage environment variables.</p>
       </div>
     );
   }
@@ -51,20 +51,20 @@ export default function EnvPanel() {
     <div className="min-h-screen bg-[#FAFAF8] text-[#1A1A1A] p-6">
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center gap-3 mb-8">
-          <div className="p-3 rounded-xl bg-zinc-800">
+          <div className="p-3 rounded-xl bg-gray-800">
             <Key className="w-8 h-8 text-#c0c0c0" />
           </div>
           <div>
             <h1 className="text-2xl font-bold">Workspace env</h1>
-            <p className="text-zinc-400">Variables available to your builds (e.g. API keys)</p>
+            <p className="text-gray-400">Variables available to your builds (e.g. API keys)</p>
           </div>
         </div>
         <div className="space-y-3 mb-6">
           {Object.entries(env).map(([k, v]) => (
-            <div key={k} className="flex items-center gap-3 p-3 rounded-lg bg-zinc-900 border border-zinc-800">
-              <span className="font-mono text-sm text-zinc-300">{k}</span>
-              <span className="flex-1 truncate text-zinc-500 text-sm">{v ? '••••••' : '(empty)'}</span>
-              <button onClick={() => removeVar(k)} className="p-1.5 text-zinc-500 hover:text-gray-400">
+            <div key={k} className="flex items-center gap-3 p-3 rounded-lg bg-gray-900 border border-gray-800">
+              <span className="font-mono text-sm text-gray-300">{k}</span>
+              <span className="flex-1 truncate text-gray-500 text-sm">{v ? '••••••' : '(empty)'}</span>
+              <button onClick={() => removeVar(k)} className="p-1.5 text-gray-500 hover:text-gray-400">
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
@@ -75,13 +75,13 @@ export default function EnvPanel() {
             value={newKey}
             onChange={(e) => setNewKey(e.target.value)}
             placeholder="KEY"
-            className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-[#1A1A1A] placeholder-zinc-500"
+            className="flex-1 px-3 py-2 rounded-lg bg-gray-900 border border-gray-800 text-[#1A1A1A] placeholder-zinc-500"
           />
           <input
             value={newVal}
             onChange={(e) => setNewVal(e.target.value)}
             placeholder="value"
-            className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-[#1A1A1A] placeholder-zinc-500"
+            className="flex-1 px-3 py-2 rounded-lg bg-gray-900 border border-gray-800 text-[#1A1A1A] placeholder-zinc-500"
           />
           <button
             onClick={addVar}

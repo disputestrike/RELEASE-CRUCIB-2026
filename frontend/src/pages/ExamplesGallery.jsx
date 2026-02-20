@@ -47,22 +47,22 @@ export default function ExamplesGallery() {
     <div className="min-h-screen bg-[#FAFAF8] text-[#1A1A1A] p-6">
       <div className="max-w-5xl mx-auto">
         <h1 className="text-2xl font-bold mb-2">Generated App Examples</h1>
-        <p className="text-zinc-400 mb-8">Proof of what CrucibAI generates. Fork any example to start from its code.</p>
+        <p className="text-gray-400 mb-8">Proof of what CrucibAI generates. Fork any example to start from its code.</p>
 
         <div className="grid gap-4 sm:grid-cols-2">
           {examples.map((ex) => (
             <div
               key={ex.name}
-              className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/50 hover:border-zinc-700 transition cursor-pointer"
+              className="p-5 rounded-xl border border-gray-800 bg-gray-900/50 hover:border-gray-700 transition cursor-pointer"
               onClick={() => setSelected(selected?.name === ex.name ? null : ex)}
             >
               <div className="flex items-center gap-3 mb-3">
-                <div className="p-2 rounded-lg bg-zinc-800">
+                <div className="p-2 rounded-lg bg-gray-800">
                   <FileCode className="w-5 h-5 text-#c0c0c0" />
                 </div>
                 <div>
                   <h2 className="font-semibold">{ex.name}</h2>
-                  <p className="text-sm text-zinc-500 line-clamp-1">{ex.prompt?.slice(0, 60)}...</p>
+                  <p className="text-sm text-gray-500 line-clamp-1">{ex.prompt?.slice(0, 60)}...</p>
                 </div>
               </div>
               {ex.quality_metrics && <QualityScore score={ex.quality_metrics} />}
@@ -79,21 +79,21 @@ export default function ExamplesGallery() {
         </div>
 
         {examples.length === 0 && (
-          <p className="text-zinc-500">No examples yet. Run a build to see generated apps here.</p>
+          <p className="text-gray-500">No examples yet. Run a build to see generated apps here.</p>
         )}
 
         {selected && (
-          <div className="fixed inset-0 bg-zinc-900/80 flex items-center justify-center z-50 p-4" onClick={() => setSelected(null)}>
-            <div className="bg-zinc-900 rounded-xl border border-zinc-700 max-w-2xl w-full max-h-[80vh] overflow-auto p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 bg-gray-900/80 flex items-center justify-center z-50 p-4" onClick={() => setSelected(null)}>
+            <div className="bg-gray-900 rounded-xl border border-gray-700 max-w-2xl w-full max-h-[80vh] overflow-auto p-6" onClick={(e) => e.stopPropagation()}>
               <h2 className="text-xl font-bold mb-2">{selected.name}</h2>
-              <p className="text-zinc-400 text-sm mb-4">{selected.prompt}</p>
+              <p className="text-gray-400 text-sm mb-4">{selected.prompt}</p>
               {selected.quality_metrics && <QualityScore score={selected.quality_metrics} />}
               {selected.generated_code?.frontend && (
-                <pre className="mt-4 p-3 rounded bg-zinc-800 text-xs overflow-x-auto whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
+                <pre className="mt-4 p-3 rounded bg-gray-800 text-xs overflow-x-auto whitespace-pre-wrap break-words max-h-48 overflow-y-auto">
                   {selected.generated_code.frontend.slice(0, 800)}...
                 </pre>
               )}
-              <button onClick={() => setSelected(null)} className="mt-4 px-4 py-2 rounded bg-zinc-700 hover:bg-zinc-600">Close</button>
+              <button onClick={() => setSelected(null)} className="mt-4 px-4 py-2 rounded bg-gray-700 hover:bg-gray-600">Close</button>
             </div>
           </div>
         )}

@@ -267,7 +267,7 @@ const AgentMonitor = () => {
           <button
             onClick={handleRetryPhase}
             disabled={retrying}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 text-zinc-900 font-medium hover:bg-amber-400 transition disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 text-gray-900 font-medium hover:bg-amber-400 transition disabled:opacity-50"
           >
             {retrying ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
             {retrying ? 'Starting…' : 'Retry code generation'}
@@ -332,7 +332,7 @@ const AgentMonitor = () => {
           <h3 className="text-sm font-medium text-[#666666] mb-2 flex items-center gap-2">
             <Eye className="w-4 h-4" /> Live preview (workspace)
           </h3>
-          <div className="rounded-lg overflow-hidden border border-white/10 bg-zinc-900" style={{ minHeight: 280 }}>
+          <div className="rounded-lg overflow-hidden border border-white/10 bg-gray-900" style={{ minHeight: 280 }}>
             <iframe
               title="Preview"
               src={previewUrl}
@@ -501,7 +501,7 @@ const AgentMonitor = () => {
                 {projectState.requirements && Object.keys(projectState.requirements).length > 0 && (
                   <div>
                     <h4 className="text-[#666666] font-medium mb-1">Requirements</h4>
-                    <pre className="bg-zinc-900/30 p-3 rounded overflow-x-auto text-gray-300 whitespace-pre-wrap max-h-32 overflow-y-auto">
+                    <pre className="bg-gray-900/30 p-3 rounded overflow-x-auto text-gray-300 whitespace-pre-wrap max-h-32 overflow-y-auto">
                       {JSON.stringify(projectState.requirements, null, 2)}
                     </pre>
                   </div>
@@ -509,7 +509,7 @@ const AgentMonitor = () => {
                 {projectState.stack && Object.keys(projectState.stack).length > 0 && (
                   <div>
                     <h4 className="text-[#666666] font-medium mb-1">Stack</h4>
-                    <pre className="bg-zinc-900/30 p-3 rounded overflow-x-auto text-gray-300 whitespace-pre-wrap max-h-24 overflow-y-auto">
+                    <pre className="bg-gray-900/30 p-3 rounded overflow-x-auto text-gray-300 whitespace-pre-wrap max-h-24 overflow-y-auto">
                       {JSON.stringify(projectState.stack, null, 2)}
                     </pre>
                   </div>

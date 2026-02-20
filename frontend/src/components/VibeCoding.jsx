@@ -124,12 +124,12 @@ export const VibeCodingInput = ({ onSubmit, isLoading = false, API }) => {
   };
 
   return (
-    <div className="space-y-4 p-6 bg-gradient-to-br from-slate-900 to-slate-800 rounded-lg border border-slate-700">
+    <div className="space-y-4 p-6 bg-gradient-to-br from-slate-900 to-slate-800 rounded-lg border border-gray-700">
       {/* Vibe Coding Header */}
       <div className="flex items-center gap-2 mb-4">
         <Sparkles className="text-[#1A1A1A]" size={20} />
         <h3 className="text-lg font-semibold text-[#1A1A1A]">Vibe Coding</h3>
-        <span className="text-xs text-slate-400 ml-auto">Manus-style natural language</span>
+        <span className="text-xs text-gray-400 ml-auto">Manus-style natural language</span>
       </div>
 
       {/* Input Area */}
@@ -140,7 +140,7 @@ export const VibeCodingInput = ({ onSubmit, isLoading = false, API }) => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Describe what you want to build... (or use voice)"
-            className="w-full bg-slate-800 border border-slate-600 rounded-lg p-4 text-[#1A1A1A] placeholder-slate-500 resize-none focus:outline-none focus:ring-2 focus:ring-#f5f5f50 min-h-24"
+            className="w-full bg-gray-800 border border-gray-600 rounded-lg p-4 text-[#1A1A1A] placeholder-slate-500 resize-none focus:outline-none focus:ring-2 focus:ring-#f5f5f50 min-h-24"
           />
 
           {/* Voice Button */}
@@ -163,10 +163,10 @@ export const VibeCodingInput = ({ onSubmit, isLoading = false, API }) => {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-3 bg-slate-700/50 rounded-lg border border-slate-600"
+            className="p-3 bg-gray-700/50 rounded-lg border border-gray-600"
           >
-            <div className="text-xs text-slate-400 mb-1">Transcribed:</div>
-            <div className="text-sm text-slate-200">{transcript}</div>
+            <div className="text-xs text-gray-400 mb-1">Transcribed:</div>
+            <div className="text-sm text-gray-200">{transcript}</div>
           </motion.div>
         )}
 
@@ -182,17 +182,17 @@ export const VibeCodingInput = ({ onSubmit, isLoading = false, API }) => {
               <span className="font-medium text-#d0d0d0">Vibe Analysis</span>
             </div>
 
-            <div className="space-y-2 text-sm text-slate-300">
+            <div className="space-y-2 text-sm text-gray-300">
               <div>
-                <span className="text-slate-400">Style:</span>
+                <span className="text-gray-400">Style:</span>
                 <span className="ml-2 text-#d0d0d0 font-medium">{vibeAnalysis.style}</span>
               </div>
               <div>
-                <span className="text-slate-400">Complexity:</span>
+                <span className="text-gray-400">Complexity:</span>
                 <span className="ml-2 text-#d0d0d0 font-medium">{vibeAnalysis.complexity}</span>
               </div>
               <div>
-                <span className="text-slate-400">Tone:</span>
+                <span className="text-gray-400">Tone:</span>
                 <span className="ml-2 text-#d0d0d0 font-medium">{vibeAnalysis.tone}</span>
               </div>
             </div>
@@ -206,7 +206,7 @@ export const VibeCodingInput = ({ onSubmit, isLoading = false, API }) => {
             animate={{ opacity: 1, y: 0 }}
             className="space-y-2"
           >
-            <div className="flex items-center gap-2 text-sm text-slate-400">
+            <div className="flex items-center gap-2 text-sm text-gray-400">
               <Zap size={14} />
               <span>AI Suggestions</span>
             </div>
@@ -215,7 +215,7 @@ export const VibeCodingInput = ({ onSubmit, isLoading = false, API }) => {
                 <button
                   key={idx}
                   onClick={() => applySuggestion(suggestion)}
-                  className="w-full text-left p-3 bg-slate-700/50 hover:bg-slate-700 border border-slate-600 rounded-lg transition-colors text-sm text-slate-300 hover:text-[#1A1A1A]"
+                  className="w-full text-left p-3 bg-gray-700/50 hover:bg-gray-700 border border-gray-600 rounded-lg transition-colors text-sm text-gray-300 hover:text-[#1A1A1A]"
                 >
                   {suggestion.text}
                 </button>
@@ -266,11 +266,11 @@ export const VibeStyleSelector = ({ onStyleSelect }) => {
         <button
           key={style.id}
           onClick={() => onStyleSelect(style.id)}
-          className="p-4 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg transition-all text-center space-y-2 hover:border-gray-300"
+          className="p-4 bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded-lg transition-all text-center space-y-2 hover:border-gray-300"
         >
           <div className="text-2xl">{style.emoji}</div>
           <div className="font-medium text-[#1A1A1A] text-sm">{style.name}</div>
-          <div className="text-xs text-slate-400">{style.description}</div>
+          <div className="text-xs text-gray-400">{style.description}</div>
         </button>
       ))}
     </div>
@@ -285,16 +285,16 @@ export const VibePreset = ({ preset, onApply }) => {
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="p-4 bg-slate-800 border border-slate-600 rounded-lg space-y-3"
+      className="p-4 bg-gray-800 border border-gray-600 rounded-lg space-y-3"
     >
       <div className="flex items-center justify-between">
         <h4 className="font-medium text-[#1A1A1A]">{preset.name}</h4>
         <span className="text-2xl">{preset.emoji}</span>
       </div>
 
-      <p className="text-sm text-slate-400">{preset.description}</p>
+      <p className="text-sm text-gray-400">{preset.description}</p>
 
-      <div className="flex items-center gap-2 text-xs text-slate-500">
+      <div className="flex items-center gap-2 text-xs text-gray-500">
         <Volume2 size={14} />
         <span>"{preset.example}"</span>
       </div>

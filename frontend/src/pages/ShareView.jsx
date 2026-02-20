@@ -37,7 +37,7 @@ export default function ShareView() {
         <div className="text-center max-w-md">
           <AlertCircle className="w-12 h-12 text-amber-400 mx-auto mb-4" />
           <h1 className="text-xl font-semibold mb-2">Share not found</h1>
-          <p className="text-zinc-400 mb-6">{error || 'This link may have expired.'}</p>
+          <p className="text-gray-400 mb-6">{error || 'This link may have expired.'}</p>
           <Link to="/" className="text-[#1A1A1A] hover:text-#d0d0d0">Back to CrucibAI</Link>
         </div>
       </div>
@@ -47,22 +47,22 @@ export default function ShareView() {
   return (
     <div className="min-h-screen bg-[#FAFAF8] text-[#1A1A1A] p-6">
       <div className="max-w-2xl mx-auto">
-        <div className="flex items-center gap-2 text-zinc-400 mb-2">
+        <div className="flex items-center gap-2 text-gray-400 mb-2">
           {readOnly && <Lock className="w-4 h-4" />}
           <span>Shared project</span>
         </div>
         <h1 className="text-2xl font-bold mb-2">{project.name}</h1>
-        {project.description && <p className="text-zinc-400 mb-6">{project.description}</p>}
+        {project.description && <p className="text-gray-400 mb-6">{project.description}</p>}
         <div className="flex flex-wrap gap-2 text-sm">
-          <span className="px-3 py-1 bg-zinc-800 rounded-full text-zinc-300">{project.project_type || 'app'}</span>
-          {project.status && <span className="px-3 py-1 bg-zinc-800 rounded-full text-zinc-300">{project.status}</span>}
+          <span className="px-3 py-1 bg-gray-800 rounded-full text-gray-300">{project.project_type || 'app'}</span>
+          {project.status && <span className="px-3 py-1 bg-gray-800 rounded-full text-gray-300">{project.status}</span>}
           {project.live_url && (
             <a href={project.live_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-3 py-1 bg-gray-200 text-[#1A1A1A] rounded-full hover:bg-gray-200/30">
               <ExternalLink className="w-3 h-3" /> Open live app
             </a>
           )}
         </div>
-        <p className="mt-8 text-zinc-500 text-sm">This is a read-only share. Sign in to edit or duplicate.</p>
+        <p className="mt-8 text-gray-500 text-sm">This is a read-only share. Sign in to edit or duplicate.</p>
         <Link to="/auth" className="inline-block mt-4 text-[#1A1A1A] hover:text-#d0d0d0">Sign in to CrucibAI</Link>
       </div>
     </div>

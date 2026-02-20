@@ -225,7 +225,7 @@ export default function TutorialsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-zinc-200">
+    <div className="min-h-screen bg-[#0a0a0a] text-gray-200">
       <PublicNav />
 
       <div className="max-w-7xl mx-auto px-6 py-12">
@@ -237,20 +237,20 @@ export default function TutorialsPage() {
             </div>
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Tutorials</h1>
-              <p className="text-zinc-500">{TUTORIALS.length} step-by-step guides to master CrucibAI</p>
+              <p className="text-gray-500">{TUTORIALS.length} step-by-step guides to master CrucibAI</p>
             </div>
           </div>
         </motion.div>
 
         {/* Search */}
         <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search tutorials... (e.g., mobile, deploy, voice)"
-            className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-gray-500/50"
+            className="w-full pl-10 pr-4 py-3 bg-gray-900 border border-gray-800 rounded-xl text-sm text-gray-200 placeholder-zinc-600 focus:outline-none focus:border-gray-500/50"
           />
         </div>
 
@@ -265,7 +265,7 @@ export default function TutorialsPage() {
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition ${
                   activeCategory === cat.id
                     ? 'bg-gray-500/15 text-gray-400 border border-gray-500/30'
-                    : 'text-zinc-500 hover:text-zinc-300 border border-zinc-800 hover:border-zinc-700'
+                    : 'text-gray-500 hover:text-gray-300 border border-gray-800 hover:border-gray-700'
                 }`}
               >
                 <Icon size={14} />
@@ -289,7 +289,7 @@ export default function TutorialsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.05 }}
                 className={`rounded-xl border transition ${
-                  isExpanded ? 'border-gray-500/30 bg-zinc-900' : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-700'
+                  isExpanded ? 'border-gray-500/30 bg-gray-900' : 'border-gray-800 bg-gray-900/50 hover:border-gray-700'
                 }`}
               >
                 {/* Tutorial header */}
@@ -298,25 +298,25 @@ export default function TutorialsPage() {
                   className="w-full flex items-center gap-4 px-6 py-5 text-left"
                 >
                   <div className={`p-2.5 rounded-xl shrink-0 ${
-                    isExpanded ? 'bg-gray-500/20' : 'bg-zinc-800'
+                    isExpanded ? 'bg-gray-500/20' : 'bg-gray-800'
                   }`}>
-                    <Icon size={20} className={isExpanded ? 'text-gray-400' : 'text-zinc-400'} />
+                    <Icon size={20} className={isExpanded ? 'text-gray-400' : 'text-gray-400'} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-lg">{tutorial.title}</h3>
-                    <p className="text-sm text-zinc-500 mt-0.5">{tutorial.description}</p>
+                    <p className="text-sm text-gray-500 mt-0.5">{tutorial.description}</p>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
                     <span className={`px-2 py-0.5 rounded text-xs border ${DIFFICULTY_COLORS[tutorial.difficulty]}`}>
                       {tutorial.difficulty}
                     </span>
-                    <span className="flex items-center gap-1 text-xs text-zinc-600">
+                    <span className="flex items-center gap-1 text-xs text-gray-600">
                       <Clock size={12} /> {tutorial.duration}
                     </span>
                     {completedCount > 0 && (
                       <span className="text-xs text-gray-400">{completedCount}/{tutorial.steps.length}</span>
                     )}
-                    <ChevronDown size={18} className={`text-zinc-600 transition ${isExpanded ? 'rotate-180' : ''}`} />
+                    <ChevronDown size={18} className={`text-gray-600 transition ${isExpanded ? 'rotate-180' : ''}`} />
                   </div>
                 </button>
 
@@ -329,7 +329,7 @@ export default function TutorialsPage() {
                       exit={{ height: 0, opacity: 0 }}
                       className="overflow-hidden"
                     >
-                      <div className="px-6 pb-6 border-t border-zinc-800">
+                      <div className="px-6 pb-6 border-t border-gray-800">
                         <div className="mt-4 space-y-3">
                           {tutorial.steps.map((step, i) => {
                             const isCompleted = completedSteps[`${tutorial.id}-${i}`];
@@ -337,20 +337,20 @@ export default function TutorialsPage() {
                               <div
                                 key={i}
                                 className={`flex gap-4 p-4 rounded-lg transition cursor-pointer ${
-                                  isCompleted ? 'bg-gray-500/5 border border-gray-500/20' : 'bg-zinc-800/50 hover:bg-zinc-800'
+                                  isCompleted ? 'bg-gray-500/5 border border-gray-500/20' : 'bg-gray-800/50 hover:bg-gray-800'
                                 }`}
                                 onClick={() => toggleStep(tutorial.id, i)}
                               >
                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-bold ${
-                                  isCompleted ? 'bg-gray-500 text-white' : 'bg-zinc-700 text-zinc-400'
+                                  isCompleted ? 'bg-gray-500 text-white' : 'bg-gray-700 text-gray-400'
                                 }`}>
                                   {isCompleted ? <Check size={16} /> : i + 1}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <h4 className={`font-medium text-sm ${isCompleted ? 'text-gray-400' : 'text-zinc-200'}`}>
+                                  <h4 className={`font-medium text-sm ${isCompleted ? 'text-gray-400' : 'text-gray-200'}`}>
                                     {step.title}
                                   </h4>
-                                  <p className="text-sm text-zinc-500 mt-1 leading-relaxed whitespace-pre-line">
+                                  <p className="text-sm text-gray-500 mt-1 leading-relaxed whitespace-pre-line">
                                     {step.content}
                                   </p>
                                 </div>
@@ -367,7 +367,7 @@ export default function TutorialsPage() {
                           >
                             <Play size={14} /> Try it now
                           </button>
-                          <span className="text-xs text-zinc-600">
+                          <span className="text-xs text-gray-600">
                             {completedCount === tutorial.steps.length ? '✓ All steps completed!' : `${completedCount} of ${tutorial.steps.length} steps completed`}
                           </span>
                         </div>
@@ -382,20 +382,20 @@ export default function TutorialsPage() {
 
         {filteredTutorials.length === 0 && (
           <div className="text-center py-16">
-            <Search size={48} className="mx-auto text-zinc-700 mb-4" />
-            <p className="text-zinc-500">No tutorials found. Try a different search or category.</p>
+            <Search size={48} className="mx-auto text-gray-700 mb-4" />
+            <p className="text-gray-500">No tutorials found. Try a different search or category.</p>
           </div>
         )}
 
         {/* Bottom CTA */}
-        <div className="mt-16 text-center p-8 rounded-2xl border border-zinc-800 bg-zinc-900/50">
+        <div className="mt-16 text-center p-8 rounded-2xl border border-gray-800 bg-gray-900/50">
           <h3 className="text-xl font-bold mb-2">Need more help?</h3>
-          <p className="text-zinc-500 mb-4">Check the API docs, learn page, or open the Workspace and ask CrucibAI directly.</p>
+          <p className="text-gray-500 mb-4">Check the API docs, learn page, or open the Workspace and ask CrucibAI directly.</p>
           <div className="flex items-center justify-center gap-3 flex-wrap">
-            <button onClick={() => navigate('/docs')} className="flex items-center gap-2 px-5 py-2.5 border border-zinc-700 hover:border-zinc-600 rounded-lg text-sm font-medium transition">
+            <button onClick={() => navigate('/docs')} className="flex items-center gap-2 px-5 py-2.5 border border-gray-700 hover:border-gray-600 rounded-lg text-sm font-medium transition">
               <Code size={16} /> API Docs
             </button>
-            <button onClick={() => navigate('/learn')} className="flex items-center gap-2 px-5 py-2.5 border border-zinc-700 hover:border-zinc-600 rounded-lg text-sm font-medium transition">
+            <button onClick={() => navigate('/learn')} className="flex items-center gap-2 px-5 py-2.5 border border-gray-700 hover:border-gray-600 rounded-lg text-sm font-medium transition">
               <BookOpen size={16} /> Learn
             </button>
             <button onClick={() => navigate(user ? '/app/workspace' : '/auth')} className="flex items-center gap-2 px-5 py-2.5 bg-gray-500 hover:bg-gray-600 rounded-lg text-sm font-medium transition">

@@ -137,7 +137,7 @@ export default function Enterprise() {
               <button
                 type="button"
                 onClick={() => navigate(user ? '/app' : '/')}
-                className="px-6 py-3 bg-white text-zinc-900 font-medium rounded-lg hover:bg-zinc-200 transition"
+                className="px-6 py-3 bg-white text-gray-900 font-medium rounded-lg hover:bg-gray-200 transition"
               >
                 {user ? 'Back to workspace' : 'Back to home'}
               </button>
@@ -152,7 +152,7 @@ export default function Enterprise() {
                   type="text"
                   value={form.company}
                   onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-lg bg-zinc-800 border border-zinc-700 text-[#1A1A1A] placeholder-zinc-500 focus:border-kimi-accent outline-none"
+                  className="w-full px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-[#1A1A1A] placeholder-zinc-500 focus:border-kimi-accent outline-none"
                   placeholder="Acme Inc."
                   required
                 />
@@ -163,7 +163,7 @@ export default function Enterprise() {
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-lg bg-zinc-800 border border-zinc-700 text-[#1A1A1A] placeholder-zinc-500 focus:border-kimi-accent outline-none"
+                  className="w-full px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-[#1A1A1A] placeholder-zinc-500 focus:border-kimi-accent outline-none"
                   placeholder="you@company.com"
                   required
                 />
@@ -173,7 +173,7 @@ export default function Enterprise() {
                 <select
                   value={form.team_size}
                   onChange={(e) => setForm((f) => ({ ...f, team_size: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-lg bg-zinc-800 border border-zinc-700 text-[#1A1A1A] focus:border-kimi-accent outline-none"
+                  className="w-full px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-[#1A1A1A] focus:border-kimi-accent outline-none"
                 >
                   <option value="">Select</option>
                   <option value="1-10">1–10</option>
@@ -187,7 +187,7 @@ export default function Enterprise() {
                 <select
                   value={form.use_case}
                   onChange={(e) => setForm((f) => ({ ...f, use_case: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-lg bg-zinc-800 border border-zinc-700 text-[#1A1A1A] focus:border-kimi-accent outline-none"
+                  className="w-full px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-[#1A1A1A] focus:border-kimi-accent outline-none"
                 >
                   <option value="">Select</option>
                   <option value="agency">Agency</option>
@@ -201,7 +201,7 @@ export default function Enterprise() {
                 <select
                   value={form.budget}
                   onChange={(e) => setForm((f) => ({ ...f, budget: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-lg bg-zinc-800 border border-zinc-700 text-[#1A1A1A] focus:border-kimi-accent outline-none"
+                  className="w-full px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-[#1A1A1A] focus:border-kimi-accent outline-none"
                 >
                   <option value="">Select</option>
                   <option value="10K">$10K</option>
@@ -216,14 +216,14 @@ export default function Enterprise() {
                   value={form.message}
                   onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
                   rows={3}
-                  className="w-full px-4 py-2.5 rounded-lg bg-zinc-800 border border-zinc-700 text-[#1A1A1A] placeholder-zinc-500 focus:border-kimi-accent outline-none resize-none"
+                  className="w-full px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-[#1A1A1A] placeholder-zinc-500 focus:border-kimi-accent outline-none resize-none"
                   placeholder="Tell us about your goals and volume needs."
                 />
               </div>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-white text-zinc-900 font-medium rounded-lg hover:bg-zinc-200 transition disabled:opacity-60"
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-white text-gray-900 font-medium rounded-lg hover:bg-gray-200 transition disabled:opacity-60"
               >
                 {loading ? 'Sending…' : 'Send request'}
                 <Send className="w-4 h-4" />

@@ -138,8 +138,8 @@ function CopyButton({ text }) {
     setTimeout(() => setCopied(false), 2000);
   };
   return (
-    <button onClick={handleCopy} className="p-1.5 rounded-md hover:bg-zinc-700 transition" title="Copy">
-      {copied ? <Check size={14} className="text-gray-400" /> : <Copy size={14} className="text-zinc-500" />}
+    <button onClick={handleCopy} className="p-1.5 rounded-md hover:bg-gray-700 transition" title="Copy">
+      {copied ? <Check size={14} className="text-gray-400" /> : <Copy size={14} className="text-gray-500" />}
     </button>
   );
 }
@@ -167,7 +167,7 @@ export default function DocsPage() {
   const currentSection = filteredSections.find(s => s.id === activeSection) || filteredSections[0];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-zinc-200">
+    <div className="min-h-screen bg-[#0a0a0a] text-gray-200">
       <PublicNav />
 
       <div className="max-w-7xl mx-auto px-6 py-12">
@@ -179,32 +179,32 @@ export default function DocsPage() {
             </div>
             <div>
               <h1 className="text-3xl font-bold tracking-tight">API Documentation</h1>
-              <p className="text-zinc-500">Complete reference for the CrucibAI API — 186 endpoints</p>
+              <p className="text-gray-500">Complete reference for the CrucibAI API — 186 endpoints</p>
             </div>
           </div>
 
           {/* Base URL */}
-          <div className="flex items-center gap-3 mt-4 p-3 rounded-lg bg-zinc-900 border border-zinc-800">
-            <Globe size={16} className="text-zinc-500" />
+          <div className="flex items-center gap-3 mt-4 p-3 rounded-lg bg-gray-900 border border-gray-800">
+            <Globe size={16} className="text-gray-500" />
             <code className="text-sm text-gray-400 font-mono">Base URL: https://api.crucibai.com</code>
             <CopyButton text="https://api.crucibai.com" />
           </div>
 
           {/* Auth note */}
           <div className="mt-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-300">
-            <strong>Authentication:</strong> All endpoints (except /auth/register and /auth/login) require a Bearer token in the Authorization header: <code className="bg-zinc-800 px-1.5 py-0.5 rounded text-xs">Authorization: Bearer YOUR_TOKEN</code>
+            <strong>Authentication:</strong> All endpoints (except /auth/register and /auth/login) require a Bearer token in the Authorization header: <code className="bg-gray-800 px-1.5 py-0.5 rounded text-xs">Authorization: Bearer YOUR_TOKEN</code>
           </div>
         </motion.div>
 
         {/* Search */}
         <div className="relative mb-8">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search endpoints... (e.g., /api/projects, deploy, chat)"
-            className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-gray-300/50"
+            className="w-full pl-10 pr-4 py-3 bg-gray-900 border border-gray-800 rounded-xl text-sm text-gray-200 placeholder-zinc-600 focus:outline-none focus:border-gray-300/50"
           />
         </div>
 
@@ -221,12 +221,12 @@ export default function DocsPage() {
                     className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition ${
                       activeSection === section.id
                         ? 'bg-gray-200/15 text-#c0c0c0 font-medium'
-                        : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'
+                        : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/50'
                     }`}
                   >
                     <Icon size={16} />
                     <span>{section.title}</span>
-                    <span className="ml-auto text-xs text-zinc-600">{section.endpoints.length}</span>
+                    <span className="ml-auto text-xs text-gray-600">{section.endpoints.length}</span>
                   </button>
                 );
               })}
@@ -245,7 +245,7 @@ export default function DocsPage() {
                   <currentSection.icon size={24} className="text-#c0c0c0" />
                   <h2 className="text-2xl font-bold">{currentSection.title}</h2>
                 </div>
-                <p className="text-zinc-500 mb-6">{currentSection.description}</p>
+                <p className="text-gray-500 mb-6">{currentSection.description}</p>
 
                 <div className="space-y-3">
                   {currentSection.endpoints.map((ep, i) => {
@@ -255,7 +255,7 @@ export default function DocsPage() {
                       <div
                         key={key}
                         className={`rounded-xl border transition ${
-                          isExpanded ? 'border-gray-300/30 bg-zinc-900' : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-700'
+                          isExpanded ? 'border-gray-300/30 bg-gray-900' : 'border-gray-800 bg-gray-900/50 hover:border-gray-700'
                         }`}
                       >
                         <button
@@ -265,26 +265,26 @@ export default function DocsPage() {
                           <span className={`px-2 py-0.5 rounded text-xs font-mono font-bold border ${METHOD_COLORS[ep.method]}`}>
                             {ep.method}
                           </span>
-                          <code className="text-sm font-mono text-zinc-300 flex-1">{ep.path}</code>
-                          <span className="text-xs text-zinc-600 hidden sm:block">{ep.desc}</span>
-                          <ChevronRight size={16} className={`text-zinc-600 transition ${isExpanded ? 'rotate-90' : ''}`} />
+                          <code className="text-sm font-mono text-gray-300 flex-1">{ep.path}</code>
+                          <span className="text-xs text-gray-600 hidden sm:block">{ep.desc}</span>
+                          <ChevronRight size={16} className={`text-gray-600 transition ${isExpanded ? 'rotate-90' : ''}`} />
                         </button>
 
                         {isExpanded && (
                           <motion.div
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
-                            className="px-4 pb-4 border-t border-zinc-800"
+                            className="px-4 pb-4 border-t border-gray-800"
                           >
-                            <p className="text-sm text-zinc-400 mt-3 mb-3">{ep.desc}</p>
+                            <p className="text-sm text-gray-400 mt-3 mb-3">{ep.desc}</p>
 
                             {ep.body && (
                               <div className="mb-3">
                                 <div className="flex items-center justify-between mb-1">
-                                  <span className="text-xs font-medium text-zinc-500 uppercase">Request Body</span>
+                                  <span className="text-xs font-medium text-gray-500 uppercase">Request Body</span>
                                   <CopyButton text={ep.body} />
                                 </div>
-                                <pre className="p-3 rounded-lg bg-zinc-950 border border-zinc-800 text-xs font-mono text-gray-400 overflow-x-auto">
+                                <pre className="p-3 rounded-lg bg-zinc-950 border border-gray-800 text-xs font-mono text-gray-400 overflow-x-auto">
                                   {ep.body}
                                 </pre>
                               </div>
@@ -292,10 +292,10 @@ export default function DocsPage() {
 
                             <div>
                               <div className="flex items-center justify-between mb-1">
-                                <span className="text-xs font-medium text-zinc-500 uppercase">Response</span>
+                                <span className="text-xs font-medium text-gray-500 uppercase">Response</span>
                                 <CopyButton text={ep.response} />
                               </div>
-                              <pre className="p-3 rounded-lg bg-zinc-950 border border-zinc-800 text-xs font-mono text-#c0c0c0 overflow-x-auto">
+                              <pre className="p-3 rounded-lg bg-zinc-950 border border-gray-800 text-xs font-mono text-#c0c0c0 overflow-x-auto">
                                 {ep.response}
                               </pre>
                             </div>
@@ -311,9 +311,9 @@ export default function DocsPage() {
         </div>
 
         {/* Footer CTA */}
-        <div className="mt-16 text-center p-8 rounded-2xl border border-zinc-800 bg-zinc-900/50">
+        <div className="mt-16 text-center p-8 rounded-2xl border border-gray-800 bg-gray-900/50">
           <h3 className="text-xl font-bold mb-2">Ready to build?</h3>
-          <p className="text-zinc-500 mb-4">Start using the CrucibAI API to build apps with 120 agents.</p>
+          <p className="text-gray-500 mb-4">Start using the CrucibAI API to build apps with 120 agents.</p>
           <div className="flex items-center justify-center gap-3">
             <button
               onClick={() => navigate(user ? '/app/workspace' : '/auth')}
@@ -325,7 +325,7 @@ export default function DocsPage() {
               href="https://api.crucibai.com/docs"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 border border-zinc-700 hover:border-zinc-600 rounded-lg font-medium transition"
+              className="inline-flex items-center gap-2 px-6 py-3 border border-gray-700 hover:border-gray-600 rounded-lg font-medium transition"
             >
               <ExternalLink size={16} /> OpenAPI Spec
             </a>

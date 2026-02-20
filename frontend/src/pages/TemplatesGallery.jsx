@@ -37,20 +37,20 @@ export default function TemplatesGallery() {
     <div className="min-h-screen bg-[#FAFAF8] text-[#1A1A1A] p-6">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-2xl font-bold mb-2">Templates</h1>
-        <p className="text-zinc-400 mb-8">Start from a template to build faster.</p>
+        <p className="text-gray-400 mb-8">Start from a template to build faster.</p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {templates.map((t) => (
             <div
               key={t.id}
-              className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/50 hover:border-zinc-700 transition"
+              className="p-5 rounded-xl border border-gray-800 bg-gray-900/50 hover:border-gray-700 transition"
             >
               <div className="flex items-center gap-3 mb-3">
-                <div className="p-2 rounded-lg bg-zinc-800">
+                <div className="p-2 rounded-lg bg-gray-800">
                   <FileCode className="w-5 h-5 text-[#1A1A1A]" />
                 </div>
                 <div>
                   <h2 className="font-semibold">{t.name}</h2>
-                  <p className="text-sm text-zinc-500">{t.description}</p>
+                  <p className="text-sm text-gray-500">{t.description}</p>
                 </div>
               </div>
               <button

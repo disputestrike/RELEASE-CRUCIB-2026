@@ -259,7 +259,7 @@ export default function Pricing() {
 
         {/* Add-ons */}
         <h2 className="text-lg font-semibold text-center mt-14 mb-2">Add-ons</h2>
-        <p className="text-zinc-500 text-center mb-6">One-time top-ups. Buy as many as you need, anytime—no limit. Credits roll over. Light (50 credits, $7) or Dev (250 credits, $30).</p>
+        <p className="text-gray-500 text-center mb-6">One-time top-ups. Buy as many as you need, anytime—no limit. Credits roll over. Light (50 credits, $7) or Dev (250 credits, $30).</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
           {ADDON_ORDER.filter((k) => addons[k]).map((key) => {
             const a = addons[key];

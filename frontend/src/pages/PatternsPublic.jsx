@@ -50,8 +50,8 @@ export default function PatternsPublic() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Token savings</span>
           <h1 className="text-4xl font-semibold tracking-tight mt-2 mb-4">Pattern Library</h1>
-          <p className="text-zinc-500 mb-2">Reusable patterns for auth, payments, APIs, storage, comms, and real-time. Each pattern saves tokens and time — no re-explaining common flows.</p>
-          <p className="text-sm text-zinc-500 border-l-2 border-kimi-accent/50 pl-4 py-1">Token savings per pattern are based on typical builds vs. describing from scratch. Use patterns to reduce costs and speed up builds.</p>
+          <p className="text-gray-500 mb-2">Reusable patterns for auth, payments, APIs, storage, comms, and real-time. Each pattern saves tokens and time — no re-explaining common flows.</p>
+          <p className="text-sm text-gray-500 border-l-2 border-kimi-accent/50 pl-4 py-1">Token savings per pattern are based on typical builds vs. describing from scratch. Use patterns to reduce costs and speed up builds.</p>
         </motion.div>
 
         <div className="flex flex-wrap gap-2 mb-8">
@@ -60,7 +60,7 @@ export default function PatternsPublic() {
               key={c.id}
               onClick={() => setCategory(c.id)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition ${
-                category === c.id ? 'bg-gray-200/20 text-#c0c0c0 border border-gray-300/50' : 'border border-zinc-800 text-zinc-400 hover:text-[#1A1A1A]'
+                category === c.id ? 'bg-gray-200/20 text-#c0c0c0 border border-gray-300/50' : 'border border-gray-800 text-gray-400 hover:text-[#1A1A1A]'
               }`}
             >
               <c.icon className="w-4 h-4" />
@@ -76,11 +76,11 @@ export default function PatternsPublic() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.03 }}
-              className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/30"
+              className="p-5 rounded-xl border border-gray-800 bg-gray-900/30"
             >
               <h2 className="font-semibold mb-1">{p.name}</h2>
-              <p className="text-sm text-zinc-500 mb-1">{p.desc}</p>
-              <p className="text-xs text-zinc-600 capitalize">{p.category} · ~{(p.tokens_saved / 1000).toFixed(0)}K tokens saved</p>
+              <p className="text-sm text-gray-500 mb-1">{p.desc}</p>
+              <p className="text-xs text-gray-600 capitalize">{p.category} · ~{(p.tokens_saved / 1000).toFixed(0)}K tokens saved</p>
             </motion.div>
           ))}
         </div>
@@ -88,7 +88,7 @@ export default function PatternsPublic() {
         <div className="mt-12 text-center">
           <button
             onClick={() => navigate(user ? '/app/patterns' : '/auth?mode=register')}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-white text-zinc-900 font-medium rounded-lg hover:bg-zinc-200 transition"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-white text-gray-900 font-medium rounded-lg hover:bg-gray-200 transition"
           >
             {user ? 'Open in app' : 'Get started to use patterns'}
             <ArrowRight className="w-4 h-4" />

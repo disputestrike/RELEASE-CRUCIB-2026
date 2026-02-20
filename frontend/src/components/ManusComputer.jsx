@@ -51,10 +51,10 @@ const ManusComputer = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ duration: 0.2 }}
-            className="bg-white border border-gray-300 rounded-lg p-4 w-80 shadow-2xl backdrop-blur-sm"
+            className="bg-white border border-gray-200 rounded-lg p-4 w-80 shadow-lg backdrop-blur-sm"
           >
             {/* Header */}
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-300">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
               <div className="flex items-center gap-2">
                 <Cpu className="w-4 h-4 text-black animate-pulse" />
                 <span className="text-black font-bold">Manus Computer</span>
@@ -75,12 +75,12 @@ const ManusComputer = ({
                   {currentStep} / {totalSteps}
                 </span>
               </div>
-              <div className="w-full bg-gray-300 rounded-full h-2 overflow-hidden">
+              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${stepPercentage}%` }}
                   transition={{ duration: 0.5 }}
-                  className="h-full bg-gradient-to-r from-black to-gray-700"
+                  className="h-full bg-black"
                 />
               </div>
             </div>
@@ -95,12 +95,12 @@ const ManusComputer = ({
                   {tokensUsed.toLocaleString()} / {tokensTotal.toLocaleString()}
                 </span>
               </div>
-              <div className="w-full bg-gray-300 rounded-full h-2 overflow-hidden">
+              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${tokenPercentage}%` }}
                   transition={{ duration: 0.5 }}
-                  className="h-full bg-gradient-to-r from-gray-700 to-black"
+                  className="h-full bg-black"
                 />
               </div>
             </div>
@@ -112,7 +112,7 @@ const ManusComputer = ({
                   <Eye className="w-3 h-3 text-gray-700 animate-pulse" />
                   <span className="text-gray-600">Thinking</span>
                 </div>
-                <div className="bg-gray-100 border border-gray-400 rounded p-2 min-h-12 max-h-24 overflow-y-auto">
+                <div className="bg-gray-50 border border-gray-200 rounded p-2 min-h-12 max-h-24 overflow-y-auto">
                   <p className="text-gray-800 text-xs leading-relaxed">
                     {displayThinking}
                     {displayThinking.length < thinking.length && (
@@ -124,7 +124,7 @@ const ManusComputer = ({
             )}
 
             {/* Footer */}
-            <div className="text-xs text-gray-600 text-center pt-2 border-t border-gray-300">
+            <div className="text-xs text-gray-600 text-center pt-2 border-t border-gray-200">
               Real-time agent orchestration
             </div>
           </motion.div>
@@ -134,7 +134,7 @@ const ManusComputer = ({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
             onClick={() => setIsExpanded(true)}
-            className="bg-gradient-to-br from-black to-gray-800 hover:from-gray-900 hover:to-black text-white rounded-full p-3 shadow-lg hover:shadow-xl transition-all flex items-center justify-center w-12 h-12 border border-gray-600"
+            className="bg-black hover:bg-gray-900 text-white rounded-full p-3 shadow-lg hover:shadow-xl transition-all flex items-center justify-center w-12 h-12 border border-gray-800"
           >
             <Cpu className="w-5 h-5 animate-pulse text-white" />
           </motion.button>

@@ -108,7 +108,7 @@ export const CodeGenerationOptions = ({ onGenerate, isLoading }) => {
   ];
 
   return (
-    <div className="space-y-4 p-6 bg-slate-800 border border-slate-700 rounded-lg">
+    <div className="space-y-4 p-6 bg-gray-800 border border-gray-700 rounded-lg">
       <h3 className="font-semibold text-[#1A1A1A] flex items-center gap-2">
         <FileCode size={20} />
         Code Generation
@@ -122,7 +122,7 @@ export const CodeGenerationOptions = ({ onGenerate, isLoading }) => {
             className={`p-4 rounded-lg border-2 transition-all ${
               selectedStack === stack.id
                 ? 'border-gray-300 bg-gray-200/10 text-#d0d0d0'
-                : 'border-slate-600 bg-slate-700/50 text-slate-300 hover:border-slate-500'
+                : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500'
             }`}
           >
             <div className="font-medium text-sm">{stack.name}</div>
@@ -170,7 +170,7 @@ export const DocumentationGenerator = ({ onGenerate, isLoading }) => {
   ];
 
   return (
-    <div className="space-y-4 p-6 bg-slate-800 border border-slate-700 rounded-lg">
+    <div className="space-y-4 p-6 bg-gray-800 border border-gray-700 rounded-lg">
       <h3 className="font-semibold text-[#1A1A1A] flex items-center gap-2">
         <FileText size={20} />
         Documentation
@@ -184,7 +184,7 @@ export const DocumentationGenerator = ({ onGenerate, isLoading }) => {
             className={`p-4 rounded-lg border-2 transition-all text-center ${
               docType === doc.id
                 ? 'border-gray-500 bg-gray-500/10'
-                : 'border-slate-600 bg-slate-700/50 hover:border-slate-500'
+                : 'border-gray-600 bg-gray-700/50 hover:border-gray-500'
             }`}
           >
             <div className="text-2xl mb-2">{doc.icon}</div>
@@ -228,7 +228,7 @@ export const PresentationGenerator = ({ onGenerate, isLoading }) => {
   ];
 
   return (
-    <div className="space-y-4 p-6 bg-slate-800 border border-slate-700 rounded-lg">
+    <div className="space-y-4 p-6 bg-gray-800 border border-gray-700 rounded-lg">
       <h3 className="font-semibold text-[#1A1A1A] flex items-center gap-2">
         <Presentation size={20} />
         Presentations
@@ -236,7 +236,7 @@ export const PresentationGenerator = ({ onGenerate, isLoading }) => {
 
       <div className="space-y-3">
         <div>
-          <label className="text-sm text-slate-400 mb-2 block">Number of Slides</label>
+          <label className="text-sm text-gray-400 mb-2 block">Number of Slides</label>
           <input
             type="range"
             min="5"
@@ -245,7 +245,7 @@ export const PresentationGenerator = ({ onGenerate, isLoading }) => {
             onChange={(e) => setSlideCount(parseInt(e.target.value))}
             className="w-full"
           />
-          <div className="text-sm text-slate-300 mt-1">{slideCount} slides</div>
+          <div className="text-sm text-gray-300 mt-1">{slideCount} slides</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
@@ -253,7 +253,7 @@ export const PresentationGenerator = ({ onGenerate, isLoading }) => {
             <button
               key={preset.name}
               onClick={() => setSlideCount(preset.slides)}
-              className="p-2 text-sm bg-slate-700 hover:bg-slate-600 rounded transition-colors text-slate-300"
+              className="p-2 text-sm bg-gray-700 hover:bg-gray-600 rounded transition-colors text-gray-300"
             >
               {preset.name} ({preset.slides})
             </button>
@@ -338,7 +338,7 @@ export const ExportOptions = ({ onExport, isLoading }) => {
  */
 export const GenerationStatus = ({ status, progress = 0, message = '' }) => {
   const statusConfig = {
-    idle: { icon: null, color: 'text-slate-400', bg: 'bg-slate-800' },
+    idle: { icon: null, color: 'text-gray-400', bg: 'bg-gray-800' },
     generating: { icon: Loader2, color: 'text-#c0c0c0', bg: 'bg-black/20' },
     success: { icon: CheckCircle, color: 'text-gray-400', bg: 'bg-gray-900/20' },
     error: { icon: AlertCircle, color: 'text-gray-400', bg: 'bg-gray-900/20' },
@@ -353,7 +353,7 @@ export const GenerationStatus = ({ status, progress = 0, message = '' }) => {
     <motion.div
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`p-4 rounded-lg border border-slate-700 ${config.bg}`}
+      className={`p-4 rounded-lg border border-gray-700 ${config.bg}`}
     >
       <div className="flex items-center gap-3">
         {Icon && (
@@ -368,12 +368,12 @@ export const GenerationStatus = ({ status, progress = 0, message = '' }) => {
             {status === 'success' && 'Generation complete!'}
             {status === 'error' && 'Generation failed'}
           </div>
-          {message && <div className="text-sm text-slate-400">{message}</div>}
+          {message && <div className="text-sm text-gray-400">{message}</div>}
         </div>
       </div>
 
       {status === 'generating' && (
-        <div className="mt-3 w-full bg-slate-700 rounded-full h-2 overflow-hidden">
+        <div className="mt-3 w-full bg-gray-700 rounded-full h-2 overflow-hidden">
           <motion.div
             className="h-full bg-gradient-to-r from-#f5f5f50 to-#000000"
             initial={{ width: 0 }}

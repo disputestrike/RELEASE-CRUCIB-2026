@@ -73,12 +73,12 @@ export const CommandPalette = ({ commands = [], onCommandSelect }) => {
       {/* Command Palette Trigger */}
       <button
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2 px-3 py-2 text-sm text-slate-400 hover:text-slate-200 bg-slate-800/50 hover:bg-slate-800 rounded-lg transition-colors"
+        className="flex items-center gap-2 px-3 py-2 text-sm text-gray-400 hover:text-gray-200 bg-gray-800/50 hover:bg-gray-800 rounded-lg transition-colors"
         title="Cmd+K"
       >
         <Search size={16} />
         <span className="hidden sm:inline">Search commands...</span>
-        <kbd className="hidden sm:inline ml-auto text-xs px-2 py-1 bg-slate-700 rounded">⌘K</kbd>
+        <kbd className="hidden sm:inline ml-auto text-xs px-2 py-1 bg-gray-700 rounded">⌘K</kbd>
       </button>
 
       {/* Command Palette Modal */}
@@ -88,18 +88,18 @@ export const CommandPalette = ({ commands = [], onCommandSelect }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-zinc-900/50 z-50 flex items-start justify-center pt-20"
+            className="fixed inset-0 bg-gray-900/50 z-50 flex items-start justify-center pt-20"
             onClick={() => setIsOpen(false)}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-lg shadow-xl"
+              className="w-full max-w-2xl bg-gray-900 border border-gray-700 rounded-lg shadow-xl"
               onClick={e => e.stopPropagation()}
             >
               {/* Search Input */}
-              <div className="border-b border-slate-700 p-4">
+              <div className="border-b border-gray-700 p-4">
                 <input
                   ref={inputRef}
                   type="text"
@@ -124,7 +124,7 @@ export const CommandPalette = ({ commands = [], onCommandSelect }) => {
                       className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
                         idx === selectedIndex
                           ? 'bg-black text-[#1A1A1A]'
-                          : 'hover:bg-slate-800 text-slate-300'
+                          : 'hover:bg-gray-800 text-gray-300'
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -135,14 +135,14 @@ export const CommandPalette = ({ commands = [], onCommandSelect }) => {
                         </div>
                       </div>
                       {command.shortcut && (
-                        <kbd className="text-xs px-2 py-1 bg-slate-700 rounded opacity-50">
+                        <kbd className="text-xs px-2 py-1 bg-gray-700 rounded opacity-50">
                           {command.shortcut}
                         </kbd>
                       )}
                     </button>
                   ))
                 ) : (
-                  <div className="px-4 py-8 text-center text-slate-400">
+                  <div className="px-4 py-8 text-center text-gray-400">
                     No commands found
                   </div>
                 )}
@@ -160,11 +160,11 @@ export const CommandPalette = ({ commands = [], onCommandSelect }) => {
  */
 export const BreadcrumbNav = ({ path = [] }) => {
   return (
-    <div className="flex items-center gap-1 text-sm text-slate-400 px-4 py-2 border-b border-slate-700">
+    <div className="flex items-center gap-1 text-sm text-gray-400 px-4 py-2 border-b border-gray-700">
       {path.map((item, idx) => (
         <React.Fragment key={idx}>
-          {idx > 0 && <ChevronRight size={16} className="text-slate-600" />}
-          <button className="hover:text-slate-200 transition-colors">
+          {idx > 0 && <ChevronRight size={16} className="text-gray-600" />}
+          <button className="hover:text-gray-200 transition-colors">
             {item}
           </button>
         </React.Fragment>
@@ -182,11 +182,11 @@ export const Minimap = ({ content = '', currentScroll = 0, totalHeight = 100 }) 
   const scrollPercent = (currentScroll / totalHeight) * 100;
 
   return (
-    <div className="w-12 bg-slate-900 border-l border-slate-700 overflow-hidden relative group">
+    <div className="w-12 bg-gray-900 border-l border-gray-700 overflow-hidden relative group">
       {/* Code preview */}
-      <div className="text-xs text-slate-600 font-mono p-1 space-y-0.5">
+      <div className="text-xs text-gray-600 font-mono p-1 space-y-0.5">
         {lines.map((line, idx) => (
-          <div key={idx} className="h-1 bg-slate-700/30 rounded opacity-50 group-hover:opacity-100 transition-opacity">
+          <div key={idx} className="h-1 bg-gray-700/30 rounded opacity-50 group-hover:opacity-100 transition-opacity">
             {line.substring(0, 8)}
           </div>
         ))}
@@ -236,7 +236,7 @@ export const AIAutocomplete = ({ suggestions = [], onSelect, visible = false }) 
       initial={{ opacity: 0, y: -4 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -4 }}
-      className="absolute bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-40 max-w-sm"
+      className="absolute bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-40 max-w-sm"
     >
       {suggestions.map((suggestion, idx) => (
         <button
@@ -245,7 +245,7 @@ export const AIAutocomplete = ({ suggestions = [], onSelect, visible = false }) 
           className={`w-full px-4 py-2 text-left text-sm transition-colors flex items-center gap-2 ${
             idx === selectedIdx
               ? 'bg-black text-[#1A1A1A]'
-              : 'hover:bg-slate-700 text-slate-300'
+              : 'hover:bg-gray-700 text-gray-300'
           }`}
         >
           <Lightbulb size={14} />

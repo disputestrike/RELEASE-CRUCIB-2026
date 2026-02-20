@@ -15,14 +15,14 @@ export default function QualityScore({ score }) {
   };
 
   return (
-    <div className="p-4 rounded-lg bg-slate-900 border border-slate-700">
+    <div className="p-4 rounded-lg bg-gray-900 border border-gray-700">
       <div className="flex items-center gap-3">
         <div className={`w-14 h-14 rounded-full flex items-center justify-center text-[#1A1A1A] font-bold text-lg ${getColor(overall)}`}>
           {Math.round(overall)}
         </div>
         <div>
           <h3 className="text-lg font-semibold capitalize">{verdict.replace("_", " ")}</h3>
-          <div className="text-sm text-slate-400 grid grid-cols-2 gap-x-4 gap-y-0.5 mt-1">
+          <div className="text-sm text-gray-400 grid grid-cols-2 gap-x-4 gap-y-0.5 mt-1">
             {breakdown.frontend != null && <span>Frontend: {breakdown.frontend.score?.toFixed(1) ?? 0}/100</span>}
             {breakdown.backend != null && <span>Backend: {breakdown.backend.score?.toFixed(1) ?? 0}/100</span>}
             {breakdown.database != null && <span>Database: {breakdown.database.score?.toFixed(1) ?? 0}/100</span>}
