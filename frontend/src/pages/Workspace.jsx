@@ -8,6 +8,9 @@ import {
 } from '@codesandbox/sandpack-react';
 import SandpackErrorBoundary from '../components/SandpackErrorBoundary';
 import '../components/SandpackErrorBoundary.css';
+import './Workspace.css';
+import VoiceWaveform from '../components/VoiceWaveform';
+import '../components/VoiceWaveform.css';
 import {
   ChevronDown,
   Send,
@@ -52,6 +55,9 @@ import {
   CreditCard,
   Wrench,
   ShieldCheck,
+  Smartphone,
+  Monitor,
+  Rocket,
 } from 'lucide-react';
 import { useAuth, API } from '../App';
 import axios from 'axios';
@@ -305,6 +311,7 @@ const Workspace = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const mediaRecorderRef = useRef(null);
+  const [audioStream, setAudioStream] = useState(null);
   
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [useStreaming, setUseStreaming] = useState(true);
@@ -319,16 +326,42 @@ const Workspace = () => {
   const [lastTokensUsed, setLastTokensUsed] = useState(0);
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(false); // collapsed by default; View → "Show code / files" for devs
   const [showFirstRunBanner, setShowFirstRunBanner] = useState(() => !localStorage.getItem('crucibai_first_run'));
-  const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
   const [splitEditor, setSplitEditor] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState(null); // 'file' | 'edit' | 'view' | 'go' | 'run' | 'terminal' | 'help' | null
   const [toolsReport, setToolsReport] = useState(null); // { type: 'validate'|'security'|'a11y', data }
   const [toolsLoading, setToolsLoading] = useState(false);
   const [nextSuggestions, setNextSuggestions] = useState([]);
   const [buildMode, setBuildMode] = useState('agent'); // 'quick' | 'plan' | 'agent' | 'thinking' | 'swarm'
+  const [devMode, setDevMode] = useState(() => {
+    return localStorage.getItem('crucibai_dev_mode') === 'true'
+  });
+  const toggleDevMode = () => {
+    const next = !devMode;
+    setDevMode(next);
+    localStorage.setItem('crucibai_dev_mode', String(next));
+  };
+
+  // Section 06: parseMultiFileOutput — extract fenced code blocks with file paths
+  const parseMultiFileOutput = (responseText) => {
+    const filePattern = /```(?:jsx?|tsx?|css|html)?:([\w./\-]+)\n([\s\S]*?)```/g;
+    const parsedFiles = {};
+    let match;
+    while ((match = filePattern.exec(responseText)) !== null) {
+      const filePath = match[1].startsWith('/') ? match[1] : `/${match[1]}`;
+      parsedFiles[filePath] = { code: match[2] };
+    }
+    // Fallback: if no file markers, put everything in /App.js
+    if (Object.keys(parsedFiles).length === 0) {
+      const cleaned = responseText.replace(/```jsx?/g, '').replace(/```/g, '').trim();
+      parsedFiles['/App.js'] = { code: cleaned };
+    }
+    return parsedFiles;
+  };
   const [qualityGateResult, setQualityGateResult] = useState(null); // { passed, score, verdict } after build
   const [tokensPerStep, setTokensPerStep] = useState({ plan: 0, generate: 0 });
   const [showDeployModal, setShowDeployModal] = useState(false);
+  const [mobileView, setMobileView] = useState(false);
   const projectIdFromUrl = searchParams.get('projectId');
   const [projectBuildProgress, setProjectBuildProgress] = useState({ phase: 0, agent: '', progress: 0, status: '', tokens_used: 0 });
   const fileInputRef = useRef(null);
@@ -407,6 +440,19 @@ const Workspace = () => {
             status: data.status ?? '',
             tokens_used: data.tokens_used ?? 0
           });
+          // AUTO-WIRE: Update agent activity for InlineAgentMonitor
+          if (data.agent && data.status) {
+            setAgentsActivity(prev => {
+              const existing = prev.findIndex(a => a.name === data.agent);
+              const entry = { name: data.agent, status: data.status, phase: data.phase, progress: data.progress, updated: Date.now() };
+              if (existing >= 0) {
+                const next = [...prev];
+                next[existing] = entry;
+                return next;
+              }
+              return [...prev, entry];
+            });
+          }
           // AUTO-WIRE: When build completes, load deploy_files into Sandpack preview
           if (data.type === 'build_completed' && data.status === 'completed') {
             const deployFiles = data.deploy_files;
@@ -566,21 +612,43 @@ const Workspace = () => {
       };
       recorder.start(1000);
       mediaRecorderRef.current = { recorder, stream };
+      setAudioStream(stream);
       setIsRecording(true);
       addLog('Listening...', 'info', 'voice');
     } catch (err) {
       setIsRecording(false);
-      addLog(err?.name === 'NotAllowedError' ? 'Microphone access denied' : 'Could not start microphone', 'error', 'voice');
+      const micMsg = err?.name === 'NotAllowedError'
+        ? 'Microphone access denied. Allow it in browser settings.'
+        : 'Could not start microphone. Check browser permissions.';
+      addLog(micMsg, 'error', 'voice');
+      setMessages(prev => [...prev, { role: 'assistant', content: micMsg, error: true }]);
     }
   };
 
   const stopRecording = () => {
+    // Cancel recording — stop without transcribing
+    const ref = mediaRecorderRef.current;
+    if (ref?.recorder) {
+      ref.recorder.onstop = () => {
+        if (ref.stream) ref.stream.getTracks().forEach(t => t.stop());
+      };
+      if (ref.recorder.state === 'recording') ref.recorder.stop();
+    } else if (ref?.stream) {
+      ref.stream.getTracks().forEach(t => t.stop());
+    }
+    mediaRecorderRef.current = null;
+    setAudioStream(null);
+    setIsRecording(false);
+    addLog('Recording cancelled.', 'info', 'voice');
+  };
+
+  const confirmRecording = () => {
+    // Stop recording and send to Whisper for transcription
     const ref = mediaRecorderRef.current;
     if (ref?.recorder?.state === 'recording') {
-      ref.recorder.stop();
+      ref.recorder.stop(); // onstop handler will call transcribeAudio
     }
-    if (ref?.stream) ref.stream.getTracks().forEach(t => t.stop());
-    mediaRecorderRef.current = null;
+    setAudioStream(null);
   };
 
   const transcribeAudio = async (blob, ext = 'webm') => {
@@ -652,6 +720,9 @@ const Workspace = () => {
     setLastError(null);
     setQualityGateResult(null);
     setTokensPerStep({ plan: 0, generate: 0 });
+    // Auto-open right panel and switch to Preview per Section 06
+    setRightSidebarOpen(true);
+    setActivePanel('preview');
     if (!filesOverride?.length) setAttachedFiles([]);
 
     const userMessage = { role: 'user', content: useImageToCode ? 'Convert image to code' : prompt, attachments: filesToUse.length ? [...filesToUse] : undefined };
@@ -778,17 +849,28 @@ Respond with ONLY the complete App.js code, nothing else.`;
                 setBuildProgress(100);
                 if (obj.tokens_used != null) { setLastTokensUsed(obj.tokens_used); setTokensPerStep(prev => ({ ...prev, generate: obj.tokens_used })); }
                 addLog('Build completed successfully!', 'success', 'deploy');
-                const code = accumulated.replace(/```jsx?/g, '').replace(/```/g, '').trim();
+                const parsedFiles = parseMultiFileOutput(accumulated);
                 setFiles(prev => {
-                  const next = { ...prev, '/App.js': { code } };
+                  const next = { ...prev, ...parsedFiles };
                   setVersions(v => [{ id: `v_${Date.now()}`, prompt, files: next, time: new Date().toLocaleTimeString() }, ...v]);
                   setCurrentVersion(`v_${Date.now()}`);
                   setMessages(m => m.map((msg, i) => i === m.length - 1 ? { role: 'assistant', content: 'Done! Your app is ready.', hasCode: true, planSuggestions: planSuggestions } : msg));
                   setTimeout(() => fetchSuggestNext(), 400);
-                  axios.post(`${API}/ai/quality-gate`, { code }).then(r => setQualityGateResult(r.data)).catch(() => setQualityGateResult(null));
+                  const mainCode = parsedFiles['/App.js']?.code || Object.values(parsedFiles)[0]?.code || '';
+                  axios.post(`${API}/ai/quality-gate`, { code: mainCode }).then(r => setQualityGateResult(r.data)).catch(() => setQualityGateResult(null));
                   return next;
                 });
                 setActivePanel('preview'); // AUTO-WIRE: switch to preview on build complete
+                // Section 07 Test A-7/D: Save task after build completes
+                if (token) {
+                  axios.post(`${API}/api/tasks`, {
+                    name: prompt.slice(0, 120),
+                    prompt,
+                    session_id: sessionId,
+                    status: 'completed',
+                    files: Object.keys(parsedFiles),
+                  }, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+                }
                 // AUTO-WIRE: Also try to fetch multi-file deploy output if project exists
                 if (projectIdFromUrl) {
                   const hdr = token ? { Authorization: `Bearer ${token}` } : {};
@@ -820,16 +902,26 @@ Respond with ONLY the complete App.js code, nothing else.`;
         setBuildProgress(100);
         if (response.data.tokens_used != null) { setLastTokensUsed(response.data.tokens_used); setTokensPerStep(prev => ({ ...prev, generate: response.data.tokens_used })); }
         addLog('Build completed successfully!', 'success', 'deploy');
-        let code = response.data.response;
-        code = code.replace(/```jsx?/g, '').replace(/```/g, '').trim();
-        const newFiles = { ...files, '/App.js': { code } };
+        const parsedFiles = parseMultiFileOutput(response.data.response);
+        const newFiles = { ...files, ...parsedFiles };
         setFiles(newFiles);
         setVersions(prev => [{ id: `v_${Date.now()}`, prompt, files: newFiles, time: new Date().toLocaleTimeString() }, ...prev]);
         setCurrentVersion(`v_${Date.now()}`);
         setMessages(prev => prev.map((msg, i) => i === prev.length - 1 ? { role: 'assistant', content: 'Done! Your app is ready.', hasCode: true, planSuggestions } : msg));
         setTimeout(() => fetchSuggestNext(), 400);
-        axios.post(`${API}/ai/quality-gate`, { code }).then(r => setQualityGateResult(r.data)).catch(() => setQualityGateResult(null));
+        const mainCode = parsedFiles['/App.js']?.code || Object.values(parsedFiles)[0]?.code || '';
+        axios.post(`${API}/ai/quality-gate`, { code: mainCode }).then(r => setQualityGateResult(r.data)).catch(() => setQualityGateResult(null));
         setActivePanel('preview'); // AUTO-WIRE: switch to preview on build complete
+        // Section 07 Test A-7/D: Save task after build completes
+        if (token) {
+          axios.post(`${API}/api/tasks`, {
+            name: prompt.slice(0, 120),
+            prompt,
+            session_id: sessionId,
+            status: 'completed',
+            files: Object.keys(parsedFiles),
+          }, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+        }
         // AUTO-WIRE: Also try to fetch multi-file deploy output if project exists
         if (projectIdFromUrl) {
           const hdr = token ? { Authorization: `Bearer ${token}` } : {};
@@ -856,8 +948,8 @@ Respond with ONLY the complete App.js code, nothing else.`;
       const isKeyError = error.response?.status === 401 || detail.toLowerCase().includes('api key') || detail.toLowerCase().includes('no api key') || error.message?.toLowerCase().includes('key');
       const friendlyMessage = is402
         ? (detail || 'Insufficient tokens. Buy more in Token Center to keep building.')
-        : error.code === 'ERR_NETWORK' || error.message?.includes('Network')
-          ? "We couldn't connect to the AI. Check your internet connection and that your API keys in Settings are valid."
+        : error.code === 'ERR_NETWORK' || error.message?.includes('Network') || error.message?.includes('Failed to fetch')
+          ? "Connection lost. Check your connection and try again."
           : isKeyError
             ? "AI couldn't run. Check Settings → API & Environment: add and save your OpenAI or Anthropic key, then try again."
             : "The build didn't complete. Try again or check Settings if you use your own API keys.";
@@ -873,6 +965,8 @@ Respond with ONLY the complete App.js code, nothing else.`;
     const request = input.trim();
     setInput('');
     setIsBuilding(true);
+    setRightSidebarOpen(true);
+    setActivePanel('preview');
     
     setMessages(prev => [...prev, { role: 'user', content: request }]);
     setMessages(prev => [...prev, { role: 'assistant', content: 'Updating...', isBuilding: true }]);
@@ -882,19 +976,21 @@ Respond with ONLY the complete App.js code, nothing else.`;
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       
+      // Build context from all files for multi-file awareness
+      const fileContext = Object.entries(files).map(([fp, f]) => `--- ${fp} ---\n${f.code || ''}`).join('\n\n');
       const response = await axios.post(`${API}/ai/chat`, {
-        message: `Current code:\n\n${files['/App.js'].code}\n\nModify it to: "${request}"\n\nRespond with ONLY the complete updated App.js code, nothing else.`,
+        message: `Current files:\n\n${fileContext}\n\nModify to: "${request}"\n\nRespond with the complete updated code. If multiple files, use \`\`\`jsx:filename.js format.`,
         session_id: sessionId,
         model: selectedModel,
         mode: buildMode === 'thinking' ? 'thinking' : undefined
       }, { headers, timeout: 90000 });
 
       if (response.data.tokens_used != null) setLastTokensUsed(response.data.tokens_used);
-      let newCode = response.data.response;
-      newCode = newCode.replace(/```jsx?/g, '').replace(/```/g, '').trim();
+      const parsedModFiles = parseMultiFileOutput(response.data.response);
+      const hasCode = Object.values(parsedModFiles).some(f => f.code && (f.code.includes('import') || f.code.includes('function') || f.code.includes('const')));
 
-      if (newCode.includes('import') || newCode.includes('function') || newCode.includes('const')) {
-        const newFiles = { ...files, '/App.js': { code: newCode } };
+      if (hasCode) {
+        const newFiles = { ...files, ...parsedModFiles };
         setFiles(newFiles);
         
         const newVersion = {
@@ -928,7 +1024,13 @@ Respond with ONLY the complete App.js code, nothing else.`;
 
   const handleSubmit = (e) => {
     e?.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim()) {
+      // Section 07 Test E-1: Show error for empty prompt
+      if (input === '' || input.trim() === '') {
+        setMessages(prev => [...prev, { role: 'assistant', content: 'Please describe what you want to build.', error: true }]);
+      }
+      return;
+    }
     
     if (versions.length > 0) {
       handleModify();
@@ -1193,19 +1295,24 @@ Respond with ONLY the complete App.js code, nothing else.`;
   };
 
   const handleAutoFix = async () => {
-    if (!files['/App.js']?.code || isBuilding) return;
+    const mainCode = files[activeFile]?.code || files['/App.js']?.code;
+    if (!mainCode || isBuilding) return;
     setIsBuilding(true);
+    setRightSidebarOpen(true);
+    setActivePanel('preview');
     setMessages(prev => [...prev, { role: 'assistant', content: 'Auto-fixing errors...', isBuilding: true }]);
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const fileContext = Object.entries(files).map(([fp, f]) => `--- ${fp} ---\n${f.code || ''}`).join('\n\n');
       const res = await axios.post(`${API}/ai/chat`, {
-        message: `Fix any syntax or runtime errors in this React code. Return ONLY the complete fixed App.js code, nothing else.\n\n${files['/App.js'].code}`,
+        message: `Fix any syntax or runtime errors in these React files. If multiple files, use \`\`\`jsx:filename.js format.\n\n${fileContext}`,
         session_id: sessionId,
         model: selectedModel
       }, { headers, timeout: 60000 });
-      let code = (res.data.response || '').replace(/```jsx?/g, '').replace(/```/g, '').trim();
-      if (code.includes('import') || code.includes('function') || code.includes('const')) {
-        setFiles(prev => ({ ...prev, '/App.js': { code } }));
+      const fixedFiles = parseMultiFileOutput(res.data.response || '');
+      const hasCode = Object.values(fixedFiles).some(f => f.code && (f.code.includes('import') || f.code.includes('function') || f.code.includes('const')));
+      if (hasCode) {
+        setFiles(prev => ({ ...prev, ...fixedFiles }));
         setLastError(null);
         addLog('Auto-fix applied', 'success', 'system');
       }
@@ -1325,7 +1432,8 @@ Respond with ONLY the complete App.js code, nothing else.`;
 
       {/* Click outside to close menu */}
       {menuAnchor && <div className="fixed inset-0 z-40" onClick={() => setMenuAnchor(null)} aria-hidden />}
-      {/* Menu bar – File, Edit, Selection, View, Go, Run, Terminal, Help */}
+      {/* Menu bar – File, Edit, Selection, View, Go, Run, Terminal, Help (Developer mode only) */}
+      {devMode && (
       <div className="h-9 border-b border-stone-200 flex items-center px-2 gap-0 flex-shrink-0 text-[13px] relative z-50 bg-[#FAF9F7]">
         {['File', 'Edit', 'Selection', 'View', 'Go', 'Run', 'Terminal', 'Help'].map((name) => (
           <div key={name} className="relative">
@@ -1405,6 +1513,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
           </div>
         ))}
       </div>
+      )}
 
       {/* Header – branding + Settings */}
       <header className="h-11 border-b border-stone-200 flex items-center justify-between px-3 flex-shrink-0 bg-[#FAF9F7]">
@@ -1423,6 +1532,13 @@ Respond with ONLY the complete App.js code, nothing else.`;
           </span>
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={toggleDevMode}
+            className={`dev-toggle-btn ${devMode ? 'active' : ''}`}
+            title={devMode ? 'Switch to Simple view' : 'Switch to Developer view'}
+          >
+            {devMode ? '\u25FB Simple' : '< > Code'}
+          </button>
           <button
             onClick={() => navigate('/app/settings')}
             data-testid="settings-button"
@@ -1480,60 +1596,100 @@ Respond with ONLY the complete App.js code, nothing else.`;
             </div>
           </div>
         )}
-        {/* Left Sidebar – Code / Files (View → Show code) */}
-        {leftSidebarOpen && (
-          <div className="w-56 border-r border-stone-200 flex-shrink-0 overflow-y-auto flex flex-col bg-[#FAF9F7]">
-            <div className="flex items-center justify-between px-2 py-1 border-b border-gray-200">
-              <span className="text-xs text-gray-500">Files</span>
-              <div className="flex items-center gap-1">
-                <button onClick={() => fileInputRef.current?.click()} className="p-1 text-gray-500 hover:text-gray-900" title="Attach file to chat"><Paperclip className="w-3.5 h-3.5" /></button>
-                <button onClick={() => setLeftSidebarOpen(false)} className="p-1 text-gray-500 hover:text-gray-900" title="Hide code"><PanelLeftClose className="w-3.5 h-3.5" /></button>
+        {/* === DEVELOPER MODE: Left Sidebar + Code Editor === */}
+        {devMode && (
+          <>
+            {/* Left Sidebar – Code / Files */}
+            {leftSidebarOpen && (
+              <div className="w-56 border-r border-stone-200 flex-shrink-0 overflow-y-auto flex flex-col bg-[#FAF9F7]">
+                <div className="flex items-center justify-between px-2 py-1 border-b border-gray-200">
+                  <span className="text-xs text-gray-500">Files</span>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => fileInputRef.current?.click()} className="p-1 text-gray-500 hover:text-gray-900" title="Attach file to chat"><Paperclip className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => setLeftSidebarOpen(false)} className="p-1 text-gray-500 hover:text-gray-900" title="Hide code"><PanelLeftClose className="w-3.5 h-3.5" /></button>
+                  </div>
+                </div>
+                <FileTree 
+                  files={files} 
+                  activeFile={activeFile} 
+                  onSelectFile={setActiveFile}
+                  onAddFile={addNewFileToProject}
+                />
+              </div>
+            )}
+            {!leftSidebarOpen && (
+              <button onClick={() => setLeftSidebarOpen(true)} className="w-8 border-r border-gray-200 flex-shrink-0 flex items-center justify-center text-gray-500 hover:text-gray-900 bg-gray-50" title="Show code / files"><PanelRightOpen className="w-4 h-4" /></button>
+            )}
+
+            {/* Code Editor */}
+            <div className="flex-1 flex flex-col min-w-0 bg-white">
+              {/* Editor Tabs */}
+              <div className="h-10 border-b border-stone-200 flex items-center px-2 gap-1 flex-shrink-0 bg-[#FAF9F7]">
+                {Object.keys(files).map(filename => (
+                  <button
+                    key={filename}
+                    onClick={() => setActiveFile(filename)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm transition ${
+                      activeFile === filename 
+                        ? 'bg-white text-gray-900 border border-gray-200 border-b-white -mb-px' 
+                        : 'text-gray-500 hover:text-gray-800'
+                    }`}
+                  >
+                    <FileCode className="w-3.5 h-3.5" />
+                    {filename.replace('/', '')}
+                  </button>
+                ))}
+                
+                <div className="ml-auto flex items-center gap-2">
+                  <button
+                    onClick={copyCode}
+                    className="p-1.5 text-gray-500 hover:text-gray-900 transition"
+                    title="Copy code"
+                  >
+                    {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Monaco Editor OR InlineAgentMonitor during BUILD */}
+              <div className="flex-1">
+                {isBuilding ? (
+                  <InlineAgentMonitor
+                    isBuilding={isBuilding}
+                    buildProgress={buildProgress}
+                    currentPhase={currentPhase}
+                    agentsActivity={agentsActivity}
+                    buildEvents={[]}
+                    tokensUsed={lastTokensUsed}
+                    projectBuildProgress={projectBuildProgress}
+                    qualityScore={qualityGateResult?.score ?? null}
+                  />
+                ) : (
+                  <Editor
+                    height="100%"
+                    language={activeFile.endsWith('.css') ? 'css' : 'javascript'}
+                    value={files[activeFile]?.code || ''}
+                    onChange={handleCodeChange}
+                    theme="light"
+                    options={{
+                      minimap: { enabled: false },
+                      fontSize: 13,
+                      lineNumbers: 'on',
+                      scrollBeyondLastLine: false,
+                      wordWrap: 'on',
+                      tabSize: 2,
+                      padding: { top: 16 },
+                    }}
+                  />
+                )}
               </div>
             </div>
-            <FileTree 
-              files={files} 
-              activeFile={activeFile} 
-              onSelectFile={setActiveFile}
-              onAddFile={addNewFileToProject}
-            />
-          </div>
-        )}
-        {!leftSidebarOpen && (
-          <button onClick={() => setLeftSidebarOpen(true)} className="w-8 border-r border-gray-200 flex-shrink-0 flex items-center justify-center text-gray-500 hover:text-gray-900 bg-gray-50" title="Show code / files"><PanelRightOpen className="w-4 h-4" /></button>
+          </>
         )}
 
-        {/* Code Editor */}
-        <div className="flex-1 flex flex-col min-w-0 bg-white">
-          {/* Editor Tabs */}
-          <div className="h-10 border-b border-stone-200 flex items-center px-2 gap-1 flex-shrink-0 bg-[#FAF9F7]">
-            {Object.keys(files).map(filename => (
-              <button
-                key={filename}
-                onClick={() => setActiveFile(filename)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm transition ${
-                  activeFile === filename 
-                    ? 'bg-white text-gray-900 border border-gray-200 border-b-white -mb-px' 
-                    : 'text-gray-500 hover:text-gray-800'
-                }`}
-              >
-                <FileCode className="w-3.5 h-3.5" />
-                {filename.replace('/', '')}
-              </button>
-            ))}
-            
-            <div className="ml-auto flex items-center gap-2">
-              <button
-                onClick={copyCode}
-                className="p-1.5 text-gray-500 hover:text-gray-900 transition"
-                title="Copy code"
-              >
-                {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-
-          {/* Monaco Editor OR InlineAgentMonitor during BUILD */}
-          <div className="flex-1">
+        {/* === SIMPLE MODE: AgentMonitor during build, Chat/Prompt otherwise === */}
+        {!devMode && (
+          <div className="flex-1 flex flex-col min-w-0 bg-white">
             {isBuilding ? (
               <InlineAgentMonitor
                 isBuilding={isBuilding}
@@ -1543,89 +1699,122 @@ Respond with ONLY the complete App.js code, nothing else.`;
                 buildEvents={[]}
                 tokensUsed={lastTokensUsed}
                 projectBuildProgress={projectBuildProgress}
+                qualityScore={qualityGateResult?.score ?? null}
               />
             ) : (
-              <Editor
-                height="100%"
-                language={activeFile.endsWith('.css') ? 'css' : 'javascript'}
-                value={files[activeFile]?.code || ''}
-                onChange={handleCodeChange}
-                theme="light"
-                options={{
-                  minimap: { enabled: false },
-                  fontSize: 13,
-                  lineNumbers: 'on',
-                  scrollBeyondLastLine: false,
-                  wordWrap: 'on',
-                  tabSize: 2,
-                  padding: { top: 16 },
-                }}
-              />
+              <div className="flex-1 flex flex-col overflow-y-auto">
+                {/* Chat history */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {messages.length === 0 ? (
+                    <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+                      Describe what you want to build...
+                    </div>
+                  ) : (
+                    messages.map((msg, i) => (
+                      <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[80%] rounded-xl px-4 py-3 text-sm ${
+                          msg.role === 'user'
+                            ? 'bg-gray-100 text-gray-900'
+                            : 'bg-white border border-gray-200 text-gray-800'
+                        }`}>
+                          <pre className="whitespace-pre-wrap font-sans">{msg.content}</pre>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  <div ref={chatEndRef} />
+                </div>
+              </div>
             )}
           </div>
-        </div>
+        )}
 
-        {/* Right Panel - Preview / Terminal / History / Review / Tools */}
-        <div className="w-[45%] border-l border-stone-200 flex flex-col flex-shrink-0 bg-white">
-          {/* Panel Tabs */}
+        {/* Right Panel - Manus-Style Preview / Code / Terminal / History / Tools */}
+        {rightSidebarOpen && (
+        <div className="w-[45%] border-l border-stone-200 flex flex-col flex-shrink-0 bg-white" style={{ transition: 'width 0.3s ease' }}>
+          {/* Manus-Style Panel Header — Section 06 */}
           <div className="h-10 border-b border-stone-200 flex items-center px-2 gap-1 flex-shrink-0 bg-[#FAF9F7]">
-            <button
-              onClick={() => setActivePanel('preview')}
-              data-testid="preview-tab"
-              className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm transition ${
-                activePanel === 'preview' ? 'bg-white text-gray-900 border border-stone-200 border-b-white -mb-px shadow-sm' : 'text-stone-600 hover:text-gray-900'
-              }`}
-            >
-              <Eye className="w-3.5 h-3.5" />
-              Preview
-            </button>
-            <button
-              onClick={() => setActivePanel('console')}
-              data-testid="console-tab"
-              className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm transition ${
-                activePanel === 'console' ? 'bg-white text-gray-900 border border-stone-200 border-b-white -mb-px shadow-sm' : 'text-stone-600 hover:text-gray-900'
-              }`}
-            >
-              <Terminal className="w-3.5 h-3.5" />
-              Terminal
-            </button>
-            <button
-              onClick={() => setActivePanel('history')}
-              data-testid="history-tab"
-              className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm transition ${
-                activePanel === 'history' ? 'bg-white text-gray-900 border border-stone-200 border-b-white -mb-px shadow-sm' : 'text-stone-600 hover:text-gray-900'
-              }`}
-            >
-              <History className="w-3.5 h-3.5" />
-              History
-            </button>
-            <button
-              onClick={() => setActivePanel('review')}
-              data-testid="review-tab"
-              className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm transition ${
-                activePanel === 'review' ? 'bg-white text-gray-900 border border-stone-200 border-b-white -mb-px shadow-sm' : 'text-stone-600 hover:text-gray-900'
-              }`}
-            >
-              <FileCode className="w-3.5 h-3.5" />
-              Review {versions.length > 0 ? `(${Object.keys(files).length} files)` : ''}
-            </button>
-            <button
-              onClick={() => setActivePanel('tools')}
-              data-testid="tools-tab"
-              className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm transition ${
-                activePanel === 'tools' ? 'bg-white text-gray-900 border border-stone-200 border-b-white -mb-px shadow-sm' : 'text-stone-600 hover:text-gray-900'
-              }`}
-            >
-              <Wrench className="w-3.5 h-3.5" />
-              Tools
-            </button>
-            
-            <div className="ml-auto">
+            {/* Tab selectors */}
+            <div className="flex items-center gap-1">
+              {[
+                { id: 'preview', label: 'Preview', icon: Eye },
+                { id: 'console', label: 'Terminal', icon: Terminal },
+                { id: 'history', label: 'History', icon: History },
+                { id: 'review', label: 'Code', icon: FileCode },
+                { id: 'tools', label: 'Tools', icon: Wrench },
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActivePanel(tab.id)}
+                  data-testid={`${tab.id}-tab`}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm transition ${
+                    activePanel === tab.id ? 'bg-white text-gray-900 border border-stone-200 border-b-white -mb-px shadow-sm' : 'text-stone-600 hover:text-gray-900'
+                  }`}
+                >
+                  <tab.icon className="w-3.5 h-3.5" />
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Controls — only visible when Preview tab active */}
+            {activePanel === 'preview' && (
+              <div className="flex items-center gap-1 ml-2">
+                <button
+                  className={`p-1.5 rounded transition ${mobileView ? 'bg-gray-200 text-gray-900' : 'text-stone-500 hover:text-gray-900'}`}
+                  onClick={() => setMobileView(v => !v)}
+                  title={mobileView ? 'Switch to desktop view' : 'Switch to mobile view'}
+                >
+                  {mobileView ? <Monitor className="w-4 h-4" /> : <Smartphone className="w-4 h-4" />}
+                </button>
+                <button
+                  className="p-1.5 text-stone-500 hover:text-gray-900 transition rounded"
+                  onClick={() => {
+                    // Force Sandpack refresh by toggling files
+                    const current = { ...files };
+                    setFiles({});
+                    setTimeout(() => setFiles(current), 50);
+                  }}
+                  title="Refresh preview"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+                <button
+                  className="p-1.5 text-stone-500 hover:text-gray-900 transition rounded"
+                  onClick={() => {
+                    // Open preview in new tab via Sandpack
+                    const iframe = document.querySelector('.sp-preview-iframe');
+                    if (iframe?.src) window.open(iframe.src, '_blank');
+                  }}
+                  title="Open in new tab"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </button>
+                <button
+                  className="ml-1 px-3 py-1 rounded text-sm font-semibold transition"
+                  style={{ background: '#FF6B35', color: 'white' }}
+                  onMouseEnter={e => e.target.style.background = '#E05A25'}
+                  onMouseLeave={e => e.target.style.background = '#FF6B35'}
+                  onClick={() => setShowDeployModal(true)}
+                >
+                  Deploy
+                </button>
+              </div>
+            )}
+
+            <div className="ml-auto flex items-center gap-1">
               <button
                 onClick={() => setIsFullscreen(!isFullscreen)}
                 className="p-1.5 text-stone-500 hover:text-gray-900 transition"
               >
                 {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+              </button>
+              <button
+                onClick={() => setRightSidebarOpen(false)}
+                className="p-1.5 text-stone-500 hover:text-gray-900 transition"
+                title="Close panel"
+              >
+                <X className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -1633,6 +1822,8 @@ Respond with ONLY the complete App.js code, nothing else.`;
           {/* Panel Content */}
           <div className="flex-1 overflow-hidden">
             {activePanel === 'preview' && (
+              <div className={`flex-1 h-full overflow-hidden transition-all duration-300 ${mobileView ? 'flex justify-center' : ''}`}>
+              <div className={mobileView ? 'w-[375px] h-full border-l border-r border-gray-200' : 'w-full h-full'}>
               <SandpackProvider
                 template="react"
                 files={files}
@@ -1654,10 +1845,10 @@ Respond with ONLY the complete App.js code, nothing else.`;
                         const headers = token ? { Authorization: `Bearer ${token}` } : {};
                         const res = await axios.post(`${API}/ai/explain-error`, {
                           error: errorMsg,
-                          code: files['/App.js']?.code || ''
+                          code: files[activeFile]?.code || files['/App.js']?.code || ''
                         }, { headers, timeout: 30000 });
                         if (res.data.fixed_code) {
-                          setFiles(prev => ({ ...prev, '/App.js': { code: res.data.fixed_code } }));
+                          setFiles(prev => ({ ...prev, [activeFile || '/App.js']: { code: res.data.fixed_code } }));
                           addLog('Auto-fix applied successfully', 'success', 'system');
                           setLastError(null);
                         }
@@ -1674,6 +1865,8 @@ Respond with ONLY the complete App.js code, nothing else.`;
                   />
                 </div>
               </SandpackProvider>
+              </div>
+              </div>
             )}
             
             {activePanel === 'console' && (
@@ -1780,6 +1973,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
             )}
           </div>
         </div>
+        )}
       </div>
 
       {/* Status bar */}
@@ -1950,18 +2144,27 @@ Respond with ONLY the complete App.js code, nothing else.`;
             <ModelSelector selectedModel={selectedModel} onSelectModel={setSelectedModel} variant="chat" />
           </div>
           <div className="flex-1 flex items-center gap-2 px-3 py-2.5 bg-white rounded-lg border border-gray-300 min-w-0 shadow-sm">
-            <button
-              type="button"
-              onClick={isTranscribing ? undefined : (isRecording ? stopRecording : startRecording)}
-              disabled={isTranscribing}
-              data-testid="voice-input-button"
-              className={`p-2 rounded-md transition ${
-                isTranscribing ? 'text-[#666666] cursor-wait' : isRecording ? 'bg-red-100 text-red-600' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-200'
-              }`}
-              title={isTranscribing ? 'Transcribing...' : isRecording ? 'Stop recording' : 'Voice input'}
-            >
-              {isTranscribing ? <Loader2 className="w-4 h-4 animate-spin" /> : isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-            </button>
+            {isRecording ? (
+              <VoiceWaveform
+                stream={audioStream}
+                onStop={stopRecording}
+                onConfirm={confirmRecording}
+                isRecording={isRecording}
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={isTranscribing ? undefined : startRecording}
+                disabled={isTranscribing}
+                data-testid="voice-input-button"
+                className={`p-2 rounded-md transition ${
+                  isTranscribing ? 'text-[#666666] cursor-wait' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-200'
+                }`}
+                title={isTranscribing ? 'Transcribing...' : 'Voice input'}
+              >
+                {isTranscribing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}

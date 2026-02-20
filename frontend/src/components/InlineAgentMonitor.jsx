@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bot, CheckCircle, Clock, AlertCircle, Zap,
-  ChevronDown, ChevronRight, Loader2, RefreshCw
+  ChevronDown, ChevronRight, Loader2, RefreshCw, ShieldCheck
 } from 'lucide-react';
 import './InlineAgentMonitor.css';
 
@@ -49,6 +49,7 @@ const InlineAgentMonitor = ({
   buildEvents = [],
   tokensUsed = 0,
   projectBuildProgress = {},
+  qualityScore = null,
   onRetry,
 }) => {
   const [expandedLayers, setExpandedLayers] = useState({ planning: true, execution: true, validation: false, deployment: false });
@@ -224,6 +225,17 @@ const InlineAgentMonitor = ({
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Quality Score — shown after build completes (Test A-13) */}
+      {!isBuilding && buildProgress >= 100 && qualityScore != null && (
+        <div className="iam-quality-score">
+          <ShieldCheck size={16} style={{ color: qualityScore >= 80 ? '#10B981' : qualityScore >= 50 ? '#F59E0B' : '#EF4444' }} />
+          <span className="iam-quality-label">Quality Score</span>
+          <span className="iam-quality-value" style={{ color: qualityScore >= 80 ? '#10B981' : qualityScore >= 50 ? '#F59E0B' : '#EF4444' }}>
+            {qualityScore}/100
+          </span>
         </div>
       )}
 

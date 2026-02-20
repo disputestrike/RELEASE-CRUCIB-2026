@@ -1,0 +1,67 @@
+/* VoiceWaveform.css — White theme, orange accent */
+
+.voice-waveform-container {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.voice-waveform-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 4px 0;
+}
+
+.voice-timer {
+  font-family: 'Fira Code', monospace;
+  font-size: 13px;
+  font-weight: 500;
+  color: #FF6B35;
+  min-width: 48px;
+  text-align: center;
+}
+
+.voice-canvas {
+  flex: 1;
+  height: 40px;
+  border-radius: 4px;
+}
+
+.voice-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.voice-btn {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+}
+
+.voice-btn-stop {
+  background: #F3F4F6;
+  color: #666666;
+}
+
+.voice-btn-stop:hover {
+  background: #E5E7EB;
+  color: #333333;
+}
+
+.voice-btn-confirm {
+  background: #FF6B35;
+  color: #FFFFFF;
+}
+
+.voice-btn-confirm:hover {
+  background: #E55A2B;
+}

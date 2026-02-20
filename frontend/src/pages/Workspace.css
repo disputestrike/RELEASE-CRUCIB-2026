@@ -1,0 +1,45 @@
+/* Workspace.css — Dev/Simple mode toggle + workspace-specific styles */
+
+/* Dev Mode Toggle Button */
+.dev-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: 'Fira Code', monospace;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid #E5E5E5;
+  background: #FFFFFF;
+  color: #666666;
+}
+
+.dev-toggle-btn:hover {
+  border-color: #FF6B35;
+  color: #FF6B35;
+  background: rgba(255, 107, 53, 0.05);
+}
+
+.dev-toggle-btn.active {
+  border-color: #FF6B35;
+  color: #FF6B35;
+  background: rgba(255, 107, 53, 0.1);
+}
+
+.dev-toggle-btn.active:hover {
+  background: rgba(255, 107, 53, 0.15);
+  border-color: #E05A25;
+  color: #E05A25;
+}
+
+/* Simple mode chat area */
+.simple-mode-chat {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  background: #FFFFFF;
+}

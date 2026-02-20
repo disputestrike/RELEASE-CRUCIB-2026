@@ -330,3 +330,27 @@
   background: rgba(0, 0, 0, 0.1);
   border-radius: 2px;
 }
+
+/* Quality Score */
+.iam-quality-score {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.iam-quality-label {
+  font-weight: 500;
+  color: #666666;
+  flex: 1;
+}
+
+.iam-quality-value {
+  font-weight: 700;
+  font-family: 'Fira Code', monospace;
+  font-size: 14px;
+}
