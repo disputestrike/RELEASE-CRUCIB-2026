@@ -416,7 +416,7 @@ const LandingPage = () => {
                 {attachedFiles.map((file, i) => (
                   <div key={i} className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg text-sm">
                     {file.type?.startsWith('image/') ? (
-                      <Image className="w-4 h-4 text-blue-400 shrink-0" />
+                      <Image className="w-4 h-4 text-orange-400 shrink-0" />
                     ) : (
                       <FileText className="w-4 h-4 text-gray-400 shrink-0" />
                     )}

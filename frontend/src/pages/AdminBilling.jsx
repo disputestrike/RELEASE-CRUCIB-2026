@@ -30,7 +30,7 @@ const AdminBilling = () => {
     return (
       <div className="p-8">
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-400">{error}</div>
-        <Link to="/app/admin" className="inline-flex items-center mt-4 text-blue-400">
+        <Link to="/app/admin" className="inline-flex items-center mt-4 text-orange-400">
           <ArrowLeft className="w-4 h-4 mr-2" /> Back to Admin
         </Link>
       </div>
@@ -51,7 +51,7 @@ const AdminBilling = () => {
       <p className="text-[#666666]">Who paid, when, amount (from Stripe webhook ledger).</p>
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-10 h-10 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
         <div className="rounded-xl border border-white/10 overflow-hidden">

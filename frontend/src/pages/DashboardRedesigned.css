@@ -47,7 +47,7 @@
   align-items: center;
   gap: 10px;
   padding: 12px 20px;
-  background: #3B82F6;
+  background: #FF6B35;
   color: #FFFFFF;
   border: none;
   border-radius: 8px;
@@ -60,7 +60,7 @@
 }
 
 .dashboard-new-project-btn:hover {
-  background: #2563EB;
+  background: #E05A25;
   box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
   transform: translateY(-1px);
 }
@@ -107,13 +107,13 @@
 }
 
 .stat-icon.projects {
-  background: #EFF6FF;
-  color: #3B82F6;
+  background: #FFF3ED;
+  color: #FF6B35;
 }
 
 .stat-icon.agents {
-  background: #F3E8FF;
-  color: #8B5CF6;
+  background: #FFF7F2;
+  color: #FF8F5E;
 }
 
 .stat-icon.deployments {
@@ -193,7 +193,7 @@
 .quick-action-btn:hover {
   background: #F3F1ED;
   border-color: rgba(0, 0, 0, 0.12);
-  color: #3B82F6;
+  color: #FF6B35;
 }
 
 .quick-action-btn svg {
@@ -230,7 +230,7 @@
   align-items: center;
   gap: 6px;
   padding: 8px 12px;
-  color: #3B82F6;
+  color: #FF6B35;
   text-decoration: none;
   font-size: 13px;
   font-weight: 600;
@@ -239,7 +239,7 @@
 }
 
 .view-all-link:hover {
-  background: #EFF6FF;
+  background: #FFF3ED;
 }
 
 /* ============================================
@@ -370,7 +370,7 @@
 
 .action-btn:hover {
   background: #E5E3E0;
-  color: #3B82F6;
+  color: #FF6B35;
 }
 
 .action-btn svg {
@@ -412,7 +412,7 @@
 
 .empty-state-btn {
   padding: 12px 24px;
-  background: #3B82F6;
+  background: #FF6B35;
   color: #FFFFFF;
   border: none;
   border-radius: 8px;
@@ -424,7 +424,7 @@
 }
 
 .empty-state-btn:hover {
-  background: #2563EB;
+  background: #E05A25;
   transform: translateY(-1px);
 }
 

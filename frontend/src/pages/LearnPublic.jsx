@@ -45,8 +45,8 @@ export default function LearnPublic() {
       <PublicNav />
       <div className="max-w-2xl mx-auto px-6 py-16">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-4 mb-10">
-          <div className="p-3 rounded-xl bg-blue-500/20">
-            <BookOpen className="w-8 h-8 text-blue-400" />
+          <div className="p-3 rounded-xl bg-orange-500/20">
+            <BookOpen className="w-8 h-8 text-orange-400" />
           </div>
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">Learn CrucibAI — Inevitable AI</h1>
@@ -66,7 +66,7 @@ export default function LearnPublic() {
             >
               <div className="flex items-start gap-4">
                 <div className="p-2 rounded-lg bg-zinc-800 shrink-0">
-                  <Icon className="w-5 h-5 text-blue-400" />
+                  <Icon className="w-5 h-5 text-orange-400" />
                 </div>
                 <div>
                   <h2 className="font-semibold mb-1">{title}</h2>

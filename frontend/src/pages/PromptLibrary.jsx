@@ -70,7 +70,7 @@ export default function PromptLibrary() {
             <h3 className="text-sm font-medium text-zinc-300 mb-3">Save new prompt</h3>
             <input type="text" value={saveName} onChange={(e) => setSaveName(e.target.value)} placeholder="Name" className="w-full mb-2 px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-[#1A1A1A] placeholder-zinc-500 text-sm" />
             <textarea value={savePrompt} onChange={(e) => setSavePrompt(e.target.value)} placeholder="Prompt text..." rows={2} className="w-full mb-2 px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-[#1A1A1A] placeholder-zinc-500 text-sm resize-none" />
-            <button type="button" onClick={handleSavePrompt} disabled={saving || !saveName.trim() || !savePrompt.trim()} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium disabled:opacity-50">
+            <button type="button" onClick={handleSavePrompt} disabled={saving || !saveName.trim() || !savePrompt.trim()} className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-500 rounded-lg text-sm font-medium disabled:opacity-50">
               {saveDone ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />} {saving ? 'Saving...' : saveDone ? 'Saved!' : 'Save prompt'}
             </button>
           </div>
@@ -95,7 +95,7 @@ export default function PromptLibrary() {
                   <button onClick={() => copyPrompt(t.prompt, t.id)} className="p-1.5 text-zinc-400 hover:text-[#1A1A1A]">
                     {copiedId === t.id ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                   </button>
-                  <button onClick={() => goToPrompt(t.prompt)} className="flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300">
+                  <button onClick={() => goToPrompt(t.prompt)} className="flex items-center gap-1 text-sm text-orange-400 hover:text-orange-300">
                     <Plus className="w-4 h-4" /> Use
                   </button>
                 </div>
@@ -111,7 +111,7 @@ export default function PromptLibrary() {
                   <button onClick={() => copyPrompt(p.prompt, p.id)} className="p-1.5 text-zinc-400 hover:text-[#1A1A1A]">
                     {copiedId === p.id ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                   </button>
-                  <button onClick={() => goToPrompt(p.prompt)} className="text-sm text-blue-400 hover:text-blue-300">Use</button>
+                  <button onClick={() => goToPrompt(p.prompt)} className="text-sm text-orange-400 hover:text-orange-300">Use</button>
                 </div>
               </div>
               <p className="text-sm text-zinc-400 line-clamp-2">{p.prompt}</p>
@@ -121,7 +121,7 @@ export default function PromptLibrary() {
             <div key={i} className="p-4 rounded-xl border border-zinc-800 bg-zinc-900/50">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm text-zinc-300 line-clamp-2 flex-1">{p.prompt}</p>
-                <button onClick={() => goToPrompt(p.prompt)} className="text-sm text-blue-400 hover:text-blue-300 shrink-0">Use</button>
+                <button onClick={() => goToPrompt(p.prompt)} className="text-sm text-orange-400 hover:text-orange-300 shrink-0">Use</button>
               </div>
             </div>
           )))}

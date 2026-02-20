@@ -50,17 +50,17 @@
      ACCENT COLORS
      ============================================ */
   
-  /* Primary accent - Professional blue */
-  --manus-accent-primary: #3B82F6;
+  /* Primary accent - CrucibAI orange */
+  --manus-accent-primary: #FF6B35;
   
-  /* Accent hover - Darker blue */
-  --manus-accent-hover: #2563EB;
+  /* Accent hover - Darker orange */
+  --manus-accent-hover: #E05A25;
   
-  /* Accent light - Light blue background */
-  --manus-accent-light: #EFF6FF;
+  /* Accent light - Light orange background */
+  --manus-accent-light: #FFF3ED;
   
-  /* Accent very light - Very light blue background */
-  --manus-accent-very-light: #F0F9FF;
+  /* Accent very light - Very light orange background */
+  --manus-accent-very-light: #FFF7F2;
   
   /* ============================================
      STATUS COLORS
@@ -280,12 +280,12 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 200ms ease-out;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.2);
 }
 
 .btn-manus-primary:hover {
   background-color: var(--manus-accent-hover);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
   transform: translateY(-1px);
 }
 

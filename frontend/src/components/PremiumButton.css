@@ -41,14 +41,14 @@
 
 /* Primary button */
 .premium-button-primary {
-  background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+  background: linear-gradient(135deg, #FF6B35 0%, #E05A25 100%);
   color: #FFFFFF;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
 }
 
 .premium-button-primary:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 8px 20px rgba(255, 107, 53, 0.4);
 }
 
 .premium-button-primary:active:not(:disabled) {
@@ -64,21 +64,21 @@
 
 .premium-button-secondary:hover:not(:disabled) {
   background: #FFFFFF;
-  border-color: #3B82F6;
-  color: #3B82F6;
+  border-color: #FF6B35;
+  color: #FF6B35;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 /* Outline button */
 .premium-button-outline {
   background: transparent;
-  color: #3B82F6;
-  border: 2px solid #3B82F6;
+  color: #FF6B35;
+  border: 2px solid #FF6B35;
 }
 
 .premium-button-outline:hover:not(:disabled) {
-  background: #EFF6FF;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+  background: #FFF3ED;
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.2);
 }
 
 /* Ghost button */
@@ -90,7 +90,7 @@
 
 .premium-button-ghost:hover:not(:disabled) {
   background: #F3F1ED;
-  color: #3B82F6;
+  color: #FF6B35;
 }
 
 /* ============================================
@@ -114,7 +114,7 @@
 
 .premium-button-secondary.loading .button-loader {
   border-color: rgba(0, 0, 0, 0.1);
-  border-top-color: #3B82F6;
+  border-top-color: #FF6B35;
 }
 
 @keyframes spin {
@@ -171,7 +171,7 @@
    ============================================ */
 
 .premium-button:focus-visible {
-  outline: 2px solid #3B82F6;
+  outline: 2px solid #FF6B35;
   outline-offset: 2px;
 }
 

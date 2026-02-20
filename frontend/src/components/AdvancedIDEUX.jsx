@@ -123,7 +123,7 @@ export const CommandPalette = ({ commands = [], onCommandSelect }) => {
                       onClick={() => handleSelect(command)}
                       className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
                         idx === selectedIndex
-                          ? 'bg-blue-600 text-[#1A1A1A]'
+                          ? 'bg-orange-600 text-[#1A1A1A]'
                           : 'hover:bg-slate-800 text-slate-300'
                       }`}
                     >
@@ -194,7 +194,7 @@ export const Minimap = ({ content = '', currentScroll = 0, totalHeight = 100 }) 
 
       {/* Scroll indicator */}
       <div
-        className="absolute left-0 right-0 h-8 bg-blue-500/20 border-y border-blue-500 transition-all"
+        className="absolute left-0 right-0 h-8 bg-orange-500/20 border-y border-orange-500 transition-all"
         style={{ top: `${scrollPercent}%` }}
       />
     </div>
@@ -244,7 +244,7 @@ export const AIAutocomplete = ({ suggestions = [], onSelect, visible = false }) 
           onClick={() => onSelect(suggestion)}
           className={`w-full px-4 py-2 text-left text-sm transition-colors flex items-center gap-2 ${
             idx === selectedIdx
-              ? 'bg-blue-600 text-[#1A1A1A]'
+              ? 'bg-orange-600 text-[#1A1A1A]'
               : 'hover:bg-slate-700 text-slate-300'
           }`}
         >
@@ -287,13 +287,13 @@ export const AISuggestions = ({ suggestions = [] }) => {
   if (suggestions.length === 0) return null;
 
   return (
-    <div className="space-y-2 p-4 bg-blue-900/20 border border-blue-700/50 rounded-lg">
+    <div className="space-y-2 p-4 bg-orange-900/20 border border-orange-700/50 rounded-lg">
       {suggestions.map((suggestion, idx) => (
         <div key={idx} className="flex items-start gap-3 text-sm">
-          <Zap size={16} className="text-blue-400 flex-shrink-0 mt-0.5" />
+          <Zap size={16} className="text-orange-400 flex-shrink-0 mt-0.5" />
           <div>
-            <div className="font-medium text-blue-300">{suggestion.title}</div>
-            <div className="text-xs text-blue-300/70">{suggestion.description}</div>
+            <div className="font-medium text-orange-300">{suggestion.title}</div>
+            <div className="text-xs text-orange-300/70">{suggestion.description}</div>
           </div>
         </div>
       ))}

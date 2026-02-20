@@ -22,7 +22,7 @@ export const EverythingSupportMenu = ({ onSelect }) => {
       name: 'Code',
       icon: FileCode,
       description: 'Generate full-stack code',
-      color: 'from-blue-600 to-blue-700',
+      color: 'from-orange-600 to-orange-700',
       examples: ['React components', 'API endpoints', 'Database schemas'],
     },
     {
@@ -38,7 +38,7 @@ export const EverythingSupportMenu = ({ onSelect }) => {
       name: 'Presentations',
       icon: Presentation,
       description: 'Create slide decks',
-      color: 'from-purple-600 to-purple-700',
+      color: 'from-orange-600 to-orange-700',
       examples: ['Pitch decks', 'Tutorials', 'Reports'],
     },
     {
@@ -121,7 +121,7 @@ export const CodeGenerationOptions = ({ onGenerate, isLoading }) => {
             onClick={() => setSelectedStack(stack.id)}
             className={`p-4 rounded-lg border-2 transition-all ${
               selectedStack === stack.id
-                ? 'border-blue-500 bg-blue-500/10 text-blue-300'
+                ? 'border-orange-500 bg-orange-500/10 text-orange-300'
                 : 'border-slate-600 bg-slate-700/50 text-slate-300 hover:border-slate-500'
             }`}
           >
@@ -138,7 +138,7 @@ export const CodeGenerationOptions = ({ onGenerate, isLoading }) => {
       <button
         onClick={() => onGenerate('code', selectedStack)}
         disabled={isLoading}
-        className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-[#1A1A1A] font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+        className="w-full bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-[#1A1A1A] font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
       >
         {isLoading ? (
           <>
@@ -264,7 +264,7 @@ export const PresentationGenerator = ({ onGenerate, isLoading }) => {
       <button
         onClick={() => onGenerate('slides', slideCount)}
         disabled={isLoading}
-        className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-[#1A1A1A] font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+        className="w-full bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-[#1A1A1A] font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
       >
         {isLoading ? (
           <>
@@ -292,7 +292,7 @@ export const ExportOptions = ({ onExport, isLoading }) => {
       name: 'ZIP Archive',
       icon: Download,
       description: 'Download as ZIP file',
-      color: 'bg-blue-600 hover:bg-blue-700',
+      color: 'bg-orange-600 hover:bg-orange-700',
     },
     {
       id: 'github',
@@ -339,7 +339,7 @@ export const ExportOptions = ({ onExport, isLoading }) => {
 export const GenerationStatus = ({ status, progress = 0, message = '' }) => {
   const statusConfig = {
     idle: { icon: null, color: 'text-slate-400', bg: 'bg-slate-800' },
-    generating: { icon: Loader2, color: 'text-blue-400', bg: 'bg-blue-900/20' },
+    generating: { icon: Loader2, color: 'text-orange-400', bg: 'bg-orange-900/20' },
     success: { icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-900/20' },
     error: { icon: AlertCircle, color: 'text-red-400', bg: 'bg-red-900/20' },
   };
@@ -375,7 +375,7 @@ export const GenerationStatus = ({ status, progress = 0, message = '' }) => {
       {status === 'generating' && (
         <div className="mt-3 w-full bg-slate-700 rounded-full h-2 overflow-hidden">
           <motion.div
-            className="h-full bg-gradient-to-r from-blue-500 to-blue-600"
+            className="h-full bg-gradient-to-r from-orange-500 to-orange-600"
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}
             transition={{ duration: 0.3 }}

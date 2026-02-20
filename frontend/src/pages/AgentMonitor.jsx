@@ -115,9 +115,9 @@ const AgentMonitor = () => {
 
   const getLayerColor = (layer) => {
     switch (layer) {
-      case 'planning': return 'blue';
+      case 'planning': return 'orange';
       case 'execution': return 'green';
-      case 'validation': return 'purple';
+      case 'validation': return 'orange';
       case 'deployment': return 'orange';
       default: return 'gray';
     }
@@ -127,7 +127,7 @@ const AgentMonitor = () => {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-12 h-12 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-[#666666]">Loading project...</p>
         </div>
       </div>
@@ -139,7 +139,7 @@ const AgentMonitor = () => {
       <div className="text-center py-20">
         <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
         <h2 className="text-xl font-semibold mb-2">Project not found</h2>
-        <Link to="/app" className="text-blue-400 hover:text-blue-300">Back to dashboard</Link>
+        <Link to="/app" className="text-orange-400 hover:text-orange-300">Back to dashboard</Link>
       </div>
     );
   }
@@ -212,7 +212,7 @@ const AgentMonitor = () => {
               <span className="text-gray-500 ml-2">(last run from Workspace)</span>
             )}
           </p>
-          <Link to={`/app/workspace?projectId=${id}`} className="text-sm text-blue-400 hover:text-blue-300 mt-1 inline-block">Run again in Workspace →</Link>
+          <Link to={`/app/workspace?projectId=${id}`} className="text-sm text-orange-400 hover:text-orange-300 mt-1 inline-block">Run again in Workspace →</Link>
         </div>
       )}
       {/* Optional: dependency audit (npm / pip) */}
@@ -234,7 +234,7 @@ const AgentMonitor = () => {
                   setDependencyAuditLoading(false);
                 }
               }}
-              className="text-sm text-blue-400 hover:text-blue-300"
+              className="text-sm text-orange-400 hover:text-orange-300"
             >
               Run dependency audit (npm / pip)
             </button>
@@ -294,11 +294,11 @@ const AgentMonitor = () => {
           )}
           <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${
             project.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-            project.status === 'running' ? 'bg-blue-500/20 text-blue-400' :
+            project.status === 'running' ? 'bg-orange-500/20 text-orange-400' :
             project.status === 'failed' ? 'bg-red-500/20 text-red-400' :
             'bg-gray-500/20 text-[#666666]'
           }`} data-testid="project-status">
-            {project.status === 'running' && <span className="inline-block w-2 h-2 bg-blue-400 rounded-full mr-2 animate-pulse"></span>}
+            {project.status === 'running' && <span className="inline-block w-2 h-2 bg-orange-400 rounded-full mr-2 animate-pulse"></span>}
             {project.status}
           </span>
           {project.status === 'running' && (
@@ -353,7 +353,7 @@ const AgentMonitor = () => {
             {buildEvents.slice(-80).map((ev, i) => (
               <div key={ev.id ?? i} className="flex gap-2 text-gray-300">
                 <span className="text-gray-500 shrink-0">{ev.ts ? new Date(ev.ts).toLocaleTimeString() : ''}</span>
-                <span className={ev.type === 'agent_completed' ? 'text-green-400' : ev.type === 'agent_started' ? 'text-blue-400' : 'text-amber-400'}>
+                <span className={ev.type === 'agent_completed' ? 'text-green-400' : ev.type === 'agent_started' ? 'text-orange-400' : 'text-amber-400'}>
                   {ev.type === 'agent_started' && `${ev.agent || 'agent'} started`}
                   {ev.type === 'agent_completed' && `${ev.agent || 'agent'} completed`}
                   {ev.type === 'phase_started' && (ev.message || 'phase')}
@@ -392,7 +392,7 @@ const AgentMonitor = () => {
             className={`absolute inset-y-0 left-0 rounded-full ${
               project.status === 'completed' ? 'bg-green-500' :
               project.status === 'failed' ? 'bg-red-500' :
-              'bg-blue-500'
+              'bg-orange-500'
             }`}
           />
         </div>
@@ -479,7 +479,7 @@ const AgentMonitor = () => {
           className="flex items-center gap-2 w-full text-left font-semibold text-lg mb-2 hover:text-gray-300 transition"
         >
           {statePanelOpen ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
-          <Database className="w-5 h-5 text-blue-400" />
+          <Database className="w-5 h-5 text-orange-400" />
           Build state (plan, requirements, stack, reports)
         </button>
         {statePanelOpen && (
@@ -526,7 +526,7 @@ const AgentMonitor = () => {
                     <ul className="space-y-1 text-gray-300">
                       {projectState.tool_log.slice(-10).reverse().map((entry, i) => (
                         <li key={i} className="flex gap-2">
-                          <span className="text-blue-400 font-mono text-xs">{entry.agent || 'agent'}</span>
+                          <span className="text-orange-400 font-mono text-xs">{entry.agent || 'agent'}</span>
                           <span className="truncate">{typeof entry.output_preview === 'string' ? entry.output_preview.slice(0, 80) : ''}</span>
                         </li>
                       ))}
@@ -541,7 +541,7 @@ const AgentMonitor = () => {
                         <p className="text-gray-300 text-xs"><strong className="text-amber-400">Security:</strong> {String(projectState.security_report).slice(0, 200)}…</p>
                       )}
                       {projectState.ux_report && (
-                        <p className="text-gray-300 text-xs"><strong className="text-purple-400">UX:</strong> {String(projectState.ux_report).slice(0, 200)}…</p>
+                        <p className="text-gray-300 text-xs"><strong className="text-orange-400">UX:</strong> {String(projectState.ux_report).slice(0, 200)}…</p>
                       )}
                       {projectState.performance_report && (
                         <p className="text-gray-300 text-xs"><strong className="text-green-400">Perf:</strong> {String(projectState.performance_report).slice(0, 200)}…</p>
@@ -582,7 +582,7 @@ const AgentMonitor = () => {
                   log.level === 'success' ? 'bg-green-400' :
                   log.level === 'error' ? 'bg-red-400' :
                   log.level === 'warning' ? 'bg-yellow-400' :
-                  'bg-blue-400'
+                  'bg-orange-400'
                 }`}></span>
                 <span className="text-gray-500 flex-shrink-0">
                   {new Date(log.created_at).toLocaleTimeString()}

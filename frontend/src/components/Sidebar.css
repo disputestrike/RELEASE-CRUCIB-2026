@@ -34,7 +34,7 @@
 .sidebar-logo-icon {
   width: 32px;
   height: 32px;
-  background: linear-gradient(135deg, #2563EB, #7C3AED);
+  background: linear-gradient(135deg, #FF6B35, #FF8F5E);
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -70,8 +70,8 @@
 
 .sidebar-search.focused {
   background: #FFFFFF;
-  border-color: #2563EB;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  border-color: #FF6B35;
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
 }
 
 .sidebar-search-icon { color: #9CA3AF; flex-shrink: 0; }
@@ -141,7 +141,7 @@
 }
 
 .sidebar-nav-item:hover { background: #F5F5F4; color: #1A1A1A; }
-.sidebar-nav-item.active { background: #EFF6FF; color: #2563EB; }
+.sidebar-nav-item.active { background: #FFF3ED; color: #FF6B35; }
 
 .sidebar-nav-icon { flex-shrink: 0; opacity: 0.8; }
 .sidebar-nav-item:hover .sidebar-nav-icon,
@@ -155,8 +155,8 @@
 }
 
 /* Color variants */
-.color-blue { color: #2563EB; }
-.color-purple { color: #7C3AED; }
+.color-orange { color: #FF6B35; }
+.color-brand { color: #FF6B35; }
 .color-emerald { color: #059669; }
 .color-gray { color: #6B7280; }
 .color-indigo { color: #4F46E5; }
@@ -203,7 +203,7 @@
   transition: all 150ms ease;
 }
 
-.sidebar-section-action:hover { background: #EFF6FF; color: #2563EB; }
+.sidebar-section-action:hover { background: #FFF3ED; color: #FF6B35; }
 
 .sidebar-section-items {
   display: flex;
@@ -230,12 +230,12 @@
 }
 
 .sidebar-item:hover { background: #F5F5F4; color: #1A1A1A; }
-.sidebar-item.active { background: #EFF6FF; color: #2563EB; font-weight: 600; }
+.sidebar-item.active { background: #FFF3ED; color: #FF6B35; font-weight: 600; }
 
 .sidebar-item-icon { flex-shrink: 0; color: #9CA3AF; }
 
 .sidebar-item-icon.status-completed { color: #059669; }
-.sidebar-item-icon.status-running { color: #2563EB; animation: pulse 2s infinite; }
+.sidebar-item-icon.status-running { color: #FF6B35; animation: pulse 2s infinite; }
 .sidebar-item-icon.status-failed { color: #DC2626; }
 .sidebar-item-icon.status-pending { color: #9CA3AF; }
 
@@ -291,7 +291,7 @@
 }
 
 .sidebar-engine-toggle:hover { background: #F5F5F4; color: #1A1A1A; }
-.sidebar-engine-toggle.open { color: #2563EB; background: #EFF6FF; }
+.sidebar-engine-toggle.open { color: #FF6B35; background: #FFF3ED; }
 
 .sidebar-engine-chevron {
   margin-left: auto;
@@ -322,7 +322,7 @@
 }
 
 .sidebar-engine-item:hover { background: #F5F5F4; color: #1A1A1A; }
-.sidebar-engine-item.active { background: #EFF6FF; color: #2563EB; }
+.sidebar-engine-item.active { background: #FFF3ED; color: #FF6B35; }
 
 /* ============================================
    TOKEN BALANCE
@@ -334,8 +334,8 @@
   gap: 8px;
   margin: 4px 12px;
   padding: 10px 12px;
-  background: linear-gradient(135deg, #EFF6FF, #F0EBFF);
-  border: 1px solid rgba(37, 99, 235, 0.15);
+  background: linear-gradient(135deg, #FFF3ED, #FFF7F2);
+  border: 1px solid rgba(255, 107, 53, 0.15);
   border-radius: 8px;
   text-decoration: none;
   color: #1A1A1A;
@@ -344,11 +344,11 @@
 }
 
 .sidebar-token-balance:hover {
-  border-color: #2563EB;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+  border-color: #FF6B35;
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.08);
 }
 
-.sidebar-token-icon { color: #2563EB; }
+.sidebar-token-icon { color: #FF6B35; }
 .sidebar-token-amount { font-size: 16px; font-weight: 700; color: #1A1A1A; }
 .sidebar-token-label { font-size: 12px; color: #6B7280; }
 
@@ -391,7 +391,7 @@
 .sidebar-user-avatar {
   width: 32px;
   height: 32px;
-  background: linear-gradient(135deg, #7C3AED, #EC4899);
+  background: linear-gradient(135deg, #FF6B35, #FF8F5E);
   border-radius: 50%;
   display: flex;
   align-items: center;

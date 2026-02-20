@@ -21,7 +21,7 @@ import './InlineAgentMonitor.css';
 const AGENT_LAYERS = {
   planning: {
     label: 'Planning',
-    color: '#3B82F6',
+    color: '#FF6B35',
     agents: ['Planner', 'Requirements Clarifier', 'Stack Selector']
   },
   execution: {
@@ -31,7 +31,7 @@ const AGENT_LAYERS = {
   },
   validation: {
     label: 'Validation',
-    color: '#8B5CF6',
+    color: '#FF8F5E',
     agents: ['Security Checker', 'Test Executor', 'UX Auditor', 'Performance Analyzer']
   },
   deployment: {

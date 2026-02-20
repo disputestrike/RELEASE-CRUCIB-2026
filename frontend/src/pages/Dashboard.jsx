@@ -8,18 +8,30 @@ import {
 } from 'lucide-react';
 import { useAuth, API } from '../App';
 import axios from 'axios';
+import VoiceWaveform from '../components/VoiceWaveform';
+import '../components/VoiceWaveform.css';
 import './Dashboard.css';
 
 /**
- * Dashboard — Redesigned as prompt-first entry point
+ * Dashboard — Prompt-first entry point
  * 
- * Replaces the old stats dashboard with:
- * - Personalized greeting: "Hi [FirstName]."
- * - Big centered prompt box — full width, autofocus on load
- * - 6 quick-start chips below
- * - No stats, no charts, no token balance — just the prompt
- * - Voice input + file attachment buttons
+ * ISSUE 1: Intent detection — build keywords → workspace, else → chat inline
+ * ISSUE 2: Prompt box full width (max-width: 680px)
+ * ISSUE 3: Voice waveform on home screen
  */
+
+const BUILD_KEYWORDS = [
+  'build', 'create', 'make', 'develop', 'design', 'generate',
+  'landing page', 'dashboard', 'saas', 'mobile app', 'api',
+  'automation', 'website', 'app', 'tool', 'platform', 'system',
+  'todo', 'calculator', 'form', 'page', 'component', 'clone',
+  'e-commerce', 'ecommerce', 'blog', 'portfolio', 'chat',
+];
+
+function detectIntent(prompt) {
+  const lower = prompt.toLowerCase();
+  return BUILD_KEYWORDS.some(kw => lower.includes(kw)) ? 'build' : 'chat';
+}
 
 const QUICK_START_CHIPS = [
   { label: 'Landing page', icon: Layout, prompt: 'Build me a modern landing page with hero section, features grid, pricing table, and footer' },
@@ -44,9 +56,15 @@ const Dashboard = () => {
   const [gitUrl, setGitUrl] = useState('');
   const [importLoading, setImportLoading] = useState(false);
   const [importError, setImportError] = useState(null);
+  // Chat state for conversational (non-build) messages
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [audioStream, setAudioStream] = useState(null);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
   const mediaRecorderRef = useRef(null);
+  const streamRef = useRef(null);
 
   // Autofocus prompt on load
   useEffect(() => {
@@ -56,16 +74,45 @@ const Dashboard = () => {
 
   const firstName = user?.name?.split(' ')[0] || 'there';
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e?.preventDefault();
     if (!prompt.trim()) return;
-    // Navigate to workspace with the prompt
-    navigate('/app/workspace', {
-      state: {
-        initialPrompt: prompt,
-        initialAttachedFiles: attachedFiles.length > 0 ? attachedFiles : undefined
+
+    const intent = detectIntent(prompt);
+
+    if (intent === 'build') {
+      // Navigate to workspace with prompt and autoStart flag
+      navigate('/app/workspace', {
+        state: {
+          initialPrompt: prompt,
+          autoStart: true,
+          initialAttachedFiles: attachedFiles.length > 0 ? attachedFiles : undefined
+        }
+      });
+    } else {
+      // Conversational — stay on home screen, respond inline
+      const userMsg = { role: 'user', content: prompt };
+      setChatMessages(prev => [...prev, userMsg]);
+      setPrompt('');
+      setChatLoading(true);
+      try {
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const res = await axios.post(`${API}/ai/chat`, {
+          message: prompt,
+          session_id: 'home_chat',
+          model: 'auto'
+        }, { headers, timeout: 30000 });
+        const reply = res.data?.response || res.data?.message || "I'm here to help! Try asking me to build something, like \"Build me a todo app\".";
+        setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
+      } catch (err) {
+        setChatMessages(prev => [...prev, {
+          role: 'assistant',
+          content: "I'm CrucibAI — I can build apps for you! Try saying \"Build me a landing page\" or \"Create a todo app\"."
+        }]);
+      } finally {
+        setChatLoading(false);
       }
-    });
+    }
   };
 
   const handleChipClick = (chip) => {
@@ -74,13 +121,9 @@ const Dashboard = () => {
       return;
     }
     if (chip.prompt) {
-      setPrompt(chip.prompt);
-      // Auto-submit after a brief delay so user sees what was filled
-      setTimeout(() => {
-        navigate('/app/workspace', {
-          state: { initialPrompt: chip.prompt }
-        });
-      }, 200);
+      navigate('/app/workspace', {
+        state: { initialPrompt: chip.prompt, autoStart: true }
+      });
     }
   };
 
@@ -111,16 +154,23 @@ const Dashboard = () => {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
       const mimeTypes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
       const mimeType = mimeTypes.find(mt => MediaRecorder.isTypeSupported(mt)) || 'audio/webm';
       const recorder = new MediaRecorder(stream, { mimeType });
       const chunks = [];
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
       recorder.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop());
+        // Stop ALL tracks on the stream (ISSUE 7)
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
+        }
         setIsRecording(false);
+        setAudioStream(null);
         const blob = new Blob(chunks, { type: mimeType.split(';')[0] });
         if (blob.size < 100) return;
+        setIsTranscribing(true);
         try {
           const formData = new FormData();
           formData.append('audio', blob, 'recording.webm');
@@ -128,20 +178,47 @@ const Dashboard = () => {
           const res = await axios.post(`${API}/voice/transcribe`, formData, { headers, timeout: 30000 });
           if (res.data?.text) setPrompt(res.data.text);
         } catch (_) {}
+        setIsTranscribing(false);
       };
       recorder.start(1000);
       mediaRecorderRef.current = { recorder, stream };
+      setAudioStream(stream);
       setIsRecording(true);
-    } catch (_) {
+    } catch (err) {
       setIsRecording(false);
+      if (err?.name === 'NotAllowedError') {
+        setChatMessages(prev => [...prev, { role: 'assistant', content: 'Microphone access denied. Allow it in browser settings.' }]);
+      }
     }
   };
 
   const stopRecording = () => {
     const ref = mediaRecorderRef.current;
-    if (ref?.recorder?.state === 'recording') ref.recorder.stop();
-    if (ref?.stream) ref.stream.getTracks().forEach(t => t.stop());
+    // Cancel — stop without transcribing
+    if (ref?.recorder) {
+      ref.recorder.onstop = () => {
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(t => t.stop());
+          streamRef.current = null;
+        }
+      };
+      if (ref.recorder.state === 'recording') ref.recorder.stop();
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
     mediaRecorderRef.current = null;
+    setAudioStream(null);
+    setIsRecording(false);
+  };
+
+  const confirmRecording = () => {
+    const ref = mediaRecorderRef.current;
+    if (ref?.recorder?.state === 'recording') {
+      ref.recorder.stop(); // onstop handler will transcribe
+    }
+    setAudioStream(null);
   };
 
   const handleImportSubmit = async (e) => {
@@ -228,6 +305,11 @@ const Dashboard = () => {
               rows={1}
             />
             <div className="dashboard-prompt-actions">
+              {/* Model indicator */}
+              <div className="dashboard-model-badge" title="Auto-selects best model">
+                <Sparkles size={14} />
+              </div>
+
               {/* File attachment */}
               <button
                 type="button"
@@ -246,28 +328,63 @@ const Dashboard = () => {
                 className="hidden"
               />
 
-              {/* Voice input */}
-              <button
-                type="button"
-                onClick={isRecording ? stopRecording : startRecording}
-                className={`dashboard-prompt-btn ${isRecording ? 'recording' : ''}`}
-                title={isRecording ? 'Stop recording' : 'Voice input (9 languages)'}
-              >
-                {isRecording ? <MicOff size={18} /> : <Mic size={18} />}
-              </button>
+              {/* Voice input — ISSUE 3: VoiceWaveform on home screen */}
+              {isRecording ? (
+                <VoiceWaveform
+                  stream={audioStream}
+                  onStop={stopRecording}
+                  onConfirm={confirmRecording}
+                  isRecording={isRecording}
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={isTranscribing ? undefined : startRecording}
+                  disabled={isTranscribing}
+                  className={`dashboard-prompt-btn ${isRecording ? 'recording' : ''}`}
+                  title={isTranscribing ? 'Transcribing...' : 'Voice input (9 languages)'}
+                >
+                  {isTranscribing ? <Loader2 size={18} className="animate-spin" /> : <Mic size={18} />}
+                </button>
+              )}
 
               {/* Submit */}
               <button
                 type="submit"
-                disabled={!prompt.trim()}
+                disabled={!prompt.trim() || chatLoading}
                 className="dashboard-prompt-submit"
-                title="Start building"
+                title="Send"
               >
-                <ArrowRight size={18} />
+                {chatLoading ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} />}
               </button>
             </div>
           </div>
         </motion.form>
+
+        {/* Chat Messages — ISSUE 1: conversational responses inline */}
+        {chatMessages.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="dashboard-chat-thread"
+          >
+            {chatMessages.map((msg, i) => (
+              <div key={i} className={`dashboard-chat-msg ${msg.role}`}>
+                <div className={`dashboard-chat-bubble ${msg.role}`}>
+                  {msg.content}
+                </div>
+              </div>
+            ))}
+            {chatLoading && (
+              <div className="dashboard-chat-msg assistant">
+                <div className="dashboard-chat-bubble assistant">
+                  <Loader2 size={16} className="animate-spin" style={{ display: 'inline-block' }} />
+                  <span style={{ marginLeft: 8 }}>Thinking...</span>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
 
         {/* Quick Start Chips */}
         <motion.div

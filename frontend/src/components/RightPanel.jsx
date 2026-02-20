@@ -116,30 +116,14 @@ export const RightPanel = ({
       {/* Content */}
       <div className="right-panel-content">
 
-        {/* Preview Tab */}
+        {/* Preview Tab — preview lives in Workspace's own Sandpack panel, not here */}
         {activeTab === 'preview' && (
           <div className="right-panel-tab-content">
-            <div className="preview-toolbar">
-              <span className="preview-url-bar">
-                <span className="preview-dot green" />
-                <span className="preview-url-text">localhost:3000</span>
-              </span>
-              <button className="preview-action" onClick={onRefreshPreview} title="Refresh">
-                <RefreshCw size={14} />
-              </button>
-              <button className="preview-action" title="Open in new tab">
-                <ExternalLink size={14} />
-              </button>
+            <div className="right-panel-empty">
+              <Eye size={32} />
+              <p>Preview is in the Workspace</p>
+              <span className="right-panel-empty-hint">Open the Workspace to see your live preview</span>
             </div>
-            {preview ? (
-              <div className="right-panel-preview">{preview}</div>
-            ) : (
-              <div className="right-panel-empty">
-                <Eye size={32} />
-                <p>Build something to see a preview</p>
-                <span className="right-panel-empty-hint">Preview will appear here automatically</span>
-              </div>
-            )}
           </div>
         )}
 

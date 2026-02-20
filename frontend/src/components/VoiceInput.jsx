@@ -261,7 +261,7 @@ export const VoiceInput = ({
           transition-all duration-200
           ${isRecording 
             ? 'bg-red-500 hover:bg-red-600 text-[#1A1A1A] animate-pulse' 
-            : 'bg-blue-500 hover:bg-blue-600 text-[#1A1A1A]'
+            : 'bg-orange-500 hover:bg-orange-600 text-[#1A1A1A]'
           }
           ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
         `}
@@ -290,7 +290,7 @@ export const VoiceInput = ({
         <div className="flex items-center gap-2">
           <div className="flex-1 bg-gray-200 rounded-full h-2 overflow-hidden">
             <div
-              className="bg-blue-500 h-full transition-all duration-100"
+              className="bg-orange-500 h-full transition-all duration-100"
               style={{ width: `${audioLevel}%` }}
             />
           </div>

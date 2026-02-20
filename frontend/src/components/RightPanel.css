@@ -46,7 +46,7 @@
 }
 
 .right-panel-tab:hover { color: #4B5563; }
-.right-panel-tab.active { color: #2563EB; border-bottom-color: #2563EB; }
+.right-panel-tab.active { color: #FF6B35; border-bottom-color: #FF6B35; }
 
 .right-panel-close {
   display: flex;
@@ -213,7 +213,7 @@
 }
 
 .code-file-item:hover { background: #F5F5F4; color: #1A1A1A; }
-.code-file-item.active { background: #EFF6FF; color: #2563EB; }
+.code-file-item.active { background: #FFF3ED; color: #FF6B35; }
 
 .code-viewer {
   flex: 1;
@@ -339,7 +339,7 @@
 .history-status.completed { color: #059669; }
 .history-status.failed { color: #DC2626; }
 .history-status.pending { color: #D97706; }
-.history-status.running { color: #2563EB; }
+.history-status.running { color: #FF6B35; }
 
 .history-title {
   font-size: 13px;

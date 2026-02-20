@@ -72,7 +72,7 @@ const AdminUsers = () => {
       </div>
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-10 h-10 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
         <div className="rounded-xl border border-white/10 overflow-hidden">
@@ -98,7 +98,7 @@ const AdminUsers = () => {
                   <td className="py-3 px-4">
                     <Link
                       to={`/app/admin/users/${u.id}`}
-                      className="inline-flex items-center text-blue-400 hover:text-blue-300"
+                      className="inline-flex items-center text-orange-400 hover:text-orange-300"
                     >
                       <User className="w-4 h-4 mr-1" />
                       View

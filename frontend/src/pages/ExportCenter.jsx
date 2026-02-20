@@ -68,8 +68,8 @@ const ExportCenter = () => {
     switch (format) {
       case 'pdf': return 'red';
       case 'excel': return 'green';
-      case 'markdown': return 'purple';
-      case 'all': return 'blue';
+      case 'markdown': return 'orange';
+      case 'all': return 'orange';
       default: return 'gray';
     }
   };
@@ -77,7 +77,7 @@ const ExportCenter = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -131,7 +131,7 @@ const ExportCenter = () => {
             <select
               value={selectedProject}
               onChange={(e) => setSelectedProject(e.target.value)}
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-blue-500 outline-none"
+              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-orange-500 outline-none"
               data-testid="export-project-select"
             >
               <option value="">Select a project</option>
@@ -146,7 +146,7 @@ const ExportCenter = () => {
             <select
               value={selectedFormat}
               onChange={(e) => setSelectedFormat(e.target.value)}
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-blue-500 outline-none"
+              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-orange-500 outline-none"
               data-testid="export-format-select"
             >
               <option value="pdf">PDF Report</option>
@@ -160,7 +160,7 @@ const ExportCenter = () => {
             <button
               onClick={handleCreateExport}
               disabled={!selectedProject || creating}
-              className="w-full py-3 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition flex items-center justify-center gap-2"
+              className="w-full py-3 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition flex items-center justify-center gap-2"
               data-testid="create-export-btn"
             >
               {creating ? (
@@ -240,7 +240,7 @@ const ExportCenter = () => {
                   <div className="flex items-center gap-3">
                     <span className={`px-2 py-1 text-xs rounded-full ${
                       exp.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                      exp.status === 'processing' ? 'bg-blue-500/20 text-blue-400' :
+                      exp.status === 'processing' ? 'bg-orange-500/20 text-orange-400' :
                       'bg-gray-500/20 text-[#666666]'
                     }`}>
                       {exp.status}

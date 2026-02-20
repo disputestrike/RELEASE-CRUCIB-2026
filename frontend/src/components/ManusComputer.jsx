@@ -51,13 +51,13 @@ const ManusComputer = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ duration: 0.2 }}
-            className="bg-zinc-900/90 border border-blue-500/50 rounded-lg p-4 w-80 shadow-2xl backdrop-blur-sm"
+            className="bg-zinc-900/90 border border-orange-500/50 rounded-lg p-4 w-80 shadow-2xl backdrop-blur-sm"
           >
             {/* Header */}
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-blue-500/20">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-orange-500/20">
               <div className="flex items-center gap-2">
-                <Cpu className="w-4 h-4 text-blue-400 animate-pulse" />
-                <span className="text-blue-400 font-bold">Manus Computer</span>
+                <Cpu className="w-4 h-4 text-orange-400 animate-pulse" />
+                <span className="text-orange-400 font-bold">Manus Computer</span>
               </div>
               <button
                 onClick={() => setIsExpanded(false)}
@@ -71,7 +71,7 @@ const ManusComputer = ({
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-[#666666]">Progress</span>
-                <span className="text-blue-400 font-bold">
+                <span className="text-orange-400 font-bold">
                   {currentStep} / {totalSteps}
                 </span>
               </div>
@@ -80,7 +80,7 @@ const ManusComputer = ({
                   initial={{ width: 0 }}
                   animate={{ width: `${stepPercentage}%` }}
                   transition={{ duration: 0.5 }}
-                  className="h-full bg-gradient-to-r from-blue-500 to-cyan-400"
+                  className="h-full bg-gradient-to-r from-orange-500 to-cyan-400"
                 />
               </div>
             </div>
@@ -134,7 +134,7 @@ const ManusComputer = ({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
             onClick={() => setIsExpanded(true)}
-            className="bg-gradient-to-br from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-[#1A1A1A] rounded-full p-3 shadow-lg hover:shadow-xl transition-all flex items-center justify-center w-12 h-12 border border-blue-400/30"
+            className="bg-gradient-to-br from-orange-600 to-orange-700 hover:from-orange-500 hover:to-orange-600 text-[#1A1A1A] rounded-full p-3 shadow-lg hover:shadow-xl transition-all flex items-center justify-center w-12 h-12 border border-orange-400/30"
           >
             <Cpu className="w-5 h-5 animate-pulse" />
           </motion.button>

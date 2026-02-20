@@ -63,7 +63,7 @@ export default function AgentsPage() {
         </h1>
         <button
           onClick={() => setCreateOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-[#1A1A1A]"
+          className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-500 rounded-lg text-[#1A1A1A]"
         >
           <Plus className="w-5 h-5" /> Create Agent
         </button>
@@ -95,7 +95,7 @@ export default function AgentsPage() {
               <div
                 key={a.id}
                 onClick={() => navigate(`/app/agents/${a.id}`)}
-                className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:border-blue-500/50 cursor-pointer"
+                className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:border-orange-500/50 cursor-pointer"
               >
                 <div>
                   <div className="font-medium text-[#1A1A1A]">{a.name}</div>
@@ -142,7 +142,7 @@ export default function AgentsPage() {
                         <td className="py-2 pr-4"><span className={r.status === 'success' ? 'text-green-400' : r.status === 'failed' ? 'text-red-400' : 'text-amber-400'}>{r.status}</span></td>
                         <td className="py-2">{r.duration_seconds != null ? `${r.duration_seconds.toFixed(1)}s` : '-'}</td>
                         <td>
-                          <button onClick={() => setLogRunId(logRunId === r.id ? null : r.id)} className="text-blue-400 hover:underline text-xs">Logs</button>
+                          <button onClick={() => setLogRunId(logRunId === r.id ? null : r.id)} className="text-orange-400 hover:underline text-xs">Logs</button>
                         </td>
                       </tr>
                     ))}
@@ -208,7 +208,7 @@ function DescribeAndCreate({ onCreated }) {
         rows={3}
       />
       {error && <p className="text-red-400 text-xs">{error}</p>}
-      <button type="submit" disabled={loading || !description.trim()} className="self-start px-4 py-2 rounded bg-blue-600 text-[#1A1A1A] text-sm font-medium hover:bg-blue-500 disabled:opacity-50">
+      <button type="submit" disabled={loading || !description.trim()} className="self-start px-4 py-2 rounded bg-orange-600 text-[#1A1A1A] text-sm font-medium hover:bg-orange-500 disabled:opacity-50">
         {loading ? 'Creating…' : 'Create from description'}
       </button>
     </form>
@@ -264,8 +264,8 @@ function CreateAgentModal({ onClose, onCreated }) {
       <div className="bg-[#111] border border-white/10 rounded-xl p-6 max-w-md w-full shadow-xl max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-lg font-semibold text-[#1A1A1A] mb-4">Create Agent</h3>
         <div className="flex gap-2 mb-4 border-b border-white/10 pb-2">
-          <button type="button" onClick={() => setMode('describe')} className={`px-3 py-1.5 rounded text-sm ${mode === 'describe' ? 'bg-blue-600 text-[#1A1A1A]' : 'text-[#666666] hover:text-[#1A1A1A]'}`}>Describe</button>
-          <button type="button" onClick={() => setMode('configure')} className={`px-3 py-1.5 rounded text-sm ${mode === 'configure' ? 'bg-blue-600 text-[#1A1A1A]' : 'text-[#666666] hover:text-[#1A1A1A]'}`}>Configure</button>
+          <button type="button" onClick={() => setMode('describe')} className={`px-3 py-1.5 rounded text-sm ${mode === 'describe' ? 'bg-orange-600 text-[#1A1A1A]' : 'text-[#666666] hover:text-[#1A1A1A]'}`}>Describe</button>
+          <button type="button" onClick={() => setMode('configure')} className={`px-3 py-1.5 rounded text-sm ${mode === 'configure' ? 'bg-orange-600 text-[#1A1A1A]' : 'text-[#666666] hover:text-[#1A1A1A]'}`}>Configure</button>
         </div>
         {mode === 'describe' && (
           <>
@@ -275,7 +275,7 @@ function CreateAgentModal({ onClose, onCreated }) {
               {describeError && <p className="text-red-400 text-sm">{describeError}</p>}
               <div className="flex gap-2 justify-end">
                 <button type="button" onClick={onClose} className="px-4 py-2 rounded border border-white/20 text-gray-300 hover:bg-white/5">Cancel</button>
-                <button type="submit" disabled={describeLoading || !describeText.trim()} className="px-4 py-2 rounded bg-blue-600 text-[#1A1A1A] hover:bg-blue-500 disabled:opacity-50">{describeLoading ? 'Creating…' : 'Create from description'}</button>
+                <button type="submit" disabled={describeLoading || !describeText.trim()} className="px-4 py-2 rounded bg-orange-600 text-[#1A1A1A] hover:bg-orange-500 disabled:opacity-50">{describeLoading ? 'Creating…' : 'Create from description'}</button>
               </div>
             </form>
           </>
@@ -312,7 +312,7 @@ function CreateAgentModal({ onClose, onCreated }) {
           {error && <p className="text-red-400 text-sm">{error}</p>}
           <div className="flex gap-2 justify-end">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded border border-white/20 text-gray-300 hover:bg-white/5">Cancel</button>
-            <button type="submit" disabled={submitting} className="px-4 py-2 rounded bg-blue-600 text-[#1A1A1A] hover:bg-blue-500 disabled:opacity-50">Create</button>
+            <button type="submit" disabled={submitting} className="px-4 py-2 rounded bg-orange-600 text-[#1A1A1A] hover:bg-orange-500 disabled:opacity-50">Create</button>
           </div>
         </form>
         )}

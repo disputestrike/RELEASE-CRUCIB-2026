@@ -26,8 +26,8 @@
   --kimi-text-muted: #666666;
   --kimi-text-secondary: #888888;
   
-  /* Accent - professional blue */
-  --kimi-accent: #3B82F6;
+  /* Accent - CrucibAI orange */
+  --kimi-accent: #FF6B35;
   
   /* Borders - subtle and refined */
   --kimi-border: rgba(0, 0, 0, 0.08);
@@ -178,16 +178,16 @@ code, pre, .mono {
 }
 
 /* Neon effects */
-.neon-blue {
-  box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+.neon-orange {
+  box-shadow: 0 0 15px rgba(255, 107, 53, 0.5);
 }
 
 .neon-green {
   box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
 }
 
-.neon-purple {
-  box-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
+.neon-brand {
+  box-shadow: 0 0 15px rgba(255, 143, 94, 0.5);
 }
 
 /* Grid pattern background */
@@ -222,7 +222,7 @@ code, pre, .mono {
   position: absolute;
   inset: -2px;
   border-radius: inherit;
-  background: linear-gradient(90deg, transparent, #3B82F6, transparent);
+  background: linear-gradient(90deg, transparent, #FF6B35, transparent);
   background-size: 200% 100%;
   animation: trace-border 2s linear infinite;
   z-index: -1;

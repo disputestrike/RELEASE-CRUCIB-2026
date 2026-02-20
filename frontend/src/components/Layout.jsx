@@ -27,14 +27,14 @@ const Layout = () => {
   const [backendOk, setBackendOk] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Right panel: hidden by default, auto-shown on workspace/project views
+  // Right panel: HIDDEN on workspace (workspace has its own Sandpack panel)
   const isWorkspaceView = ['/app/workspace', '/app/builder'].some(p => location.pathname.startsWith(p))
     || location.pathname.match(/\/app\/projects\/[^/]+$/);
-  const [rightPanelVisible, setRightPanelVisible] = useState(isWorkspaceView);
+  const [rightPanelVisible, setRightPanelVisible] = useState(false);
 
-  // Auto-show/hide right panel based on route
+  // Auto-hide right panel on workspace views (workspace manages its own preview)
   useEffect(() => {
-    setRightPanelVisible(isWorkspaceView);
+    setRightPanelVisible(false);
   }, [isWorkspaceView]);
 
   // Data for sidebar
@@ -119,18 +119,7 @@ const Layout = () => {
   // Main content
   const mainContent = (
     <div className="layout-main-wrapper">
-      {/* Top bar toggle for right panel (only when panel is hidden on workspace views) */}
-      {isWorkspaceView && !rightPanelVisible && (
-        <div className="layout-topbar">
-          <button
-            className="layout-panel-toggle"
-            onClick={() => setRightPanelVisible(true)}
-            title="Show preview panel"
-          >
-            <PanelRightOpen size={18} />
-          </button>
-        </div>
-      )}
+      {/* Right panel toggle removed — workspace manages its own preview panel */}
 
       {user?.internal_team && (
         <div className="layout-internal-banner">

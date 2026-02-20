@@ -26,7 +26,7 @@ export default function ShareView() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
-        <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-10 h-10 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -38,7 +38,7 @@ export default function ShareView() {
           <AlertCircle className="w-12 h-12 text-amber-400 mx-auto mb-4" />
           <h1 className="text-xl font-semibold mb-2">Share not found</h1>
           <p className="text-zinc-400 mb-6">{error || 'This link may have expired.'}</p>
-          <Link to="/" className="text-blue-400 hover:text-blue-300">Back to CrucibAI</Link>
+          <Link to="/" className="text-orange-400 hover:text-orange-300">Back to CrucibAI</Link>
         </div>
       </div>
     );
@@ -57,13 +57,13 @@ export default function ShareView() {
           <span className="px-3 py-1 bg-zinc-800 rounded-full text-zinc-300">{project.project_type || 'app'}</span>
           {project.status && <span className="px-3 py-1 bg-zinc-800 rounded-full text-zinc-300">{project.status}</span>}
           {project.live_url && (
-            <a href={project.live_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full hover:bg-blue-500/30">
+            <a href={project.live_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-3 py-1 bg-orange-500/20 text-orange-400 rounded-full hover:bg-orange-500/30">
               <ExternalLink className="w-3 h-3" /> Open live app
             </a>
           )}
         </div>
         <p className="mt-8 text-zinc-500 text-sm">This is a read-only share. Sign in to edit or duplicate.</p>
-        <Link to="/auth" className="inline-block mt-4 text-blue-400 hover:text-blue-300">Sign in to CrucibAI</Link>
+        <Link to="/auth" className="inline-block mt-4 text-orange-400 hover:text-orange-300">Sign in to CrucibAI</Link>
       </div>
     </div>
   );

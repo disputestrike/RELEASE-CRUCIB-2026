@@ -29,7 +29,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #3B82F6;
+  background: #FF6B35;
   animation: iam-pulse 1.5s infinite;
 }
 
@@ -57,7 +57,7 @@
   align-items: center;
   padding: 1px 6px;
   background: rgba(59, 130, 246, 0.1);
-  color: #3B82F6;
+  color: #FF6B35;
   border-radius: 4px;
   font-size: 11px;
   font-weight: 500;
@@ -103,7 +103,7 @@
 
 .iam-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #3B82F6, #8B5CF6);
+  background: linear-gradient(90deg, #FF6B35, #FF8F5E);
   border-radius: 3px;
 }
 
@@ -289,7 +289,7 @@
 }
 
 .iam-timeline-type.completed { color: #10B981; }
-.iam-timeline-type.started { color: #3B82F6; }
+.iam-timeline-type.started { color: #FF6B35; }
 .iam-timeline-type.other { color: #F59E0B; }
 
 /* Retry */

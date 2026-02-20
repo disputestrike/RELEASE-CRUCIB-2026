@@ -40,10 +40,10 @@ export default function Security() {
           <p>We block disposable email addresses at signup and cap referral rewards to reduce abuse. Credits are enforced so usage is tied to your account and plan.</p>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">Reporting a security issue</h2>
-          <p>If you believe you have found a security vulnerability in CrucibAI, please report it to us responsibly. Do not disclose it publicly before we have had a chance to address it. Contact: <a href="mailto:security@crucibai.com" className="text-blue-400 hover:text-blue-300 underline">security@crucibai.com</a> (or the contact listed in your Terms/Privacy). We will acknowledge and work with you to resolve the issue.</p>
+          <p>If you believe you have found a security vulnerability in CrucibAI, please report it to us responsibly. Do not disclose it publicly before we have had a chance to address it. Contact: <a href="mailto:security@crucibai.com" className="text-orange-400 hover:text-orange-300 underline">security@crucibai.com</a> (or the contact listed in your Terms/Privacy). We will acknowledge and work with you to resolve the issue.</p>
 
           <p className="mt-8 text-[#666666] text-sm">
-            For privacy and data handling, see our <Link to="/privacy" className="text-blue-400 hover:text-blue-300 underline">Privacy Policy</Link>. For terms of use, see our <Link to="/terms" className="text-blue-400 hover:text-blue-300 underline">Terms of Use</Link>.
+            For privacy and data handling, see our <Link to="/privacy" className="text-orange-400 hover:text-orange-300 underline">Privacy Policy</Link>. For terms of use, see our <Link to="/terms" className="text-orange-400 hover:text-orange-300 underline">Terms of Use</Link>.
           </p>
         </div>
       </div>

@@ -36,7 +36,7 @@ const AdminDashboard = () => {
   if (!data) {
     return (
       <div className="flex items-center justify-center min-h-[40vh]">
-        <div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-12 h-12 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -69,7 +69,7 @@ const AdminDashboard = () => {
               <Link to={href} className="block">
                 <div className="flex items-center justify-between">
                   <span className="text-[#666666]">{label}</span>
-                  <Icon className="w-5 h-5 text-blue-400" />
+                  <Icon className="w-5 h-5 text-orange-400" />
                 </div>
                 <p className="text-2xl font-bold mt-2">{value}</p>
               </Link>
@@ -77,7 +77,7 @@ const AdminDashboard = () => {
               <>
                 <div className="flex items-center justify-between">
                   <span className="text-[#666666]">{label}</span>
-                  <Icon className="w-5 h-5 text-blue-400" />
+                  <Icon className="w-5 h-5 text-orange-400" />
                 </div>
                 <p className="text-2xl font-bold mt-2">{value}</p>
               </>

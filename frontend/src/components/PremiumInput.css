@@ -44,13 +44,13 @@
 .premium-input:focus {
   outline: none;
   background: #FFFFFF;
-  border-color: #3B82F6;
+  border-color: #FF6B35;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .premium-input.focused {
   background: #FFFFFF;
-  border-color: #3B82F6;
+  border-color: #FF6B35;
 }
 
 /* Error state */
@@ -86,7 +86,7 @@
 }
 
 .premium-input-label.active {
-  color: #3B82F6;
+  color: #FF6B35;
   font-weight: 700;
 }
 
@@ -107,7 +107,7 @@
 
 .premium-input:focus ~ .premium-input-icon,
 .premium-input-container:has(.premium-input:focus) .premium-input-icon {
-  color: #3B82F6;
+  color: #FF6B35;
 }
 
 .premium-input.error ~ .premium-input-icon,
@@ -173,7 +173,7 @@
    ============================================ */
 
 .premium-input:focus-visible {
-  outline: 2px solid #3B82F6;
+  outline: 2px solid #FF6B35;
   outline-offset: 2px;
 }
 

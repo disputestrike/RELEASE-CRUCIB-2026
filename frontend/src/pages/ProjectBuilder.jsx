@@ -90,7 +90,7 @@ const ProjectBuilder = () => {
             <div key={s} className="flex items-center gap-2">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center font-medium transition-all ${
                 step > s ? 'bg-green-500 text-[#1A1A1A]' :
-                step === s ? 'bg-blue-500 text-[#1A1A1A]' :
+                step === s ? 'bg-orange-500 text-[#1A1A1A]' :
                 'bg-white/10 text-gray-500'
               }`}>
                 {step > s ? <Check className="w-4 h-4" /> : s}
@@ -120,17 +120,17 @@ const ProjectBuilder = () => {
                 onClick={() => setFormData({ ...formData, project_type: type.id })}
                 className={`p-6 rounded-xl border text-left transition-all ${
                   formData.project_type === type.id
-                    ? 'bg-blue-500/10 border-blue-500/50'
+                    ? 'bg-orange-500/10 border-orange-500/50'
                     : 'bg-[#0a0a0a] border-white/10 hover:border-white/20'
                 }`}
                 data-testid={`project-type-${type.id}`}
               >
                 <div className="flex items-start gap-4">
                   <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                    formData.project_type === type.id ? 'bg-blue-500/20' : 'bg-white/5'
+                    formData.project_type === type.id ? 'bg-orange-500/20' : 'bg-white/5'
                   }`}>
                     <type.icon className={`w-6 h-6 ${
-                      formData.project_type === type.id ? 'text-blue-400' : 'text-[#666666]'
+                      formData.project_type === type.id ? 'text-orange-400' : 'text-[#666666]'
                     }`} />
                   </div>
                   <div className="flex-1">
@@ -164,7 +164,7 @@ const ProjectBuilder = () => {
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition"
                 placeholder="My Awesome App"
                 data-testid="project-name-input"
               />
@@ -176,7 +176,7 @@ const ProjectBuilder = () => {
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={4}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition resize-none"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition resize-none"
                 placeholder="Describe your project in detail. What features do you need? What's the purpose?"
                 data-testid="project-description-input"
               />
@@ -191,7 +191,7 @@ const ProjectBuilder = () => {
                     ...formData, 
                     requirements: { ...formData.requirements, styling: e.target.value } 
                   })}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-blue-500 outline-none"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-orange-500 outline-none"
                   data-testid="project-styling-select"
                 >
                   <option value="">Select style</option>
@@ -210,7 +210,7 @@ const ProjectBuilder = () => {
                     ...formData, 
                     requirements: { ...formData.requirements, deployment: e.target.value } 
                   })}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-blue-500 outline-none"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-orange-500 outline-none"
                   data-testid="project-deployment-select"
                 >
                   <option value="vercel">Vercel</option>
@@ -230,7 +230,7 @@ const ProjectBuilder = () => {
                     ...formData, 
                     requirements: { ...formData.requirements, auth: e.target.checked } 
                   })}
-                  className="w-5 h-5 rounded border-white/20 bg-white/5 text-blue-500 focus:ring-blue-500"
+                  className="w-5 h-5 rounded border-white/20 bg-white/5 text-orange-500 focus:ring-orange-500"
                 />
                 <span>User Authentication</span>
               </label>
@@ -243,7 +243,7 @@ const ProjectBuilder = () => {
                     ...formData, 
                     requirements: { ...formData.requirements, database: e.target.checked } 
                   })}
-                  className="w-5 h-5 rounded border-white/20 bg-white/5 text-blue-500 focus:ring-blue-500"
+                  className="w-5 h-5 rounded border-white/20 bg-white/5 text-orange-500 focus:ring-orange-500"
                 />
                 <span>Database</span>
               </label>
@@ -269,7 +269,7 @@ const ProjectBuilder = () => {
               </div>
               {(error.includes('Acceptable Use') || error.toLowerCase().includes('violates')) && (
                 <p className="mt-2 text-sm">
-                  <Link to="/aup" className="text-blue-400 hover:underline">View Acceptable Use Policy</Link>
+                  <Link to="/aup" className="text-orange-400 hover:underline">View Acceptable Use Policy</Link>
                   {' '}· Appeals: appeals@crucibai.com
                 </p>
               )}
@@ -278,8 +278,8 @@ const ProjectBuilder = () => {
 
           <div className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10 space-y-6">
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                {selectedType && <selectedType.icon className="w-6 h-6 text-blue-400" />}
+              <div className="w-12 h-12 bg-orange-500/20 rounded-lg flex items-center justify-center">
+                {selectedType && <selectedType.icon className="w-6 h-6 text-orange-400" />}
               </div>
               <div>
                 <h3 className="text-xl font-semibold">{formData.name}</h3>
@@ -350,7 +350,7 @@ const ProjectBuilder = () => {
           <button
             onClick={() => setStep(step + 1)}
             disabled={!canProceed()}
-            className="flex items-center gap-2 px-6 py-3 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition neon-blue"
+            className="flex items-center gap-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition neon-orange"
             data-testid="next-step-btn"
           >
             Continue

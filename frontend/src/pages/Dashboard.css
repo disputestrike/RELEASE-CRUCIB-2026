@@ -4,12 +4,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100%;
+  height: 100%;
   width: 100%;
   padding: 48px 24px;
   background: #FAFAF8;
+  overflow-y: auto;
 }
 
+/* ISSUE 2: Full-width prompt container */
 .dashboard-center {
   width: 100%;
   max-width: 680px;
@@ -44,6 +46,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  width: 100%;
 }
 
 .dashboard-prompt-container {
@@ -59,8 +62,8 @@
 }
 
 .dashboard-prompt-container:focus-within {
-  border-color: #3B82F6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
+  border-color: #FF6B35;
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.08);
 }
 
 .dashboard-prompt-input {
@@ -75,6 +78,7 @@
   min-height: 24px;
   max-height: 120px;
   line-height: 1.5;
+  width: 100%;
 }
 
 .dashboard-prompt-input::placeholder {
@@ -142,6 +146,18 @@
   cursor: not-allowed;
 }
 
+/* Model badge */
+.dashboard-model-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #ECFDF5;
+  color: #059669;
+}
+
 /* Attached Files */
 .dashboard-attached-files {
   display: flex;
@@ -183,6 +199,53 @@
 .dashboard-attached-remove:hover {
   color: #EF4444;
   background: rgba(239, 68, 68, 0.1);
+}
+
+/* ============================================
+   ISSUE 1: Chat thread for conversational messages
+   ============================================ */
+
+.dashboard-chat-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.dashboard-chat-msg {
+  display: flex;
+}
+
+.dashboard-chat-msg.user {
+  justify-content: flex-end;
+}
+
+.dashboard-chat-msg.assistant {
+  justify-content: flex-start;
+}
+
+.dashboard-chat-bubble {
+  max-width: 85%;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.dashboard-chat-bubble.user {
+  background: #F3F1ED;
+  color: #1A1A1A;
+  border-bottom-right-radius: 4px;
+}
+
+.dashboard-chat-bubble.assistant {
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: #374151;
+  border-bottom-left-radius: 4px;
 }
 
 /* Quick Start Chips */
@@ -343,7 +406,7 @@
 }
 
 .dashboard-modal-input:focus {
-  border-color: #3B82F6;
+  border-color: #FF6B35;
 }
 
 .dashboard-modal-paste {
@@ -370,7 +433,7 @@
 }
 
 .dashboard-modal-input-sm:focus {
-  border-color: #3B82F6;
+  border-color: #FF6B35;
 }
 
 .dashboard-modal-textarea {
@@ -386,13 +449,13 @@
 }
 
 .dashboard-modal-textarea:focus {
-  border-color: #3B82F6;
+  border-color: #FF6B35;
 }
 
 .dashboard-modal-add-file {
   background: none;
   border: none;
-  color: #3B82F6;
+  color: #FF6B35;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;

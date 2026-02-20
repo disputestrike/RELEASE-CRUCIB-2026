@@ -79,14 +79,14 @@ function OutcomeCalculator({ bundles, onSelectPlan }) {
       <p className="text-sm text-zinc-400">
         Estimated credits needed: <strong className="text-[#1A1A1A]">{needed}</strong>
         {recommended && (
-          <> — We recommend <strong className="text-blue-400">{bundles[recommended]?.name || recommended}</strong> ({recommendedCredits} credits/mo).</>
+          <> — We recommend <strong className="text-orange-400">{bundles[recommended]?.name || recommended}</strong> ({recommendedCredits} credits/mo).</>
         )}
       </p>
       {recommended && (
         <button
           type="button"
           onClick={() => onSelectPlan(recommended)}
-          className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-[#1A1A1A] text-sm font-medium"
+          className="px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-500 text-[#1A1A1A] text-sm font-medium"
         >
           Get {bundles[recommended]?.name || recommended}
         </button>
@@ -215,11 +215,11 @@ export default function Pricing() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
                 className={`relative p-6 rounded-2xl border ${
-                  isBuilder ? 'border-blue-500/50 bg-blue-500/5' : 'border-zinc-800 bg-zinc-900/30'
+                  isBuilder ? 'border-orange-500/50 bg-orange-500/5' : 'border-zinc-800 bg-zinc-900/30'
                 }`}
               >
                 {isBuilder && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-blue-500 text-[#1A1A1A] text-xs font-medium">
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-orange-500 text-[#1A1A1A] text-xs font-medium">
                     Popular
                   </span>
                 )}
@@ -244,7 +244,7 @@ export default function Pricing() {
                 <button
                   onClick={() => navigate(user ? '/app/tokens' : '/auth?mode=register')}
                   className={`w-full py-2.5 rounded-lg font-medium transition flex items-center justify-center gap-2 ${
-                    isBuilder ? 'bg-blue-500 hover:bg-blue-600' : 'bg-zinc-700 hover:bg-zinc-600'
+                    isBuilder ? 'bg-orange-500 hover:bg-orange-600' : 'bg-zinc-700 hover:bg-zinc-600'
                   }`}
                 >
                   {user ? 'Buy credits' : 'Get started'}
@@ -291,7 +291,7 @@ export default function Pricing() {
         </div>
 
         <p className="text-center text-zinc-500 text-sm mt-10">
-          Need a custom plan? <Link to="/enterprise" className="text-blue-400 hover:text-blue-300">Enterprise / Contact sales</Link>.
+          Need a custom plan? <Link to="/enterprise" className="text-orange-400 hover:text-orange-300">Enterprise / Contact sales</Link>.
         </p>
 
         {/* Outcome calculator: X landings + Y apps → recommended plan */}

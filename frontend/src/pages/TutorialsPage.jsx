@@ -191,8 +191,8 @@ const CATEGORIES = [
 
 const DIFFICULTY_COLORS = {
   beginner: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-  intermediate: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
-  advanced: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
+  intermediate: 'bg-orange-500/15 text-orange-400 border-orange-500/30',
+  advanced: 'bg-orange-500/15 text-orange-400 border-orange-500/30',
 };
 
 export default function TutorialsPage() {

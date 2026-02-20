@@ -151,7 +151,7 @@ const AdminAnalytics = () => {
           <ArrowLeft className="w-4 h-4 mr-2" /> Back
         </Link>
         <h1 className="text-3xl font-bold flex items-center gap-2">
-          <BarChart3 className="w-8 h-8 text-blue-500" />
+          <BarChart3 className="w-8 h-8 text-orange-500" />
           Analytics
         </h1>
       </div>
@@ -192,21 +192,21 @@ const AdminAnalytics = () => {
           <button
             type="button"
             onClick={() => setMode('daily')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${mode === 'daily' ? 'bg-blue-600 text-[#1A1A1A]' : 'bg-white/10 text-[#666666] hover:text-[#1A1A1A]'}`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium ${mode === 'daily' ? 'bg-orange-600 text-[#1A1A1A]' : 'bg-white/10 text-[#666666] hover:text-[#1A1A1A]'}`}
           >
             Daily
           </button>
           <button
             type="button"
             onClick={() => setMode('weekly')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${mode === 'weekly' ? 'bg-blue-600 text-[#1A1A1A]' : 'bg-white/10 text-[#666666] hover:text-[#1A1A1A]'}`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium ${mode === 'weekly' ? 'bg-orange-600 text-[#1A1A1A]' : 'bg-white/10 text-[#666666] hover:text-[#1A1A1A]'}`}
           >
             Weekly
           </button>
         </div>
         <button
           type="submit"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-[#1A1A1A] font-medium"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-500 text-[#1A1A1A] font-medium"
         >
           <Search className="w-4 h-4" /> Run query
         </button>
@@ -258,7 +258,7 @@ const AdminAnalytics = () => {
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-10 h-10 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : mode === 'daily' ? (
         <div className="rounded-xl border border-white/10 overflow-hidden">

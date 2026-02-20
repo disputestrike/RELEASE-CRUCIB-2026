@@ -210,7 +210,7 @@ const Settings = () => {
               onClick={() => setActiveTab(tab.id)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition ${
                 activeTab === tab.id
-                  ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                  ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
                   : 'text-[#666666] hover:bg-white/5 hover:text-[#1A1A1A] border border-transparent'
               }`}
               data-testid={`settings-tab-${tab.id}`}
@@ -239,7 +239,7 @@ const Settings = () => {
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
-                className="w-full max-w-xs px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-blue-500 outline-none transition"
+                className="w-full max-w-xs px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-orange-500 outline-none transition"
               >
                 <option value="en">English</option>
               </select>
@@ -259,7 +259,7 @@ const Settings = () => {
                     onClick={() => setTheme(opt.id)}
                     className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition ${
                       theme === opt.id
-                        ? 'border-blue-500 bg-blue-500/10 text-blue-400'
+                        ? 'border-orange-500 bg-orange-500/10 text-orange-400'
                         : 'border-white/10 bg-white/5 text-[#666666] hover:border-white/20'
                     }`}
                   >
@@ -315,7 +315,7 @@ const Settings = () => {
             <div className="flex flex-wrap gap-3">
               <Link
                 to="/app/tokens"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg font-medium text-sm transition"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg font-medium text-sm transition"
               >
                 <Zap className="w-4 h-4" /> Buy more tokens
               </Link>
@@ -345,7 +345,7 @@ const Settings = () => {
               rel="noopener noreferrer"
               className="flex items-center gap-3 p-4 bg-white/5 rounded-lg hover:bg-white/10 transition"
             >
-              <FileText className="w-5 h-5 text-blue-400" />
+              <FileText className="w-5 h-5 text-orange-400" />
               <div>
                 <p className="font-medium">Documentation</p>
                 <p className="text-sm text-gray-500">Guides, shortcuts, and how-tos</p>
@@ -356,7 +356,7 @@ const Settings = () => {
               href="mailto:support@crucibai.com"
               className="flex items-center gap-3 p-4 bg-white/5 rounded-lg hover:bg-white/10 transition"
             >
-              <HelpCircle className="w-5 h-5 text-blue-400" />
+              <HelpCircle className="w-5 h-5 text-orange-400" />
               <div>
                 <p className="font-medium">Contact support</p>
                 <p className="text-sm text-gray-500">support@crucibai.com</p>
@@ -384,7 +384,7 @@ const Settings = () => {
                 value={env.OPENAI_API_KEY ?? ''}
                 onChange={(e) => setEnv(prev => ({ ...prev, OPENAI_API_KEY: e.target.value }))}
                 placeholder="sk-..."
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-blue-500 outline-none transition"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-orange-500 outline-none transition"
               />
             </div>
             <div>
@@ -394,7 +394,7 @@ const Settings = () => {
                 value={env.ANTHROPIC_API_KEY ?? ''}
                 onChange={(e) => setEnv(prev => ({ ...prev, ANTHROPIC_API_KEY: e.target.value }))}
                 placeholder="sk-ant-..."
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-blue-500 outline-none transition"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-orange-500 outline-none transition"
               />
             </div>
           </div>
@@ -402,19 +402,19 @@ const Settings = () => {
             <button
               onClick={handleSaveEnv}
               disabled={envSaving}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg font-medium transition disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg font-medium transition disabled:opacity-50"
             >
               {envSaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
               {envSaving ? 'Saving...' : envSaved ? 'Saved!' : 'Save environment'}
             </button>
-            <Link to="/app/env" className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-300">
+            <Link to="/app/env" className="flex items-center gap-2 text-sm text-orange-400 hover:text-orange-300">
               <ExternalLink className="w-4 h-4" /> Full env panel
             </Link>
           </div>
 
           {/* Deploy integrations (merged from separate tab) */}
           <div className="mt-8 pt-8 border-t border-white/10">
-            <h4 className="font-medium mb-2 flex items-center gap-2"><Rocket className="w-4 h-4 text-blue-400" /> One-click deploy tokens</h4>
+            <h4 className="font-medium mb-2 flex items-center gap-2"><Rocket className="w-4 h-4 text-orange-400" /> One-click deploy tokens</h4>
             <p className="text-sm text-gray-500 mb-4">Add tokens to deploy directly to Vercel or Netlify. Get tokens from Vercel (Account → Settings → Tokens) and Netlify (User settings → Applications → Personal access tokens).</p>
             <div className="space-y-4">
               <div>
@@ -424,7 +424,7 @@ const Settings = () => {
                   value={deployTokens.vercel}
                   onChange={(e) => setDeployTokens(prev => ({ ...prev, vercel: e.target.value }))}
                   placeholder={deployTokensStatus.has_vercel ? "Leave blank to keep existing" : "Paste Vercel token"}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-blue-500 outline-none transition"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-orange-500 outline-none transition"
                 />
               </div>
               <div>
@@ -434,7 +434,7 @@ const Settings = () => {
                   value={deployTokens.netlify}
                   onChange={(e) => setDeployTokens(prev => ({ ...prev, netlify: e.target.value }))}
                   placeholder={deployTokensStatus.has_netlify ? "Leave blank to keep existing" : "Paste Netlify token"}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-blue-500 outline-none transition"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-orange-500 outline-none transition"
                 />
               </div>
             </div>
@@ -442,7 +442,7 @@ const Settings = () => {
               <button
                 onClick={handleSaveDeployTokens}
                 disabled={deploySaving || (!deployTokens.vercel && !deployTokens.netlify)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg font-medium transition disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg font-medium transition disabled:opacity-50"
               >
                 {deploySaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
                 {deploySaving ? 'Saving...' : deploySaved ? 'Saved!' : 'Save deploy tokens'}
@@ -469,7 +469,7 @@ const Settings = () => {
                 value={deployTokens.vercel}
                 onChange={(e) => setDeployTokens(prev => ({ ...prev, vercel: e.target.value }))}
                 placeholder={deployTokensStatus.has_vercel ? "Leave blank to keep existing" : "Paste Vercel token"}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-blue-500 outline-none transition"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-orange-500 outline-none transition"
               />
             </div>
             <div>
@@ -479,7 +479,7 @@ const Settings = () => {
                 value={deployTokens.netlify}
                 onChange={(e) => setDeployTokens(prev => ({ ...prev, netlify: e.target.value }))}
                 placeholder={deployTokensStatus.has_netlify ? "Leave blank to keep existing" : "Paste Netlify token"}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-blue-500 outline-none transition"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-orange-500 outline-none transition"
               />
             </div>
           </div>
@@ -487,7 +487,7 @@ const Settings = () => {
             <button
               onClick={handleSaveDeployTokens}
               disabled={deploySaving || (!deployTokens.vercel && !deployTokens.netlify)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg font-medium transition disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg font-medium transition disabled:opacity-50"
             >
               {deploySaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
               {deploySaving ? 'Saving...' : deploySaved ? 'Saved!' : 'Save deploy tokens'}
@@ -507,7 +507,7 @@ const Settings = () => {
           
           <div className="space-y-6">
             <div className="flex items-center gap-6">
-              <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-3xl font-bold">
+              <div className="w-20 h-20 bg-gradient-to-br from-orange-500 to-pink-500 rounded-full flex items-center justify-center text-3xl font-bold">
                 {user?.name?.[0]?.toUpperCase() || 'U'}
               </div>
               <div>
@@ -526,7 +526,7 @@ const Settings = () => {
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-blue-500 outline-none transition"
+                    className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-orange-500 outline-none transition"
                     data-testid="settings-name-input"
                   />
                 </div>
@@ -540,20 +540,20 @@ const Settings = () => {
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-blue-500 outline-none transition"
+                    className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-orange-500 outline-none transition"
                     data-testid="settings-email-input"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+            <div className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-lg">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium">Current Plan</p>
                   <p className="text-sm text-[#666666] capitalize">{user?.plan || 'Free'}</p>
                 </div>
-                <a href="/app/tokens" className="text-blue-400 hover:text-blue-300 text-sm">
+                <a href="/app/tokens" className="text-orange-400 hover:text-orange-300 text-sm">
                   Upgrade Plan →
                 </a>
               </div>
@@ -592,7 +592,7 @@ const Settings = () => {
                     })}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-white/10 peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                  <div className="w-11 h-6 bg-white/10 peer-focus:ring-2 peer-focus:ring-orange-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
                 </label>
               </div>
             ))}
@@ -613,7 +613,7 @@ const Settings = () => {
           <div className="mb-8 p-4 rounded-lg border border-white/10 bg-white/5">
             <h4 className="font-medium text-[#1A1A1A] mb-2">Security &amp; accessibility</h4>
             <p className="text-sm text-[#666666] mb-2">Run <strong className="text-gray-300">Security scan</strong> and <strong className="text-gray-300">Accessibility check</strong> in the Workspace on your code (built here or imported). We return a short checklist and a11y report.</p>
-            <Link to="/security" className="text-sm text-blue-400 hover:text-blue-300 inline-flex items-center gap-1">
+            <Link to="/security" className="text-sm text-orange-400 hover:text-orange-300 inline-flex items-center gap-1">
               How we keep the platform and your code safe <ExternalLink className="w-3 h-3" />
             </Link>
           </div>
@@ -621,7 +621,7 @@ const Settings = () => {
           {/* Two-Factor Authentication */}
           <div className="space-y-4 mb-8">
             <h4 className="font-medium flex items-center gap-2">
-              <Shield className="w-5 h-5 text-blue-400" />
+              <Shield className="w-5 h-5 text-orange-400" />
               Two-Factor Authentication (2FA)
             </h4>
             {mfaError && (
@@ -650,7 +650,7 @@ const Settings = () => {
                   value={mfaDisablePassword}
                   onChange={(e) => setMfaDisablePassword(e.target.value)}
                   placeholder="Password"
-                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:border-blue-500 outline-none"
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:border-orange-500 outline-none"
                 />
                 <div className="flex gap-2">
                   <button
@@ -675,7 +675,7 @@ const Settings = () => {
                   type="button"
                   onClick={handleMfaSetupStart}
                   disabled={mfaLoading}
-                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg text-sm font-medium disabled:opacity-50"
+                  className="px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg text-sm font-medium disabled:opacity-50"
                 >
                   {mfaLoading ? 'Setting up...' : 'Enable 2FA'}
                 </button>
@@ -697,7 +697,7 @@ const Settings = () => {
                   onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="000000"
                   maxLength={6}
-                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg font-mono text-center text-xl tracking-widest focus:border-blue-500 outline-none"
+                  className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg font-mono text-center text-xl tracking-widest focus:border-orange-500 outline-none"
                 />
                 <div className="flex gap-2">
                   <button
@@ -728,7 +728,7 @@ const Settings = () => {
                 </div>
                 <button
                   onClick={() => { setMfaSetupStep(null); setMfaBackupCodes([]); }}
-                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg text-sm"
+                  className="px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg text-sm"
                 >
                   Done
                 </button>
@@ -743,7 +743,7 @@ const Settings = () => {
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
                 <input
                   type="password"
-                  className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-blue-500 outline-none transition"
+                  className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-orange-500 outline-none transition"
                   placeholder="••••••••"
                 />
               </div>
@@ -753,7 +753,7 @@ const Settings = () => {
                 <label className="block text-sm font-medium mb-2">New Password</label>
                 <input
                   type="password"
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-blue-500 outline-none transition"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-orange-500 outline-none transition"
                   placeholder="••••••••"
                 />
               </div>
@@ -761,7 +761,7 @@ const Settings = () => {
                 <label className="block text-sm font-medium mb-2">Confirm New Password</label>
                 <input
                   type="password"
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-blue-500 outline-none transition"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-orange-500 outline-none transition"
                   placeholder="••••••••"
                 />
               </div>
@@ -798,15 +798,15 @@ const Settings = () => {
               <p className="text-xs text-gray-500">Prepaid tokens for AI builds. Usage is deducted per request.</p>
             </div>
 
-            <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+            <div className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-lg">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <p className="font-medium">Current Plan</p>
-                  <p className="text-2xl font-bold capitalize text-blue-400">{user?.plan || 'Free'}</p>
+                  <p className="text-2xl font-bold capitalize text-orange-400">{user?.plan || 'Free'}</p>
                 </div>
                 <a
                   href="/app/tokens"
-                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg font-medium transition"
+                  className="px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg font-medium transition"
                 >
                   Upgrade
                 </a>
@@ -814,7 +814,7 @@ const Settings = () => {
               <div className="flex flex-wrap gap-3">
                 <Link
                   to="/app/tokens"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg font-medium text-sm transition"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg font-medium text-sm transition"
                 >
                   <Zap className="w-4 h-4" /> Buy more tokens
                 </Link>
@@ -834,7 +834,7 @@ const Settings = () => {
                   <CreditCard className="w-6 h-6 text-[#666666]" />
                   <span className="text-[#666666]">No payment method added</span>
                 </div>
-                <button className="text-blue-400 hover:text-blue-300 text-sm">
+                <button className="text-orange-400 hover:text-orange-300 text-sm">
                   Add Method
                 </button>
               </div>
@@ -855,11 +855,11 @@ const Settings = () => {
             {/* Data Export */}
             <div className="p-4 bg-white/5 rounded-lg">
               <h4 className="font-medium mb-2 flex items-center gap-2">
-                <Download className="w-4 h-4 text-blue-400" />
+                <Download className="w-4 h-4 text-orange-400" />
                 Export your data
               </h4>
               <p className="text-sm text-gray-500 mb-4">Download all your projects, prompts, and account data as a ZIP archive.</p>
-              <button className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg font-medium text-sm transition">
+              <button className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg font-medium text-sm transition">
                 <Download className="w-4 h-4" /> Request data export
               </button>
             </div>
@@ -867,7 +867,7 @@ const Settings = () => {
             {/* Privacy Controls */}
             <div className="p-4 bg-white/5 rounded-lg">
               <h4 className="font-medium mb-2 flex items-center gap-2">
-                <Shield className="w-4 h-4 text-blue-400" />
+                <Shield className="w-4 h-4 text-orange-400" />
                 Privacy controls
               </h4>
               <div className="space-y-4 mt-4">
@@ -883,7 +883,7 @@ const Settings = () => {
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input type="checkbox" defaultChecked className="sr-only peer" />
-                      <div className="w-11 h-6 bg-white/10 peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                      <div className="w-11 h-6 bg-white/10 peer-focus:ring-2 peer-focus:ring-orange-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
                     </label>
                   </div>
                 ))}
@@ -893,11 +893,11 @@ const Settings = () => {
             {/* Data Retention */}
             <div className="p-4 bg-white/5 rounded-lg">
               <h4 className="font-medium mb-2 flex items-center gap-2">
-                <Database className="w-4 h-4 text-blue-400" />
+                <Database className="w-4 h-4 text-orange-400" />
                 Data retention
               </h4>
               <p className="text-sm text-gray-500 mb-2">Build logs and chat history are retained for 90 days. Projects are kept indefinitely until you delete them.</p>
-              <Link to="/privacy" className="text-sm text-blue-400 hover:text-blue-300 inline-flex items-center gap-1">
+              <Link to="/privacy" className="text-sm text-orange-400 hover:text-orange-300 inline-flex items-center gap-1">
                 Read our privacy policy <ExternalLink className="w-3 h-3" />
               </Link>
             </div>
@@ -912,13 +912,13 @@ const Settings = () => {
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm transition"
                 >
-                  <FileText className="w-4 h-4 text-blue-400" /> Documentation
+                  <FileText className="w-4 h-4 text-orange-400" /> Documentation
                 </a>
                 <a
                   href="mailto:support@crucibai.com"
                   className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm transition"
                 >
-                  <HelpCircle className="w-4 h-4 text-blue-400" /> Contact support
+                  <HelpCircle className="w-4 h-4 text-orange-400" /> Contact support
                 </a>
               </div>
             </div>
@@ -931,7 +931,7 @@ const Settings = () => {
         <div className="flex justify-end">
           <button
             onClick={handleSave}
-            className="flex items-center gap-2 px-6 py-3 bg-blue-500 hover:bg-blue-600 rounded-lg font-medium transition"
+            className="flex items-center gap-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 rounded-lg font-medium transition"
             data-testid="save-settings-btn"
           >
             {saved ? (

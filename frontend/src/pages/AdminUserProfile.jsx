@@ -86,7 +86,7 @@ const AdminUserProfile = () => {
     return (
       <div className="p-8">
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-400">{error}</div>
-        <Link to="/app/admin/users" className="inline-flex items-center mt-4 text-blue-400">
+        <Link to="/app/admin/users" className="inline-flex items-center mt-4 text-orange-400">
           <ArrowLeft className="w-4 h-4 mr-2" /> Back to users
         </Link>
       </div>
@@ -96,7 +96,7 @@ const AdminUserProfile = () => {
   if (loading || !profile) {
     return (
       <div className="flex items-center justify-center min-h-[40vh]">
-        <div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-12 h-12 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -177,7 +177,7 @@ const AdminUserProfile = () => {
               <button
                 type="submit"
                 disabled={actionLoading || !grantCredits}
-                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50"
+                className="px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-500 disabled:opacity-50"
               >
                 {actionLoading ? '...' : 'Grant'}
               </button>

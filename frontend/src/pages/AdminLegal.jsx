@@ -54,13 +54,13 @@ export default function AdminLegal() {
       </div>
 
       <div className="flex gap-2">
-        <button onClick={() => setFilter('all')} className={`px-3 py-1.5 rounded text-sm ${filter === 'all' ? 'bg-blue-600' : 'bg-white/10'}`}>All</button>
-        <button onClick={() => setFilter('blocked')} className={`px-3 py-1.5 rounded text-sm ${filter === 'blocked' ? 'bg-blue-600' : 'bg-white/10'}`}>Blocked</button>
-        <button onClick={() => setFilter('reviewed')} className={`px-3 py-1.5 rounded text-sm ${filter === 'reviewed' ? 'bg-blue-600' : 'bg-white/10'}`}>Reviewed</button>
+        <button onClick={() => setFilter('all')} className={`px-3 py-1.5 rounded text-sm ${filter === 'all' ? 'bg-orange-600' : 'bg-white/10'}`}>All</button>
+        <button onClick={() => setFilter('blocked')} className={`px-3 py-1.5 rounded text-sm ${filter === 'blocked' ? 'bg-orange-600' : 'bg-white/10'}`}>Blocked</button>
+        <button onClick={() => setFilter('reviewed')} className={`px-3 py-1.5 rounded text-sm ${filter === 'reviewed' ? 'bg-orange-600' : 'bg-white/10'}`}>Reviewed</button>
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12"><div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>
+        <div className="flex justify-center py-12"><div className="w-10 h-10 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>
       ) : (
         <div className="space-y-4">
           {list.length === 0 && <p className="text-[#666666]">No blocked requests</p>}
