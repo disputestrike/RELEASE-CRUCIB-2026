@@ -103,7 +103,7 @@ const TokenCenter = () => {
     value
   })) : [];
 
-  const COLORS = ['#1A1A1A', '#808080', '#FF8F5E', '#999999', '#EF4444', '#06B6D4', '#EC4899', '#84CC16'];
+  const COLORS = ['#1A1A1A', '#333333', '#4D4D4D', '#666666', '#808080', '#999999', '#AAAAAA', '#CCCCCC'];
 
   if (loading) {
     return (

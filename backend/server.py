@@ -1595,8 +1595,8 @@ async def register(data: UserRegister, request: Request):
         "email": data.email,
         "password": hash_password(data.password),
         "name": data.name,
-        "token_balance": FREE_TIER_CREDITS * CREDITS_PER_TOKEN,
-        "credit_balance": FREE_TIER_CREDITS,
+        "token_balance": 0,
+        "credit_balance": 0,
         "plan": "free",
         "role": "owner",
         "mfa_enabled": False,
@@ -1605,15 +1605,6 @@ async def register(data: UserRegister, request: Request):
     }
     await db.users.insert_one(user)
     
-    await db.token_ledger.insert_one({
-        "id": str(uuid.uuid4()),
-        "user_id": user_id,
-        "tokens": FREE_TIER_CREDITS * CREDITS_PER_TOKEN,
-        "credits": FREE_TIER_CREDITS,
-        "type": "bonus",
-        "description": "Welcome (Free tier)",
-        "created_at": datetime.now(timezone.utc).isoformat()
-    })
     await _apply_referral_on_signup(user_id, getattr(data, "ref", None))
     if audit_logger:
         await audit_logger.log(user_id, "signup", ip_address=getattr(request.client, "host", None))
