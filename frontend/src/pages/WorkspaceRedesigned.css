@@ -67,13 +67,13 @@
 
 .workspace-btn:hover {
   background: #E5E3E0;
-  color: #FF6B35;
+  color: #1A1A1A;
 }
 
 .workspace-btn.active {
   background: #FFF3ED;
-  color: #FF6B35;
-  border-color: #FF6B35;
+  color: #1A1A1A;
+  border-color: #1A1A1A;
 }
 
 .workspace-btn svg {
@@ -121,7 +121,7 @@
 
 .agent-select:focus {
   outline: none;
-  border-color: #FF6B35;
+  border-color: #1A1A1A;
   background: #FFFFFF;
 }
 
@@ -173,7 +173,7 @@
 }
 
 .message-user .message-content {
-  background: #FF6B35;
+  background: #1A1A1A;
   color: #FFFFFF;
   border-radius: 12px 12px 4px 12px;
   max-width: 70%;
@@ -260,7 +260,7 @@
 .typing-indicator span {
   width: 6px;
   height: 6px;
-  background: #FF6B35;
+  background: #1A1A1A;
   border-radius: 50%;
   animation: typing 1.4s infinite;
 }
@@ -311,7 +311,7 @@
 
 .input-wrapper:focus-within {
   background: #FFFFFF;
-  border-color: #FF6B35;
+  border-color: #1A1A1A;
   box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
 }
 
@@ -341,7 +341,7 @@
   justify-content: center;
   width: 36px;
   height: 36px;
-  background: #FF6B35;
+  background: #1A1A1A;
   border: none;
   border-radius: 6px;
   color: #FFFFFF;
@@ -410,7 +410,7 @@
 
 .preview-fullscreen:hover {
   background: #F3F1ED;
-  color: #FF6B35;
+  color: #1A1A1A;
 }
 
 .preview-content {
@@ -505,7 +505,7 @@
   width: 40px;
   height: 40px;
   border: 3px solid rgba(0, 0, 0, 0.1);
-  border-top-color: #FF6B35;
+  border-top-color: #1A1A1A;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }

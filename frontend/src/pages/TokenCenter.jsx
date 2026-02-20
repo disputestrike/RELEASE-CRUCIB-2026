@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Zap, TrendingUp, ArrowUpRight, Clock, Check, 
@@ -9,16 +10,20 @@ import axios from 'axios';
 import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis } from 'recharts';
 
 const TokenCenter = () => {
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { user, token, refreshUser } = useAuth();
   const [bundles, setBundles] = useState({});
   const [history, setHistory] = useState([]);
   const [usage, setUsage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(null);
+  const addonFromPricing = location.state?.addon || searchParams.get('addon');
   const [activeTab, setActiveTab] = useState('purchase');
   const [referralCode, setReferralCode] = useState(null);
   const [referralStats, setReferralStats] = useState(null);
   const [referralCopied, setReferralCopied] = useState(false);
+  const bundleRefs = useRef({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -44,6 +49,17 @@ const TokenCenter = () => {
     };
     fetchData();
   }, [token]);
+
+  // When coming from Pricing add-on link: show purchase tab and scroll to that bundle
+  useEffect(() => {
+    if (!addonFromPricing || loading || !bundles[addonFromPricing]) return;
+    setActiveTab('purchase');
+    const ref = bundleRefs.current[addonFromPricing];
+    if (ref) {
+      const t = setTimeout(() => ref.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+      return () => clearTimeout(t);
+    }
+  }, [addonFromPricing, loading, bundles]);
 
   const handlePurchase = async (bundleKey) => {
     setPurchasing(bundleKey);
@@ -87,12 +103,12 @@ const TokenCenter = () => {
     value
   })) : [];
 
-  const COLORS = ['#FF6B35', '#10B981', '#FF8F5E', '#F59E0B', '#EF4444', '#06B6D4', '#EC4899', '#84CC16'];
+  const COLORS = ['#1A1A1A', '#10B981', '#FF8F5E', '#F59E0B', '#EF4444', '#06B6D4', '#EC4899', '#84CC16'];
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-12 h-12 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -111,7 +127,7 @@ const TokenCenter = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="p-8 bg-gradient-to-br from-orange-500/20 to-orange-500/20 rounded-2xl border border-orange-500/30"
+        className="p-8 bg-gradient-to-br from-gray-200 to-gray-200 rounded-2xl border border-gray-400/30"
       >
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div>
@@ -141,7 +157,7 @@ const TokenCenter = () => {
       {referralCode && (
         <div className="p-6 bg-white/5 rounded-xl border border-white/10">
           <h2 className="text-lg font-semibold text-[#1A1A1A] flex items-center gap-2 mb-2">
-            <Link2 className="w-5 h-5 text-orange-400" /> Invite friends — 100 credits each
+            <Link2 className="w-5 h-5 text-[#1A1A1A]" /> Invite friends — 100 credits each
           </h2>
           <p className="text-sm text-gray-500 mb-3">Share your link. When they sign up, they get 100 credits. You get 100 credits too if you're on the free plan (max 10 referrals/month).</p>
           <div className="flex flex-wrap items-center gap-2">
@@ -158,7 +174,7 @@ const TokenCenter = () => {
                   setTimeout(() => setReferralCopied(false), 2000);
                 }
               }}
-              className="flex items-center gap-1 px-3 py-2 rounded-lg bg-orange-600 hover:bg-orange-500 text-[#1A1A1A] text-sm font-medium"
+              className="flex items-center gap-1 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-[#1A1A1A] text-sm font-medium"
             >
               <Copy className="w-4 h-4" /> {referralCopied ? 'Copied!' : 'Copy link'}
             </button>
@@ -189,7 +205,7 @@ const TokenCenter = () => {
             onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-2 px-4 py-3 border-b-2 transition ${
               activeTab === tab.id
-                ? 'border-orange-500 text-orange-400'
+                ? 'border-gray-400 text-[#1A1A1A]'
                 : 'border-transparent text-[#666666] hover:text-[#1A1A1A]'
             }`}
             data-testid={`tab-${tab.id}`}
@@ -206,17 +222,18 @@ const TokenCenter = () => {
           {sortedBundles.map((bundle, i) => (
             <motion.div
               key={bundle.key}
+              ref={el => { if (el) bundleRefs.current[bundle.key] = el; }}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
               className={`p-6 rounded-xl border transition-all ${
                 bundle.key === 'builder'
-                  ? 'bg-orange-500/10 border-orange-500/50 scale-105'
+                  ? 'bg-gray-700/10 border-gray-400/50 scale-105'
                   : 'bg-[#0a0a0a] border-white/10 hover:border-white/20'
-              }`}
+              } ${addonFromPricing === bundle.key ? 'ring-2 ring-white/30' : ''}`}
             >
               {bundle.key === 'builder' && (
-                <div className="text-xs font-medium text-orange-400 mb-4">MOST POPULAR</div>
+                <div className="text-xs font-medium text-[#1A1A1A] mb-4">MOST POPULAR</div>
               )}
               <h3 className="text-xl font-semibold mb-2">{bundle.name || bundle.key}</h3>
               <div className="mb-4">
@@ -235,7 +252,7 @@ const TokenCenter = () => {
                 disabled={purchasing === bundle.key}
                 className={`w-full py-2.5 rounded-lg font-medium transition ${
                   bundle.key === 'builder'
-                    ? 'bg-orange-500 hover:bg-orange-600'
+                    ? 'bg-gray-700 hover:bg-gray-800'
                     : 'bg-white/10 hover:bg-white/20'
                 } disabled:opacity-50`}
                 data-testid={`buy-${bundle.key}-btn`}
@@ -281,13 +298,13 @@ const TokenCenter = () => {
                   <div className="flex items-center gap-4">
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                       item.type === 'purchase' ? 'bg-green-500/20' :
-                      item.type === 'bonus' ? 'bg-orange-500/20' :
-                      item.type === 'refund' ? 'bg-orange-500/20' :
+                      item.type === 'bonus' ? 'bg-gray-700/20' :
+                      item.type === 'refund' ? 'bg-gray-700/20' :
                       'bg-gray-500/20'
                     }`}>
                       {item.type === 'purchase' ? <CreditCard className="w-5 h-5 text-green-400" /> :
-                       item.type === 'bonus' ? <Zap className="w-5 h-5 text-orange-400" /> :
-                       <ArrowUpRight className="w-5 h-5 text-orange-400" />}
+                       item.type === 'bonus' ? <Zap className="w-5 h-5 text-[#1A1A1A]" /> :
+                       <ArrowUpRight className="w-5 h-5 text-[#1A1A1A]" />}
                     </div>
                     <div>
                       <p className="font-medium capitalize">{item.type}</p>
@@ -321,7 +338,7 @@ const TokenCenter = () => {
           {(usage?.daily_trend?.length > 0) && (
             <div className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10">
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-orange-400" /> Usage trends
+                <TrendingUp className="w-5 h-5 text-[#1A1A1A]" /> Usage trends
               </h3>
               <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
@@ -329,7 +346,7 @@ const TokenCenter = () => {
                     <XAxis dataKey="date" tick={{ fill: '#9ca3af', fontSize: 11 }} tickFormatter={(v) => v.slice(5)} />
                     <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} tickFormatter={(v) => (v >= 1000 ? `${(v/1000).toFixed(1)}k` : v)} />
                     <Tooltip contentStyle={{ backgroundColor: '#111', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} formatter={(v) => [v?.toLocaleString(), 'Tokens']} labelFormatter={(l) => l} />
-                    <Bar dataKey="tokens" fill="#FF6B35" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="tokens" fill="#1A1A1A" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth, API } from '../App';
+import { useLayoutStore } from '../stores/useLayoutStore';
+import { useTaskStore } from '../stores/useTaskStore';
 import axios from 'axios';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Menu, X, PanelRightOpen, PanelRightClose } from 'lucide-react';
@@ -24,6 +26,8 @@ const Layout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, token } = useAuth();
+  const { sidebarOpen, setSidebarOpen, toggleSidebar } = useLayoutStore();
+  const { tasks: storeTasks, setTasks: setStoreTasks } = useTaskStore();
   const [backendOk, setBackendOk] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -37,9 +41,7 @@ const Layout = () => {
     setRightPanelVisible(false);
   }, [isWorkspaceView]);
 
-  // Data for sidebar
   const [projects, setProjects] = useState([]);
-  const [tasks, setTasks] = useState([]);
 
   // Data for right panel
   const [previewContent, setPreviewContent] = useState(null);
@@ -68,12 +70,13 @@ const Layout = () => {
         setProjects(projRes.value.data?.projects || projRes.value.data || []);
       }
       if (taskRes.status === 'fulfilled') {
-        setTasks(taskRes.value.data?.tasks || taskRes.value.data || []);
+        const apiTasks = taskRes.value.data?.tasks || taskRes.value.data || [];
+        setStoreTasks(Array.isArray(apiTasks) ? apiTasks : []);
       }
     } catch (e) {
       // Silently fail — sidebar still works with empty lists
     }
-  }, [token]);
+  }, [token, setStoreTasks]);
 
   useEffect(() => {
     checkBackend();
@@ -91,7 +94,7 @@ const Layout = () => {
       user={user}
       onLogout={handleLogout}
       projects={projects}
-      tasks={tasks}
+      tasks={storeTasks}
     />
   );
 
@@ -127,7 +130,7 @@ const Layout = () => {
         </div>
       )}
 
-      <div className="layout-page-content">
+      <div className={`layout-page-content ${isWorkspaceView ? 'layout-page-content--fullbleed' : ''}`}>
         <Outlet context={{
           setPreviewContent,
           setCodeContent,
@@ -168,7 +171,7 @@ const Layout = () => {
         <Link to="/app" className="layout-mobile-logo">
           CrucibAI
         </Link>
-        <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="layout-mobile-menu-btn">
+        <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="layout-mobile-menu-btn" aria-label="Toggle menu">
           {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
       </header>
@@ -187,11 +190,14 @@ const Layout = () => {
         )}
       </AnimatePresence>
 
-      {/* Desktop 3-Column Layout */}
+      {/* Desktop 3-Column Layout — sidebar state from store (Phase 3) */}
       <Layout3Column
         sidebar={sidebarContent}
         main={mainContent}
         rightPanel={rightPanelContent}
+        sidebarOpen={sidebarOpen}
+        onToggleSidebar={toggleSidebar}
+        setSidebarOpen={setSidebarOpen}
       />
 
       {/* Onboarding Tour for first-time users */}

@@ -46,7 +46,7 @@ export default function TemplatesGallery() {
             >
               <div className="flex items-center gap-3 mb-3">
                 <div className="p-2 rounded-lg bg-zinc-800">
-                  <FileCode className="w-5 h-5 text-orange-400" />
+                  <FileCode className="w-5 h-5 text-[#1A1A1A]" />
                 </div>
                 <div>
                   <h2 className="font-semibold">{t.name}</h2>
@@ -56,7 +56,7 @@ export default function TemplatesGallery() {
               <button
                 onClick={() => createFromTemplate(t.id)}
                 disabled={loading || creatingId !== null}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 transition disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-gray-200 text-[#1A1A1A] hover:bg-gray-300 transition disabled:opacity-50"
               >
                 {creatingId === t.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Layout className="w-4 h-4" />}
                 Use template

@@ -127,7 +127,7 @@ export const VibeCodingInput = ({ onSubmit, isLoading = false, API }) => {
     <div className="space-y-4 p-6 bg-gradient-to-br from-slate-900 to-slate-800 rounded-lg border border-slate-700">
       {/* Vibe Coding Header */}
       <div className="flex items-center gap-2 mb-4">
-        <Sparkles className="text-orange-400" size={20} />
+        <Sparkles className="text-[#1A1A1A]" size={20} />
         <h3 className="text-lg font-semibold text-[#1A1A1A]">Vibe Coding</h3>
         <span className="text-xs text-slate-400 ml-auto">Manus-style natural language</span>
       </div>
@@ -178,7 +178,7 @@ export const VibeCodingInput = ({ onSubmit, isLoading = false, API }) => {
             className="p-4 bg-orange-900/30 border border-orange-700/50 rounded-lg"
           >
             <div className="flex items-center gap-2 mb-3">
-              <Palette size={16} className="text-orange-400" />
+              <Palette size={16} className="text-[#1A1A1A]" />
               <span className="font-medium text-orange-300">Vibe Analysis</span>
             </div>
 

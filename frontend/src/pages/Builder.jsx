@@ -350,7 +350,7 @@ root.render(
         <button
           onClick={() => setSelectedFile(item.path)}
           className={`w-full flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-gray-100 rounded transition ${
-            selectedFile === item.path ? 'bg-orange-50 text-orange-600' : 'text-gray-700'
+            selectedFile === item.path ? 'bg-orange-50 text-[#1A1A1A]' : 'text-gray-700'
           }`}
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
         >
@@ -388,7 +388,7 @@ root.render(
       <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 flex-shrink-0">
         <div className="flex items-center gap-4">
           <button onClick={() => navigate('/app')} className="flex items-center gap-2">
-            <span className="text-xl font-bold tracking-tight">crucib<span className="text-orange-600">ai</span></span>
+            <span className="text-xl font-bold tracking-tight">crucib<span className="text-[#1A1A1A]">ai</span></span>
           </button>
           <span className="text-gray-300">|</span>
           <span className="text-sm text-gray-500">Builder</span>
@@ -448,7 +448,7 @@ root.render(
             <div className="flex-1 flex items-center justify-center p-8">
               <div className="max-w-2xl w-full text-center">
                 <div className="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                  <Sparkles className="w-8 h-8 text-orange-600" />
+                  <Sparkles className="w-8 h-8 text-[#1A1A1A]" />
                 </div>
                 <h1 className="text-3xl font-bold mb-4">What do you want to build?</h1>
                 <p className="text-gray-600 mb-8">
@@ -602,7 +602,7 @@ root.render(
                 ) : (
                   <div className="h-full border border-gray-200 rounded-lg flex items-center justify-center bg-gray-50">
                     <div className="text-center">
-                      <Loader2 className="w-8 h-8 animate-spin text-orange-600 mx-auto mb-3" />
+                      <Loader2 className="w-8 h-8 animate-spin text-[#1A1A1A] mx-auto mb-3" />
                       <p className="text-sm text-gray-500">Building your app...</p>
                     </div>
                   </div>

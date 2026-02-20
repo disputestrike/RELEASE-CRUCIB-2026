@@ -1,24 +1,32 @@
-/* Dashboard — Prompt-first entry point (redesign) */
+/* Dashboard — Prompt-first entry point (redesign) — Manus-style centered, full height */
 
 .dashboard-redesigned {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  flex: 1;
+  min-height: 100%;
   width: 100%;
   padding: 48px 24px;
   background: #FAFAF8;
   overflow-y: auto;
+  box-sizing: border-box;
 }
 
-/* ISSUE 2: Full-width prompt container */
+/* Full-width block, wider center (960px) like Manus */
 .dashboard-center {
   width: 100%;
-  max-width: 680px;
+  max-width: 960px;
   padding: 0 24px;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 32px;
+  text-align: center;
+}
+
+.dashboard-greeting {
+  width: 100%;
 }
 
 /* Greeting */
@@ -41,10 +49,11 @@
   text-align: center;
 }
 
-/* Prompt Form */
+/* Prompt Form — centered like Manus */
 .dashboard-prompt-form {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 8px;
   width: 100%;
 }
@@ -62,7 +71,7 @@
 }
 
 .dashboard-prompt-container:focus-within {
-  border-color: #FF6B35;
+  border-color: #1A1A1A;
   box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.08);
 }
 
@@ -254,6 +263,7 @@
   flex-direction: column;
   align-items: center;
   gap: 12px;
+  width: 100%;
 }
 
 .dashboard-chips-label {
@@ -289,8 +299,8 @@
 }
 
 .dashboard-chip:hover {
-  border-color: #FF6B35;
-  color: #FF6B35;
+  border-color: #1A1A1A;
+  color: #1A1A1A;
   background: rgba(255, 107, 53, 0.06);
 }
 
@@ -300,7 +310,7 @@
 }
 
 .dashboard-chip:hover .dashboard-chip-icon {
-  color: #FF6B35;
+  color: #1A1A1A;
 }
 
 /* Import Modal */
@@ -406,7 +416,7 @@
 }
 
 .dashboard-modal-input:focus {
-  border-color: #FF6B35;
+  border-color: #1A1A1A;
 }
 
 .dashboard-modal-paste {
@@ -433,7 +443,7 @@
 }
 
 .dashboard-modal-input-sm:focus {
-  border-color: #FF6B35;
+  border-color: #1A1A1A;
 }
 
 .dashboard-modal-textarea {
@@ -449,13 +459,13 @@
 }
 
 .dashboard-modal-textarea:focus {
-  border-color: #FF6B35;
+  border-color: #1A1A1A;
 }
 
 .dashboard-modal-add-file {
   background: none;
   border: none;
-  color: #FF6B35;
+  color: #1A1A1A;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;

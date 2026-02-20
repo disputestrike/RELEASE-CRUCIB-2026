@@ -290,7 +290,7 @@ export const AISuggestions = ({ suggestions = [] }) => {
     <div className="space-y-2 p-4 bg-orange-900/20 border border-orange-700/50 rounded-lg">
       {suggestions.map((suggestion, idx) => (
         <div key={idx} className="flex items-start gap-3 text-sm">
-          <Zap size={16} className="text-orange-400 flex-shrink-0 mt-0.5" />
+          <Zap size={16} className="text-[#1A1A1A] flex-shrink-0 mt-0.5" />
           <div>
             <div className="font-medium text-orange-300">{suggestion.title}</div>
             <div className="text-xs text-orange-300/70">{suggestion.description}</div>

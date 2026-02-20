@@ -1,0 +1,8 @@
+{
+  "github-actions.use-enterprise": false,
+  "files.associations": {
+    ".github/workflows/enterprise-tests.yml": "plaintext",
+    "**/.github/workflows/*.yml": "plaintext",
+    "**/.github/workflows/*.yaml": "plaintext"
+  }
+}

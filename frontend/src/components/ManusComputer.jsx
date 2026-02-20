@@ -56,8 +56,8 @@ const ManusComputer = ({
             {/* Header */}
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-orange-500/20">
               <div className="flex items-center gap-2">
-                <Cpu className="w-4 h-4 text-orange-400 animate-pulse" />
-                <span className="text-orange-400 font-bold">Manus Computer</span>
+                <Cpu className="w-4 h-4 text-[#1A1A1A] animate-pulse" />
+                <span className="text-[#1A1A1A] font-bold">Manus Computer</span>
               </div>
               <button
                 onClick={() => setIsExpanded(false)}
@@ -71,7 +71,7 @@ const ManusComputer = ({
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-[#666666]">Progress</span>
-                <span className="text-orange-400 font-bold">
+                <span className="text-[#1A1A1A] font-bold">
                   {currentStep} / {totalSteps}
                 </span>
               </div>

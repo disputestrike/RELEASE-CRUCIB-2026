@@ -16,7 +16,7 @@ export default function ShortcutCheatsheet() {
       <div className="max-w-lg mx-auto">
         <div className="flex items-center gap-3 mb-8">
           <div className="p-3 rounded-xl bg-zinc-800">
-            <Keyboard className="w-8 h-8 text-orange-400" />
+            <Keyboard className="w-8 h-8 text-[#1A1A1A]" />
           </div>
           <div>
             <h1 className="text-2xl font-bold">Shortcuts</h1>

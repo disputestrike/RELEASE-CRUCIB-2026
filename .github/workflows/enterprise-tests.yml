@@ -1,4 +1,5 @@
 # Enterprise 9-Layer Test Pipeline (Lint → Unit → Integration → Smoke; E2E optional)
+# Actions: checkout@v4.2.2, setup-node@v4.2.0, setup-python@v5.2.0, upload-artifact@v4.4.0, gitleaks/gitleaks-action@v2.3.9
 name: Enterprise Tests
 
 on:
@@ -17,8 +18,8 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-node@v4.2.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'yarn'
@@ -32,14 +33,14 @@ jobs:
     name: Security audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-node@v4.2.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'yarn'
       - name: Install and audit frontend
         run: cd frontend && yarn install --frozen-lockfile && npm audit --audit-level=high || true
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5.2.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install backend deps and pip-audit
@@ -47,7 +48,7 @@ jobs:
       - name: Backend dependency audit
         run: cd backend && pip-audit --require-hashes=false || true
       - name: Secrets scan (gitleaks)
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v2.3.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Run internal SecurityAudit
@@ -58,15 +59,15 @@ jobs:
     name: Frontend unit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-node@v4.2.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'yarn'
       - name: Install and test
         run: cd frontend && yarn install --frozen-lockfile && npm run test:coverage || npm test -- --watchAll=false
       - name: Upload coverage (optional)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.4.0
         if: always()
         with:
           name: frontend-coverage
@@ -87,8 +88,8 @@ jobs:
       DB_NAME: crucibai_test
       JWT_SECRET: test-secret
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.2.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install backend deps
@@ -120,7 +121,7 @@ jobs:
           REACT_APP_BACKEND_URL: http://localhost:8000
           CRUCIBAI_API_URL: http://localhost:8000
       - name: Upload backend coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.4.0
         if: hashFiles('backend/coverage.xml') != ''
         with:
           name: backend-coverage
@@ -133,8 +134,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [lint, frontend-unit]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-node@v4.2.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'yarn'
@@ -146,14 +147,20 @@ jobs:
         run: |
           cd frontend && npx serve -s build -l 3000 &
           npx wait-on -t 60000 http://localhost:3000 || true
-          npx playwright test --project=chromium e2e/critical-user-journey.spec.js
+          npx playwright test --project=chromium e2e/critical-user-journey.spec.js e2e/single-source-of-truth.spec.js
         env:
           PLAYWRIGHT_BASE_URL: http://localhost:3000
           CI: true
       - name: Upload Playwright report
-        uses: actions/upload-artifact@v4
-        if: failure()
+        uses: actions/upload-artifact@v4.4.0
         with:
           name: playwright-report
           path: frontend/playwright-report
+          retention-days: 1
+      - name: Upload backend coverage
+        uses: actions/upload-artifact@v4.4.0
+        if: hashFiles('backend/coverage.xml') != ''
+        with:
+          name: backend-coverage
+          path: backend/coverage.xml
           retention-days: 1

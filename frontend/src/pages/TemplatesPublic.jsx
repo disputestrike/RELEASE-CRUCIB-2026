@@ -57,15 +57,15 @@ export default function TemplatesPublic() {
               className="p-6 rounded-2xl border border-stone-200 bg-white hover:border-stone-300 shadow-sm transition"
             >
               <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 rounded-lg bg-orange-50">
-                  <FileCode className="w-5 h-5 text-orange-400" />
+                <div className="p-2 rounded-lg bg-gray-100">
+                  <FileCode className="w-5 h-5 text-[#1A1A1A]" />
                 </div>
                 <h2 className="font-semibold">{t.name}</h2>
               </div>
               <p className="text-sm text-stone-500 mb-6">{t.description}</p>
               <button
                 onClick={handleUse}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 transition"
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-gray-1000/20 text-[#1A1A1A] hover:bg-gray-1000/30 transition"
               >
                 {user ? 'Use in app' : 'Get started to use'}
                 <ArrowRight className="w-4 h-4" />

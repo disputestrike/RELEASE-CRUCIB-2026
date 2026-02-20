@@ -51,16 +51,10 @@
      ============================================ */
   
   /* Primary accent - CrucibAI orange */
-  --manus-accent-primary: #FF6B35;
-  
-  /* Accent hover - Darker orange */
-  --manus-accent-hover: #E05A25;
-  
-  /* Accent light - Light orange background */
-  --manus-accent-light: #FFF3ED;
-  
-  /* Accent very light - Very light orange background */
-  --manus-accent-very-light: #FFF7F2;
+  --manus-accent-primary: #1A1A1A;
+  --manus-accent-hover: #1A1A1A;
+  --manus-accent-light: #F5F5F4;
+  --manus-accent-very-light: #F5F5F4;
   
   /* ============================================
      STATUS COLORS

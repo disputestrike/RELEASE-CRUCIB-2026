@@ -140,7 +140,7 @@ const AuthPage = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAFAF8]">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-2 border-[#FF6B35] border-t-transparent rounded-full animate-spin" />
+          <div className="w-10 h-10 border-2 border-[#1A1A1A] border-t-transparent rounded-full animate-spin" />
           <p className="text-gray-500 text-sm">Signing you in...</p>
         </div>
       </div>
@@ -148,9 +148,9 @@ const AuthPage = () => {
   }
 
   return (
-    <div className="min-h-screen flex" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+    <div className="min-h-screen flex bg-kimi-bg" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       {/* Left Panel — Form */}
-      <div className="w-full lg:w-[480px] xl:w-[520px] flex flex-col bg-white relative">
+      <div className="w-full lg:w-[480px] xl:w-[520px] flex flex-col bg-white relative border-r border-stone-200">
         {/* Back button */}
         <div className="p-6">
           <Link
@@ -173,11 +173,11 @@ const AuthPage = () => {
             {/* Logo */}
             <div className="mb-8">
               <Link to="/" className="inline-flex items-center gap-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-[#FF6B35] to-[#FF8F5E] rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-[#1A1A1A] rounded-lg flex items-center justify-center">
                   <span className="text-white font-bold text-sm">C</span>
                 </div>
                 <span className="text-xl font-bold tracking-tight text-gray-900">
-                  Crucib<span className="text-[#FF6B35]">AI</span>
+                  CrucibAI
                 </span>
               </Link>
             </div>
@@ -217,7 +217,7 @@ const AuthPage = () => {
                     autoComplete="one-time-code"
                     value={mfaCode}
                     onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/10 outline-none transition text-center text-2xl tracking-[0.5em] font-mono"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-gray-400 focus:ring-2 focus:ring-gray-200 outline-none transition text-center text-2xl tracking-[0.5em] font-mono"
                     placeholder="000000"
                     maxLength={6}
                     autoFocus
@@ -226,7 +226,7 @@ const AuthPage = () => {
                 <button
                   type="submit"
                   disabled={loading || mfaCode.length !== 6}
-                  className="w-full py-3 bg-[#FF6B35] hover:bg-[#E05A25] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-medium transition text-sm"
+                  className="w-full py-3 bg-[#1A1A1A] hover:opacity-90 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-medium transition text-sm"
                 >
                   {loading ? <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : 'Verify'}
                 </button>
@@ -289,7 +289,7 @@ const AuthPage = () => {
                           type="text"
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/10 outline-none transition text-sm"
+                          className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:border-gray-400 focus:ring-2 focus:ring-gray-200 outline-none transition text-sm"
                           placeholder="Your name"
                           required={!isLogin}
                           data-testid="auth-name-input"
@@ -306,7 +306,7 @@ const AuthPage = () => {
                         type="email"
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/10 outline-none transition text-sm"
+                        className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:border-gray-400 focus:ring-2 focus:ring-gray-200 outline-none transition text-sm"
                         placeholder="you@example.com"
                         required
                         autoFocus={isLogin}
@@ -319,7 +319,7 @@ const AuthPage = () => {
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="block text-sm font-medium text-gray-700">Password</label>
                       {isLogin && (
-                        <button type="button" className="text-xs text-[#FF6B35] hover:text-[#E05A25] transition">
+                        <button type="button" className="text-xs text-[#1A1A1A] hover:underline transition">
                           Forgot password?
                         </button>
                       )}
@@ -332,7 +332,7 @@ const AuthPage = () => {
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                         onFocus={() => setPasswordFocused(true)}
                         onBlur={() => setPasswordFocused(false)}
-                        className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/10 outline-none transition text-sm"
+                        className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:border-gray-400 focus:ring-2 focus:ring-gray-200 outline-none transition text-sm"
                         placeholder="••••••••"
                         required
                         minLength={6}
@@ -373,7 +373,7 @@ const AuthPage = () => {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-3 bg-[#FF6B35] hover:bg-[#E05A25] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-medium transition text-sm flex items-center justify-center gap-2"
+                    className="w-full py-3 bg-[#1A1A1A] hover:opacity-90 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-medium transition text-sm flex items-center justify-center gap-2"
                     data-testid="auth-submit-btn"
                   >
                     {loading ? (
@@ -389,7 +389,7 @@ const AuthPage = () => {
                   {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
                   <button
                     onClick={() => { setIsLogin(!isLogin); setError(''); setFormData({ name: '', email: '', password: '' }); }}
-                    className="text-[#FF6B35] hover:text-[#E05A25] font-medium transition"
+                    className="text-[#1A1A1A] hover:underline font-medium transition"
                     data-testid="auth-toggle-btn"
                   >
                     {isLogin ? 'Sign up' : 'Sign in'}
@@ -410,7 +410,7 @@ const AuthPage = () => {
       </div>
 
       {/* Right Panel — Value Proposition (hidden on mobile) */}
-      <div className="hidden lg:flex flex-1 bg-white border-l border-gray-100 relative overflow-hidden">
+      <div className="hidden lg:flex flex-1 bg-white border-l border-stone-200 relative overflow-hidden">
         {/* Subtle dot pattern */}
         <div className="absolute inset-0 opacity-[0.4]" style={{
           backgroundImage: 'radial-gradient(circle at 1px 1px, #e5e7eb 1px, transparent 0)',
@@ -443,7 +443,7 @@ const AuthPage = () => {
                 transition={{ delay: 0.2 + i * 0.1 }}
                 className="flex items-center gap-3"
               >
-                <div className="w-5 h-5 rounded-full bg-[#FF6B35] flex items-center justify-center flex-shrink-0">
+                <div className="w-5 h-5 rounded-full bg-[#1A1A1A] flex items-center justify-center flex-shrink-0">
                   <Check className="w-3 h-3 text-white" />
                 </div>
                 <span className="text-gray-700 text-sm">{item.text}</span>
@@ -481,8 +481,8 @@ const AuthPage = () => {
               "We described our SaaS on Monday and had a working MVP by Thursday. The agent transparency is what sold us — we could see exactly what was being built."
             </p>
             <div className="mt-3 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-[#FF6B35]/10 flex items-center justify-center">
-                <span className="text-[#FF6B35] text-xs font-bold">JM</span>
+              <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                <span className="text-[#1A1A1A] text-xs font-bold">JM</span>
               </div>
               <div>
                 <p className="text-gray-900 text-xs font-medium">Jordan M.</p>

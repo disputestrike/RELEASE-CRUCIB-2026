@@ -60,6 +60,8 @@ import {
   Rocket,
 } from 'lucide-react';
 import { useAuth, API } from '../App';
+import { useLayoutStore } from '../stores/useLayoutStore';
+import { useTaskStore } from '../stores/useTaskStore';
 import axios from 'axios';
 import ManusComputer from '../components/ManusComputer';
 import InlineAgentMonitor from '../components/InlineAgentMonitor';
@@ -108,8 +110,8 @@ root.render(<App />);`,
 const FileTree = ({ files, activeFile, onSelectFile, onAddFile }) => {
   const getFileIcon = (filename) => {
     if (filename.endsWith('.js') || filename.endsWith('.jsx')) return <FileCode className="w-4 h-4 text-yellow-400" />;
-    if (filename.endsWith('.css')) return <FileText className="w-4 h-4 text-orange-400" />;
-    if (filename.endsWith('.html')) return <FileText className="w-4 h-4 text-orange-400" />;
+    if (filename.endsWith('.css')) return <FileText className="w-4 h-4 text-gray-800" />;
+    if (filename.endsWith('.html')) return <FileText className="w-4 h-4 text-gray-800" />;
     return <File className="w-4 h-4 text-gray-500" />;
   };
 
@@ -272,7 +274,7 @@ const VersionHistory = ({ versions, onRestore, currentVersion }) => {
             {currentVersion !== version.id && (
               <button
                 onClick={() => onRestore(version)}
-                className="flex items-center gap-1 text-xs text-orange-600 hover:text-orange-700"
+                className="flex items-center gap-1 text-xs text-gray-800 hover:text-gray-900"
               >
                 <Undo2 className="w-3 h-3" />
                 Restore
@@ -333,14 +335,9 @@ const Workspace = () => {
   const [toolsLoading, setToolsLoading] = useState(false);
   const [nextSuggestions, setNextSuggestions] = useState([]);
   const [buildMode, setBuildMode] = useState('agent'); // 'quick' | 'plan' | 'agent' | 'thinking' | 'swarm'
-  const [devMode, setDevMode] = useState(() => {
-    return localStorage.getItem('crucibai_dev_mode') === 'true'
-  });
-  const toggleDevMode = () => {
-    const next = !devMode;
-    setDevMode(next);
-    localStorage.setItem('crucibai_dev_mode', String(next));
-  };
+  const { mode: layoutMode, setMode: setLayoutMode, isDev: devMode } = useLayoutStore();
+  const toggleDevMode = () => setLayoutMode(prev => (prev === 'dev' ? 'simple' : 'dev'));
+  const { addTask } = useTaskStore();
 
   // Section 06: parseMultiFileOutput — extract fenced code blocks with file paths
   const parseMultiFileOutput = (responseText) => {
@@ -557,25 +554,18 @@ const Workspace = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // ISSUE 4: Auto-start building when navigated from home screen with a prompt
+  // PHASE 4: Build only from form submit — never from useEffect. Pre-fill input only.
   useEffect(() => {
     const statePrompt = location.state?.initialPrompt;
-    const autoStart = location.state?.autoStart;
     const initialPrompt = statePrompt || searchParams.get('prompt');
     const initialFiles = location.state?.initialAttachedFiles;
-    if (initialPrompt && autoStart) {
-      // Came from home screen with build intent — start immediately, don't ask again
+    if (initialPrompt) {
       setInput(initialPrompt);
       if (initialFiles?.length) setAttachedFiles(initialFiles);
-      setTimeout(() => handleBuild(initialPrompt, initialFiles || null), 300);
-    } else if (initialPrompt) {
-      setInput(initialPrompt);
-      if (initialFiles?.length) setAttachedFiles(initialFiles);
-      setTimeout(() => handleBuild(initialPrompt, initialFiles || null), 500);
     } else if (initialFiles?.length && initialFiles.every(f => f.type?.startsWith?.('image/'))) {
       setAttachedFiles(initialFiles);
-      setTimeout(() => handleBuild(null, initialFiles), 500);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount to prefill from navigation
   }, []);
 
   useEffect(() => {
@@ -794,6 +784,7 @@ const planRes = await axios.post(`${API}/build/plan`, { prompt, swarm: useSwarm 
         setVersions(prev => [{ id: `v_${Date.now()}`, prompt: 'Image to code', files: newFiles, time: new Date().toLocaleTimeString() }, ...prev]);
         setCurrentVersion(`v_${Date.now()}`);
         setMessages(prev => prev.map((msg, i) => i === prev.length - 1 ? { role: 'assistant', content: 'Done! Your app is ready.', hasCode: true } : msg));
+        addTask({ name: prompt ? prompt.slice(0, 120) : 'Image to code', prompt: prompt || 'Image to code', status: 'completed', createdAt: Date.now() });
         setIsBuilding(false);
         setTimeout(() => fetchSuggestNext(), 400);
         return;
@@ -875,7 +866,8 @@ Respond with ONLY the complete App.js code, nothing else.`;
                   return next;
                 });
                 setActivePanel('preview'); // AUTO-WIRE: switch to preview on build complete
-                // Section 07 Test A-7/D: Save task after build completes
+                // PHASE 7: Single task authority — write to store (persists to localStorage)
+                addTask({ name: prompt.slice(0, 120), prompt, status: 'completed', createdAt: Date.now() });
                 if (token) {
                   axios.post(`${API}/api/tasks`, {
                     name: prompt.slice(0, 120),
@@ -926,7 +918,8 @@ Respond with ONLY the complete App.js code, nothing else.`;
         const mainCode = parsedFiles['/App.js']?.code || Object.values(parsedFiles)[0]?.code || '';
         axios.post(`${API}/ai/quality-gate`, { code: mainCode }).then(r => setQualityGateResult(r.data)).catch(() => setQualityGateResult(null));
         setActivePanel('preview'); // AUTO-WIRE: switch to preview on build complete
-        // Section 07 Test A-7/D: Save task after build completes
+        // PHASE 7: Single task authority — write to store (persists to localStorage)
+        addTask({ name: prompt.slice(0, 120), prompt, status: 'completed', createdAt: Date.now() });
         if (token) {
           axios.post(`${API}/api/tasks`, {
             name: prompt.slice(0, 120),
@@ -1372,7 +1365,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
   };
 
   return (
-    <div className="h-screen bg-[#FAF9F7] text-gray-900 flex flex-col overflow-hidden font-sans text-[13px] antialiased">
+    <div className="h-full min-h-0 flex flex-col overflow-hidden bg-[#FAF9F7] text-gray-900 font-sans text-[13px] antialiased">
       {/* Manus Computer Widget — wired to real build when projectId in URL (from AgentMonitor Open in Workspace) */}
       <ManusComputer 
         currentStep={projectIdFromUrl ? (projectBuildProgress.phase + 1) : (versions.length > 0 ? Math.min(versions.length, 7) : 0)}
@@ -1566,8 +1559,8 @@ Respond with ONLY the complete App.js code, nothing else.`;
 
       {/* First-run banner (one-time) */}
       {showFirstRunBanner && (
-        <div className="flex-shrink-0 px-3 py-2 bg-orange-50 border-b border-orange-100 flex items-center justify-between gap-3" data-testid="first-run-banner">
-          <p className="text-sm text-orange-900">
+        <div className="flex-shrink-0 px-3 py-2 bg-gray-100 border-b border-gray-200 flex items-center justify-between gap-3" data-testid="first-run-banner">
+          <p className="text-sm text-gray-900">
             Describe your app in the chat and we&apos;ll build it with 120 specialized agents. Plan, code, test, and deploy in one flow.
           </p>
           <button
@@ -1576,7 +1569,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
               localStorage.setItem('crucibai_first_run', '1');
               setShowFirstRunBanner(false);
             }}
-            className="shrink-0 px-2 py-1 text-xs font-medium text-orange-700 hover:bg-orange-100 rounded transition"
+            className="shrink-0 px-2 py-1 text-xs font-medium text-gray-800 hover:bg-gray-200 rounded transition"
             aria-label="Dismiss"
           >
             Dismiss
@@ -1745,18 +1738,21 @@ Respond with ONLY the complete App.js code, nothing else.`;
 
         {/* Right Panel - Manus-Style Preview / Code / Terminal / History / Tools */}
         {rightSidebarOpen && (
-        <div className="w-[45%] border-l border-stone-200 flex flex-col flex-shrink-0 bg-white" style={{ transition: 'width 0.3s ease' }}>
+        <div className="w-[42%] min-w-[320px] max-w-[560px] border-l border-stone-200 flex flex-col flex-shrink-0 bg-white" style={{ transition: 'width 0.3s ease' }}>
           {/* Manus-Style Panel Header — Section 06 */}
           <div className="h-10 border-b border-stone-200 flex items-center px-2 gap-1 flex-shrink-0 bg-[#FAF9F7]">
-            {/* Tab selectors */}
+            {/* Tab selectors — PHASE 6: Simple mode shows only Preview */}
             <div className="flex items-center gap-1">
-              {[
-                { id: 'preview', label: 'Preview', icon: Eye },
-                { id: 'console', label: 'Terminal', icon: Terminal },
-                { id: 'history', label: 'History', icon: History },
-                { id: 'review', label: 'Code', icon: FileCode },
-                { id: 'tools', label: 'Tools', icon: Wrench },
-              ].map(tab => (
+              {(devMode
+                ? [
+                    { id: 'preview', label: 'Preview', icon: Eye },
+                    { id: 'console', label: 'Terminal', icon: Terminal },
+                    { id: 'history', label: 'History', icon: History },
+                    { id: 'review', label: 'Code', icon: FileCode },
+                    { id: 'tools', label: 'Tools', icon: Wrench },
+                  ]
+                : [{ id: 'preview', label: 'Preview', icon: Eye }]
+              ).map(tab => (
                 <button
                   key={tab.id}
                   onClick={() => setActivePanel(tab.id)}
@@ -1805,16 +1801,17 @@ Respond with ONLY the complete App.js code, nothing else.`;
               </div>
             )}
 
-            {/* ISSUE 8: Deploy button always visible in right panel header */}
+            {devMode && (
             <button
               className="ml-auto mr-1 px-3 py-1 rounded text-sm font-semibold transition"
-              style={{ background: '#FF6B35', color: 'white' }}
-              onMouseEnter={e => e.target.style.background = '#E05A25'}
-              onMouseLeave={e => e.target.style.background = '#FF6B35'}
+              style={{ background: 'var(--accent)', color: 'white' }}
+              onMouseEnter={e => { e.target.style.background = 'var(--accent-hover)'; }}
+              onMouseLeave={e => { e.target.style.background = 'var(--accent)'; }}
               onClick={() => setShowDeployModal(true)}
             >
               Deploy
             </button>
+            )}
 
             <div className="flex items-center gap-1">
               <button
@@ -1833,11 +1830,18 @@ Respond with ONLY the complete App.js code, nothing else.`;
             </div>
           </div>
 
-          {/* Panel Content */}
+          {/* Panel Content — PHASE 6: Simple mode only shows Preview */}
           <div className="flex-1 overflow-hidden">
-            {activePanel === 'preview' && (
-              <div className={`flex-1 h-full overflow-hidden transition-all duration-300 ${mobileView ? 'flex justify-center' : ''}`}>
+            {(activePanel === 'preview' || !devMode) && (
+              <div className={`flex-1 h-full overflow-hidden transition-all duration-300 relative ${mobileView ? 'flex justify-center' : ''}`}>
               <div className={mobileView ? 'w-[375px] h-full border-l border-r border-gray-200' : 'w-full h-full'}>
+              {/* PHASE 5: Explicit loading state — no ambiguous dark screen */}
+              {isBuilding && (
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#FAF9F7] text-gray-500">
+                  <div className="w-8 h-8 border-2 border-stone-300 rounded-full animate-spin" style={{ borderTopColor: 'var(--accent)' }} />
+                  <span className="text-sm">Building…</span>
+                </div>
+              )}
               <SandpackProvider
                 template="react"
                 files={files}
@@ -1883,18 +1887,18 @@ Respond with ONLY the complete App.js code, nothing else.`;
               </div>
             )}
             
-            {activePanel === 'console' && (
+            {devMode && activePanel === 'console' && (
               <ConsolePanel logs={logs} placeholder="Build and agent output appears here. Use View → Terminal or Ctrl+J to focus." />
             )}
             
-            {activePanel === 'history' && (
+            {devMode && activePanel === 'history' && (
               <VersionHistory 
                 versions={versions} 
                 onRestore={restoreVersion}
                 currentVersion={currentVersion}
               />
             )}
-            {activePanel === 'review' && (
+            {devMode && activePanel === 'review' && (
               <div className="p-4 h-full overflow-auto">
                 <div className="text-xs text-gray-500 uppercase tracking-wider mb-3">Review changes</div>
                 <p className="text-sm text-gray-600 mb-4">{Object.keys(files).length} file(s) in current version.</p>
@@ -1908,11 +1912,11 @@ Respond with ONLY the complete App.js code, nothing else.`;
                 </div>
                 <div className="flex gap-2 mt-6">
                   <button onClick={() => versions.length > 1 && restoreVersion(versions[1])} className="px-4 py-2 rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300 text-sm">Undo All</button>
-                  <button onClick={() => setActivePanel('preview')} className="px-4 py-2 rounded-lg bg-orange-100 text-orange-700 hover:bg-orange-200 text-sm">Keep All</button>
+                  <button onClick={() => setActivePanel('preview')} className="px-4 py-2 rounded-lg bg-gray-200 text-gray-900 hover:bg-gray-300 text-sm">Keep All</button>
                 </div>
               </div>
             )}
-            {activePanel === 'tools' && (
+            {devMode && activePanel === 'tools' && (
               <div className="p-4 h-full overflow-auto">
                 <div className="text-xs text-gray-500 uppercase tracking-wider mb-3">Quality & checks</div>
                 <div className="flex flex-wrap gap-2 mb-4">
@@ -1954,7 +1958,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
                               {toolsReport.data.valid ? 'No issues found.' : 'Issues found. Fix available below.'}
                             </p>
                             {!toolsReport.data.valid && toolsReport.data.fixed_code && (
-                              <button onClick={applyValidateFix} className="mt-2 px-3 py-1.5 rounded bg-orange-100 text-orange-700 hover:bg-orange-200 text-xs">Apply fix</button>
+                              <button onClick={applyValidateFix} className="mt-2 px-3 py-1.5 rounded bg-gray-200 text-gray-900 hover:bg-gray-300 text-xs">Apply fix</button>
                             )}
                           </>
                         )}
@@ -1990,7 +1994,8 @@ Respond with ONLY the complete App.js code, nothing else.`;
         )}
       </div>
 
-      {/* Status bar */}
+      {/* Status bar — PHASE 6: Dev only (no token counter / errors in Simple) */}
+      {devMode && (
       <div className="h-6 border-t border-stone-200 flex items-center justify-between px-3 text-xs text-stone-600 flex-shrink-0 bg-[#FAF9F7]">
         <div className="flex items-center gap-4">
           <span>{versions.length > 0 ? `Project · v${versions.length}` : 'New Project'}</span>
@@ -2017,6 +2022,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
           {user && <span>Tokens: {user.token_balance?.toLocaleString() ?? 0}</span>}
         </div>
       </div>
+      )}
 
       {/* Bottom Chat Panel – Agent dropdown + input + Send */}
       <div className="border-t border-stone-200 bg-[#FAF9F7] p-3 flex-shrink-0 relative z-[100] isolate">
@@ -2024,14 +2030,14 @@ Respond with ONLY the complete App.js code, nothing else.`;
           <div className="mb-3">
             {currentPhase && (
               <div className="text-xs text-gray-600 mb-1 flex items-center gap-2">
-                <span className="inline-block w-2 h-2 rounded-full animate-pulse" style={{ background: '#FF6B35' }} />
+                <span className="inline-block w-2 h-2 rounded-full animate-pulse" style={{ background: '#1A1A1A' }} />
                 {currentPhase}
               </div>
             )}
             <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
               <motion.div 
                 className="h-full rounded-full"
-                style={{ background: '#FF6B35' }}
+                style={{ background: '#1A1A1A' }}
                 initial={{ width: 0 }}
                 animate={{ width: `${buildProgress}%` }}
               />
@@ -2073,7 +2079,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
                 }`}>
                   {msg.isBuilding ? (
                     <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 border-2 border-gray-300 rounded-full animate-spin" style={{ borderTopColor: '#FF6B35' }} />
+                      <div className="w-3 h-3 border-2 border-gray-300 rounded-full animate-spin" style={{ borderTopColor: '#1A1A1A' }} />
                       <span>{msg.content}</span>
                     </div>
                   ) : (
@@ -2134,6 +2140,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
           </div>
         )}
 
+        {devMode && (
         <div className="text-xs text-gray-500 mb-1.5 flex items-center justify-between flex-wrap gap-2">
           <select
             value={buildMode}
@@ -2148,6 +2155,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
           </select>
           <span><kbd className="px-1 py-0.5 rounded bg-gray-200 text-gray-600">Ctrl+K</kbd></span>
         </div>
+        )}
         <form onSubmit={handleSubmit} className="flex gap-2 items-stretch">
           <div className="flex shrink-0">
             <ModelSelector selectedModel={selectedModel} onSelectModel={setSelectedModel} variant="chat" />
@@ -2210,9 +2218,9 @@ Respond with ONLY the complete App.js code, nothing else.`;
             disabled={!input.trim() || isBuilding}
             data-testid="submit-button"
             className="relative z-10 px-4 py-2.5 rounded-lg text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition flex items-center gap-2 shrink-0"
-            style={{ background: '#FF6B35', color: '#FFFFFF' }}
+            style={{ background: '#1A1A1A', color: '#FFFFFF' }}
             onMouseEnter={e => { if (!e.target.disabled) e.target.style.background = '#E05A25'; }}
-            onMouseLeave={e => { if (!e.target.disabled) e.target.style.background = '#FF6B35'; }}
+            onMouseLeave={e => { if (!e.target.disabled) e.target.style.background = '#1A1A1A'; }}
             title={versions.length > 0 ? 'Send update' : 'Send & build'}
           >
             {isBuilding ? (
@@ -2237,7 +2245,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
               <a href="https://vercel.com/new" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-zinc-900 text-white text-sm font-medium hover:bg-gray-800">
                 Deploy with Vercel
               </a>
-              <a href="https://app.netlify.com/drop" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium text-white" style={{ background: '#FF6B35' }}>
+              <a href="https://app.netlify.com/drop" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium text-white" style={{ background: '#1A1A1A' }}>
                 Deploy with Netlify
               </a>
               <a href="https://railway.app/new" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-[#0B0D0E] text-white text-sm font-medium hover:bg-[#1a1d1f] border border-gray-600">

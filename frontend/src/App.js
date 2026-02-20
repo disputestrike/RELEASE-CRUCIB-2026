@@ -71,6 +71,8 @@ import AdminAnalytics from "./pages/AdminAnalytics";
 import AdminLegal from "./pages/AdminLegal";
 import AuditLog from "./pages/AuditLog";
 import AgentsPage from "./pages/AgentsPage";
+import { LayoutProvider } from "./stores/useLayoutStore";
+import { TaskProvider } from "./stores/useTaskStore";
 
 // Empty REACT_APP_BACKEND_URL => same-origin /api (for single-URL deploy on Railway)
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL !== undefined ? process.env.REACT_APP_BACKEND_URL : 'http://localhost:8000';
@@ -164,7 +166,11 @@ const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={{ user, token, login, register, logout, loading, refreshUser, loginWithToken, verifyMfa }}>
-      {children}
+      <LayoutProvider>
+        <TaskProvider>
+          {children}
+        </TaskProvider>
+      </LayoutProvider>
     </AuthContext.Provider>
   );
 };

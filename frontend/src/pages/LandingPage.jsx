@@ -273,7 +273,7 @@ const LandingPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-kimi-bg text-kimi-text grid-pattern-kimi">
+    <div className="marketing-page min-h-screen bg-kimi-bg text-kimi-text grid-pattern-kimi">
       {/* Navigation — Kimi-style */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-kimi-bg border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
@@ -416,7 +416,7 @@ const LandingPage = () => {
                 {attachedFiles.map((file, i) => (
                   <div key={i} className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg text-sm">
                     {file.type?.startsWith('image/') ? (
-                      <Image className="w-4 h-4 text-orange-400 shrink-0" />
+                      <Image className="w-4 h-4 text-kimi-accent shrink-0" />
                     ) : (
                       <FileText className="w-4 h-4 text-gray-400 shrink-0" />
                     )}

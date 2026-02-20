@@ -25,7 +25,7 @@ export default function ShortcutsPublic() {
       <div className="max-w-lg mx-auto px-6 py-16">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-4 mb-10">
           <div className="p-3 rounded-xl bg-zinc-800">
-            <Keyboard className="w-8 h-8 text-orange-400" />
+            <Keyboard className="w-8 h-8 text-[#1A1A1A]" />
           </div>
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">Shortcuts</h1>
