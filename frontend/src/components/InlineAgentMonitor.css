@@ -29,7 +29,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #FF6B35;
+  background: #1A1A1A;
   animation: iam-pulse 1.5s infinite;
 }
 
@@ -57,7 +57,7 @@
   align-items: center;
   padding: 1px 6px;
   background: rgba(59, 130, 246, 0.1);
-  color: #FF6B35;
+  color: #1A1A1A;
   border-radius: 4px;
   font-size: 11px;
   font-weight: 500;
@@ -78,7 +78,7 @@
   border-radius: 6px;
   font-size: 12px;
   font-weight: 600;
-  color: #D97706;
+  color: #808080;
 }
 
 /* Progress */
@@ -103,7 +103,7 @@
 
 .iam-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #FF6B35, #FF8F5E);
+  background: linear-gradient(90deg, #1A1A1A, #4A4A4A);
   border-radius: 3px;
 }
 
@@ -192,7 +192,7 @@
 
 .iam-agent.failed {
   background: rgba(239, 68, 68, 0.04);
-  color: #DC2626;
+  color: #1A1A1A;
 }
 
 .iam-agent-icon {
@@ -288,9 +288,9 @@
   flex-shrink: 0;
 }
 
-.iam-timeline-type.completed { color: #10B981; }
-.iam-timeline-type.started { color: #FF6B35; }
-.iam-timeline-type.other { color: #F59E0B; }
+.iam-timeline-type.completed { color: #808080; }
+.iam-timeline-type.started { color: #1A1A1A; }
+.iam-timeline-type.other { color: #808080; }
 
 /* Retry */
 .iam-retry-btn {

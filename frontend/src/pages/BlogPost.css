@@ -24,7 +24,7 @@
   background: #FFFFFF;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 8px;
-  color: #FF6B35;
+  color: #1A1A1A;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -33,7 +33,7 @@
 
 .back-button:hover {
   background: #F3F1ED;
-  border-color: #FF6B35;
+  border-color: #1A1A1A;
 }
 
 /* ============================================
@@ -84,7 +84,7 @@
 }
 
 .meta-item svg {
-  color: #FF6B35;
+  color: #1A1A1A;
 }
 
 .post-image {
@@ -157,14 +157,14 @@
 }
 
 .post-content a {
-  color: #FF6B35;
+  color: #1A1A1A;
   text-decoration: none;
   font-weight: 600;
   transition: color 200ms ease-in-out;
 }
 
 .post-content a:hover {
-  color: #E05A25;
+  color: #333333;
   text-decoration: underline;
 }
 
@@ -233,7 +233,7 @@
 .post-content blockquote {
   margin: 24px 0;
   padding: 16px 20px;
-  border-left: 4px solid #FF6B35;
+  border-left: 4px solid #1A1A1A;
   background: #EFF6FF;
   border-radius: 0 8px 8px 0;
   font-style: italic;
@@ -279,9 +279,9 @@
 }
 
 .share-btn:hover {
-  background: #FF6B35;
+  background: #1A1A1A;
   color: #FFFFFF;
-  border-color: #FF6B35;
+  border-color: #1A1A1A;
 }
 
 /* ============================================
@@ -318,7 +318,7 @@
 
 .related-post-card:hover {
   background: #FFFFFF;
-  border-color: #FF6B35;
+  border-color: #1A1A1A;
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
 }
 
@@ -340,9 +340,9 @@
   display: inline-block;
   padding: 8px 12px;
   background: transparent;
-  border: 1px solid #FF6B35;
+  border: 1px solid #1A1A1A;
   border-radius: 6px;
-  color: #FF6B35;
+  color: #1A1A1A;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -350,7 +350,7 @@
 }
 
 .read-more:hover {
-  background: #FF6B35;
+  background: #1A1A1A;
   color: #FFFFFF;
 }
 

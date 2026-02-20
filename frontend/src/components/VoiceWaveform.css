@@ -19,7 +19,7 @@
   font-family: 'Fira Code', monospace;
   font-size: 13px;
   font-weight: 500;
-  color: #FF6B35;
+  color: #1A1A1A;
   min-width: 48px;
   text-align: center;
 }
@@ -58,7 +58,7 @@
 }
 
 .voice-btn-confirm {
-  background: #FF6B35;
+  background: #1A1A1A;
   color: #FFFFFF;
 }
 

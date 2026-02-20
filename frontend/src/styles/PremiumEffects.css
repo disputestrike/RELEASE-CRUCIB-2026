@@ -71,7 +71,7 @@
 }
 
 .gradient-accent {
-  background: linear-gradient(135deg, #1A1A1A 0%, #E05A25 100%);
+  background: linear-gradient(135deg, #1A1A1A 0%, #333333 100%);
 }
 
 /* Gradient text */
@@ -352,7 +352,7 @@
 .btn-premium {
   position: relative;
   padding: 12px 24px;
-  background: linear-gradient(135deg, #1A1A1A 0%, #E05A25 100%);
+  background: linear-gradient(135deg, #1A1A1A 0%, #333333 100%);
   color: #FFFFFF;
   border: none;
   border-radius: 8px;

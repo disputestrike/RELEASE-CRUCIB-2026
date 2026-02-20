@@ -210,7 +210,7 @@
 
 .message-error .message-content {
   background: #FEE2E2;
-  color: #DC2626;
+  color: #1A1A1A;
   border: 1px solid #FECACA;
   border-radius: 12px 12px 12px 4px;
   max-width: 70%;
@@ -351,7 +351,7 @@
 }
 
 .send-btn:hover:not(:disabled) {
-  background: #E05A25;
+  background: #333333;
   transform: translateY(-1px);
 }
 

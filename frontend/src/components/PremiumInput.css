@@ -44,18 +44,18 @@
 .premium-input:focus {
   outline: none;
   background: #FFFFFF;
-  border-color: #FF6B35;
+  border-color: #1A1A1A;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .premium-input.focused {
   background: #FFFFFF;
-  border-color: #FF6B35;
+  border-color: #1A1A1A;
 }
 
 /* Error state */
 .premium-input.error {
-  border-color: #DC2626;
+  border-color: #1A1A1A;
   background: #FEE2E2;
 }
 
@@ -86,7 +86,7 @@
 }
 
 .premium-input-label.active {
-  color: #FF6B35;
+  color: #1A1A1A;
   font-weight: 700;
 }
 
@@ -107,12 +107,12 @@
 
 .premium-input:focus ~ .premium-input-icon,
 .premium-input-container:has(.premium-input:focus) .premium-input-icon {
-  color: #FF6B35;
+  color: #1A1A1A;
 }
 
 .premium-input.error ~ .premium-input-icon,
 .premium-input-container:has(.premium-input.error) .premium-input-icon {
-  color: #DC2626;
+  color: #1A1A1A;
 }
 
 .premium-input.success ~ .premium-input-icon,
@@ -126,7 +126,7 @@
 
 .premium-input-error {
   font-size: 12px;
-  color: #DC2626;
+  color: #1A1A1A;
   font-weight: 500;
   animation: slideInTop 200ms ease-out;
 }
@@ -173,7 +173,7 @@
    ============================================ */
 
 .premium-input:focus-visible {
-  outline: 2px solid #FF6B35;
+  outline: 2px solid #1A1A1A;
   outline-offset: 2px;
 }
 

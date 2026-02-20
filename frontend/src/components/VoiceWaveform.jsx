@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 /**
  * VoiceWaveform — canvas-based waveform visualization for voice recording.
  * Per E2E doc Section 05: AnalyserNode + canvas + orange bars + timer + stop/confirm buttons.
- * Adapted to white theme: orange (#FF6B35) bars on white background.
+ * Adapted to white theme: orange (#1A1A1A) bars on white background.
  */
 const VoiceWaveform = ({ stream, onStop, onConfirm, isRecording }) => {
   const canvasRef = useRef(null);
@@ -55,7 +55,7 @@ const VoiceWaveform = ({ stream, onStop, onConfirm, isRecording }) => {
         const barHeight = (dataArray[i] / 255) * canvas.height * 0.8;
         const y = (canvas.height - barHeight) / 2;
 
-        ctx.fillStyle = '#FF6B35';
+        ctx.fillStyle = '#1A1A1A';
         ctx.beginPath();
         ctx.roundRect(x, y, barWidth, barHeight, 2);
         ctx.fill();

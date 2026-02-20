@@ -46,7 +46,7 @@
 }
 
 .right-panel-tab:hover { color: #4B5563; }
-.right-panel-tab.active { color: #FF6B35; border-bottom-color: #FF6B35; }
+.right-panel-tab.active { color: #1A1A1A; border-bottom-color: #1A1A1A; }
 
 .right-panel-close {
   display: flex;
@@ -142,8 +142,8 @@
 }
 
 .preview-dot.green { background: #059669; }
-.preview-dot.red { background: #DC2626; }
-.preview-dot.yellow { background: #D97706; }
+.preview-dot.red { background: #1A1A1A; }
+.preview-dot.yellow { background: #808080; }
 
 .preview-url-text {
   overflow: hidden;
@@ -213,7 +213,7 @@
 }
 
 .code-file-item:hover { background: #F5F5F4; color: #1A1A1A; }
-.code-file-item.active { background: #FFF3ED; color: #FF6B35; }
+.code-file-item.active { background: #FFF3ED; color: #1A1A1A; }
 
 .code-viewer {
   flex: 1;
@@ -299,7 +299,7 @@
 }
 
 .terminal-line.error .terminal-text { color: #EF4444; }
-.terminal-line.warning .terminal-text { color: #F59E0B; }
+.terminal-line.warning .terminal-text { color: #808080; }
 .terminal-line.success .terminal-text { color: #059669; }
 .terminal-line.info .terminal-text { color: #60A5FA; }
 
@@ -337,9 +337,9 @@
 }
 
 .history-status.completed { color: #059669; }
-.history-status.failed { color: #DC2626; }
-.history-status.pending { color: #D97706; }
-.history-status.running { color: #FF6B35; }
+.history-status.failed { color: #1A1A1A; }
+.history-status.pending { color: #808080; }
+.history-status.running { color: #1A1A1A; }
 
 .history-title {
   font-size: 13px;

@@ -18,21 +18,21 @@
 }
 
 .dev-toggle-btn:hover {
-  border-color: #FF6B35;
-  color: #FF6B35;
+  border-color: #1A1A1A;
+  color: #1A1A1A;
   background: rgba(255, 107, 53, 0.05);
 }
 
 .dev-toggle-btn.active {
-  border-color: #FF6B35;
-  color: #FF6B35;
+  border-color: #1A1A1A;
+  color: #1A1A1A;
   background: rgba(255, 107, 53, 0.1);
 }
 
 .dev-toggle-btn.active:hover {
   background: rgba(255, 107, 53, 0.15);
-  border-color: #E05A25;
-  color: #E05A25;
+  border-color: #333333;
+  color: #333333;
 }
 
 /* Simple mode chat area */

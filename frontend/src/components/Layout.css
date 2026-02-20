@@ -141,7 +141,7 @@
 }
 
 .status-green { color: #059669; }
-.status-amber { color: #D97706; }
+.status-amber { color: #808080; }
 .status-gray { color: #9CA3AF; }
 
 .status-retry {
