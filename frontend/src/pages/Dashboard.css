@@ -72,7 +72,7 @@
 
 .dashboard-prompt-container:focus-within {
   border-color: #1A1A1A;
-  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.08);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
 }
 
 .dashboard-prompt-input {
@@ -121,8 +121,8 @@
 }
 
 .dashboard-prompt-btn.recording {
-  background: #FEE2E2;
-  color: #EF4444;
+  background: #F5F5F4;
+  color: #1A1A1A;
   animation: pulse-recording 1.5s infinite;
 }
 
@@ -163,8 +163,8 @@
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: #ECFDF5;
-  color: #059669;
+  background: #F5F5F4;
+  color: #1A1A1A;
 }
 
 /* Attached Files */
@@ -301,7 +301,7 @@
 .dashboard-chip:hover {
   border-color: #1A1A1A;
   color: #1A1A1A;
-  background: rgba(255, 107, 53, 0.06);
+  background: rgba(0, 0, 0, 0.04);
 }
 
 .dashboard-chip-icon {

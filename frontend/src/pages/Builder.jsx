@@ -164,7 +164,7 @@ const Builder = () => {
 
 /* Custom styles for ${plan.appName} */
 :root {
-  --primary: #3b82f6;
+  --primary: #1A1A1A;
   --secondary: #8b5cf6;
 }
 

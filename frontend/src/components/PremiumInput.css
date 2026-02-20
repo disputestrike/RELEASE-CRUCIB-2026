@@ -65,7 +65,7 @@
 
 /* Success state */
 .premium-input.success {
-  border-color: #16A34A;
+  border-color: #1A1A1A;
   background: #DCFCE7;
 }
 
@@ -117,7 +117,7 @@
 
 .premium-input.success ~ .premium-input-icon,
 .premium-input-container:has(.premium-input.success) .premium-input-icon {
-  color: #16A34A;
+  color: #1A1A1A;
 }
 
 /* ============================================
@@ -133,7 +133,7 @@
 
 .premium-input-success {
   font-size: 12px;
-  color: #16A34A;
+  color: #1A1A1A;
   font-weight: 500;
   animation: slideInTop 200ms ease-out;
 }

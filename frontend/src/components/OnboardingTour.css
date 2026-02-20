@@ -76,7 +76,7 @@
 }
 
 .onboarding-progress-dot.active {
-  background: #10b981;
+  background: #1A1A1A;
   width: 24px;
   border-radius: 4px;
 }
@@ -96,7 +96,7 @@
   align-items: center;
   justify-content: center;
   margin: 0 auto 16px;
-  color: #10b981;
+  color: #1A1A1A;
 }
 
 /* Content */
@@ -145,7 +145,7 @@
 }
 
 .onboarding-btn--primary {
-  background: #10b981;
+  background: #1A1A1A;
   color: #0a0a0a;
   flex: 1;
   justify-content: center;

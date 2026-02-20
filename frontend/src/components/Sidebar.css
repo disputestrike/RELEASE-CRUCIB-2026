@@ -233,7 +233,7 @@
 
 .sidebar-item-icon { flex-shrink: 0; color: #9CA3AF; }
 
-.sidebar-item-icon.status-completed { color: #059669; }
+.sidebar-item-icon.status-completed { color: #1A1A1A; }
 .sidebar-item-icon.status-running { color: #1A1A1A; animation: pulse 2s infinite; }
 .sidebar-item-icon.status-failed { color: #1A1A1A; }
 .sidebar-item-icon.status-pending { color: #9CA3AF; }

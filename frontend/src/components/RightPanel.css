@@ -141,7 +141,7 @@
   flex-shrink: 0;
 }
 
-.preview-dot.green { background: #059669; }
+.preview-dot.green { background: #1A1A1A; }
 .preview-dot.red { background: #1A1A1A; }
 .preview-dot.gray { background: #808080; }
 
@@ -288,7 +288,7 @@
 }
 
 .terminal-prefix {
-  color: #059669;
+  color: #1A1A1A;
   flex-shrink: 0;
   user-select: none;
 }
@@ -300,7 +300,7 @@
 
 .terminal-line.error .terminal-text { color: #EF4444; }
 .terminal-line.warning .terminal-text { color: #808080; }
-.terminal-line.success .terminal-text { color: #059669; }
+.terminal-line.success .terminal-text { color: #1A1A1A; }
 .terminal-line.info .terminal-text { color: #60A5FA; }
 
 /* ============================================
@@ -336,7 +336,7 @@
   flex-shrink: 0;
 }
 
-.history-status.completed { color: #059669; }
+.history-status.completed { color: #1A1A1A; }
 .history-status.failed { color: #1A1A1A; }
 .history-status.pending { color: #808080; }
 .history-status.running { color: #1A1A1A; }
