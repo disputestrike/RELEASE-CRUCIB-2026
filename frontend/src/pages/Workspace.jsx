@@ -109,7 +109,7 @@ root.render(<App />);`,
 // File tree component
 const FileTree = ({ files, activeFile, onSelectFile, onAddFile }) => {
   const getFileIcon = (filename) => {
-    if (filename.endsWith('.js') || filename.endsWith('.jsx')) return <FileCode className="w-4 h-4 text-yellow-400" />;
+    if (filename.endsWith('.js') || filename.endsWith('.jsx')) return <FileCode className="w-4 h-4 text-#c0c0c0" />;
     if (filename.endsWith('.css')) return <FileText className="w-4 h-4 text-gray-800" />;
     if (filename.endsWith('.html')) return <FileText className="w-4 h-4 text-gray-800" />;
     return <File className="w-4 h-4 text-gray-500" />;
@@ -168,8 +168,8 @@ const ConsolePanel = ({ logs, placeholder = "Terminal output will appear here. R
           <div
             key={i}
             className={`flex items-start gap-2 ${
-              log.type === 'error' ? 'text-red-600' :
-              log.type === 'success' ? 'text-green-700' :
+              log.type === 'error' ? 'text-gray-600' :
+              log.type === 'success' ? 'text-gray-700' :
               log.type === 'warning' ? 'text-amber-700' :
               'text-gray-600'
             }`}
@@ -239,7 +239,7 @@ const ModelSelector = ({ selectedModel, onSelectModel, variant = 'default' }) =>
                       <div className="font-medium">{model.name}</div>
                       <div className="text-xs text-gray-500 truncate">{model.desc}</div>
                     </div>
-                    {selectedModel === model.id && <Check className="w-4 h-4 shrink-0 text-green-600" />}
+                    {selectedModel === model.id && <Check className="w-4 h-4 shrink-0 text-gray-600" />}
                   </button>
                 ))}
               </div>
@@ -1653,7 +1653,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
                     className="p-1.5 text-gray-500 hover:text-gray-900 transition"
                     title="Copy code"
                   >
-                    {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                    {copied ? <Check className="w-4 h-4 text-gray-600" /> : <Copy className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
@@ -1951,10 +1951,10 @@ Respond with ONLY the complete App.js code, nothing else.`;
                     {toolsReport.type === 'validate' && (
                       <>
                         {toolsReport.data.error ? (
-                          <p className="text-red-600">{toolsReport.data.error}</p>
+                          <p className="text-gray-600">{toolsReport.data.error}</p>
                         ) : (
                           <>
-                            <p className={toolsReport.data.valid ? 'text-green-700' : 'text-amber-700'}>
+                            <p className={toolsReport.data.valid ? 'text-gray-700' : 'text-amber-700'}>
                               {toolsReport.data.valid ? 'No issues found.' : 'Issues found. Fix available below.'}
                             </p>
                             {!toolsReport.data.valid && toolsReport.data.fixed_code && (
@@ -2000,7 +2000,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
         <div className="flex items-center gap-4">
           <span>{versions.length > 0 ? `Project · v${versions.length}` : 'New Project'}</span>
           <span>{currentVersion ? 'main' : '—'}</span>
-          {lastError && <span className="text-red-600">1 error</span>}
+          {lastError && <span className="text-gray-600">1 error</span>}
           {!lastError && <span className="text-stone-500">0 errors</span>}
           <span className="text-stone-500">0 warnings</span>
         </div>
@@ -2013,7 +2013,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
             </span>
           )}
           {qualityGateResult != null && (
-            <span className={qualityGateResult.passed ? 'text-green-600' : 'text-amber-600'} title="Quality gate">
+            <span className={qualityGateResult.passed ? 'text-gray-600' : 'text-amber-600'} title="Quality gate">
               Quality: {qualityGateResult.score}% {qualityGateResult.passed ? '✓' : '(review)'}
             </span>
           )}
@@ -2074,7 +2074,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
                   msg.role === 'user' 
                     ? 'bg-gray-100 text-gray-900' 
                     : msg.error 
-                      ? 'bg-red-50 text-red-700 border border-red-200'
+                      ? 'bg-gray-50 text-gray-700 border border-gray-200'
                       : 'bg-white border border-gray-200 text-gray-800'
                 }`}>
                   {msg.isBuilding ? (
@@ -2109,9 +2109,9 @@ Respond with ONLY the complete App.js code, nothing else.`;
             {attachedFiles.map((file, i) => (
               <div key={i} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm">
                 {file.type.startsWith('image/') ? (
-                  <Image className="w-4 h-4 text-orange-600" />
+                  <Image className="w-4 h-4 text-#000000" />
                 ) : (
-                  <FileText className="w-4 h-4 text-green-600" />
+                  <FileText className="w-4 h-4 text-gray-600" />
                 )}
                 <span className="text-gray-700 max-w-[150px] truncate">{file.name}</span>
                 <button onClick={() => removeFile(i)} className="text-gray-500 hover:text-gray-900">

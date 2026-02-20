@@ -157,10 +157,10 @@ export default function Pricing() {
               <h2 className="text-2xl font-semibold mb-2">Start for free</h2>
               <p className="text-stone-500 mb-4">50 credits. Build landing pages, export, and deploy. No credit card.</p>
               <ul className="space-y-2 text-sm text-[#1A1A1A]">
-                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500 shrink-0" /> 50 credits for landing pages</li>
-                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500 shrink-0" /> Plan-first build & live preview</li>
-                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500 shrink-0" /> Export to ZIP & push to GitHub</li>
-                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-green-500 shrink-0" /> 120-agent swarm, templates & prompt library</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-gray-500 shrink-0" /> 50 credits for landing pages</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-gray-500 shrink-0" /> Plan-first build & live preview</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-gray-500 shrink-0" /> Export to ZIP & push to GitHub</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-gray-500 shrink-0" /> 120-agent swarm, templates & prompt library</li>
               </ul>
             </div>
             <div className="shrink-0">
@@ -234,9 +234,9 @@ export default function Pricing() {
                 {showSpeed && <p className="text-stone-500 text-xs mb-4">{b.speed}</p>}
                 <ul className="space-y-2 text-xs text-[#1A1A1A] mb-6">
                   {features.map((f, j) => (
-                    <li key={j} className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-green-500 shrink-0" /> {f}</li>
+                    <li key={j} className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-gray-500 shrink-0" /> {f}</li>
                   ))}
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-green-500 shrink-0" /> Unused credits roll over</li>
+                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-gray-500 shrink-0" /> Unused credits roll over</li>
                 </ul>
                 <button
                   onClick={() => navigate(user ? '/app/tokens' : '/auth?mode=register')}

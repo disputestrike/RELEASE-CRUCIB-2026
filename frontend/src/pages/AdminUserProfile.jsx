@@ -85,8 +85,8 @@ const AdminUserProfile = () => {
   if (error) {
     return (
       <div className="p-8">
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-400">{error}</div>
-        <Link to="/app/admin/users" className="inline-flex items-center mt-4 text-orange-400">
+        <div className="rounded-lg border border-gray-500/30 bg-gray-500/10 p-4 text-gray-400">{error}</div>
+        <Link to="/app/admin/users" className="inline-flex items-center mt-4 text-#c0c0c0">
           <ArrowLeft className="w-4 h-4 mr-2" /> Back to users
         </Link>
       </div>
@@ -96,7 +96,7 @@ const AdminUserProfile = () => {
   if (loading || !profile) {
     return (
       <div className="flex items-center justify-center min-h-[40vh]">
-        <div className="w-12 h-12 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-12 h-12 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -111,7 +111,7 @@ const AdminUserProfile = () => {
         <p className="text-[#666666]">ID: {profile.id}</p>
       </div>
       {message && (
-        <div className={`p-4 rounded-lg ${message.includes('Granted') || message.includes('suspended') ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+        <div className={`p-4 rounded-lg ${message.includes('Granted') || message.includes('suspended') ? 'bg-gray-500/10 text-gray-400' : 'bg-gray-500/10 text-gray-400'}`}>
           {message}
         </div>
       )}
@@ -126,7 +126,7 @@ const AdminUserProfile = () => {
           <p><span className="text-[#666666]">Last login:</span> {profile.last_login ? new Date(profile.last_login).toLocaleString() : '-'}</p>
           <p><span className="text-[#666666]">Lifetime revenue:</span> ${profile.lifetime_revenue ?? 0}</p>
           {profile.suspended && (
-            <p className="text-red-400 mt-2">Suspended: {profile.suspended_reason}</p>
+            <p className="text-gray-400 mt-2">Suspended: {profile.suspended_reason}</p>
           )}
         </div>
         <div className="p-6 rounded-xl border border-white/10 bg-white/5">
@@ -144,7 +144,7 @@ const AdminUserProfile = () => {
             {profile.recent_ledger.slice(0, 10).map((entry) => (
               <li key={entry.id} className="flex justify-between text-sm">
                 <span>{entry.type} – {entry.description || '-'}</span>
-                <span className={entry.credits > 0 ? 'text-green-400' : 'text-red-400'}>
+                <span className={entry.credits > 0 ? 'text-gray-400' : 'text-gray-400'}>
                   {entry.credits > 0 ? '+' : ''}{entry.credits} credits
                 </span>
               </li>
@@ -177,15 +177,15 @@ const AdminUserProfile = () => {
               <button
                 type="submit"
                 disabled={actionLoading || !grantCredits}
-                className="px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-500 disabled:opacity-50"
+                className="px-4 py-2 rounded-lg bg-black hover:bg-gray-200 disabled:opacity-50"
               >
                 {actionLoading ? '...' : 'Grant'}
               </button>
             </form>
           </div>
           {isOwnerOrOps && (
-            <div className="p-6 rounded-xl border border-red-500/20 bg-red-500/5">
-              <h2 className="font-semibold mb-4 flex items-center gap-2 text-red-400">
+            <div className="p-6 rounded-xl border border-gray-500/20 bg-gray-500/5">
+              <h2 className="font-semibold mb-4 flex items-center gap-2 text-gray-400">
                 <Ban className="w-5 h-5" /> Suspend account
               </h2>
               <form onSubmit={handleSuspend} className="flex flex-wrap gap-4">
@@ -199,7 +199,7 @@ const AdminUserProfile = () => {
                 <button
                   type="submit"
                   disabled={actionLoading || !suspendReason.trim()}
-                  className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 disabled:opacity-50"
+                  className="px-4 py-2 rounded-lg bg-gray-600 hover:bg-gray-500 disabled:opacity-50"
                 >
                   {actionLoading ? '...' : 'Suspend'}
                 </button>

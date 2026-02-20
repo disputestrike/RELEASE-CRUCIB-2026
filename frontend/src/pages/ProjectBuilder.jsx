@@ -89,13 +89,13 @@ const ProjectBuilder = () => {
           {[1, 2, 3].map(s => (
             <div key={s} className="flex items-center gap-2">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center font-medium transition-all ${
-                step > s ? 'bg-green-500 text-[#1A1A1A]' :
-                step === s ? 'bg-orange-500 text-[#1A1A1A]' :
+                step > s ? 'bg-gray-500 text-[#1A1A1A]' :
+                step === s ? 'bg-gray-200 text-[#1A1A1A]' :
                 'bg-white/10 text-gray-500'
               }`}>
                 {step > s ? <Check className="w-4 h-4" /> : s}
               </div>
-              {s < 3 && <div className={`w-12 h-0.5 ${step > s ? 'bg-green-500' : 'bg-white/10'}`}></div>}
+              {s < 3 && <div className={`w-12 h-0.5 ${step > s ? 'bg-gray-500' : 'bg-white/10'}`}></div>}
             </div>
           ))}
         </div>
@@ -120,24 +120,24 @@ const ProjectBuilder = () => {
                 onClick={() => setFormData({ ...formData, project_type: type.id })}
                 className={`p-6 rounded-xl border text-left transition-all ${
                   formData.project_type === type.id
-                    ? 'bg-orange-500/10 border-orange-500/50'
+                    ? 'bg-gray-200/10 border-gray-300/50'
                     : 'bg-[#0a0a0a] border-white/10 hover:border-white/20'
                 }`}
                 data-testid={`project-type-${type.id}`}
               >
                 <div className="flex items-start gap-4">
                   <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                    formData.project_type === type.id ? 'bg-orange-500/20' : 'bg-white/5'
+                    formData.project_type === type.id ? 'bg-gray-200/20' : 'bg-white/5'
                   }`}>
                     <type.icon className={`w-6 h-6 ${
-                      formData.project_type === type.id ? 'text-orange-400' : 'text-[#666666]'
+                      formData.project_type === type.id ? 'text-#c0c0c0' : 'text-[#666666]'
                     }`} />
                   </div>
                   <div className="flex-1">
                     <h3 className="font-semibold mb-1">{type.name}</h3>
                     <p className="text-sm text-gray-500 mb-2">{type.desc}</p>
                     <div className="flex items-center gap-2 text-xs">
-                      <Zap className="w-3 h-3 text-yellow-500" />
+                      <Zap className="w-3 h-3 text-gray-200" />
                       <span className="text-[#666666]">~{(type.tokens / 1000).toFixed(0)}K tokens</span>
                     </div>
                   </div>
@@ -164,7 +164,7 @@ const ProjectBuilder = () => {
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-gray-300 focus:ring-1 focus:ring-#f5f5f50 outline-none transition"
                 placeholder="My Awesome App"
                 data-testid="project-name-input"
               />
@@ -176,7 +176,7 @@ const ProjectBuilder = () => {
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={4}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition resize-none"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-gray-300 focus:ring-1 focus:ring-#f5f5f50 outline-none transition resize-none"
                 placeholder="Describe your project in detail. What features do you need? What's the purpose?"
                 data-testid="project-description-input"
               />
@@ -191,7 +191,7 @@ const ProjectBuilder = () => {
                     ...formData, 
                     requirements: { ...formData.requirements, styling: e.target.value } 
                   })}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-orange-500 outline-none"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-gray-300 outline-none"
                   data-testid="project-styling-select"
                 >
                   <option value="">Select style</option>
@@ -210,7 +210,7 @@ const ProjectBuilder = () => {
                     ...formData, 
                     requirements: { ...formData.requirements, deployment: e.target.value } 
                   })}
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-orange-500 outline-none"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-gray-300 outline-none"
                   data-testid="project-deployment-select"
                 >
                   <option value="vercel">Vercel</option>
@@ -230,7 +230,7 @@ const ProjectBuilder = () => {
                     ...formData, 
                     requirements: { ...formData.requirements, auth: e.target.checked } 
                   })}
-                  className="w-5 h-5 rounded border-white/20 bg-white/5 text-orange-500 focus:ring-orange-500"
+                  className="w-5 h-5 rounded border-white/20 bg-white/5 text-gray-200 focus:ring-#f5f5f50"
                 />
                 <span>User Authentication</span>
               </label>
@@ -243,7 +243,7 @@ const ProjectBuilder = () => {
                     ...formData, 
                     requirements: { ...formData.requirements, database: e.target.checked } 
                   })}
-                  className="w-5 h-5 rounded border-white/20 bg-white/5 text-orange-500 focus:ring-orange-500"
+                  className="w-5 h-5 rounded border-white/20 bg-white/5 text-gray-200 focus:ring-#f5f5f50"
                 />
                 <span>Database</span>
               </label>
@@ -262,14 +262,14 @@ const ProjectBuilder = () => {
           <p className="text-[#666666] mb-8">Make sure everything looks good before we start generating.</p>
           
           {error && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400">
+            <div className="mb-6 p-4 bg-gray-500/10 border border-gray-500/30 rounded-lg text-gray-400">
               <div className="flex items-center gap-3">
                 <AlertCircle className="w-5 h-5 flex-shrink-0" />
                 <span>{error}</span>
               </div>
               {(error.includes('Acceptable Use') || error.toLowerCase().includes('violates')) && (
                 <p className="mt-2 text-sm">
-                  <Link to="/aup" className="text-orange-400 hover:underline">View Acceptable Use Policy</Link>
+                  <Link to="/aup" className="text-#c0c0c0 hover:underline">View Acceptable Use Policy</Link>
                   {' '}· Appeals: appeals@crucibai.com
                 </p>
               )}
@@ -278,8 +278,8 @@ const ProjectBuilder = () => {
 
           <div className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10 space-y-6">
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-orange-500/20 rounded-lg flex items-center justify-center">
-                {selectedType && <selectedType.icon className="w-6 h-6 text-orange-400" />}
+              <div className="w-12 h-12 bg-gray-200/20 rounded-lg flex items-center justify-center">
+                {selectedType && <selectedType.icon className="w-6 h-6 text-#c0c0c0" />}
               </div>
               <div>
                 <h3 className="text-xl font-semibold">{formData.name}</h3>
@@ -311,10 +311,10 @@ const ProjectBuilder = () => {
               </div>
             </div>
 
-            <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+            <div className="p-4 bg-gray-200/10 border border-gray-300/30 rounded-lg">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Zap className="w-5 h-5 text-yellow-500" />
+                  <Zap className="w-5 h-5 text-gray-200" />
                   <div>
                     <p className="font-medium">Estimated Token Cost</p>
                     <p className="text-sm text-[#666666]">~{((selectedType?.tokens || 0) / 1000).toFixed(0)}K tokens</p>
@@ -326,7 +326,7 @@ const ProjectBuilder = () => {
                 </div>
               </div>
               {(user?.token_balance || 0) < (selectedType?.tokens || 0) && (
-                <p className="mt-3 text-sm text-red-400">Insufficient tokens. Please purchase more.</p>
+                <p className="mt-3 text-sm text-gray-400">Insufficient tokens. Please purchase more.</p>
               )}
             </div>
           </div>
@@ -350,7 +350,7 @@ const ProjectBuilder = () => {
           <button
             onClick={() => setStep(step + 1)}
             disabled={!canProceed()}
-            className="flex items-center gap-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition neon-orange"
+            className="flex items-center gap-2 px-6 py-3 bg-gray-200 hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition neon-gray"
             data-testid="next-step-btn"
           >
             Continue
@@ -360,7 +360,7 @@ const ProjectBuilder = () => {
           <button
             onClick={handleSubmit}
             disabled={loading || (user?.token_balance || 0) < (selectedType?.tokens || 0)}
-            className="flex items-center gap-2 px-8 py-3 bg-green-500 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition"
+            className="flex items-center gap-2 px-8 py-3 bg-gray-500 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition"
             data-testid="create-project-btn"
           >
             {loading ? (

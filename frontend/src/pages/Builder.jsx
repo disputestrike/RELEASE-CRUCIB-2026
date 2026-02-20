@@ -350,7 +350,7 @@ root.render(
         <button
           onClick={() => setSelectedFile(item.path)}
           className={`w-full flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-gray-100 rounded transition ${
-            selectedFile === item.path ? 'bg-orange-50 text-[#1A1A1A]' : 'text-gray-700'
+            selectedFile === item.path ? 'bg-#f5f5f5 text-[#1A1A1A]' : 'text-gray-700'
           }`}
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
         >
@@ -368,7 +368,7 @@ root.render(
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
         >
           {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-          <Folder className="w-4 h-4 text-orange-500" />
+          <Folder className="w-4 h-4 text-gray-200" />
           {name}
         </button>
         {expanded && item.children && (
@@ -404,7 +404,7 @@ root.render(
                 <Download className="w-4 h-4" />
                 Download
               </button>
-              <button className="flex items-center gap-2 px-4 py-1.5 text-sm bg-orange-600 text-[#1A1A1A] rounded-lg hover:bg-orange-700 transition">
+              <button className="flex items-center gap-2 px-4 py-1.5 text-sm bg-black text-[#1A1A1A] rounded-lg hover:bg-black transition">
                 <Rocket className="w-4 h-4" />
                 Deploy
               </button>
@@ -424,8 +424,8 @@ root.render(
               <div
                 key={agent.id}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm whitespace-nowrap ${
-                  status === 'complete' ? 'bg-green-100 text-green-700' :
-                  status === 'running' ? 'bg-orange-100 text-orange-700 animate-pulse' :
+                  status === 'complete' ? 'bg-gray-100 text-gray-700' :
+                  status === 'running' ? 'bg-#eeeeee text-#000000 animate-pulse' :
                   'bg-gray-100 text-[#666666]'
                 }`}
               >
@@ -447,7 +447,7 @@ root.render(
             /* Initial Prompt Screen */
             <div className="flex-1 flex items-center justify-center p-8">
               <div className="max-w-2xl w-full text-center">
-                <div className="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <div className="w-16 h-16 bg-#eeeeee rounded-2xl flex items-center justify-center mx-auto mb-6">
                   <Sparkles className="w-8 h-8 text-[#1A1A1A]" />
                 </div>
                 <h1 className="text-3xl font-bold mb-4">What do you want to build?</h1>
@@ -459,7 +459,7 @@ root.render(
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                     placeholder="e.g., Build a task management app with drag-and-drop, user authentication, and dark mode..."
-                    className="w-full h-32 px-4 py-3 border border-gray-200 rounded-xl focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none resize-none text-lg"
+                    className="w-full h-32 px-4 py-3 border border-gray-200 rounded-xl focus:border-gray-300 focus:ring-2 focus:ring-#f5f5f50/20 outline-none resize-none text-lg"
                     data-testid="builder-prompt-input"
                   />
                   <button
@@ -492,7 +492,7 @@ root.render(
                     <button
                       key={example}
                       onClick={() => setPrompt(example)}
-                      className="p-3 border border-gray-200 rounded-lg hover:border-orange-300 hover:bg-orange-50 transition text-sm text-gray-600"
+                      className="p-3 border border-gray-200 rounded-lg hover:border-#d0d0d0 hover:bg-#f5f5f5 transition text-sm text-gray-600"
                     >
                       {example}
                     </button>
@@ -579,10 +579,10 @@ root.render(
               </div>
               <div className="flex-1 bg-white p-4">
                 {buildPhase === 'complete' ? (
-                  <div className="h-full border border-gray-200 rounded-lg overflow-hidden bg-gradient-to-br from-orange-50 to-orange-50 flex items-center justify-center">
+                  <div className="h-full border border-gray-200 rounded-lg overflow-hidden bg-gradient-to-br from-#f5f5f5 to-#f5f5f5 flex items-center justify-center">
                     <div className="text-center">
-                      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Check className="w-8 h-8 text-green-600" />
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Check className="w-8 h-8 text-gray-600" />
                       </div>
                       <p className="font-semibold text-gray-900">Preview Ready!</p>
                       <p className="text-sm text-gray-500 mt-1">Your app has been generated</p>
@@ -591,7 +591,7 @@ root.render(
                           href={previewUrl} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-orange-600 text-[#1A1A1A] rounded-lg text-sm hover:bg-orange-700"
+                          className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-black text-[#1A1A1A] rounded-lg text-sm hover:bg-black"
                         >
                           <ExternalLink className="w-4 h-4" />
                           Open Preview
@@ -638,7 +638,7 @@ root.render(
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     placeholder="Ask for changes..."
-                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-orange-500 outline-none"
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-gray-300 outline-none"
                     data-testid="builder-chat-input"
                   />
                   <button
@@ -667,9 +667,9 @@ root.render(
           <div className="flex-1 overflow-y-auto p-2 font-mono text-xs">
             {logs.map((log, i) => (
               <div key={i} className={`py-0.5 ${
-                log.type === 'error' ? 'text-red-400' :
-                log.type === 'success' ? 'text-green-400' :
-                log.type === 'agent' ? 'text-orange-400' :
+                log.type === 'error' ? 'text-gray-400' :
+                log.type === 'success' ? 'text-gray-400' :
+                log.type === 'agent' ? 'text-#c0c0c0' :
                 'text-gray-300'
               }`}>
                 <span className="text-gray-500">[{log.timestamp}]</span> {log.message}

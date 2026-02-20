@@ -55,7 +55,7 @@ const TUTORIALS = [
     icon: Smartphone,
     steps: [
       { title: 'Select Mobile project type', content: 'In New Project, select "Mobile App (Expo)". This configures React Native with Expo, navigation, and platform-specific components.' },
-      { title: 'Describe your mobile app', content: 'Example: "Build a fitness tracking app. Features: workout logging, progress charts, rest timer, exercise library with animations. Dark theme with orange accents."' },
+      { title: 'Describe your mobile app', content: 'Example: "Build a fitness tracking app. Features: workout logging, progress charts, rest timer, exercise library with animations. Minimalist black and gray theme."' },
       { title: 'Preview on your device', content: 'After the build, scan the QR code with Expo Go on your phone. The app runs natively on your device for real-time testing.' },
       { title: 'Add push notifications', content: 'Type: "/add push notifications for workout reminders". CrucibAI adds Expo Notifications, a backend scheduler, and permission handling.' },
       { title: 'Submit to App Store', content: 'Click Export > App Store Pack. You get: signed IPA, App Store screenshots, metadata, and submission instructions. For Google Play: Export > Play Store Pack.' },
@@ -190,7 +190,7 @@ const CATEGORIES = [
 ];
 
 const DIFFICULTY_COLORS = {
-  beginner: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+  beginner: 'bg-gray-500/15 text-gray-400 border-gray-500/30',
   intermediate: 'bg-gray-200 text-[#1A1A1A] border-gray-300',
   advanced: 'bg-gray-200 text-[#1A1A1A] border-gray-300',
 };
@@ -232,8 +232,8 @@ export default function TutorialsPage() {
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-3 rounded-xl bg-emerald-500/20">
-              <BookOpen className="w-7 h-7 text-emerald-400" />
+            <div className="p-3 rounded-xl bg-gray-500/20">
+              <BookOpen className="w-7 h-7 text-gray-400" />
             </div>
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Tutorials</h1>
@@ -250,7 +250,7 @@ export default function TutorialsPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search tutorials... (e.g., mobile, deploy, voice)"
-            className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-emerald-500/50"
+            className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-gray-500/50"
           />
         </div>
 
@@ -264,7 +264,7 @@ export default function TutorialsPage() {
                 onClick={() => setActiveCategory(cat.id)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition ${
                   activeCategory === cat.id
-                    ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                    ? 'bg-gray-500/15 text-gray-400 border border-gray-500/30'
                     : 'text-zinc-500 hover:text-zinc-300 border border-zinc-800 hover:border-zinc-700'
                 }`}
               >
@@ -289,7 +289,7 @@ export default function TutorialsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.05 }}
                 className={`rounded-xl border transition ${
-                  isExpanded ? 'border-emerald-500/30 bg-zinc-900' : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-700'
+                  isExpanded ? 'border-gray-500/30 bg-zinc-900' : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-700'
                 }`}
               >
                 {/* Tutorial header */}
@@ -298,9 +298,9 @@ export default function TutorialsPage() {
                   className="w-full flex items-center gap-4 px-6 py-5 text-left"
                 >
                   <div className={`p-2.5 rounded-xl shrink-0 ${
-                    isExpanded ? 'bg-emerald-500/20' : 'bg-zinc-800'
+                    isExpanded ? 'bg-gray-500/20' : 'bg-zinc-800'
                   }`}>
-                    <Icon size={20} className={isExpanded ? 'text-emerald-400' : 'text-zinc-400'} />
+                    <Icon size={20} className={isExpanded ? 'text-gray-400' : 'text-zinc-400'} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-lg">{tutorial.title}</h3>
@@ -314,7 +314,7 @@ export default function TutorialsPage() {
                       <Clock size={12} /> {tutorial.duration}
                     </span>
                     {completedCount > 0 && (
-                      <span className="text-xs text-emerald-400">{completedCount}/{tutorial.steps.length}</span>
+                      <span className="text-xs text-gray-400">{completedCount}/{tutorial.steps.length}</span>
                     )}
                     <ChevronDown size={18} className={`text-zinc-600 transition ${isExpanded ? 'rotate-180' : ''}`} />
                   </div>
@@ -337,17 +337,17 @@ export default function TutorialsPage() {
                               <div
                                 key={i}
                                 className={`flex gap-4 p-4 rounded-lg transition cursor-pointer ${
-                                  isCompleted ? 'bg-emerald-500/5 border border-emerald-500/20' : 'bg-zinc-800/50 hover:bg-zinc-800'
+                                  isCompleted ? 'bg-gray-500/5 border border-gray-500/20' : 'bg-zinc-800/50 hover:bg-zinc-800'
                                 }`}
                                 onClick={() => toggleStep(tutorial.id, i)}
                               >
                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-bold ${
-                                  isCompleted ? 'bg-emerald-500 text-white' : 'bg-zinc-700 text-zinc-400'
+                                  isCompleted ? 'bg-gray-500 text-white' : 'bg-zinc-700 text-zinc-400'
                                 }`}>
                                   {isCompleted ? <Check size={16} /> : i + 1}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <h4 className={`font-medium text-sm ${isCompleted ? 'text-emerald-400' : 'text-zinc-200'}`}>
+                                  <h4 className={`font-medium text-sm ${isCompleted ? 'text-gray-400' : 'text-zinc-200'}`}>
                                     {step.title}
                                   </h4>
                                   <p className="text-sm text-zinc-500 mt-1 leading-relaxed whitespace-pre-line">
@@ -363,7 +363,7 @@ export default function TutorialsPage() {
                         <div className="mt-4 flex items-center gap-3">
                           <button
                             onClick={() => navigate(user ? '/app/workspace' : '/auth')}
-                            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 rounded-lg text-sm font-medium transition"
+                            className="flex items-center gap-2 px-4 py-2 bg-gray-500 hover:bg-gray-600 rounded-lg text-sm font-medium transition"
                           >
                             <Play size={14} /> Try it now
                           </button>
@@ -398,7 +398,7 @@ export default function TutorialsPage() {
             <button onClick={() => navigate('/learn')} className="flex items-center gap-2 px-5 py-2.5 border border-zinc-700 hover:border-zinc-600 rounded-lg text-sm font-medium transition">
               <BookOpen size={16} /> Learn
             </button>
-            <button onClick={() => navigate(user ? '/app/workspace' : '/auth')} className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 rounded-lg text-sm font-medium transition">
+            <button onClick={() => navigate(user ? '/app/workspace' : '/auth')} className="flex items-center gap-2 px-5 py-2.5 bg-gray-500 hover:bg-gray-600 rounded-lg text-sm font-medium transition">
               <Zap size={16} /> Open Workspace
             </button>
           </div>

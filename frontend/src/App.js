@@ -184,7 +184,7 @@ const ProtectedRoute = ({ children }) => {
     return (
       <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-12 h-12 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
@@ -205,7 +205,7 @@ const AdminRoute = ({ children }) => {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
-        <div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-12 h-12 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }

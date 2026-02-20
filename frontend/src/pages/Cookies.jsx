@@ -8,7 +8,7 @@ export default function Cookies() {
         <p className="text-sm text-[#666666] mb-8">Last updated: February 2026</p>
 
         <div className="space-y-6 text-[#1A1A1A] leading-relaxed">
-          <p>This Cookie Policy explains how CrucibAI uses cookies and similar technologies when you use our website and service. It should be read together with our <Link to="/privacy" className="text-orange-400 hover:text-orange-300 underline">Privacy Policy</Link>. Where required by law (e.g. GDPR, ePrivacy), we obtain your consent for non-essential cookies before use.</p>
+          <p>This Cookie Policy explains how CrucibAI uses cookies and similar technologies when you use our website and service. It should be read together with our <Link to="/privacy" className="text-#c0c0c0 hover:text-#d0d0d0 underline">Privacy Policy</Link>. Where required by law (e.g. GDPR, ePrivacy), we obtain your consent for non-essential cookies before use.</p>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">1. What are cookies?</h2>
           <p>Cookies are small text files stored on your device when you visit a website. They are widely used to make sites work, remember your preferences, and understand how the site is used. We also use similar technologies such as local storage and session storage where relevant.</p>
@@ -35,7 +35,7 @@ export default function Cookies() {
           <p>For questions about our use of cookies, contact us at the support or privacy address provided in the app or on our website.</p>
         </div>
 
-        <Link to="/" className="inline-flex items-center gap-1 mt-10 text-orange-400 hover:text-orange-300 font-medium">← Back to home</Link>
+        <Link to="/" className="inline-flex items-center gap-1 mt-10 text-#c0c0c0 hover:text-#d0d0d0 font-medium">← Back to home</Link>
       </div>
     </div>
   );

@@ -72,7 +72,7 @@ export default function BuildProgress({ projectId, apiBaseUrl }) {
           <div
             key={idx}
             className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
-              idx < phase ? "bg-emerald-500/10 text-emerald-400" : idx === phase ? "bg-orange-500/10 text-orange-400" : "bg-zinc-800/50 text-zinc-500"
+              idx < phase ? "bg-gray-500/10 text-gray-400" : idx === phase ? "bg-gray-200/10 text-#c0c0c0" : "bg-zinc-800/50 text-zinc-500"
             }`}
           >
             <span className="font-medium">Phase {idx + 1}:</span>

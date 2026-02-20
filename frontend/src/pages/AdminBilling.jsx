@@ -29,8 +29,8 @@ const AdminBilling = () => {
   if (error) {
     return (
       <div className="p-8">
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-400">{error}</div>
-        <Link to="/app/admin" className="inline-flex items-center mt-4 text-orange-400">
+        <div className="rounded-lg border border-gray-500/30 bg-gray-500/10 p-4 text-gray-400">{error}</div>
+        <Link to="/app/admin" className="inline-flex items-center mt-4 text-#c0c0c0">
           <ArrowLeft className="w-4 h-4 mr-2" /> Back to Admin
         </Link>
       </div>
@@ -44,14 +44,14 @@ const AdminBilling = () => {
           <ArrowLeft className="w-4 h-4 mr-2" /> Back
         </Link>
         <h1 className="text-3xl font-bold flex items-center gap-2">
-          <DollarSign className="w-8 h-8 text-green-500" />
+          <DollarSign className="w-8 h-8 text-gray-500" />
           Billing transactions
         </h1>
       </div>
       <p className="text-[#666666]">Who paid, when, amount (from Stripe webhook ledger).</p>
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="w-10 h-10 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-10 h-10 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
         <div className="rounded-xl border border-white/10 overflow-hidden">
@@ -71,7 +71,7 @@ const AdminBilling = () => {
                   <td className="py-3 px-4 font-mono text-sm">{t.user_id}</td>
                   <td className="py-3 px-4">{t.bundle || '-'}</td>
                   <td className="py-3 px-4">{t.credits ?? '-'}</td>
-                  <td className="py-3 px-4 text-green-400">${Number(t.price || 0).toFixed(2)}</td>
+                  <td className="py-3 px-4 text-gray-400">${Number(t.price || 0).toFixed(2)}</td>
                   <td className="py-3 px-4 text-[#666666]">
                     {t.created_at ? new Date(t.created_at).toLocaleString() : '-'}
                   </td>

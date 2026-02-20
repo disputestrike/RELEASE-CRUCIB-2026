@@ -99,11 +99,11 @@ Output ONLY valid JSON in this exact format:
     "colors": {{
       "primary": "#1A1A1A",
       "secondary": "#808080",
-      "accent": "#F59E0B",
+      "accent": "#999999",
       "neutral": {{"50": "#F9FAFB", "100": "#F3F4F6", "900": "#111827"}},
       "success": "#808080",
       "error": "#EF4444",
-      "warning": "#F59E0B"
+      "warning": "#999999"
     }},
     "typography": {{
       "heading": "Inter, system-ui, sans-serif",

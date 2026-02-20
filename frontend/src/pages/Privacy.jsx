@@ -11,7 +11,7 @@ export default function Privacy() {
         <div className="space-y-6 text-[#1A1A1A] leading-relaxed">
           <p>CrucibAI (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;) respects your privacy. This Privacy Policy describes what data we collect, how we use it, your rights, and how we comply with applicable law including the EU General Data Protection Regulation (GDPR), UK GDPR, the California Consumer Privacy Act (CCPA) as amended by the CPRA, and other data protection laws. By using our service, you agree to this policy.</p>
           <p className="text-gray-300 text-sm">
-            <strong className="text-gray-100">For content-safety and prohibited uses,</strong> see our <Link to="/aup" className="text-orange-400 hover:text-orange-300 underline">Acceptable Use Policy</Link>. <strong className="text-gray-100">For terms of use and prohibited AI practices,</strong> see our <Link to="/terms" className="text-orange-400 hover:text-orange-300 underline">Terms of Use</Link>.
+            <strong className="text-gray-100">For content-safety and prohibited uses,</strong> see our <Link to="/aup" className="text-#c0c0c0 hover:text-#d0d0d0 underline">Acceptable Use Policy</Link>. <strong className="text-gray-100">For terms of use and prohibited AI practices,</strong> see our <Link to="/terms" className="text-#c0c0c0 hover:text-#d0d0d0 underline">Terms of Use</Link>.
           </p>
           <p className="text-gray-300 text-sm">
             <strong className="text-gray-100">NOTICE TO EUROPEAN USERS:</strong> If you are in the European Economic Area or the United Kingdom, see <strong className="text-gray-100">Section 2 (Legal basis)</strong> and <strong className="text-gray-100">Section 10 (Your rights GDPR / UK GDPR)</strong> below for additional information.
@@ -48,7 +48,7 @@ export default function Privacy() {
           <p>We do not sell your personal data. We may share data with service providers (subprocessors) who assist in operating our platform (e.g. hosting, analytics, payment processors, AI providers) under contractual obligations to protect your data. We may disclose data when required by law, to protect our rights or safety, or in connection with a merger or sale of assets. For enterprise customers, we may offer a Data Processing Agreement (DPA) and subprocessor list upon request.</p>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">8. Cookies and similar technologies</h2>
-          <p>We use cookies and similar technologies (e.g. local storage) to: keep you logged in (session/authentication); remember your preferences; and operate the service. We may use analytics cookies to understand how the service is used (we may use first- or third-party tools). You can control cookies through your browser settings. Essential cookies are necessary for the service to function; disabling them may limit functionality. Where required by law (e.g. GDPR), we obtain consent for non-essential cookies before use. For more detail, see our <Link to="/cookies" className="text-orange-400 hover:text-orange-300 underline">Cookie Policy</Link>.</p>
+          <p>We use cookies and similar technologies (e.g. local storage) to: keep you logged in (session/authentication); remember your preferences; and operate the service. We may use analytics cookies to understand how the service is used (we may use first- or third-party tools). You can control cookies through your browser settings. Essential cookies are necessary for the service to function; disabling them may limit functionality. Where required by law (e.g. GDPR), we obtain consent for non-essential cookies before use. For more detail, see our <Link to="/cookies" className="text-#c0c0c0 hover:text-#d0d0d0 underline">Cookie Policy</Link>.</p>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">9. Children and minors (COPPA / under-16)</h2>
           <p>Our service is not directed to children under 16 (or under 13 in the United States, in line with COPPA). We do not knowingly collect personal data from children. If you are under 16 (or 13 in the US), do not register or provide personal data. If we learn that we have collected personal data from a child without parental consent, we will delete it promptly. If you believe we have collected a child&apos;s data in error, contact us immediately.</p>
@@ -83,7 +83,7 @@ export default function Privacy() {
           <p>For privacy questions, to exercise your rights, or for DPA requests: contact us at the support or legal contact address provided in the app or on our website (e.g. privacy@crucibai.com or legal@crucibai.com).</p>
         </div>
 
-        <Link to="/" className="inline-flex items-center gap-1 mt-10 text-orange-400 hover:text-orange-300 font-medium">← Back to home</Link>
+        <Link to="/" className="inline-flex items-center gap-1 mt-10 text-#c0c0c0 hover:text-#d0d0d0 font-medium">← Back to home</Link>
       </div>
     </div>
   );

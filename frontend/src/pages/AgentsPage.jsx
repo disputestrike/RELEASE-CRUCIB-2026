@@ -63,7 +63,7 @@ export default function AgentsPage() {
         </h1>
         <button
           onClick={() => setCreateOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-500 rounded-lg text-[#1A1A1A]"
+          className="flex items-center gap-2 px-4 py-2 bg-black hover:bg-gray-200 rounded-lg text-[#1A1A1A]"
         >
           <Plus className="w-5 h-5" /> Create Agent
         </button>
@@ -95,7 +95,7 @@ export default function AgentsPage() {
               <div
                 key={a.id}
                 onClick={() => navigate(`/app/agents/${a.id}`)}
-                className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:border-orange-500/50 cursor-pointer"
+                className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:border-gray-300/50 cursor-pointer"
               >
                 <div>
                   <div className="font-medium text-[#1A1A1A]">{a.name}</div>
@@ -118,7 +118,7 @@ export default function AgentsPage() {
               <div className="mt-3 flex items-center gap-2">
                 <code className="text-xs bg-zinc-900/30 px-2 py-1 rounded truncate max-w-md">{agent.webhook_url}</code>
                 <button onClick={() => copyWebhook(agent.webhook_url)} className="p-1 rounded hover:bg-white/10">
-                  {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                  {copied ? <Check className="w-4 h-4 text-gray-400" /> : <Copy className="w-4 h-4" />}
                 </button>
               </div>
             )}
@@ -139,10 +139,10 @@ export default function AgentsPage() {
                       <tr key={r.id} className="border-b border-white/5">
                         <td className="py-2 pr-4 text-gray-300">{r.triggered_at ? new Date(r.triggered_at).toLocaleString() : '-'}</td>
                         <td className="py-2 pr-4 text-[#666666]">{r.triggered_by || '-'}</td>
-                        <td className="py-2 pr-4"><span className={r.status === 'success' ? 'text-green-400' : r.status === 'failed' ? 'text-red-400' : 'text-amber-400'}>{r.status}</span></td>
+                        <td className="py-2 pr-4"><span className={r.status === 'success' ? 'text-gray-400' : r.status === 'failed' ? 'text-gray-400' : 'text-amber-400'}>{r.status}</span></td>
                         <td className="py-2">{r.duration_seconds != null ? `${r.duration_seconds.toFixed(1)}s` : '-'}</td>
                         <td>
-                          <button onClick={() => setLogRunId(logRunId === r.id ? null : r.id)} className="text-orange-400 hover:underline text-xs">Logs</button>
+                          <button onClick={() => setLogRunId(logRunId === r.id ? null : r.id)} className="text-#c0c0c0 hover:underline text-xs">Logs</button>
                         </td>
                       </tr>
                     ))}
@@ -207,8 +207,8 @@ function DescribeAndCreate({ onCreated }) {
         className="w-full px-3 py-2 rounded bg-zinc-900/30 border border-white/10 text-[#1A1A1A] placeholder-gray-500 min-h-[80px] text-sm"
         rows={3}
       />
-      {error && <p className="text-red-400 text-xs">{error}</p>}
-      <button type="submit" disabled={loading || !description.trim()} className="self-start px-4 py-2 rounded bg-orange-600 text-[#1A1A1A] text-sm font-medium hover:bg-orange-500 disabled:opacity-50">
+      {error && <p className="text-gray-400 text-xs">{error}</p>}
+      <button type="submit" disabled={loading || !description.trim()} className="self-start px-4 py-2 rounded bg-black text-[#1A1A1A] text-sm font-medium hover:bg-gray-200 disabled:opacity-50">
         {loading ? 'Creating…' : 'Create from description'}
       </button>
     </form>
@@ -264,18 +264,18 @@ function CreateAgentModal({ onClose, onCreated }) {
       <div className="bg-[#111] border border-white/10 rounded-xl p-6 max-w-md w-full shadow-xl max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-lg font-semibold text-[#1A1A1A] mb-4">Create Agent</h3>
         <div className="flex gap-2 mb-4 border-b border-white/10 pb-2">
-          <button type="button" onClick={() => setMode('describe')} className={`px-3 py-1.5 rounded text-sm ${mode === 'describe' ? 'bg-orange-600 text-[#1A1A1A]' : 'text-[#666666] hover:text-[#1A1A1A]'}`}>Describe</button>
-          <button type="button" onClick={() => setMode('configure')} className={`px-3 py-1.5 rounded text-sm ${mode === 'configure' ? 'bg-orange-600 text-[#1A1A1A]' : 'text-[#666666] hover:text-[#1A1A1A]'}`}>Configure</button>
+          <button type="button" onClick={() => setMode('describe')} className={`px-3 py-1.5 rounded text-sm ${mode === 'describe' ? 'bg-black text-[#1A1A1A]' : 'text-[#666666] hover:text-[#1A1A1A]'}`}>Describe</button>
+          <button type="button" onClick={() => setMode('configure')} className={`px-3 py-1.5 rounded text-sm ${mode === 'configure' ? 'bg-black text-[#1A1A1A]' : 'text-[#666666] hover:text-[#1A1A1A]'}`}>Configure</button>
         </div>
         {mode === 'describe' && (
           <>
             <p className="text-xs text-[#666666] mb-2">Describe what you want in plain language. We create the automation.</p>
             <form onSubmit={handleDescribeSubmit} className="space-y-3">
               <textarea value={describeText} onChange={(e) => setDescribeText(e.target.value)} placeholder="e.g. Every morning at 9, summarize key updates and email them to me." className="w-full px-3 py-2 rounded bg-zinc-900/30 border border-white/10 text-[#1A1A1A] placeholder-gray-500 min-h-[100px] text-sm" />
-              {describeError && <p className="text-red-400 text-sm">{describeError}</p>}
+              {describeError && <p className="text-gray-400 text-sm">{describeError}</p>}
               <div className="flex gap-2 justify-end">
                 <button type="button" onClick={onClose} className="px-4 py-2 rounded border border-white/20 text-gray-300 hover:bg-white/5">Cancel</button>
-                <button type="submit" disabled={describeLoading || !describeText.trim()} className="px-4 py-2 rounded bg-orange-600 text-[#1A1A1A] hover:bg-orange-500 disabled:opacity-50">{describeLoading ? 'Creating…' : 'Create from description'}</button>
+                <button type="submit" disabled={describeLoading || !describeText.trim()} className="px-4 py-2 rounded bg-black text-[#1A1A1A] hover:bg-gray-200 disabled:opacity-50">{describeLoading ? 'Creating…' : 'Create from description'}</button>
               </div>
             </form>
           </>
@@ -309,10 +309,10 @@ function CreateAgentModal({ onClose, onCreated }) {
               <input type="text" value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)} className="w-full px-3 py-2 rounded bg-zinc-900/30 border border-white/10 text-[#1A1A1A]" placeholder="Auto-generated if empty" />
             </div>
           )}
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+          {error && <p className="text-gray-400 text-sm">{error}</p>}
           <div className="flex gap-2 justify-end">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded border border-white/20 text-gray-300 hover:bg-white/5">Cancel</button>
-            <button type="submit" disabled={submitting} className="px-4 py-2 rounded bg-orange-600 text-[#1A1A1A] hover:bg-orange-500 disabled:opacity-50">Create</button>
+            <button type="submit" disabled={submitting} className="px-4 py-2 rounded bg-black text-[#1A1A1A] hover:bg-gray-200 disabled:opacity-50">Create</button>
           </div>
         </form>
         )}

@@ -84,12 +84,12 @@ class ErrorBoundary extends React.Component {
       const isDevelopment = process.env.NODE_ENV === 'development';
 
       return (
-        <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-#f5f5f5 flex items-center justify-center p-4">
           <div className="max-w-md w-full">
             {/* Error Icon */}
             <div className="flex justify-center mb-6">
-              <div className="bg-red-100 p-4 rounded-full">
-                <AlertCircle className="w-12 h-12 text-red-600" />
+              <div className="bg-gray-100 p-4 rounded-full">
+                <AlertCircle className="w-12 h-12 text-gray-600" />
               </div>
             </div>
 
@@ -104,16 +104,16 @@ class ErrorBoundary extends React.Component {
 
               {/* Error Details (Development Only) */}
               {isDevelopment && this.state.error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 text-left">
-                  <p className="text-xs font-mono text-red-800 break-words">
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4 text-left">
+                  <p className="text-xs font-mono text-gray-800 break-words">
                     <strong>Error:</strong> {this.state.error.toString()}
                   </p>
                   {this.state.errorInfo && (
                     <details className="mt-2 text-xs">
-                      <summary className="cursor-pointer font-semibold text-red-700">
+                      <summary className="cursor-pointer font-semibold text-gray-700">
                         Stack Trace
                       </summary>
-                      <pre className="mt-2 text-red-700 overflow-auto max-h-40 text-xs">
+                      <pre className="mt-2 text-gray-700 overflow-auto max-h-40 text-xs">
                         {this.state.errorInfo.componentStack}
                       </pre>
                     </details>
@@ -123,8 +123,8 @@ class ErrorBoundary extends React.Component {
 
               {/* Error Count Warning */}
               {this.state.errorCount > 3 && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
-                  <p className="text-xs text-yellow-800">
+                <div className="bg-#f5f5f5 border border-#e0e0e0 rounded-lg p-3 mb-4">
+                  <p className="text-xs text-#333333">
                     Multiple errors detected. Please try reloading the page.
                   </p>
                 </div>
@@ -135,7 +135,7 @@ class ErrorBoundary extends React.Component {
             <div className="space-y-3">
               <button
                 onClick={this.handleReset}
-                className="w-full bg-orange-600 hover:bg-orange-700 text-[#1A1A1A] font-semibold py-2 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-2"
+                className="w-full bg-black hover:bg-black text-[#1A1A1A] font-semibold py-2 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-2"
               >
                 <RefreshCw className="w-4 h-4" />
                 Try Again
@@ -165,7 +165,7 @@ class ErrorBoundary extends React.Component {
               </p>
               <a
                 href="mailto:support@crucibai.com"
-                className="text-orange-600 hover:text-orange-700 text-sm font-semibold"
+                className="text-#000000 hover:text-#000000 text-sm font-semibold"
               >
                 support@crucibai.com
               </a>

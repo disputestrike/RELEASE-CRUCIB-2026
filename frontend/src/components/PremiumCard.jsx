@@ -30,7 +30,7 @@ const PremiumCard = ({
 }) => {
   return (
     <div
-      className={`premium-card ${elevated ? 'card-elevated' : ''} ${gradient ? 'gradient-orange' : ''} ${className}`}
+      className={`premium-card ${elevated ? 'card-elevated' : ''} ${gradient ? 'gradient-gray' : ''} ${className}`}
       onClick={onClick}
       role="article"
     >

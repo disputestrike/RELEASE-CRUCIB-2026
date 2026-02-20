@@ -35,7 +35,7 @@ const AdminUsers = () => {
   if (error) {
     return (
       <div className="p-8">
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-400">{error}</div>
+        <div className="rounded-lg border border-gray-500/30 bg-gray-500/10 p-4 text-gray-400">{error}</div>
       </div>
     );
   }
@@ -72,7 +72,7 @@ const AdminUsers = () => {
       </div>
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="w-10 h-10 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-10 h-10 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
         <div className="rounded-xl border border-white/10 overflow-hidden">
@@ -98,7 +98,7 @@ const AdminUsers = () => {
                   <td className="py-3 px-4">
                     <Link
                       to={`/app/admin/users/${u.id}`}
-                      className="inline-flex items-center text-orange-400 hover:text-orange-300"
+                      className="inline-flex items-center text-#c0c0c0 hover:text-#d0d0d0"
                     >
                       <User className="w-4 h-4 mr-1" />
                       View

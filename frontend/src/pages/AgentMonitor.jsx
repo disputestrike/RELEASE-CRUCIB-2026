@@ -115,10 +115,10 @@ const AgentMonitor = () => {
 
   const getLayerColor = (layer) => {
     switch (layer) {
-      case 'planning': return 'orange';
-      case 'execution': return 'green';
-      case 'validation': return 'orange';
-      case 'deployment': return 'orange';
+      case 'planning': return 'gray';
+      case 'execution': return 'gray';
+      case 'validation': return 'gray';
+      case 'deployment': return 'gray';
       default: return 'gray';
     }
   };
@@ -127,7 +127,7 @@ const AgentMonitor = () => {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-12 h-12 border-2 border-gray-300 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-[#666666]">Loading project...</p>
         </div>
       </div>
@@ -137,9 +137,9 @@ const AgentMonitor = () => {
   if (!project) {
     return (
       <div className="text-center py-20">
-        <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+        <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
         <h2 className="text-xl font-semibold mb-2">Project not found</h2>
-        <Link to="/app" className="text-orange-400 hover:text-orange-300">Back to dashboard</Link>
+        <Link to="/app" className="text-#c0c0c0 hover:text-#d0d0d0">Back to dashboard</Link>
       </div>
     );
   }
@@ -212,7 +212,7 @@ const AgentMonitor = () => {
               <span className="text-gray-500 ml-2">(last run from Workspace)</span>
             )}
           </p>
-          <Link to={`/app/workspace?projectId=${id}`} className="text-sm text-orange-400 hover:text-orange-300 mt-1 inline-block">Run again in Workspace →</Link>
+          <Link to={`/app/workspace?projectId=${id}`} className="text-sm text-#c0c0c0 hover:text-#d0d0d0 mt-1 inline-block">Run again in Workspace →</Link>
         </div>
       )}
       {/* Optional: dependency audit (npm / pip) */}
@@ -234,7 +234,7 @@ const AgentMonitor = () => {
                   setDependencyAuditLoading(false);
                 }
               }}
-              className="text-sm text-orange-400 hover:text-orange-300"
+              className="text-sm text-#c0c0c0 hover:text-#d0d0d0"
             >
               Run dependency audit (npm / pip)
             </button>
@@ -293,12 +293,12 @@ const AgentMonitor = () => {
             </span>
           )}
           <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${
-            project.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-            project.status === 'running' ? 'bg-orange-500/20 text-orange-400' :
-            project.status === 'failed' ? 'bg-red-500/20 text-red-400' :
+            project.status === 'completed' ? 'bg-gray-500/20 text-gray-400' :
+            project.status === 'running' ? 'bg-gray-200/20 text-#c0c0c0' :
+            project.status === 'failed' ? 'bg-gray-500/20 text-gray-400' :
             'bg-gray-500/20 text-[#666666]'
           }`} data-testid="project-status">
-            {project.status === 'running' && <span className="inline-block w-2 h-2 bg-orange-400 rounded-full mr-2 animate-pulse"></span>}
+            {project.status === 'running' && <span className="inline-block w-2 h-2 bg-#c0c0c0 rounded-full mr-2 animate-pulse"></span>}
             {project.status}
           </span>
           {project.status === 'running' && (
@@ -309,7 +309,7 @@ const AgentMonitor = () => {
               href={project.live_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg font-medium transition"
+              className="flex items-center gap-2 px-4 py-2 bg-gray-500 hover:bg-gray-600 rounded-lg font-medium transition"
               data-testid="live-url-btn"
             >
               <ExternalLink className="w-4 h-4" />
@@ -353,7 +353,7 @@ const AgentMonitor = () => {
             {buildEvents.slice(-80).map((ev, i) => (
               <div key={ev.id ?? i} className="flex gap-2 text-gray-300">
                 <span className="text-gray-500 shrink-0">{ev.ts ? new Date(ev.ts).toLocaleTimeString() : ''}</span>
-                <span className={ev.type === 'agent_completed' ? 'text-green-400' : ev.type === 'agent_started' ? 'text-orange-400' : 'text-amber-400'}>
+                <span className={ev.type === 'agent_completed' ? 'text-gray-400' : ev.type === 'agent_started' ? 'text-#c0c0c0' : 'text-amber-400'}>
                   {ev.type === 'agent_started' && `${ev.agent || 'agent'} started`}
                   {ev.type === 'agent_completed' && `${ev.agent || 'agent'} completed`}
                   {ev.type === 'phase_started' && (ev.message || 'phase')}
@@ -378,7 +378,7 @@ const AgentMonitor = () => {
             <div className="text-right">
               <p className="text-sm text-gray-500">Total tokens this run</p>
               <p className="font-bold text-lg flex items-center gap-1">
-                <Zap className="w-4 h-4 text-yellow-500" />
+                <Zap className="w-4 h-4 text-gray-200" />
                 {(agents.reduce((sum, a) => sum + (a.tokens_used || 0), 0) || project.tokens_used || 0).toLocaleString()}
               </p>
             </div>
@@ -390,9 +390,9 @@ const AgentMonitor = () => {
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}
             className={`absolute inset-y-0 left-0 rounded-full ${
-              project.status === 'completed' ? 'bg-green-500' :
-              project.status === 'failed' ? 'bg-red-500' :
-              'bg-orange-500'
+              project.status === 'completed' ? 'bg-gray-500' :
+              project.status === 'failed' ? 'bg-gray-500' :
+              'bg-gray-200'
             }`}
           />
         </div>
@@ -428,9 +428,9 @@ const AgentMonitor = () => {
                       key={agentName}
                       layout
                       className={`p-4 rounded-lg border transition-all ${
-                        agent.status === 'completed' ? 'bg-green-500/10 border-green-500/30' :
+                        agent.status === 'completed' ? 'bg-gray-500/10 border-gray-500/30' :
                         agent.status === 'running' ? `bg-${color}-500/10 border-${color}-500/30` :
-                        agent.status === 'failed' ? 'bg-red-500/10 border-red-500/30' :
+                        agent.status === 'failed' ? 'bg-gray-500/10 border-gray-500/30' :
                         'bg-white/5 border-white/10'
                       }`}
                       data-testid={`agent-${agentName.toLowerCase().replace(/ /g, '-')}`}
@@ -438,13 +438,13 @@ const AgentMonitor = () => {
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
                           <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                            agent.status === 'completed' ? 'bg-green-500/20' :
+                            agent.status === 'completed' ? 'bg-gray-500/20' :
                             agent.status === 'running' ? `bg-${color}-500/20` :
                             'bg-white/10'
                           }`}>
-                            {agent.status === 'completed' ? <CheckCircle className="w-4 h-4 text-green-400" /> :
+                            {agent.status === 'completed' ? <CheckCircle className="w-4 h-4 text-gray-400" /> :
                              agent.status === 'running' ? <Bot className={`w-4 h-4 text-${color}-400 animate-pulse`} /> :
-                             agent.status === 'failed' ? <AlertCircle className="w-4 h-4 text-red-400" /> :
+                             agent.status === 'failed' ? <AlertCircle className="w-4 h-4 text-gray-400" /> :
                              <Clock className="w-4 h-4 text-gray-500" />}
                           </div>
                           <span className="font-medium">{agentName}</span>
@@ -479,7 +479,7 @@ const AgentMonitor = () => {
           className="flex items-center gap-2 w-full text-left font-semibold text-lg mb-2 hover:text-gray-300 transition"
         >
           {statePanelOpen ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
-          <Database className="w-5 h-5 text-orange-400" />
+          <Database className="w-5 h-5 text-#c0c0c0" />
           Build state (plan, requirements, stack, reports)
         </button>
         {statePanelOpen && (
@@ -526,7 +526,7 @@ const AgentMonitor = () => {
                     <ul className="space-y-1 text-gray-300">
                       {projectState.tool_log.slice(-10).reverse().map((entry, i) => (
                         <li key={i} className="flex gap-2">
-                          <span className="text-orange-400 font-mono text-xs">{entry.agent || 'agent'}</span>
+                          <span className="text-#c0c0c0 font-mono text-xs">{entry.agent || 'agent'}</span>
                           <span className="truncate">{typeof entry.output_preview === 'string' ? entry.output_preview.slice(0, 80) : ''}</span>
                         </li>
                       ))}
@@ -541,10 +541,10 @@ const AgentMonitor = () => {
                         <p className="text-gray-300 text-xs"><strong className="text-amber-400">Security:</strong> {String(projectState.security_report).slice(0, 200)}…</p>
                       )}
                       {projectState.ux_report && (
-                        <p className="text-gray-300 text-xs"><strong className="text-orange-400">UX:</strong> {String(projectState.ux_report).slice(0, 200)}…</p>
+                        <p className="text-gray-300 text-xs"><strong className="text-#c0c0c0">UX:</strong> {String(projectState.ux_report).slice(0, 200)}…</p>
                       )}
                       {projectState.performance_report && (
-                        <p className="text-gray-300 text-xs"><strong className="text-green-400">Perf:</strong> {String(projectState.performance_report).slice(0, 200)}…</p>
+                        <p className="text-gray-300 text-xs"><strong className="text-gray-400">Perf:</strong> {String(projectState.performance_report).slice(0, 200)}…</p>
                       )}
                     </div>
                   </div>
@@ -579,10 +579,10 @@ const AgentMonitor = () => {
                 className="flex items-start gap-3 p-2 hover:bg-white/5 rounded"
               >
                 <span className={`w-2 h-2 mt-1.5 rounded-full flex-shrink-0 ${
-                  log.level === 'success' ? 'bg-green-400' :
-                  log.level === 'error' ? 'bg-red-400' :
-                  log.level === 'warning' ? 'bg-yellow-400' :
-                  'bg-orange-400'
+                  log.level === 'success' ? 'bg-gray-400' :
+                  log.level === 'error' ? 'bg-gray-400' :
+                  log.level === 'warning' ? 'bg-#c0c0c0' :
+                  'bg-#c0c0c0'
                 }`}></span>
                 <span className="text-gray-500 flex-shrink-0">
                   {new Date(log.created_at).toLocaleTimeString()}

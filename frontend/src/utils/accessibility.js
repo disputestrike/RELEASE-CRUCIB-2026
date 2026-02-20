@@ -251,7 +251,7 @@ export const SkipToMainLink = () => {
   return (
     <a
       href="#main-content"
-      className="sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 focus:bg-blue-600 focus:text-[#1A1A1A] focus:p-2 focus:z-50"
+      className="sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 focus:bg-gray-600 focus:text-[#1A1A1A] focus:p-2 focus:z-50"
     >
       Skip to main content
     </a>
@@ -296,7 +296,7 @@ export const AccessibleFormField = ({
         className="block text-sm font-medium text-gray-700 mb-1"
       >
         {label}
-        {required && <span className="text-red-600 ml-1" aria-label="required">*</span>}
+        {required && <span className="text-gray-600 ml-1" aria-label="required">*</span>}
       </label>
 
       {hint && (
@@ -310,7 +310,7 @@ export const AccessibleFormField = ({
       {error && (
         <p
           id={`${id}-error`}
-          className="text-xs text-red-600 mt-1"
+          className="text-xs text-gray-600 mt-1"
           role="alert"
         >
           {error}

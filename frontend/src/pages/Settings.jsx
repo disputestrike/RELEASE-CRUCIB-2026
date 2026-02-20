@@ -277,7 +277,7 @@ const Settings = () => {
               <p className="text-sm text-gray-500 mb-2">Tests and security checks run in an isolated environment when Docker is available.</p>
               <div className="flex items-center gap-2 text-sm">
                 {capabilities.sandbox_available === true && (
-                  <span className="text-green-400" data-testid="sandbox-available">Sandbox (Docker): available</span>
+                  <span className="text-gray-400" data-testid="sandbox-available">Sandbox (Docker): available</span>
                 )}
                 {capabilities.sandbox_available === false && (
                   <span className="text-amber-400">Sandbox (Docker): not available — runs use host</span>
@@ -418,7 +418,7 @@ const Settings = () => {
             <p className="text-sm text-gray-500 mb-4">Add tokens to deploy directly to Vercel or Netlify. Get tokens from Vercel (Account → Settings → Tokens) and Netlify (User settings → Applications → Personal access tokens).</p>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">Vercel token {deployTokensStatus.has_vercel && <span className="text-green-500 text-xs">(saved)</span>}</label>
+                <label className="block text-sm font-medium mb-2">Vercel token {deployTokensStatus.has_vercel && <span className="text-gray-500 text-xs">(saved)</span>}</label>
                 <input
                   type="password"
                   value={deployTokens.vercel}
@@ -428,7 +428,7 @@ const Settings = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">Netlify token {deployTokensStatus.has_netlify && <span className="text-green-500 text-xs">(saved)</span>}</label>
+                <label className="block text-sm font-medium mb-2">Netlify token {deployTokensStatus.has_netlify && <span className="text-gray-500 text-xs">(saved)</span>}</label>
                 <input
                   type="password"
                   value={deployTokens.netlify}
@@ -463,7 +463,7 @@ const Settings = () => {
           <p className="text-sm text-gray-500 mb-4">Add tokens to deploy directly to Vercel or Netlify without downloading a ZIP. Get tokens from Vercel (Account → Settings → Tokens) and Netlify (User settings → Applications → Personal access tokens).</p>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Vercel token {deployTokensStatus.has_vercel && <span className="text-green-500 text-xs">(saved)</span>}</label>
+              <label className="block text-sm font-medium mb-2">Vercel token {deployTokensStatus.has_vercel && <span className="text-gray-500 text-xs">(saved)</span>}</label>
               <input
                 type="password"
                 value={deployTokens.vercel}
@@ -473,7 +473,7 @@ const Settings = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Netlify token {deployTokensStatus.has_netlify && <span className="text-green-500 text-xs">(saved)</span>}</label>
+              <label className="block text-sm font-medium mb-2">Netlify token {deployTokensStatus.has_netlify && <span className="text-gray-500 text-xs">(saved)</span>}</label>
               <input
                 type="password"
                 value={deployTokens.netlify}
@@ -625,19 +625,19 @@ const Settings = () => {
               Two-Factor Authentication (2FA)
             </h4>
             {mfaError && (
-              <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-                <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
-                <p className="text-red-400 text-sm">{mfaError}</p>
+              <div className="flex items-start gap-2 p-3 bg-gray-500/10 border border-gray-500/30 rounded-lg">
+                <AlertCircle className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+                <p className="text-gray-400 text-sm">{mfaError}</p>
               </div>
             )}
             {mfaStatus && !mfaSetupStep ? (
-              <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
-                <p className="text-green-400 font-medium mb-3">2FA is enabled</p>
+              <div className="p-4 bg-gray-500/10 border border-gray-500/30 rounded-lg">
+                <p className="text-gray-400 font-medium mb-3">2FA is enabled</p>
                 <p className="text-sm text-[#666666] mb-4">Your account is protected with two-factor authentication.</p>
                 <button
                   type="button"
                   onClick={() => setMfaSetupStep('disable')}
-                  className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-sm transition"
+                  className="px-4 py-2 bg-gray-500/20 hover:bg-gray-500/30 text-gray-400 rounded-lg text-sm transition"
                 >
                   Disable 2FA
                 </button>
@@ -656,7 +656,7 @@ const Settings = () => {
                   <button
                     onClick={handleMfaDisable}
                     disabled={mfaLoading || !mfaDisablePassword}
-                    className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-sm disabled:opacity-50"
+                    className="px-4 py-2 bg-gray-500/20 hover:bg-gray-500/30 text-gray-400 rounded-lg text-sm disabled:opacity-50"
                   >
                     {mfaLoading ? 'Disabling...' : 'Disable 2FA'}
                   </button>
@@ -703,7 +703,7 @@ const Settings = () => {
                   <button
                     onClick={handleMfaVerify}
                     disabled={mfaLoading || mfaCode.length !== 6}
-                    className="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg text-sm font-medium disabled:opacity-50"
+                    className="px-4 py-2 bg-gray-500 hover:bg-gray-600 rounded-lg text-sm font-medium disabled:opacity-50"
                   >
                     {mfaLoading ? 'Verifying...' : 'Verify'}
                   </button>
@@ -716,8 +716,8 @@ const Settings = () => {
                 </div>
               </div>
             ) : mfaSetupStep === 'done' ? (
-              <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg space-y-3">
-                <p className="text-green-400 font-medium">2FA enabled. Save these backup codes in a safe place.</p>
+              <div className="p-4 bg-gray-500/10 border border-gray-500/30 rounded-lg space-y-3">
+                <p className="text-gray-400 font-medium">2FA enabled. Save these backup codes in a safe place.</p>
                 <div className="flex flex-wrap gap-2 max-h-32 overflow-auto">
                   {mfaBackupCodes.map((c, i) => (
                     <div key={i} className="flex items-center gap-1 px-2 py-1 bg-zinc-900/30 rounded font-mono text-sm">
@@ -766,10 +766,10 @@ const Settings = () => {
                 />
               </div>
             </div>
-            <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-              <h4 className="font-medium text-red-400 mb-2">Danger Zone</h4>
+            <div className="p-4 bg-gray-500/10 border border-gray-500/30 rounded-lg">
+              <h4 className="font-medium text-gray-400 mb-2">Danger Zone</h4>
               <p className="text-sm text-[#666666] mb-4">Once you delete your account, there is no going back.</p>
-              <button className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition text-sm">
+              <button className="px-4 py-2 bg-gray-500/20 hover:bg-gray-500/30 text-gray-400 rounded-lg transition text-sm">
                 Delete Account
               </button>
             </div>

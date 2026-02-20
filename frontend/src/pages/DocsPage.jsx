@@ -123,11 +123,11 @@ const API_SECTIONS = [
 ];
 
 const METHOD_COLORS = {
-  GET: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-  POST: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+  GET: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
+  POST: 'bg-gray-200/20 text-#c0c0c0 border-gray-300/30',
   PUT: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-  PATCH: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-  DELETE: 'bg-red-500/20 text-red-400 border-red-500/30',
+  PATCH: 'bg-gray-200/20 text-#c0c0c0 border-gray-300/30',
+  DELETE: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
 };
 
 function CopyButton({ text }) {
@@ -139,7 +139,7 @@ function CopyButton({ text }) {
   };
   return (
     <button onClick={handleCopy} className="p-1.5 rounded-md hover:bg-zinc-700 transition" title="Copy">
-      {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} className="text-zinc-500" />}
+      {copied ? <Check size={14} className="text-gray-400" /> : <Copy size={14} className="text-zinc-500" />}
     </button>
   );
 }
@@ -174,8 +174,8 @@ export default function DocsPage() {
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-3 rounded-xl bg-orange-500/20">
-              <BookOpen className="w-7 h-7 text-orange-400" />
+            <div className="p-3 rounded-xl bg-gray-200/20">
+              <BookOpen className="w-7 h-7 text-#c0c0c0" />
             </div>
             <div>
               <h1 className="text-3xl font-bold tracking-tight">API Documentation</h1>
@@ -186,7 +186,7 @@ export default function DocsPage() {
           {/* Base URL */}
           <div className="flex items-center gap-3 mt-4 p-3 rounded-lg bg-zinc-900 border border-zinc-800">
             <Globe size={16} className="text-zinc-500" />
-            <code className="text-sm text-emerald-400 font-mono">Base URL: https://api.crucibai.com</code>
+            <code className="text-sm text-gray-400 font-mono">Base URL: https://api.crucibai.com</code>
             <CopyButton text="https://api.crucibai.com" />
           </div>
 
@@ -204,7 +204,7 @@ export default function DocsPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search endpoints... (e.g., /api/projects, deploy, chat)"
-            className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-orange-500/50"
+            className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-gray-300/50"
           />
         </div>
 
@@ -220,7 +220,7 @@ export default function DocsPage() {
                     onClick={() => setActiveSection(section.id)}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition ${
                       activeSection === section.id
-                        ? 'bg-orange-500/15 text-orange-400 font-medium'
+                        ? 'bg-gray-200/15 text-#c0c0c0 font-medium'
                         : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'
                     }`}
                   >
@@ -242,7 +242,7 @@ export default function DocsPage() {
                 animate={{ opacity: 1, y: 0 }}
               >
                 <div className="flex items-center gap-3 mb-2">
-                  <currentSection.icon size={24} className="text-orange-400" />
+                  <currentSection.icon size={24} className="text-#c0c0c0" />
                   <h2 className="text-2xl font-bold">{currentSection.title}</h2>
                 </div>
                 <p className="text-zinc-500 mb-6">{currentSection.description}</p>
@@ -255,7 +255,7 @@ export default function DocsPage() {
                       <div
                         key={key}
                         className={`rounded-xl border transition ${
-                          isExpanded ? 'border-orange-500/30 bg-zinc-900' : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-700'
+                          isExpanded ? 'border-gray-300/30 bg-zinc-900' : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-700'
                         }`}
                       >
                         <button
@@ -284,7 +284,7 @@ export default function DocsPage() {
                                   <span className="text-xs font-medium text-zinc-500 uppercase">Request Body</span>
                                   <CopyButton text={ep.body} />
                                 </div>
-                                <pre className="p-3 rounded-lg bg-zinc-950 border border-zinc-800 text-xs font-mono text-emerald-400 overflow-x-auto">
+                                <pre className="p-3 rounded-lg bg-zinc-950 border border-zinc-800 text-xs font-mono text-gray-400 overflow-x-auto">
                                   {ep.body}
                                 </pre>
                               </div>
@@ -295,7 +295,7 @@ export default function DocsPage() {
                                 <span className="text-xs font-medium text-zinc-500 uppercase">Response</span>
                                 <CopyButton text={ep.response} />
                               </div>
-                              <pre className="p-3 rounded-lg bg-zinc-950 border border-zinc-800 text-xs font-mono text-orange-400 overflow-x-auto">
+                              <pre className="p-3 rounded-lg bg-zinc-950 border border-zinc-800 text-xs font-mono text-#c0c0c0 overflow-x-auto">
                                 {ep.response}
                               </pre>
                             </div>
@@ -317,7 +317,7 @@ export default function DocsPage() {
           <div className="flex items-center justify-center gap-3">
             <button
               onClick={() => navigate(user ? '/app/workspace' : '/auth')}
-              className="px-6 py-3 bg-orange-500 hover:bg-orange-600 rounded-lg font-medium transition"
+              className="px-6 py-3 bg-gray-200 hover:bg-black rounded-lg font-medium transition"
             >
               {user ? 'Open Workspace' : 'Get Started Free'}
             </button>

@@ -104,7 +104,7 @@ export default function Blog() {
             </div>
           </article>
           <p className="mt-12">
-            <Link to="/blog" className="text-orange-400 hover:text-orange-300">
+            <Link to="/blog" className="text-#c0c0c0 hover:text-#d0d0d0">
               ← All posts
             </Link>
           </p>
@@ -124,7 +124,7 @@ export default function Blog() {
           {POSTS.map((p) => (
             <li key={p.slug} className="border-b border-white/10 pb-8">
               <Link to={`/blog/${p.slug}`} className="block group" aria-label={p.title}>
-                <h2 className="text-xl font-semibold text-[#1A1A1A] group-hover:text-orange-400 transition mb-2">{p.title}</h2>
+                <h2 className="text-xl font-semibold text-[#1A1A1A] group-hover:text-#c0c0c0 transition mb-2">{p.title}</h2>
                 <p className="text-[#666666] text-sm mb-2">{p.excerpt}</p>
                 <span className="text-xs text-gray-500">{p.date}</span>
               </Link>
@@ -132,7 +132,7 @@ export default function Blog() {
           ))}
         </ul>
         <p className="mt-12 text-sm text-gray-500">
-          More posts and SEO content coming. For docs and guides, see <Link to="/learn" className="text-orange-400 hover:text-orange-300">Learn</Link> and <Link to="/features" className="text-orange-400 hover:text-orange-300">Features</Link>.
+          More posts and SEO content coming. For docs and guides, see <Link to="/learn" className="text-#c0c0c0 hover:text-#d0d0d0">Learn</Link> and <Link to="/features" className="text-#c0c0c0 hover:text-#d0d0d0">Features</Link>.
         </p>
       </main>
       <PublicFooter />

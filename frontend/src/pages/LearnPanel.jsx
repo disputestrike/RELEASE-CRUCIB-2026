@@ -29,8 +29,8 @@ export default function LearnPanel() {
     <div className="min-h-screen bg-[#FAFAF8] text-[#1A1A1A] p-6">
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center gap-3 mb-8">
-          <div className="p-3 rounded-xl bg-orange-500/20">
-            <BookOpen className="w-8 h-8 text-orange-400" />
+          <div className="p-3 rounded-xl bg-gray-200/20">
+            <BookOpen className="w-8 h-8 text-#c0c0c0" />
           </div>
           <div>
             <h1 className="text-2xl font-bold">Learn CrucibAI</h1>
@@ -42,7 +42,7 @@ export default function LearnPanel() {
             <div key={title} className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/50">
               <div className="flex items-start gap-4">
                 <div className="p-2 rounded-lg bg-zinc-800 shrink-0">
-                  <Icon className="w-5 h-5 text-orange-400" />
+                  <Icon className="w-5 h-5 text-#c0c0c0" />
                 </div>
                 <div>
                   <h2 className="font-semibold mb-1">{title}</h2>
@@ -55,12 +55,12 @@ export default function LearnPanel() {
 
         <div className="mt-8 p-5 rounded-xl border border-zinc-800 bg-zinc-900/50">
           <h2 className="font-semibold mb-2 flex items-center gap-2">
-            <Shield className="w-5 h-5 text-orange-400" /> Security &amp; accessibility
+            <Shield className="w-5 h-5 text-#c0c0c0" /> Security &amp; accessibility
           </h2>
           <p className="text-sm text-zinc-400 mb-3">
             When you build with us or bring existing code: run <strong className="text-zinc-300">Security scan</strong> and <strong className="text-zinc-300">Accessibility check</strong> in the Workspace (toolbar or commands). We return a short checklist and a11y report so you can fix issues before deploy.
           </p>
-          <Link to="/security" className="text-sm text-orange-400 hover:text-orange-300">
+          <Link to="/security" className="text-sm text-#c0c0c0 hover:text-#d0d0d0">
             How we keep the platform and your code safe →
           </Link>
         </div>

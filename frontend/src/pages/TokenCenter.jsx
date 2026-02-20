@@ -103,7 +103,7 @@ const TokenCenter = () => {
     value
   })) : [];
 
-  const COLORS = ['#1A1A1A', '#808080', '#FF8F5E', '#F59E0B', '#EF4444', '#06B6D4', '#EC4899', '#84CC16'];
+  const COLORS = ['#1A1A1A', '#808080', '#FF8F5E', '#999999', '#EF4444', '#06B6D4', '#EC4899', '#84CC16'];
 
   if (loading) {
     return (
@@ -132,7 +132,7 @@ const TokenCenter = () => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div>
             <p className="text-[#666666] mb-2 flex items-center gap-2">
-              <Zap className="w-5 h-5 text-yellow-500" />
+              <Zap className="w-5 h-5 text-gray-200" />
               Current Balance
             </p>
             <p className="text-5xl font-bold" data-testid="credit-balance">
@@ -243,7 +243,7 @@ const TokenCenter = () => {
                 </span>
               </div>
               <p className="text-[#666666] mb-6">
-                <Zap className="w-4 h-4 inline mr-1 text-yellow-500" />
+                <Zap className="w-4 h-4 inline mr-1 text-gray-200" />
                 {(bundle.credits ?? (bundle.tokens / 1000)).toLocaleString()} credits
                 {!['light', 'dev'].includes(bundle.key) && ' per month'}
               </p>
@@ -266,7 +266,7 @@ const TokenCenter = () => {
               <button
                 onClick={() => handleStripeCheckout(bundle.key)}
                 disabled={purchasing === `stripe-${bundle.key}`}
-                className="w-full mt-2 py-2 rounded-lg font-medium bg-emerald-600 hover:bg-emerald-500 text-[#1A1A1A] transition disabled:opacity-50"
+                className="w-full mt-2 py-2 rounded-lg font-medium bg-gray-600 hover:bg-gray-500 text-[#1A1A1A] transition disabled:opacity-50"
                 data-testid={`stripe-${bundle.key}-btn`}
               >
                 {purchasing === `stripe-${bundle.key}` ? (
@@ -297,12 +297,12 @@ const TokenCenter = () => {
                 >
                   <div className="flex items-center gap-4">
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                      item.type === 'purchase' ? 'bg-green-500/20' :
+                      item.type === 'purchase' ? 'bg-gray-500/20' :
                       item.type === 'bonus' ? 'bg-gray-700/20' :
                       item.type === 'refund' ? 'bg-gray-700/20' :
                       'bg-gray-500/20'
                     }`}>
-                      {item.type === 'purchase' ? <CreditCard className="w-5 h-5 text-green-400" /> :
+                      {item.type === 'purchase' ? <CreditCard className="w-5 h-5 text-gray-400" /> :
                        item.type === 'bonus' ? <Zap className="w-5 h-5 text-[#1A1A1A]" /> :
                        <ArrowUpRight className="w-5 h-5 text-[#1A1A1A]" />}
                     </div>
@@ -315,7 +315,7 @@ const TokenCenter = () => {
                   </div>
                   <div className="text-right">
                     <p className={`font-bold ${
-                      (item.credits ?? item.tokens) > 0 ? 'text-green-400' : 'text-red-400'
+                      (item.credits ?? item.tokens) > 0 ? 'text-gray-400' : 'text-gray-400'
                     }`}>
                       {((item.credits ?? (item.tokens > 0 ? item.tokens / 1000 : 0)) > 0 ? '+' : '')}
                       {(item.credits ?? (item.tokens ? Math.floor(item.tokens / 1000) : 0))?.toLocaleString()} credits

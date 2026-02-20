@@ -45,8 +45,8 @@ export default function PaymentsWizard() {
     <div className="min-h-screen bg-[#FAFAF8] text-[#1A1A1A] p-6">
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center gap-3 mb-8">
-          <div className="p-3 rounded-xl bg-green-500/20">
-            <CreditCard className="w-8 h-8 text-green-400" />
+          <div className="p-3 rounded-xl bg-gray-500/20">
+            <CreditCard className="w-8 h-8 text-gray-400" />
           </div>
           <div>
             <h1 className="text-2xl font-bold">Add payments (Stripe)</h1>
@@ -65,7 +65,7 @@ export default function PaymentsWizard() {
                   </div>
                 </div>
               </div>
-              <button onClick={() => setStep(2)} className="px-4 py-2 rounded-lg bg-orange-500/20 text-orange-400 hover:bg-orange-500/30">Next</button>
+              <button onClick={() => setStep(2)} className="px-4 py-2 rounded-lg bg-gray-200/20 text-#c0c0c0 hover:bg-gray-200/30">Next</button>
             </>
           )}
           {step === 2 && (
@@ -81,7 +81,7 @@ export default function PaymentsWizard() {
               </div>
               <div className="flex gap-2">
                 <button onClick={() => setStep(1)} className="px-4 py-2 rounded-lg bg-zinc-800 text-zinc-300">Back</button>
-                <button onClick={handleInjectStripe} disabled={injecting} className="px-4 py-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 disabled:opacity-50">
+                <button onClick={handleInjectStripe} disabled={injecting} className="px-4 py-2 rounded-lg bg-gray-500/20 text-gray-400 hover:bg-gray-500/30 disabled:opacity-50">
                   {injecting ? 'Injecting...' : 'Inject Stripe'}
                 </button>
               </div>
@@ -91,7 +91,7 @@ export default function PaymentsWizard() {
             <>
               <div className="p-5 rounded-xl border border-zinc-800 bg-zinc-900/50">
                 <div className="flex items-start gap-4">
-                  <CheckCircle className="w-6 h-6 text-green-400 shrink-0 mt-0.5" />
+                  <CheckCircle className="w-6 h-6 text-gray-400 shrink-0 mt-0.5" />
                   <div>
                     <h2 className="font-semibold mb-2">Step 3: Use the code</h2>
                     <p className="text-sm text-zinc-400 mb-3">Copy the code below into your App.js in the Workspace, or start from a template that includes Stripe.</p>
@@ -99,7 +99,7 @@ export default function PaymentsWizard() {
                   </div>
                 </div>
               </div>
-              <button onClick={() => navigate('/workspace')} className="px-4 py-2 rounded-lg bg-orange-500/20 text-orange-400 hover:bg-orange-500/30">Open Workspace</button>
+              <button onClick={() => navigate('/workspace')} className="px-4 py-2 rounded-lg bg-gray-200/20 text-#c0c0c0 hover:bg-gray-200/30">Open Workspace</button>
             </>
           )}
         </div>

@@ -37,16 +37,16 @@ export default function Aup() {
           <p>We use automated and manual review to detect violations. Requests that violate this AUP are blocked and may be logged for review. We may suspend or terminate accounts that repeatedly or seriously violate this policy. We may report illegal activity to law enforcement or other authorities. We reserve the right to remove content and to take action without prior notice where we deem necessary to protect the service or others.</p>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">6. Appeals</h2>
-          <p>If you believe a block or enforcement action was in error, you may contact us at <a href="mailto:appeals@crucibai.com" className="text-orange-400 hover:text-orange-300 underline">appeals@crucibai.com</a> with the request ID (if provided), your account details, and a brief explanation. We will review in good faith but are not obligated to reverse a decision.</p>
+          <p>If you believe a block or enforcement action was in error, you may contact us at <a href="mailto:appeals@crucibai.com" className="text-#c0c0c0 hover:text-#d0d0d0 underline">appeals@crucibai.com</a> with the request ID (if provided), your account details, and a brief explanation. We will review in good faith but are not obligated to reverse a decision.</p>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">6. Changes</h2>
           <p>We may update this AUP from time to time. The &quot;Last updated&quot; date will be revised when we do. Continued use of the service after changes constitutes acceptance. For material changes we may provide notice in the app or by email.</p>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">8. Contact</h2>
-          <p>For AUP or enforcement questions, contact <a href="mailto:appeals@crucibai.com" className="text-orange-400 hover:text-orange-300 underline">appeals@crucibai.com</a> or the support address provided in the app.</p>
+          <p>For AUP or enforcement questions, contact <a href="mailto:appeals@crucibai.com" className="text-#c0c0c0 hover:text-#d0d0d0 underline">appeals@crucibai.com</a> or the support address provided in the app.</p>
         </div>
 
-        <Link to="/" className="inline-flex items-center gap-1 mt-10 text-orange-400 hover:text-orange-300 font-medium">← Back to home</Link>
+        <Link to="/" className="inline-flex items-center gap-1 mt-10 text-#c0c0c0 hover:text-#d0d0d0 font-medium">← Back to home</Link>
       </div>
     </div>
   );

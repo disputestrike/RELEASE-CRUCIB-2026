@@ -145,7 +145,7 @@ export default function Enterprise() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4 p-6 rounded-2xl border border-white/10 bg-kimi-bg-card">
               <h2 className="text-lg font-semibold text-kimi-text mb-4">Contact sales</h2>
-              {error && <p className="text-sm text-red-400">{error}</p>}
+              {error && <p className="text-sm text-gray-400">{error}</p>}
               <div>
                 <label className="block text-sm text-kimi-muted mb-1">Company *</label>
                 <input

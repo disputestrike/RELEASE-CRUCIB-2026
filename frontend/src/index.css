@@ -222,7 +222,7 @@ code, pre, .mono {
 }
 
 /* Neon effects - black and gray only */
-.neon-orange {
+.neon-gray {
   box-shadow: 0 0 15px rgba(26, 26, 26, 0.15);
 }
 

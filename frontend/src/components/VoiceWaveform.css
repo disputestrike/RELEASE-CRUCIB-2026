@@ -1,4 +1,4 @@
-/* VoiceWaveform.css — White theme, orange accent */
+/* VoiceWaveform.css — White theme, black accent */
 
 .voice-waveform-container {
   display: flex;
@@ -63,5 +63,5 @@
 }
 
 .voice-btn-confirm:hover {
-  background: #E55A2B;
+  background: #333333;
 }

@@ -9,9 +9,9 @@ export default function QualityScore({ score }) {
   const breakdown = score.breakdown ?? {};
 
   const getColor = (s) => {
-    if (s >= 80) return "bg-emerald-500";
+    if (s >= 80) return "bg-gray-500";
     if (s >= 60) return "bg-amber-500";
-    return "bg-red-500";
+    return "bg-gray-500";
   };
 
   return (

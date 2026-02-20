@@ -81,7 +81,7 @@ export default function AuditLog() {
           </div>
           <button
             onClick={handleExport}
-            className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg text-sm font-medium"
+            className="flex items-center gap-2 px-4 py-2 bg-gray-200 hover:bg-black rounded-lg text-sm font-medium"
           >
             <Download className="w-4 h-4" />
             Export CSV
@@ -128,7 +128,7 @@ export default function AuditLog() {
                     {log.timestamp ? new Date(log.timestamp).toLocaleString() : '—'}
                   </td>
                   <td className="px-4 py-3">
-                    <span className="px-2 py-0.5 bg-orange-500/20 text-orange-400 rounded text-xs font-medium">
+                    <span className="px-2 py-0.5 bg-gray-200/20 text-#c0c0c0 rounded text-xs font-medium">
                       {log.action}
                     </span>
                   </td>
@@ -137,7 +137,7 @@ export default function AuditLog() {
                     {log.resource_id && ` (${String(log.resource_id).slice(0, 8)}…)`}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded text-xs ${log.status === 'success' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                    <span className={`px-2 py-0.5 rounded text-xs ${log.status === 'success' ? 'bg-gray-500/20 text-gray-400' : 'bg-gray-500/20 text-gray-400'}`}>
                       {log.status}
                     </span>
                   </td>

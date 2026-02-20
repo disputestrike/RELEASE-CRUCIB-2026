@@ -200,7 +200,7 @@ const AuthPage = () => {
 
             {/* Error */}
             {error && (
-              <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex items-start gap-2" data-testid="auth-error">
+              <div className="mb-6 p-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-600 text-sm flex items-start gap-2" data-testid="auth-error">
                 <X className="w-4 h-4 mt-0.5 flex-shrink-0" />
                 <span>{error}</span>
               </div>
@@ -357,10 +357,10 @@ const AuthPage = () => {
                       >
                         {passwordChecks.map((check) => (
                           <div key={check.label} className="flex items-center gap-1.5">
-                            <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center ${check.met ? 'bg-green-500' : 'bg-gray-200'} transition-colors`}>
+                            <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center ${check.met ? 'bg-gray-500' : 'bg-gray-200'} transition-colors`}>
                               {check.met && <Check className="w-2.5 h-2.5 text-white" />}
                             </div>
-                            <span className={`text-xs ${check.met ? 'text-green-600' : 'text-gray-400'} transition-colors`}>
+                            <span className={`text-xs ${check.met ? 'text-gray-600' : 'text-gray-400'} transition-colors`}>
                               {check.label}
                             </span>
                           </div>

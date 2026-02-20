@@ -15,7 +15,7 @@
 .premium-card:hover {
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
   transform: translateY(-4px);
-  border-color: rgba(255, 107, 53, 0.2);
+  border-color: rgba(0, 0, 0, 0.1);
 }
 
 /* Icon styling */
@@ -25,7 +25,7 @@
   justify-content: center;
   width: 48px;
   height: 48px;
-  background: linear-gradient(135deg, #FFF3ED 0%, #FFE0D0 100%);
+  background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
   border-radius: 12px;
   color: #1A1A1A;
   margin-bottom: 16px;
@@ -63,13 +63,13 @@
 }
 
 /* Gradient variant */
-.premium-card.gradient-orange {
-  background: linear-gradient(135deg, #FFF3ED 0%, #FFE0D0 100%);
-  border-color: rgba(255, 107, 53, 0.2);
+.premium-card.gradient-gray {
+  background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
+  border-color: rgba(0, 0, 0, 0.1);
 }
 
-.premium-card.gradient-orange:hover {
-  background: linear-gradient(135deg, #FFE0D0 0%, #FFD0B8 100%);
+.premium-card.gradient-gray:hover {
+  background: linear-gradient(135deg, #e0e0e0 0%, #d0d0d0 100%);
 }
 
 /* Responsive */

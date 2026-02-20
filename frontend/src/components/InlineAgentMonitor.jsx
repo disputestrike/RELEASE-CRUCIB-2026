@@ -36,7 +36,7 @@ const AGENT_LAYERS = {
   },
   deployment: {
     label: 'Deployment',
-    color: '#F59E0B',
+    color: '#999999',
     agents: ['Deployment Agent', 'Error Recovery', 'Memory Agent']
   }
 };
@@ -231,9 +231,9 @@ const InlineAgentMonitor = ({
       {/* Quality Score — shown after build completes (Test A-13) */}
       {!isBuilding && buildProgress >= 100 && qualityScore != null && (
         <div className="iam-quality-score">
-          <ShieldCheck size={16} style={{ color: qualityScore >= 80 ? '#808080' : qualityScore >= 50 ? '#F59E0B' : '#EF4444' }} />
+          <ShieldCheck size={16} style={{ color: qualityScore >= 80 ? '#808080' : qualityScore >= 50 ? '#999999' : '#EF4444' }} />
           <span className="iam-quality-label">Quality Score</span>
-          <span className="iam-quality-value" style={{ color: qualityScore >= 80 ? '#808080' : qualityScore >= 50 ? '#F59E0B' : '#EF4444' }}>
+          <span className="iam-quality-value" style={{ color: qualityScore >= 80 ? '#808080' : qualityScore >= 50 ? '#999999' : '#EF4444' }}>
             {qualityScore}/100
           </span>
         </div>
