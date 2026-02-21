@@ -1,5 +1,5 @@
 # Enterprise 9-Layer Test Pipeline (Lint → Unit → Integration → Smoke; E2E optional)
-# Actions: checkout@v4.2.2, setup-node@v4.2.0, setup-python@v5.2.0, upload-artifact@v4.4.0, gitleaks/gitleaks-action@v2.3.9
+# Actions pinned to full commit SHAs (see comments). If IDE shows 16 "Unable to resolve action" errors, see .vscode/WORKFLOW_ACTION_ERRORS_FIX.md
 name: Enterprise Tests
 
 on:
@@ -18,8 +18,8 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4.2.2
-      - uses: actions/setup-node@v4.2.0
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'yarn'
@@ -33,14 +33,14 @@ jobs:
     name: Security audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4.2.2
-      - uses: actions/setup-node@v4.2.0
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'yarn'
       - name: Install and audit frontend
         run: cd frontend && yarn install --frozen-lockfile && npm audit --audit-level=high || true
-      - uses: actions/setup-python@v5.2.0
+      - uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install backend deps and pip-audit
@@ -48,7 +48,7 @@ jobs:
       - name: Backend dependency audit
         run: cd backend && pip-audit --require-hashes=false || true
       - name: Secrets scan (gitleaks)
-        uses: gitleaks/gitleaks-action@v2.3.9
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Run internal SecurityAudit
@@ -59,15 +59,15 @@ jobs:
     name: Frontend unit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4.2.2
-      - uses: actions/setup-node@v4.2.0
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'yarn'
       - name: Install and test
         run: cd frontend && yarn install --frozen-lockfile && npm run test:coverage || npm test -- --watchAll=false
       - name: Upload coverage (optional)
-        uses: actions/upload-artifact@v4.4.0
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
         if: always()
         with:
           name: frontend-coverage
@@ -88,8 +88,8 @@ jobs:
       DB_NAME: crucibai_test
       JWT_SECRET: test-secret
     steps:
-      - uses: actions/checkout@v4.2.2
-      - uses: actions/setup-python@v5.2.0
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install backend deps
@@ -121,7 +121,7 @@ jobs:
           REACT_APP_BACKEND_URL: http://localhost:8000
           CRUCIBAI_API_URL: http://localhost:8000
       - name: Upload backend coverage
-        uses: actions/upload-artifact@v4.4.0
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
         if: hashFiles('backend/coverage.xml') != ''
         with:
           name: backend-coverage
@@ -134,8 +134,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [lint, frontend-unit]
     steps:
-      - uses: actions/checkout@v4.2.2
-      - uses: actions/setup-node@v4.2.0
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'yarn'
@@ -152,13 +152,13 @@ jobs:
           PLAYWRIGHT_BASE_URL: http://localhost:3000
           CI: true
       - name: Upload Playwright report
-        uses: actions/upload-artifact@v4.4.0
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
         with:
           name: playwright-report
           path: frontend/playwright-report
           retention-days: 1
       - name: Upload backend coverage
-        uses: actions/upload-artifact@v4.4.0
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.4.0
         if: hashFiles('backend/coverage.xml') != ''
         with:
           name: backend-coverage

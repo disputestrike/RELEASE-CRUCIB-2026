@@ -7,6 +7,7 @@ import axios from 'axios';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Menu, X, PanelRightOpen, PanelRightClose } from 'lucide-react';
 import Layout3Column from './Layout3Column';
+import Logo from './Logo';
 import './Layout.css';
 import Sidebar from './Sidebar';
 import RightPanel from './RightPanel';
@@ -63,8 +64,8 @@ const Layout = () => {
     try {
       const headers = { Authorization: `Bearer ${token}` };
       const [projRes, taskRes] = await Promise.allSettled([
-        axios.get(`${API}/api/projects`, { headers, timeout: 5000 }),
-        axios.get(`${API}/api/tasks`, { headers, timeout: 5000 }),
+        axios.get(`${API}/projects`, { headers, timeout: 5000 }),
+        axios.get(`${API}/tasks`, { headers, timeout: 5000 }),
       ]);
       if (projRes.status === 'fulfilled') {
         setProjects(projRes.value.data?.projects || projRes.value.data || []);
@@ -168,9 +169,7 @@ const Layout = () => {
     <>
       {/* Mobile Header */}
       <header className="layout-mobile-header-bar">
-        <Link to="/app" className="layout-mobile-logo">
-          CrucibAI
-        </Link>
+        <Logo variant="full" height={28} href="/app" className="layout-mobile-logo" showTagline={false} />
         <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="layout-mobile-menu-btn" aria-label="Toggle menu">
           {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
         </button>

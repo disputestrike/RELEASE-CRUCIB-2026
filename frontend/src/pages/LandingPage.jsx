@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Send, Loader2, ArrowRight, Check, Menu, X, Play, ArrowUpRight, Paperclip, Image, FileText, Mic, MicOff, FileCode, GitFork } from 'lucide-react';
 import { useAuth, API } from '../App';
 import axios from 'axios';
+import Logo from '../components/Logo';
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -277,7 +278,7 @@ const LandingPage = () => {
       {/* Navigation — Kimi-style */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-kimi-bg border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
-          <Link to="/" className="text-xl font-semibold tracking-tight text-kimi-text">CrucibAI <span className="text-kimi-muted font-normal text-base">— Inevitable AI</span></Link>
+          <Logo variant="full" height={32} href="/" className="shrink-0" />
           <div className="hidden md:flex items-center gap-6">
             <Link to="/features" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Features</Link>
             <Link to="/pricing" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Pricing</Link>
@@ -1004,7 +1005,9 @@ const LandingPage = () => {
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-4 gap-12 mb-12">
             <div>
-              <div className="text-lg font-semibold text-kimi-text mb-4">CrucibAI — Inevitable AI</div>
+              <div className="mb-4">
+                <Logo variant="full" height={28} href="/" />
+              </div>
               <p className="text-sm text-kimi-muted mb-3">Turn ideas into inevitable outcomes. Plan, build, ship.</p>
               <ul className="space-y-2 text-sm">
                 <li><Link to="/about" className="text-kimi-muted hover:text-kimi-text transition">About us</Link></li>

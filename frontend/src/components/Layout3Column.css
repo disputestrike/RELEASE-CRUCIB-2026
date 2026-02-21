@@ -86,6 +86,13 @@
   background: #FAFAF8;
 }
 
+/* Main content full width when right panel is hidden (e.g. Dashboard) */
+.layout-main--full {
+  flex: 1;
+  width: 100%;
+  max-width: 100%;
+}
+
 .layout-main-content {
   flex: 1;
   overflow-y: auto;

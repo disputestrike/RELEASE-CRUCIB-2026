@@ -7,6 +7,7 @@ import {
   CreditCard, ScrollText, BarChart3, Wrench, HelpCircle, Coins,
   X, Bell, Home
 } from 'lucide-react';
+import Logo from './Logo';
 import './Sidebar.css';
 
 /**
@@ -93,12 +94,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks = [] }) => {
     <div className="sidebar">
       {/* Header */}
       <div className="sidebar-header">
-        <Link to="/app" className="sidebar-logo">
-          <div className="sidebar-logo-icon">
-            <LayoutGrid size={18} />
-          </div>
-          <div className="sidebar-logo-text">CrucibAI</div>
-        </Link>
+        <Logo variant="full" height={32} href="/app" className="sidebar-logo" showTagline={false} />
       </div>
 
       {/* Search Bar */}

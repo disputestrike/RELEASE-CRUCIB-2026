@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, User, Eye, EyeOff, Check, X, ArrowLeft, Github } from 'lucide-react';
 import { useAuth, API } from '../App';
+import Logo from '../components/Logo';
 
 /**
  * AuthPage — Redesigned login/signup
@@ -170,16 +171,9 @@ const AuthPage = () => {
             transition={{ duration: 0.3 }}
             className="w-full max-w-[380px]"
           >
-            {/* Logo */}
-            <div className="mb-8">
-              <Link to="/" className="inline-flex items-center gap-2">
-                <div className="w-8 h-8 bg-[#1A1A1A] rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">C</span>
-                </div>
-                <span className="text-xl font-bold tracking-tight text-gray-900">
-                  CrucibAI
-                </span>
-              </Link>
+            {/* Logo — centered above form, 48–64px per spec */}
+            <div className="mb-8 flex justify-center">
+              <Logo variant="full" height={56} href="/" />
             </div>
 
             {/* Heading */}
