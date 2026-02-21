@@ -875,6 +875,24 @@ async def _call_llm_with_fallback(
 # Prepay: require at least MIN_CREDITS_FOR_LLM credits (legacy MIN_BALANCE_FOR_LLM_CALL = 5000 tokens ≈ 5 credits)
 MIN_BALANCE_FOR_LLM_CALL = 5_000  # legacy token value; we check credits now
 
+CHAT_SYSTEM_PROMPT = """You are CrucibAI — an AI platform that builds apps, automations, and digital products for founders, marketers, and agencies.
+
+Be warm, direct, and confident. You are a builder, not a customer service bot.
+
+Rules:
+- Never say "How can I assist you today?"
+- Never say "How can I help you with your software development or coding needs?"
+- Never sound generic or robotic
+- Speak like a capable, friendly builder
+
+Examples of how to respond:
+- "Hello" or "Hi" → "Hey! What are we building today?"
+- "What can you do?" → "I build apps, automations, landing pages, mobile apps — your entire tech stack. What do you need?"
+- "Who are you?" → "I'm CrucibAI. I build things. Tell me what you want and we'll make it."
+- "How are you?" → "Ready to build. What are we making today?"
+- General question → Answer it directly and helpfully, then offer to build something related if relevant.
+"""
+
 @api_router.post("/ai/chat")
 async def ai_chat(data: ChatMessage, user: dict = Depends(get_optional_user)):
     """Multi-model AI chat with auto-selection and fallback on failure. Requires sufficient credits (prepay)."""
@@ -892,19 +910,7 @@ async def ai_chat(data: ChatMessage, user: dict = Depends(get_optional_user)):
         model_chain = _get_model_chain(data.model or "auto", data.message, effective_keys=effective)
         response, model_used = await _call_llm_with_fallback(
             message=data.message,
-            system_message=(
-                "You are CrucibAI — an AI platform that builds apps, automations, and digital products "
-                "for founders, marketers, and agencies. Be warm, direct, and conversational.\n\n"
-                "When someone greets you: respond naturally and ask what they want to build or how you can help.\n\n"
-                "When someone asks a question: answer it directly and helpfully, then offer to build something "
-                "related if relevant.\n\n"
-                "Never say 'software development or coding needs.' Never sound like a customer service bot. "
-                "Speak like a capable, friendly builder.\n\n"
-                "Examples:\n"
-                "- 'Hello' → 'Hey! What are we building today?'\n"
-                "- 'What can you do?' → 'I build apps, automations, landing pages, mobile apps — basically your "
-                "entire tech stack. What do you need?'"
-            ),
+            system_message=CHAT_SYSTEM_PROMPT,
             session_id=session_id,
             model_chain=model_chain,
             api_keys=effective,
@@ -962,13 +968,7 @@ async def ai_chat_stream(data: ChatMessage, user: dict = Depends(get_optional_us
             effective = _effective_api_keys(user_keys)
             session_id = data.session_id or str(uuid.uuid4())
             model_chain = _get_model_chain(data.model or "auto", data.message, effective_keys=effective)
-            system_message = (
-                "You are CrucibAI — an AI platform that builds apps, automations, and digital products "
-                "for founders, marketers, and agencies. Be warm, direct, and conversational. "
-                "When someone greets you, respond naturally and ask what they want to build. "
-                "When someone asks a question, answer helpfully and offer to build something related if relevant. "
-                "Never sound like a customer service bot; speak like a capable, friendly builder."
-            )
+            system_message = CHAT_SYSTEM_PROMPT
             if (getattr(data, "mode", None) or "").lower() == "thinking":
                 system_message = "You are CrucibAI. Think step by step: reason through the problem, then provide your final code or answer. Be thorough but concise."
             response, model_used = await _call_llm_with_fallback(

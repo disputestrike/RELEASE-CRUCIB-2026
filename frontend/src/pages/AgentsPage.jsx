@@ -2,9 +2,29 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth, API } from '../App';
 import axios from 'axios';
-import { Zap, Plus, ChevronRight, Play, Copy, Check } from 'lucide-react';
+import { Zap, Plus, ChevronRight, Copy, Check, Pencil, Trash2 } from 'lucide-react';
 
 const getToken = () => localStorage.getItem('token');
+
+function formatSchedule(agent) {
+  const tc = agent?.trigger_config;
+  if (!tc) return agent?.trigger_type || '—';
+  if (tc.cron_expression) {
+    const parts = tc.cron_expression.trim().split(/\s+/);
+    if (parts.length >= 5) {
+      const [min, hour, dom, month, dow] = parts;
+      if (min === '0' && hour !== '*' && dom === '*' && month === '*' && dow === '*') return `every day at ${hour.padStart(2, '0')}:00`;
+      if (min !== '*' && hour === '*' && dom === '*' && month === '*' && dow === '*') return `every hour at :${min}`;
+      if (dow !== '*' && dom === '*' && month === '*') {
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const dayNames = dow.split(',').map(d => days[parseInt(d, 10)]).filter(Boolean).join(', ') || dow;
+        return `every ${dayNames}`;
+      }
+    }
+    return tc.cron_expression;
+  }
+  return agent?.trigger_type || '—';
+}
 
 export default function AgentsPage() {
   const navigate = useNavigate();
@@ -16,16 +36,24 @@ export default function AgentsPage() {
   const [logRunId, setLogRunId] = useState(null);
   const [logLines, setLogLines] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [createOpen, setCreateOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const refetchAgents = () => {
+    setLoading(true);
+    axios.get(`${API}/agents`, { headers: { Authorization: `Bearer ${getToken()}` } })
+      .then((r) => setAgents(r.data.items || []))
+      .catch(() => setAgents([]))
+      .finally(() => setLoading(false));
+  };
+
   useEffect(() => {
+    if (id) return;
     const headers = { Authorization: `Bearer ${getToken()}` };
     axios.get(`${API}/agents`, { headers })
       .then((r) => setAgents(r.data.items || []))
       .catch(() => setAgents([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, [id]);
 
   useEffect(() => {
     if (!id) return;
@@ -62,50 +90,60 @@ export default function AgentsPage() {
           Agents & Automations
         </h1>
         <button
-          onClick={() => setCreateOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-[#1A1A1A] hover:bg-[#333] text-white rounded-lg text-[#1A1A1A]"
+          onClick={() => navigate('/app', { state: { focusPrompt: true } })}
+          className="flex items-center gap-2 px-4 py-2 bg-[#1A1A1A] hover:bg-[#333] text-white rounded-lg"
         >
-          <Plus className="w-5 h-5" /> Create Agent
+          <Plus className="w-5 h-5" /> New Agent
         </button>
       </div>
 
       {loading ? (
         <div className="text-[#666666]">Loading agents...</div>
       ) : !id ? (
-        <div className="space-y-6">
-          {/* Prompt-to-automation: describe in plain language */}
-          <div className="p-4 rounded-xl border border-white/10 bg-white/5">
-            <h2 className="text-sm font-semibold text-[#1A1A1A] mb-2">Describe your automation</h2>
-            <p className="text-xs text-[#666666] mb-3">The same AI that builds your app runs inside your automations. Describe what you want in plain language and we create the agent.</p>
-            <DescribeAndCreate
-              onCreated={(agentId) => {
-                setLoading(true);
-                axios.get(`${API}/agents`, { headers: { Authorization: `Bearer ${getToken()}` } })
-                  .then((r) => setAgents(r.data.items || []))
-                  .finally(() => setLoading(false));
-                if (agentId) navigate(`/app/agents/${agentId}`);
-              }}
-            />
-          </div>
-          <div className="space-y-2">
+        <div className="space-y-4">
           {agents.length === 0 ? (
-            <p className="text-[#666666]">No agents yet. Create one to run tasks on a schedule or via webhook.</p>
+            <p className="text-[#666666]">No agents yet. Go to Home and describe what you want your agent to do.</p>
           ) : (
             agents.map((a) => (
               <div
                 key={a.id}
-                onClick={() => navigate(`/app/agents/${a.id}`)}
-                className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:border-[#1A1A1A]/20 cursor-pointer"
+                className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10 hover:border-[#1A1A1A]/20"
               >
-                <div>
-                  <div className="font-medium text-[#1A1A1A]">{a.name}</div>
-                  <div className="text-sm text-[#666666]">{a.trigger_type} · {a.run_count ?? 0} runs</div>
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <Zap className="w-5 h-5 text-[#666666] flex-shrink-0" />
+                  <div className="min-w-0">
+                    <div className="font-medium text-[#1A1A1A]">{a.name}</div>
+                    <div className="text-sm text-[#666666]">{formatSchedule(a)}</div>
+                    <div className="text-xs text-[#666666]">Last run: {a.last_run_at ? new Date(a.last_run_at).toLocaleString() : 'Never'}</div>
+                  </div>
                 </div>
-                <ChevronRight className="w-5 h-5 text-[#666666]" />
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className="text-xs px-2 py-1 rounded bg-emerald-500/20 text-emerald-700">{a.enabled !== false ? '● Active' : 'Paused'}</span>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/app/agents/${a.id}`)}
+                    className="p-2 rounded hover:bg-white/10 text-[#666666] hover:text-[#1A1A1A]"
+                    title="Edit"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!window.confirm('Delete this agent?')) return;
+                      axios.delete(`${API}/agents/${a.id}`, { headers: { Authorization: `Bearer ${getToken()}` } })
+                        .then(() => refetchAgents())
+                        .catch((err) => alert(err.response?.data?.detail || err.message || 'Delete failed'));
+                    }}
+                    className="p-2 rounded hover:bg-red-500/20 text-[#666666] hover:text-red-600"
+                    title="Delete"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             ))
           )}
-          </div>
         </div>
       ) : agent ? (
         <div className="space-y-6">
@@ -164,159 +202,6 @@ export default function AgentsPage() {
           </div>
         </div>
       ) : null}
-
-      {createOpen && (
-        <CreateAgentModal
-          onClose={() => setCreateOpen(false)}
-          onCreated={(agentId) => {
-            setCreateOpen(false);
-            setLoading(true);
-            axios.get(`${API}/agents`, { headers: { Authorization: `Bearer ${getToken()}` } })
-              .then((r) => setAgents(r.data.items || []))
-              .finally(() => setLoading(false));
-            if (agentId) navigate(`/app/agents/${agentId}`);
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-function DescribeAndCreate({ onCreated }) {
-  const [description, setDescription] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!description.trim()) return;
-    setError('');
-    setLoading(true);
-    axios.post(`${API}/agents/from-description`, { description: description.trim() }, { headers: { Authorization: `Bearer ${getToken()}` } })
-      .then((r) => {
-        if (r.data && r.data.id) onCreated(r.data.id);
-      })
-      .catch((err) => setError(err.response?.data?.detail || err.message || 'Failed to create automation'))
-      .finally(() => setLoading(false));
-  };
-  return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-      <textarea
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        placeholder="e.g. Every morning at 9, summarize key updates and email them to me."
-        className="w-full px-3 py-2 rounded bg-zinc-900/30 border border-white/10 text-[#1A1A1A] placeholder-gray-500 min-h-[80px] text-sm"
-        rows={3}
-      />
-      {error && <p className="text-[#666666] text-xs">{error}</p>}
-      <button type="submit" disabled={loading || !description.trim()} className="self-start px-4 py-2 rounded bg-[#1A1A1A] text-white text-sm font-medium hover:bg-[#333] disabled:opacity-50">
-        {loading ? 'Creating…' : 'Create from description'}
-      </button>
-    </form>
-  );
-}
-
-function CreateAgentModal({ onClose, onCreated }) {
-  const [mode, setMode] = useState('describe'); // 'describe' | 'configure'
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [triggerType, setTriggerType] = useState('schedule');
-  const [cronExpression, setCronExpression] = useState('0 9 * * *');
-  const [webhookSecret, setWebhookSecret] = useState('');
-  const [error, setError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [describeText, setDescribeText] = useState('');
-  const [describeLoading, setDescribeLoading] = useState(false);
-  const [describeError, setDescribeError] = useState('');
-
-  const handleDescribeSubmit = (e) => {
-    e.preventDefault();
-    if (!describeText.trim()) return;
-    setDescribeError('');
-    setDescribeLoading(true);
-    axios.post(`${API}/agents/from-description`, { description: describeText.trim() }, { headers: { Authorization: `Bearer ${getToken()}` } })
-      .then((r) => { if (r.data && r.data.id) onCreated(r.data.id); })
-      .catch((err) => setDescribeError(err.response?.data?.detail || err.message || 'Failed'))
-      .finally(() => setDescribeLoading(false));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setError('');
-    const trigger = triggerType === 'schedule'
-      ? { type: 'schedule', cron_expression: cronExpression }
-      : { type: 'webhook', webhook_secret: webhookSecret || undefined };
-    const body = {
-      name: name || 'My Agent',
-      description: description || undefined,
-      trigger,
-      actions: [{ type: 'http', config: { method: 'GET', url: 'https://httpbin.org/get' } }],
-      enabled: true,
-    };
-    setSubmitting(true);
-    axios.post(`${API}/agents`, body, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
-      .then(() => onCreated())
-      .catch((err) => setError(err.response?.data?.detail || err.message))
-      .finally(() => setSubmitting(false));
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/70" onClick={onClose}>
-      <div className="bg-[#111] border border-white/10 rounded-xl p-6 max-w-md w-full shadow-xl max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-lg font-semibold text-[#1A1A1A] mb-4">Create Agent</h3>
-        <div className="flex gap-2 mb-4 border-b border-white/10 pb-2">
-          <button type="button" onClick={() => setMode('describe')} className={`px-3 py-1.5 rounded text-sm ${mode === 'describe' ? 'bg-[#1A1A1A] text-white' : 'text-[#666666] hover:text-[#1A1A1A]'}`}>Describe</button>
-          <button type="button" onClick={() => setMode('configure')} className={`px-3 py-1.5 rounded text-sm ${mode === 'configure' ? 'bg-[#1A1A1A] text-white' : 'text-[#666666] hover:text-[#1A1A1A]'}`}>Configure</button>
-        </div>
-        {mode === 'describe' && (
-          <>
-            <p className="text-xs text-[#666666] mb-2">Describe what you want in plain language. We create the automation.</p>
-            <form onSubmit={handleDescribeSubmit} className="space-y-3">
-              <textarea value={describeText} onChange={(e) => setDescribeText(e.target.value)} placeholder="e.g. Every morning at 9, summarize key updates and email them to me." className="w-full px-3 py-2 rounded bg-zinc-900/30 border border-white/10 text-[#1A1A1A] placeholder-gray-500 min-h-[100px] text-sm" />
-              {describeError && <p className="text-[#666666] text-sm">{describeError}</p>}
-              <div className="flex gap-2 justify-end">
-                <button type="button" onClick={onClose} className="px-4 py-2 rounded border border-white/20 text-gray-300 hover:bg-white/5">Cancel</button>
-                <button type="submit" disabled={describeLoading || !describeText.trim()} className="px-4 py-2 rounded bg-[#1A1A1A] text-white hover:bg-[#333] disabled:opacity-50">{describeLoading ? 'Creating…' : 'Create from description'}</button>
-              </div>
-            </form>
-          </>
-        )}
-        {mode === 'configure' && (
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm text-[#666666] mb-1">Name</label>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-3 py-2 rounded bg-zinc-900/30 border border-white/10 text-[#1A1A1A]" placeholder="My Agent" />
-          </div>
-          <div>
-            <label className="block text-sm text-[#666666] mb-1">Description</label>
-            <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full px-3 py-2 rounded bg-zinc-900/30 border border-white/10 text-[#1A1A1A]" placeholder="Optional" />
-          </div>
-          <div>
-            <label className="block text-sm text-[#666666] mb-1">Trigger</label>
-            <select value={triggerType} onChange={(e) => setTriggerType(e.target.value)} className="w-full px-3 py-2 rounded bg-zinc-900/30 border border-white/10 text-[#1A1A1A]">
-              <option value="schedule">Schedule (cron)</option>
-              <option value="webhook">Webhook</option>
-            </select>
-          </div>
-          {triggerType === 'schedule' && (
-            <div>
-              <label className="block text-sm text-[#666666] mb-1">Cron (e.g. 0 9 * * * = 9am daily)</label>
-              <input type="text" value={cronExpression} onChange={(e) => setCronExpression(e.target.value)} className="w-full px-3 py-2 rounded bg-zinc-900/30 border border-white/10 text-[#1A1A1A] font-mono" />
-            </div>
-          )}
-          {triggerType === 'webhook' && (
-            <div>
-              <label className="block text-sm text-[#666666] mb-1">Webhook secret (optional)</label>
-              <input type="text" value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)} className="w-full px-3 py-2 rounded bg-zinc-900/30 border border-white/10 text-[#1A1A1A]" placeholder="Auto-generated if empty" />
-            </div>
-          )}
-          {error && <p className="text-[#666666] text-sm">{error}</p>}
-          <div className="flex gap-2 justify-end">
-            <button type="button" onClick={onClose} className="px-4 py-2 rounded border border-white/20 text-gray-300 hover:bg-white/5">Cancel</button>
-            <button type="submit" disabled={submitting} className="px-4 py-2 rounded bg-[#1A1A1A] text-white hover:bg-[#333] disabled:opacity-50">Create</button>
-          </div>
-        </form>
-        )}
-      </div>
     </div>
   );
 }

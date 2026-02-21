@@ -361,6 +361,7 @@ const Workspace = () => {
   const [showDeployModal, setShowDeployModal] = useState(false);
   const [mobileView, setMobileView] = useState(false);
   const projectIdFromUrl = searchParams.get('projectId');
+  const taskIdFromUrl = searchParams.get('taskId');
   const [projectBuildProgress, setProjectBuildProgress] = useState({ phase: 0, agent: '', progress: 0, status: '', tokens_used: 0 });
   const fileInputRef = useRef(null);
   const chatEndRef = useRef(null);
@@ -555,7 +556,7 @@ const Workspace = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // PHASE 4: Build only from form submit — never from useEffect. Pre-fill input only.
+  // PHASE 4: Pre-fill input from navigation. Re-run when user clicks a different task in sidebar (taskId or state change).
   useEffect(() => {
     const statePrompt = location.state?.initialPrompt;
     const initialPrompt = statePrompt || searchParams.get('prompt');
@@ -566,8 +567,7 @@ const Workspace = () => {
     } else if (initialFiles?.length && initialFiles.every(f => f.type?.startsWith?.('image/'))) {
       setAttachedFiles(initialFiles);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount to prefill from navigation
-  }, []);
+  }, [location.state?.initialPrompt, taskIdFromUrl]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
