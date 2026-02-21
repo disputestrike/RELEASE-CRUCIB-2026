@@ -5,7 +5,7 @@ export default function Aup() {
     <div className="min-h-screen bg-[#FAFAF8] text-[#1A1A1A]">
       <div className="max-w-3xl mx-auto px-6 py-10">
         <h1 className="text-3xl font-bold text-[#1A1A1A] mb-2">Acceptable Use Policy</h1>
-        <p className="text-sm text-[#666666] mb-8">Last updated: February 2026</p>
+        <p className="text-sm text-gray-600 mb-8">Last updated: February 2026</p>
 
         <div className="space-y-6 text-[#1A1A1A] leading-relaxed">
           <p>CrucibAI is for building legitimate applications. This Acceptable Use Policy (AUP) describes uses that are prohibited. Violations may result in blocked requests, suspension, or termination of your account. By using the service, you agree to this AUP.</p>
@@ -37,16 +37,16 @@ export default function Aup() {
           <p>We use automated and manual review to detect violations. Requests that violate this AUP are blocked and may be logged for review. We may suspend or terminate accounts that repeatedly or seriously violate this policy. We may report illegal activity to law enforcement or other authorities. We reserve the right to remove content and to take action without prior notice where we deem necessary to protect the service or others.</p>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">6. Appeals</h2>
-          <p>If you believe a block or enforcement action was in error, you may contact us at <a href="mailto:appeals@crucibai.com" className="text-orange-400 hover:text-orange-300 underline">appeals@crucibai.com</a> with the request ID (if provided), your account details, and a brief explanation. We will review in good faith but are not obligated to reverse a decision.</p>
+          <p>If you believe a block or enforcement action was in error, you may contact us at <a href="mailto:appeals@crucibai.com" className="text-gray-500 hover:text-gray-500 underline">appeals@crucibai.com</a> with the request ID (if provided), your account details, and a brief explanation. We will review in good faith but are not obligated to reverse a decision.</p>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">6. Changes</h2>
           <p>We may update this AUP from time to time. The &quot;Last updated&quot; date will be revised when we do. Continued use of the service after changes constitutes acceptance. For material changes we may provide notice in the app or by email.</p>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">8. Contact</h2>
-          <p>For AUP or enforcement questions, contact <a href="mailto:appeals@crucibai.com" className="text-orange-400 hover:text-orange-300 underline">appeals@crucibai.com</a> or the support address provided in the app.</p>
+          <p>For AUP or enforcement questions, contact <a href="mailto:appeals@crucibai.com" className="text-gray-500 hover:text-gray-500 underline">appeals@crucibai.com</a> or the support address provided in the app.</p>
         </div>
 
-        <Link to="/" className="inline-flex items-center gap-1 mt-10 text-orange-400 hover:text-orange-300 font-medium">← Back to home</Link>
+        <Link to="/" className="inline-flex items-center gap-1 mt-10 text-gray-500 hover:text-gray-500 font-medium">← Back to home</Link>
       </div>
     </div>
   );

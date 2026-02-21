@@ -29,7 +29,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #FF6B35;
+  background: #1A1A1A;
   animation: iam-pulse 1.5s infinite;
 }
 
@@ -46,7 +46,7 @@
 
 .iam-header-stats {
   font-size: 12px;
-  color: #666666;
+  color: #808080;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -57,7 +57,7 @@
   align-items: center;
   padding: 1px 6px;
   background: rgba(59, 130, 246, 0.1);
-  color: #FF6B35;
+  color: #1A1A1A;
   border-radius: 4px;
   font-size: 11px;
   font-weight: 500;
@@ -78,7 +78,7 @@
   border-radius: 6px;
   font-size: 12px;
   font-weight: 600;
-  color: #D97706;
+  color: #808080;
 }
 
 /* Progress */
@@ -90,7 +90,7 @@
 
 .iam-phase-label {
   font-size: 12px;
-  color: #666666;
+  color: #808080;
   font-weight: 500;
 }
 
@@ -103,13 +103,13 @@
 
 .iam-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #FF6B35, #FF8F5E);
+  background: linear-gradient(90deg, #1A1A1A, #4A4A4A);
   border-radius: 3px;
 }
 
 .iam-progress-text {
   font-size: 11px;
-  color: #9CA3AF;
+  color: #999999;
   text-align: right;
   font-family: 'Fira Code', monospace;
 }
@@ -161,7 +161,7 @@
 
 .iam-layer-count {
   font-size: 11px;
-  color: #9CA3AF;
+  color: #999999;
   font-family: 'Fira Code', monospace;
 }
 
@@ -176,7 +176,7 @@
   gap: 8px;
   padding: 6px 12px 6px 28px;
   font-size: 12px;
-  color: #666666;
+  color: #808080;
   border-top: 1px solid rgba(0, 0, 0, 0.03);
   transition: background 150ms ease;
 }
@@ -192,7 +192,7 @@
 
 .iam-agent.failed {
   background: rgba(239, 68, 68, 0.04);
-  color: #DC2626;
+  color: #1A1A1A;
 }
 
 .iam-agent-icon {
@@ -236,7 +236,7 @@
 
 .iam-agent-tokens {
   font-size: 11px;
-  color: #9CA3AF;
+  color: #999999;
   font-family: 'Fira Code', monospace;
   flex-shrink: 0;
   min-width: 32px;
@@ -258,7 +258,7 @@
   cursor: pointer;
   font-size: 12px;
   font-weight: 500;
-  color: #666666;
+  color: #808080;
   padding: 4px 0;
 }
 
@@ -284,13 +284,13 @@
 }
 
 .iam-timeline-time {
-  color: #9CA3AF;
+  color: #999999;
   flex-shrink: 0;
 }
 
-.iam-timeline-type.completed { color: #10B981; }
-.iam-timeline-type.started { color: #FF6B35; }
-.iam-timeline-type.other { color: #F59E0B; }
+.iam-timeline-type.completed { color: #808080; }
+.iam-timeline-type.started { color: #1A1A1A; }
+.iam-timeline-type.other { color: #808080; }
 
 /* Retry */
 .iam-retry-btn {
@@ -311,7 +311,7 @@
 }
 
 .iam-retry-btn:hover {
-  background: #333333;
+  background: #1A1A1A;
 }
 
 /* Scrollbar */
@@ -345,7 +345,7 @@
 
 .iam-quality-label {
   font-weight: 500;
-  color: #666666;
+  color: #808080;
   flex: 1;
 }
 

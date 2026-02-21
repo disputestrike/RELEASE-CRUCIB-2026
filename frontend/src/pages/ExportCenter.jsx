@@ -66,10 +66,10 @@ const ExportCenter = () => {
 
   const getFormatColor = (format) => {
     switch (format) {
-      case 'pdf': return 'red';
-      case 'excel': return 'green';
-      case 'markdown': return 'orange';
-      case 'all': return 'orange';
+      case 'pdf': return 'gray';
+      case 'excel': return 'gray';
+      case 'markdown': return 'gray';
+      case 'all': return 'gray';
       default: return 'gray';
     }
   };
@@ -77,7 +77,7 @@ const ExportCenter = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-12 h-12 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-2 border-gray-300 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -87,17 +87,17 @@ const ExportCenter = () => {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold mb-2">Export Center</h1>
-        <p className="text-[#666666]">Generate and download your project documentation in multiple formats.</p>
+        <p className="text-gray-600">Generate and download your project documentation in multiple formats.</p>
       </div>
 
       {/* Deploy: one-click deploy ZIP, Vercel, Netlify */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10"
+        className="p-6 bg-black rounded-xl border border-white/10"
       >
         <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
-          <Rocket className="w-5 h-5 text-emerald-500" />
+          <Rocket className="w-5 h-5 text-gray-500" />
           Deploy to production
         </h3>
         <p className="text-sm text-gray-500 mb-4">Download a deploy-ready ZIP or open Vercel / Netlify to upload it.</p>
@@ -105,7 +105,7 @@ const ExportCenter = () => {
           <select
             value={deployProjectId}
             onChange={(e) => setDeployProjectId(e.target.value)}
-            className="px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 focus:border-emerald-500 outline-none min-w-[200px]"
+            className="px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 focus:border-gray-500 outline-none min-w-[200px]"
           >
             <option value="">Select a completed project</option>
             {projects.map((p) => (
@@ -122,7 +122,7 @@ const ExportCenter = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10"
+        className="p-6 bg-black rounded-xl border border-white/10"
       >
         <h3 className="text-lg font-semibold mb-6">Create New Export</h3>
         <div className="grid md:grid-cols-3 gap-4">
@@ -131,7 +131,7 @@ const ExportCenter = () => {
             <select
               value={selectedProject}
               onChange={(e) => setSelectedProject(e.target.value)}
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-orange-500 outline-none"
+              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-gray-300 outline-none"
               data-testid="export-project-select"
             >
               <option value="">Select a project</option>
@@ -146,7 +146,7 @@ const ExportCenter = () => {
             <select
               value={selectedFormat}
               onChange={(e) => setSelectedFormat(e.target.value)}
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-orange-500 outline-none"
+              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-gray-300 outline-none"
               data-testid="export-format-select"
             >
               <option value="pdf">PDF Report</option>
@@ -160,7 +160,7 @@ const ExportCenter = () => {
             <button
               onClick={handleCreateExport}
               disabled={!selectedProject || creating}
-              className="w-full py-3 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition flex items-center justify-center gap-2"
+              className="w-full py-3 bg-gray-200 hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition flex items-center justify-center gap-2"
               data-testid="create-export-btn"
             >
               {creating ? (
@@ -192,7 +192,7 @@ const ExportCenter = () => {
             className={`p-4 rounded-xl border transition-all cursor-pointer ${
               selectedFormat === item.format
                 ? `bg-${getFormatColor(item.format)}-500/10 border-${getFormatColor(item.format)}-500/50`
-                : 'bg-[#0a0a0a] border-white/10 hover:border-white/20'
+                : 'bg-black border-white/10 hover:border-white/20'
             }`}
             onClick={() => setSelectedFormat(item.format)}
           >
@@ -204,13 +204,13 @@ const ExportCenter = () => {
       </div>
 
       {/* Exports List */}
-      <div className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10">
+      <div className="p-6 bg-black rounded-xl border border-white/10">
         <h3 className="text-lg font-semibold mb-6">Recent Exports</h3>
         
         {exports.length === 0 ? (
           <div className="text-center py-12">
             <Download className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-            <p className="text-[#666666]">No exports yet. Create your first export above.</p>
+            <p className="text-gray-600">No exports yet. Create your first export above.</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -239,9 +239,9 @@ const ExportCenter = () => {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className={`px-2 py-1 text-xs rounded-full ${
-                      exp.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                      exp.status === 'processing' ? 'bg-orange-500/20 text-orange-400' :
-                      'bg-gray-500/20 text-[#666666]'
+                      exp.status === 'completed' ? 'bg-gray-500/20 text-gray-400' :
+                      exp.status === 'processing' ? 'bg-gray-200/20 text-gray-500' :
+                      'bg-gray-500/20 text-gray-600'
                     }`}>
                       {exp.status}
                     </span>

@@ -5,15 +5,15 @@ export default function Terms() {
     <div className="min-h-screen bg-[#FAFAF8] text-[#1A1A1A]">
       <div className="max-w-3xl mx-auto px-6 py-10">
         <h1 className="text-3xl font-bold text-[#1A1A1A] mb-2">Terms of Use</h1>
-        <p className="text-sm text-[#666666] mb-8">Last updated: February 2026</p>
+        <p className="text-sm text-gray-600 mb-8">Last updated: February 2026</p>
 
         <div className="space-y-6 text-[#1A1A1A] leading-relaxed">
           <p>Welcome to CrucibAI. By accessing or using our service, you agree to these Terms of Use. If you do not agree, do not use the service.</p>
           <div className="p-4 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-300">
             <p className="font-medium text-gray-100 mb-2">Please note:</p>
             <ul className="list-disc pl-5 space-y-1">
-              <li>Our <Link to="/privacy" className="text-orange-400 hover:text-orange-300 underline">Privacy Policy</Link> describes how we collect and use personal information. It is an important document that you should read.</li>
-              <li>For content-safety and prohibited uses, see our <Link to="/aup" className="text-orange-400 hover:text-orange-300 underline">Acceptable Use Policy</Link>.</li>
+              <li>Our <Link to="/privacy" className="text-[#1A1A1A] hover:underline underline">Privacy Policy</Link> describes how we collect and use personal information. It is an important document that you should read.</li>
+              <li>For content-safety and prohibited uses, see our <Link to="/aup" className="text-[#1A1A1A] hover:underline underline">Acceptable Use Policy</Link>.</li>
             </ul>
           </div>
 
@@ -66,7 +66,7 @@ export default function Terms() {
           <p>For questions about these terms, contact us at the support or legal address provided in the app or on our website.</p>
         </div>
 
-        <Link to="/" className="inline-flex items-center gap-1 mt-10 text-orange-400 hover:text-orange-300 font-medium">← Back to home</Link>
+        <Link to="/" className="inline-flex items-center gap-1 mt-10 text-[#1A1A1A] hover:underline font-medium">← Back to home</Link>
       </div>
     </div>
   );

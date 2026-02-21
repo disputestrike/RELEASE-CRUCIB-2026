@@ -55,7 +55,7 @@ export default function AuditLog() {
     <div className="p-6 max-w-5xl">
       <h1 className="text-2xl font-bold text-[#1A1A1A] mb-6">Audit Log</h1>
 
-      <div className="mb-6 p-4 bg-[#0a0a0a] border border-white/10 rounded-xl">
+      <div className="mb-6 p-4 bg-black border border-white/10 rounded-xl">
         <h3 className="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
           <Download className="w-4 h-4" />
           Export
@@ -81,7 +81,7 @@ export default function AuditLog() {
           </div>
           <button
             onClick={handleExport}
-            className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg text-sm font-medium"
+            className="flex items-center gap-2 px-4 py-2 bg-gray-200 hover:bg-black rounded-lg text-sm font-medium"
           >
             <Download className="w-4 h-4" />
             Export CSV
@@ -89,8 +89,8 @@ export default function AuditLog() {
         </div>
       </div>
 
-      <div className="mb-4 p-3 bg-[#0a0a0a] border border-white/10 rounded-lg flex items-center gap-2">
-        <Filter className="w-4 h-4 text-[#666666]" />
+      <div className="mb-4 p-3 bg-black border border-white/10 rounded-lg flex items-center gap-2">
+        <Filter className="w-4 h-4 text-gray-600" />
         <select
           value={actionFilter}
           onChange={(e) => setActionFilter(e.target.value)}
@@ -108,17 +108,17 @@ export default function AuditLog() {
       </div>
 
       {loading ? (
-        <p className="text-[#666666]">Loading...</p>
+        <p className="text-gray-600">Loading...</p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-white/10">
           <table className="w-full text-sm text-gray-300">
             <thead>
               <tr className="border-b border-white/10 bg-white/5">
-                <th className="px-4 py-3 text-left text-[#666666] font-medium">Time</th>
-                <th className="px-4 py-3 text-left text-[#666666] font-medium">Action</th>
-                <th className="px-4 py-3 text-left text-[#666666] font-medium">Resource</th>
-                <th className="px-4 py-3 text-left text-[#666666] font-medium">Status</th>
-                <th className="px-4 py-3 text-left text-[#666666] font-medium">IP</th>
+                <th className="px-4 py-3 text-left text-gray-600 font-medium">Time</th>
+                <th className="px-4 py-3 text-left text-gray-600 font-medium">Action</th>
+                <th className="px-4 py-3 text-left text-gray-600 font-medium">Resource</th>
+                <th className="px-4 py-3 text-left text-gray-600 font-medium">Status</th>
+                <th className="px-4 py-3 text-left text-gray-600 font-medium">IP</th>
               </tr>
             </thead>
             <tbody>
@@ -128,7 +128,7 @@ export default function AuditLog() {
                     {log.timestamp ? new Date(log.timestamp).toLocaleString() : '—'}
                   </td>
                   <td className="px-4 py-3">
-                    <span className="px-2 py-0.5 bg-orange-500/20 text-orange-400 rounded text-xs font-medium">
+                    <span className="px-2 py-0.5 bg-gray-200/20 text-gray-500 rounded text-xs font-medium">
                       {log.action}
                     </span>
                   </td>
@@ -137,7 +137,7 @@ export default function AuditLog() {
                     {log.resource_id && ` (${String(log.resource_id).slice(0, 8)}…)`}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded text-xs ${log.status === 'success' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                    <span className={`px-2 py-0.5 rounded text-xs ${log.status === 'success' ? 'bg-gray-500/20 text-gray-400' : 'bg-gray-500/20 text-gray-400'}`}>
                       {log.status}
                     </span>
                   </td>
@@ -149,7 +149,7 @@ export default function AuditLog() {
         </div>
       )}
 
-      <div className="mt-4 flex items-center justify-between text-sm text-[#666666]">
+      <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
         <span>
           Showing {skip + 1}–{Math.min(skip + limit, total)} of {total}
         </span>

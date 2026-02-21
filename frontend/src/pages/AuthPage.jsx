@@ -140,7 +140,7 @@ const AuthPage = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAFAF8]">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-2 border-[#FF6B35] border-t-transparent rounded-full animate-spin" />
+          <div className="w-10 h-10 border-2 border-[#1A1A1A] border-t-transparent rounded-full animate-spin" />
           <p className="text-gray-500 text-sm">Signing you in...</p>
         </div>
       </div>
@@ -148,9 +148,9 @@ const AuthPage = () => {
   }
 
   return (
-    <div className="min-h-screen flex" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+    <div className="min-h-screen flex bg-kimi-bg" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       {/* Left Panel — Form */}
-      <div className="w-full lg:w-[480px] xl:w-[520px] flex flex-col bg-white relative">
+      <div className="w-full lg:w-[480px] xl:w-[520px] flex flex-col bg-white relative border-r border-stone-200">
         {/* Back button */}
         <div className="p-6">
           <Link
@@ -173,11 +173,9 @@ const AuthPage = () => {
             {/* Logo */}
             <div className="mb-8">
               <Link to="/" className="inline-flex items-center gap-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-[#FF6B35] to-[#FF8F5E] rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">C</span>
-                </div>
+                <img src="/assets/logo.png" alt="CrucibAI" className="w-8 h-8" />
                 <span className="text-xl font-bold tracking-tight text-gray-900">
-                  Crucib<span className="text-[#FF6B35]">AI</span>
+                  CrucibAI
                 </span>
               </Link>
             </div>
@@ -200,7 +198,7 @@ const AuthPage = () => {
 
             {/* Error */}
             {error && (
-              <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex items-start gap-2" data-testid="auth-error">
+              <div className="mb-6 p-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-600 text-sm flex items-start gap-2" data-testid="auth-error">
                 <X className="w-4 h-4 mt-0.5 flex-shrink-0" />
                 <span>{error}</span>
               </div>
@@ -217,7 +215,7 @@ const AuthPage = () => {
                     autoComplete="one-time-code"
                     value={mfaCode}
                     onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/10 outline-none transition text-center text-2xl tracking-[0.5em] font-mono"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:border-gray-400 focus:ring-2 focus:ring-gray-200 outline-none transition text-center text-2xl tracking-[0.5em] font-mono"
                     placeholder="000000"
                     maxLength={6}
                     autoFocus
@@ -226,7 +224,7 @@ const AuthPage = () => {
                 <button
                   type="submit"
                   disabled={loading || mfaCode.length !== 6}
-                  className="w-full py-3 bg-[#FF6B35] hover:bg-[#E05A25] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-medium transition text-sm"
+                  className="w-full py-3 bg-[#1A1A1A] hover:opacity-90 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-medium transition text-sm"
                 >
                   {loading ? <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : 'Verify'}
                 </button>
@@ -249,10 +247,10 @@ const AuthPage = () => {
                     data-testid="auth-google-btn"
                   >
                     <svg className="w-5 h-5" viewBox="0 0 24 24">
-                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                      <path fill="#1A1A1A" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="#1A1A1A" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="#1A1A1A" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                      <path fill="#1A1A1A" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                     </svg>
                     Continue with Google
                   </button>
@@ -289,7 +287,7 @@ const AuthPage = () => {
                           type="text"
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/10 outline-none transition text-sm"
+                          className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:border-gray-400 focus:ring-2 focus:ring-gray-200 outline-none transition text-sm"
                           placeholder="Your name"
                           required={!isLogin}
                           data-testid="auth-name-input"
@@ -306,7 +304,7 @@ const AuthPage = () => {
                         type="email"
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/10 outline-none transition text-sm"
+                        className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:border-gray-400 focus:ring-2 focus:ring-gray-200 outline-none transition text-sm"
                         placeholder="you@example.com"
                         required
                         autoFocus={isLogin}
@@ -319,7 +317,7 @@ const AuthPage = () => {
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="block text-sm font-medium text-gray-700">Password</label>
                       {isLogin && (
-                        <button type="button" className="text-xs text-[#FF6B35] hover:text-[#E05A25] transition">
+                        <button type="button" className="text-xs text-[#1A1A1A] hover:underline transition">
                           Forgot password?
                         </button>
                       )}
@@ -332,7 +330,7 @@ const AuthPage = () => {
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                         onFocus={() => setPasswordFocused(true)}
                         onBlur={() => setPasswordFocused(false)}
-                        className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:border-[#FF6B35] focus:ring-2 focus:ring-[#FF6B35]/10 outline-none transition text-sm"
+                        className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:border-gray-400 focus:ring-2 focus:ring-gray-200 outline-none transition text-sm"
                         placeholder="••••••••"
                         required
                         minLength={6}
@@ -357,10 +355,10 @@ const AuthPage = () => {
                       >
                         {passwordChecks.map((check) => (
                           <div key={check.label} className="flex items-center gap-1.5">
-                            <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center ${check.met ? 'bg-green-500' : 'bg-gray-200'} transition-colors`}>
+                            <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center ${check.met ? 'bg-gray-500' : 'bg-gray-200'} transition-colors`}>
                               {check.met && <Check className="w-2.5 h-2.5 text-white" />}
                             </div>
-                            <span className={`text-xs ${check.met ? 'text-green-600' : 'text-gray-400'} transition-colors`}>
+                            <span className={`text-xs ${check.met ? 'text-gray-600' : 'text-gray-400'} transition-colors`}>
                               {check.label}
                             </span>
                           </div>
@@ -373,7 +371,7 @@ const AuthPage = () => {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-3 bg-[#FF6B35] hover:bg-[#E05A25] disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-medium transition text-sm flex items-center justify-center gap-2"
+                    className="w-full py-3 bg-[#1A1A1A] hover:opacity-90 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white rounded-lg font-medium transition text-sm flex items-center justify-center gap-2"
                     data-testid="auth-submit-btn"
                   >
                     {loading ? (
@@ -389,7 +387,7 @@ const AuthPage = () => {
                   {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
                   <button
                     onClick={() => { setIsLogin(!isLogin); setError(''); setFormData({ name: '', email: '', password: '' }); }}
-                    className="text-[#FF6B35] hover:text-[#E05A25] font-medium transition"
+                    className="text-[#1A1A1A] hover:underline font-medium transition"
                     data-testid="auth-toggle-btn"
                   >
                     {isLogin ? 'Sign up' : 'Sign in'}
@@ -410,10 +408,10 @@ const AuthPage = () => {
       </div>
 
       {/* Right Panel — Value Proposition (hidden on mobile) */}
-      <div className="hidden lg:flex flex-1 bg-white border-l border-gray-100 relative overflow-hidden">
+      <div className="hidden lg:flex flex-1 bg-white border-l border-stone-200 relative overflow-hidden">
         {/* Subtle dot pattern */}
         <div className="absolute inset-0 opacity-[0.4]" style={{
-          backgroundImage: 'radial-gradient(circle at 1px 1px, #e5e7eb 1px, transparent 0)',
+          backgroundImage: 'radial-gradient(circle at 1px 1px, #E5E7EB 1px, transparent 0)',
           backgroundSize: '32px 32px'
         }} />
 
@@ -443,7 +441,7 @@ const AuthPage = () => {
                 transition={{ delay: 0.2 + i * 0.1 }}
                 className="flex items-center gap-3"
               >
-                <div className="w-5 h-5 rounded-full bg-[#FF6B35] flex items-center justify-center flex-shrink-0">
+                <div className="w-5 h-5 rounded-full bg-[#1A1A1A] flex items-center justify-center flex-shrink-0">
                   <Check className="w-3 h-3 text-white" />
                 </div>
                 <span className="text-gray-700 text-sm">{item.text}</span>
@@ -481,8 +479,8 @@ const AuthPage = () => {
               "We described our SaaS on Monday and had a working MVP by Thursday. The agent transparency is what sold us — we could see exactly what was being built."
             </p>
             <div className="mt-3 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-[#FF6B35]/10 flex items-center justify-center">
-                <span className="text-[#FF6B35] text-xs font-bold">JM</span>
+              <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                <span className="text-[#1A1A1A] text-xs font-bold">JM</span>
               </div>
               <div>
                 <p className="text-gray-900 text-xs font-medium">Jordan M.</p>

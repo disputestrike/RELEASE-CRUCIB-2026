@@ -65,7 +65,7 @@ export default function PromptsPublic() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Proven copy</span>
           <h1 className="text-4xl font-semibold tracking-tight mt-2 mb-4">Prompt Library</h1>
-          <p className="text-zinc-500">Proven prompts for every use case — e-commerce, landing pages, task managers, auth, SaaS, and more. Copy, tweak, and build. Sign up to try them one-click in the workspace.</p>
+          <p className="text-gray-500">Proven prompts for every use case — e-commerce, landing pages, task managers, auth, SaaS, and more. Copy, tweak, and build. Sign up to try them one-click in the workspace.</p>
         </motion.div>
 
         <div className="space-y-6">
@@ -82,21 +82,21 @@ export default function PromptsPublic() {
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => copyPrompt(t.prompt, t.id)}
-                    className="p-2 text-zinc-400 hover:text-[#1A1A1A] rounded-lg transition"
+                    className="p-2 text-gray-400 hover:text-[#1A1A1A] rounded-lg transition"
                     title="Copy prompt"
                   >
                     {copiedId === t.id ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                   </button>
                   <button
                     onClick={() => tryPrompt(t.prompt)}
-                    className="flex items-center gap-1 text-sm text-orange-400 hover:text-orange-300"
+                    className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-500"
                   >
                     {user ? 'Use in workspace' : 'Get started to use'}
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
               </div>
-              <p className="text-sm text-zinc-500 font-mono bg-stone-50 rounded-lg text-stone-700 p-4 break-words">{t.prompt}</p>
+              <p className="text-sm text-gray-500 font-mono bg-stone-50 rounded-lg text-stone-700 p-4 break-words">{t.prompt}</p>
             </motion.div>
           ))}
         </div>

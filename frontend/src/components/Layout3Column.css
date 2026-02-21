@@ -3,7 +3,9 @@
 .layout-3-column {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  flex: 1;
+  min-height: 100vh;
+  height: 100%;
   background: #FAFAF8;
   color: #1A1A1A;
   overflow: hidden;
@@ -86,8 +88,10 @@
 
 .layout-main-content {
   flex: 1;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
 }
@@ -279,7 +283,7 @@
 /* Focus management */
 .layout-sidebar:focus-within,
 .layout-right-panel:focus-within {
-  box-shadow: inset 0 0 0 2px #FF6B35;
+  box-shadow: inset 0 0 0 2px #1A1A1A;
 }
 
 /* Print styles */

@@ -428,10 +428,10 @@ class APIDocumentationGenerator:
             <title>{self.title}</title>
             <style>
                 body {{ font-family: Arial, sans-serif; margin: 20px; }}
-                h1 {{ color: #333; }}
-                h2 {{ color: #666; border-bottom: 2px solid #007bff; padding-bottom: 10px; }}
-                .endpoint {{ background: #f5f5f5; padding: 15px; margin: 10px 0; border-radius: 5px; }}
-                .method {{ font-weight: bold; color: #007bff; }}
+                h1 {{ color: #1A1A1A; }}
+                h2 {{ color: #666; border-bottom: 2px solid #1A1A1A; padding-bottom: 10px; }}
+                .endpoint {{ background: #F5F5F4; padding: 15px; margin: 10px 0; border-radius: 5px; }}
+                .method {{ font-weight: bold; color: #1A1A1A; }}
                 .path {{ font-family: monospace; background: #fff; padding: 5px; }}
                 .error {{ background: #fee; padding: 10px; margin: 5px 0; border-left: 4px solid #f00; }}
             </style>

@@ -45,7 +45,7 @@
 ```css
 --kimi-accent: #3B82F6;  /* Professional blue */
 --success: #10B981;      /* Green for success */
---warning: #F59E0B;      /* Amber for warnings */
+--warning: #999999;      /* Amber for warnings */
 --error: #EF4444;        /* Red for errors */
 ```
 
@@ -67,7 +67,7 @@
 | Light Gray | #888888 | Tertiary text |
 | Blue | #3B82F6 | Accent, links, buttons |
 | Green | #10B981 | Success states |
-| Amber | #F59E0B | Warnings |
+| Amber | #999999 | Warnings |
 | Red | #EF4444 | Errors |
 
 ---

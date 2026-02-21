@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Plus, Bot, Search, Library, FolderOpen, CheckCircle, Clock,
-  AlertCircle, Settings, LogOut, Zap, ChevronDown, ChevronRight,
+  Plus, Search, Library, FolderOpen, CheckCircle, Clock,
+  AlertCircle, Settings, LogOut, ChevronDown, ChevronRight,
   FileOutput, FileText, LayoutGrid, BookOpen, Key, Keyboard,
   CreditCard, ScrollText, BarChart3, Wrench, HelpCircle, Coins,
   X, Bell, Home
@@ -37,7 +37,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks = [] }) => {
   const pinnedNav = [
     { label: 'Home', icon: Home, href: '/app', exact: true },
     { label: 'New Task', icon: Plus, href: '/app/workspace' },
-    { label: 'Agents', icon: Bot, href: '/app/agents' },
+    { label: 'Agents', icon: FolderOpen, href: '/app/agents' },
     { label: 'Settings', icon: Settings, href: '/app/settings' },
   ];
 
@@ -94,9 +94,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks = [] }) => {
       {/* Header */}
       <div className="sidebar-header">
         <Link to="/app" className="sidebar-logo">
-          <div className="sidebar-logo-icon">
-            <Zap size={18} />
-          </div>
+          <img src="/assets/logo.png" alt="CrucibAI" className="sidebar-logo-icon" style={{width: '32px', height: '32px'}} />
           <div className="sidebar-logo-text">CrucibAI</div>
         </Link>
       </div>
@@ -198,7 +196,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks = [] }) => {
 
       {/* Token Balance */}
       <Link to="/app/tokens" className="sidebar-token-balance" title="Credit Center">
-        <Zap size={16} className="sidebar-token-icon" />
+        <Coins size={16} className="sidebar-token-icon" />
         <span className="sidebar-token-amount">{(user?.token_balance ?? 0).toLocaleString()}</span>
         <span className="sidebar-token-label">credits</span>
       </Link>

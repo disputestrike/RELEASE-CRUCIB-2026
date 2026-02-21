@@ -35,7 +35,7 @@ const AdminUsers = () => {
   if (error) {
     return (
       <div className="p-8">
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-400">{error}</div>
+        <div className="rounded-lg border border-gray-500/30 bg-gray-500/10 p-4 text-gray-400">{error}</div>
       </div>
     );
   }
@@ -44,11 +44,11 @@ const AdminUsers = () => {
     <div className="space-y-6" data-testid="admin-users">
       <div>
         <h1 className="text-3xl font-bold">User management</h1>
-        <p className="text-[#666666] mt-1">Search and filter users</p>
+        <p className="text-gray-600 mt-1">Search and filter users</p>
       </div>
       <div className="flex flex-wrap gap-4">
         <div className="flex items-center gap-2 bg-white/5 rounded-lg border border-white/10 px-3 py-2">
-          <Search className="w-4 h-4 text-[#666666]" />
+          <Search className="w-4 h-4 text-gray-600" />
           <input
             type="text"
             placeholder="Email"
@@ -72,7 +72,7 @@ const AdminUsers = () => {
       </div>
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="w-10 h-10 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-10 h-10 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
         <div className="rounded-xl border border-white/10 overflow-hidden">
@@ -92,13 +92,13 @@ const AdminUsers = () => {
                   <td className="py-3 px-4">{u.email}</td>
                   <td className="py-3 px-4 capitalize">{u.plan || 'free'}</td>
                   <td className="py-3 px-4">{u.credit_balance ?? '-'}</td>
-                  <td className="py-3 px-4 text-[#666666]">
+                  <td className="py-3 px-4 text-gray-600">
                     {u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}
                   </td>
                   <td className="py-3 px-4">
                     <Link
                       to={`/app/admin/users/${u.id}`}
-                      className="inline-flex items-center text-orange-400 hover:text-orange-300"
+                      className="inline-flex items-center text-gray-500 hover:text-gray-500"
                     >
                       <User className="w-4 h-4 mr-1" />
                       View

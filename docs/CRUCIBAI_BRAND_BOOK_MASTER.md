@@ -259,7 +259,7 @@ This is infrastructure-grade AI at application scale.
 | **Accent Primary** | #6366F1 | CTAs, highlights | Action items |
 | **Accent Secondary** | #8B5CF6 | Secondary actions | Alternative actions |
 | **Success** | #10B981 | Success states | Positive feedback |
-| **Warning** | #F59E0B | Warnings | Caution states |
+| **Warning** | #999999 | Warnings | Caution states |
 | **Error** | #EF4444 | Errors | Negative feedback |
 
 ---

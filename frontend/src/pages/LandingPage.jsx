@@ -273,11 +273,14 @@ const LandingPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-kimi-bg text-kimi-text grid-pattern-kimi">
+    <div className="marketing-page min-h-screen bg-kimi-bg text-kimi-text grid-pattern-kimi">
       {/* Navigation — Kimi-style */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-kimi-bg border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
-          <Link to="/" className="text-xl font-semibold tracking-tight text-kimi-text">CrucibAI <span className="text-kimi-muted font-normal text-base">— Inevitable AI</span></Link>
+          <Link to="/" className="flex items-center gap-3">
+            <img src="/assets/logo.png" alt="CrucibAI" className="w-8 h-8" />
+            <span className="text-xl font-semibold tracking-tight text-kimi-text">CrucibAI <span className="text-kimi-muted font-normal text-base">— Inevitable AI</span></span>
+          </Link>
           <div className="hidden md:flex items-center gap-6">
             <Link to="/features" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Features</Link>
             <Link to="/pricing" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Pricing</Link>
@@ -362,7 +365,7 @@ const LandingPage = () => {
                       msg.role === 'user' 
                         ? 'bg-white text-gray-900' 
                         : msg.error 
-                          ? 'bg-red-500/10 text-red-400'
+                          ? 'bg-gray-500/10 text-gray-400'
                           : 'bg-gray-100 text-gray-700'
                     }`}>
                       {msg.isBuilding ? (
@@ -416,7 +419,7 @@ const LandingPage = () => {
                 {attachedFiles.map((file, i) => (
                   <div key={i} className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg text-sm">
                     {file.type?.startsWith('image/') ? (
-                      <Image className="w-4 h-4 text-orange-400 shrink-0" />
+                      <Image className="w-4 h-4 text-kimi-accent shrink-0" />
                     ) : (
                       <FileText className="w-4 h-4 text-gray-400 shrink-0" />
                     )}
@@ -446,7 +449,7 @@ const LandingPage = () => {
                       type="button"
                       onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
                       disabled={isBuilding || isTranscribing}
-                      className={`p-2.5 rounded-lg transition self-end shrink-0 ${isRecording ? 'bg-red-500/30 text-red-400 ring-2 ring-red-400/50' : 'text-kimi-muted hover:text-kimi-text hover:bg-gray-100'}`}
+                      className={`p-2.5 rounded-lg transition self-end shrink-0 ${isRecording ? 'bg-gray-500/30 text-gray-400 ring-2 ring-gray-400/50' : 'text-kimi-muted hover:text-kimi-text hover:bg-gray-100'}`}
                       title={isRecording ? 'Click to stop and transcribe' : 'Voice input — click to speak'}
                     >
                       {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
@@ -487,8 +490,8 @@ const LandingPage = () => {
                 <div className="mt-3 flex items-center gap-2 min-h-[24px]">
                   {isRecording && (
                     <>
-                      <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" aria-hidden />
-                      <span className="text-sm text-red-400 font-medium">Listening… click the mic again to stop and see your text here.</span>
+                      <span className="w-2 h-2 rounded-full bg-gray-500 animate-pulse" aria-hidden />
+                      <span className="text-sm text-gray-400 font-medium">Listening… click the mic again to stop and see your text here.</span>
                     </>
                   )}
                   {isTranscribing && !isRecording && (
@@ -498,7 +501,7 @@ const LandingPage = () => {
                     </>
                   )}
                   {voiceError && !isRecording && !isTranscribing && (
-                    <span className="text-sm text-red-400">{voiceError}</span>
+                    <span className="text-sm text-gray-400">{voiceError}</span>
                   )}
                 </div>
               )}

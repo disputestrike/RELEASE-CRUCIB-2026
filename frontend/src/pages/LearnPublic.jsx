@@ -45,12 +45,12 @@ export default function LearnPublic() {
       <PublicNav />
       <div className="max-w-2xl mx-auto px-6 py-16">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-4 mb-10">
-          <div className="p-3 rounded-xl bg-orange-500/20">
-            <BookOpen className="w-8 h-8 text-orange-400" />
+          <div className="p-3 rounded-xl bg-gray-100">
+            <BookOpen className="w-8 h-8 text-[#1A1A1A]" />
           </div>
           <div>
             <h1 className="text-3xl font-semibold tracking-tight">Learn CrucibAI — Inevitable AI</h1>
-            <p className="text-zinc-500">Quick tips to build apps with AI. No coding required.</p>
+            <p className="text-stone-500">Quick tips to build apps with AI. No coding required.</p>
           </div>
         </motion.div>
 
@@ -62,34 +62,34 @@ export default function LearnPublic() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.06 }}
-              className="p-6 rounded-2xl border border-zinc-800 bg-zinc-900/30 scroll-mt-24"
+              className="p-6 rounded-2xl border border-stone-200 bg-white shadow-sm scroll-mt-24"
             >
               <div className="flex items-start gap-4">
-                <div className="p-2 rounded-lg bg-zinc-800 shrink-0">
-                  <Icon className="w-5 h-5 text-orange-400" />
+                <div className="p-2 rounded-lg bg-gray-100 shrink-0">
+                  <Icon className="w-5 h-5 text-[#1A1A1A]" />
                 </div>
                 <div>
                   <h2 className="font-semibold mb-1">{title}</h2>
-                  <p className="text-sm text-zinc-500 leading-relaxed">{body}</p>
+                  <p className="text-sm text-stone-500 leading-relaxed">{body}</p>
                 </div>
               </div>
             </motion.div>
           ))}
         </div>
 
-        <section id="faq-extra" className="mt-16 pt-12 border-t border-zinc-800">
+        <section id="faq-extra" className="mt-16 pt-12 border-t border-stone-200">
           <h2 className="text-xl font-semibold mb-6">All FAQs (14 more)</h2>
-          <div className="space-y-0 border border-zinc-800 rounded-xl overflow-hidden">
+          <div className="space-y-0 border border-stone-200 rounded-xl overflow-hidden bg-white shadow-sm">
             {faqsExtra.map((faq, i) => (
-              <div key={i} className="border-b border-zinc-800 last:border-0">
-                <button onClick={() => setOpenFaq(openFaq === i ? null : i)} className="w-full py-5 px-6 flex items-center justify-between text-left hover:bg-zinc-800/50 transition">
-                  <span className="text-sm font-medium text-zinc-200">{faq.q}</span>
-                  <ChevronDown className={`w-4 h-4 text-zinc-500 shrink-0 transition-transform ${openFaq === i ? 'rotate-180' : ''}`} />
+              <div key={i} className="border-b border-stone-200 last:border-0">
+                <button onClick={() => setOpenFaq(openFaq === i ? null : i)} className="w-full py-5 px-6 flex items-center justify-between text-left hover:bg-gray-50 transition">
+                  <span className="text-sm font-medium text-[#1A1A1A]">{faq.q}</span>
+                  <ChevronDown className={`w-4 h-4 text-stone-500 shrink-0 transition-transform ${openFaq === i ? 'rotate-180' : ''}`} />
                 </button>
                 <AnimatePresence>
                   {openFaq === i && (
                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                      <p className="pb-5 px-6 text-sm text-zinc-500">{faq.a}</p>
+                      <p className="pb-5 px-6 text-sm text-stone-500">{faq.a}</p>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -101,7 +101,7 @@ export default function LearnPublic() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mt-12 text-center">
           <button
             onClick={() => navigate(user ? '/app' : '/auth?mode=register')}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-white text-zinc-900 font-medium rounded-lg hover:bg-zinc-200 transition"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#1A1A1A] text-white font-medium rounded-lg hover:opacity-90 transition"
           >
             {user ? 'Go to workspace' : 'Get started free'}
             <ArrowRight className="w-4 h-4" />

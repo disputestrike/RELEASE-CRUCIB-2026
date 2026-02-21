@@ -22,7 +22,7 @@ export const EverythingSupportMenu = ({ onSelect }) => {
       name: 'Code',
       icon: FileCode,
       description: 'Generate full-stack code',
-      color: 'from-orange-600 to-orange-700',
+      color: 'from-#000000 to-#000000',
       examples: ['React components', 'API endpoints', 'Database schemas'],
     },
     {
@@ -30,7 +30,7 @@ export const EverythingSupportMenu = ({ onSelect }) => {
       name: 'Documentation',
       icon: FileText,
       description: 'Auto-generate docs',
-      color: 'from-green-600 to-green-700',
+      color: 'from-gray-600 to-gray-700',
       examples: ['README', 'API docs', 'User guides'],
     },
     {
@@ -38,7 +38,7 @@ export const EverythingSupportMenu = ({ onSelect }) => {
       name: 'Presentations',
       icon: Presentation,
       description: 'Create slide decks',
-      color: 'from-orange-600 to-orange-700',
+      color: 'from-#000000 to-#000000',
       examples: ['Pitch decks', 'Tutorials', 'Reports'],
     },
     {
@@ -46,7 +46,7 @@ export const EverythingSupportMenu = ({ onSelect }) => {
       name: 'Spreadsheets',
       icon: Sheet3,
       description: 'Generate data sheets',
-      color: 'from-orange-600 to-orange-700',
+      color: 'from-#000000 to-#000000',
       examples: ['Data tables', 'Analytics', 'Reports'],
     },
     {
@@ -54,7 +54,7 @@ export const EverythingSupportMenu = ({ onSelect }) => {
       name: 'Export',
       icon: Download,
       description: 'Export projects',
-      color: 'from-pink-600 to-pink-700',
+      color: 'from-gray-600 to-gray-700',
       examples: ['ZIP archive', 'GitHub repo', 'Deploy'],
     },
   ];
@@ -108,7 +108,7 @@ export const CodeGenerationOptions = ({ onGenerate, isLoading }) => {
   ];
 
   return (
-    <div className="space-y-4 p-6 bg-slate-800 border border-slate-700 rounded-lg">
+    <div className="space-y-4 p-6 bg-gray-800 border border-gray-700 rounded-lg">
       <h3 className="font-semibold text-[#1A1A1A] flex items-center gap-2">
         <FileCode size={20} />
         Code Generation
@@ -121,8 +121,8 @@ export const CodeGenerationOptions = ({ onGenerate, isLoading }) => {
             onClick={() => setSelectedStack(stack.id)}
             className={`p-4 rounded-lg border-2 transition-all ${
               selectedStack === stack.id
-                ? 'border-orange-500 bg-orange-500/10 text-orange-300'
-                : 'border-slate-600 bg-slate-700/50 text-slate-300 hover:border-slate-500'
+                ? 'border-gray-300 bg-gray-200/10 text-gray-500'
+                : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500'
             }`}
           >
             <div className="font-medium text-sm">{stack.name}</div>
@@ -138,7 +138,7 @@ export const CodeGenerationOptions = ({ onGenerate, isLoading }) => {
       <button
         onClick={() => onGenerate('code', selectedStack)}
         disabled={isLoading}
-        className="w-full bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-[#1A1A1A] font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+        className="w-full bg-black hover:bg-black disabled:opacity-50 text-[#1A1A1A] font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
       >
         {isLoading ? (
           <>
@@ -170,7 +170,7 @@ export const DocumentationGenerator = ({ onGenerate, isLoading }) => {
   ];
 
   return (
-    <div className="space-y-4 p-6 bg-slate-800 border border-slate-700 rounded-lg">
+    <div className="space-y-4 p-6 bg-gray-800 border border-gray-700 rounded-lg">
       <h3 className="font-semibold text-[#1A1A1A] flex items-center gap-2">
         <FileText size={20} />
         Documentation
@@ -183,8 +183,8 @@ export const DocumentationGenerator = ({ onGenerate, isLoading }) => {
             onClick={() => setDocType(doc.id)}
             className={`p-4 rounded-lg border-2 transition-all text-center ${
               docType === doc.id
-                ? 'border-green-500 bg-green-500/10'
-                : 'border-slate-600 bg-slate-700/50 hover:border-slate-500'
+                ? 'border-gray-500 bg-gray-500/10'
+                : 'border-gray-600 bg-gray-700/50 hover:border-gray-500'
             }`}
           >
             <div className="text-2xl mb-2">{doc.icon}</div>
@@ -196,7 +196,7 @@ export const DocumentationGenerator = ({ onGenerate, isLoading }) => {
       <button
         onClick={() => onGenerate('docs', docType)}
         disabled={isLoading}
-        className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-[#1A1A1A] font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+        className="w-full bg-gray-600 hover:bg-gray-700 disabled:opacity-50 text-[#1A1A1A] font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
       >
         {isLoading ? (
           <>
@@ -228,7 +228,7 @@ export const PresentationGenerator = ({ onGenerate, isLoading }) => {
   ];
 
   return (
-    <div className="space-y-4 p-6 bg-slate-800 border border-slate-700 rounded-lg">
+    <div className="space-y-4 p-6 bg-gray-800 border border-gray-700 rounded-lg">
       <h3 className="font-semibold text-[#1A1A1A] flex items-center gap-2">
         <Presentation size={20} />
         Presentations
@@ -236,7 +236,7 @@ export const PresentationGenerator = ({ onGenerate, isLoading }) => {
 
       <div className="space-y-3">
         <div>
-          <label className="text-sm text-slate-400 mb-2 block">Number of Slides</label>
+          <label className="text-sm text-gray-400 mb-2 block">Number of Slides</label>
           <input
             type="range"
             min="5"
@@ -245,7 +245,7 @@ export const PresentationGenerator = ({ onGenerate, isLoading }) => {
             onChange={(e) => setSlideCount(parseInt(e.target.value))}
             className="w-full"
           />
-          <div className="text-sm text-slate-300 mt-1">{slideCount} slides</div>
+          <div className="text-sm text-gray-300 mt-1">{slideCount} slides</div>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
@@ -253,7 +253,7 @@ export const PresentationGenerator = ({ onGenerate, isLoading }) => {
             <button
               key={preset.name}
               onClick={() => setSlideCount(preset.slides)}
-              className="p-2 text-sm bg-slate-700 hover:bg-slate-600 rounded transition-colors text-slate-300"
+              className="p-2 text-sm bg-gray-700 hover:bg-gray-600 rounded transition-colors text-gray-300"
             >
               {preset.name} ({preset.slides})
             </button>
@@ -264,7 +264,7 @@ export const PresentationGenerator = ({ onGenerate, isLoading }) => {
       <button
         onClick={() => onGenerate('slides', slideCount)}
         disabled={isLoading}
-        className="w-full bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-[#1A1A1A] font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+        className="w-full bg-black hover:bg-black disabled:opacity-50 text-[#1A1A1A] font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
       >
         {isLoading ? (
           <>
@@ -292,7 +292,7 @@ export const ExportOptions = ({ onExport, isLoading }) => {
       name: 'ZIP Archive',
       icon: Download,
       description: 'Download as ZIP file',
-      color: 'bg-orange-600 hover:bg-orange-700',
+      color: 'bg-black hover:bg-black',
     },
     {
       id: 'github',
@@ -306,7 +306,7 @@ export const ExportOptions = ({ onExport, isLoading }) => {
       name: 'Deploy',
       icon: Zap,
       description: 'Deploy to production',
-      color: 'bg-green-600 hover:bg-green-700',
+      color: 'bg-gray-600 hover:bg-gray-700',
     },
   ];
 
@@ -338,10 +338,10 @@ export const ExportOptions = ({ onExport, isLoading }) => {
  */
 export const GenerationStatus = ({ status, progress = 0, message = '' }) => {
   const statusConfig = {
-    idle: { icon: null, color: 'text-slate-400', bg: 'bg-slate-800' },
-    generating: { icon: Loader2, color: 'text-orange-400', bg: 'bg-orange-900/20' },
-    success: { icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-900/20' },
-    error: { icon: AlertCircle, color: 'text-red-400', bg: 'bg-red-900/20' },
+    idle: { icon: null, color: 'text-gray-400', bg: 'bg-gray-800' },
+    generating: { icon: Loader2, color: 'text-gray-500', bg: 'bg-black/20' },
+    success: { icon: CheckCircle, color: 'text-gray-400', bg: 'bg-gray-900/20' },
+    error: { icon: AlertCircle, color: 'text-gray-400', bg: 'bg-gray-900/20' },
   };
 
   const config = statusConfig[status] || statusConfig.idle;
@@ -353,7 +353,7 @@ export const GenerationStatus = ({ status, progress = 0, message = '' }) => {
     <motion.div
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`p-4 rounded-lg border border-slate-700 ${config.bg}`}
+      className={`p-4 rounded-lg border border-gray-700 ${config.bg}`}
     >
       <div className="flex items-center gap-3">
         {Icon && (
@@ -368,14 +368,14 @@ export const GenerationStatus = ({ status, progress = 0, message = '' }) => {
             {status === 'success' && 'Generation complete!'}
             {status === 'error' && 'Generation failed'}
           </div>
-          {message && <div className="text-sm text-slate-400">{message}</div>}
+          {message && <div className="text-sm text-gray-400">{message}</div>}
         </div>
       </div>
 
       {status === 'generating' && (
-        <div className="mt-3 w-full bg-slate-700 rounded-full h-2 overflow-hidden">
+        <div className="mt-3 w-full bg-gray-700 rounded-full h-2 overflow-hidden">
           <motion.div
-            className="h-full bg-gradient-to-r from-orange-500 to-orange-600"
+            className="h-full bg-gradient-to-r from-#f5f5f50 to-#000000"
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}
             transition={{ duration: 0.3 }}

@@ -77,7 +77,7 @@ export default function GenerateContent() {
             key={t.id}
             type="button"
             onClick={() => { setActiveTab(t.id); setFormat(t.formatOptions[0]?.value || "markdown"); setContent(""); setError(null); }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-t font-medium text-sm ${activeTab === t.id ? "bg-orange-600 text-[#1A1A1A]" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-t font-medium text-sm ${activeTab === t.id ? "bg-black text-[#1A1A1A]" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
           >
             <t.icon className="w-4 h-4" />
             {t.label}
@@ -92,7 +92,7 @@ export default function GenerateContent() {
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder={activeTab === "doc" ? "e.g. Product requirements doc for a task management app" : activeTab === "slides" ? "e.g. 5-slide pitch deck for a fintech startup" : "e.g. Quarterly sales data for 4 regions, 3 months"}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 min-h-[80px]"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:border-gray-300 min-h-[80px]"
             rows={3}
           />
         </div>
@@ -109,7 +109,7 @@ export default function GenerateContent() {
             type="button"
             onClick={handleGenerate}
             disabled={loading}
-            className="px-4 py-2 bg-orange-600 text-[#1A1A1A] rounded-lg font-medium text-sm hover:bg-orange-700 disabled:opacity-50 flex items-center gap-2"
+            className="px-4 py-2 bg-black text-[#1A1A1A] rounded-lg font-medium text-sm hover:bg-black disabled:opacity-50 flex items-center gap-2"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             Generate
@@ -117,14 +117,14 @@ export default function GenerateContent() {
         </div>
       </div>
 
-      {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
+      {error && <p className="text-gray-600 text-sm mt-2">{error}</p>}
       {modelUsed && <p className="text-gray-500 text-xs mt-1">Model: {modelUsed}</p>}
 
       {content && (
         <div className="mt-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-700">Result</span>
-            <button type="button" onClick={download} className="flex items-center gap-1 text-sm text-orange-600 hover:underline">
+            <button type="button" onClick={download} className="flex items-center gap-1 text-sm text-#000000 hover:underline">
               <Download className="w-4 h-4" />
               Download
             </button>

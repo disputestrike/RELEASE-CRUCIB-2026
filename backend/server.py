@@ -1595,8 +1595,8 @@ async def register(data: UserRegister, request: Request):
         "email": data.email,
         "password": hash_password(data.password),
         "name": data.name,
-        "token_balance": FREE_TIER_CREDITS * CREDITS_PER_TOKEN,
-        "credit_balance": FREE_TIER_CREDITS,
+        "token_balance": 0,
+        "credit_balance": 0,
         "plan": "free",
         "role": "owner",
         "mfa_enabled": False,
@@ -1605,15 +1605,6 @@ async def register(data: UserRegister, request: Request):
     }
     await db.users.insert_one(user)
     
-    await db.token_ledger.insert_one({
-        "id": str(uuid.uuid4()),
-        "user_id": user_id,
-        "tokens": FREE_TIER_CREDITS * CREDITS_PER_TOKEN,
-        "credits": FREE_TIER_CREDITS,
-        "type": "bonus",
-        "description": "Welcome (Free tier)",
-        "created_at": datetime.now(timezone.utc).isoformat()
-    })
     await _apply_referral_on_signup(user_id, getattr(data, "ref", None))
     if audit_logger:
         await audit_logger.log(user_id, "signup", ip_address=getattr(request.client, "host", None))
@@ -3311,7 +3302,7 @@ async def serve_preview(
     if not full.exists():
         if not path:
             return Response(
-                content="""<!DOCTYPE html><html><head><meta charset="utf-8"><title>Building...</title></head><body style="display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;font-family:system-ui;background:#0f172a;color:#94a3b8;">Building your app... Agents are writing files.</body></html>""",
+                content="""<!DOCTYPE html><html><head><meta charset="utf-8"><title>Building...</title></head><body style="display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;font-family:system-ui;background:#1A1A1A;color:#999999;">Building your app... Agents are writing files.</body></html>""",
                 media_type="text/html",
             )
         raise HTTPException(status_code=404, detail="File not found")
@@ -5438,7 +5429,7 @@ async def use_deployment_tool(request: dict):
 app.include_router(api_router)
 
 # Free-tier branding: served from our server so it cannot be removed from user's source (they only have an iframe tag).
-BRANDING_HTML = """<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:0;font-family:system-ui,sans-serif;font-size:12px;display:flex;align-items:center;justify-content:center;min-height:28px;background:transparent;color:#6b7280;"><a href="https://crucibai.com" target="_blank" rel="noopener noreferrer" style="color:#6b7280;text-decoration:none;">Built with CrucibAI</a></body></html>"""
+BRANDING_HTML = """<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:0;font-family:system-ui,sans-serif;font-size:12px;display:flex;align-items:center;justify-content:center;min-height:28px;background:transparent;color:#808080;"><a href="https://crucibai.com" target="_blank" rel="noopener noreferrer" style="color:#808080;text-decoration:none;">Built with CrucibAI</a></body></html>"""
 
 @app.get("/branding")
 async def branding_badge():

@@ -1,4 +1,4 @@
-/* VoiceWaveform.css — White theme, orange accent */
+/* VoiceWaveform.css — White theme, black accent */
 
 .voice-waveform-container {
   display: flex;
@@ -19,7 +19,7 @@
   font-family: 'Fira Code', monospace;
   font-size: 13px;
   font-weight: 500;
-  color: #FF6B35;
+  color: #1A1A1A;
   min-width: 48px;
   text-align: center;
 }
@@ -48,20 +48,20 @@
 }
 
 .voice-btn-stop {
-  background: #F3F4F6;
-  color: #666666;
+  background: #F5F5F4;
+  color: #808080;
 }
 
 .voice-btn-stop:hover {
   background: #E5E7EB;
-  color: #333333;
+  color: #1A1A1A;
 }
 
 .voice-btn-confirm {
-  background: #FF6B35;
+  background: #1A1A1A;
   color: #FFFFFF;
 }
 
 .voice-btn-confirm:hover {
-  background: #E55A2B;
+  background: #1A1A1A;
 }

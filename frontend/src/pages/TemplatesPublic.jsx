@@ -44,7 +44,7 @@ export default function TemplatesPublic() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-12">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Quick start</span>
           <h1 className="text-4xl font-semibold tracking-tight mt-2 mb-4">Templates</h1>
-          <p className="text-zinc-500">Start from proven app templates — dashboards, blogs, SaaS shells, e-commerce, and more. One click to customize and ship. Sign up free to use any template in the workspace.</p>
+          <p className="text-gray-500">Start from proven app templates — dashboards, blogs, SaaS shells, e-commerce, and more. One click to customize and ship. Sign up free to use any template in the workspace.</p>
         </motion.div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -57,15 +57,15 @@ export default function TemplatesPublic() {
               className="p-6 rounded-2xl border border-stone-200 bg-white hover:border-stone-300 shadow-sm transition"
             >
               <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 rounded-lg bg-orange-50">
-                  <FileCode className="w-5 h-5 text-orange-400" />
+                <div className="p-2 rounded-lg bg-gray-100">
+                  <FileCode className="w-5 h-5 text-[#1A1A1A]" />
                 </div>
                 <h2 className="font-semibold">{t.name}</h2>
               </div>
               <p className="text-sm text-stone-500 mb-6">{t.description}</p>
               <button
                 onClick={handleUse}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 transition"
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-gray-1000/20 text-[#1A1A1A] hover:bg-gray-1000/30 transition"
               >
                 {user ? 'Use in app' : 'Get started to use'}
                 <ArrowRight className="w-4 h-4" />

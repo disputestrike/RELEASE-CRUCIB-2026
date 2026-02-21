@@ -19,10 +19,10 @@
   --manus-bg-medium: #F3F1ED;
   
   /* Medium-Dark - For input fields and secondary surfaces */
-  --manus-bg-medium-dark: #EBE8E2;
+  --manus-bg-medium-dark: #F5F5F4;
   
   /* Dark - For borders and subtle dividers */
-  --manus-bg-dark: #E0DCD5;
+  --manus-bg-dark: #F5F5F4;
   
   /* Pure White - For elevated cards and modals */
   --manus-white: #FFFFFF;
@@ -35,13 +35,13 @@
   --manus-text-primary: #1A1A1A;
   
   /* Secondary text - Slightly lighter */
-  --manus-text-secondary: #3D3D3D;
+  --manus-text-secondary: #1A1A1A;
   
   /* Muted text - For less important content */
-  --manus-text-muted: #666666;
+  --manus-text-muted: #808080;
   
   /* Light text - For disabled or placeholder text */
-  --manus-text-light: #888888;
+  --manus-text-light: #999999;
   
   /* Very light text - For subtle hints */
   --manus-text-very-light: #AAAAAA;
@@ -50,37 +50,31 @@
      ACCENT COLORS
      ============================================ */
   
-  /* Primary accent - CrucibAI orange */
-  --manus-accent-primary: #FF6B35;
-  
-  /* Accent hover - Darker orange */
-  --manus-accent-hover: #E05A25;
-  
-  /* Accent light - Light orange background */
-  --manus-accent-light: #FFF3ED;
-  
-  /* Accent very light - Very light orange background */
-  --manus-accent-very-light: #FFF7F2;
+  /* Primary accent - CrucibAI black */
+  --manus-accent-primary: #1A1A1A;
+  --manus-accent-hover: #1A1A1A;
+  --manus-accent-light: #F5F5F4;
+  --manus-accent-very-light: #F5F5F4;
   
   /* ============================================
      STATUS COLORS
      ============================================ */
   
   /* Success - Green */
-  --manus-success: #16A34A;
-  --manus-success-light: #DCFCE7;
+  --manus-success: #1A1A1A;
+  --manus-success-light: #F5F5F4;
   
-  /* Warning - Orange */
-  --manus-warning: #EA580C;
-  --manus-warning-light: #FFEDD5;
+  /* Warning - Gray */
+  --manus-warning: #808080;
+  --manus-warning-light: #F5F5F4;
   
   /* Error - Red */
-  --manus-error: #DC2626;
-  --manus-error-light: #FEE2E2;
+  --manus-error: #1A1A1A;
+  --manus-error-light: #F5F5F4;
   
   /* Info - Blue */
-  --manus-info: #0284C7;
-  --manus-info-light: #E0F2FE;
+  --manus-info: #808080;
+  --manus-info-light: #F5F5F4;
   
   /* ============================================
      BORDER & DIVIDER COLORS
@@ -280,12 +274,12 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 200ms ease-out;
-  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .btn-manus-primary:hover {
   background-color: var(--manus-accent-hover);
-  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   transform: translateY(-1px);
 }
 
@@ -347,10 +341,10 @@
   /* If dark mode is preferred, provide appropriate colors */
   :root {
     --manus-bg-light: #1A1A1A;
-    --manus-bg-light-medium: #242424;
-    --manus-bg-medium: #2D2D2D;
+    --manus-bg-light-medium: #1A1A1A;
+    --manus-bg-medium: #1A1A1A;
     --manus-text-primary: #FAFAF8;
-    --manus-text-secondary: #E0E0E0;
+    --manus-text-secondary: #D1D5DB;
     --manus-text-muted: #999999;
     --manus-border-light: rgba(255, 255, 255, 0.1);
   }

@@ -50,11 +50,14 @@
   box-shadow: 4px 0 16px rgba(0, 0, 0, 0.1);
 }
 
-/* Main content wrapper */
+/* Main content wrapper — full width */
 .layout-main-wrapper {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
   height: 100%;
+  width: 100%;
   overflow: hidden;
 }
 
@@ -76,7 +79,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: #9CA3AF;
+  color: #999999;
   border-radius: 6px;
   transition: all 150ms ease;
 }
@@ -88,32 +91,47 @@
 
 /* Internal banner */
 .layout-internal-banner {
-  background: #FEF3C7;
-  border-bottom: 1px solid #FCD34D;
+  background: #F5F5F4;
+  border-bottom: 1px solid #E5E7EB;
   padding: 6px 16px;
   text-align: center;
   font-size: 12px;
-  color: #92400E;
+  color: #1A1A1A;
   font-weight: 500;
   flex-shrink: 0;
 }
 
-/* Page content */
+/* Page content — fill remaining space */
 .layout-page-content {
   flex: 1;
-  overflow: hidden;
-  padding: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
 }
 
-/* Footer */
+/* Workspace/Builder: no padding, edge-to-edge, no extra scroll */
+.layout-page-content--fullbleed {
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Footer — full width, About/Privacy/Terms at far right */
 .layout-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
   padding: 8px 24px;
   border-top: 1px solid rgba(0, 0, 0, 0.06);
   font-size: 11px;
   flex-shrink: 0;
+}
+
+.layout-footer-links {
+  margin-left: auto;
 }
 
 .layout-footer-status {
@@ -122,15 +140,15 @@
   gap: 6px;
 }
 
-.status-green { color: #059669; }
-.status-amber { color: #D97706; }
-.status-gray { color: #9CA3AF; }
+.status-green { color: #1A1A1A; }
+.status-amber { color: #808080; }
+.status-gray { color: #999999; }
 
 .status-retry {
   background: none;
   border: none;
   cursor: pointer;
-  color: #FF6B35;
+  color: #1A1A1A;
   font-size: 11px;
   font-weight: 500;
   padding: 0;
@@ -144,12 +162,12 @@
 }
 
 .layout-footer-links a {
-  color: #9CA3AF;
+  color: #1A1A1A;
   text-decoration: none;
   transition: color 150ms ease;
 }
 
-.layout-footer-links a:hover { color: #4B5563; }
+.layout-footer-links a:hover { color: #1A1A1A; text-decoration: underline; }
 
 /* Responsive */
 @media (max-width: 1024px) {

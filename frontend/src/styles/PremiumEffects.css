@@ -66,17 +66,17 @@
   background: linear-gradient(135deg, #FAFAF8 0%, #F9F8F6 100%);
 }
 
-.gradient-orange {
-  background: linear-gradient(135deg, #FFF3ED 0%, #FFE0D0 100%);
+.gradient-gray {
+  background: linear-gradient(135deg, #f5f5f5 0%, #D1D5DB 100%);
 }
 
 .gradient-accent {
-  background: linear-gradient(135deg, #FF6B35 0%, #E05A25 100%);
+  background: linear-gradient(135deg, #1A1A1A 0%, #333333 100%);
 }
 
 /* Gradient text */
 .gradient-text {
-  background: linear-gradient(135deg, #FF6B35 0%, #FF8F5E 100%);
+  background: linear-gradient(135deg, #1A1A1A 0%, #1A1A1A 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -111,7 +111,7 @@
 }
 
 .hover-color:hover {
-  color: #FF6B35;
+  color: #1A1A1A;
 }
 
 /* ============================================
@@ -243,7 +243,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, #FF6B35, #FF8F5E);
+  background: linear-gradient(135deg, #1A1A1A, #1A1A1A);
   border-radius: 12px;
   padding: 1px;
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -258,7 +258,7 @@
   position: relative;
   border: 2px solid transparent;
   background: linear-gradient(#FFFFFF, #FFFFFF) padding-box,
-              linear-gradient(135deg, #FF6B35, #FF8F5E) border-box;
+              linear-gradient(135deg, #1A1A1A, #1A1A1A) border-box;
   border-radius: 12px;
 }
 
@@ -275,8 +275,8 @@
 /* Focus ring */
 .focus-ring {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
-  border-color: #FF6B35;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+  border-color: #1A1A1A;
 }
 
 /* ============================================
@@ -296,7 +296,7 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, #FF6B35, #FF8F5E);
+  background: linear-gradient(90deg, #1A1A1A, #1A1A1A);
   border-radius: 1px;
   transform: scaleX(0);
   transform-origin: left;
@@ -352,7 +352,7 @@
 .btn-premium {
   position: relative;
   padding: 12px 24px;
-  background: linear-gradient(135deg, #FF6B35 0%, #E05A25 100%);
+  background: linear-gradient(135deg, #1A1A1A 0%, #333333 100%);
   color: #FFFFFF;
   border: none;
   border-radius: 8px;
@@ -360,7 +360,7 @@
   font-size: 14px;
   cursor: pointer;
   transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   overflow: hidden;
 }
 
@@ -377,7 +377,7 @@
 
 .btn-premium:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(255, 107, 53, 0.4);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
 }
 
 .btn-premium:hover::before {
@@ -399,8 +399,8 @@
 
 .btn-secondary:hover {
   background: #FFFFFF;
-  border-color: #FF6B35;
-  color: #FF6B35;
+  border-color: #1A1A1A;
+  color: #1A1A1A;
 }
 
 /* ============================================
@@ -426,8 +426,8 @@
 .input-premium:focus {
   outline: none;
   background: #FFFFFF;
-  border-color: #FF6B35;
-  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+  border-color: #1A1A1A;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
 }
 
 /* ============================================

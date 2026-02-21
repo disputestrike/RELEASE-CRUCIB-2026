@@ -71,6 +71,8 @@ import AdminAnalytics from "./pages/AdminAnalytics";
 import AdminLegal from "./pages/AdminLegal";
 import AuditLog from "./pages/AuditLog";
 import AgentsPage from "./pages/AgentsPage";
+import { LayoutProvider } from "./stores/useLayoutStore";
+import { TaskProvider } from "./stores/useTaskStore";
 
 // Empty REACT_APP_BACKEND_URL => same-origin /api (for single-URL deploy on Railway)
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL !== undefined ? process.env.REACT_APP_BACKEND_URL : 'http://localhost:8000';
@@ -164,7 +166,11 @@ const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={{ user, token, login, register, logout, loading, refreshUser, loginWithToken, verifyMfa }}>
-      {children}
+      <LayoutProvider>
+        <TaskProvider>
+          {children}
+        </TaskProvider>
+      </LayoutProvider>
     </AuthContext.Provider>
   );
 };
@@ -178,7 +184,7 @@ const ProtectedRoute = ({ children }) => {
     return (
       <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-12 h-12 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
@@ -199,7 +205,7 @@ const AdminRoute = ({ children }) => {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
-        <div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-12 h-12 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }

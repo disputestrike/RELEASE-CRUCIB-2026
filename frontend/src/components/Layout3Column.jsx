@@ -21,17 +21,24 @@ export const Layout3Column = ({
   main,
   rightPanel,
   className = '',
+  sidebarOpen: controlledSidebarOpen,
+  onToggleSidebar,
+  setSidebarOpen: setControlledSidebarOpen,
 }) => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [internalSidebarOpen, setInternalSidebarOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
 
+  const sidebarOpen = controlledSidebarOpen !== undefined ? controlledSidebarOpen : internalSidebarOpen;
+  const setSidebarOpen = setControlledSidebarOpen || setInternalSidebarOpen;
+  const handleToggleSidebar = onToggleSidebar || (() => setSidebarOpen(prev => !prev));
+
   return (
-    <div className={`layout-3-column ${className}`}>
+    <div className={`layout-3-column app-shell ${className}`}>
       {/* Mobile Header */}
       <div className="layout-mobile-header">
         <button
           className="layout-toggle-sidebar"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
+          onClick={handleToggleSidebar}
           aria-label="Toggle sidebar"
         >
           {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
@@ -76,7 +83,7 @@ export const Layout3Column = ({
         </aside>
       </div>
 
-      {/* Mobile Overlay */}
+      {/* Mobile Overlay — hide with CSS, never remove from DOM */}
       {(sidebarOpen || rightPanelOpen) && (
         <div
           className="layout-overlay"
@@ -84,6 +91,7 @@ export const Layout3Column = ({
             setSidebarOpen(false);
             setRightPanelOpen(false);
           }}
+          aria-hidden
         />
       )}
     </div>

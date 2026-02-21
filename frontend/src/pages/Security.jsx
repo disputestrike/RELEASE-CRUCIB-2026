@@ -7,11 +7,11 @@ export default function Security() {
       <PublicNav />
       <div className="max-w-3xl mx-auto px-6 py-10">
         <h1 className="text-3xl font-bold text-[#1A1A1A] mb-2">Security &amp; Trust</h1>
-        <p className="text-sm text-[#666666] mb-6">How we keep the platform and your code safe.</p>
+        <p className="text-sm text-gray-600 mb-6">How we keep the platform and your code safe.</p>
 
-        <div className="p-6 rounded-xl border border-indigo-500/20 bg-indigo-500/5 mb-10">
-          <p className="text-indigo-200 font-medium">We run CrucibAI on CrucibAI.</p>
-          <p className="text-[#666666] text-sm mt-2">Every feature we ship is built and tested with the same 120-agent swarm our customers use. 188 tests passing. Security-first. GDPR & CCPA compliant.</p>
+        <div className="p-6 rounded-xl border border-gray-500/20 bg-gray-500/5 mb-10">
+          <p className="text-gray-200 font-medium">We run CrucibAI on CrucibAI.</p>
+          <p className="text-gray-600 text-sm mt-2">Every feature we ship is built and tested with the same 120-agent swarm our customers use. 188 tests passing. Security-first. GDPR & CCPA compliant.</p>
         </div>
 
         <div className="space-y-6 text-[#1A1A1A] leading-relaxed">
@@ -40,10 +40,10 @@ export default function Security() {
           <p>We block disposable email addresses at signup and cap referral rewards to reduce abuse. Credits are enforced so usage is tied to your account and plan.</p>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">Reporting a security issue</h2>
-          <p>If you believe you have found a security vulnerability in CrucibAI, please report it to us responsibly. Do not disclose it publicly before we have had a chance to address it. Contact: <a href="mailto:security@crucibai.com" className="text-orange-400 hover:text-orange-300 underline">security@crucibai.com</a> (or the contact listed in your Terms/Privacy). We will acknowledge and work with you to resolve the issue.</p>
+          <p>If you believe you have found a security vulnerability in CrucibAI, please report it to us responsibly. Do not disclose it publicly before we have had a chance to address it. Contact: <a href="mailto:security@crucibai.com" className="text-gray-500 hover:text-gray-500 underline">security@crucibai.com</a> (or the contact listed in your Terms/Privacy). We will acknowledge and work with you to resolve the issue.</p>
 
-          <p className="mt-8 text-[#666666] text-sm">
-            For privacy and data handling, see our <Link to="/privacy" className="text-orange-400 hover:text-orange-300 underline">Privacy Policy</Link>. For terms of use, see our <Link to="/terms" className="text-orange-400 hover:text-orange-300 underline">Terms of Use</Link>.
+          <p className="mt-8 text-gray-600 text-sm">
+            For privacy and data handling, see our <Link to="/privacy" className="text-gray-500 hover:text-gray-500 underline">Privacy Policy</Link>. For terms of use, see our <Link to="/terms" className="text-gray-500 hover:text-gray-500 underline">Terms of Use</Link>.
           </p>
         </div>
       </div>

@@ -13,36 +13,39 @@
 @import '@fontsource/fira-code/400.css';
 @import '@fontsource/fira-code/500.css';
 
-/* Manus-inspired design tokens (warm, professional, premium) */
+/* Two colors only: black and gray */
 :root {
-  /* Primary backgrounds - warm white/beige */
+  --bg-primary: #FAFAF8;
+  --bg-secondary: #FFFFFF;
+  --border-color: rgba(0, 0, 0, 0.08);
+  --text-primary: #1A1A1A;
+  --text-secondary: #1A1A1A;
+  --accent: #1A1A1A;
+  --accent-hover: #1A1A1A;
+}
+
+:root {
   --kimi-bg: #FAFAF8;
   --kimi-bg-elevated: #FFFFFF;
   --kimi-bg-card: #F9F8F6;
   --kimi-bg-input: #F3F1ED;
-  
-  /* Text colors - dark and readable */
   --kimi-text: #1A1A1A;
-  --kimi-text-muted: #666666;
-  --kimi-text-secondary: #888888;
-  
-  /* Accent - CrucibAI orange */
-  --kimi-accent: #FF6B35;
-  
-  /* Borders - subtle and refined */
+  --kimi-text-muted: #808080;
+  --kimi-text-secondary: #1A1A1A;
+  --kimi-accent: #1A1A1A;
   --kimi-border: rgba(0, 0, 0, 0.08);
   --kimi-grid: rgba(0, 0, 0, 0.03);
 }
 
 :root {
-  /* Manus-inspired light theme */
+  /* Black and gray theme */
   --background: 0 0% 98%;
   --foreground: 0 0% 10%;
   --card: 0 0% 100%;
   --card-foreground: 0 0% 10%;
   --popover: 0 0% 100%;
   --popover-foreground: 0 0% 10%;
-  --primary: 217 91% 60%;
+  --primary: 0 0% 0%;
   --primary-foreground: 0 0% 100%;
   --secondary: 0 0% 95%;
   --secondary-foreground: 0 0% 15%;
@@ -50,17 +53,17 @@
   --muted-foreground: 0 0% 50%;
   --accent: 0 0% 94%;
   --accent-foreground: 0 0% 15%;
-  --destructive: 0 84% 60%;
+  --destructive: 0 0% 0%;
   --destructive-foreground: 0 0% 98%;
   --border: 0 0% 90%;
   --input: 0 0% 95%;
-  --ring: 217 91% 60%;
+  --ring: 0 0% 0%;
   --radius: 0.5rem;
-  --chart-1: 217 91% 60%;
-  --chart-2: 142 71% 45%;
-  --chart-3: 271 81% 56%;
-  --chart-4: 47 95% 57%;
-  --chart-5: 0 84% 60%;
+  --chart-1: 0 0% 0%;
+  --chart-2: 0 0% 50%;
+  --chart-3: 0 0% 40%;
+  --chart-4: 0 0% 60%;
+  --chart-5: 0 0% 0%;
 }
 
 /* Dark theme for dashboard */
@@ -85,13 +88,58 @@
   box-sizing: border-box;
 }
 
-body {
+/* Root — allow scroll on marketing/landing; app-shell handles fixed viewport for /app */
+html, body {
   margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+body {
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #FAFAF8;
-  color: #1A1A1A;
+  background: var(--bg-primary, #FAFAF8);
+  color: var(--text-primary, #1A1A1A);
+}
+
+/* Single app shell — no component overrides root height */
+.app-shell {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.main-content {
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Same two colors everywhere (marketing uses same as app) */
+.marketing-page {
+  --kimi-accent: #1A1A1A;
+  --accent: #1A1A1A;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -131,8 +179,8 @@ code, pre, .mono {
 
 /* Animations */
 @keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.3); }
-  50% { box-shadow: 0 0 25px rgba(59, 130, 246, 0.6); }
+  0%, 100% { box-shadow: 0 0 15px rgba(0, 0, 0, 0.3); }
+  50% { box-shadow: 0 0 25px rgba(0, 0, 0, 0.6); }
 }
 
 @keyframes gradient-shift {
@@ -177,17 +225,17 @@ code, pre, .mono {
   border-color: rgba(255, 255, 255, 0.5);
 }
 
-/* Neon effects */
-.neon-orange {
-  box-shadow: 0 0 15px rgba(255, 107, 53, 0.5);
+/* Neon effects - black and gray only */
+.neon-gray {
+  box-shadow: 0 0 15px rgba(26, 26, 26, 0.15);
 }
 
 .neon-green {
-  box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
+  box-shadow: 0 0 15px rgba(128, 128, 128, 0.5);
 }
 
 .neon-brand {
-  box-shadow: 0 0 15px rgba(255, 143, 94, 0.5);
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
 }
 
 /* Grid pattern background */
@@ -222,7 +270,7 @@ code, pre, .mono {
   position: absolute;
   inset: -2px;
   border-radius: inherit;
-  background: linear-gradient(90deg, transparent, #FF6B35, transparent);
+  background: linear-gradient(90deg, transparent, #1A1A1A, transparent);
   background-size: 200% 100%;
   animation: trace-border 2s linear infinite;
   z-index: -1;
