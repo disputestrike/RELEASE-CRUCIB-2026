@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Send, Mic, MicOff, Paperclip, Loader2,
-  Sparkles, ArrowRight, Upload, X, Github,
+  Sparkles, ArrowRight, Upload, X, Github, Settings,
   Layout, Smartphone, Bot, Code, Zap, Globe
 } from 'lucide-react';
 import { useAuth, API } from '../App';
@@ -59,6 +59,8 @@ const Dashboard = () => {
   // Chat state for conversational (non-build) messages
   const [chatMessages, setChatMessages] = useState([]);
   const [chatLoading, setChatLoading] = useState(false);
+  const [conversationStarted, setConversationStarted] = useState(false);
+  const messagesEndRef = useRef(null);
   const [audioStream, setAudioStream] = useState(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const inputRef = useRef(null);
@@ -71,6 +73,11 @@ const Dashboard = () => {
     const timer = setTimeout(() => inputRef.current?.focus(), 300);
     return () => clearTimeout(timer);
   }, []);
+
+  // Auto-scroll to bottom when new message arrives
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages, chatLoading]);
 
   const firstName = user?.name?.split(' ')[0] || 'there';
 
@@ -91,6 +98,7 @@ const Dashboard = () => {
       });
     } else {
       // Conversational — stay on home screen, respond inline
+      setConversationStarted(true);
       const userMsg = { role: 'user', content: prompt };
       setChatMessages(prev => [...prev, userMsg]);
       setPrompt('');
@@ -253,115 +261,45 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="dashboard-redesigned" data-testid="dashboard">
-      <div className="dashboard-center">
-        {/* Greeting */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="dashboard-greeting"
-        >
-          <h1 className="dashboard-greeting-text">
-            Hi {firstName}. <span className="dashboard-greeting-sub">What do you want to build?</span>
-          </h1>
-        </motion.div>
-
-        {/* Prompt Box */}
-        <motion.form
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-          onSubmit={handleSubmit}
-          className="dashboard-prompt-form"
-        >
-          {/* Attached files preview */}
-          {attachedFiles.length > 0 && (
-            <div className="dashboard-attached-files">
-              {attachedFiles.map((file, i) => (
-                <div key={i} className="dashboard-attached-file">
-                  <span className="dashboard-attached-name">{file.name}</span>
-                  <button type="button" onClick={() => removeFile(i)} className="dashboard-attached-remove">
-                    <X size={14} />
+    <div className="dashboard-redesigned home-screen" data-testid="dashboard">
+      {/* Scrollable area: greeting + chips when idle, messages when conversation started */}
+      <div className="home-messages">
+        {!conversationStarted && (
+          <>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="dashboard-greeting"
+            >
+              <h1 className="dashboard-greeting-text greeting-title">
+                Hi {firstName}.
+              </h1>
+              <p className="dashboard-greeting-sub greeting-subtitle">What do you want to build?</p>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.2 }}
+              className="dashboard-chips"
+            >
+              <span className="dashboard-chips-label">Quick start:</span>
+              <div className="dashboard-chips-grid">
+                {QUICK_START_CHIPS.map((chip) => (
+                  <button
+                    key={chip.label}
+                    type="button"
+                    onClick={() => handleChipClick(chip)}
+                    className="dashboard-chip"
+                  >
+                    <chip.icon size={16} className="dashboard-chip-icon" />
+                    <span>{chip.label}</span>
                   </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="dashboard-prompt-container">
-            <textarea
-              ref={inputRef}
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmit(e);
-                }
-              }}
-              placeholder="Describe your app, automation, or idea..."
-              className="dashboard-prompt-input"
-              rows={1}
-            />
-            <div className="dashboard-prompt-actions">
-              {/* Model indicator */}
-              <div className="dashboard-model-badge" title="Auto-selects best model">
-                <Sparkles size={14} />
+                ))}
               </div>
-
-              {/* File attachment */}
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="dashboard-prompt-btn"
-                title="Attach file"
-              >
-                <Paperclip size={18} />
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept="image/*,.pdf,.txt,.js,.jsx,.ts,.tsx,.css,.html,.json,.py"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
-
-              {/* Voice input — ISSUE 3: VoiceWaveform on home screen */}
-              {isRecording ? (
-                <VoiceWaveform
-                  stream={audioStream}
-                  onStop={stopRecording}
-                  onConfirm={confirmRecording}
-                  isRecording={isRecording}
-                />
-              ) : (
-                <button
-                  type="button"
-                  onClick={isTranscribing ? undefined : startRecording}
-                  disabled={isTranscribing}
-                  className={`dashboard-prompt-btn ${isRecording ? 'recording' : ''}`}
-                  title={isTranscribing ? 'Transcribing...' : 'Voice input (9 languages)'}
-                >
-                  {isTranscribing ? <Loader2 size={18} className="animate-spin" /> : <Mic size={18} />}
-                </button>
-              )}
-
-              {/* Submit */}
-              <button
-                type="submit"
-                disabled={!prompt.trim() || chatLoading}
-                className="dashboard-prompt-submit"
-                title="Send"
-              >
-                {chatLoading ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} />}
-              </button>
-            </div>
-          </div>
-        </motion.form>
-
-        {/* Chat Messages — ISSUE 1: conversational responses inline */}
+            </motion.div>
+          </>
+        )}
         {chatMessages.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -385,29 +323,114 @@ const Dashboard = () => {
             )}
           </motion.div>
         )}
+        <div ref={messagesEndRef} />
+      </div>
 
-        {/* Quick Start Chips */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-          className="dashboard-chips"
-        >
-          <span className="dashboard-chips-label">Quick start:</span>
-          <div className="dashboard-chips-grid">
-            {QUICK_START_CHIPS.map((chip) => (
-              <button
-                key={chip.label}
-                type="button"
-                onClick={() => handleChipClick(chip)}
-                className="dashboard-chip"
-              >
-                <chip.icon size={16} className="dashboard-chip-icon" />
-                <span>{chip.label}</span>
+      {/* Input bar pinned to bottom */}
+      <div className="home-input-bar">
+        <div className="home-prompt-wrapper">
+          <motion.form
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            onSubmit={handleSubmit}
+            className="dashboard-prompt-form"
+          >
+            {attachedFiles.length > 0 && (
+              <div className="dashboard-attached-files">
+                {attachedFiles.map((file, i) => (
+                  <div key={i} className="dashboard-attached-file">
+                    <span className="dashboard-attached-name">{file.name}</span>
+                    <button type="button" onClick={() => removeFile(i)} className="dashboard-attached-remove">
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="dashboard-prompt-container">
+              <textarea
+                ref={inputRef}
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit(e);
+                  }
+                }}
+                placeholder="Build something or ask anything"
+                className="dashboard-prompt-input"
+                rows={1}
+              />
+              <div className="dashboard-prompt-actions">
+                <div className="dashboard-model-badge" title="Auto-selects best model">
+                  <Sparkles size={14} />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="dashboard-prompt-btn"
+                  title="Attach file"
+                >
+                  <Paperclip size={18} />
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*,.pdf,.txt,.js,.jsx,.ts,.tsx,.css,.html,.json,.py"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                {isRecording ? (
+                  <VoiceWaveform
+                    stream={audioStream}
+                    onStop={stopRecording}
+                    onConfirm={confirmRecording}
+                    isRecording={isRecording}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={isTranscribing ? undefined : startRecording}
+                    disabled={isTranscribing}
+                    className={`dashboard-prompt-btn ${isRecording ? 'recording' : ''}`}
+                    title={isTranscribing ? 'Transcribing...' : 'Voice input (9 languages)'}
+                  >
+                    {isTranscribing ? <Loader2 size={18} className="animate-spin" /> : <Mic size={18} />}
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  disabled={!prompt.trim() || chatLoading}
+                  className="dashboard-prompt-submit"
+                  title="Send"
+                >
+                  {chatLoading ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} />}
+                </button>
+              </div>
+            </div>
+
+            <div className="prompt-toolbar">
+              <button type="button" onClick={() => fileInputRef.current?.click()} title="Attach file">
+                <Paperclip size={18} />
               </button>
-            ))}
-          </div>
-        </motion.div>
+              <button type="button" title="Tools">
+                <Settings size={18} />
+              </button>
+              <button
+                type="button"
+                onClick={isTranscribing ? undefined : startRecording}
+                disabled={isTranscribing}
+                title={isTranscribing ? 'Transcribing...' : 'Voice'}
+              >
+                {isTranscribing ? <Loader2 size={18} className="animate-spin" /> : <Mic size={18} />}
+              </button>
+            </div>
+          </motion.form>
+        </div>
       </div>
 
       {/* Import Modal */}

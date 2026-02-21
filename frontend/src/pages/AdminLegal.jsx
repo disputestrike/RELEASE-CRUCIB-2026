@@ -46,7 +46,7 @@ export default function AdminLegal() {
   return (
     <div className="space-y-6" data-testid="admin-legal">
       <div className="flex items-center gap-4">
-        <Link to="/app/admin" className="p-2 hover:bg-white/10 rounded-lg transition"><ArrowLeft className="w-5 h-5" /></Link>
+        <Link to="/app/admin" className="p-2 hover:bg-[#F3F1ED] rounded-lg transition"><ArrowLeft className="w-5 h-5" /></Link>
         <div>
           <h1 className="text-2xl font-bold">Legal & AUP</h1>
           <p className="text-[#666666] text-sm">Blocked build requests (Acceptable Use Policy)</p>
@@ -54,26 +54,26 @@ export default function AdminLegal() {
       </div>
 
       <div className="flex gap-2">
-        <button onClick={() => setFilter('all')} className={`px-3 py-1.5 rounded text-sm ${filter === 'all' ? 'bg-orange-600' : 'bg-white/10'}`}>All</button>
-        <button onClick={() => setFilter('blocked')} className={`px-3 py-1.5 rounded text-sm ${filter === 'blocked' ? 'bg-orange-600' : 'bg-white/10'}`}>Blocked</button>
-        <button onClick={() => setFilter('reviewed')} className={`px-3 py-1.5 rounded text-sm ${filter === 'reviewed' ? 'bg-orange-600' : 'bg-white/10'}`}>Reviewed</button>
+        <button onClick={() => setFilter('all')} className={`px-3 py-1.5 rounded text-sm ${filter === 'all' ? 'bg-[#1A1A1A] text-white' : 'bg-[#F3F1ED] text-[#1A1A1A]'}`}>All</button>
+        <button onClick={() => setFilter('blocked')} className={`px-3 py-1.5 rounded text-sm ${filter === 'blocked' ? 'bg-[#1A1A1A] text-white' : 'bg-[#F3F1ED] text-[#1A1A1A]'}`}>Blocked</button>
+        <button onClick={() => setFilter('reviewed')} className={`px-3 py-1.5 rounded text-sm ${filter === 'reviewed' ? 'bg-[#1A1A1A] text-white' : 'bg-[#F3F1ED] text-[#1A1A1A]'}`}>Reviewed</button>
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12"><div className="w-10 h-10 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>
+        <div className="flex justify-center py-12"><div className="w-10 h-10 border-2 border-[#666666] border-t-transparent rounded-full animate-spin" /></div>
       ) : (
         <div className="space-y-4">
           {list.length === 0 && <p className="text-[#666666]">No blocked requests</p>}
           {list.map((r) => (
-            <div key={r.id} className="p-4 rounded-xl border border-white/10 bg-[#0a0a0a]">
+            <div key={r.id} className="p-4 rounded-xl border border-black/10 bg-white">
               <div className="flex justify-between items-start gap-4 mb-2">
                 <div>
                   <span className="text-xs text-gray-500">User: {r.user_id}</span>
-                  <span className="ml-3 px-2 py-0.5 rounded text-xs bg-amber-500/20 text-amber-400">{r.category || 'policy'}</span>
+                  <span className="ml-3 px-2 py-0.5 rounded text-xs bg-[#E0DCD5] text-[#666666]">{r.category || 'policy'}</span>
                 </div>
                 <span className={`text-xs px-2 py-1 rounded ${r.status === 'reviewed' ? 'bg-gray-500/20' : 'bg-red-500/20 text-red-400'}`}>{r.status}</span>
               </div>
-              <p className="text-sm text-gray-300 font-mono break-words mb-2">"{r.prompt}"</p>
+              <p className="text-sm text-[#666666] font-mono break-words mb-2">"{r.prompt}"</p>
               <p className="text-xs text-gray-500 mb-3">{r.reason}</p>
               {r.status === 'blocked' && (
                 <div className="flex gap-2">

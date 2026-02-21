@@ -36,7 +36,7 @@ const AdminDashboard = () => {
   if (!data) {
     return (
       <div className="flex items-center justify-center min-h-[40vh]">
-        <div className="w-12 h-12 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-12 h-12 border-2 border-[#666666] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -63,13 +63,13 @@ const AdminDashboard = () => {
         {cards.map(({ label, value, icon: Icon, href }) => (
           <div
             key={label}
-            className="p-6 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition"
+            className="p-6 rounded-xl border border-black/10 bg-white hover:bg-[#FAFAF8] transition"
           >
             {href ? (
               <Link to={href} className="block">
                 <div className="flex items-center justify-between">
                   <span className="text-[#666666]">{label}</span>
-                  <Icon className="w-5 h-5 text-orange-400" />
+                  <Icon className="w-5 h-5 text-[#666666]" />
                 </div>
                 <p className="text-2xl font-bold mt-2">{value}</p>
               </Link>
@@ -77,7 +77,7 @@ const AdminDashboard = () => {
               <>
                 <div className="flex items-center justify-between">
                   <span className="text-[#666666]">{label}</span>
-                  <Icon className="w-5 h-5 text-orange-400" />
+                  <Icon className="w-5 h-5 text-[#666666]" />
                 </div>
                 <p className="text-2xl font-bold mt-2">{value}</p>
               </>
@@ -86,16 +86,16 @@ const AdminDashboard = () => {
         ))}
       </div>
       <div className="flex flex-wrap gap-4">
-        <Link to="/app/admin/analytics" className="p-4 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-gray-300">
+        <Link to="/app/admin/analytics" className="p-4 rounded-lg border border-black/10 bg-[#FAFAF8] hover:bg-[#F3F1ED] text-[#1A1A1A]">
           Analytics & reports →
         </Link>
-        <Link to="/app/admin/billing" className="p-4 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-gray-300">
+        <Link to="/app/admin/billing" className="p-4 rounded-lg border border-black/10 bg-[#FAFAF8] hover:bg-[#F3F1ED] text-[#1A1A1A]">
           View billing transactions →
         </Link>
-        <Link to="/app/admin/legal" className="p-4 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-gray-300">
+        <Link to="/app/admin/legal" className="p-4 rounded-lg border border-black/10 bg-[#FAFAF8] hover:bg-[#F3F1ED] text-[#1A1A1A]">
           Legal & AUP (blocked requests) →
         </Link>
-        <div className="p-4 rounded-lg border border-green-500/30 bg-green-500/10 text-green-400 flex items-center gap-2">
+        <div className="p-4 rounded-lg border border-black/10 bg-[#F5F5F4] text-[#666666] flex items-center gap-2">
           <Activity className="w-5 h-5" />
           System health: {data.system_health}
         </div>

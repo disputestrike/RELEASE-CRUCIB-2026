@@ -151,26 +151,26 @@ const AdminAnalytics = () => {
           <ArrowLeft className="w-4 h-4 mr-2" /> Back
         </Link>
         <h1 className="text-3xl font-bold flex items-center gap-2">
-          <BarChart3 className="w-8 h-8 text-orange-500" />
+          <BarChart3 className="w-8 h-8 text-[#666666]" />
           Analytics
         </h1>
       </div>
 
-      <form onSubmit={handleSearch} className="flex flex-wrap items-end gap-4 p-4 rounded-xl border border-white/10 bg-white/5">
+      <form onSubmit={handleSearch} className="flex flex-wrap items-end gap-4 p-4 rounded-xl border border-black/10 bg-[#FAFAF8]">
         <div className="flex items-center gap-2">
           <Calendar className="w-5 h-5 text-[#666666]" />
           <input
             type="date"
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
-            className="bg-zinc-900/30 border border-white/10 rounded-lg px-3 py-2 text-sm"
+            className="bg-[#FAFAF8] border border-black/10 rounded-lg px-3 py-2 text-sm"
           />
           <span className="text-[#666666]">to</span>
           <input
             type="date"
             value={toDate}
             onChange={(e) => setToDate(e.target.value)}
-            className="bg-zinc-900/30 border border-white/10 rounded-lg px-3 py-2 text-sm"
+            className="bg-[#FAFAF8] border border-black/10 rounded-lg px-3 py-2 text-sm"
           />
         </div>
         {!fromDate && !toDate && mode === 'daily' && (
@@ -179,7 +179,7 @@ const AdminAnalytics = () => {
             <select
               value={days}
               onChange={(e) => setDays(parseInt(e.target.value, 10))}
-              className="bg-zinc-900/30 border border-white/10 rounded-lg px-3 py-2 text-sm"
+              className="bg-[#FAFAF8] border border-black/10 rounded-lg px-3 py-2 text-sm"
             >
               <option value={7}>7 days</option>
               <option value={14}>14 days</option>
@@ -192,7 +192,7 @@ const AdminAnalytics = () => {
           <button
             type="button"
             onClick={() => setMode('daily')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${mode === 'daily' ? 'bg-orange-600 text-[#1A1A1A]' : 'bg-white/10 text-[#666666] hover:text-[#1A1A1A]'}`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium ${mode === 'daily' ? 'bg-[#1A1A1A] text-white' : 'bg-[#F3F1ED] text-[#666666] hover:text-[#1A1A1A]'}`}
           >
             Daily
           </button>
@@ -206,7 +206,7 @@ const AdminAnalytics = () => {
         </div>
         <button
           type="submit"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-500 text-[#1A1A1A] font-medium"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1A1A1A] hover:bg-[#333] text-white font-medium"
         >
           <Search className="w-4 h-4" /> Run query
         </button>
@@ -237,19 +237,19 @@ const AdminAnalytics = () => {
 
       {report && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="p-4 rounded-xl border border-white/10 bg-white/5">
+          <div className="p-4 rounded-xl border border-black/10 bg-white">
             <p className="text-[#666666] text-sm">Period</p>
             <p className="font-semibold">{report.from_date} → {report.to_date}</p>
           </div>
-          <div className="p-4 rounded-xl border border-white/10 bg-white/5">
+          <div className="p-4 rounded-xl border border-black/10 bg-white">
             <p className="text-[#666666] text-sm">Total signups</p>
             <p className="font-semibold text-xl">{report.total_signups}</p>
           </div>
-          <div className="p-4 rounded-xl border border-white/10 bg-white/5">
+          <div className="p-4 rounded-xl border border-black/10 bg-white">
             <p className="text-[#666666] text-sm">Total revenue</p>
-            <p className="font-semibold text-xl text-green-400">${Number(report.total_revenue || 0).toFixed(2)}</p>
+            <p className="font-semibold text-xl text-[#666666]">${Number(report.total_revenue || 0).toFixed(2)}</p>
           </div>
-          <div className="p-4 rounded-xl border border-white/10 bg-white/5">
+          <div className="p-4 rounded-xl border border-black/10 bg-white">
             <p className="text-[#666666] text-sm">Generated</p>
             <p className="font-semibold text-sm">{report.generated_at ? new Date(report.generated_at).toLocaleString() : '-'}</p>
           </div>
@@ -261,7 +261,7 @@ const AdminAnalytics = () => {
           <div className="w-10 h-10 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : mode === 'daily' ? (
-        <div className="rounded-xl border border-white/10 overflow-hidden">
+        <div className="rounded-xl border border-black/10 overflow-hidden">
           <table className="w-full">
             <thead className="bg-white/5 border-b border-white/10">
               <tr>
@@ -273,11 +273,11 @@ const AdminAnalytics = () => {
             </thead>
             <tbody>
               {daily.map((r) => (
-                <tr key={r.date} className="border-b border-white/5 hover:bg-white/5">
+                <tr key={r.date} className="border-b border-black/10 hover:bg-[#FAFAF8]">
                   <td className="py-3 px-4">{r.date}</td>
                   <td className="py-3 px-4">{r.signups}</td>
                   <td className="py-3 px-4">{r.paid_users_cumulative}</td>
-                  <td className="py-3 px-4 text-green-400">${Number(r.revenue || 0).toFixed(2)}</td>
+                  <td className="py-3 px-4 text-[#666666]">${Number(r.revenue || 0).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
@@ -287,7 +287,7 @@ const AdminAnalytics = () => {
           )}
         </div>
       ) : (
-        <div className="rounded-xl border border-white/10 overflow-hidden">
+        <div className="rounded-xl border border-black/10 overflow-hidden">
           <table className="w-full">
             <thead className="bg-white/5 border-b border-white/10">
               <tr>
@@ -299,11 +299,11 @@ const AdminAnalytics = () => {
             </thead>
             <tbody>
               {weekly.map((r) => (
-                <tr key={r.week_start + r.week_end} className="border-b border-white/5 hover:bg-white/5">
+                <tr key={r.week_start + r.week_end} className="border-b border-black/10 hover:bg-[#FAFAF8]">
                   <td className="py-3 px-4">{r.week_start}</td>
                   <td className="py-3 px-4">{r.week_end}</td>
                   <td className="py-3 px-4">{r.signups}</td>
-                  <td className="py-3 px-4 text-green-400">${Number(r.revenue || 0).toFixed(2)}</td>
+                  <td className="py-3 px-4 text-[#666666]">${Number(r.revenue || 0).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>

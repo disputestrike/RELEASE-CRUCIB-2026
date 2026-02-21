@@ -65,14 +65,14 @@ export default function BuildProgress({ projectId, apiBaseUrl }) {
   }, [projectId, apiBaseUrl]);
 
   return (
-    <div className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
+    <div className="space-y-4 rounded-xl border border-black/10 bg-[#FAFAF8] p-4">
       <h2 className="text-lg font-semibold">Building your app...</h2>
       <div className="space-y-2">
         {PARALLEL_PHASES.map((agents, idx) => (
           <div
             key={idx}
             className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
-              idx < phase ? "bg-emerald-500/10 text-emerald-400" : idx === phase ? "bg-orange-500/10 text-orange-400" : "bg-zinc-800/50 text-zinc-500"
+              idx < phase ? "bg-[#E0DCD5] text-[#1A1A1A]" : idx === phase ? "bg-[#F3F1ED] text-[#666666]" : "bg-[#FAFAF8] text-[#666666]"
             }`}
           >
             <span className="font-medium">Phase {idx + 1}:</span>
@@ -81,7 +81,7 @@ export default function BuildProgress({ projectId, apiBaseUrl }) {
           </div>
         ))}
       </div>
-      <div className="flex items-center gap-4 text-sm text-zinc-400">
+      <div className="flex items-center gap-4 text-sm text-[#666666]">
         <span>Progress: {progress}%</span>
         <span>Tokens used: {tokensUsed.toLocaleString()}</span>
       </div>

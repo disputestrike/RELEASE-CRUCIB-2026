@@ -29,7 +29,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #FF6B35;
+  background: #666666;
   animation: iam-pulse 1.5s infinite;
 }
 
@@ -56,8 +56,8 @@
   display: inline-flex;
   align-items: center;
   padding: 1px 6px;
-  background: rgba(59, 130, 246, 0.1);
-  color: #FF6B35;
+  background: rgba(0, 0, 0, 0.06);
+  color: #666666;
   border-radius: 4px;
   font-size: 11px;
   font-weight: 500;
@@ -74,11 +74,11 @@
   align-items: center;
   gap: 4px;
   padding: 4px 8px;
-  background: rgba(245, 158, 11, 0.1);
+  background: rgba(0, 0, 0, 0.06);
   border-radius: 6px;
   font-size: 12px;
   font-weight: 600;
-  color: #D97706;
+  color: #666666;
 }
 
 /* Progress */
@@ -103,7 +103,7 @@
 
 .iam-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #FF6B35, #FF8F5E);
+  background: linear-gradient(90deg, #666666, #525252);
   border-radius: 3px;
 }
 
@@ -288,9 +288,9 @@
   flex-shrink: 0;
 }
 
-.iam-timeline-type.completed { color: #10B981; }
-.iam-timeline-type.started { color: #FF6B35; }
-.iam-timeline-type.other { color: #F59E0B; }
+.iam-timeline-type.completed { color: #666666; }
+.iam-timeline-type.started { color: #1A1A1A; }
+.iam-timeline-type.other { color: #666666; }
 
 /* Retry */
 .iam-retry-btn {
