@@ -61,7 +61,7 @@ const PatternLibrary = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-12 h-12 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-2 border-[#666666] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -82,7 +82,7 @@ const PatternLibrary = () => {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-orange-500 outline-none transition"
+            className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-[#666666] outline-none transition"
             placeholder="Search patterns..."
             data-testid="pattern-search"
           />
@@ -97,7 +97,7 @@ const PatternLibrary = () => {
             onClick={() => setSelectedCategory(cat.id)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
               selectedCategory === cat.id
-                ? 'bg-orange-500/20 text-orange-400 border border-orange-500/50'
+                ? 'bg-[#F3F1ED] text-[#1A1A1A] border border-black/15'
                 : 'bg-white/5 text-[#666666] border border-white/10 hover:border-white/20'
             }`}
             data-testid={`category-${cat.id}`}
@@ -123,8 +123,8 @@ const PatternLibrary = () => {
             className="p-4 bg-[#0a0a0a] rounded-xl border border-white/10"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-orange-500/10 rounded-lg flex items-center justify-center">
-                <stat.icon className="w-5 h-5 text-orange-400" />
+              <div className="w-10 h-10 bg-[#F5F5F4] rounded-lg flex items-center justify-center">
+                <stat.icon className="w-5 h-5 text-[#1A1A1A]" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{stat.value}</p>
@@ -145,12 +145,12 @@ const PatternLibrary = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
-              className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10 hover:border-orange-500/30 transition-all group"
+              className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10 hover:border-[#666666]/30 transition-all group"
               data-testid={`pattern-${pattern.id}`}
             >
               <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 bg-orange-500/10 rounded-lg flex items-center justify-center group-hover:bg-orange-500/20 transition">
-                  <CategoryIcon className="w-6 h-6 text-orange-400" />
+                <div className="w-12 h-12 bg-[#F5F5F4] rounded-lg flex items-center justify-center group-hover:bg-[#F3F1ED] transition">
+                  <CategoryIcon className="w-6 h-6 text-[#1A1A1A]" />
                 </div>
                 <button
                   onClick={() => handleCopy(pattern.id)}
@@ -158,7 +158,7 @@ const PatternLibrary = () => {
                   title="Copy pattern ID"
                 >
                   {copiedId === pattern.id ? (
-                    <Check className="w-4 h-4 text-green-400" />
+                    <Check className="w-4 h-4 text-[#1A1A1A]" />
                   ) : (
                     <Copy className="w-4 h-4 text-gray-500" />
                   )}
@@ -173,7 +173,7 @@ const PatternLibrary = () => {
                   <TrendingUp className="w-4 h-4" />
                   {pattern.usage_count.toLocaleString()} uses
                 </div>
-                <div className="flex items-center gap-1 text-green-400">
+                <div className="flex items-center gap-1 text-[#1A1A1A]">
                   <Zap className="w-4 h-4" />
                   Saves {(pattern.tokens_saved / 1000).toFixed(0)}K tokens
                 </div>

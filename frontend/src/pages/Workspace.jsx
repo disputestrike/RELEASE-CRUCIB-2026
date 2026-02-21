@@ -110,7 +110,7 @@ root.render(<App />);`,
 // File tree component
 const FileTree = ({ files, activeFile, onSelectFile, onAddFile }) => {
   const getFileIcon = (filename) => {
-    if (filename.endsWith('.js') || filename.endsWith('.jsx')) return <FileCode className="w-4 h-4 text-yellow-400" />;
+    if (filename.endsWith('.js') || filename.endsWith('.jsx')) return <FileCode className="w-4 h-4 text-[#666666]" />;
     if (filename.endsWith('.css')) return <FileText className="w-4 h-4 text-gray-800" />;
     if (filename.endsWith('.html')) return <FileText className="w-4 h-4 text-gray-800" />;
     return <File className="w-4 h-4 text-gray-500" />;
@@ -169,9 +169,9 @@ const ConsolePanel = ({ logs, placeholder = "Terminal output will appear here. R
           <div
             key={i}
             className={`flex items-start gap-2 ${
-              log.type === 'error' ? 'text-red-600' :
-              log.type === 'success' ? 'text-green-700' :
-              log.type === 'warning' ? 'text-amber-700' :
+              log.type === 'error' ? 'text-[#666666]' :
+              log.type === 'success' ? 'text-[#1A1A1A]' :
+              log.type === 'warning' ? 'text-[#666666]' :
               'text-gray-600'
             }`}
           >
@@ -240,7 +240,7 @@ const ModelSelector = ({ selectedModel, onSelectModel, variant = 'default' }) =>
                       <div className="font-medium">{model.name}</div>
                       <div className="text-xs text-gray-500 truncate">{model.desc}</div>
                     </div>
-                    {selectedModel === model.id && <Check className="w-4 h-4 shrink-0 text-green-600" />}
+                    {selectedModel === model.id && <Check className="w-4 h-4 shrink-0 text-[#1A1A1A]" />}
                   </button>
                 ))}
               </div>
@@ -1428,11 +1428,11 @@ Respond with ONLY the complete App.js code, nothing else.`;
 
       {/* Paywall banner when low/zero tokens */}
       {user && (user.token_balance === 0 || (user.token_balance < 10000 && user.token_balance > 0)) && (
-        <div className="flex-shrink-0 px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 flex items-center justify-between">
-          <span className="text-sm text-amber-700">
+        <div className="flex-shrink-0 px-4 py-2 bg-[#F3F1ED] border-b border-black/10 flex items-center justify-between">
+          <span className="text-sm text-[#1A1A1A]">
             {user.token_balance === 0 ? 'Out of tokens.' : 'Running low on tokens.'} Get more to keep building.
           </span>
-          <button onClick={() => navigate('/app/tokens')} className="text-sm font-medium text-amber-700 hover:text-amber-800">
+          <button onClick={() => navigate('/app/tokens')} className="text-sm font-medium text-[#1A1A1A] hover:text-[#333]">
             Buy tokens
           </button>
         </div>
@@ -1655,7 +1655,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
                     className="p-1.5 text-gray-500 hover:text-gray-900 transition"
                     title="Copy code"
                   >
-                    {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                    {copied ? <Check className="w-4 h-4 text-[#1A1A1A]" /> : <Copy className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
@@ -1953,10 +1953,10 @@ Respond with ONLY the complete App.js code, nothing else.`;
                     {toolsReport.type === 'validate' && (
                       <>
                         {toolsReport.data.error ? (
-                          <p className="text-red-600">{toolsReport.data.error}</p>
+                          <p className="text-[#666666]">{toolsReport.data.error}</p>
                         ) : (
                           <>
-                            <p className={toolsReport.data.valid ? 'text-green-700' : 'text-amber-700'}>
+                            <p className={toolsReport.data.valid ? 'text-[#1A1A1A]' : 'text-[#666666]'}>
                               {toolsReport.data.valid ? 'No issues found.' : 'Issues found. Fix available below.'}
                             </p>
                             {!toolsReport.data.valid && toolsReport.data.fixed_code && (
@@ -2002,7 +2002,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
         <div className="flex items-center gap-4">
           <span>{versions.length > 0 ? `Project · v${versions.length}` : 'New Project'}</span>
           <span>{currentVersion ? 'main' : '—'}</span>
-          {lastError && <span className="text-red-600">1 error</span>}
+          {lastError && <span className="text-[#666666]">1 error</span>}
           {!lastError && <span className="text-stone-500">0 errors</span>}
           <span className="text-stone-500">0 warnings</span>
         </div>
@@ -2015,7 +2015,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
             </span>
           )}
           {qualityGateResult != null && (
-            <span className={qualityGateResult.passed ? 'text-green-600' : 'text-amber-600'} title="Quality gate">
+            <span className={qualityGateResult.passed ? 'text-[#1A1A1A]' : 'text-[#666666]'} title="Quality gate">
               Quality: {qualityGateResult.score}% {qualityGateResult.passed ? '✓' : '(review)'}
             </span>
           )}
@@ -2049,9 +2049,9 @@ Respond with ONLY the complete App.js code, nothing else.`;
 
         {/* Add API key banner when last message is key/network error */}
         {messages.some(m => m.error && (m.content || '').toLowerCase().includes('api key')) && (
-          <div className="mb-3 flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm">
+          <div className="mb-3 flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg bg-[#F5F5F4] border border-black/10 text-[#1A1A1A] text-sm">
             <span>Check Settings → API & Environment: your saved keys are used for builds. If you see errors, re-save your OpenAI or Anthropic key and try again.</span>
-            <button type="button" onClick={() => navigate('/app/settings')} className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-200 hover:bg-amber-300 font-medium text-amber-900">Open Settings</button>
+            <button type="button" onClick={() => navigate('/app/settings')} className="shrink-0 px-3 py-1.5 rounded-lg bg-[#1A1A1A] hover:bg-[#333] font-medium text-white">Open Settings</button>
           </div>
         )}
 
@@ -2076,7 +2076,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
                   msg.role === 'user' 
                     ? 'bg-gray-100 text-gray-900' 
                     : msg.error 
-                      ? 'bg-red-50 text-red-700 border border-red-200'
+                      ? 'bg-[#F5F5F4] text-[#666666] border border-black/10'
                       : 'bg-white border border-gray-200 text-gray-800'
                 }`}>
                   {msg.isBuilding ? (
@@ -2111,9 +2111,9 @@ Respond with ONLY the complete App.js code, nothing else.`;
             {attachedFiles.map((file, i) => (
               <div key={i} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm">
                 {file.type.startsWith('image/') ? (
-                  <Image className="w-4 h-4 text-orange-600" />
+                  <Image className="w-4 h-4 text-[#1A1A1A]" />
                 ) : (
-                  <FileText className="w-4 h-4 text-green-600" />
+                  <FileText className="w-4 h-4 text-[#1A1A1A]" />
                 )}
                 <span className="text-gray-700 max-w-[150px] truncate">{file.name}</span>
                 <button onClick={() => removeFile(i)} className="text-gray-500 hover:text-gray-900">

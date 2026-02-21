@@ -103,7 +103,7 @@ const TokenCenter = () => {
     value
   })) : [];
 
-  const COLORS = ['#1A1A1A', '#10B981', '#FF8F5E', '#F59E0B', '#EF4444', '#06B6D4', '#EC4899', '#84CC16'];
+  const COLORS = ['#1A1A1A', '#3D3D3D', '#525252', '#666666', '#737373', '#888888', '#9CA3AF', '#A3A3A3'];
 
   if (loading) {
     return (
@@ -132,7 +132,7 @@ const TokenCenter = () => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div>
             <p className="text-[#666666] mb-2 flex items-center gap-2">
-              <Zap className="w-5 h-5 text-yellow-500" />
+              <Zap className="w-5 h-5 text-[#666666]" />
               Current Balance
             </p>
             <p className="text-5xl font-bold" data-testid="credit-balance">
@@ -155,7 +155,7 @@ const TokenCenter = () => {
 
       {/* Referral: share link (free tier only for referrer reward) */}
       {referralCode && (
-        <div className="p-6 bg-white/5 rounded-xl border border-white/10">
+        <div className="p-6 bg-[#F5F5F4] rounded-xl border border-black/10">
           <h2 className="text-lg font-semibold text-[#1A1A1A] flex items-center gap-2 mb-2">
             <Link2 className="w-5 h-5 text-[#1A1A1A]" /> Invite friends — 100 credits each
           </h2>
@@ -174,7 +174,7 @@ const TokenCenter = () => {
                   setTimeout(() => setReferralCopied(false), 2000);
                 }
               }}
-              className="flex items-center gap-1 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-[#1A1A1A] text-sm font-medium"
+              className="flex items-center gap-1 px-3 py-2 rounded-lg bg-[#1A1A1A] hover:bg-[#333] text-white text-sm font-medium"
             >
               <Copy className="w-4 h-4" /> {referralCopied ? 'Copied!' : 'Copy link'}
             </button>
@@ -194,7 +194,7 @@ const TokenCenter = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-4 border-b border-white/10">
+      <div className="flex gap-4 border-b border-black/10">
         {[
           { id: 'purchase', label: 'Buy Credits', icon: CreditCard },
           { id: 'history', label: 'History', icon: History },
@@ -228,9 +228,9 @@ const TokenCenter = () => {
               transition={{ delay: i * 0.1 }}
               className={`p-6 rounded-xl border transition-all ${
                 bundle.key === 'builder'
-                  ? 'bg-gray-700/10 border-gray-400/50 scale-105'
-                  : 'bg-[#0a0a0a] border-white/10 hover:border-white/20'
-              } ${addonFromPricing === bundle.key ? 'ring-2 ring-white/30' : ''}`}
+                  ? 'bg-[#F3F1ED] border-[#1A1A1A]/20 scale-105'
+                  : 'bg-[#F5F5F4] border-black/10 hover:border-black/15'
+              } ${addonFromPricing === bundle.key ? 'ring-2 ring-[#1A1A1A]/20' : ''}`}
             >
               {bundle.key === 'builder' && (
                 <div className="text-xs font-medium text-[#1A1A1A] mb-4">MOST POPULAR</div>
@@ -243,7 +243,7 @@ const TokenCenter = () => {
                 </span>
               </div>
               <p className="text-[#666666] mb-6">
-                <Zap className="w-4 h-4 inline mr-1 text-yellow-500" />
+                <Zap className="w-4 h-4 inline mr-1 text-[#666666]" />
                 {(bundle.credits ?? (bundle.tokens / 1000)).toLocaleString()} credits
                 {!['light', 'dev'].includes(bundle.key) && ' per month'}
               </p>
@@ -252,8 +252,8 @@ const TokenCenter = () => {
                 disabled={purchasing === bundle.key}
                 className={`w-full py-2.5 rounded-lg font-medium transition ${
                   bundle.key === 'builder'
-                    ? 'bg-gray-700 hover:bg-gray-800'
-                    : 'bg-white/10 hover:bg-white/20'
+                    ? 'bg-[#1A1A1A] hover:bg-[#333] text-white'
+                    : 'bg-[#EBE8E2] hover:bg-[#E0DCD5] text-[#1A1A1A]'
                 } disabled:opacity-50`}
                 data-testid={`buy-${bundle.key}-btn`}
               >
@@ -266,7 +266,7 @@ const TokenCenter = () => {
               <button
                 onClick={() => handleStripeCheckout(bundle.key)}
                 disabled={purchasing === `stripe-${bundle.key}`}
-                className="w-full mt-2 py-2 rounded-lg font-medium bg-emerald-600 hover:bg-emerald-500 text-[#1A1A1A] transition disabled:opacity-50"
+                className="w-full mt-2 py-2 rounded-lg font-medium bg-[#1A1A1A] hover:bg-[#333] text-white transition disabled:opacity-50"
                 data-testid={`stripe-${bundle.key}-btn`}
               >
                 {purchasing === `stripe-${bundle.key}` ? (
@@ -282,7 +282,7 @@ const TokenCenter = () => {
 
       {/* History Tab */}
       {activeTab === 'history' && (
-        <div className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10">
+        <div className="p-6 bg-[#F5F5F4] rounded-xl border border-black/10">
           {history.length === 0 ? (
             <div className="text-center py-12">
               <History className="w-12 h-12 text-gray-600 mx-auto mb-4" />
@@ -297,12 +297,12 @@ const TokenCenter = () => {
                 >
                   <div className="flex items-center gap-4">
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                      item.type === 'purchase' ? 'bg-green-500/20' :
-                      item.type === 'bonus' ? 'bg-gray-700/20' :
-                      item.type === 'refund' ? 'bg-gray-700/20' :
-                      'bg-gray-500/20'
+                      item.type === 'purchase' ? 'bg-[#F3F1ED]' :
+                      item.type === 'bonus' ? 'bg-[#F3F1ED]' :
+                      item.type === 'refund' ? 'bg-[#F3F1ED]' :
+                      'bg-[#F5F5F4]'
                     }`}>
-                      {item.type === 'purchase' ? <CreditCard className="w-5 h-5 text-green-400" /> :
+                      {item.type === 'purchase' ? <CreditCard className="w-5 h-5 text-[#1A1A1A]" /> :
                        item.type === 'bonus' ? <Zap className="w-5 h-5 text-[#1A1A1A]" /> :
                        <ArrowUpRight className="w-5 h-5 text-[#1A1A1A]" />}
                     </div>
@@ -315,7 +315,7 @@ const TokenCenter = () => {
                   </div>
                   <div className="text-right">
                     <p className={`font-bold ${
-                      (item.credits ?? item.tokens) > 0 ? 'text-green-400' : 'text-red-400'
+                      (item.credits ?? item.tokens) > 0 ? 'text-[#1A1A1A]' : 'text-[#666666]'
                     }`}>
                       {((item.credits ?? (item.tokens > 0 ? item.tokens / 1000 : 0)) > 0 ? '+' : '')}
                       {(item.credits ?? (item.tokens ? Math.floor(item.tokens / 1000) : 0))?.toLocaleString()} credits
@@ -336,7 +336,7 @@ const TokenCenter = () => {
         <div className="space-y-6">
           {/* Usage trends (last 14 days) */}
           {(usage?.daily_trend?.length > 0) && (
-            <div className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10">
+            <div className="p-6 bg-[#F5F5F4] rounded-xl border border-black/10">
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-[#1A1A1A]" /> Usage trends
               </h3>
@@ -353,7 +353,7 @@ const TokenCenter = () => {
             </div>
           )}
           <div className="grid lg:grid-cols-2 gap-6">
-          <div className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10">
+          <div className="p-6 bg-[#F5F5F4] rounded-xl border border-black/10">
             <h3 className="text-lg font-semibold mb-6">Usage by Agent</h3>
             {usageChartData.length > 0 ? (
               <div className="h-64">
@@ -386,7 +386,7 @@ const TokenCenter = () => {
             )}
           </div>
           
-          <div className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10">
+          <div className="p-6 bg-[#F5F5F4] rounded-xl border border-black/10">
             <h3 className="text-lg font-semibold mb-6">Top Consumers</h3>
             <div className="space-y-4">
               {usageChartData.slice(0, 5).map((item, i) => (
@@ -394,7 +394,7 @@ const TokenCenter = () => {
                   <div className="w-8 text-gray-500 font-mono">#{i + 1}</div>
                   <div className="flex-1">
                     <p className="font-medium">{item.name}</p>
-                    <div className="relative h-2 bg-white/10 rounded-full mt-1 overflow-hidden">
+                    <div className="relative h-2 bg-[#EBE8E2] rounded-full mt-1 overflow-hidden">
                       <div
                         className="absolute inset-y-0 left-0 rounded-full"
                         style={{

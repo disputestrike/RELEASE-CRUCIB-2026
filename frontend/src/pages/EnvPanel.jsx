@@ -64,7 +64,7 @@ export default function EnvPanel() {
             <div key={k} className="flex items-center gap-3 p-3 rounded-lg bg-zinc-900 border border-zinc-800">
               <span className="font-mono text-sm text-zinc-300">{k}</span>
               <span className="flex-1 truncate text-zinc-500 text-sm">{v ? '••••••' : '(empty)'}</span>
-              <button onClick={() => removeVar(k)} className="p-1.5 text-zinc-500 hover:text-red-400">
+              <button onClick={() => removeVar(k)} className="p-1.5 text-zinc-500 hover:text-[#666666]">
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
@@ -86,7 +86,7 @@ export default function EnvPanel() {
           <button
             onClick={addVar}
             disabled={!newKey.trim() || saving}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#F3F1ED] text-[#1A1A1A] hover:bg-[#EBE8E2] disabled:opacity-50"
           >
             <Plus className="w-4 h-4" /> Add
           </button>

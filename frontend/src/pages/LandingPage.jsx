@@ -363,7 +363,7 @@ const LandingPage = () => {
                       msg.role === 'user' 
                         ? 'bg-white text-gray-900' 
                         : msg.error 
-                          ? 'bg-red-500/10 text-red-400'
+                          ? 'bg-[#F5F5F4] text-[#666666]'
                           : 'bg-gray-100 text-gray-700'
                     }`}>
                       {msg.isBuilding ? (
@@ -447,7 +447,7 @@ const LandingPage = () => {
                       type="button"
                       onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
                       disabled={isBuilding || isTranscribing}
-                      className={`p-2.5 rounded-lg transition self-end shrink-0 ${isRecording ? 'bg-red-500/30 text-red-400 ring-2 ring-red-400/50' : 'text-kimi-muted hover:text-kimi-text hover:bg-gray-100'}`}
+                      className={`p-2.5 rounded-lg transition self-end shrink-0 ${isRecording ? 'bg-[#EBE8E2] text-[#1A1A1A] ring-2 ring-black/10' : 'text-kimi-muted hover:text-kimi-text hover:bg-gray-100'}`}
                       title={isRecording ? 'Click to stop and transcribe' : 'Voice input — click to speak'}
                     >
                       {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
@@ -488,8 +488,8 @@ const LandingPage = () => {
                 <div className="mt-3 flex items-center gap-2 min-h-[24px]">
                   {isRecording && (
                     <>
-                      <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" aria-hidden />
-                      <span className="text-sm text-red-400 font-medium">Listening… click the mic again to stop and see your text here.</span>
+                      <span className="w-2 h-2 rounded-full bg-[#666666] animate-pulse" aria-hidden />
+                      <span className="text-sm text-[#666666] font-medium">Listening… click the mic again to stop and see your text here.</span>
                     </>
                   )}
                   {isTranscribing && !isRecording && (
@@ -499,7 +499,7 @@ const LandingPage = () => {
                     </>
                   )}
                   {voiceError && !isRecording && !isTranscribing && (
-                    <span className="text-sm text-red-400">{voiceError}</span>
+                    <span className="text-sm text-[#666666]">{voiceError}</span>
                   )}
                 </div>
               )}

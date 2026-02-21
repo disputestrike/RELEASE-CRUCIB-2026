@@ -141,9 +141,9 @@
   flex-shrink: 0;
 }
 
-.preview-dot.green { background: #059669; }
-.preview-dot.red { background: #DC2626; }
-.preview-dot.yellow { background: #D97706; }
+.preview-dot.green { background: #3D3D3D; }
+.preview-dot.red { background: #666666; }
+.preview-dot.yellow { background: #525252; }
 
 .preview-url-text {
   overflow: hidden;

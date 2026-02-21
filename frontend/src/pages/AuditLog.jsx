@@ -55,7 +55,7 @@ export default function AuditLog() {
     <div className="p-6 max-w-5xl">
       <h1 className="text-2xl font-bold text-[#1A1A1A] mb-6">Audit Log</h1>
 
-      <div className="mb-6 p-4 bg-[#0a0a0a] border border-white/10 rounded-xl">
+      <div className="mb-6 p-4 bg-[#F5F5F4] border border-black/10 rounded-xl">
         <h3 className="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
           <Download className="w-4 h-4" />
           Export
@@ -67,7 +67,7 @@ export default function AuditLog() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-[#1A1A1A]"
+              className="px-3 py-2 bg-white border border-black/10 rounded-lg text-[#1A1A1A]"
             />
           </div>
           <div>
@@ -76,12 +76,12 @@ export default function AuditLog() {
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-[#1A1A1A]"
+              className="px-3 py-2 bg-white border border-black/10 rounded-lg text-[#1A1A1A]"
             />
           </div>
           <button
             onClick={handleExport}
-            className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg text-sm font-medium"
+            className="flex items-center gap-2 px-4 py-2 bg-[#1A1A1A] hover:bg-[#333] text-white rounded-lg text-sm font-medium"
           >
             <Download className="w-4 h-4" />
             Export CSV
@@ -89,12 +89,12 @@ export default function AuditLog() {
         </div>
       </div>
 
-      <div className="mb-4 p-3 bg-[#0a0a0a] border border-white/10 rounded-lg flex items-center gap-2">
+      <div className="mb-4 p-3 bg-[#F5F5F4] border border-black/10 rounded-lg flex items-center gap-2">
         <Filter className="w-4 h-4 text-[#666666]" />
         <select
           value={actionFilter}
           onChange={(e) => setActionFilter(e.target.value)}
-          className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-[#1A1A1A] text-sm"
+          className="px-3 py-2 bg-white border border-black/10 rounded-lg text-[#1A1A1A] text-sm"
         >
           <option value="">All actions</option>
           <option value="login">Login</option>
@@ -110,10 +110,10 @@ export default function AuditLog() {
       {loading ? (
         <p className="text-[#666666]">Loading...</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-white/10">
+        <div className="overflow-x-auto rounded-xl border border-black/10">
           <table className="w-full text-sm text-gray-300">
             <thead>
-              <tr className="border-b border-white/10 bg-white/5">
+              <tr className="border-b border-black/10 bg-white">
                 <th className="px-4 py-3 text-left text-[#666666] font-medium">Time</th>
                 <th className="px-4 py-3 text-left text-[#666666] font-medium">Action</th>
                 <th className="px-4 py-3 text-left text-[#666666] font-medium">Resource</th>
@@ -123,12 +123,12 @@ export default function AuditLog() {
             </thead>
             <tbody>
               {logs.map((log) => (
-                <tr key={log.id || log._id} className="border-b border-white/5 hover:bg-white/5">
+                <tr key={log.id || log._id} className="border-b border-white/5 hover:bg-white">
                   <td className="px-4 py-3 whitespace-nowrap">
                     {log.timestamp ? new Date(log.timestamp).toLocaleString() : '—'}
                   </td>
                   <td className="px-4 py-3">
-                    <span className="px-2 py-0.5 bg-orange-500/20 text-orange-400 rounded text-xs font-medium">
+                    <span className="px-2 py-0.5 bg-[#F3F1ED] text-[#1A1A1A] rounded text-xs font-medium">
                       {log.action}
                     </span>
                   </td>
@@ -137,7 +137,7 @@ export default function AuditLog() {
                     {log.resource_id && ` (${String(log.resource_id).slice(0, 8)}…)`}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded text-xs ${log.status === 'success' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                    <span className={`px-2 py-0.5 rounded text-xs ${log.status === 'success' ? 'bg-[#F3F1ED] text-[#1A1A1A]' : 'bg-[#EBE8E2] text-[#666666]'}`}>
                       {log.status}
                     </span>
                   </td>
@@ -157,14 +157,14 @@ export default function AuditLog() {
           <button
             onClick={() => setSkip(Math.max(0, skip - limit))}
             disabled={skip === 0}
-            className="px-3 py-1.5 bg-white/10 hover:bg-white/20 disabled:opacity-50 rounded-lg"
+            className="px-3 py-1.5 bg-[#F3F1ED] hover:bg-[#EBE8E2] disabled:opacity-50 rounded-lg"
           >
             Previous
           </button>
           <button
             onClick={() => setSkip(skip + limit)}
             disabled={skip + limit >= total}
-            className="px-3 py-1.5 bg-white/10 hover:bg-white/20 disabled:opacity-50 rounded-lg"
+            className="px-3 py-1.5 bg-[#F3F1ED] hover:bg-[#EBE8E2] disabled:opacity-50 rounded-lg"
           >
             Next
           </button>

@@ -312,7 +312,7 @@
 .input-wrapper:focus-within {
   background: #FFFFFF;
   border-color: #1A1A1A;
-  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
 }
 
 .chat-input {

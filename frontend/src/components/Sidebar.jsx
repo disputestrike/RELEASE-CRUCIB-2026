@@ -58,12 +58,28 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks = [] }) => {
     { label: 'Audit Log', icon: ScrollText, href: '/app/audit-log' },
   ];
 
-  // Filter tasks by search
-  const filteredTasks = useMemo(() => {
-    if (!searchQuery) return tasks.slice(0, 20);
+  // Prefer API projects (real ids that open in AgentMonitor); fall back to tasks (task_xxx open in Workspace)
+  const listItems = useMemo(() => {
+    const fromProjects = (projects || []).map(p => ({
+      id: p.id,
+      name: p.name || p.requirements?.prompt?.slice(0, 80) || 'Project',
+      status: p.status || 'pending',
+      prompt: null,
+    }));
+    if (fromProjects.length > 0) return fromProjects;
+    return (tasks || []).slice(0, 20).map(t => ({
+      id: t.id,
+      name: t.name || 'Task',
+      status: t.status || 'pending',
+      prompt: t.prompt || null,
+    }));
+  }, [projects, tasks]);
+
+  const filteredListItems = useMemo(() => {
+    if (!searchQuery) return listItems.slice(0, 20);
     const q = searchQuery.toLowerCase();
-    return tasks.filter(t => t.name?.toLowerCase().includes(q)).slice(0, 20);
-  }, [tasks, searchQuery]);
+    return listItems.filter(item => item.name?.toLowerCase().includes(q)).slice(0, 20);
+  }, [listItems, searchQuery]);
 
   const filteredEngineItems = useMemo(() => {
     if (!searchQuery) return engineRoomItems;
@@ -145,18 +161,24 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks = [] }) => {
           <h3 className="sidebar-section-title">All Tasks</h3>
         </div>
         <div className="sidebar-section-items">
-          {filteredTasks.length > 0 ? (
-            filteredTasks.map((task) => (
-              <Link
-                key={task.id}
-                to={`/app/tasks/${task.id}`}
-                className={`sidebar-item ${isActive(`/app/tasks/${task.id}`) ? 'active' : ''}`}
-                title={task.name}
-              >
-                <TaskStatusIcon status={task.status} />
-                <span className="sidebar-item-label">{task.name}</span>
-              </Link>
-            ))
+          {filteredListItems.length > 0 ? (
+            filteredListItems.map((item) => {
+              const isLocalTask = item.id.startsWith('task_');
+              const href = isLocalTask && item.prompt
+                ? { pathname: '/app/workspace', state: { initialPrompt: item.prompt } }
+                : { pathname: `/app/projects/${item.id}` };
+              return (
+                <Link
+                  key={item.id}
+                  to={href}
+                  className={`sidebar-item ${isActive(`/app/projects/${item.id}`) || (isLocalTask && location.pathname === '/app/workspace') ? 'active' : ''}`}
+                  title={item.name}
+                >
+                  <TaskStatusIcon status={item.status} />
+                  <span className="sidebar-item-label">{item.name}</span>
+                </Link>
+              );
+            })
           ) : (
             <div className="sidebar-empty">{searchQuery ? 'No matches' : 'No tasks yet'}</div>
           )}

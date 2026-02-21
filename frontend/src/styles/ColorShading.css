@@ -50,31 +50,24 @@
      ACCENT COLORS
      ============================================ */
   
-  /* Primary accent - CrucibAI orange */
+  /* Primary accent - black/gray only */
   --manus-accent-primary: #1A1A1A;
   --manus-accent-hover: #1A1A1A;
   --manus-accent-light: #F5F5F4;
   --manus-accent-very-light: #F5F5F4;
   
   /* ============================================
-     STATUS COLORS
+     STATUS COLORS (gray scale only)
      ============================================ */
   
-  /* Success - Green */
-  --manus-success: #16A34A;
-  --manus-success-light: #DCFCE7;
-  
-  /* Warning - Orange */
-  --manus-warning: #EA580C;
-  --manus-warning-light: #FFEDD5;
-  
-  /* Error - Red */
-  --manus-error: #DC2626;
-  --manus-error-light: #FEE2E2;
-  
-  /* Info - Blue */
-  --manus-info: #0284C7;
-  --manus-info-light: #E0F2FE;
+  --manus-success: #3D3D3D;
+  --manus-success-light: #F3F1ED;
+  --manus-warning: #666666;
+  --manus-warning-light: #F5F5F4;
+  --manus-error: #4D4D4D;
+  --manus-error-light: #F3F1ED;
+  --manus-info: #525252;
+  --manus-info-light: #F3F1ED;
   
   /* ============================================
      BORDER & DIVIDER COLORS
@@ -274,12 +267,12 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 200ms ease-out;
-  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .btn-manus-primary:hover {
   background-color: var(--manus-accent-hover);
-  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   transform: translateY(-1px);
 }
 

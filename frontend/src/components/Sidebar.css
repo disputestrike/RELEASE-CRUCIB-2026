@@ -71,7 +71,7 @@
 .sidebar-search.focused {
   background: #FFFFFF;
   border-color: #1A1A1A;
-  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
 }
 
 .sidebar-search-icon { color: #9CA3AF; flex-shrink: 0; }
@@ -157,9 +157,9 @@
 /* Color variants */
 .color-orange { color: #1A1A1A; }
 .color-brand { color: #1A1A1A; }
-.color-emerald { color: #059669; }
+.color-emerald { color: #666666; }
 .color-gray { color: #6B7280; }
-.color-indigo { color: #4F46E5; }
+.color-indigo { color: #1A1A1A; }
 
 /* ============================================
    SECTIONS (Projects, Tasks)
@@ -234,9 +234,9 @@
 
 .sidebar-item-icon { flex-shrink: 0; color: #9CA3AF; }
 
-.sidebar-item-icon.status-completed { color: #059669; }
+.sidebar-item-icon.status-completed { color: #3D3D3D; }
 .sidebar-item-icon.status-running { color: #1A1A1A; animation: pulse 2s infinite; }
-.sidebar-item-icon.status-failed { color: #DC2626; }
+.sidebar-item-icon.status-failed { color: #666666; }
 .sidebar-item-icon.status-pending { color: #9CA3AF; }
 
 @keyframes pulse {
@@ -335,7 +335,7 @@
   margin: 4px 12px;
   padding: 10px 12px;
   background: linear-gradient(135deg, #F5F5F4, #F5F5F4);
-  border: 1px solid rgba(255, 107, 53, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 8px;
   text-decoration: none;
   color: #1A1A1A;
@@ -345,7 +345,7 @@
 
 .sidebar-token-balance:hover {
   border-color: #1A1A1A;
-  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.08);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
 }
 
 .sidebar-token-icon { color: #1A1A1A; }
