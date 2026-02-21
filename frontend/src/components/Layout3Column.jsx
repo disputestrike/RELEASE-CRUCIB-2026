@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Menu, X } from 'lucide-react';
+import Logo from './Logo';
 import './Layout3Column.css';
 
 /**
@@ -43,7 +44,7 @@ export const Layout3Column = ({
         >
           {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
-        <div className="layout-mobile-title">CrucibAI</div>
+        <Logo variant="full" height={28} href="/app" className="layout-mobile-title" showTagline={false} />
         <button
           className="layout-toggle-panel"
           onClick={() => setRightPanelOpen(!rightPanelOpen)}
@@ -65,26 +66,28 @@ export const Layout3Column = ({
           </div>
         </aside>
 
-        {/* Main Content Area (Flexible) */}
-        <main className="layout-main">
+        {/* Main Content Area (Flexible) — full width when no right panel */}
+        <main className={`layout-main ${!rightPanel ? 'layout-main--full' : ''}`}>
           <div className="layout-main-content">
             {main}
           </div>
         </main>
 
-        {/* Right Panel (320px) */}
-        <aside
-          className={`layout-right-panel ${rightPanelOpen ? 'open' : 'closed'}`}
-          role="complementary"
-        >
-          <div className="layout-panel-content">
-            {rightPanel}
-          </div>
-        </aside>
+        {/* Right Panel (380px) — only rendered when there is content */}
+        {rightPanel != null && (
+          <aside
+            className={`layout-right-panel ${rightPanelOpen ? 'open' : 'closed'}`}
+            role="complementary"
+          >
+            <div className="layout-panel-content">
+              {rightPanel}
+            </div>
+          </aside>
+        )}
       </div>
 
       {/* Mobile Overlay — hide with CSS, never remove from DOM */}
-      {(sidebarOpen || rightPanelOpen) && (
+      {rightPanel != null && (sidebarOpen || rightPanelOpen) && (
         <div
           className="layout-overlay"
           onClick={() => {

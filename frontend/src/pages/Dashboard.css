@@ -1,4 +1,4 @@
-/* Dashboard — Prompt-first entry point (redesign) — Manus-style centered, full height */
+/* Dashboard — Prompt-first hero (Claude/Manus-aligned: hierarchy, rhythm, premium proportions) */
 
 .dashboard-redesigned {
   display: flex;
@@ -13,15 +13,16 @@
   box-sizing: border-box;
 }
 
-/* Full-width block, wider center (960px) like Manus */
+/* Hero content container — modern SaaS max-width, perfectly centered */
 .dashboard-center {
   width: 100%;
-  max-width: 960px;
+  max-width: 720px;
   padding: 0 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 32px;
+  justify-content: center;
+  gap: 40px;
   text-align: center;
 }
 
@@ -29,27 +30,27 @@
   width: 100%;
 }
 
-/* Greeting */
+/* Headline — visually dominant, large and confident */
 .dashboard-greeting-text {
   font-family: 'DM Sans', sans-serif;
-  font-size: 28px;
-  font-weight: 600;
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  font-weight: 700;
   color: #1A1A1A;
-  line-height: 1.3;
-  letter-spacing: -0.02em;
+  line-height: 1.25;
+  letter-spacing: -0.03em;
   text-align: center;
 }
 
 .dashboard-greeting-sub {
   display: block;
   font-weight: 400;
-  color: #9CA3AF;
-  font-size: 16px;
-  margin-top: 8px;
+  color: #6B7280;
+  font-size: 1.125rem;
+  margin-top: 12px;
   text-align: center;
 }
 
-/* Prompt Form — centered like Manus */
+/* Prompt form — centered, balanced vertical rhythm */
 .dashboard-prompt-form {
   display: flex;
   flex-direction: column;
@@ -60,19 +61,21 @@
 
 .dashboard-prompt-container {
   display: flex;
-  align-items: flex-end;
-  gap: 8px;
+  align-items: center;
+  gap: 12px;
   width: 100%;
+  min-height: 56px;
+  padding: 16px 20px;
   background: #FFFFFF;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 12px;
-  padding: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   transition: border-color 200ms ease, box-shadow 200ms ease;
 }
 
 .dashboard-prompt-container:focus-within {
-  border-color: #1A1A1A;
-  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.08);
+  border-color: rgba(26, 26, 26, 0.25);
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .dashboard-prompt-input {
@@ -81,10 +84,10 @@
   outline: none;
   background: transparent;
   font-family: 'DM Sans', sans-serif;
-  font-size: 16px;
+  font-size: 17px;
   color: #1A1A1A;
   resize: none;
-  min-height: 24px;
+  min-height: 28px;
   max-height: 120px;
   line-height: 1.5;
   width: 100%;

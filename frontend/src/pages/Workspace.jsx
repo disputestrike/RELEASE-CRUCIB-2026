@@ -11,6 +11,7 @@ import '../components/SandpackErrorBoundary.css';
 import './Workspace.css';
 import VoiceWaveform from '../components/VoiceWaveform';
 import '../components/VoiceWaveform.css';
+import Logo from '../components/Logo';
 import {
   ChevronDown,
   Send,
@@ -869,7 +870,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
                 // PHASE 7: Single task authority — write to store (persists to localStorage)
                 addTask({ name: prompt.slice(0, 120), prompt, status: 'completed', createdAt: Date.now() });
                 if (token) {
-                  axios.post(`${API}/api/tasks`, {
+                  axios.post(`${API}/tasks`, {
                     name: prompt.slice(0, 120),
                     prompt,
                     session_id: sessionId,
@@ -921,7 +922,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
         // PHASE 7: Single task authority — write to store (persists to localStorage)
         addTask({ name: prompt.slice(0, 120), prompt, status: 'completed', createdAt: Date.now() });
         if (token) {
-          axios.post(`${API}/api/tasks`, {
+          axios.post(`${API}/tasks`, {
             name: prompt.slice(0, 120),
             prompt,
             session_id: sessionId,
@@ -1529,10 +1530,11 @@ Respond with ONLY the complete App.js code, nothing else.`;
             onClick={() => navigate('/')}
             data-testid="back-button"
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition shrink-0"
+            aria-label="Back to home"
           >
             <ArrowLeft className="w-4 h-4 shrink-0" />
-            <span className="text-sm font-medium text-gray-800 truncate">CrucibAI</span>
           </button>
+          <Logo variant="full" height={24} href="/app" className="shrink-0" showTagline={false} />
           <div className="h-4 w-px bg-gray-200 shrink-0" />
           <span className="text-xs text-gray-500 truncate">
             {versions.length > 0 ? `v${versions.length}` : 'New Project'}
