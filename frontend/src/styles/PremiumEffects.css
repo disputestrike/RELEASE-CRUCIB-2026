@@ -67,11 +67,11 @@
 }
 
 .gradient-orange {
-  background: linear-gradient(135deg, #FFF3ED 0%, #FFE0D0 100%);
+  background: linear-gradient(135deg, #F5F5F4 0%, #EBE8E2 100%);
 }
 
 .gradient-accent {
-  background: linear-gradient(135deg, #1A1A1A 0%, #E05A25 100%);
+  background: linear-gradient(135deg, #1A1A1A 0%, #3D3D3D 100%);
 }
 
 /* Gradient text */
@@ -275,7 +275,7 @@
 /* Focus ring */
 .focus-ring {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
   border-color: #1A1A1A;
 }
 
@@ -360,7 +360,7 @@
   font-size: 14px;
   cursor: pointer;
   transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   overflow: hidden;
 }
 
@@ -377,7 +377,7 @@
 
 .btn-premium:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(255, 107, 53, 0.4);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
 }
 
 .btn-premium:hover::before {
@@ -427,7 +427,7 @@
   outline: none;
   background: #FFFFFF;
   border-color: #1A1A1A;
-  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
 }
 
 /* ============================================

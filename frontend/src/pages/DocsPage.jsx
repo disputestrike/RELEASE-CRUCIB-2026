@@ -123,11 +123,11 @@ const API_SECTIONS = [
 ];
 
 const METHOD_COLORS = {
-  GET: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-  POST: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-  PUT: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-  PATCH: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-  DELETE: 'bg-red-500/20 text-red-400 border-red-500/30',
+  GET: 'bg-[#F3F1ED] text-[#1A1A1A] border-black/10',
+  POST: 'bg-[#EBE8E2] text-[#1A1A1A] border-black/10',
+  PUT: 'bg-[#F5F5F4] text-[#666666] border-black/10',
+  PATCH: 'bg-[#EBE8E2] text-[#1A1A1A] border-black/10',
+  DELETE: 'bg-[#F5F5F4] text-[#666666] border-black/10',
 };
 
 function CopyButton({ text }) {
@@ -139,7 +139,7 @@ function CopyButton({ text }) {
   };
   return (
     <button onClick={handleCopy} className="p-1.5 rounded-md hover:bg-zinc-700 transition" title="Copy">
-      {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} className="text-zinc-500" />}
+      {copied ? <Check size={14} className="text-[#1A1A1A]" /> : <Copy size={14} className="text-zinc-500" />}
     </button>
   );
 }
@@ -167,15 +167,15 @@ export default function DocsPage() {
   const currentSection = filteredSections.find(s => s.id === activeSection) || filteredSections[0];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-zinc-200">
+    <div className="min-h-screen bg-[#FAFAF8] text-[#1A1A1A]">
       <PublicNav />
 
       <div className="max-w-7xl mx-auto px-6 py-12">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-3 rounded-xl bg-orange-500/20">
-              <BookOpen className="w-7 h-7 text-orange-400" />
+            <div className="p-3 rounded-xl bg-[#F3F1ED]">
+              <BookOpen className="w-7 h-7 text-[#1A1A1A]" />
             </div>
             <div>
               <h1 className="text-3xl font-bold tracking-tight">API Documentation</h1>
@@ -184,14 +184,14 @@ export default function DocsPage() {
           </div>
 
           {/* Base URL */}
-          <div className="flex items-center gap-3 mt-4 p-3 rounded-lg bg-zinc-900 border border-zinc-800">
+          <div className="flex items-center gap-3 mt-4 p-3 rounded-lg bg-[#F5F5F4] border border-black/10">
             <Globe size={16} className="text-zinc-500" />
-            <code className="text-sm text-emerald-400 font-mono">Base URL: https://api.crucibai.com</code>
+            <code className="text-sm text-[#1A1A1A] font-mono">Base URL: https://api.crucibai.com</code>
             <CopyButton text="https://api.crucibai.com" />
           </div>
 
           {/* Auth note */}
-          <div className="mt-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-300">
+          <div className="mt-3 p-3 rounded-lg bg-[#F5F5F4] border border-black/10 text-sm text-[#666666]">
             <strong>Authentication:</strong> All endpoints (except /auth/register and /auth/login) require a Bearer token in the Authorization header: <code className="bg-zinc-800 px-1.5 py-0.5 rounded text-xs">Authorization: Bearer YOUR_TOKEN</code>
           </div>
         </motion.div>
@@ -204,7 +204,7 @@ export default function DocsPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search endpoints... (e.g., /api/projects, deploy, chat)"
-            className="w-full pl-10 pr-4 py-3 bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-orange-500/50"
+            className="w-full pl-10 pr-4 py-3 bg-white border border-black/10 rounded-xl text-sm text-[#1A1A1A] placeholder-[#9CA3AF] focus:outline-none focus:border-[#1A1A1A]"
           />
         </div>
 
@@ -220,7 +220,7 @@ export default function DocsPage() {
                     onClick={() => setActiveSection(section.id)}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition ${
                       activeSection === section.id
-                        ? 'bg-orange-500/15 text-orange-400 font-medium'
+                        ? 'bg-[#F3F1ED] text-[#1A1A1A] font-medium'
                         : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'
                     }`}
                   >
@@ -242,7 +242,7 @@ export default function DocsPage() {
                 animate={{ opacity: 1, y: 0 }}
               >
                 <div className="flex items-center gap-3 mb-2">
-                  <currentSection.icon size={24} className="text-orange-400" />
+                  <currentSection.icon size={24} className="text-[#1A1A1A]" />
                   <h2 className="text-2xl font-bold">{currentSection.title}</h2>
                 </div>
                 <p className="text-zinc-500 mb-6">{currentSection.description}</p>
@@ -255,7 +255,7 @@ export default function DocsPage() {
                       <div
                         key={key}
                         className={`rounded-xl border transition ${
-                          isExpanded ? 'border-orange-500/30 bg-zinc-900' : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-700'
+                          isExpanded ? 'border-[#1A1A1A]/20 bg-white' : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-700'
                         }`}
                       >
                         <button
@@ -284,7 +284,7 @@ export default function DocsPage() {
                                   <span className="text-xs font-medium text-zinc-500 uppercase">Request Body</span>
                                   <CopyButton text={ep.body} />
                                 </div>
-                                <pre className="p-3 rounded-lg bg-zinc-950 border border-zinc-800 text-xs font-mono text-emerald-400 overflow-x-auto">
+                                <pre className="p-3 rounded-lg bg-[#F5F5F4] border border-black/10 text-xs font-mono text-[#1A1A1A] overflow-x-auto">
                                   {ep.body}
                                 </pre>
                               </div>
@@ -295,7 +295,7 @@ export default function DocsPage() {
                                 <span className="text-xs font-medium text-zinc-500 uppercase">Response</span>
                                 <CopyButton text={ep.response} />
                               </div>
-                              <pre className="p-3 rounded-lg bg-zinc-950 border border-zinc-800 text-xs font-mono text-orange-400 overflow-x-auto">
+                              <pre className="p-3 rounded-lg bg-[#F5F5F4] border border-black/10 text-xs font-mono text-[#666666] overflow-x-auto">
                                 {ep.response}
                               </pre>
                             </div>
@@ -317,7 +317,7 @@ export default function DocsPage() {
           <div className="flex items-center justify-center gap-3">
             <button
               onClick={() => navigate(user ? '/app/workspace' : '/auth')}
-              className="px-6 py-3 bg-orange-500 hover:bg-orange-600 rounded-lg font-medium transition"
+              className="px-6 py-3 bg-[#1A1A1A] hover:bg-[#333] text-white rounded-lg font-medium transition"
             >
               {user ? 'Open Workspace' : 'Get Started Free'}
             </button>

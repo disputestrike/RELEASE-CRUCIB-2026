@@ -85,28 +85,29 @@ export const useAuth = () => useContext(AuthContext);
 
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  // SECURITY: Use httpOnly cookies instead of localStorage
-  // localStorage is vulnerable to XSS. Cookies with httpOnly flag are safer.
-  // For now, fall back to localStorage but prefer server-set httpOnly cookies
+  const [loading, setLoading] = useState(false);
   const [token, setToken] = useState(localStorage.getItem("token"));
 
   useEffect(() => {
+    let cancelled = false;
     const checkAuth = async () => {
       if (token) {
         try {
           const res = await axios.get(`${API}/auth/me`, {
-            headers: { Authorization: `Bearer ${token}` }
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 5000,
           });
-          setUser(res.data);
+          if (!cancelled) setUser(res.data);
         } catch (e) {
-          localStorage.removeItem("token");
-          setToken(null);
+          if (!cancelled) {
+            localStorage.removeItem("token");
+            setToken(null);
+          }
         }
       }
-      setLoading(false);
     };
     checkAuth();
+    return () => { cancelled = true; };
   }, [token]);
 
   const login = async (email, password) => {
@@ -182,10 +183,17 @@ const ProtectedRoute = ({ children }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-gray-600">Loading...</p>
+      <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center p-6">
+        <div className="flex flex-col items-center gap-6 max-w-sm text-center">
+          <div className="w-12 h-12 border-2 border-[#666666] border-t-transparent rounded-full animate-spin" />
+          <p className="text-[#666666]">Checking login...</p>
+          <a
+            href="/"
+            className="w-full py-3 px-6 bg-[#1A1A1A] text-white font-medium rounded-lg hover:bg-[#333] no-underline"
+          >
+            View website →
+          </a>
+          <p className="text-xs text-[#666666]">Or wait a few seconds</p>
         </div>
       </div>
     );
@@ -204,8 +212,11 @@ const AdminRoute = ({ children }) => {
   const location = useLocation();
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center">
-        <div className="w-12 h-12 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center p-6">
+        <div className="flex flex-col items-center gap-6 max-w-sm text-center">
+          <div className="w-12 h-12 border-2 border-[#666666] border-t-transparent rounded-full animate-spin" />
+          <a href="/" className="w-full py-3 px-6 bg-[#1A1A1A] text-white font-medium rounded-lg hover:bg-[#333] no-underline">View website →</a>
+        </div>
       </div>
     );
   }

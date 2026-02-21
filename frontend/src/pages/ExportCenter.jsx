@@ -64,20 +64,12 @@ const ExportCenter = () => {
     }
   };
 
-  const getFormatColor = (format) => {
-    switch (format) {
-      case 'pdf': return 'red';
-      case 'excel': return 'green';
-      case 'markdown': return 'orange';
-      case 'all': return 'orange';
-      default: return 'gray';
-    }
-  };
+  const getFormatColor = () => 'gray';
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-12 h-12 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-2 border-[#1A1A1A] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -94,10 +86,10 @@ const ExportCenter = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10"
+        className="p-6 bg-[#F5F5F4] rounded-xl border border-black/10"
       >
         <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
-          <Rocket className="w-5 h-5 text-emerald-500" />
+          <Rocket className="w-5 h-5 text-[#1A1A1A]" />
           Deploy to production
         </h3>
         <p className="text-sm text-gray-500 mb-4">Download a deploy-ready ZIP or open Vercel / Netlify to upload it.</p>
@@ -105,7 +97,7 @@ const ExportCenter = () => {
           <select
             value={deployProjectId}
             onChange={(e) => setDeployProjectId(e.target.value)}
-            className="px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 focus:border-emerald-500 outline-none min-w-[200px]"
+            className="px-4 py-2.5 rounded-lg bg-white border border-black/10 focus:border-[#1A1A1A] outline-none min-w-[200px]"
           >
             <option value="">Select a completed project</option>
             {projects.map((p) => (
@@ -122,7 +114,7 @@ const ExportCenter = () => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10"
+        className="p-6 bg-[#F5F5F4] rounded-xl border border-black/10"
       >
         <h3 className="text-lg font-semibold mb-6">Create New Export</h3>
         <div className="grid md:grid-cols-3 gap-4">
@@ -131,7 +123,7 @@ const ExportCenter = () => {
             <select
               value={selectedProject}
               onChange={(e) => setSelectedProject(e.target.value)}
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-orange-500 outline-none"
+              className="w-full px-4 py-3 bg-white border border-black/10 rounded-lg focus:border-[#1A1A1A] outline-none"
               data-testid="export-project-select"
             >
               <option value="">Select a project</option>
@@ -146,7 +138,7 @@ const ExportCenter = () => {
             <select
               value={selectedFormat}
               onChange={(e) => setSelectedFormat(e.target.value)}
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:border-orange-500 outline-none"
+              className="w-full px-4 py-3 bg-white border border-black/10 rounded-lg focus:border-[#1A1A1A] outline-none"
               data-testid="export-format-select"
             >
               <option value="pdf">PDF Report</option>
@@ -160,7 +152,7 @@ const ExportCenter = () => {
             <button
               onClick={handleCreateExport}
               disabled={!selectedProject || creating}
-              className="w-full py-3 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition flex items-center justify-center gap-2"
+              className="w-full py-3 bg-[#1A1A1A] hover:bg-[#333] text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-medium transition flex items-center justify-center gap-2"
               data-testid="create-export-btn"
             >
               {creating ? (
@@ -191,12 +183,12 @@ const ExportCenter = () => {
             transition={{ delay: i * 0.1 }}
             className={`p-4 rounded-xl border transition-all cursor-pointer ${
               selectedFormat === item.format
-                ? `bg-${getFormatColor(item.format)}-500/10 border-${getFormatColor(item.format)}-500/50`
-                : 'bg-[#0a0a0a] border-white/10 hover:border-white/20'
+                ? 'bg-[#F3F1ED] border-[#1A1A1A]/20'
+                : 'bg-[#F5F5F4] border-black/10 hover:border-black/15'
             }`}
             onClick={() => setSelectedFormat(item.format)}
           >
-            <item.icon className={`w-8 h-8 mb-3 text-${getFormatColor(item.format)}-400`} />
+            <item.icon className="w-8 h-8 mb-3 text-[#1A1A1A]" />
             <h4 className="font-medium">{item.name}</h4>
             <p className="text-sm text-gray-500">{item.desc}</p>
           </motion.div>
@@ -204,7 +196,7 @@ const ExportCenter = () => {
       </div>
 
       {/* Exports List */}
-      <div className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10">
+      <div className="p-6 bg-[#F5F5F4] rounded-xl border border-black/10">
         <h3 className="text-lg font-semibold mb-6">Recent Exports</h3>
         
         {exports.length === 0 ? (
@@ -220,12 +212,12 @@ const ExportCenter = () => {
               return (
                 <div
                   key={exp.id}
-                  className="flex items-center justify-between p-4 bg-white/5 rounded-lg hover:bg-white/10 transition"
+                  className="flex items-center justify-between p-4 bg-white rounded-lg border border-black/5 hover:bg-[#FAFAF8] transition"
                   data-testid={`export-${exp.id}`}
                 >
                   <div className="flex items-center gap-4">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center bg-${getFormatColor(exp.format)}-500/20`}>
-                      <FormatIcon className={`w-5 h-5 text-${getFormatColor(exp.format)}-400`} />
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-[#F3F1ED]">
+                      <FormatIcon className="w-5 h-5 text-[#1A1A1A]" />
                     </div>
                     <div>
                       <p className="font-medium">{project?.name || 'Unknown Project'}</p>
@@ -239,15 +231,15 @@ const ExportCenter = () => {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className={`px-2 py-1 text-xs rounded-full ${
-                      exp.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                      exp.status === 'processing' ? 'bg-orange-500/20 text-orange-400' :
-                      'bg-gray-500/20 text-[#666666]'
+                      exp.status === 'completed' ? 'bg-[#F3F1ED] text-[#1A1A1A]' :
+                      exp.status === 'processing' ? 'bg-[#EBE8E2] text-[#666666]' :
+                      'bg-[#F5F5F4] text-[#666666]'
                     }`}>
                       {exp.status}
                     </span>
                     <a
                       href={exp.download_url}
-                      className="p-2 hover:bg-white/10 rounded-lg transition"
+                      className="p-2 hover:bg-[#EBE8E2] rounded-lg transition"
                       title="Download"
                     >
                       <Download className="w-5 h-5" />

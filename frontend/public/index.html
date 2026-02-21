@@ -33,9 +33,18 @@
     </head>
     <body style="margin:0;background:#FAFAF8;color:#1A1A1A;min-height:100vh;height:100%">
         <noscript>You need to enable JavaScript to run this app.</noscript>
-        <div id="root" style="min-height:100vh;height:100%;display:flex;flex-direction:column;font-family:sans-serif;background:#FAFAF8">
-          <p style="color:#888;margin:auto">Loading…</p>
+        <div id="root" style="min-height:100vh;height:100%;display:flex;flex-direction:column;font-family:sans-serif;background:#FAFAF8"></div>
+        <div id="load-fallback" style="display:none;margin:2rem auto;text-align:center;color:#666;max-width:400px;padding:0 1rem">
+          App did not load. Press <strong>F12</strong>, open the Console tab, and check for red errors. Then refresh (Ctrl+R).
         </div>
+        <script>
+          setTimeout(function() {
+            var root = document.getElementById('root');
+            if (root && root.children.length === 0) {
+              document.getElementById('load-fallback').style.display = 'block';
+            }
+          }, 4000);
+        </script>
         <!--
       This HTML file is a template.
       If you open it directly in the browser, you will see an empty page.

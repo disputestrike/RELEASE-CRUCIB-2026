@@ -10,26 +10,26 @@ export default function Privacy() {
 
         <div className="space-y-6 text-[#1A1A1A] leading-relaxed">
           <p>CrucibAI (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;) respects your privacy. This Privacy Policy describes what data we collect, how we use it, your rights, and how we comply with applicable law including the EU General Data Protection Regulation (GDPR), UK GDPR, the California Consumer Privacy Act (CCPA) as amended by the CPRA, and other data protection laws. By using our service, you agree to this policy.</p>
-          <p className="text-gray-300 text-sm">
-            <strong className="text-gray-100">For content-safety and prohibited uses,</strong> see our <Link to="/aup" className="text-orange-400 hover:text-orange-300 underline">Acceptable Use Policy</Link>. <strong className="text-gray-100">For terms of use and prohibited AI practices,</strong> see our <Link to="/terms" className="text-orange-400 hover:text-orange-300 underline">Terms of Use</Link>.
+          <p className="text-[#666666] text-sm">
+            <strong className="text-[#1A1A1A]">For content-safety and prohibited uses,</strong> see our <Link to="/aup" className="text-[#1A1A1A] hover:text-[#333] underline">Acceptable Use Policy</Link>. <strong className="text-[#1A1A1A]">For terms of use and prohibited AI practices,</strong> see our <Link to="/terms" className="text-[#1A1A1A] hover:text-[#333] underline">Terms of Use</Link>.
           </p>
-          <p className="text-gray-300 text-sm">
-            <strong className="text-gray-100">NOTICE TO EUROPEAN USERS:</strong> If you are in the European Economic Area or the United Kingdom, see <strong className="text-gray-100">Section 2 (Legal basis)</strong> and <strong className="text-gray-100">Section 10 (Your rights GDPR / UK GDPR)</strong> below for additional information.
+          <p className="text-[#666666] text-sm">
+            <strong className="text-[#1A1A1A]">NOTICE TO EUROPEAN USERS:</strong> If you are in the European Economic Area or the United Kingdom, see <strong className="text-[#1A1A1A]">Section 2 (Legal basis)</strong> and <strong className="text-[#1A1A1A]">Section 10 (Your rights GDPR / UK GDPR)</strong> below for additional information.
           </p>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">1. Data we collect</h2>
-          <p><strong className="text-gray-100">Account data.</strong> When you register, we collect your email address, name, and password (stored in hashed form). We use this to create and manage your account, authenticate you, and communicate with you.</p>
-          <p><strong className="text-gray-100">Project and build data.</strong> We store the projects you create, prompts you submit, generated code and assets, and build logs. This data is used to provide the service, improve quality, and support you.</p>
-          <p><strong className="text-gray-100">Usage and billing.</strong> We record token consumption, credit usage, feature usage, and billing-related events to operate the platform, enforce limits, and process payments.</p>
-          <p><strong className="text-gray-100">Device and log data.</strong> We may collect IP address, browser type, and similar technical data in server logs and for security and abuse prevention.</p>
+          <p><strong className="text-[#1A1A1A]">Account data.</strong> When you register, we collect your email address, name, and password (stored in hashed form). We use this to create and manage your account, authenticate you, and communicate with you.</p>
+          <p><strong className="text-[#1A1A1A]">Project and build data.</strong> We store the projects you create, prompts you submit, generated code and assets, and build logs. This data is used to provide the service, improve quality, and support you.</p>
+          <p><strong className="text-[#1A1A1A]">Usage and billing.</strong> We record token consumption, credit usage, feature usage, and billing-related events to operate the platform, enforce limits, and process payments.</p>
+          <p><strong className="text-[#1A1A1A]">Device and log data.</strong> We may collect IP address, browser type, and similar technical data in server logs and for security and abuse prevention.</p>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">2. Legal basis (GDPR / UK GDPR)</h2>
           <p>If you are in the European Economic Area (EEA) or the United Kingdom, we process your personal data on the following legal bases:</p>
-          <ul className="list-disc pl-6 space-y-2 text-gray-300">
-            <li><strong className="text-gray-100">Contract (Art. 6(1)(b)):</strong> Performance of our contract with you (account, service delivery, billing).</li>
-            <li><strong className="text-gray-100">Legitimate interests (Art. 6(1)(f)):</strong> Security, fraud prevention, abuse detection, improvement of the service, analytics (where not overridden by your rights).</li>
-            <li><strong className="text-gray-100">Legal obligation (Art. 6(1)(c)):</strong> Compliance with law (e.g. tax, anti-money laundering, responding to lawful requests).</li>
-            <li><strong className="text-gray-100">Consent (Art. 6(1)(a)):</strong> Where we ask for your consent (e.g. marketing, optional features); you may withdraw consent at any time.</li>
+          <ul className="list-disc pl-6 space-y-2 text-[#666666]">
+            <li><strong className="text-[#1A1A1A]">Contract (Art. 6(1)(b)):</strong> Performance of our contract with you (account, service delivery, billing).</li>
+            <li><strong className="text-[#1A1A1A]">Legitimate interests (Art. 6(1)(f)):</strong> Security, fraud prevention, abuse detection, improvement of the service, analytics (where not overridden by your rights).</li>
+            <li><strong className="text-[#1A1A1A]">Legal obligation (Art. 6(1)(c)):</strong> Compliance with law (e.g. tax, anti-money laundering, responding to lawful requests).</li>
+            <li><strong className="text-[#1A1A1A]">Consent (Art. 6(1)(a)):</strong> Where we ask for your consent (e.g. marketing, optional features); you may withdraw consent at any time.</li>
           </ul>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">3. How we use your data</h2>
@@ -48,22 +48,22 @@ export default function Privacy() {
           <p>We do not sell your personal data. We may share data with service providers (subprocessors) who assist in operating our platform (e.g. hosting, analytics, payment processors, AI providers) under contractual obligations to protect your data. We may disclose data when required by law, to protect our rights or safety, or in connection with a merger or sale of assets. For enterprise customers, we may offer a Data Processing Agreement (DPA) and subprocessor list upon request.</p>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">8. Cookies and similar technologies</h2>
-          <p>We use cookies and similar technologies (e.g. local storage) to: keep you logged in (session/authentication); remember your preferences; and operate the service. We may use analytics cookies to understand how the service is used (we may use first- or third-party tools). You can control cookies through your browser settings. Essential cookies are necessary for the service to function; disabling them may limit functionality. Where required by law (e.g. GDPR), we obtain consent for non-essential cookies before use. For more detail, see our <Link to="/cookies" className="text-orange-400 hover:text-orange-300 underline">Cookie Policy</Link>.</p>
+          <p>We use cookies and similar technologies (e.g. local storage) to: keep you logged in (session/authentication); remember your preferences; and operate the service. We may use analytics cookies to understand how the service is used (we may use first- or third-party tools). You can control cookies through your browser settings. Essential cookies are necessary for the service to function; disabling them may limit functionality. Where required by law (e.g. GDPR), we obtain consent for non-essential cookies before use. For more detail, see our <Link to="/cookies" className="text-[#1A1A1A] hover:text-[#333] underline">Cookie Policy</Link>.</p>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">9. Children and minors (COPPA / under-16)</h2>
           <p>Our service is not directed to children under 16 (or under 13 in the United States, in line with COPPA). We do not knowingly collect personal data from children. If you are under 16 (or 13 in the US), do not register or provide personal data. If we learn that we have collected personal data from a child without parental consent, we will delete it promptly. If you believe we have collected a child&apos;s data in error, contact us immediately.</p>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">10. Your rights (GDPR / UK GDPR)</h2>
           <p>If you are in the EEA or UK, you have the following rights regarding your personal data:</p>
-          <ul className="list-disc pl-6 space-y-2 text-gray-300">
-            <li><strong className="text-gray-100">Access (Art. 15):</strong> Request a copy of your personal data we hold.</li>
-            <li><strong className="text-gray-100">Rectification (Art. 16):</strong> Request correction of inaccurate or incomplete data.</li>
-            <li><strong className="text-gray-100">Erasure (Art. 17):</strong> Request deletion of your data in certain circumstances.</li>
-            <li><strong className="text-gray-100">Restriction (Art. 18):</strong> Request that we limit processing in certain circumstances.</li>
-            <li><strong className="text-gray-100">Data portability (Art. 20):</strong> Request a copy of your data in a structured, machine-readable format where applicable.</li>
-            <li><strong className="text-gray-100">Object (Art. 21):</strong> Object to processing based on legitimate interests or for direct marketing.</li>
-            <li><strong className="text-gray-100">Withdraw consent:</strong> Where processing is based on consent, you may withdraw it at any time.</li>
-            <li><strong className="text-gray-100">Complaint:</strong> You have the right to lodge a complaint with a supervisory authority in your country (e.g. your national data protection authority).</li>
+          <ul className="list-disc pl-6 space-y-2 text-[#666666]">
+            <li><strong className="text-[#1A1A1A]">Access (Art. 15):</strong> Request a copy of your personal data we hold.</li>
+            <li><strong className="text-[#1A1A1A]">Rectification (Art. 16):</strong> Request correction of inaccurate or incomplete data.</li>
+            <li><strong className="text-[#1A1A1A]">Erasure (Art. 17):</strong> Request deletion of your data in certain circumstances.</li>
+            <li><strong className="text-[#1A1A1A]">Restriction (Art. 18):</strong> Request that we limit processing in certain circumstances.</li>
+            <li><strong className="text-[#1A1A1A]">Data portability (Art. 20):</strong> Request a copy of your data in a structured, machine-readable format where applicable.</li>
+            <li><strong className="text-[#1A1A1A]">Object (Art. 21):</strong> Object to processing based on legitimate interests or for direct marketing.</li>
+            <li><strong className="text-[#1A1A1A]">Withdraw consent:</strong> Where processing is based on consent, you may withdraw it at any time.</li>
+            <li><strong className="text-[#1A1A1A]">Complaint:</strong> You have the right to lodge a complaint with a supervisory authority in your country (e.g. your national data protection authority).</li>
           </ul>
           <p>To exercise any of these rights, contact us at the support or privacy contact address provided in the app or on our website. We will respond within the timeframes required by applicable law (e.g. one month under GDPR, extendable where necessary).</p>
 
@@ -83,7 +83,7 @@ export default function Privacy() {
           <p>For privacy questions, to exercise your rights, or for DPA requests: contact us at the support or legal contact address provided in the app or on our website (e.g. privacy@crucibai.com or legal@crucibai.com).</p>
         </div>
 
-        <Link to="/" className="inline-flex items-center gap-1 mt-10 text-orange-400 hover:text-orange-300 font-medium">← Back to home</Link>
+        <Link to="/" className="inline-flex items-center gap-1 mt-10 font-medium text-[#1A1A1A] hover:text-[#333]">← Back to home</Link>
       </div>
     </div>
   );

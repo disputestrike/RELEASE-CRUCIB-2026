@@ -18,21 +18,21 @@
 }
 
 .dev-toggle-btn:hover {
-  border-color: #FF6B35;
-  color: #FF6B35;
-  background: rgba(255, 107, 53, 0.05);
+  border-color: #1A1A1A;
+  color: #1A1A1A;
+  background: rgba(0, 0, 0, 0.04);
 }
 
 .dev-toggle-btn.active {
-  border-color: #FF6B35;
-  color: #FF6B35;
-  background: rgba(255, 107, 53, 0.1);
+  border-color: #1A1A1A;
+  color: #1A1A1A;
+  background: rgba(0, 0, 0, 0.08);
 }
 
 .dev-toggle-btn.active:hover {
-  background: rgba(255, 107, 53, 0.15);
-  border-color: #E05A25;
-  color: #E05A25;
+  background: rgba(0, 0, 0, 0.12);
+  border-color: #1A1A1A;
+  color: #1A1A1A;
 }
 
 /* Simple mode chat area */

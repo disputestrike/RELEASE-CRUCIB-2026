@@ -140,8 +140,8 @@
   gap: 6px;
 }
 
-.status-green { color: #059669; }
-.status-amber { color: #D97706; }
+.status-green { color: #3D3D3D; }
+.status-amber { color: #666666; }
 .status-gray { color: #9CA3AF; }
 
 .status-retry {
