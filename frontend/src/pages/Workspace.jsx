@@ -869,7 +869,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
                 // PHASE 7: Single task authority — write to store (persists to localStorage)
                 addTask({ name: prompt.slice(0, 120), prompt, status: 'completed', createdAt: Date.now() });
                 if (token) {
-                  axios.post(`${API}/api/tasks`, {
+                  axios.post(`${API}/tasks`, {
                     name: prompt.slice(0, 120),
                     prompt,
                     session_id: sessionId,
@@ -921,7 +921,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
         // PHASE 7: Single task authority — write to store (persists to localStorage)
         addTask({ name: prompt.slice(0, 120), prompt, status: 'completed', createdAt: Date.now() });
         if (token) {
-          axios.post(`${API}/api/tasks`, {
+          axios.post(`${API}/tasks`, {
             name: prompt.slice(0, 120),
             prompt,
             session_id: sessionId,

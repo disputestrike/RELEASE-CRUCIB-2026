@@ -63,8 +63,8 @@ const Layout = () => {
     try {
       const headers = { Authorization: `Bearer ${token}` };
       const [projRes, taskRes] = await Promise.allSettled([
-        axios.get(`${API}/api/projects`, { headers, timeout: 5000 }),
-        axios.get(`${API}/api/tasks`, { headers, timeout: 5000 }),
+        axios.get(`${API}/projects`, { headers, timeout: 5000 }),
+        axios.get(`${API}/tasks`, { headers, timeout: 5000 }),
       ]);
       if (projRes.status === 'fulfilled') {
         setProjects(projRes.value.data?.projects || projRes.value.data || []);
