@@ -47,7 +47,7 @@ const AdminUsers = () => {
         <p className="text-[#666666] mt-1">Search and filter users</p>
       </div>
       <div className="flex flex-wrap gap-4">
-        <div className="flex items-center gap-2 bg-white/5 rounded-lg border border-white/10 px-3 py-2">
+        <div className="flex items-center gap-2 bg-[#FAFAF8] rounded-lg border border-black/10 px-3 py-2">
           <Search className="w-4 h-4 text-[#666666]" />
           <input
             type="text"
@@ -60,7 +60,7 @@ const AdminUsers = () => {
         <select
           value={planQ}
           onChange={(e) => setPlanQ(e.target.value)}
-          className="bg-white/5 border border-white/10 rounded-lg px-3 py-2"
+          className="bg-[#FAFAF8] border border-black/10 rounded-lg px-3 py-2"
         >
           <option value="">All plans</option>
           <option value="free">Free</option>
@@ -72,12 +72,12 @@ const AdminUsers = () => {
       </div>
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="w-10 h-10 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-10 h-10 border-2 border-[#666666] border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
-        <div className="rounded-xl border border-white/10 overflow-hidden">
+        <div className="rounded-xl border border-black/10 overflow-hidden">
           <table className="w-full">
-            <thead className="bg-white/5 border-b border-white/10">
+            <thead className="bg-[#F5F5F4] border-b border-black/10">
               <tr>
                 <th className="text-left py-3 px-4">Email</th>
                 <th className="text-left py-3 px-4">Plan</th>
@@ -88,7 +88,7 @@ const AdminUsers = () => {
             </thead>
             <tbody>
               {users.map((u) => (
-                <tr key={u.id} className="border-b border-white/5 hover:bg-white/5">
+                <tr key={u.id} className="border-b border-black/10 hover:bg-[#FAFAF8]">
                   <td className="py-3 px-4">{u.email}</td>
                   <td className="py-3 px-4 capitalize">{u.plan || 'free'}</td>
                   <td className="py-3 px-4">{u.credit_balance ?? '-'}</td>
@@ -98,7 +98,7 @@ const AdminUsers = () => {
                   <td className="py-3 px-4">
                     <Link
                       to={`/app/admin/users/${u.id}`}
-                      className="inline-flex items-center text-orange-400 hover:text-orange-300"
+                      className="inline-flex items-center text-[#666666] hover:text-[#1A1A1A]"
                     >
                       <User className="w-4 h-4 mr-1" />
                       View

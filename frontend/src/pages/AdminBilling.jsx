@@ -30,7 +30,7 @@ const AdminBilling = () => {
     return (
       <div className="p-8">
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-400">{error}</div>
-        <Link to="/app/admin" className="inline-flex items-center mt-4 text-orange-400">
+        <Link to="/app/admin" className="inline-flex items-center mt-4 text-[#666666] hover:text-[#1A1A1A]">
           <ArrowLeft className="w-4 h-4 mr-2" /> Back to Admin
         </Link>
       </div>
@@ -51,12 +51,12 @@ const AdminBilling = () => {
       <p className="text-[#666666]">Who paid, when, amount (from Stripe webhook ledger).</p>
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="w-10 h-10 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-10 h-10 border-2 border-[#666666] border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
-        <div className="rounded-xl border border-white/10 overflow-hidden">
+        <div className="rounded-xl border border-black/10 overflow-hidden">
           <table className="w-full">
-            <thead className="bg-white/5 border-b border-white/10">
+            <thead className="bg-[#F5F5F4] border-b border-black/10">
               <tr>
                 <th className="text-left py-3 px-4">User ID</th>
                 <th className="text-left py-3 px-4">Bundle</th>
@@ -67,11 +67,11 @@ const AdminBilling = () => {
             </thead>
             <tbody>
               {transactions.map((t) => (
-                <tr key={t.id || t.created_at + t.user_id} className="border-b border-white/5 hover:bg-white/5">
+                <tr key={t.id || t.created_at + t.user_id} className="border-b border-black/10 hover:bg-[#FAFAF8]">
                   <td className="py-3 px-4 font-mono text-sm">{t.user_id}</td>
                   <td className="py-3 px-4">{t.bundle || '-'}</td>
                   <td className="py-3 px-4">{t.credits ?? '-'}</td>
-                  <td className="py-3 px-4 text-green-400">${Number(t.price || 0).toFixed(2)}</td>
+                  <td className="py-3 px-4 text-[#666666]">${Number(t.price || 0).toFixed(2)}</td>
                   <td className="py-3 px-4 text-[#666666]">
                     {t.created_at ? new Date(t.created_at).toLocaleString() : '-'}
                   </td>

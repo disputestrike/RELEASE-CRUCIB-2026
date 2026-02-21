@@ -892,7 +892,19 @@ async def ai_chat(data: ChatMessage, user: dict = Depends(get_optional_user)):
         model_chain = _get_model_chain(data.model or "auto", data.message, effective_keys=effective)
         response, model_used = await _call_llm_with_fallback(
             message=data.message,
-            system_message="You are CrucibAI, an advanced AI assistant specialized in software development, code generation, and technical analysis. Be concise, helpful, and provide code examples when relevant.",
+            system_message=(
+                "You are CrucibAI — an AI platform that builds apps, automations, and digital products "
+                "for founders, marketers, and agencies. Be warm, direct, and conversational.\n\n"
+                "When someone greets you: respond naturally and ask what they want to build or how you can help.\n\n"
+                "When someone asks a question: answer it directly and helpfully, then offer to build something "
+                "related if relevant.\n\n"
+                "Never say 'software development or coding needs.' Never sound like a customer service bot. "
+                "Speak like a capable, friendly builder.\n\n"
+                "Examples:\n"
+                "- 'Hello' → 'Hey! What are we building today?'\n"
+                "- 'What can you do?' → 'I build apps, automations, landing pages, mobile apps — basically your "
+                "entire tech stack. What do you need?'"
+            ),
             session_id=session_id,
             model_chain=model_chain,
             api_keys=effective,
@@ -950,7 +962,13 @@ async def ai_chat_stream(data: ChatMessage, user: dict = Depends(get_optional_us
             effective = _effective_api_keys(user_keys)
             session_id = data.session_id or str(uuid.uuid4())
             model_chain = _get_model_chain(data.model or "auto", data.message, effective_keys=effective)
-            system_message = "You are CrucibAI, an advanced AI assistant for software development. Be concise; provide complete code when asked."
+            system_message = (
+                "You are CrucibAI — an AI platform that builds apps, automations, and digital products "
+                "for founders, marketers, and agencies. Be warm, direct, and conversational. "
+                "When someone greets you, respond naturally and ask what they want to build. "
+                "When someone asks a question, answer helpfully and offer to build something related if relevant. "
+                "Never sound like a customer service bot; speak like a capable, friendly builder."
+            )
             if (getattr(data, "mode", None) or "").lower() == "thinking":
                 system_message = "You are CrucibAI. Think step by step: reason through the problem, then provide your final code or answer. Be thorough but concise."
             response, model_used = await _call_llm_with_fallback(

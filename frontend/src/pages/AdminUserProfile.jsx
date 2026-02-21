@@ -86,7 +86,7 @@ const AdminUserProfile = () => {
     return (
       <div className="p-8">
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-red-400">{error}</div>
-        <Link to="/app/admin/users" className="inline-flex items-center mt-4 text-orange-400">
+        <Link to="/app/admin/users" className="inline-flex items-center mt-4 text-[#666666] hover:text-[#1A1A1A]">
           <ArrowLeft className="w-4 h-4 mr-2" /> Back to users
         </Link>
       </div>
@@ -96,7 +96,7 @@ const AdminUserProfile = () => {
   if (loading || !profile) {
     return (
       <div className="flex items-center justify-center min-h-[40vh]">
-        <div className="w-12 h-12 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-12 h-12 border-2 border-[#666666] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -116,7 +116,7 @@ const AdminUserProfile = () => {
         </div>
       )}
       <div className="grid md:grid-cols-2 gap-6">
-        <div className="p-6 rounded-xl border border-white/10 bg-white/5">
+        <div className="p-6 rounded-xl border border-black/10 bg-white">
           <h2 className="font-semibold mb-4 flex items-center gap-2">
             <Coins className="w-5 h-5" /> Balance & plan
           </h2>
@@ -129,7 +129,7 @@ const AdminUserProfile = () => {
             <p className="text-red-400 mt-2">Suspended: {profile.suspended_reason}</p>
           )}
         </div>
-        <div className="p-6 rounded-xl border border-white/10 bg-white/5">
+        <div className="p-6 rounded-xl border border-black/10 bg-white">
           <h2 className="font-semibold mb-4 flex items-center gap-2">
             <FolderOpen className="w-5 h-5" /> Activity
           </h2>
@@ -138,13 +138,13 @@ const AdminUserProfile = () => {
         </div>
       </div>
       {profile.recent_ledger?.length > 0 && (
-        <div className="p-6 rounded-xl border border-white/10">
+        <div className="p-6 rounded-xl border border-black/10">
           <h2 className="font-semibold mb-4">Recent ledger</h2>
           <ul className="space-y-2">
             {profile.recent_ledger.slice(0, 10).map((entry) => (
               <li key={entry.id} className="flex justify-between text-sm">
                 <span>{entry.type} – {entry.description || '-'}</span>
-                <span className={entry.credits > 0 ? 'text-green-400' : 'text-red-400'}>
+                <span className={entry.credits > 0 ? 'text-[#666666]' : 'text-red-500'}>
                   {entry.credits > 0 ? '+' : ''}{entry.credits} credits
                 </span>
               </li>
@@ -154,7 +154,7 @@ const AdminUserProfile = () => {
       )}
       {!profile.suspended && (
         <>
-          <div className="p-6 rounded-xl border border-white/10">
+          <div className="p-6 rounded-xl border border-black/10">
             <h2 className="font-semibold mb-4 flex items-center gap-2">
               <Gift className="w-5 h-5" /> Grant bonus credits
             </h2>
@@ -165,19 +165,19 @@ const AdminUserProfile = () => {
                 placeholder="Credits"
                 value={grantCredits}
                 onChange={(e) => setGrantCredits(e.target.value)}
-                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 w-24"
+                className="bg-[#FAFAF8] border border-black/10 rounded-lg px-3 py-2 w-24"
               />
               <input
                 type="text"
                 placeholder="Reason"
                 value={grantReason}
                 onChange={(e) => setGrantReason(e.target.value)}
-                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 flex-1 min-w-[200px]"
+                className="bg-[#FAFAF8] border border-black/10 rounded-lg px-3 py-2 flex-1 min-w-[200px]"
               />
               <button
                 type="submit"
                 disabled={actionLoading || !grantCredits}
-                className="px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-500 disabled:opacity-50"
+                className="px-4 py-2 rounded-lg bg-[#1A1A1A] hover:bg-[#333] text-white disabled:opacity-50"
               >
                 {actionLoading ? '...' : 'Grant'}
               </button>
@@ -194,7 +194,7 @@ const AdminUserProfile = () => {
                   placeholder="Reason"
                   value={suspendReason}
                   onChange={(e) => setSuspendReason(e.target.value)}
-                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 flex-1 min-w-[200px]"
+                  className="bg-[#FAFAF8] border border-black/10 rounded-lg px-3 py-2 flex-1 min-w-[200px]"
                 />
                 <button
                   type="submit"
