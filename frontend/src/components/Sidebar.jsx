@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Plus, Search, Library, FolderOpen, CheckCircle, Clock,
   AlertCircle, Settings, LogOut, ChevronDown, ChevronRight,
@@ -27,12 +27,14 @@ import './Sidebar.css';
 export const Sidebar = ({ user, onLogout, projects = [], tasks = [] }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [engineRoomOpen, setEngineRoomOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
 
   const isActive = (path) => location.pathname === path;
   const isActivePrefix = (path) => location.pathname.startsWith(path);
+  const currentTaskId = location.pathname === '/app/workspace' ? searchParams.get('taskId') : null;
 
   // 4 pinned navigation items — spec requirement
   const pinnedNav = [
@@ -164,14 +166,17 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks = [] }) => {
           {filteredListItems.length > 0 ? (
             filteredListItems.map((item) => {
               const isLocalTask = item.id.startsWith('task_');
-              const href = isLocalTask && item.prompt
-                ? { pathname: '/app/workspace', state: { initialPrompt: item.prompt } }
+              const href = isLocalTask && item.prompt != null
+                ? { pathname: '/app/workspace', search: `?taskId=${encodeURIComponent(item.id)}`, state: { initialPrompt: item.prompt } }
+                : isLocalTask
+                ? { pathname: '/app/workspace', search: `?taskId=${encodeURIComponent(item.id)}`, state: { initialPrompt: item.name || '' } }
                 : { pathname: `/app/projects/${item.id}` };
+              const isSelected = isLocalTask ? currentTaskId === item.id : isActive(`/app/projects/${item.id}`);
               return (
                 <Link
                   key={item.id}
                   to={href}
-                  className={`sidebar-item ${isActive(`/app/projects/${item.id}`) || (isLocalTask && location.pathname === '/app/workspace') ? 'active' : ''}`}
+                  className={`sidebar-item ${isSelected ? 'active' : ''}`}
                   title={item.name}
                 >
                   <TaskStatusIcon status={item.status} />

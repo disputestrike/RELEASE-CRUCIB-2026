@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Send, Mic, MicOff, Paperclip, Loader2,
-  Sparkles, ArrowRight, Upload, X, Github, Settings,
+  Sparkles, ArrowRight, Upload, X, Github,
   Layout, Smartphone, Bot, Code, Zap, Globe
 } from 'lucide-react';
 import { useAuth, API } from '../App';
+import { useTaskStore } from '../stores/useTaskStore';
 import axios from 'axios';
 import VoiceWaveform from '../components/VoiceWaveform';
 import '../components/VoiceWaveform.css';
@@ -20,17 +21,60 @@ import './Dashboard.css';
  * ISSUE 3: Voice waveform on home screen
  */
 
-const BUILD_KEYWORDS = [
-  'build', 'create', 'make', 'develop', 'design', 'generate',
-  'landing page', 'dashboard', 'saas', 'mobile app', 'api',
-  'automation', 'website', 'app', 'tool', 'platform', 'system',
-  'todo', 'calculator', 'form', 'page', 'component', 'clone',
-  'e-commerce', 'ecommerce', 'blog', 'portfolio', 'chat',
-];
-
 function detectIntent(prompt) {
   const lower = prompt.toLowerCase();
-  return BUILD_KEYWORDS.some(kw => lower.includes(kw)) ? 'build' : 'chat';
+
+  const agentKeywords = [
+    'every morning', 'every day', 'every week', 'every month',
+    'every hour', 'every night', 'every monday', 'every friday',
+    'schedule', 'scheduled', 'automatically', 'automatically send',
+    'run agent', 'create agent', 'set up agent', 'build agent',
+    'make an agent', 'new agent', 'run automatically',
+    'remind me', 'reminder', 'alert me', 'alert me when',
+    'notify me', 'watch for', 'monitor', 'keep track',
+    'send me daily', 'send me weekly', 'send me monthly',
+    'weekly digest', 'daily digest', 'daily summary',
+    'weekly summary', 'weekly report', 'daily report',
+    'automation', 'automate', 'automated', 'auto-send',
+    'trigger', 'webhook', 'on schedule', 'recurring',
+    'run on', 'run every', 'post to slack', 'email me every',
+    'summarize and send', 'digest', 'workflow',
+    'whenever', 'each time', 'every time something',
+  ];
+
+  const buildKeywords = [
+    'build', 'build me', 'build a', 'build an',
+    'create', 'create a', 'create an', 'create me',
+    'make', 'make a', 'make me', 'make an',
+    'develop', 'develop a', 'develop me',
+    'design', 'design a', 'design me',
+    'generate', 'generate a',
+    'code', 'code me', 'write code',
+    'landing page', 'landing page for',
+    'website', 'web app', 'web application',
+    'mobile app', 'ios app', 'android app', 'react native',
+    'saas', 'saas app', 'saas platform', 'saas tool',
+    'dashboard', 'admin dashboard', 'analytics dashboard',
+    'api', 'api backend', 'rest api', 'backend',
+    'frontend', 'full stack', 'fullstack',
+    'app', 'application', 'platform', 'tool', 'system',
+    'portfolio', 'portfolio site',
+    'ecommerce', 'e-commerce', 'store', 'shop',
+    'blog', 'cms', 'content management',
+    'crm', 'customer management',
+    'form', 'contact form', 'signup form',
+    'component', 'react component', 'ui component',
+    'import my code', 'import code', 'upload my code',
+    'fix my code', 'review my code', 'continue my project',
+    'clone', 'clone this', 'replicate',
+    'calculator', 'counter', 'todo', 'to-do',
+    'chat app', 'messaging app', 'booking app',
+    'marketplace', 'social network', 'community platform',
+  ];
+
+  if (agentKeywords.some(kw => lower.includes(kw))) return 'agent';
+  if (buildKeywords.some(kw => lower.includes(kw))) return 'build';
+  return 'chat';
 }
 
 const QUICK_START_CHIPS = [
@@ -44,7 +88,9 @@ const QUICK_START_CHIPS = [
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, token } = useAuth();
+  const { addTask } = useTaskStore();
   const [prompt, setPrompt] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState([]);
@@ -60,21 +106,26 @@ const Dashboard = () => {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatLoading, setChatLoading] = useState(false);
   const [conversationStarted, setConversationStarted] = useState(false);
-  const messagesEndRef = useRef(null);
   const [audioStream, setAudioStream] = useState(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const inputRef = useRef(null);
+  const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const streamRef = useRef(null);
 
-  // Autofocus prompt on load
+  // Autofocus prompt on load; focus when navigating from "+ New Agent" (placeholder never changes)
   useEffect(() => {
     const timer = setTimeout(() => inputRef.current?.focus(), 300);
     return () => clearTimeout(timer);
   }, []);
+  useEffect(() => {
+    const { focusPrompt } = location.state || {};
+    if (focusPrompt && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [location.state]);
 
-  // Auto-scroll to bottom when new message arrives
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages, chatLoading]);
@@ -86,42 +137,85 @@ const Dashboard = () => {
     if (!prompt.trim()) return;
 
     const intent = detectIntent(prompt);
+    const userPrompt = prompt.trim();
+    setConversationStarted(true);
+    setPrompt('');
 
     if (intent === 'build') {
-      // Navigate to workspace with prompt and autoStart flag
-      navigate('/app/workspace', {
+      // BUCKET 2: BUILD — save to All Tasks only, then navigate to workspace (taskId in URL so sidebar highlights it)
+      const taskId = addTask({ name: userPrompt.slice(0, 120), prompt: userPrompt, status: 'pending' });
+      navigate({
+        pathname: '/app/workspace',
+        search: taskId ? `?taskId=${encodeURIComponent(taskId)}` : '',
         state: {
-          initialPrompt: prompt,
+          initialPrompt: userPrompt,
           autoStart: true,
           initialAttachedFiles: attachedFiles.length > 0 ? attachedFiles : undefined
         }
       });
-    } else {
-      // Conversational — stay on home screen, respond inline
-      setConversationStarted(true);
-      const userMsg = { role: 'user', content: prompt };
-      setChatMessages(prev => [...prev, userMsg]);
-      setPrompt('');
+      return;
+    }
+
+    if (intent === 'agent') {
+      // BUCKET 3: AGENT — add user message, create agent via API, show confirmation, save to Agents list only (API handles list)
+      setChatMessages(prev => [...prev, { role: 'user', content: userPrompt }]);
       setChatLoading(true);
       try {
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        const res = await axios.post(`${API}/ai/chat`, {
-          message: prompt,
-          session_id: 'home_chat',
-          model: 'auto'
-        }, { headers, timeout: 30000 });
-        const reply = res.data?.response || res.data?.message || "I'm here to help! Try asking me to build something, like \"Build me a todo app\".";
-        setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
+        const res = await axios.post(`${API}/agents/from-description`, { description: userPrompt }, { headers, timeout: 60000 });
+        const agent = res.data;
+        const schedule = agent?.trigger_config?.cron_expression
+          ? `runs ${formatCronShort(agent.trigger_config.cron_expression)}`
+          : agent?.trigger_type === 'webhook'
+            ? 'webhook-triggered'
+            : 'scheduled';
+        setChatMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `✅ Agent created — ${schedule}. You can manage it in the Agents page.`
+        }]);
       } catch (err) {
         setChatMessages(prev => [...prev, {
           role: 'assistant',
-          content: "I'm CrucibAI — I can build apps for you! Try saying \"Build me a landing page\" or \"Create a todo app\"."
+          content: err.response?.data?.detail || err.message || 'Could not create agent. Try again or create from the Agents page.'
         }]);
       } finally {
         setChatLoading(false);
       }
+      return;
+    }
+
+    // BUCKET 1: CHAT — respond inline, save nothing
+    setChatMessages(prev => [...prev, { role: 'user', content: userPrompt }]);
+    setChatLoading(true);
+    try {
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await axios.post(`${API}/ai/chat`, {
+        message: userPrompt,
+        session_id: 'home_chat',
+        model: 'auto'
+      }, { headers, timeout: 30000 });
+      const reply = res.data?.response || res.data?.message || "Hey! What are we building today?";
+      setChatMessages(prev => [...prev, { role: 'assistant', content: reply }]);
+    } catch (err) {
+      setChatMessages(prev => [...prev, {
+        role: 'assistant',
+        content: "I'm CrucibAI — I build apps and automations. Try \"Build me a landing page\" or \"Create an agent that emails me every morning.\""
+      }]);
+    } finally {
+      setChatLoading(false);
     }
   };
+
+  function formatCronShort(cron) {
+    if (!cron) return 'on a schedule';
+    const parts = cron.trim().split(/\s+/);
+    if (parts.length >= 5) {
+      const [min, hour, , , dow] = parts;
+      if (hour !== '*' && min !== '*') return `every day at ${hour.padStart(2, '0')}:${min.padStart(2, '0')}`;
+      if (hour !== '*') return `every day at ${hour}:00`;
+    }
+    return 'on a schedule';
+  }
 
   const handleChipClick = (chip) => {
     if (chip.action === 'import') {
@@ -129,7 +223,10 @@ const Dashboard = () => {
       return;
     }
     if (chip.prompt) {
-      navigate('/app/workspace', {
+      const taskId = addTask({ name: (chip.prompt || chip.label).slice(0, 120), prompt: chip.prompt, status: 'pending' });
+      navigate({
+        pathname: '/app/workspace',
+        search: taskId ? `?taskId=${encodeURIComponent(taskId)}` : '',
         state: { initialPrompt: chip.prompt, autoStart: true }
       });
     }
@@ -262,7 +359,6 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-redesigned home-screen" data-testid="dashboard">
-      {/* Scrollable area: greeting + chips when idle, messages when conversation started */}
       <div className="home-messages">
         {!conversationStarted && (
           <>
@@ -272,10 +368,9 @@ const Dashboard = () => {
               transition={{ duration: 0.4 }}
               className="dashboard-greeting"
             >
-              <h1 className="dashboard-greeting-text greeting-title">
-                Hi {firstName}.
+              <h1 className="dashboard-greeting-text">
+                Hi {firstName}. <span className="dashboard-greeting-sub">What do you want to build?</span>
               </h1>
-              <p className="dashboard-greeting-sub greeting-subtitle">What do you want to build?</p>
             </motion.div>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -326,7 +421,6 @@ const Dashboard = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input bar pinned to bottom */}
       <div className="home-input-bar">
         <div className="home-prompt-wrapper">
           <motion.form
@@ -411,23 +505,6 @@ const Dashboard = () => {
                   {chatLoading ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} />}
                 </button>
               </div>
-            </div>
-
-            <div className="prompt-toolbar">
-              <button type="button" onClick={() => fileInputRef.current?.click()} title="Attach file">
-                <Paperclip size={18} />
-              </button>
-              <button type="button" title="Tools">
-                <Settings size={18} />
-              </button>
-              <button
-                type="button"
-                onClick={isTranscribing ? undefined : startRecording}
-                disabled={isTranscribing}
-                title={isTranscribing ? 'Transcribing...' : 'Voice'}
-              >
-                {isTranscribing ? <Loader2 size={18} className="animate-spin" /> : <Mic size={18} />}
-              </button>
             </div>
           </motion.form>
         </div>

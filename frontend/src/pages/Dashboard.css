@@ -13,13 +13,13 @@
   box-sizing: border-box;
 }
 
-/* Home screen: column layout, messages fill, input pinned to bottom */
+/* Home screen: input pinned to bottom, conversation fills above */
 .dashboard-redesigned.home-screen {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  overflow: hidden;
+  height: 100vh;
   padding: 0;
+  overflow: hidden;
 }
 
 .home-messages {
@@ -28,9 +28,9 @@
   padding: 24px 40px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  justify-content: flex-end;
   align-items: center;
-  justify-content: flex-start;
+  gap: 16px;
 }
 
 .home-input-bar {
@@ -38,6 +38,8 @@
   padding: 16px 40px;
   border-top: 1px solid #EEEEEE;
   background: white;
+  position: sticky;
+  bottom: 0;
   display: flex;
   justify-content: center;
 }
@@ -48,33 +50,10 @@
   padding: 0 24px;
 }
 
-.prompt-toolbar {
-  display: flex;
-  gap: 12px;
-  padding: 8px 16px;
-  border-top: 1px solid #EEEEEE;
-}
-
-.prompt-toolbar button {
-  background: none;
-  border: none;
-  color: #888888;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.prompt-toolbar button:hover {
-  color: #1A1A1A;
-}
-
-/* Hero content container — modern SaaS max-width, perfectly centered */
+/* Hero content container — centered, wider prompt (760px) */
 .dashboard-center {
   width: 100%;
-  max-width: 720px;
+  max-width: 760px;
   padding: 0 24px;
   display: flex;
   flex-direction: column;
@@ -99,18 +78,13 @@
   text-align: center;
 }
 
-.dashboard-greeting-sub,
-.greeting-subtitle {
+.dashboard-greeting-sub {
   display: block;
   font-weight: 400;
   color: #6B7280;
   font-size: 1.125rem;
   margin-top: 12px;
   text-align: center;
-}
-
-.greeting-title {
-  margin-bottom: 0;
 }
 
 /* Prompt form — centered, balanced vertical rhythm */
