@@ -33,9 +33,12 @@
   gap: 24px;
 }
 
+/* Approved spacing: 50-60px from left/right of main chat area */
 .home-messages.has-chat {
   justify-content: flex-start;
   align-items: stretch;
+  padding-left: 56px;
+  padding-right: 56px;
 }
 
 .home-input-bar {
@@ -335,18 +338,21 @@
 }
 
 /* ============================================
-   Chat thread — FIX 1, 2, 6: user bubble right, CrucibAI identifier, spacing
+   Chat thread — APPROVED SPACING (all chat, regardless)
+   - Inter-bubble gap: 35-40px
+   - Content area margins: 50-60px left/right
+   - Bubble internal: 16-20px horizontal, 12-16px vertical
    ============================================ */
 
-/* Spacing between responses: one fixed value, never small/expand — keep always the same */
 .dashboard-chat-thread {
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 36px !important;
   width: 100%;
   max-width: 960px;
   padding: 0;
   align-self: stretch;
+  box-sizing: border-box;
 }
 
 .dashboard-chat-msg {
@@ -368,7 +374,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   width: 100%;
   max-width: 85%;
 }
@@ -384,22 +390,22 @@
   display: none;
 }
 
+/* Approved: 16-20px horizontal, 12-16px vertical */
 .dashboard-chat-bubble {
   max-width: 85%;
-  padding: 10px 14px;
+  padding: 14px 18px !important;
   border-radius: 12px;
   font-size: 14px;
   line-height: 1.45;
   font-family: 'DM Sans', sans-serif;
 }
 
-/* FIX 1: User bubble — white bg, light grey border, tighter padding, right-aligned */
 .dashboard-chat-bubble.user {
   background: #FFFFFF;
   border: 1px solid rgba(0, 0, 0, 0.12);
   color: #1A1A1A;
   border-bottom-right-radius: 4px;
-  padding: 10px 14px;
+  padding: 14px 18px !important;
   width: fit-content;
   max-width: 85%;
 }
@@ -409,11 +415,12 @@
   border: 1px solid rgba(0, 0, 0, 0.08);
   color: #374151;
   border-bottom-left-radius: 4px;
+  padding: 14px 18px !important;
 }
 
 /* Start Building — CTA when build intent detected */
 .dashboard-chat-build-offer {
-  margin-top: 10px;
+  margin-top: 6px;
   max-width: 85%;
 }
 
@@ -442,7 +449,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  margin-top: 6px;
+  margin-top: 4px;
   max-width: 85%;
 }
 
