@@ -67,6 +67,9 @@ import { useTaskStore } from '../stores/useTaskStore';
 import axios from 'axios';
 import CrucibAIComputer from '../components/CrucibAIComputer';
 import InlineAgentMonitor from '../components/InlineAgentMonitor';
+import ManusComputer from '../components/ManusComputer';
+import { CommandPalette } from '../components/AdvancedIDEUX';
+import { VibeCodingInput } from '../components/VibeCoding';
 
 /** Format message content — avoid [object Object] */
 function formatMsgContent(c) {
@@ -451,6 +454,7 @@ const Workspace = () => {
   const [tokensPerStep, setTokensPerStep] = useState({ plan: 0, generate: 0 });
   const [showDeployModal, setShowDeployModal] = useState(false);
   const [mobileView, setMobileView] = useState(false);
+  const [showVibeInput, setShowVibeInput] = useState(false);
   const projectIdFromUrl = searchParams.get('projectId');
   const taskIdFromUrl = searchParams.get('taskId');
   const [projectBuildProgress, setProjectBuildProgress] = useState({ phase: 0, agent: '', progress: 0, status: '', tokens_used: 0 });
@@ -528,14 +532,21 @@ const Workspace = () => {
   }, [token, messages.length]);
 
   // Wire real build progress when opened with projectId (from AgentMonitor "Open in Workspace")
+  // Phase 3: Auto-reconnect on disconnect with exponential backoff
   useEffect(() => {
     if (!projectIdFromUrl || !API) return;
     const wsBase = (API || '').replace(/^http/, 'ws').replace(/\/api\/?$/, '');
     const wsUrl = `${wsBase}/ws/projects/${projectIdFromUrl}/progress`;
     let ws;
-    try {
-      ws = new WebSocket(wsUrl);
-      ws.onmessage = (event) => {
+    let reconnectTimeout;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 10;
+    const baseDelay = 1000;
+
+    const connect = () => {
+      try {
+        ws = new WebSocket(wsUrl);
+        ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
           setProjectBuildProgress({
@@ -605,8 +616,22 @@ const Workspace = () => {
           }
         } catch (_) {}
       };
-    } catch (_) {}
-    return () => { try { if (ws) ws.close(); } catch (_) {} };
+        ws.onclose = () => {
+          if (reconnectAttempts < maxReconnectAttempts) {
+            const delay = Math.min(baseDelay * Math.pow(2, reconnectAttempts), 30000);
+            reconnectAttempts++;
+            reconnectTimeout = setTimeout(connect, delay);
+          }
+        };
+        ws.onerror = () => { try { ws?.close(); } catch (_) {} };
+        reconnectAttempts = 0;
+      } catch (_) {}
+    };
+    connect();
+    return () => {
+      clearTimeout(reconnectTimeout);
+      try { if (ws) ws.close(); } catch (_) {}
+    };
   }, [projectIdFromUrl, API]);
 
   // Wire GET /ai/chat/history so session history can be loaded (e.g. on "New Agent" we keep sessionId; history loads for current session)
@@ -644,13 +669,11 @@ const Workspace = () => {
       }
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'B') {
         e.preventDefault();
-        window.open('/workspace', '_blank');
+        window.open('/app/workspace', '_blank');
       }
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'L') {
         e.preventDefault();
-        setSessionId(`session_${Date.now()}`);
-        setMessages([]);
-        setMenuAnchor(null);
+        navigate('/app', { state: { newAgent: Date.now() } });
       }
       if (e.key === 'Escape') {
         setCommandPaletteOpen(false);
@@ -660,7 +683,7 @@ const Workspace = () => {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [navigate]);
 
   // Restore existing task workspace when opening by taskId — load files + messages; never pre-fill input for task clicks.
   const taskRestoredRef = useRef(null);
@@ -684,22 +707,26 @@ const Workspace = () => {
     }
   }, [taskIdFromUrl, storeTasks]);
 
-  // Pre-fill input from navigation state (e.g. Dashboard → workspace) — NOT when opening existing task by sidebar click.
+  // Auto-start build from navigation state (Dashboard) or task prompt (sidebar click) — no re-typing required.
+  const autoStartedRef = useRef(null);
   useEffect(() => {
-    const statePrompt = location.state?.initialPrompt;
-    const autoStart = location.state?.autoStart;
+    const statePrompt = location.state?.initialPrompt || searchParams.get('prompt');
+    const stateAutoStart = location.state?.autoStart;
     const initialFiles = location.state?.initialAttachedFiles;
     const task = taskIdFromUrl ? storeTasks?.find(t => t.id === taskIdFromUrl) : null;
     const hasExistingBuild = task?.files && Object.keys(task.files || {}).length > 0;
-    if (taskIdFromUrl && hasExistingBuild) return; // Opened existing task by click — restore handled above, never pre-fill
-    if (taskIdFromUrl && !hasExistingBuild && !statePrompt && !autoStart) return; // Pending task click, no state
-    if (statePrompt || searchParams.get('prompt')) {
-      setInput(statePrompt || searchParams.get('prompt') || '');
-      if (initialFiles?.length) setAttachedFiles(initialFiles);
-    } else if (initialFiles?.length && initialFiles.every(f => f?.type?.startsWith?.('image/'))) {
-      setAttachedFiles(initialFiles);
-    }
-  }, [location.key, taskIdFromUrl, storeTasks]);
+    if (taskIdFromUrl && hasExistingBuild) return;
+    // Prompt from state (Dashboard) or from task (sidebar click when task has prompt and no build yet)
+    // NEVER auto-start for chat tasks — a conversation stays a conversation
+    const promptToUse = statePrompt || (task?.prompt && !hasExistingBuild ? task.prompt : null);
+    const isChatTask = task?.type === 'chat' || task?.type === 'query';
+    const shouldAutoStart = stateAutoStart || (taskIdFromUrl && task?.prompt && !hasExistingBuild && !isChatTask);
+    if (!promptToUse || !shouldAutoStart) return;
+    if (autoStartedRef.current === `${location.key}-${taskIdFromUrl}`) return;
+    autoStartedRef.current = `${location.key}-${taskIdFromUrl}`;
+    if (initialFiles?.length) setAttachedFiles(initialFiles);
+    handleBuild(promptToUse, initialFiles || undefined);
+  }, [location.key, location.state, taskIdFromUrl, storeTasks]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -1002,8 +1029,9 @@ Respond with ONLY the complete App.js code, nothing else.`;
                   setCurrentVersion(`v_${Date.now()}`);
                   setMessages(m => m.map((msg, i) => i === m.length - 1 ? { role: 'assistant', content: 'Done! Your app is ready.', hasCode: true, planSuggestions: planSuggestions } : msg));
                   setTimeout(() => fetchSuggestNext(), 400);
-                  const mainCode = parsedFiles['/App.js']?.code || Object.values(parsedFiles)[0]?.code || '';
-                  axios.post(`${API}/ai/quality-gate`, { code: mainCode }).then(r => setQualityGateResult(r.data)).catch(() => setQualityGateResult(null));
+                  const mainCode = parsedFiles['/App.js']?.code || parsedFiles['/src/App.jsx']?.code || parsedFiles['/App.jsx']?.code || Object.values(parsedFiles)[0]?.code || '';
+                  const filesForQuality = Object.fromEntries(Object.entries(parsedFiles || {}).map(([k, v]) => [k, (v && v.code) || '']));
+                  axios.post(`${API}/ai/quality-gate`, { code: mainCode, files: Object.keys(filesForQuality).length ? filesForQuality : undefined }).then(r => setQualityGateResult(r.data)).catch(() => setQualityGateResult(null));
                   return next;
                 });
                 setActivePanel('preview'); // AUTO-WIRE: switch to preview on build complete
@@ -1063,8 +1091,9 @@ Respond with ONLY the complete App.js code, nothing else.`;
         setCurrentVersion(`v_${Date.now()}`);
         setMessages(prev => prev.map((msg, i) => i === prev.length - 1 ? { role: 'assistant', content: 'Done! Your app is ready.', hasCode: true, planSuggestions } : msg));
         setTimeout(() => fetchSuggestNext(), 400);
-        const mainCode = parsedFiles['/App.js']?.code || Object.values(parsedFiles)[0]?.code || '';
-        axios.post(`${API}/ai/quality-gate`, { code: mainCode }).then(r => setQualityGateResult(r.data)).catch(() => setQualityGateResult(null));
+        const mainCode = parsedFiles['/App.js']?.code || parsedFiles['/src/App.jsx']?.code || parsedFiles['/App.jsx']?.code || Object.values(parsedFiles)[0]?.code || '';
+        const filesForQuality = Object.fromEntries(Object.entries(parsedFiles || {}).map(([k, v]) => [k, (v && v.code) || '']));
+        axios.post(`${API}/ai/quality-gate`, { code: mainCode, files: Object.keys(filesForQuality).length ? filesForQuality : undefined }).then(r => setQualityGateResult(r.data)).catch(() => setQualityGateResult(null));
         setActivePanel('preview'); // AUTO-WIRE: switch to preview on build complete
         // PHASE 7: Single task authority — update existing task or add new
         if (taskIdFromUrl) {
@@ -1508,11 +1537,11 @@ Respond with ONLY the complete App.js code, nothing else.`;
     else if (cmd === 'autofix' && lastError) handleAutoFix();
     else if (cmd === 'tokens') navigate('/app/tokens');
     else if (cmd === 'settings') navigate('/app/settings');
-    else if (cmd === 'newAgent') { setSessionId(`session_${Date.now()}`); setMessages([]); }
+    else if (cmd === 'newAgent') navigate('/app', { state: { newAgent: Date.now() } });
     else if (cmd === 'terminal') { setActivePanel('console'); setRightSidebarOpen(true); }
     else if (cmd === 'maximizeChat') setChatMaximized(prev => !prev);
     else if (cmd === 'searchFiles') setFileSearchOpen(prev => !prev);
-    else if (cmd === 'openBrowser') window.open('/workspace', '_blank');
+    else if (cmd === 'openBrowser') window.open('/app/workspace', '_blank');
     else if (cmd === 'shortcuts') navigate('/app/shortcuts');
     else if (cmd === 'templates') navigate('/app/templates');
     else if (cmd === 'prompts') navigate('/app/prompts');
@@ -1601,7 +1630,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
                 {name === 'File' && (
                   <>
                     <button onClick={() => setFileSearchOpen(true)} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">Open File... (Ctrl+P)</button>
-                    <button onClick={() => { setSessionId(`session_${Date.now()}`); setMessages([]); setMenuAnchor(null); }} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">New Agent (Ctrl+Shift+L)</button>
+                    <button onClick={() => { setMenuAnchor(null); navigate('/app', { state: { newAgent: Date.now() } }); }} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">New Agent (Ctrl+Shift+L)</button>
                     <div className="h-px bg-gray-200 my-1" />
                     <button onClick={downloadCode} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">Export</button>
                     <button onClick={() => { handleExportZip(); setMenuAnchor(null); }} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">Download ZIP</button>
@@ -2325,8 +2354,41 @@ Respond with ONLY the complete App.js code, nothing else.`;
           </div>
         )}
 
+        {/* VibeCoding: optional voice-first input mode */}
+        {showVibeInput && (
+          <div className="mb-3 p-4 bg-white border border-gray-200 rounded-lg">
+            <VibeCodingInput
+              API={API}
+              isLoading={isBuilding}
+              onSubmit={({ prompt }) => {
+                if (prompt?.trim()) handleBuild(prompt.trim());
+                setShowVibeInput(false);
+              }}
+            />
+            <button type="button" onClick={() => setShowVibeInput(false)} className="mt-2 text-xs text-gray-500 hover:text-gray-900">Close Vibe</button>
+          </div>
+        )}
+
         {devMode && (
         <div className="text-xs text-gray-500 mb-1.5 flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+          <CommandPalette
+            commands={[
+              { id: 'focusChat', name: 'Focus chat', description: 'Focus the prompt input', shortcut: 'Ctrl+L' },
+              { id: 'preview', name: 'Switch to Preview', description: 'Show app preview', icon: 'Eye' },
+              { id: 'export', name: 'Export ZIP', description: 'Download project as ZIP', icon: 'Download' },
+              { id: 'deploy', name: 'Deploy', description: 'Open deploy options', icon: 'Rocket' },
+              { id: 'vibe', name: 'Vibe Coding', description: 'Open voice-first input', icon: 'Mic' },
+            ]}
+            onCommandSelect={(cmd) => {
+              if (cmd.id === 'focusChat') chatInputRef.current?.focus();
+              else if (cmd.id === 'preview') setActivePanel('preview');
+              else if (cmd.id === 'export') handleExportZip();
+              else if (cmd.id === 'deploy') setShowDeployModal(true);
+              else if (cmd.id === 'vibe') setShowVibeInput(true);
+            }}
+          />
+          </div>
           <select
             value={buildMode}
             onChange={(e) => setBuildMode(e.target.value)}
@@ -2376,6 +2438,14 @@ Respond with ONLY the complete App.js code, nothing else.`;
             >
               <Paperclip className="w-4 h-4" />
             </button>
+            <button
+              type="button"
+              onClick={() => setShowVibeInput(v => !v)}
+              title="Vibe Coding - voice-first input"
+              className={`p-2 rounded-md transition ${showVibeInput ? 'text-orange-500 bg-orange-50' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-200'}`}
+            >
+              <Sparkles className="w-4 h-4" />
+            </button>
             <input
               ref={fileInputRef}
               type="file"
@@ -2424,6 +2494,18 @@ Respond with ONLY the complete App.js code, nothing else.`;
           </button>
         </form>
       </div>
+
+      {/* ManusComputer: floating widget when orchestration build is running */}
+      {projectIdFromUrl && (projectBuildProgress.status === 'running' || (isBuilding && projectIdFromUrl)) && (
+        <ManusComputer
+          currentStep={projectBuildProgress.phase + 1}
+          totalSteps={12}
+          thinking={projectBuildProgress.agent || 'Building...'}
+          tokensUsed={projectBuildProgress.tokens_used || lastTokensUsed}
+          tokensTotal={100000}
+          isActive
+        />
+      )}
 
       {/* One-click deploy modal */}
       {showDeployModal && (

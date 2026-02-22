@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { useTaskStore } from '../stores/useTaskStore';
 import {
   Plus, Search, Library, FolderOpen, CheckCircle, Clock,
-  AlertCircle, LogOut, ChevronRight,
+  MessageCircle, Zap, AlertCircle, LogOut, ChevronRight,
   FileOutput, FileText, LayoutGrid, BookOpen, Key, Keyboard,
   CreditCard, ScrollText, BarChart3, Wrench, HelpCircle, Coins,
   X, Bell, MoreHorizontal, ExternalLink, Pencil, Share2,
@@ -67,23 +67,25 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [] }
     { label: 'Audit Log', icon: ScrollText, href: '/app/audit-log' },
   ];
 
-  // Prefer API projects (real ids that open in AgentMonitor); fall back to store tasks (task_xxx open in Workspace)
+  // Show BOTH projects and store tasks — chat tasks must always be visible
   const listItems = useMemo(() => {
     const fromProjects = (projects || []).map(p => ({
       id: p.id,
       name: p.name || p.requirements?.prompt?.slice(0, 80) || 'Project',
       status: p.status || 'pending',
       prompt: null,
+      type: 'build',
       isProject: true,
     }));
-    if (fromProjects.length > 0) return fromProjects;
-    return (storeTasks.length > 0 ? storeTasks : propTasks || []).slice(0, 50).map(t => ({
+    const fromStore = (storeTasks.length > 0 ? storeTasks : propTasks || []).slice(0, 200).map(t => ({
       id: t.id,
       name: t.name || 'Task',
       status: t.status || 'pending',
       prompt: t.prompt || null,
+      type: t.type || 'build',
       isProject: false,
     }));
+    return [...fromProjects, ...fromStore];
   }, [projects, storeTasks, propTasks]);
 
   const filteredListItems = useMemo(() => {
@@ -94,12 +96,20 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [] }
 
   const openTask = (item) => {
     if (item.isProject) navigate(`/app/projects/${item.id}`);
-    else navigate(`/app/workspace?taskId=${encodeURIComponent(item.id)}`);
+    else if (item.type === 'chat' || item.type === 'query') {
+      navigate(`/app?chatTaskId=${encodeURIComponent(item.id)}`, { state: { chatTaskId: item.id } });
+    } else {
+      navigate(`/app/workspace?taskId=${encodeURIComponent(item.id)}`);
+    }
   };
 
   const openInNewTab = (item) => {
     if (item.isProject) window.open(`${window.location.origin}/app/projects/${item.id}`, '_blank');
-    else window.open(`${window.location.origin}/app/workspace?taskId=${encodeURIComponent(item.id)}`, '_blank');
+    else if (item.type === 'chat' || item.type === 'query') {
+      window.open(`${window.location.origin}/app?chatTaskId=${encodeURIComponent(item.id)}`, '_blank');
+    } else {
+      window.open(`${window.location.origin}/app/workspace?taskId=${encodeURIComponent(item.id)}`, '_blank');
+    }
   };
 
   const handleRename = () => {
@@ -120,15 +130,20 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [] }
   const handleDeleteConfirm = () => {
     if (!deleteConfirmTask) return;
     const wasViewing = currentTaskId === deleteConfirmTask.id;
+    const wasLastTask = storeTasks.length === 1;
     removeTask(deleteConfirmTask.id);
     setDeleteConfirmTask(null);
-    if (wasViewing) navigate('/app/workspace');
+    if (wasViewing || wasLastTask) {
+      navigate('/app', { replace: true, state: { newAgent: true } });
+    }
   };
 
   const handleShare = (item) => {
     const url = item.isProject
       ? `${window.location.origin}/app/projects/${item.id}`
-      : `${window.location.origin}/app/workspace?taskId=${encodeURIComponent(item.id)}`;
+      : (item.type === 'chat' || item.type === 'query')
+        ? `${window.location.origin}/app?chatTaskId=${encodeURIComponent(item.id)}`
+        : `${window.location.origin}/app/workspace?taskId=${encodeURIComponent(item.id)}`;
     navigator.clipboard?.writeText(url).then(() => {});
     setMenuTaskId(null);
   };
@@ -160,7 +175,15 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [] }
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  const TaskStatusIcon = ({ status }) => {
+  const TaskStatusIcon = ({ status, type }) => {
+    if (type === 'chat' || type === 'query') return <MessageCircle size={14} className="sidebar-item-icon status-chat" />;
+    if (type === 'agent') return <Zap size={14} className="sidebar-item-icon status-agent" />;
+    if (type === 'build') {
+      if (status === 'completed') return <CheckCircle size={14} className="sidebar-item-icon status-completed" />;
+      if (status === 'running') return <Clock size={14} className="sidebar-item-icon status-running" />;
+      if (status === 'failed') return <AlertCircle size={14} className="sidebar-item-icon status-failed" />;
+      return <Clock size={14} className="sidebar-item-icon status-pending" />;
+    }
     if (status === 'completed') return <CheckCircle size={14} className="sidebar-item-icon status-completed" />;
     if (status === 'running') return <Clock size={14} className="sidebar-item-icon status-running" />;
     if (status === 'failed') return <AlertCircle size={14} className="sidebar-item-icon status-failed" />;
@@ -202,7 +225,18 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [] }
         <div className="sidebar-nav-section">
           {pinnedNav.map((item) => {
             const active = item.exact ? isActive(item.href) : isActivePrefix(item.href);
-            return (
+            const isNewTask = item.href === '/app' && item.exact;
+            return isNewTask ? (
+              <button
+                key={item.href}
+                type="button"
+                onClick={() => navigate('/app', { state: { newAgent: Date.now() } })}
+                className={`sidebar-nav-item ${active ? 'active' : ''}`}
+              >
+                <item.icon size={18} className="sidebar-nav-icon" />
+                <span className="sidebar-nav-label">{item.label}</span>
+              </button>
+            ) : (
               <Link
                 key={item.href}
                 to={item.href}
@@ -250,8 +284,8 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [] }
                       />
                     </div>
                   ) : (
-                    <>
-                      <TaskStatusIcon status={item.status} />
+                      <>
+                        <TaskStatusIcon status={item.status} type={item.type} />
                       <span className="sidebar-task-label">{item.name}</span>
                       <button
                         type="button"
@@ -377,7 +411,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [] }
         <span className="sidebar-token-label">credits</span>
       </Link>
 
-      {/* Footer */}
+      {/* Footer — user and sign out on one row */}
       <div className="sidebar-footer">
         <div className="sidebar-user">
           <div className="sidebar-user-avatar">
@@ -388,7 +422,6 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [] }
             <div className="sidebar-user-plan">{user?.plan ? String(user.plan).charAt(0).toUpperCase() + String(user.plan).slice(1) : 'Free'}</div>
           </div>
         </div>
-
         <button className="sidebar-logout" onClick={onLogout} title="Logout">
           <LogOut size={18} />
         </button>

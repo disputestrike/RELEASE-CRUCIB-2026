@@ -51,7 +51,7 @@ export default function PromptLibrary() {
   }, [token]);
 
   const goToPrompt = (prompt) => {
-    navigate('/workspace', { state: { initialPrompt: prompt } });
+    navigate('/app/workspace', { state: { initialPrompt: prompt } });
   };
 
   const copyPrompt = (text, id) => {
