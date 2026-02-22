@@ -104,16 +104,15 @@ import qrcode
 ROOT_DIR = Path(__file__).resolve().parent
 load_dotenv(ROOT_DIR / '.env', override=True)
 
-# Required for startup (Railway: set these in Dashboard → Service → Variables)
-# Placeholder defaults allow container to start for deploy testing; DB operations will fail until real values are set.
+# Pre-flight: fail startup if required secrets missing (V4 protocol)
+if not os.environ.get('JWT_SECRET'):
+    print("FATAL: JWT_SECRET not set. Set JWT_SECRET in Railway/Production Variables.", file=sys.stderr)
+    sys.exit(1)
 if not os.environ.get('MONGO_URL'):
-    os.environ.setdefault('MONGO_URL', 'mongodb://localhost:27017')
-    import sys
-    print("WARNING: MONGO_URL not set. Using placeholder for deploy test. Set MONGO_URL in Railway Variables for real DB.", file=sys.stderr)
+    print("FATAL: MONGO_URL not set. Set MONGO_URL in Railway/Production Variables.", file=sys.stderr)
+    sys.exit(1)
 if not os.environ.get('DB_NAME'):
     os.environ.setdefault('DB_NAME', 'crucibai')
-    import sys
-    print("WARNING: DB_NAME not set. Using placeholder 'crucibai'. Set DB_NAME in Railway Variables for real DB.", file=sys.stderr)
 
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000)
@@ -184,6 +183,7 @@ class ChatMessage(BaseModel):
     session_id: Optional[str] = None
     model: Optional[str] = "auto"  # auto, gpt-4o, claude, gemini
     mode: Optional[str] = None  # thinking = step-by-step reasoning (no extra cost, same call)
+    system_message: Optional[str] = None  # override for intent classification etc.
 
 class ChatResponse(BaseModel):
     response: str
@@ -213,6 +213,14 @@ class ProjectCreate(BaseModel):
     project_type: str
     requirements: Dict[str, Any]
     estimated_tokens: Optional[int] = None
+
+class TaskSync(BaseModel):
+    """Sync task from Workspace when build completes (single-task authority)."""
+    name: str
+    prompt: str
+    session_id: Optional[str] = None
+    status: str = "completed"
+    files: Optional[List[str]] = None
 
 class DocumentProcess(BaseModel):
     content: str
@@ -885,12 +893,69 @@ Rules:
 - Never sound generic or robotic
 - Speak like a capable, friendly builder
 
+CRITICAL — Ambiguity and clarification:
+- When the user's intent is clear but details are missing, make the best reasonable assumption, state it in one sentence, and proceed. Do not ask for more context.
+- Never ask more than one clarifying question per response. Prefer stating your assumption and acting over asking.
+- If the user has said any version of "just do it", "figure it out", "you decide", or "don't ask questions" — do NOT ask a clarifying question. State what you will do in one line and proceed. A question after "figure it out" is a failure.
+- Banned patterns: do not say "I need a bit more context", "Are you looking to build X or Y?", "The more details you share", "Great choice! Are you looking to...". Replace with a clear assumption and action.
+- Ambiguity is a reason to decide, not a reason to stop.
+
 Examples of how to respond:
 - "Hello" or "Hi" → "Hey! What are we building today?"
 - "What can you do?" → "I build apps, automations, landing pages, mobile apps — your entire tech stack. What do you need?"
 - "Who are you?" → "I'm CrucibAI. I build things. Tell me what you want and we'll make it."
 - "How are you?" → "Ready to build. What are we making today?"
 - General question → Answer it directly and helpfully, then offer to build something related if relevant.
+- Build request with vague details → State one concrete interpretation in one sentence and offer to build it (e.g. "I'll build a web-based meeting recorder with audio capture and transcript. Ready when you are.").
+"""
+
+def _needs_live_data(message: str) -> bool:
+    """Detect if message asks for real-time info (weather, news, prices, etc.)."""
+    if not message or len(message.strip()) < 3:
+        return False
+    lower = message.lower()
+    keywords = [
+        "weather", "forecast", "temperature", "rain", "sunny", "degrees",
+        "news", "headlines", "today's", "current events",
+        "stock", "price", "market", "bitcoin", "crypto",
+        "score", "game", "match", "nfl", "nba", "mlb", "soccer",
+        "what is", "what's the", "how's the", "how is the",
+        "in texas", "in new york", "in california", "in london",
+    ]
+    return any(k in lower for k in keywords)
+
+async def _fetch_search_context(query: str) -> Optional[str]:
+    """Call Tavily search API and return formatted context. Returns None if unavailable."""
+    api_key = os.environ.get("TAVILY_API_KEY")
+    if not api_key:
+        return None
+    try:
+        from tavily import TavilyClient
+        client = TavilyClient(api_key=api_key)
+
+        def _search():
+            return client.search(query, search_depth="basic", max_results=5, include_answer=True)
+
+        resp = await asyncio.to_thread(_search)
+        parts = []
+        if resp.get("answer"):
+            parts.append(resp["answer"])
+        for r in (resp.get("results") or [])[:5]:
+            title = r.get("title", "")
+            content = r.get("content", "")
+            if content:
+                parts.append(f"[{title}]: {content[:500]}")
+        if not parts:
+            return None
+        return "\n\n".join(parts)[:4000]
+    except Exception as e:
+        logger.warning(f"Tavily search failed: {e}")
+        return None
+
+CHAT_WITH_SEARCH_SYSTEM = """You are CrucibAI. Answer the user's question using the live search results provided below.
+Provide accurate, current information based on the data. Never say "I'm not a weather service" or similar disclaimers.
+Use the search results to give a real, helpful answer. If the data is about weather, give the weather. If it's news, summarize it.
+Be concise and factual. Then offer to build something related if relevant.
 """
 
 @api_router.post("/ai/chat")
@@ -907,10 +972,18 @@ async def ai_chat(data: ChatMessage, user: dict = Depends(get_optional_user)):
         user_keys = await get_workspace_api_keys(user)
         effective = _effective_api_keys(user_keys)
         session_id = data.session_id or str(uuid.uuid4())
-        model_chain = _get_model_chain(data.model or "auto", data.message, effective_keys=effective)
+        message = data.message
+        system_message = data.system_message or CHAT_SYSTEM_PROMPT
+        # FIX 4: For real-time questions (weather, news, etc.), call search API and pass results to LLM
+        if not data.system_message and _needs_live_data(message):
+            search_ctx = await _fetch_search_context(message)
+            if search_ctx:
+                system_message = CHAT_WITH_SEARCH_SYSTEM
+                message = f"Live search results:\n{search_ctx}\n\nUser question: {data.message}"
+        model_chain = _get_model_chain(data.model or "auto", message, effective_keys=effective)
         response, model_used = await _call_llm_with_fallback(
-            message=data.message,
-            system_message=CHAT_SYSTEM_PROMPT,
+            message=message,
+            system_message=system_message,
             session_id=session_id,
             model_chain=model_chain,
             api_keys=effective,
@@ -2997,6 +3070,31 @@ async def agents_run_reject(run_id: str, user: dict = Depends(get_current_user),
     await db.agent_runs.update_one({"id": run_id}, {"$set": {"status": "cancelled", "finished_at": finished}})
     return {"ok": True, "run_id": run_id, "status": "cancelled"}
 
+
+# ==================== TASKS ROUTES (single-task authority sync) ====================
+
+@api_router.get("/tasks")
+async def get_tasks(user: dict = Depends(get_current_user)):
+    """List tasks for current user (synced from Workspace)."""
+    tasks = await db.tasks.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return {"tasks": tasks}
+
+@api_router.post("/tasks")
+async def create_or_update_task(data: TaskSync, user: dict = Depends(get_current_user)):
+    """Create or update task when build completes in Workspace."""
+    task_id = str(uuid.uuid4())
+    task = {
+        "id": task_id,
+        "user_id": user["id"],
+        "name": data.name[:200] if data.name else "Untitled",
+        "prompt": data.prompt[:5000] if data.prompt else "",
+        "session_id": data.session_id or "",
+        "status": data.status or "completed",
+        "files": data.files or [],
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.tasks.insert_one(task)
+    return {"task": {k: v for k, v in task.items() if k != "_id"}}
 
 # ==================== PROJECT ROUTES ====================
 
@@ -5098,9 +5196,20 @@ async def build_from_reference(data: ReferenceBuildBody, user: dict = Depends(ge
 
 @api_router.post("/ai/quality-gate")
 async def quality_gate(data: QualityGateBody):
-    """Run code quality score on a single code snippet (frontend or backend). No auth required for UI feedback."""
-    # Treat code as frontend for scoring; backend/db/test empty so we get a single-snippet score
-    result = score_generated_code(frontend_code=data.code or "", backend_code="", database_schema="", test_code="")
+    """Run code quality score on code or multi-file output. No auth required for UI feedback."""
+    frontend_code = data.code or ""
+    if not frontend_code and data.files:
+        # Extract frontend code from files (prefer App.js/jsx/tsx, then any .js/.jsx/.tsx/.css)
+        parts = []
+        for path, content in (data.files or {}).items():
+            if isinstance(content, dict):
+                content = content.get("code", "") or ""
+            path_lower = (path or "").lower()
+            if any(path_lower.endswith(ext) for ext in (".js", ".jsx", ".tsx", ".css")):
+                parts.append(content if isinstance(content, str) else "")
+        frontend_code = "\n".join(parts)
+    result = score_generated_code(frontend_code=frontend_code, backend_code="", database_schema="", test_code="")
+    result["score"] = result.get("overall_score", 0)  # Frontend expects .score
     return result
 
 @api_router.post("/ai/explain-error")

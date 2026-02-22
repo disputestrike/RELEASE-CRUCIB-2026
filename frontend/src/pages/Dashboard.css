@@ -34,23 +34,51 @@
 }
 
 .home-messages.has-chat {
-  justify-content: flex-end;
+  justify-content: flex-start;
+  align-items: stretch;
 }
 
 .home-input-bar {
   flex-shrink: 0;
-  padding: 16px 40px;
+  width: 100%;
+  padding: 24px;
   background: #F5F4F0;
   position: sticky;
   bottom: 0;
   display: flex;
-  justify-content: center;
+  justify-content: stretch;
+  align-items: center;
 }
 
 .home-prompt-wrapper {
   width: 100%;
-  max-width: 760px;
+  max-width: 100%;
+  flex: 1;
   padding: 0 24px;
+}
+
+/* Chat mode: input and thread use same width so no large empty strip on the right */
+.home-input-bar--chat .home-prompt-wrapper {
+  max-width: 960px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* FIX 5: Chat mode — input two rows: text top, icons bottom */
+.dashboard-prompt-form--chat .dashboard-prompt-container--stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.dashboard-prompt-form--chat .dashboard-prompt-container--stacked .dashboard-prompt-input {
+  min-height: 44px;
+}
+
+.dashboard-prompt-form--chat .dashboard-prompt-container--stacked .dashboard-prompt-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .dashboard-prompt-inline {
@@ -139,13 +167,44 @@
   color: #1A1A1A;
   resize: none;
   min-height: 28px;
-  max-height: 120px;
-  line-height: 1.5;
+  max-height: 240px;
+  line-height: 1.45;
   width: 100%;
+  overflow-y: auto;
+  word-wrap: break-word;
+  white-space: pre-wrap;
 }
 
 .dashboard-prompt-input::placeholder {
   color: #9CA3AF;
+}
+
+.dashboard-prompt-convert {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 0 4px;
+}
+
+.dashboard-prompt-convert-count {
+  font-size: 12px;
+  color: #6B7280;
+}
+
+.dashboard-prompt-convert-btn {
+  font-size: 13px;
+  font-family: 'DM Sans', sans-serif;
+  color: #2563EB;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.dashboard-prompt-convert-btn:hover {
+  color: #1D4ED8;
 }
 
 .dashboard-prompt-actions {
@@ -221,7 +280,7 @@
   color: #059669;
 }
 
-/* Attached Files */
+/* Attached Files — blue Manus-style “attached file” indicator */
 .dashboard-attached-files {
   display: flex;
   flex-wrap: wrap;
@@ -230,21 +289,30 @@
 }
 
 .dashboard-attached-file {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  background: #F3F1ED;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(37, 99, 235, 0.2);
   border-radius: 8px;
   font-size: 13px;
-  color: #666666;
+  color: #2563EB;
+  font-family: 'DM Sans', sans-serif;
 }
 
 .dashboard-attached-name {
-  max-width: 160px;
+  max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 500;
+}
+
+.dashboard-attached-size {
+  font-size: 12px;
+  color: #3B82F6;
+  opacity: 0.9;
 }
 
 .dashboard-attached-remove {
@@ -254,54 +322,86 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: #9CA3AF;
+  color: #2563EB;
   padding: 2px;
   border-radius: 4px;
+  opacity: 0.8;
 }
 
 .dashboard-attached-remove:hover {
-  color: #EF4444;
-  background: rgba(239, 68, 68, 0.1);
+  color: #1D4ED8;
+  background: rgba(37, 99, 235, 0.15);
+  opacity: 1;
 }
 
 /* ============================================
-   ISSUE 1: Chat thread for conversational messages
+   Chat thread — FIX 1, 2, 6: user bubble right, CrucibAI identifier, spacing
    ============================================ */
 
+/* Spacing between responses: one fixed value, never small/expand — keep always the same */
 .dashboard-chat-thread {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 32px;
   width: 100%;
-  max-width: 760px;
-  padding: 4px 0;
+  max-width: 960px;
+  padding: 0;
+  align-self: stretch;
 }
 
 .dashboard-chat-msg {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin: 0;
 }
 
 .dashboard-chat-msg.user {
-  justify-content: flex-end;
+  align-items: flex-end;
 }
 
 .dashboard-chat-msg.assistant {
-  justify-content: flex-start;
+  align-items: flex-start;
+}
+
+.dashboard-chat-identifier {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  width: 100%;
+  max-width: 85%;
+}
+
+.dashboard-chat-identifier span,
+.dashboard-chat-identifier a span {
+  font-size: 12px !important;
+  color: #4B5563 !important;
+  font-weight: 500;
+}
+
+.dashboard-chat-msg.user .dashboard-chat-identifier {
+  display: none;
 }
 
 .dashboard-chat-bubble {
   max-width: 85%;
-  padding: 10px 16px;
+  padding: 10px 14px;
   border-radius: 12px;
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.45;
   font-family: 'DM Sans', sans-serif;
 }
 
+/* FIX 1: User bubble — white bg, light grey border, tighter padding, right-aligned */
 .dashboard-chat-bubble.user {
-  background: #F3F1ED;
+  background: #FFFFFF;
+  border: 1px solid rgba(0, 0, 0, 0.12);
   color: #1A1A1A;
   border-bottom-right-radius: 4px;
+  padding: 10px 14px;
+  width: fit-content;
+  max-width: 85%;
 }
 
 .dashboard-chat-bubble.assistant {
@@ -309,6 +409,69 @@
   border: 1px solid rgba(0, 0, 0, 0.08);
   color: #374151;
   border-bottom-left-radius: 4px;
+}
+
+/* Start Building — CTA when build intent detected */
+.dashboard-chat-build-offer {
+  margin-top: 10px;
+  max-width: 85%;
+}
+
+.dashboard-chat-start-building-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  color: #FFFFFF;
+  background: #1A1A1A;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.dashboard-chat-start-building-btn:hover {
+  background: #333333;
+}
+
+/* Copy / Edit / Share — below each bubble; spacing between message blocks unchanged */
+.dashboard-chat-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  max-width: 85%;
+}
+
+.dashboard-chat-actions.user {
+  align-self: flex-end;
+}
+
+.dashboard-chat-actions.assistant {
+  align-self: flex-start;
+}
+
+.dashboard-chat-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-family: 'DM Sans', sans-serif;
+  color: #6B7280;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.dashboard-chat-action:hover {
+  color: #1A1A1A;
+  background: rgba(0, 0, 0, 0.06);
 }
 
 /* Quick Start Chips */

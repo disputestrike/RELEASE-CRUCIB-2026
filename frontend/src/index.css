@@ -88,19 +88,29 @@
   box-sizing: border-box;
 }
 
-/* Root — lock viewport for app; no browser scrollbar on workspace */
-html, body {
+/* SCROLL FIX: one scroll container for the whole site. Nothing may block it. */
+html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: visible;
+}
+
+body {
   margin: 0;
   padding: 0;
   min-height: 100%;
-  height: 100%;
-  overflow: hidden;
+  overflow: visible;
 }
 
+/* #root is the main scroll container — viewport height, scrolls when content overflows */
 #root {
-  min-height: 100%;
-  display: flex;
-  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  display: block;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 body {

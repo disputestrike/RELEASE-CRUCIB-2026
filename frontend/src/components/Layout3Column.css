@@ -57,9 +57,9 @@
   gap: 0;
 }
 
-/* Left Sidebar (280px fixed) */
+/* Left Sidebar (300px for better task label visibility) */
 .layout-sidebar {
-  width: 280px;
+  width: 300px;
   background: #FFFFFF;
   border-right: 1px solid rgba(0, 0, 0, 0.08);
   overflow-y: auto;

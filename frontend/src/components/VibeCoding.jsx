@@ -124,12 +124,12 @@ export const VibeCodingInput = ({ onSubmit, isLoading = false, API }) => {
   };
 
   return (
-    <div className="space-y-4 p-6 bg-gradient-to-br from-slate-900 to-slate-800 rounded-lg border border-slate-700">
+    <div className="space-y-4 p-6 bg-white rounded-lg border border-gray-200">
       {/* Vibe Coding Header */}
       <div className="flex items-center gap-2 mb-4">
-        <Sparkles className="text-[#1A1A1A]" size={20} />
-        <h3 className="text-lg font-semibold text-[#1A1A1A]">Vibe Coding</h3>
-        <span className="text-xs text-slate-400 ml-auto">Manus-style natural language</span>
+        <Sparkles className="text-orange-500" size={20} />
+        <h3 className="text-lg font-semibold text-gray-900">Vibe Coding</h3>
+        <span className="text-xs text-gray-500 ml-auto">Voice-first natural language</span>
       </div>
 
       {/* Input Area */}
@@ -140,7 +140,7 @@ export const VibeCodingInput = ({ onSubmit, isLoading = false, API }) => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Describe what you want to build... (or use voice)"
-            className="w-full bg-slate-800 border border-slate-600 rounded-lg p-4 text-[#1A1A1A] placeholder-slate-500 resize-none focus:outline-none focus:ring-2 focus:ring-orange-500 min-h-24"
+            className="w-full bg-gray-50 border border-gray-200 rounded-lg p-4 text-gray-900 placeholder-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-orange-500 min-h-24"
           />
 
           {/* Voice Button */}

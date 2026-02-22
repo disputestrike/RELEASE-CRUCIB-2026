@@ -27,7 +27,7 @@ export default function TemplatesGallery() {
       .then((r) => {
         const files = r.data.files || {};
         const query = new URLSearchParams({ prompt: (r.data.template_id && templates.find(t => t.id === r.data.template_id)?.prompt) || '' });
-        navigate(`/workspace?${query.toString()}`, { state: { initialFiles: files } });
+        navigate(`/app/workspace?${query.toString()}`, { state: { initialFiles: files } });
       })
       .catch(() => setCreatingId(null))
       .finally(() => setCreatingId(null));

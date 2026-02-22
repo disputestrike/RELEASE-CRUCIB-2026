@@ -266,6 +266,12 @@ const AdminRoute = ({ children }) => {
   return children;
 };
 
+// Redirect /workspace → /app/workspace so the left sidebar (Layout) always shows; preserve query string.
+function RedirectWorkspaceToApp() {
+  const { search } = useLocation();
+  return <Navigate to={`/app/workspace${search}`} replace />;
+}
+
 // On route change: scroll to top so new page starts at top. When URL has a hash, scroll to that section so "go to" links land in the right place.
 function ScrollToPlace() {
   const { pathname, hash } = useLocation();
@@ -301,7 +307,7 @@ function App() {
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/onboarding" element={<OnboardingRoute><OnboardingPage /></OnboardingRoute>} />
           <Route path="/builder" element={<Builder />} />
-          <Route path="/workspace" element={<ProtectedRoute><Workspace /></ProtectedRoute>} />
+          <Route path="/workspace" element={<RedirectWorkspaceToApp />} />
           <Route path="/share/:token" element={<ShareView />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />

@@ -70,32 +70,32 @@ export const CommandPalette = ({ commands = [], onCommandSelect }) => {
 
   return (
     <>
-      {/* Command Palette Trigger */}
+      {/* Command Palette Trigger - light theme */}
       <button
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2 px-3 py-2 text-sm text-slate-400 hover:text-slate-200 bg-slate-800/50 hover:bg-slate-800 rounded-lg transition-colors"
+        className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 bg-white border border-gray-200 hover:border-gray-300 rounded-lg transition-colors"
         title="Cmd+K"
       >
         <Search size={16} />
         <span className="hidden sm:inline">Search commands...</span>
-        <kbd className="hidden sm:inline ml-auto text-xs px-2 py-1 bg-slate-700 rounded">⌘K</kbd>
+        <kbd className="hidden sm:inline ml-auto text-xs px-2 py-1 bg-gray-100 rounded">⌘K</kbd>
       </button>
 
-      {/* Command Palette Modal */}
+      {/* Command Palette Modal - light theme */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-zinc-900/50 z-50 flex items-start justify-center pt-20"
+            className="fixed inset-0 bg-black/20 z-50 flex items-start justify-center pt-20"
             onClick={() => setIsOpen(false)}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-2xl bg-slate-900 border border-slate-700 rounded-lg shadow-xl"
+              className="w-full max-w-2xl bg-white border border-gray-200 rounded-lg shadow-xl"
               onClick={e => e.stopPropagation()}
             >
               {/* Search Input */}
@@ -123,8 +123,8 @@ export const CommandPalette = ({ commands = [], onCommandSelect }) => {
                       onClick={() => handleSelect(command)}
                       className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
                         idx === selectedIndex
-                          ? 'bg-orange-600 text-[#1A1A1A]'
-                          : 'hover:bg-slate-800 text-slate-300'
+                          ? 'bg-orange-100 text-orange-700'
+                          : 'hover:bg-gray-50 text-gray-700'
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -135,14 +135,14 @@ export const CommandPalette = ({ commands = [], onCommandSelect }) => {
                         </div>
                       </div>
                       {command.shortcut && (
-                        <kbd className="text-xs px-2 py-1 bg-slate-700 rounded opacity-50">
+                        <kbd className="text-xs px-2 py-1 bg-gray-200 rounded text-gray-600">
                           {command.shortcut}
                         </kbd>
                       )}
                     </button>
                   ))
                 ) : (
-                  <div className="px-4 py-8 text-center text-slate-400">
+                  <div className="px-4 py-8 text-center text-gray-500">
                     No commands found
                   </div>
                 )}

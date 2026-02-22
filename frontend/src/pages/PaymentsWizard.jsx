@@ -99,7 +99,7 @@ export default function PaymentsWizard() {
                   </div>
                 </div>
               </div>
-              <button onClick={() => navigate('/workspace')} className="px-4 py-2 rounded-lg bg-[#1A1A1A] text-white hover:bg-[#333]">Open Workspace</button>
+              <button onClick={() => navigate('/app/workspace')} className="px-4 py-2 rounded-lg bg-[#1A1A1A] text-white hover:bg-[#333]">Open Workspace</button>
             </>
           )}
         </div>

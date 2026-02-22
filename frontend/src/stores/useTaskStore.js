@@ -39,9 +39,10 @@ export function TaskProvider({ children }) {
   const addTask = useCallback((task) => {
     const entry = {
       id: task.id || `task_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-      name: task.name || task.prompt?.slice(0, 120) || 'Build',
+      name: task.name || task.prompt?.slice(0, 120) || 'Task',
       prompt: task.prompt || '',
       status: task.status || 'completed',
+      type: task.type || 'build', // 'chat' | 'build' | 'agent' | 'query'
       createdAt: task.createdAt ?? Date.now(),
       ...task,
     };
