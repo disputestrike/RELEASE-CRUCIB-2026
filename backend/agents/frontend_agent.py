@@ -91,8 +91,8 @@ class FrontendAgent(BaseAgent):
             colors = design_system.get("colors", {})
             if colors:
                 design_info = "\n\nDesign System:\n"
-                design_info += f"Primary Color: {colors.get('primary', '#3B82F6')}\n"
-                design_info += f"Secondary Color: {colors.get('secondary', '#8B5CF6')}\n"
+                design_info += f"Primary Color: {colors.get('primary', '#1A1A1A')}\n"
+                design_info += f"Secondary Color: {colors.get('secondary', '#808080')}\n"
                 design_info += f"Styling: {styling}"
         
         context_info = f"\n\nTechnology Context:\nFramework: {framework}\nLanguage: {language}\nStyling: {styling}\nState Management: {state_mgmt}{design_info}"
@@ -121,7 +121,7 @@ Output ONLY valid JSON in this exact format:
     "src/components/Header.tsx": "export default function Header() {{\\n  return (\\n    <header className=\\"bg-white shadow\\">\\n      <div className=\\"container mx-auto px-4 py-4\\">\\n        <h1 className=\\"text-2xl font-bold\\">My App</h1>\\n      </div>\\n    </header>\\n  )\\n}}",
     "src/components/Footer.tsx": "export default function Footer() {{\\n  return (\\n    <footer className=\\"bg-gray-800 text-white py-4 mt-8\\">\\n      <div className=\\"container mx-auto px-4 text-center\\">\\n        <p>&copy; 2024 My App. All rights reserved.</p>\\n      </div>\\n    </footer>\\n  )\\n}}",
     "src/index.css": "@tailwind base;\\n@tailwind components;\\n@tailwind utilities;",
-    "tailwind.config.js": "export default {{\\n  content: ['./index.html', './src/**/*.{{js,ts,jsx,tsx}}'],\\n  theme: {{\\n    extend: {{\\n      colors: {{\\n        primary: '#3B82F6',\\n        secondary: '#8B5CF6'\\n      }}\\n    }}\\n  }},\\n  plugins: []\\n}}",
+    "tailwind.config.js": "export default {{\\n  content: ['./index.html', './src/**/*.{{js,ts,jsx,tsx}}'],\\n  theme: {{\\n    extend: {{\\n      colors: {{\\n        primary: '#1A1A1A',\\n        secondary: '#808080'\\n      }}\\n    }}\\n  }},\\n  plugins: []\\n}}",
     "vite.config.ts": "import {{ defineConfig }} from 'vite'\\nimport react from '@vitejs/plugin-react'\\n\\nexport default defineConfig({{\\n  plugins: [react()],\\n  server: {{ port: 5173 }}\\n}})",
     "tsconfig.json": "{{\\"compilerOptions\\": {{\\"target\\": \\"ES2020\\", \\"useDefineForClassFields\\": true, \\"lib\\": [\\"ES2020\\", \\"DOM\\", \\"DOM.Iterable\\"], \\"module\\": \\"ESNext\\", \\"skipLibCheck\\": true, \\"moduleResolution\\": \\"bundler\\", \\"allowImportingTsExtensions\\": true, \\"resolveJsonModule\\": true, \\"isolatedModules\\": true, \\"noEmit\\": true, \\"jsx\\": \\"react-jsx\\", \\"strict\\": true, \\"noUnusedLocals\\": true, \\"noUnusedParameters\\": true, \\"noFallthroughCasesInSwitch\\": true}}, \\"include\\": [\\"src\\"], \\"references\\": [{{\\"path\\": \\"./tsconfig.node.json\\"}}]}}",
     "index.html": "<!DOCTYPE html>\\n<html lang=\\"en\\">\\n<head>\\n  <meta charset=\\"UTF-8\\" />\\n  <meta name=\\"viewport\\" content=\\"width=device-width, initial-scale=1.0\\" />\\n  <title>My App</title>\\n</head>\\n<body>\\n  <div id=\\"root\\"></div>\\n  <script type=\\"module\\" src=\\"/src/main.tsx\\"></script>\\n</body>\\n</html>"

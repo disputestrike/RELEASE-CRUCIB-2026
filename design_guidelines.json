@@ -1,14 +1,14 @@
 {
   "identity": {
-    "persona": "E1 - The Anti-AI Designer",
-    "archetype": "Electric & Neon (Future, Speed, Disruption)",
+    "persona": "E1 - The Minimalist Designer",
+    "archetype": "Clean & Precise (Focus, Clarity, Professionalism)",
     "vibe": "Mission Control, Tactical, High-Precision, Intelligent",
     "principles": [
-      "Fusion over Imitation: Mix Swiss precision with Cyberpunk neon.",
-      "Emotion First: The user should feel like a commander of a digital army.",
+      "Simplicity over Complexity: Black and gray only for maximum clarity.",
+      "Emotion First: The user should feel in control and focused.",
       "Content is King: Data is the hero. Visualization is the story.",
-      "Negative Space: Use deep black voids to make the neon pop.",
-      "Contrast: High contrast text for readability in the dark."
+      "Negative Space: Use white voids and black accents for balance.",
+      "Contrast: High contrast text for perfect readability."
     ]
   },
   "typography": {
@@ -30,39 +30,40 @@
     "installation": "yarn add @fontsource/outfit @fontsource/inter @fontsource/jetbrains-mono"
   },
   "colors": {
-    "theme": "dark",
+    "theme": "light",
     "palette": {
-      "background": "0 0% 3%",
-      "foreground": "0 0% 98%",
-      "card": "0 0% 5%",
-      "card_foreground": "0 0% 98%",
-      "popover": "0 0% 5%",
-      "popover_foreground": "0 0% 98%",
-      "primary": "217 91% 60%",
+      "background": "0 0% 98%",
+      "foreground": "0 0% 10%",
+      "card": "0 0% 100%",
+      "card_foreground": "0 0% 10%",
+      "popover": "0 0% 100%",
+      "popover_foreground": "0 0% 10%",
+      "primary": "0 0% 0%",
       "primary_foreground": "0 0% 100%",
-      "secondary": "240 4% 16%",
-      "secondary_foreground": "0 0% 98%",
-      "muted": "240 4% 16%",
-      "muted_foreground": "240 5% 65%",
-      "accent": "240 4% 16%",
-      "accent_foreground": "0 0% 98%",
-      "destructive": "0 84% 60%",
+      "secondary": "0 0% 95%",
+      "secondary_foreground": "0 0% 15%",
+      "muted": "0 0% 92%",
+      "muted_foreground": "0 0% 50%",
+      "accent": "0 0% 94%",
+      "accent_foreground": "0 0% 15%",
+      "destructive": "0 0% 0%",
       "destructive_foreground": "0 0% 98%",
-      "border": "240 4% 16%",
-      "input": "240 4% 16%",
-      "ring": "217 91% 60%",
-      "chart_1": "217 91% 60%",
-      "chart_2": "142 71% 45%",
-      "chart_3": "271 81% 56%",
-      "chart_4": "47 95% 57%",
-      "chart_5": "0 84% 60%"
+      "border": "0 0% 90%",
+      "input": "0 0% 95%",
+      "ring": "0 0% 0%",
+      "chart_1": "0 0% 0%",
+      "chart_2": "0 0% 50%",
+      "chart_3": "0 0% 40%",
+      "chart_4": "0 0% 60%",
+      "chart_5": "0 0% 0%"
     },
     "special_colors": {
-      "neon_blue": "#3B82F6",
-      "neon_green": "#10B981",
-      "neon_purple": "#8B5CF6",
+      "primary_black": "#000000",
+      "dark_gray": "#1A1A1A",
+      "medium_gray": "#808080",
+      "light_gray": "#D3D3D3",
       "void_black": "#050505",
-      "glass_border": "rgba(255, 255, 255, 0.1)"
+      "glass_border": "rgba(0, 0, 0, 0.1)"
     }
   },
   "layout_strategy": {
@@ -78,7 +79,7 @@
     {
       "name": "The Tracing Beam",
       "usage": "Active Agent Cards, Pricing Plans, Key Features",
-      "implementation": "Animated gradient border using framer-motion or CSS mask-image."
+      "implementation": "Animated gradient border using framer-motion or CSS mask-image (black/gray)."
     },
     {
       "name": "Glassmorphism (Crystal)",
@@ -94,66 +95,34 @@
   "components": {
     "buttons": {
       "style": "Sharp or slightly rounded (rounded-md).",
-      "primary": "bg-primary hover:bg-primary/90 text-white shadow-[0_0_15px_rgba(59,130,246,0.5)]",
-      "secondary": "bg-secondary hover:bg-secondary/80 text-white border border-white/10"
+      "primary": "bg-black hover:bg-gray-900 text-white shadow-[0_0_15px_rgba(0,0,0,0.5)]",
+      "secondary": "bg-gray-200 hover:bg-gray-300 text-black border border-gray-400"
     },
     "cards": {
-      "style": "Flat, dark gray (bg-card), 1px border (border-white/10).",
-      "hover": "border-primary/50 transition-colors duration-300"
+      "style": "Minimal borders, generous padding.",
+      "background": "white or light-gray",
+      "border": "1px solid rgba(0, 0, 0, 0.08)"
     },
     "inputs": {
-      "style": "bg-secondary/50 border-white/10 focus:border-primary focus:ring-1 focus:ring-primary"
-    },
-    "charts": {
-      "library": "Recharts (via Shadcn Charts)",
-      "style": "Minimalist, thin lines, gradient fills with low opacity."
+      "style": "Clean, minimal.",
+      "background": "#F3F1ED",
+      "border": "1px solid rgba(0, 0, 0, 0.08)",
+      "focus": "border-black outline-none"
     }
   },
-  "motion": {
-    "library": "framer-motion",
-    "required_effects": [
-      "Staggered entrance for dashboard widgets",
-      "Tracing beam border for active agents",
-      "Smooth layout transitions (LayoutGroup)"
+  "animations": {
+    "duration": "200ms-300ms",
+    "easing": "cubic-bezier(0.4, 0, 0.2, 1)",
+    "effects": [
+      "Fade in/out",
+      "Slide up/down",
+      "Scale (subtle)",
+      "Pulse (black/gray only)"
     ]
   },
-  "images": {
-    "hero_background": {
-      "url": "https://images.unsplash.com/photo-1764263996468-4d65024b076d?crop=entropy&cs=srgb&fm=jpg&q=85",
-      "alt": "Abstract neural network dark background",
-      "usage": "Hero section background with overlay"
-    },
-    "feature_visuals": [
-      {
-        "url": "https://images.unsplash.com/photo-1762279388956-1c098163a2a8?crop=entropy&cs=srgb&fm=jpg&q=85",
-        "alt": "Futuristic data flow",
-        "usage": "Agent Orchestration Feature"
-      },
-      {
-        "url": "https://images.unsplash.com/photo-1760112783563-514867b4c2ed?crop=entropy&cs=srgb&fm=jpg&q=85",
-        "alt": "Neon light streaks",
-        "usage": "Speed/Performance Feature"
-      }
-    ],
-    "placeholders": {
-      "user_avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix",
-      "agent_avatar": "https://api.dicebear.com/7.x/bottts/svg?seed=Agent"
-    }
-  },
-  "icons": {
-    "primary_library": "lucide-react",
-    "secondary_library": "@phosphor-icons/react",
-    "usage": "Use Phosphor (Duotone) for feature icons, Lucide for UI controls."
-  },
-  "universal_guidelines": [
-    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
-    "Don't make generic centered layouts. Use grids.",
-    "Create depth through layered design elements with z-index hierarchy.",
-    "Use glass-morphism effects with backdrop filters (12-24px blur).",
-    "Every interaction needs micro-animations.",
-    "Use 2-3x more spacing than feels comfortable.",
-    "Subtle grain textures and noise overlays separate good from extraordinary.",
-    "Use 'sonner' for toasts."
-  ],
-  "instructions_to_main_agent": "1. Install fonts: `yarn add @fontsource/outfit @fontsource/inter @fontsource/jetbrains-mono`. 2. Update `tailwind.config.js` with the colors provided. 3. Create a `Layout` component that implements the glassmorphism sidebar and header. 4. Build the Dashboard using the Bento Grid strategy. 5. Use the provided images for the Landing Page."
+  "accessibility": {
+    "contrast_ratio": "WCAG AAA (7:1 minimum)",
+    "focus_indicators": "2px solid black outline",
+    "reduced_motion": "Disable all animations when prefers-reduced-motion is set"
+  }
 }

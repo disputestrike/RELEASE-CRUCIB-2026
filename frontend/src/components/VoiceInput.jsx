@@ -260,8 +260,8 @@ export const VoiceInput = ({
           flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium
           transition-all duration-200
           ${isRecording 
-            ? 'bg-red-500 hover:bg-red-600 text-[#1A1A1A] animate-pulse' 
-            : 'bg-orange-500 hover:bg-orange-600 text-[#1A1A1A]'
+            ? 'bg-gray-500 hover:bg-gray-600 text-[#1A1A1A] animate-pulse' 
+            : 'bg-gray-200 hover:bg-black text-[#1A1A1A]'
           }
           ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
         `}
@@ -290,7 +290,7 @@ export const VoiceInput = ({
         <div className="flex items-center gap-2">
           <div className="flex-1 bg-gray-200 rounded-full h-2 overflow-hidden">
             <div
-              className="bg-orange-500 h-full transition-all duration-100"
+              className="bg-gray-200 h-full transition-all duration-100"
               style={{ width: `${audioLevel}%` }}
             />
           </div>
@@ -300,17 +300,17 @@ export const VoiceInput = ({
 
       {/* Error message */}
       {error && (
-        <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-          <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-red-700">{error}</p>
+        <div className="flex items-start gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+          <AlertCircle className="w-4 h-4 text-gray-500 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-gray-700">{error}</p>
         </div>
       )}
 
       {/* Success message */}
       {success && !isTranscribing && (
-        <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-          <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-green-700">{success}</p>
+        <div className="flex items-start gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+          <CheckCircle className="w-4 h-4 text-gray-500 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-gray-700">{success}</p>
         </div>
       )}
 

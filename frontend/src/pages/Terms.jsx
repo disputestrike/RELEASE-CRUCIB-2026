@@ -5,7 +5,7 @@ export default function Terms() {
     <div className="min-h-screen bg-[#FAFAF8] text-[#1A1A1A]">
       <div className="max-w-3xl mx-auto px-6 py-10">
         <h1 className="text-3xl font-bold text-[#1A1A1A] mb-2">Terms of Use</h1>
-        <p className="text-sm text-[#666666] mb-8">Last updated: February 2026</p>
+        <p className="text-sm text-gray-600 mb-8">Last updated: February 2026</p>
 
         <div className="space-y-6 text-[#1A1A1A] leading-relaxed">
           <p>Welcome to CrucibAI. By accessing or using our service, you agree to these Terms of Use. If you do not agree, do not use the service.</p>
