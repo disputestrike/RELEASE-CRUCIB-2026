@@ -31,7 +31,7 @@
 /* Card */
 .onboarding-card {
   position: relative;
-  background: #18181b;
+  background: #1A1A1A;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   padding: 32px 28px 24px;
@@ -76,7 +76,7 @@
 }
 
 .onboarding-progress-dot.active {
-  background: #10b981;
+  background: #1A1A1A;
   width: 24px;
   border-radius: 4px;
 }
@@ -96,14 +96,14 @@
   align-items: center;
   justify-content: center;
   margin: 0 auto 16px;
-  color: #10b981;
+  color: #1A1A1A;
 }
 
 /* Content */
 .onboarding-title {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #fafafa;
+  color: #F5F5F4;
   text-align: center;
   margin-bottom: 8px;
   letter-spacing: -0.01em;
@@ -111,7 +111,7 @@
 
 .onboarding-desc {
   font-size: 0.9rem;
-  color: #a1a1aa;
+  color: #999999;
   text-align: center;
   line-height: 1.6;
   margin-bottom: 16px;
@@ -120,7 +120,7 @@
 .onboarding-step-count {
   text-align: center;
   font-size: 0.75rem;
-  color: #52525b;
+  color: #808080;
   margin-bottom: 16px;
 }
 
@@ -145,26 +145,26 @@
 }
 
 .onboarding-btn--primary {
-  background: #10b981;
-  color: #0a0a0a;
+  background: #1A1A1A;
+  color: #1A1A1A;
   flex: 1;
   justify-content: center;
 }
 
 .onboarding-btn--primary:hover {
-  background: #34d399;
+  background: #808080;
   transform: translateY(-1px);
 }
 
 .onboarding-btn--ghost {
   background: transparent;
-  color: #a1a1aa;
+  color: #999999;
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .onboarding-btn--ghost:hover {
   background: rgba(255, 255, 255, 0.05);
-  color: #fafafa;
+  color: #F5F5F4;
 }
 
 /* Close button */
@@ -177,7 +177,7 @@
   border-radius: 8px;
   border: none;
   background: transparent;
-  color: #71717a;
+  color: #999999;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -187,7 +187,7 @@
 
 .onboarding-close:hover {
   background: rgba(255, 255, 255, 0.1);
-  color: #fafafa;
+  color: #F5F5F4;
 }
 
 /* Responsive */

@@ -97,13 +97,13 @@ Output ONLY valid JSON in this exact format:
 {{
   "design_system": {{
     "colors": {{
-      "primary": "#3B82F6",
-      "secondary": "#8B5CF6",
-      "accent": "#F59E0B",
-      "neutral": {{"50": "#F9FAFB", "100": "#F3F4F6", "900": "#111827"}},
-      "success": "#10B981",
-      "error": "#EF4444",
-      "warning": "#F59E0B"
+      "primary": "#1A1A1A",
+      "secondary": "#808080",
+      "accent": "#999999",
+      "neutral": {{"50": "#F9FAFB", "100": "#F3F4F6", "900": "#1A1A1A"}},
+      "success": "#808080",
+      "error": "#1A1A1A",
+      "warning": "#999999"
     }},
     "typography": {{
       "heading": "Inter, system-ui, sans-serif",

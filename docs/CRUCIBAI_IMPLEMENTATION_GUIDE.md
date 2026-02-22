@@ -134,7 +134,7 @@ small, .text-sm {
 | **Accent Primary** | #6366F1 | CTAs, highlights | oklch(0.55 0.25 280) |
 | **Accent Secondary** | #8B5CF6 | Secondary actions | oklch(0.60 0.25 280) |
 | **Success** | #10B981 | Success states | oklch(0.60 0.20 160) |
-| **Warning** | #F59E0B | Warnings | oklch(0.65 0.20 50) |
+| **Warning** | #999999 | Warnings | oklch(0.65 0.20 50) |
 | **Error** | #EF4444 | Errors | oklch(0.55 0.25 20) |
 
 ### CSS Updates
@@ -149,7 +149,7 @@ small, .text-sm {
   --color-accent-primary: #6366F1;
   --color-accent-secondary: #8B5CF6;
   --color-success: #10B981;
-  --color-warning: #F59E0B;
+  --color-warning: #999999;
   --color-error: #EF4444;
 }
 
