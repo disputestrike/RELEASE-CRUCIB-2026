@@ -22,7 +22,6 @@ const Settings = () => {
   const [deployTokensStatus, setDeployTokensStatus] = useState({ has_vercel: false, has_netlify: false });
   const [deploySaving, setDeploySaving] = useState(false);
   const [deploySaved, setDeploySaved] = useState(false);
-  const [theme, setTheme] = useState(() => localStorage.getItem(STORAGE_THEME) || 'system');
   const [language, setLanguage] = useState('en');
   const [mfaStatus, setMfaStatus] = useState(false);
   const [mfaSetupStep, setMfaSetupStep] = useState(null);
@@ -45,20 +44,11 @@ const Settings = () => {
     }
   });
 
+  // Force light theme only — no dark mode anywhere
   useEffect(() => {
-    const root = document.documentElement;
-    if (theme === 'dark') root.classList.add('dark');
-    else if (theme === 'light') root.classList.remove('dark');
-    else root.classList.toggle('dark', window.matchMedia('(prefers-color-scheme: dark)').matches);
-    localStorage.setItem(STORAGE_THEME, theme);
-  }, [theme]);
-  useEffect(() => {
-    if (theme !== 'system') return;
-    const m = window.matchMedia('(prefers-color-scheme: dark)');
-    const on = () => document.documentElement.classList.toggle('dark', m.matches);
-    m.addEventListener('change', on);
-    return () => m.removeEventListener('change', on);
-  }, [theme]);
+    document.documentElement.classList.remove('dark');
+    localStorage.setItem(STORAGE_THEME, 'light');
+  }, []);
 
   const handleSave = () => {
     setSaved(true);
@@ -246,30 +236,10 @@ const Settings = () => {
             </div>
             <div>
               <label className="block text-sm font-medium mb-3">Appearance</label>
-              <p className="text-sm text-gray-500 mb-4">Choose how CrucibAI looks. You can pick a theme or follow your system.</p>
-              <div className="flex flex-wrap gap-4">
-                {[
-                  { id: 'light', label: 'Light', icon: Sun, preview: <div className="w-12 h-8 rounded-lg bg-gray-200 border border-gray-300" /> },
-                  { id: 'dark', label: 'Dark', icon: Moon, preview: <div className="w-12 h-8 rounded-lg bg-[#3D3D3D] border border-black/20" /> },
-                  { id: 'system', label: 'Follow system', icon: Zap, preview: <div className="w-12 h-8 rounded-lg overflow-hidden flex"><div className="w-1/2 h-full bg-[#3D3D3D]" /><div className="w-1/2 h-full bg-[#F5F5F4]" /></div> }
-                ].map(opt => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => setTheme(opt.id)}
-                    className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition ${
-                      theme === opt.id
-                        ? 'border-[#666666] bg-[#F3F1ED] text-[#1A1A1A]'
-                        : 'border-black/10 bg-[#FAFAF8] text-[#666666] hover:border-black/15'
-                    }`}
-                  >
-                    {opt.preview}
-                    <span className="text-sm font-medium flex items-center gap-1">
-                      <opt.icon className="w-4 h-4" />
-                      {opt.label}
-                    </span>
-                  </button>
-                ))}
+              <p className="text-sm text-gray-500 mb-4">CrucibAI uses a light theme only. White backgrounds, light grey borders, orange accent.</p>
+              <div className="flex items-center gap-2 p-4 rounded-xl border border-gray-200 bg-[#FAFAF8]">
+                <Sun className="w-5 h-5 text-gray-600" />
+                <span className="text-sm font-medium text-gray-800">Light theme</span>
               </div>
             </div>
             <div>
@@ -315,7 +285,7 @@ const Settings = () => {
             <div className="flex flex-wrap gap-3">
               <Link
                 to="/app/tokens"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-[#1A1A1A] hover:bg-[#333] text-white rounded-lg font-medium text-sm transition"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-[#E05A25] hover:bg-[#c94d1e] text-white rounded-lg font-medium text-sm transition"
               >
                 <Zap className="w-4 h-4" /> Buy more tokens
               </Link>
@@ -402,7 +372,7 @@ const Settings = () => {
             <button
               onClick={handleSaveEnv}
               disabled={envSaving}
-              className="flex items-center gap-2 px-4 py-2 bg-[#1A1A1A] hover:bg-[#333] text-white rounded-lg font-medium transition disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-[#E05A25] hover:bg-[#c94d1e] text-white rounded-lg font-medium transition disabled:opacity-50"
             >
               {envSaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
               {envSaving ? 'Saving...' : envSaved ? 'Saved!' : 'Save environment'}
@@ -442,7 +412,7 @@ const Settings = () => {
               <button
                 onClick={handleSaveDeployTokens}
                 disabled={deploySaving || (!deployTokens.vercel && !deployTokens.netlify)}
-                className="flex items-center gap-2 px-4 py-2 bg-[#1A1A1A] hover:bg-[#333] text-white rounded-lg font-medium transition disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-[#E05A25] hover:bg-[#c94d1e] text-white rounded-lg font-medium transition disabled:opacity-50"
               >
                 {deploySaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
                 {deploySaving ? 'Saving...' : deploySaved ? 'Saved!' : 'Save deploy tokens'}
@@ -487,7 +457,7 @@ const Settings = () => {
             <button
               onClick={handleSaveDeployTokens}
               disabled={deploySaving || (!deployTokens.vercel && !deployTokens.netlify)}
-              className="flex items-center gap-2 px-4 py-2 bg-[#1A1A1A] hover:bg-[#333] text-white rounded-lg font-medium transition disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-[#E05A25] hover:bg-[#c94d1e] text-white rounded-lg font-medium transition disabled:opacity-50"
             >
               {deploySaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
               {deploySaving ? 'Saving...' : deploySaved ? 'Saved!' : 'Save deploy tokens'}
@@ -507,7 +477,7 @@ const Settings = () => {
           
           <div className="space-y-6">
             <div className="flex items-center gap-6">
-              <div className="w-20 h-20 bg-[#1A1A1A] rounded-full flex items-center justify-center text-3xl font-bold text-white">
+              <div className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-bold text-white" style={{ background: '#E05A25' }}>
                 {user?.name?.[0]?.toUpperCase() || 'U'}
               </div>
               <div>
@@ -592,7 +562,7 @@ const Settings = () => {
                     })}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-[#E0DCD5] peer-focus:ring-2 peer-focus:ring-[#666666] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#1A1A1A]"></div>
+                  <div className="w-11 h-6 bg-[#E0DCD5] peer-focus:ring-2 peer-focus:ring-[#666666] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#E05A25]"></div>
                 </label>
               </div>
             ))}
@@ -637,7 +607,7 @@ const Settings = () => {
                 <button
                   type="button"
                   onClick={() => setMfaSetupStep('disable')}
-                  className="px-4 py-2 bg-[#3D3D3D] hover:bg-[#525252] text-white rounded-lg text-sm transition"
+                  className="px-4 py-2 bg-[#E05A25] hover:bg-[#c94d1e] text-white rounded-lg text-sm transition"
                 >
                   Disable 2FA
                 </button>
@@ -656,7 +626,7 @@ const Settings = () => {
                   <button
                     onClick={handleMfaDisable}
                     disabled={mfaLoading || !mfaDisablePassword}
-                    className="px-4 py-2 bg-[#3D3D3D] hover:bg-[#525252] text-white rounded-lg text-sm disabled:opacity-50"
+                    className="px-4 py-2 bg-[#E05A25] hover:bg-[#c94d1e] text-white rounded-lg text-sm disabled:opacity-50"
                   >
                     {mfaLoading ? 'Disabling...' : 'Disable 2FA'}
                   </button>
@@ -675,7 +645,7 @@ const Settings = () => {
                   type="button"
                   onClick={handleMfaSetupStart}
                   disabled={mfaLoading}
-                  className="px-4 py-2 bg-[#1A1A1A] hover:bg-[#333] text-white rounded-lg text-sm font-medium disabled:opacity-50"
+                  className="px-4 py-2 bg-[#E05A25] hover:bg-[#c94d1e] text-white rounded-lg text-sm font-medium disabled:opacity-50"
                 >
                   {mfaLoading ? 'Setting up...' : 'Enable 2FA'}
                 </button>
@@ -703,7 +673,7 @@ const Settings = () => {
                   <button
                     onClick={handleMfaVerify}
                     disabled={mfaLoading || mfaCode.length !== 6}
-                    className="px-4 py-2 bg-[#1A1A1A] hover:bg-[#333] rounded-lg text-sm font-medium disabled:opacity-50"
+                    className="px-4 py-2 bg-[#E05A25] hover:bg-[#c94d1e] rounded-lg text-sm font-medium disabled:opacity-50"
                   >
                     {mfaLoading ? 'Verifying...' : 'Verify'}
                   </button>
@@ -728,7 +698,7 @@ const Settings = () => {
                 </div>
                 <button
                   onClick={() => { setMfaSetupStep(null); setMfaBackupCodes([]); }}
-                  className="px-4 py-2 bg-[#1A1A1A] hover:bg-[#333] text-white rounded-lg text-sm"
+                  className="px-4 py-2 bg-[#E05A25] hover:bg-[#c94d1e] text-white rounded-lg text-sm"
                 >
                   Done
                 </button>
@@ -769,7 +739,7 @@ const Settings = () => {
             <div className="p-4 bg-[#F5F5F4] border border-black/10 rounded-lg">
               <h4 className="font-medium text-[#666666] mb-2">Danger Zone</h4>
               <p className="text-sm text-[#666666] mb-4">Once you delete your account, there is no going back.</p>
-              <button className="px-4 py-2 bg-[#3D3D3D] hover:bg-[#525252] text-white rounded-lg transition text-sm">
+              <button className="px-4 py-2 bg-[#E05A25] hover:bg-[#c94d1e] text-white rounded-lg transition text-sm">
                 Delete Account
               </button>
             </div>
@@ -806,7 +776,7 @@ const Settings = () => {
                 </div>
                 <a
                   href="/app/tokens"
-                  className="px-4 py-2 bg-[#1A1A1A] hover:bg-[#333] text-white rounded-lg font-medium transition"
+                  className="px-4 py-2 bg-[#E05A25] hover:bg-[#c94d1e] text-white rounded-lg font-medium transition"
                 >
                   Upgrade
                 </a>
@@ -814,7 +784,7 @@ const Settings = () => {
               <div className="flex flex-wrap gap-3">
                 <Link
                   to="/app/tokens"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#1A1A1A] hover:bg-[#333] text-white rounded-lg font-medium text-sm transition"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#E05A25] hover:bg-[#c94d1e] text-white rounded-lg font-medium text-sm transition"
                 >
                   <Zap className="w-4 h-4" /> Buy more tokens
                 </Link>
@@ -859,7 +829,7 @@ const Settings = () => {
                 Export your data
               </h4>
               <p className="text-sm text-gray-500 mb-4">Download all your projects, prompts, and account data as a ZIP archive.</p>
-              <button className="flex items-center gap-2 px-4 py-2 bg-[#1A1A1A] hover:bg-[#333] text-white rounded-lg font-medium text-sm transition">
+              <button className="flex items-center gap-2 px-4 py-2 bg-[#E05A25] hover:bg-[#c94d1e] text-white rounded-lg font-medium text-sm transition">
                 <Download className="w-4 h-4" /> Request data export
               </button>
             </div>
@@ -883,7 +853,7 @@ const Settings = () => {
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input type="checkbox" defaultChecked className="sr-only peer" />
-                      <div className="w-11 h-6 bg-[#E0DCD5] peer-focus:ring-2 peer-focus:ring-[#666666] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#1A1A1A]"></div>
+                      <div className="w-11 h-6 bg-[#E0DCD5] peer-focus:ring-2 peer-focus:ring-[#666666] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#E05A25]"></div>
                     </label>
                   </div>
                 ))}
@@ -931,7 +901,7 @@ const Settings = () => {
         <div className="flex justify-end">
           <button
             onClick={handleSave}
-            className="flex items-center gap-2 px-6 py-3 bg-[#1A1A1A] hover:bg-[#333] text-white rounded-lg font-medium transition"
+            className="flex items-center gap-2 px-6 py-3 bg-[#E05A25] hover:bg-[#c94d1e] text-white rounded-lg font-medium transition"
             data-testid="save-settings-btn"
           >
             {saved ? (

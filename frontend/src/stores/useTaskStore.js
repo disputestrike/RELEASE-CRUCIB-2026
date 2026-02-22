@@ -53,6 +53,18 @@ export function TaskProvider({ children }) {
     return entry.id;
   }, []);
 
+  const updateTask = useCallback((taskId, updates) => {
+    if (!taskId) return;
+    setTasks(prev => {
+      const idx = prev.findIndex(t => t.id === taskId);
+      if (idx < 0) return prev;
+      const next = [...prev];
+      next[idx] = { ...next[idx], ...updates };
+      saveTasks(next);
+      return next;
+    });
+  }, []);
+
   const persist = useCallback(() => {
     setTasks(prev => {
       saveTasks(prev);
@@ -60,7 +72,7 @@ export function TaskProvider({ children }) {
     });
   }, []);
 
-  const value = { tasks, addTask, setTasks, persist };
+  const value = { tasks, addTask, updateTask, setTasks, persist };
 
   return (
     <TaskContext.Provider value={value}>
@@ -75,6 +87,7 @@ export function useTaskStore() {
     return {
       tasks: [],
       addTask: () => {},
+      updateTask: () => {},
       setTasks: () => {},
       persist: () => {},
     };

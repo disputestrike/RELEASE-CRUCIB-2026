@@ -14,6 +14,7 @@ import '../components/VoiceWaveform.css';
 import Logo from '../components/Logo';
 import {
   ChevronDown,
+  ChevronRight,
   Send,
   Loader2,
   ArrowLeft,
@@ -64,8 +65,84 @@ import { useAuth, API } from '../App';
 import { useLayoutStore } from '../stores/useLayoutStore';
 import { useTaskStore } from '../stores/useTaskStore';
 import axios from 'axios';
-import ManusComputer from '../components/ManusComputer';
+import CrucibAIComputer from '../components/CrucibAIComputer';
 import InlineAgentMonitor from '../components/InlineAgentMonitor';
+
+/** Format message content — avoid [object Object] */
+function formatMsgContent(c) {
+  if (c == null) return '';
+  if (typeof c === 'string') return c;
+  if (c?.text) return c.text;
+  if (c?.message) return c.message;
+  if (c?.content) return c.content;
+  return typeof c === 'object' ? JSON.stringify(c) : String(c);
+}
+
+/** Chat message — user on right, long messages with Show more */
+function ChatMessage({ msg }) {
+  const [expanded, setExpanded] = useState(false);
+  const content = formatMsgContent(msg.content);
+  const isLong = content.length > 300 || (content.match(/\n/g) || []).length > 4;
+  const showContent = expanded || !isLong ? content : content.slice(0, 300) + (content.length > 300 ? '...' : '');
+  return (
+    <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+      <div className={`max-w-[80%] rounded-xl px-4 py-3 text-sm ${
+        msg.role === 'user'
+          ? 'bg-gray-100 text-gray-900'
+          : 'bg-white border border-gray-200 text-gray-800'
+      }`}>
+        <pre className="whitespace-pre-wrap font-sans">{showContent}</pre>
+        {isLong && (
+          <button
+            type="button"
+            onClick={() => setExpanded(e => !e)}
+            className="mt-2 text-xs font-medium text-gray-600 hover:text-gray-900 underline"
+          >
+            {expanded ? 'Show less' : 'Show more'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Compact collapsible build progress card — Manus-style step bar */
+function BuildProgressCard({ expanded, onToggle, buildProgress, currentPhase, lastTokensUsed, projectBuildProgress, qualityScore, agentsActivityLength, children }) {
+  const tokens = lastTokensUsed || projectBuildProgress?.tokens_used || 0;
+  return (
+    <div className="border-b border-stone-200 bg-white flex-shrink-0">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50 transition"
+      >
+        <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#E05A25' }} />
+        <span className="text-sm font-medium text-gray-900 flex-1 truncate">
+          {currentPhase || 'Building...'} — {Math.round(buildProgress)}%
+        </span>
+        <span className="text-xs text-gray-500 shrink-0">{agentsActivityLength || 0} agents · {(tokens / 1000).toFixed(0)}k tokens</span>
+        {qualityScore != null && <span className="text-xs text-gray-600 shrink-0">Quality: {qualityScore}%</span>}
+        {expanded ? <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" /> : <ChevronRight className="w-4 h-4 text-gray-500 shrink-0" />}
+      </button>
+      <div className="border-t border-stone-100 bg-gray-50/50">
+        <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
+          <motion.div
+            className="h-full rounded-full"
+            style={{ background: '#E05A25' }}
+            initial={{ width: 0 }}
+            animate={{ width: `${buildProgress}%` }}
+            transition={{ duration: 0.3 }}
+          />
+        </div>
+      </div>
+      {expanded && (
+        <div className="max-h-64 overflow-y-auto border-t border-stone-200">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Default React app template
 const DEFAULT_FILES = {
@@ -307,6 +384,7 @@ const Workspace = () => {
   const [logs, setLogs] = useState([]);
   const [copied, setCopied] = useState(false);
   const [activePanel, setActivePanel] = useState('preview');
+  const [activeBottomPanel, setActiveBottomPanel] = useState('terminal');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [versions, setVersions] = useState([]);
   const [currentVersion, setCurrentVersion] = useState(null);
@@ -329,16 +407,29 @@ const Workspace = () => {
   const [lastTokensUsed, setLastTokensUsed] = useState(0);
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(false); // collapsed by default; View → "Show code / files" for devs
   const [showFirstRunBanner, setShowFirstRunBanner] = useState(() => !localStorage.getItem('crucibai_first_run'));
-  const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
   const [splitEditor, setSplitEditor] = useState(false);
+  const [buildCardExpanded, setBuildCardExpanded] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState(null); // 'file' | 'edit' | 'view' | 'go' | 'run' | 'terminal' | 'help' | null
   const [toolsReport, setToolsReport] = useState(null); // { type: 'validate'|'security'|'a11y', data }
   const [toolsLoading, setToolsLoading] = useState(false);
   const [nextSuggestions, setNextSuggestions] = useState([]);
   const [buildMode, setBuildMode] = useState('agent'); // 'quick' | 'plan' | 'agent' | 'thinking' | 'swarm'
+  const { user: authUser, refreshUser } = useAuth();
   const { mode: layoutMode, setMode: setLayoutMode, isDev: devMode } = useLayoutStore();
-  const toggleDevMode = () => setLayoutMode(prev => (prev === 'dev' ? 'simple' : 'dev'));
-  const { addTask } = useTaskStore();
+  const toggleDevMode = async () => {
+    const next = devMode ? 'simple' : 'dev';
+    const backendMode = next === 'dev' ? 'developer' : 'simple';
+    setLayoutMode(next);
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        await axios.post(`${API}/user/workspace-mode`, { mode: backendMode }, { headers: { Authorization: `Bearer ${token}` } });
+        if (refreshUser) await refreshUser();
+      }
+    } catch (_) {}
+  };
+  const { addTask, updateTask, tasks: storeTasks } = useTaskStore();
 
   // Section 06: parseMultiFileOutput — extract fenced code blocks with file paths
   const parseMultiFileOutput = (responseText) => {
@@ -364,7 +455,22 @@ const Workspace = () => {
   const taskIdFromUrl = searchParams.get('taskId');
   const [projectBuildProgress, setProjectBuildProgress] = useState({ phase: 0, agent: '', progress: 0, status: '', tokens_used: 0 });
   const fileInputRef = useRef(null);
+  const chatInputRef = useRef(null);
   const chatEndRef = useRef(null);
+
+  // Zone 3: resize textarea 48px–120px, collapse on send
+  const resizeChatInput = useCallback(() => {
+    const el = chatInputRef.current;
+    if (!el) return;
+    el.style.height = '48px';
+    el.style.height = `${Math.min(Math.max(el.scrollHeight, 48), 120)}px`;
+  }, []);
+  useEffect(() => {
+    if (!input) {
+      const el = chatInputRef.current;
+      if (el) el.style.height = '48px';
+    } else resizeChatInput();
+  }, [input, resizeChatInput]);
   const workspaceFilesLoadedForProject = useRef(null);
 
   useEffect(() => {
@@ -556,18 +662,44 @@ const Workspace = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // PHASE 4: Pre-fill input from navigation. Re-run when user clicks a different task in sidebar (taskId or state change).
+  // Restore existing task workspace when opening by taskId — load files + messages; never pre-fill input for task clicks.
+  const taskRestoredRef = useRef(null);
+  useEffect(() => {
+    if (!taskIdFromUrl || !storeTasks?.length) return;
+    const task = storeTasks.find(t => t.id === taskIdFromUrl);
+    if (!task) return;
+    if (taskRestoredRef.current === taskIdFromUrl) return;
+    taskRestoredRef.current = taskIdFromUrl;
+    if (task.files && typeof task.files === 'object' && Object.keys(task.files).length > 0) {
+      setFiles(task.files);
+      const firstKey = Object.keys(task.files).sort()[0];
+      if (firstKey) setActiveFile(firstKey);
+    }
+    if (task.messages && Array.isArray(task.messages) && task.messages.length > 0) {
+      setMessages(task.messages);
+    }
+    if (task.versions?.length) {
+      setVersions(task.versions);
+      setCurrentVersion(task.versions[0]?.id);
+    }
+  }, [taskIdFromUrl, storeTasks]);
+
+  // Pre-fill input from navigation state (e.g. Dashboard → workspace) — NOT when opening existing task by sidebar click.
   useEffect(() => {
     const statePrompt = location.state?.initialPrompt;
-    const initialPrompt = statePrompt || searchParams.get('prompt');
+    const autoStart = location.state?.autoStart;
     const initialFiles = location.state?.initialAttachedFiles;
-    if (initialPrompt) {
-      setInput(initialPrompt);
+    const task = taskIdFromUrl ? storeTasks?.find(t => t.id === taskIdFromUrl) : null;
+    const hasExistingBuild = task?.files && Object.keys(task.files || {}).length > 0;
+    if (taskIdFromUrl && hasExistingBuild) return; // Opened existing task by click — restore handled above, never pre-fill
+    if (taskIdFromUrl && !hasExistingBuild && !statePrompt && !autoStart) return; // Pending task click, no state
+    if (statePrompt || searchParams.get('prompt')) {
+      setInput(statePrompt || searchParams.get('prompt') || '');
       if (initialFiles?.length) setAttachedFiles(initialFiles);
-    } else if (initialFiles?.length && initialFiles.every(f => f.type?.startsWith?.('image/'))) {
+    } else if (initialFiles?.length && initialFiles.every(f => f?.type?.startsWith?.('image/'))) {
       setAttachedFiles(initialFiles);
     }
-  }, [location.state?.initialPrompt, taskIdFromUrl]);
+  }, [location.key, taskIdFromUrl, storeTasks]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -720,6 +852,7 @@ const Workspace = () => {
     if ((!prompt && !useImageToCode) || isBuilding) return;
 
     setInput('');
+    setNextSuggestions([]);
     setIsBuilding(true);
     setBuildProgress(0);
     setLastError(null);
@@ -784,8 +917,15 @@ const planRes = await axios.post(`${API}/build/plan`, { prompt, swarm: useSwarm 
         setFiles(newFiles);
         setVersions(prev => [{ id: `v_${Date.now()}`, prompt: 'Image to code', files: newFiles, time: new Date().toLocaleTimeString() }, ...prev]);
         setCurrentVersion(`v_${Date.now()}`);
-        setMessages(prev => prev.map((msg, i) => i === prev.length - 1 ? { role: 'assistant', content: 'Done! Your app is ready.', hasCode: true } : msg));
-        addTask({ name: prompt ? prompt.slice(0, 120) : 'Image to code', prompt: prompt || 'Image to code', status: 'completed', createdAt: Date.now() });
+        const doneMsg = { role: 'assistant', content: 'Done! Your app is ready.', hasCode: true };
+        setMessages(prev => prev.map((msg, i) => i === prev.length - 1 ? doneMsg : msg));
+        if (taskIdFromUrl) {
+          const vId = `v_${Date.now()}`;
+          const v = { id: vId, prompt: 'Image to code', files: newFiles, time: new Date().toLocaleTimeString() };
+          updateTask(taskIdFromUrl, { files: newFiles, messages: [{ role: 'user', content: prompt || 'Convert image to code' }, doneMsg], versions: [v], status: 'completed' });
+        } else {
+          addTask({ name: prompt ? prompt.slice(0, 120) : 'Image to code', prompt: prompt || 'Image to code', status: 'completed', createdAt: Date.now() });
+        }
         setIsBuilding(false);
         setTimeout(() => fetchSuggestNext(), 400);
         return;
@@ -867,8 +1007,15 @@ Respond with ONLY the complete App.js code, nothing else.`;
                   return next;
                 });
                 setActivePanel('preview'); // AUTO-WIRE: switch to preview on build complete
-                // PHASE 7: Single task authority — write to store (persists to localStorage)
-                addTask({ name: prompt.slice(0, 120), prompt, status: 'completed', createdAt: Date.now() });
+                // PHASE 7: Single task authority — update existing task or add new
+                if (taskIdFromUrl) {
+                  const merged = { ...files, ...parsedFiles };
+                  const finalMsgs = [{ role: 'user', content: prompt }, { role: 'assistant', content: 'Done! Your app is ready.', hasCode: true, planSuggestions: planSuggestions }];
+                  const vId = `v_${Date.now()}`;
+                  updateTask(taskIdFromUrl, { files: merged, messages: finalMsgs, versions: [{ id: vId, prompt, files: merged, time: new Date().toLocaleTimeString() }], status: 'completed' });
+                } else {
+                  addTask({ name: prompt.slice(0, 120), prompt, status: 'completed', createdAt: Date.now() });
+                }
                 if (token) {
                   axios.post(`${API}/tasks`, {
                     name: prompt.slice(0, 120),
@@ -919,8 +1066,14 @@ Respond with ONLY the complete App.js code, nothing else.`;
         const mainCode = parsedFiles['/App.js']?.code || Object.values(parsedFiles)[0]?.code || '';
         axios.post(`${API}/ai/quality-gate`, { code: mainCode }).then(r => setQualityGateResult(r.data)).catch(() => setQualityGateResult(null));
         setActivePanel('preview'); // AUTO-WIRE: switch to preview on build complete
-        // PHASE 7: Single task authority — write to store (persists to localStorage)
-        addTask({ name: prompt.slice(0, 120), prompt, status: 'completed', createdAt: Date.now() });
+        // PHASE 7: Single task authority — update existing task or add new
+        if (taskIdFromUrl) {
+          const finalMsgs = [{ role: 'user', content: prompt }, { role: 'assistant', content: 'Done! Your app is ready.', hasCode: true, planSuggestions }];
+          const vId = `v_${Date.now()}`;
+          updateTask(taskIdFromUrl, { files: newFiles, messages: finalMsgs, versions: [{ id: vId, prompt, files: newFiles, time: new Date().toLocaleTimeString() }], status: 'completed' });
+        } else {
+          addTask({ name: prompt.slice(0, 120), prompt, status: 'completed', createdAt: Date.now() });
+        }
         if (token) {
           axios.post(`${API}/tasks`, {
             name: prompt.slice(0, 120),
@@ -972,6 +1125,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
 
     const request = input.trim();
     setInput('');
+    setNextSuggestions([]);
     setIsBuilding(true);
     setRightSidebarOpen(true);
     setActivePanel('preview');
@@ -1367,15 +1521,6 @@ Respond with ONLY the complete App.js code, nothing else.`;
 
   return (
     <div className="h-full min-h-0 flex flex-col overflow-hidden bg-[#FAF9F7] text-gray-900 font-sans text-[13px] antialiased">
-      {/* Manus Computer Widget — wired to real build when projectId in URL (from AgentMonitor Open in Workspace) */}
-      <ManusComputer 
-        currentStep={projectIdFromUrl ? (projectBuildProgress.phase + 1) : (versions.length > 0 ? Math.min(versions.length, 7) : 0)}
-        totalSteps={projectIdFromUrl ? 12 : 7}
-        thinking={projectIdFromUrl ? (projectBuildProgress.agent || 'Building...') : (isBuilding ? 'Analyzing your request and generating code...' : '')}
-        tokensUsed={projectIdFromUrl ? projectBuildProgress.tokens_used : (versions.length * 1000)}
-        tokensTotal={projectIdFromUrl ? 100000 : 50000}
-        isActive={projectIdFromUrl ? (projectBuildProgress.status === 'running' || (projectBuildProgress.progress > 0 && projectBuildProgress.progress < 100)) : (isBuilding || versions.length > 0)}
-      />
       {/* Command palette (Ctrl+K / Cmd+K) */}
       {commandPaletteOpen && (
         <div className="fixed inset-0 z-[200] flex items-start justify-center pt-[15vh] bg-zinc-900/40 backdrop-blur-sm" onClick={() => setCommandPaletteOpen(false)}>
@@ -1661,18 +1806,46 @@ Respond with ONLY the complete App.js code, nothing else.`;
               </div>
 
               {/* Monaco Editor OR InlineAgentMonitor during BUILD */}
-              <div className="flex-1">
+              <div className="flex-1 flex flex-col min-h-0">
                 {isBuilding ? (
-                  <InlineAgentMonitor
-                    isBuilding={isBuilding}
-                    buildProgress={buildProgress}
-                    currentPhase={currentPhase}
-                    agentsActivity={agentsActivity}
-                    buildEvents={[]}
-                    tokensUsed={lastTokensUsed}
-                    projectBuildProgress={projectBuildProgress}
-                    qualityScore={qualityGateResult?.score ?? null}
-                  />
+                  <>
+                    <InlineAgentMonitor
+                      isBuilding={isBuilding}
+                      buildProgress={buildProgress}
+                      currentPhase={currentPhase}
+                      agentsActivity={agentsActivity}
+                      buildEvents={[]}
+                      tokensUsed={lastTokensUsed}
+                      projectBuildProgress={projectBuildProgress}
+                      qualityScore={qualityGateResult?.score ?? null}
+                    />
+                    {/* CrucibAI Computer thumbnail — inline in conversation (Developer mode) */}
+                    <div className="flex-shrink-0 p-3 border-t border-gray-200">
+                      <CrucibAIComputer
+                        files={files}
+                        isActive={projectIdFromUrl ? (projectBuildProgress.status === 'running' || (projectBuildProgress.progress > 0 && projectBuildProgress.progress < 100)) : isBuilding}
+                        hasBuild={versions.length > 0}
+                        thinking={projectIdFromUrl ? (projectBuildProgress.agent || 'Building...') : (isBuilding ? 'Analyzing your request and generating code...' : '')}
+                        activityText={projectIdFromUrl ? `${projectBuildProgress.agent || 'Building...'} — ${currentPhase || 'Processing'}` : (isBuilding ? `Building your app — ${currentPhase || 'Generating code'}` : '')}
+                        tokensUsed={projectIdFromUrl ? projectBuildProgress.tokens_used : (versions.length * 1000)}
+                        tokensTotal={projectIdFromUrl ? 100000 : 50000}
+                        currentStep={projectIdFromUrl ? (projectBuildProgress.phase + 1) : (versions.length > 0 ? Math.min(versions.length, 7) : 0)}
+                        totalSteps={projectIdFromUrl ? 12 : 7}
+                        onError={(err) => { setLastError(err); addLog(`Preview error: ${err}`, 'error', 'preview'); }}
+                        onAutoFix={async (errorMsg) => {
+                          try {
+                            const headers = token ? { Authorization: `Bearer ${token}` } : {};
+                            const res = await axios.post(`${API}/ai/explain-error`, { error: errorMsg, code: files[activeFile]?.code || files['/App.js']?.code || '' }, { headers, timeout: 30000 });
+                            if (res.data.fixed_code) {
+                              setFiles(prev => ({ ...prev, [activeFile || '/App.js']: { code: res.data.fixed_code } }));
+                              addLog('Auto-fix applied successfully', 'success', 'system');
+                              setLastError(null);
+                            }
+                          } catch (e) { addLog(`Auto-fix failed: ${e.message}`, 'error', 'system'); }
+                        }}
+                      />
+                    </div>
+                  </>
                 ) : (
                   <Editor
                     height="100%"
@@ -1696,55 +1869,83 @@ Respond with ONLY the complete App.js code, nothing else.`;
           </>
         )}
 
-        {/* === SIMPLE MODE: AgentMonitor during build, Chat/Prompt otherwise === */}
+        {/* === SIMPLE MODE: Compact build card + Chat (coexist) === */}
         {!devMode && (
-          <div className="flex-1 flex flex-col min-w-0 bg-white">
-            {isBuilding ? (
-              <InlineAgentMonitor
-                isBuilding={isBuilding}
+          <div className="flex-1 flex flex-col min-w-0 bg-white min-h-0 overflow-hidden">
+            {/* Compact collapsible build card — at top when building, chat below */}
+            {isBuilding && (
+              <BuildProgressCard
+                expanded={buildCardExpanded}
+                onToggle={() => setBuildCardExpanded(v => !v)}
                 buildProgress={buildProgress}
                 currentPhase={currentPhase}
                 agentsActivity={agentsActivity}
-                buildEvents={[]}
-                tokensUsed={lastTokensUsed}
+                lastTokensUsed={lastTokensUsed}
                 projectBuildProgress={projectBuildProgress}
                 qualityScore={qualityGateResult?.score ?? null}
-              />
-            ) : (
-              <div className="flex-1 flex flex-col overflow-y-auto">
-                {/* Chat history */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                  {messages.length === 0 ? (
-                    <div className="flex items-center justify-center h-full text-gray-400 text-sm">
-                      Describe what you want to build...
-                    </div>
-                  ) : (
-                    messages.map((msg, i) => (
-                      <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[80%] rounded-xl px-4 py-3 text-sm ${
-                          msg.role === 'user'
-                            ? 'bg-gray-100 text-gray-900'
-                            : 'bg-white border border-gray-200 text-gray-800'
-                        }`}>
-                          <pre className="whitespace-pre-wrap font-sans">{msg.content}</pre>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                  <div ref={chatEndRef} />
-                </div>
-              </div>
+                agentsActivityLength={agentsActivity.length}
+              >
+                <InlineAgentMonitor
+                  isBuilding={isBuilding}
+                  buildProgress={buildProgress}
+                  currentPhase={currentPhase}
+                  agentsActivity={agentsActivity}
+                  buildEvents={[]}
+                  tokensUsed={lastTokensUsed}
+                  projectBuildProgress={projectBuildProgress}
+                  qualityScore={qualityGateResult?.score ?? null}
+                />
+              </BuildProgressCard>
             )}
+            {/* Chat history — always visible, scrolls inside */}
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
+                {/* CrucibAI Computer thumbnail — inline below progress bar, opens modal on click */}
+                <CrucibAIComputer
+                  files={files}
+                  isActive={projectIdFromUrl ? (projectBuildProgress.status === 'running' || (projectBuildProgress.progress > 0 && projectBuildProgress.progress < 100)) : isBuilding}
+                  hasBuild={versions.length > 0}
+                  thinking={projectIdFromUrl ? (projectBuildProgress.agent || 'Building...') : (isBuilding ? 'Analyzing your request and generating code...' : '')}
+                  activityText={projectIdFromUrl ? `${projectBuildProgress.agent || 'Building...'} — ${currentPhase || 'Processing'}` : (isBuilding ? `Building your app — ${currentPhase || 'Generating code'}` : '')}
+                  tokensUsed={projectIdFromUrl ? projectBuildProgress.tokens_used : (versions.length * 1000)}
+                  tokensTotal={projectIdFromUrl ? 100000 : 50000}
+                  currentStep={projectIdFromUrl ? (projectBuildProgress.phase + 1) : (versions.length > 0 ? Math.min(versions.length, 7) : 0)}
+                  totalSteps={projectIdFromUrl ? 12 : 7}
+                  onError={(err) => { setLastError(err); addLog(`Preview error: ${err}`, 'error', 'preview'); }}
+                  onAutoFix={async (errorMsg) => {
+                    try {
+                      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+                      const res = await axios.post(`${API}/ai/explain-error`, { error: errorMsg, code: files[activeFile]?.code || files['/App.js']?.code || '' }, { headers, timeout: 30000 });
+                      if (res.data.fixed_code) {
+                        setFiles(prev => ({ ...prev, [activeFile || '/App.js']: { code: res.data.fixed_code } }));
+                        addLog('Auto-fix applied successfully', 'success', 'system');
+                        setLastError(null);
+                      }
+                    } catch (e) { addLog(`Auto-fix failed: ${e.message}`, 'error', 'system'); }
+                  }}
+                />
+                {messages.length === 0 ? (
+                  <div className="flex items-center justify-center h-full min-h-[120px] text-gray-400 text-sm">
+                    Describe what you want to build...
+                  </div>
+                ) : (
+                  messages.map((msg, i) => (
+                    <ChatMessage key={i} msg={msg} />
+                  ))
+                )}
+                <div ref={chatEndRef} />
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Right Panel - Manus-Style Preview / Code / Terminal / History / Tools */}
+        {/* Right Panel - Zone 4: 420px fixed, always visible unless user closes */}
         {rightSidebarOpen && (
-        <div className="w-[42%] min-w-[320px] max-w-[560px] border-l border-stone-200 flex flex-col flex-shrink-0 bg-white" style={{ transition: 'width 0.3s ease' }}>
+        <div className="w-[420px] flex-shrink-0 border-l border-stone-200 flex flex-col bg-white">
           {/* Manus-Style Panel Header — Section 06 */}
           <div className="h-10 border-b border-stone-200 flex items-center px-2 gap-1 flex-shrink-0 bg-[#FAF9F7]">
             {/* Tab selectors — PHASE 6: Simple mode shows only Preview */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5">
               {(devMode
                 ? [
                     { id: 'preview', label: 'Preview', icon: Eye },
@@ -1759,12 +1960,12 @@ Respond with ONLY the complete App.js code, nothing else.`;
                   key={tab.id}
                   onClick={() => setActivePanel(tab.id)}
                   data-testid={`${tab.id}-tab`}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm transition ${
+                  title={tab.label}
+                  className={`p-2 rounded text-sm transition ${
                     activePanel === tab.id ? 'bg-white text-gray-900 border border-stone-200 border-b-white -mb-px shadow-sm' : 'text-stone-600 hover:text-gray-900'
                   }`}
                 >
-                  <tab.icon className="w-3.5 h-3.5" />
-                  {tab.label}
+                  <tab.icon className="w-4 h-4" />
                 </button>
               ))}
             </div>
@@ -1803,17 +2004,12 @@ Respond with ONLY the complete App.js code, nothing else.`;
               </div>
             )}
 
-            {devMode && (
             <button
-              className="ml-auto mr-1 px-3 py-1 rounded text-sm font-semibold transition"
-              style={{ background: 'var(--accent)', color: 'white' }}
-              onMouseEnter={e => { e.target.style.background = 'var(--accent-hover)'; }}
-              onMouseLeave={e => { e.target.style.background = 'var(--accent)'; }}
+              className="ml-auto mr-1 px-3 py-1 rounded text-sm font-semibold transition bg-orange-500 text-white hover:bg-orange-600"
               onClick={() => setShowDeployModal(true)}
             >
               Deploy
             </button>
-            )}
 
             <div className="flex items-center gap-1">
               <button
@@ -1837,11 +2033,20 @@ Respond with ONLY the complete App.js code, nothing else.`;
             {(activePanel === 'preview' || !devMode) && (
               <div className={`flex-1 h-full overflow-hidden transition-all duration-300 relative ${mobileView ? 'flex justify-center' : ''}`}>
               <div className={mobileView ? 'w-[375px] h-full border-l border-r border-gray-200' : 'w-full h-full'}>
-              {/* PHASE 5: Explicit loading state — no ambiguous dark screen */}
+              {/* Skeleton loading — pulsing light grey shapes during build */}
               {isBuilding && (
-                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#FAF9F7] text-gray-500">
-                  <div className="w-8 h-8 border-2 border-stone-300 rounded-full animate-spin" style={{ borderTopColor: 'var(--accent)' }} />
-                  <span className="text-sm">Building…</span>
+                <div className="absolute inset-0 z-10 flex flex-col gap-4 p-4 bg-[#FAF9F7] overflow-hidden">
+                  <div className="h-8 w-3/4 rounded bg-gray-200 animate-pulse" />
+                  <div className="flex gap-4">
+                    <div className="h-24 flex-1 rounded bg-gray-200 animate-pulse" />
+                    <div className="h-24 flex-1 rounded bg-gray-200 animate-pulse" />
+                  </div>
+                  <div className="h-16 w-full rounded bg-gray-200 animate-pulse" />
+                  <div className="flex gap-4">
+                    <div className="h-20 w-1/4 rounded bg-gray-200 animate-pulse" />
+                    <div className="h-20 flex-1 rounded bg-gray-200 animate-pulse" />
+                  </div>
+                  <div className="h-32 w-full rounded bg-gray-200 animate-pulse" />
                 </div>
               )}
               <SandpackProvider
@@ -1996,6 +2201,40 @@ Respond with ONLY the complete App.js code, nothing else.`;
         )}
       </div>
 
+      {/* Bottom panel — Developer mode only: Problems, Output, Terminal. Max 200px. */}
+      {devMode && (
+      <div className="flex-shrink-0 border-t border-stone-200 bg-white flex flex-col max-h-[200px] min-h-0">
+        <div className="h-9 border-b border-stone-200 flex items-center px-2 gap-1 flex-shrink-0 bg-[#FAF9F7]">
+          {['problems', 'output', 'terminal'].map((id) => (
+            <button
+              key={id}
+              onClick={() => setActiveBottomPanel(id)}
+              className={`px-3 py-1.5 rounded text-xs font-medium capitalize transition ${
+                activeBottomPanel === id ? 'bg-white text-gray-900 border border-stone-200 border-b-white -mb-px' : 'text-stone-600 hover:text-gray-900'
+              }`}
+            >
+              {id}
+            </button>
+          ))}
+        </div>
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          {activeBottomPanel === 'problems' && (
+            <div className="p-3 text-xs font-mono text-gray-800">
+              {lastError ? <pre className="whitespace-pre-wrap text-red-600">{String(lastError)}</pre> : <span className="text-gray-500">No problems</span>}
+            </div>
+          )}
+          {activeBottomPanel === 'output' && (
+            <div className="p-3 text-xs font-mono text-gray-800">
+              {logs.length > 0 ? logs.map((log, i) => <div key={i} className="text-gray-700">[{log.time}] {log.message}</div>) : <span className="text-gray-500">No output</span>}
+            </div>
+          )}
+          {activeBottomPanel === 'terminal' && (
+            <ConsolePanel logs={logs} placeholder="Build and agent output appears here." />
+          )}
+        </div>
+      </div>
+      )}
+
       {/* Status bar — PHASE 6: Dev only (no token counter / errors in Simple) */}
       {devMode && (
       <div className="h-6 border-t border-stone-200 flex items-center justify-between px-3 text-xs text-stone-600 flex-shrink-0 bg-[#FAF9F7]">
@@ -2026,20 +2265,20 @@ Respond with ONLY the complete App.js code, nothing else.`;
       </div>
       )}
 
-      {/* Bottom Chat Panel – Agent dropdown + input + Send */}
-      <div className="border-t border-stone-200 bg-[#FAF9F7] p-3 flex-shrink-0 relative z-[100] isolate">
+      {/* Bottom Chat Panel – input + Send (messages shown in center panel only) */}
+      <div className="border-t border-stone-200 bg-[#FAF9F7] p-3 flex-shrink-0 relative z-[100] isolate min-h-0 overflow-visible">
         {isBuilding && (
           <div className="mb-3">
             {currentPhase && (
               <div className="text-xs text-gray-600 mb-1 flex items-center gap-2">
-                <span className="inline-block w-2 h-2 rounded-full animate-pulse" style={{ background: '#1A1A1A' }} />
+                <span className="inline-block w-2 h-2 rounded-full animate-pulse" style={{ background: '#E05A25' }} />
                 {currentPhase}
               </div>
             )}
             <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
               <motion.div 
                 className="h-full rounded-full"
-                style={{ background: '#1A1A1A' }}
+                style={{ background: '#E05A25' }}
                 initial={{ width: 0 }}
                 animate={{ width: `${buildProgress}%` }}
               />
@@ -2051,12 +2290,12 @@ Respond with ONLY the complete App.js code, nothing else.`;
         {messages.some(m => m.error && (m.content || '').toLowerCase().includes('api key')) && (
           <div className="mb-3 flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg bg-[#F5F5F4] border border-black/10 text-[#1A1A1A] text-sm">
             <span>Check Settings → API & Environment: your saved keys are used for builds. If you see errors, re-save your OpenAI or Anthropic key and try again.</span>
-            <button type="button" onClick={() => navigate('/app/settings')} className="shrink-0 px-3 py-1.5 rounded-lg bg-[#1A1A1A] hover:bg-[#333] font-medium text-white">Open Settings</button>
+            <button type="button" onClick={() => navigate('/app/settings')} className="shrink-0 px-3 py-1.5 rounded-lg font-medium text-white" style={{ background: '#E05A25' }}>Open Settings</button>
           </div>
         )}
 
-        {/* Try these prompts when no messages yet */}
-        {messages.length === 0 && (
+        {/* Try these prompts when no messages yet — disappear the moment user hits Build */}
+        {messages.length === 0 && !isBuilding && (
           <div className="mb-3">
             <p className="text-xs text-gray-500 mb-2">First time? Add your API keys in <button type="button" onClick={() => navigate('/app/settings')} className="underline hover:text-gray-700">Settings</button> to build with AI.</p>
             <span className="text-xs text-gray-500">Try these:</span>
@@ -2065,44 +2304,6 @@ Respond with ONLY the complete App.js code, nothing else.`;
                 <button key={prompt} type="button" onClick={() => setInput(prompt)} className="px-3 py-1.5 rounded-lg bg-white text-gray-700 hover:bg-gray-100 text-sm border border-gray-200">{prompt}</button>
               ))}
             </div>
-          </div>
-        )}
-
-        {messages.length > 0 && (
-          <div className="max-h-32 overflow-y-auto mb-3 space-y-2">
-            {messages.slice(-4).map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] px-3 py-2 rounded-lg text-sm ${
-                  msg.role === 'user' 
-                    ? 'bg-gray-100 text-gray-900' 
-                    : msg.error 
-                      ? 'bg-[#F5F5F4] text-[#666666] border border-black/10'
-                      : 'bg-white border border-gray-200 text-gray-800'
-                }`}>
-                  {msg.isBuilding ? (
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 border-2 border-gray-300 rounded-full animate-spin" style={{ borderTopColor: '#1A1A1A' }} />
-                      <span>{msg.content}</span>
-                    </div>
-                  ) : (
-                    <>
-                      <span className={msg.content && msg.content.includes('\n') ? 'whitespace-pre-wrap block text-left max-h-48 overflow-y-auto' : ''}>{msg.content}</span>
-                      {msg.planSuggestions?.length > 0 && (
-                        <div className="mt-2 pt-2 border-t border-gray-200">
-                          <p className="text-xs text-gray-500 mb-1">Suggestions</p>
-                          <div className="flex flex-wrap gap-1">
-                            {msg.planSuggestions.map((s, j) => (
-                              <button key={j} type="button" onClick={() => setInput(String(s))} className="px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 text-xs text-gray-700">{String(s)}</button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
-            <div ref={chatEndRef} />
           </div>
         )}
 
@@ -2124,24 +2325,6 @@ Respond with ONLY the complete App.js code, nothing else.`;
           </div>
         )}
 
-        {nextSuggestions.length > 0 && (
-          <div className="mb-3">
-            <span className="text-xs text-gray-500 mr-2">What next?</span>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {nextSuggestions.map((s, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => { setInput(String(s)); setNextSuggestions([]); }}
-                  className="px-3 py-1.5 rounded-lg bg-white text-gray-700 hover:bg-gray-100 text-sm border border-gray-200"
-                >
-                  {String(s)}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
         {devMode && (
         <div className="text-xs text-gray-500 mb-1.5 flex items-center justify-between flex-wrap gap-2">
           <select
@@ -2158,7 +2341,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
           <span><kbd className="px-1 py-0.5 rounded bg-gray-200 text-gray-600">Ctrl+K</kbd></span>
         </div>
         )}
-        <form onSubmit={handleSubmit} className="flex gap-2 items-stretch">
+        <form onSubmit={handleSubmit} className="flex gap-2 items-stretch min-w-0 flex-wrap">
           <div className="flex shrink-0">
             <ModelSelector selectedModel={selectedModel} onSelectModel={setSelectedModel} variant="chat" />
           </div>
@@ -2204,13 +2387,18 @@ Respond with ONLY the complete App.js code, nothing else.`;
             
             <div className="h-4 w-px bg-gray-300" />
             
-            <input
-              type="text"
+            <textarea
+              ref={chatInputRef}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => { setInput(e.target.value); resizeChatInput(); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(e); } }}
               data-testid="chat-input"
-              placeholder={versions.length > 0 ? "Describe changes... (@ file, / fix)" : "Describe what you want to build..."}
-              className="flex-1 bg-transparent text-gray-900 placeholder-gray-400 outline-none text-sm min-w-0"
+              placeholder={devMode
+                ? (messages.length > 0 || versions.length > 0 || isBuilding ? "Describe changes... @ file or / fix" : "Describe what you want to build.")
+                : (messages.length > 0 || versions.length > 0 || isBuilding ? "Ask a question or request a change..." : "Build something or ask anything.")}
+              className="flex-1 bg-transparent text-gray-900 placeholder-gray-400 outline-none text-sm min-w-0 resize-none overflow-y-auto"
+              style={{ minHeight: 48, maxHeight: 120 }}
+              rows={1}
               disabled={isBuilding}
             />
           </div>
@@ -2219,10 +2407,10 @@ Respond with ONLY the complete App.js code, nothing else.`;
             type="submit"
             disabled={!input.trim() || isBuilding}
             data-testid="submit-button"
-            className="relative z-10 px-4 py-2.5 rounded-lg text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition flex items-center gap-2 shrink-0"
-            style={{ background: '#1A1A1A', color: '#FFFFFF' }}
-            onMouseEnter={e => { if (!e.target.disabled) e.target.style.background = '#E05A25'; }}
-            onMouseLeave={e => { if (!e.target.disabled) e.target.style.background = '#1A1A1A'; }}
+            className="relative z-10 px-4 py-2.5 rounded-lg text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition flex items-center gap-2 shrink-0 flex-nowrap"
+            style={{ background: '#E05A25', color: '#FFFFFF' }}
+            onMouseEnter={e => { if (!e.target.disabled) e.target.style.background = '#c94d1e'; }}
+            onMouseLeave={e => { if (!e.target.disabled) e.target.style.background = '#E05A25'; }}
             title={versions.length > 0 ? 'Send update' : 'Send & build'}
           >
             {isBuilding ? (

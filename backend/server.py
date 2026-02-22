@@ -1707,7 +1707,25 @@ async def get_me(user: dict = Depends(get_current_user)):
     u.pop("password", None)
     u.pop("mfa_secret", None)
     u.pop("deploy_tokens", None)
+    u.setdefault("workspace_mode", None)
     return u
+
+
+class WorkspaceModeBody(BaseModel):
+    mode: str  # "simple" or "developer"
+
+
+@api_router.post("/user/workspace-mode")
+@api_router.post("/users/me/workspace-mode")  # alias for compatibility
+async def set_workspace_mode(body: WorkspaceModeBody, user: dict = Depends(get_current_user)):
+    if body.mode not in ("simple", "developer"):
+        raise HTTPException(status_code=400, detail="mode must be 'simple' or 'developer'")
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {"workspace_mode": body.mode}}
+    )
+    return {"status": "success", "workspace_mode": body.mode}
+
 
 # ==================== MFA ROUTES ====================
 

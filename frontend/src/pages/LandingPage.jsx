@@ -302,15 +302,22 @@ const LandingPage = () => {
       {/* Mobile Menu */}
       <AnimatePresence>
         {mobileMenuOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-kimi-bg pt-20 px-6 md:hidden">
-            <div className="flex flex-col gap-6 text-kimi-text">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-kimi-bg pt-20 px-6 pb-8 overflow-y-auto md:hidden">
+            <div className="flex flex-col gap-6 text-kimi-text min-h-min">
               <Link to="/features" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Features</Link>
               <Link to="/pricing" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Pricing</Link>
               <Link to="/templates" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Templates</Link>
               <Link to="/prompts" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Prompts</Link>
               <Link to="/learn" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Documentation</Link>
               <Link to="/blog" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Blog</Link>
-              <button onClick={() => { navigate(user ? '/app' : '/auth?mode=register'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-gray-900 rounded-lg font-medium mt-4">Get started</button>
+              {user ? (
+                <button onClick={() => { navigate('/app'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-gray-900 rounded-lg font-medium mt-4">Dashboard</button>
+              ) : (
+                <>
+                  <Link to="/auth" className="text-lg py-2" onClick={() => setMobileMenuOpen(false)}>Sign in</Link>
+                  <button onClick={() => { navigate('/auth?mode=register'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-gray-900 rounded-lg font-medium mt-2">Sign up</button>
+                </>
+              )}
             </div>
           </motion.div>
         )}

@@ -1,22 +1,22 @@
 /**
  * PHASE 3 — Single layout state authority.
- * Sidebar and mode live here only. Persist mode to localStorage.
+ * Mode syncs from user.workspace_mode (backend). Toggle saves via API.
  */
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
-
-const LAYOUT_STORAGE_KEY = 'crucibai_layout';
+import { useAuth } from '../App';
 
 const LayoutContext = createContext(null);
 
 export function LayoutProvider({ children }) {
+  const { user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [mode, setModeState] = useState(() => {
-    try {
-      return localStorage.getItem('crucibai_dev_mode') === 'true' ? 'dev' : 'simple';
-    } catch {
-      return 'simple';
-    }
-  });
+  const [mode, setModeState] = useState('simple');
+
+  // Sync mode from user.workspace_mode when user loads
+  useEffect(() => {
+    if (user?.workspace_mode === 'developer') setModeState('dev');
+    else if (user?.workspace_mode === 'simple') setModeState('simple');
+  }, [user?.workspace_mode]);
 
   useEffect(() => {
     try {

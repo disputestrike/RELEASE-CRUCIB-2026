@@ -359,7 +359,7 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-redesigned home-screen" data-testid="dashboard">
-      <div className="home-messages">
+      <div className={`home-messages ${conversationStarted || chatMessages.length > 0 ? 'has-chat' : ''}`}>
         {!conversationStarted && (
           <>
             <motion.div
@@ -371,6 +371,90 @@ const Dashboard = () => {
               <h1 className="dashboard-greeting-text">
                 Hi {firstName}. <span className="dashboard-greeting-sub">What do you want to build?</span>
               </h1>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+              className="dashboard-prompt-inline"
+            >
+              <motion.form onSubmit={handleSubmit} className="dashboard-prompt-form">
+                {attachedFiles.length > 0 && (
+                  <div className="dashboard-attached-files">
+                    {attachedFiles.map((file, i) => (
+                      <div key={i} className="dashboard-attached-file">
+                        <span className="dashboard-attached-name">{file.name}</span>
+                        <button type="button" onClick={() => removeFile(i)} className="dashboard-attached-remove">
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="dashboard-prompt-container">
+                  <textarea
+                    ref={inputRef}
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSubmit(e);
+                      }
+                    }}
+                    placeholder="Describe your app, automation, or idea..."
+                    className="dashboard-prompt-input"
+                    rows={1}
+                  />
+                  <div className="dashboard-prompt-actions">
+                    <div className="dashboard-model-badge" title="Auto-selects best model">
+                      <Sparkles size={14} />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="dashboard-prompt-btn"
+                      title="Attach file"
+                    >
+                      <Paperclip size={18} />
+                    </button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      accept="image/*,.pdf,.txt,.js,.jsx,.ts,.tsx,.css,.html,.json,.py"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                    {isRecording ? (
+                      <VoiceWaveform
+                        stream={audioStream}
+                        onStop={stopRecording}
+                        onConfirm={confirmRecording}
+                        isRecording={isRecording}
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={isTranscribing ? undefined : startRecording}
+                        disabled={isTranscribing}
+                        className={`dashboard-prompt-btn ${isRecording ? 'recording' : ''}`}
+                        title={isTranscribing ? 'Transcribing...' : 'Voice input (9 languages)'}
+                      >
+                        {isTranscribing ? <Loader2 size={18} className="animate-spin" /> : <Mic size={18} />}
+                      </button>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={!prompt.trim() || chatLoading}
+                      className="dashboard-prompt-submit"
+                      title="Send"
+                    >
+                      {chatLoading ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} />}
+                    </button>
+                  </div>
+                </div>
+              </motion.form>
             </motion.div>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -421,94 +505,89 @@ const Dashboard = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="home-input-bar">
-        <div className="home-prompt-wrapper">
-          <motion.form
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.1 }}
-            onSubmit={handleSubmit}
-            className="dashboard-prompt-form"
-          >
-            {attachedFiles.length > 0 && (
-              <div className="dashboard-attached-files">
-                {attachedFiles.map((file, i) => (
-                  <div key={i} className="dashboard-attached-file">
-                    <span className="dashboard-attached-name">{file.name}</span>
-                    <button type="button" onClick={() => removeFile(i)} className="dashboard-attached-remove">
-                      <X size={14} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="dashboard-prompt-container">
-              <textarea
-                ref={inputRef}
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSubmit(e);
-                  }
-                }}
-                placeholder="Build something or ask anything"
-                className="dashboard-prompt-input"
-                rows={1}
-              />
-              <div className="dashboard-prompt-actions">
-                <div className="dashboard-model-badge" title="Auto-selects best model">
-                  <Sparkles size={14} />
+      {(conversationStarted || chatMessages.length > 0) && (
+        <div className="home-input-bar">
+          <div className="home-prompt-wrapper">
+            <form onSubmit={handleSubmit} className="dashboard-prompt-form">
+              {attachedFiles.length > 0 && (
+                <div className="dashboard-attached-files">
+                  {attachedFiles.map((file, i) => (
+                    <div key={i} className="dashboard-attached-file">
+                      <span className="dashboard-attached-name">{file.name}</span>
+                      <button type="button" onClick={() => removeFile(i)} className="dashboard-attached-remove">
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="dashboard-prompt-btn"
-                  title="Attach file"
-                >
-                  <Paperclip size={18} />
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  accept="image/*,.pdf,.txt,.js,.jsx,.ts,.tsx,.css,.html,.json,.py"
-                  onChange={handleFileSelect}
-                  className="hidden"
+              )}
+              <div className="dashboard-prompt-container">
+                <textarea
+                  ref={inputRef}
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSubmit(e);
+                    }
+                  }}
+                  placeholder="Build something or ask anything"
+                  className="dashboard-prompt-input"
+                  rows={1}
                 />
-                {isRecording ? (
-                  <VoiceWaveform
-                    stream={audioStream}
-                    onStop={stopRecording}
-                    onConfirm={confirmRecording}
-                    isRecording={isRecording}
-                  />
-                ) : (
+                <div className="dashboard-prompt-actions">
+                  <div className="dashboard-model-badge" title="Auto-selects best model">
+                    <Sparkles size={14} />
+                  </div>
                   <button
                     type="button"
-                    onClick={isTranscribing ? undefined : startRecording}
-                    disabled={isTranscribing}
-                    className={`dashboard-prompt-btn ${isRecording ? 'recording' : ''}`}
-                    title={isTranscribing ? 'Transcribing...' : 'Voice input (9 languages)'}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="dashboard-prompt-btn"
+                    title="Attach file"
                   >
-                    {isTranscribing ? <Loader2 size={18} className="animate-spin" /> : <Mic size={18} />}
+                    <Paperclip size={18} />
                   </button>
-                )}
-                <button
-                  type="submit"
-                  disabled={!prompt.trim() || chatLoading}
-                  className="dashboard-prompt-submit"
-                  title="Send"
-                >
-                  {chatLoading ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} />}
-                </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*,.pdf,.txt,.js,.jsx,.ts,.tsx,.css,.html,.json,.py"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                  {isRecording ? (
+                    <VoiceWaveform
+                      stream={audioStream}
+                      onStop={stopRecording}
+                      onConfirm={confirmRecording}
+                      isRecording={isRecording}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={isTranscribing ? undefined : startRecording}
+                      disabled={isTranscribing}
+                      className={`dashboard-prompt-btn ${isRecording ? 'recording' : ''}`}
+                      title={isTranscribing ? 'Transcribing...' : 'Voice input (9 languages)'}
+                    >
+                      {isTranscribing ? <Loader2 size={18} className="animate-spin" /> : <Mic size={18} />}
+                    </button>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={!prompt.trim() || chatLoading}
+                    className="dashboard-prompt-submit"
+                    title="Send"
+                  >
+                    {chatLoading ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} />}
+                  </button>
+                </div>
               </div>
-            </div>
-          </motion.form>
+            </form>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Import Modal */}
       <AnimatePresence>
