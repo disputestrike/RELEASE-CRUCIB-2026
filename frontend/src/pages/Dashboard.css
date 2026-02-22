@@ -1,4 +1,4 @@
-/* Dashboard — Prompt-first hero (Claude/Manus-aligned: hierarchy, rhythm, premium proportions) */
+/* Dashboard — Two tones only: main panel one off-white, no extra shades */
 
 .dashboard-redesigned {
   display: flex;
@@ -8,7 +8,7 @@
   min-height: 100%;
   width: 100%;
   padding: 48px 24px;
-  background: #F5F4F0;
+  background: #FAFAF8;
   overflow-y: auto;
   box-sizing: border-box;
 }
@@ -45,7 +45,7 @@
   flex-shrink: 0;
   width: 100%;
   padding: 24px;
-  background: #F5F4F0;
+  background: #FAFAF8;
   position: sticky;
   bottom: 0;
   display: flex;
@@ -148,16 +148,14 @@
   width: 100%;
   min-height: 56px;
   padding: 16px 20px;
-  background: #FFFFFF;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #FAFAF8;
+  border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  transition: border-color 200ms ease, box-shadow 200ms ease;
+  transition: border-color 200ms ease;
 }
 
 .dashboard-prompt-container:focus-within {
   border-color: rgba(26, 26, 26, 0.25);
-  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .dashboard-prompt-input {
@@ -515,8 +513,8 @@
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  background: #FFFFFF;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 20px;
   font-family: 'DM Sans', sans-serif;
   font-size: 13px;

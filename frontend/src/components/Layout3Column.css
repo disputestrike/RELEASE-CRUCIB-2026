@@ -1,4 +1,4 @@
-/* 3-Column Layout Component (Manus-inspired) */
+/* 3-Column Layout — Two tones only: sidebar one gray, main one off-white */
 
 .layout-3-column {
   display: flex;
@@ -11,14 +11,12 @@
   overflow: hidden;
 }
 
-/* Mobile Header (Hidden on desktop) */
 .layout-mobile-header {
   display: none;
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  background: #FFFFFF;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  background: #FAFAF8;
   gap: 12px;
 }
 
@@ -57,11 +55,10 @@
   gap: 0;
 }
 
-/* Left Sidebar (300px for better task label visibility) */
+/* Left Sidebar — one solid gray, no internal borders */
 .layout-sidebar {
   width: 300px;
-  background: #FFFFFF;
-  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  background: #F0F0EE;
   overflow-y: auto;
   flex-shrink: 0;
   display: flex;
@@ -104,11 +101,10 @@
   flex-direction: column;
 }
 
-/* Right Panel (420px fixed) — always visible on workspace */
+/* Right Panel — same tone as main canvas */
 .layout-right-panel {
   width: 420px;
-  background: #FFFFFF;
-  border-left: 1px solid rgba(0, 0, 0, 0.08);
+  background: #FAFAF8;
   overflow-y: auto;
   flex-shrink: 0;
   display: flex;
