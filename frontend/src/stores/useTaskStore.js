@@ -65,6 +65,15 @@ export function TaskProvider({ children }) {
     });
   }, []);
 
+  const removeTask = useCallback((taskId) => {
+    if (!taskId) return;
+    setTasks(prev => {
+      const next = prev.filter(t => t.id !== taskId);
+      saveTasks(next);
+      return next;
+    });
+  }, []);
+
   const persist = useCallback(() => {
     setTasks(prev => {
       saveTasks(prev);
@@ -72,7 +81,7 @@ export function TaskProvider({ children }) {
     });
   }, []);
 
-  const value = { tasks, addTask, updateTask, setTasks, persist };
+  const value = { tasks, addTask, updateTask, removeTask, setTasks, persist };
 
   return (
     <TaskContext.Provider value={value}>
@@ -88,6 +97,7 @@ export function useTaskStore() {
       tasks: [],
       addTask: () => {},
       updateTask: () => {},
+      removeTask: () => {},
       setTasks: () => {},
       persist: () => {},
     };

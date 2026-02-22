@@ -369,7 +369,8 @@ const Dashboard = () => {
               className="dashboard-greeting"
             >
               <h1 className="dashboard-greeting-text">
-                Hi {firstName}. <span className="dashboard-greeting-sub">What do you want to build?</span>
+                <span className="dashboard-greeting-name">Hi {firstName}.</span>
+                <span className="dashboard-greeting-sub">What do you want to build?</span>
               </h1>
             </motion.div>
             <motion.div

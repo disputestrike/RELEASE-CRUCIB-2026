@@ -57,9 +57,9 @@
   gap: 0;
 }
 
-/* Left Sidebar (240px fixed) */
+/* Left Sidebar (280px fixed) */
 .layout-sidebar {
-  width: 240px;
+  width: 280px;
   background: #FFFFFF;
   border-right: 1px solid rgba(0, 0, 0, 0.08);
   overflow-y: auto;
