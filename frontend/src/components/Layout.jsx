@@ -28,7 +28,7 @@ const Layout = () => {
   const navigate = useNavigate();
   const { user, logout, token } = useAuth();
   const { sidebarOpen, setSidebarOpen, toggleSidebar } = useLayoutStore();
-  const { tasks: storeTasks, setTasks: setStoreTasks } = useTaskStore();
+  const { tasks: storeTasks } = useTaskStore();
   const [backendOk, setBackendOk] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -58,26 +58,19 @@ const Layout = () => {
       .catch(() => setBackendOk(false));
   }, []);
 
-  // Fetch projects and tasks for sidebar
+  // Fetch projects for sidebar. Do NOT overwrite task store — All Tasks list is from local store so clicks open workspace with correct task.
   const fetchSidebarData = useCallback(async () => {
     if (!token) return;
     try {
       const headers = { Authorization: `Bearer ${token}` };
-      const [projRes, taskRes] = await Promise.allSettled([
-        axios.get(`${API}/projects`, { headers, timeout: 5000 }),
-        axios.get(`${API}/tasks`, { headers, timeout: 5000 }),
-      ]);
-      if (projRes.status === 'fulfilled') {
-        setProjects(projRes.value.data?.projects || projRes.value.data || []);
-      }
-      if (taskRes.status === 'fulfilled') {
-        const apiTasks = taskRes.value.data?.tasks || taskRes.value.data || [];
-        setStoreTasks(Array.isArray(apiTasks) ? apiTasks : []);
+      const projRes = await axios.get(`${API}/projects`, { headers, timeout: 5000 }).catch(() => null);
+      if (projRes?.data) {
+        setProjects(projRes.data?.projects || projRes.data || []);
       }
     } catch (e) {
-      // Silently fail — sidebar still works with empty lists
+      // Silently fail
     }
-  }, [token, setStoreTasks]);
+  }, [token]);
 
   useEffect(() => {
     checkBackend();
@@ -166,7 +159,7 @@ const Layout = () => {
   );
 
   return (
-    <>
+    <div className="app-viewport">
       {/* Mobile Header */}
       <header className="layout-mobile-header-bar">
         <Logo variant="full" height={28} href="/app" className="layout-mobile-logo" showTagline={false} />
@@ -201,7 +194,7 @@ const Layout = () => {
 
       {/* Onboarding Tour for first-time users */}
       <OnboardingTour />
-    </>
+    </div>
   );
 };
 

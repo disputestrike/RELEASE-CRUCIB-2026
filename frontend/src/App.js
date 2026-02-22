@@ -1,4 +1,13 @@
 import { useState, useEffect, useRef, createContext, useContext, Component } from "react";
+
+// Force light theme — no dark mode anywhere in the app
+const ForceLightTheme = () => {
+  useEffect(() => {
+    document.documentElement.classList.remove('dark');
+    localStorage.setItem('crucibai-theme', 'light');
+  }, []);
+  return null;
+};
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 
@@ -71,6 +80,7 @@ import AdminAnalytics from "./pages/AdminAnalytics";
 import AdminLegal from "./pages/AdminLegal";
 import AuditLog from "./pages/AuditLog";
 import AgentsPage from "./pages/AgentsPage";
+import OnboardingPage from "./pages/OnboardingPage";
 import { LayoutProvider } from "./stores/useLayoutStore";
 import { TaskProvider } from "./stores/useTaskStore";
 
@@ -88,6 +98,15 @@ const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [token, setToken] = useState(localStorage.getItem("token"));
 
+  const mergeWorkspaceMode = (u) => {
+    if (!u) return u;
+    if (!u.workspace_mode) {
+      const local = localStorage.getItem('crucibai_workspace_mode');
+      if (local === 'simple' || local === 'developer') u = { ...u, workspace_mode: local };
+    }
+    return u;
+  };
+
   useEffect(() => {
     let cancelled = false;
     const checkAuth = async () => {
@@ -97,7 +116,7 @@ const AuthProvider = ({ children }) => {
             headers: { Authorization: `Bearer ${token}` },
             timeout: 5000,
           });
-          if (!cancelled) setUser(res.data);
+          if (!cancelled) setUser(mergeWorkspaceMode(res.data));
         } catch (e) {
           if (!cancelled) {
             localStorage.removeItem("token");
@@ -139,6 +158,7 @@ const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("crucibai_workspace_mode");
     setToken(null);
     setUser(null);
   };
@@ -148,7 +168,7 @@ const AuthProvider = ({ children }) => {
     setToken(t);
     try {
       const res = await axios.get(`${API}/auth/me`, { headers: { Authorization: `Bearer ${t}` } });
-      setUser(res.data);
+      setUser(mergeWorkspaceMode(res.data));
     } catch (e) {
       localStorage.removeItem("token");
       setToken(null);
@@ -161,7 +181,7 @@ const AuthProvider = ({ children }) => {
       const res = await axios.get(`${API}/auth/me`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setUser(res.data);
+      setUser(mergeWorkspaceMode(res.data));
     }
   };
 
@@ -174,6 +194,25 @@ const AuthProvider = ({ children }) => {
       </LayoutProvider>
     </AuthContext.Provider>
   );
+};
+
+// Onboarding route — authenticated only; if workspace_mode set, redirect to /app
+const OnboardingRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center p-6">
+        <div className="flex flex-col items-center gap-6 max-w-sm text-center">
+          <div className="w-12 h-12 border-2 border-[#666666] border-t-transparent rounded-full animate-spin" />
+          <p className="text-[#666666]">Checking...</p>
+        </div>
+      </div>
+    );
+  }
+  if (!user) return <Navigate to="/auth" state={{ from: location }} replace />;
+  if (user.workspace_mode) return <Navigate to="/app" replace />;
+  return children;
 };
 
 // Protected Route
@@ -202,7 +241,9 @@ const ProtectedRoute = ({ children }) => {
   if (!user) {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
-
+  if (!user.workspace_mode) {
+    return <Navigate to="/onboarding" replace />;
+  }
   return children;
 };
 
@@ -253,10 +294,12 @@ function App() {
     <AppErrorBoundary>
       <AuthProvider>
         <BrowserRouter>
+        <ForceLightTheme />
         <ScrollToPlace />
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/auth" element={<AuthPage />} />
+          <Route path="/onboarding" element={<OnboardingRoute><OnboardingPage /></OnboardingRoute>} />
           <Route path="/builder" element={<Builder />} />
           <Route path="/workspace" element={<ProtectedRoute><Workspace /></ProtectedRoute>} />
           <Route path="/share/:token" element={<ShareView />} />

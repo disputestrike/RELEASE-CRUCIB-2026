@@ -50,7 +50,7 @@
   box-shadow: 4px 0 16px rgba(0, 0, 0, 0.1);
 }
 
-/* Main content wrapper — full width */
+/* Main content wrapper — full width, must not overflow */
 .layout-main-wrapper {
   display: flex;
   flex-direction: column;

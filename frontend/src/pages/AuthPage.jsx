@@ -47,6 +47,10 @@ const AuthPage = () => {
 
   useEffect(() => {
     if (user) {
+      if (!user.workspace_mode) {
+        navigate('/onboarding');
+        return;
+      }
       const redirect = searchParams.get('redirect');
       navigate(redirect && redirect.startsWith('/') ? redirect : '/app');
       return;

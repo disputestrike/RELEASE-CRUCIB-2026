@@ -8,7 +8,7 @@
   min-height: 100%;
   width: 100%;
   padding: 48px 24px;
-  background: #FAFAF8;
+  background: #F5F4F0;
   overflow-y: auto;
   box-sizing: border-box;
 }
@@ -28,16 +28,19 @@
   padding: 24px 40px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: center;
   align-items: center;
-  gap: 16px;
+  gap: 24px;
+}
+
+.home-messages.has-chat {
+  justify-content: flex-end;
 }
 
 .home-input-bar {
   flex-shrink: 0;
   padding: 16px 40px;
-  border-top: 1px solid #EEEEEE;
-  background: white;
+  background: #F5F4F0;
   position: sticky;
   bottom: 0;
   display: flex;
@@ -48,6 +51,13 @@
   width: 100%;
   max-width: 760px;
   padding: 0 24px;
+}
+
+.dashboard-prompt-inline {
+  width: 100%;
+  max-width: 680px;
+  display: flex;
+  justify-content: center;
 }
 
 /* Hero content container — centered, wider prompt (760px) */
@@ -70,19 +80,19 @@
 /* Headline — visually dominant, large and confident */
 .dashboard-greeting-text {
   font-family: 'DM Sans', sans-serif;
-  font-size: clamp(2rem, 5vw, 2.75rem);
-  font-weight: 700;
+  font-size: clamp(2.5rem, 6vw, 3.5rem);
+  font-weight: 800;
   color: #1A1A1A;
-  line-height: 1.25;
-  letter-spacing: -0.03em;
+  line-height: 1.2;
+  letter-spacing: -0.04em;
   text-align: center;
 }
 
 .dashboard-greeting-sub {
   display: block;
-  font-weight: 400;
-  color: #6B7280;
-  font-size: 1.125rem;
+  font-weight: 600;
+  color: #374151;
+  font-size: 1.25rem;
   margin-top: 12px;
   text-align: center;
 }
@@ -313,6 +323,10 @@
   color: #9CA3AF;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.dashboard-prompt-inline .dashboard-prompt-form {
+  width: 100%;
 }
 
 .dashboard-chips-grid {

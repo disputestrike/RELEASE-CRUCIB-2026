@@ -166,16 +166,32 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks = [] }) => {
           {filteredListItems.length > 0 ? (
             filteredListItems.map((item) => {
               const isLocalTask = item.id.startsWith('task_');
-              const href = isLocalTask && item.prompt != null
-                ? { pathname: '/app/workspace', search: `?taskId=${encodeURIComponent(item.id)}`, state: { initialPrompt: item.prompt } }
-                : isLocalTask
-                ? { pathname: '/app/workspace', search: `?taskId=${encodeURIComponent(item.id)}`, state: { initialPrompt: item.name || '' } }
-                : { pathname: `/app/projects/${item.id}` };
               const isSelected = isLocalTask ? currentTaskId === item.id : isActive(`/app/projects/${item.id}`);
+              const handleClick = () => {
+                if (isLocalTask) {
+                  navigate(`/app/workspace?taskId=${encodeURIComponent(item.id)}`);
+                } else {
+                  navigate(`/app/projects/${item.id}`);
+                }
+              };
+              if (isLocalTask) {
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={handleClick}
+                    className={`sidebar-item ${isSelected ? 'active' : ''}`}
+                    title={item.name}
+                  >
+                    <TaskStatusIcon status={item.status} />
+                    <span className="sidebar-item-label">{item.name}</span>
+                  </button>
+                );
+              }
               return (
                 <Link
                   key={item.id}
-                  to={href}
+                  to={`/app/projects/${item.id}`}
                   className={`sidebar-item ${isSelected ? 'active' : ''}`}
                   title={item.name}
                 >

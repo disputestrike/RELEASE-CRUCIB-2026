@@ -4,7 +4,7 @@
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-height: 100vh;
+  min-height: 0;
   height: 100%;
   background: #FAFAF8;
   color: #1A1A1A;
@@ -95,6 +95,7 @@
 
 .layout-main-content {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 0;
@@ -103,9 +104,9 @@
   flex-direction: column;
 }
 
-/* Right Panel (320px fixed) */
+/* Right Panel (420px fixed) — always visible on workspace */
 .layout-right-panel {
-  width: 380px;
+  width: 420px;
   background: #FFFFFF;
   border-left: 1px solid rgba(0, 0, 0, 0.08);
   overflow-y: auto;

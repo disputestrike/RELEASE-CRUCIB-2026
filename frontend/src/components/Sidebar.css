@@ -227,6 +227,12 @@
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
+  width: 100%;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
+  box-sizing: border-box;
 }
 
 .sidebar-item:hover { background: #F5F5F4; color: #1A1A1A; }
