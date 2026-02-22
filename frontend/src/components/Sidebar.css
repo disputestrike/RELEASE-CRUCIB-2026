@@ -1,22 +1,16 @@
-/* Sidebar Component — Manus-inspired clean navigation */
+/* Sidebar — one solid gray, no internal borders or dividers */
 
 .sidebar {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #FFFFFF;
-  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  background: #F0F0EE;
   overflow: hidden;
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* ============================================
-   HEADER
-   ============================================ */
-
 .sidebar-header {
   padding: 16px 16px 12px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   flex-shrink: 0;
 }
 
@@ -62,16 +56,14 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background: #F5F5F4;
-  border: 1px solid transparent;
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 8px;
-  transition: all 150ms ease;
+  transition: border-color 150ms ease;
 }
 
 .sidebar-search.focused {
-  background: #FFFFFF;
-  border-color: #1A1A1A;
-  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08);
+  border-color: rgba(26, 26, 26, 0.3);
 }
 
 .sidebar-search-icon { color: #9CA3AF; flex-shrink: 0; }
@@ -145,8 +137,8 @@
   font-family: inherit;
 }
 
-.sidebar-nav-item:hover { background: #F5F5F4; color: #1A1A1A; }
-.sidebar-nav-item.active { background: #F5F5F4; color: #1A1A1A; }
+.sidebar-nav-item:hover { background: rgba(0, 0, 0, 0.05); color: #1A1A1A; }
+.sidebar-nav-item.active { background: rgba(0, 0, 0, 0.05); color: #1A1A1A; }
 
 .sidebar-nav-icon { flex-shrink: 0; opacity: 0.8; }
 .sidebar-nav-item:hover .sidebar-nav-icon,
@@ -208,7 +200,7 @@
   transition: all 150ms ease;
 }
 
-.sidebar-section-action:hover { background: #F5F5F4; color: #1A1A1A; }
+.sidebar-section-action:hover { background: rgba(0, 0, 0, 0.05); color: #1A1A1A; }
 
 .sidebar-section-tasks { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
 
@@ -250,8 +242,8 @@
   position: relative;
 }
 
-.sidebar-task-row:hover { background: #F5F5F4; color: #1A1A1A; }
-.sidebar-task-row.active { background: #F5F5F4; color: #1A1A1A; font-weight: 500; }
+.sidebar-task-row:hover { background: rgba(0, 0, 0, 0.05); color: #1A1A1A; }
+.sidebar-task-row.active { background: rgba(0, 0, 0, 0.05); color: #1A1A1A; font-weight: 500; }
 
 .sidebar-task-row .sidebar-item-icon {
   flex-shrink: 0;
@@ -327,7 +319,7 @@
   transition: background 150ms ease;
 }
 
-.sidebar-task-dropdown button:hover:not(:disabled) { background: #F5F5F4; }
+.sidebar-task-dropdown button:hover:not(:disabled) { background: rgba(0, 0, 0, 0.05); }
 .sidebar-task-dropdown button:disabled { color: #9CA3AF; cursor: not-allowed; }
 .sidebar-task-dropdown button.has-submenu { justify-content: space-between; }
 .sidebar-task-dropdown button.has-submenu svg:last-child { color: #9CA3AF; flex-shrink: 0; }
@@ -419,8 +411,8 @@
   box-sizing: border-box;
 }
 
-.sidebar-item:hover { background: #F5F5F4; color: #1A1A1A; }
-.sidebar-item.active { background: #F5F5F4; color: #1A1A1A; font-weight: 600; }
+.sidebar-item:hover { background: rgba(0, 0, 0, 0.05); color: #1A1A1A; }
+.sidebar-item.active { background: rgba(0, 0, 0, 0.05); color: #1A1A1A; font-weight: 600; }
 
 .sidebar-item-icon { flex-shrink: 0; color: #9CA3AF; }
 
@@ -462,7 +454,6 @@
 
 .sidebar-engine-room {
   padding: 4px 12px;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
   flex-shrink: 0;
 }
 
@@ -482,8 +473,8 @@
   transition: all 150ms ease;
 }
 
-.sidebar-engine-toggle:hover { background: #F5F5F4; color: #1A1A1A; }
-.sidebar-engine-toggle.open { color: #1A1A1A; background: #F5F5F4; }
+.sidebar-engine-toggle:hover { background: rgba(0, 0, 0, 0.05); color: #1A1A1A; }
+.sidebar-engine-toggle.open { color: #1A1A1A; background: rgba(0, 0, 0, 0.05); }
 
 .sidebar-engine-chevron {
   margin-left: auto;
@@ -513,8 +504,8 @@
   transition: all 150ms ease;
 }
 
-.sidebar-engine-item:hover { background: #F5F5F4; color: #1A1A1A; }
-.sidebar-engine-item.active { background: #F5F5F4; color: #1A1A1A; }
+.sidebar-engine-item:hover { background: rgba(0, 0, 0, 0.05); color: #1A1A1A; }
+.sidebar-engine-item.active { background: rgba(0, 0, 0, 0.05); color: #1A1A1A; }
 
 /* ============================================
    TOKEN BALANCE
@@ -551,7 +542,6 @@
 .sidebar-footer {
   flex-shrink: 0;
   padding: 8px 12px 12px;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -572,7 +562,7 @@
   cursor: pointer;
 }
 
-.sidebar-footer-item:hover { background: #F5F5F4; color: #1A1A1A; }
+.sidebar-footer-item:hover { background: rgba(0, 0, 0, 0.05); color: #1A1A1A; }
 
 .sidebar-user {
   display: flex;
