@@ -228,10 +228,10 @@ const Dashboard = () => {
     e?.preventDefault();
     const textParts = [prompt.trim(), ...attachedFiles.filter(f => f.type === 'text/plain').map(f => f.data || '')].filter(Boolean);
     const userPrompt = textParts.join('\n\n');
-    if (!userPrompt) return;
-
     const filesToSend = [...attachedFiles];
-    const userMsg = { role: 'user', content: userPrompt };
+    if (!userPrompt && filesToSend.length === 0) return;
+
+    const userMsg = { role: 'user', content: userPrompt || (filesToSend.length ? `[${filesToSend.length} attachment(s)]` : '') };
     setPrompt('');
     setAttachedFiles([]);
     flushSync(() => {
@@ -240,8 +240,8 @@ const Dashboard = () => {
       setChatLoading(true);
     });
 
-    // Conversation-only messages: skip intent API so user goes straight into chat with no delay
-    const intent = isDefinitelyChat(userPrompt) ? 'chat' : await detectIntent(userPrompt, API, token);
+    // Conversation-only: skip intent API for greetings or when user sent only attachments (images/PDF)
+    const intent = (!userPrompt && filesToSend.length > 0) ? 'chat' : (isDefinitelyChat(userPrompt) ? 'chat' : await detectIntent(userPrompt, API, token));
 
     if (intent === 'build') {
       const spec = await inferBuildSpec(userPrompt, API, token);
@@ -294,11 +294,16 @@ const Dashboard = () => {
 
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const attachments = filesToSend.length > 0 ? filesToSend.map((f) => {
+        const type = f.type?.startsWith('image/') ? 'image' : (f.type === 'application/pdf' ? 'pdf' : 'text');
+        return { type, data: f.data, name: f.name };
+      }) : undefined;
       const res = await axios.post(`${API}/ai/chat`, {
         message: userPrompt,
         session_id: `chat_${taskId}`,
-        model: 'auto'
-      }, { headers, timeout: 30000 });
+        model: 'auto',
+        ...(attachments?.length ? { attachments } : {})
+      }, { headers, timeout: 60000 });
       const reply = res.data?.response || res.data?.message || "Hey! What are we building today?";
       const assistantMsg = { role: 'assistant', content: reply };
       setChatMessages(prev => [...prev, assistantMsg]);
@@ -354,6 +359,8 @@ const Dashboard = () => {
         }]);
       };
       if (file.type.startsWith('image/')) {
+        reader.readAsDataURL(file);
+      } else if (file.type === 'application/pdf') {
         reader.readAsDataURL(file);
       } else {
         reader.readAsText(file);

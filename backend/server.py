@@ -184,6 +184,7 @@ class ChatMessage(BaseModel):
     model: Optional[str] = "auto"  # auto, gpt-4o, claude, gemini
     mode: Optional[str] = None  # thinking = step-by-step reasoning (no extra cost, same call)
     system_message: Optional[str] = None  # override for intent classification etc.
+    attachments: Optional[List[Dict[str, Any]]] = None  # [{ "type": "image"|"pdf"|"text", "data": base64 or data URL or text, "name": "file.pdf" }]
 
 class ChatResponse(BaseModel):
     response: str
@@ -809,6 +810,24 @@ async def _call_openai_direct(prompt: str, system: str, model: str = "gpt-4o", a
     return (resp.choices[0].message.content or "").strip()
 
 
+async def _call_openai_multimodal(content_blocks: List[Dict[str, Any]], system: str, model: str = "gpt-4o", api_key: Optional[str] = None) -> str:
+    """Call OpenAI with multimodal user content (text + image_url). Uses vision-capable model."""
+    key = (api_key or "").strip() or OPENAI_API_KEY
+    if not key:
+        raise ValueError("OPENAI_API_KEY not set")
+    from openai import AsyncOpenAI
+    client = AsyncOpenAI(api_key=key)
+    resp = await client.chat.completions.create(
+        model=model or "gpt-4o",
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": content_blocks},
+        ],
+        max_tokens=4096,
+    )
+    return (resp.choices[0].message.content or "").strip()
+
+
 async def _call_anthropic_direct(prompt: str, system: str, model: str = "claude-sonnet-4-5-20250929", api_key: Optional[str] = None) -> str:
     """Call Anthropic API directly. Uses api_key or ANTHROPIC_API_KEY."""
     key = (api_key or "").strip() or ANTHROPIC_API_KEY
@@ -821,6 +840,43 @@ async def _call_anthropic_direct(prompt: str, system: str, model: str = "claude-
         max_tokens=4096,
         system=system,
         messages=[{"role": "user", "content": prompt}],
+    )
+    text = msg.content[0].text if msg.content else ""
+    return text.strip()
+
+
+def _openai_content_blocks_to_anthropic(content_blocks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Convert OpenAI-format content (text + image_url) to Anthropic content blocks."""
+    out = []
+    for block in content_blocks:
+        if block.get("type") == "text":
+            out.append({"type": "text", "text": block.get("text", "")})
+        elif block.get("type") == "image_url":
+            url = (block.get("image_url") or {}).get("url") or ""
+            if url.startswith("data:") and ";base64," in url:
+                header, b64 = url.split(";base64,", 1)
+                media = "image/png"
+                if "image/" in header:
+                    media = header.split("data:")[-1].strip()
+                out.append({"type": "image", "source": {"type": "base64", "media_type": media, "data": b64}})
+            else:
+                out.append({"type": "text", "text": f"[Image: {url[:80]}...]"})
+    return out
+
+
+async def _call_anthropic_multimodal(content_blocks: List[Dict[str, Any]], system: str, model: str = "claude-sonnet-4-5-20250929", api_key: Optional[str] = None) -> str:
+    """Call Anthropic with multimodal user content (text + image). Uses vision-capable model."""
+    key = (api_key or "").strip() or ANTHROPIC_API_KEY
+    if not key:
+        raise ValueError("ANTHROPIC_API_KEY not set")
+    import anthropic
+    client = anthropic.AsyncAnthropic(api_key=key)
+    anthropic_content = _openai_content_blocks_to_anthropic(content_blocks)
+    msg = await client.messages.create(
+        model=model or "claude-sonnet-4-5-20250929",
+        max_tokens=4096,
+        system=system,
+        messages=[{"role": "user", "content": anthropic_content}],
     )
     text = msg.content[0].text if msg.content else ""
     return text.strip()
@@ -845,17 +901,38 @@ def _call_gemini_direct_sync(prompt: str, system: str, model: str = "gemini-2.5-
         raise
 
 
+def _content_blocks_have_image(content_blocks: Optional[List[Dict[str, Any]]]) -> bool:
+    if not content_blocks:
+        return False
+    return any(b.get("type") == "image_url" for b in content_blocks)
+
+
+# Vision-capable model order for multimodal chat (images/PDF context)
+VISION_MODEL_CHAIN = [
+    {"provider": "openai", "model": "gpt-4o"},
+    {"provider": "anthropic", "model": "claude-sonnet-4-5-20250929"},
+]
+
+
 async def _call_llm_with_fallback(
     message: str,
     system_message: str,
     session_id: str,
     model_chain: list,
     api_keys: Optional[Dict[str, Optional[str]]] = None,
+    content_blocks: Optional[List[Dict[str, Any]]] = None,
 ) -> tuple[str, str]:
-    """Try each model in chain until one succeeds. api_keys = effective keys (user Settings + server .env)."""
-    if not model_chain:
+    """Try each model in chain until one succeeds. When content_blocks has images, use vision-capable models."""
+    if not model_chain and not content_blocks:
         raise ValueError(
             "No API key set. Add OPENAI_API_KEY or ANTHROPIC_API_KEY in Settings (API & Environment) or in backend/.env."
+        )
+    use_vision = _content_blocks_have_image(content_blocks)
+    if use_vision:
+        model_chain = _filter_chain_by_keys(VISION_MODEL_CHAIN, api_keys) or list(VISION_MODEL_CHAIN)
+    if not model_chain:
+        raise ValueError(
+            "No API key set. For images/PDF, add OPENAI_API_KEY or ANTHROPIC_API_KEY in Settings or .env."
         )
     openai_key = (api_keys.get("openai") if api_keys else None) or OPENAI_API_KEY
     anthropic_key = (api_keys.get("anthropic") if api_keys else None) or ANTHROPIC_API_KEY
@@ -863,6 +940,14 @@ async def _call_llm_with_fallback(
     for cfg in model_chain:
         provider, model = cfg.get("provider"), cfg.get("model", "gpt-4o")
         try:
+            if use_vision and content_blocks:
+                if provider == "openai" and openai_key:
+                    response = await _call_openai_multimodal(content_blocks, system_message, model=model or "gpt-4o", api_key=openai_key)
+                    return (response, f"openai/{model}")
+                if provider == "anthropic" and anthropic_key:
+                    response = await _call_anthropic_multimodal(content_blocks, system_message, model=model or "claude-sonnet-4-5-20250929", api_key=anthropic_key)
+                    return (response, f"anthropic/{model}")
+                continue
             if provider == "openai" and openai_key:
                 response = await _call_openai_direct(message, system_message, model=model or "gpt-4o", api_key=openai_key)
                 return (response, f"openai/{model}")
@@ -883,9 +968,29 @@ async def _call_llm_with_fallback(
 # Prepay: require at least MIN_CREDITS_FOR_LLM credits (legacy MIN_BALANCE_FOR_LLM_CALL = 5000 tokens ≈ 5 credits)
 MIN_BALANCE_FOR_LLM_CALL = 5_000  # legacy token value; we check credits now
 
+
+def _extract_pdf_text_from_b64(b64_data: str) -> str:
+    """Extract text from base64-encoded PDF. Returns extracted text or a short fallback message on failure."""
+    try:
+        from pypdf import PdfReader
+        raw = base64.b64decode(b64_data, validate=True)
+        reader = PdfReader(io.BytesIO(raw))
+        parts = []
+        for page in reader.pages:
+            t = page.extract_text()
+            if t:
+                parts.append(t)
+        return "\n\n".join(parts)[:30000] if parts else "[PDF has no extractable text]"
+    except Exception as e:
+        logger.warning(f"PDF text extraction failed: {e}")
+        return "[Could not extract PDF text.]"
+
+
 CHAT_SYSTEM_PROMPT = """You are CrucibAI — an AI platform that builds apps, automations, and digital products for founders, marketers, and agencies.
 
 Be warm, direct, and confident. You are a builder, not a customer service bot.
+
+When the user attaches images or PDFs, you receive them: images are shown to you directly, and PDFs are extracted as text. Use that content to answer questions, summarize documents, or help build something based on what they shared. Do not say you cannot see images or access documents when they have been attached.
 
 Rules:
 - Never say "How can I assist you today?"
@@ -972,7 +1077,7 @@ async def ai_chat(data: ChatMessage, user: dict = Depends(get_optional_user)):
         user_keys = await get_workspace_api_keys(user)
         effective = _effective_api_keys(user_keys)
         session_id = data.session_id or str(uuid.uuid4())
-        message = data.message
+        message = (data.message or "").strip()
         system_message = data.system_message or CHAT_SYSTEM_PROMPT
         # FIX 4: For real-time questions (weather, news, etc.), call search API and pass results to LLM
         if not data.system_message and _needs_live_data(message):
@@ -980,13 +1085,35 @@ async def ai_chat(data: ChatMessage, user: dict = Depends(get_optional_user)):
             if search_ctx:
                 system_message = CHAT_WITH_SEARCH_SYSTEM
                 message = f"Live search results:\n{search_ctx}\n\nUser question: {data.message}"
-        model_chain = _get_model_chain(data.model or "auto", message, effective_keys=effective)
+        # Multimodal: build content_blocks from message + attachments (images + PDF/text)
+        text_parts = [message] if message else []
+        image_blocks = []
+        for att in (data.attachments or []):
+            att_type = (att.get("type") or "text").lower()
+            att_data = att.get("data") or ""
+            att_name = att.get("name") or ""
+            if att_type == "image":
+                url = att_data if isinstance(att_data, str) and (att_data.startswith("data:") or att_data.startswith("http")) else f"data:image/png;base64,{att_data}"
+                image_blocks.append({"type": "image_url", "image_url": {"url": url}})
+            elif att_type == "pdf" and att_data:
+                b64 = att_data.split(",", 1)[-1] if "base64," in str(att_data) else att_data
+                pdf_text = _extract_pdf_text_from_b64(b64)
+                text_parts.append(f"[Contents of PDF '{att_name}']:\n{pdf_text}")
+            else:
+                if att_data:
+                    text_parts.append(f"[Attachment '{att_name}']:\n{att_data}")
+        combined_text = "\n\n".join(text_parts).strip() or "No message."
+        content_blocks = None
+        if image_blocks:
+            content_blocks = [{"type": "text", "text": combined_text}] + image_blocks
+        model_chain = _get_model_chain(data.model or "auto", combined_text, effective_keys=effective)
         response, model_used = await _call_llm_with_fallback(
-            message=message,
+            message=combined_text,
             system_message=system_message,
             session_id=session_id,
             model_chain=model_chain,
             api_keys=effective,
+            content_blocks=content_blocks,
         )
         tokens_used = len(data.message.split()) * 2 + len(response.split()) * 2
         await db.chat_history.insert_one({
