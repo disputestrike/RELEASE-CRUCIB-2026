@@ -6,6 +6,7 @@ import { useAuth, API } from '../App';
 import PublicNav from '../components/PublicNav';
 import PublicFooter from '../components/PublicFooter';
 import axios from 'axios';
+import { logApiError } from '../utils/apiError';
 
 const CATEGORIES = [
   { id: 'all', name: 'All', icon: Library },
@@ -38,7 +39,7 @@ export default function PatternsPublic() {
   useEffect(() => {
     axios.get(`${API}/patterns`, { timeout: 5000 })
       .then((r) => { if (r.data?.patterns?.length) setPatterns(r.data.patterns); })
-      .catch(() => {});
+      .catch((e) => logApiError('PatternsPublic', e));
   }, []);
 
   const filtered = category === 'all' ? patterns : patterns.filter((p) => p.category === category);

@@ -6,13 +6,20 @@ import {
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth, API } from '../App';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { logApiError } from '../utils/apiError';
 
 const STORAGE_THEME = 'crucibai-theme';
 
 const Settings = () => {
-  const { user, token } = useAuth();
+  const { user, token, logout } = useAuth();
+  const navigate = useNavigate();
   const location = useLocation();
+  const [deleteAccountModal, setDeleteAccountModal] = useState(false);
+  const [deleteAccountPassword, setDeleteAccountPassword] = useState('');
+  const [deleteAccountLoading, setDeleteAccountLoading] = useState(false);
+  const [deleteAccountError, setDeleteAccountError] = useState(null);
   const [activeTab, setActiveTab] = useState(location.state?.openTab || 'profile');
   const [saved, setSaved] = useState(false);
   const [env, setEnv] = useState({});
@@ -63,7 +70,7 @@ const Settings = () => {
     if (token) {
       axios.get(`${API}/workspace/env`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => setEnv(r.data.env || {}))
-        .catch(() => {});
+        .catch((e) => logApiError('Settings', e));
     }
   }, [token]);
 
@@ -71,7 +78,7 @@ const Settings = () => {
     if (token && activeTab === 'deploy') {
       axios.get(`${API}/users/me/deploy-tokens`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => setDeployTokensStatus(r.data))
-        .catch(() => {});
+        .catch((e) => logApiError('Settings', e));
     }
   }, [token, activeTab]);
 
@@ -79,7 +86,7 @@ const Settings = () => {
     if (token && activeTab === 'security') {
       axios.get(`${API}/mfa/status`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => setMfaStatus(r.data.mfa_enabled))
-        .catch(() => {});
+        .catch((e) => logApiError('Settings', e));
     }
   }, [token, activeTab]);
 
@@ -87,7 +94,7 @@ const Settings = () => {
     if (token && activeTab === 'general') {
       axios.get(`${API}/settings/capabilities`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => setCapabilities(r.data))
-        .catch(() => setCapabilities({ sandbox_available: false, sandbox_default: true }));
+        .catch((e) => { logApiError('Settings capabilities', e); setCapabilities({ sandbox_available: false, sandbox_default: true }); });
     }
   }, [token, activeTab]);
 
@@ -739,9 +746,51 @@ const Settings = () => {
             <div className="p-4 bg-[#F5F5F4] border border-black/10 rounded-lg">
               <h4 className="font-medium text-[#666666] mb-2">Danger Zone</h4>
               <p className="text-sm text-[#666666] mb-4">Once you delete your account, there is no going back.</p>
-              <button className="px-4 py-2 bg-[#E05A25] hover:bg-[#c94d1e] text-white rounded-lg transition text-sm">
+              <button
+                type="button"
+                onClick={() => { setDeleteAccountModal(true); setDeleteAccountError(null); setDeleteAccountPassword(''); }}
+                className="px-4 py-2 bg-[#E05A25] hover:bg-[#c94d1e] text-white rounded-lg transition text-sm"
+              >
                 Delete Account
               </button>
+              {deleteAccountModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => !deleteAccountLoading && setDeleteAccountModal(false)}>
+                  <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-xl border border-black/10" onClick={e => e.stopPropagation()}>
+                    <h4 className="font-semibold text-[#1A1A1A] mb-2">Delete account</h4>
+                    <p className="text-sm text-[#666666] mb-4">Enter your password to permanently delete your account and all data.</p>
+                    <input
+                      type="password"
+                      value={deleteAccountPassword}
+                      onChange={e => setDeleteAccountPassword(e.target.value)}
+                      placeholder="Password"
+                      className="w-full px-4 py-3 bg-[#FAFAF8] border border-black/10 rounded-lg mb-4 focus:border-gray-700 outline-none"
+                      autoFocus
+                    />
+                    {deleteAccountError && <p className="text-sm text-red-600 mb-2">{deleteAccountError}</p>}
+                    <div className="flex gap-2 justify-end">
+                      <button type="button" onClick={() => setDeleteAccountModal(false)} disabled={deleteAccountLoading} className="px-4 py-2 rounded-lg border border-black/10 text-[#666666] hover:bg-gray-100">Cancel</button>
+                      <button
+                        type="button"
+                        disabled={deleteAccountLoading || !deleteAccountPassword.trim()}
+                        onClick={async () => {
+                          setDeleteAccountLoading(true); setDeleteAccountError(null);
+                          try {
+                            await axios.post(`${API}/users/me/delete`, { password: deleteAccountPassword }, { headers: { Authorization: `Bearer ${token}` } });
+                            logout(); navigate('/');
+                          } catch (err) {
+                            setDeleteAccountError(err.response?.data?.detail || err.message || 'Delete failed');
+                          } finally {
+                            setDeleteAccountLoading(false);
+                          }
+                        }}
+                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50"
+                      >
+                        {deleteAccountLoading ? 'Deleting…' : 'Delete permanently'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </motion.div>

@@ -6,6 +6,7 @@ import { useAuth, API } from '../App';
 import PublicNav from '../components/PublicNav';
 import PublicFooter from '../components/PublicFooter';
 import axios from 'axios';
+import { logApiError } from '../utils/apiError';
 
 const FALLBACK_TEMPLATES = [
   { id: 'dashboard', name: 'Dashboard', description: 'Sidebar + stats cards + chart placeholder', prompt: 'Create a dashboard with a sidebar, stat cards, and a chart area. React and Tailwind.' },
@@ -30,7 +31,7 @@ export default function TemplatesPublic() {
   useEffect(() => {
     axios.get(`${API}/templates`, { timeout: 5000 })
       .then((r) => { if (r.data?.templates?.length) setTemplates(r.data.templates); })
-      .catch(() => {});
+      .catch((e) => logApiError('TemplatesPublic', e));
   }, []);
 
   const handleUse = () => {

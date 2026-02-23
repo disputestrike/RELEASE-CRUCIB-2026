@@ -1416,18 +1416,18 @@ Also referenced in `MASTER_SINGLE_SOURCE_OF_TRUTH_TEST.md` which defines the tes
 | Issue | Status | Location | Fix |
 |-------|--------|----------|-----|
 | **Double-/api bug** | **FIXED** (commit `8a0aea6`) | Layout.jsx, Workspace.jsx | `${API}/api/projects` → `${API}/projects` |
-| **`/api/tasks` route missing** | **OPEN** | server.py (no route), Layout.jsx + Workspace.jsx (calls it) | Add `GET /tasks` and `POST /tasks` to server.py, OR remove frontend calls |
+| **`/api/tasks` route missing** | **FIXED** | server.py has `GET /tasks` and `POST /tasks` | Routes exist and are used by frontend |
 | **Multi-file parsing fragile** | **OPEN** | Workspace.jsx `parseMultiFileOutput()` | Regex-based; may fail on edge cases (nested code blocks, unusual markers) |
-| **WebSocket reconnection** | **OPEN** | Workspace.jsx | No automatic reconnection on disconnect; user must refresh |
+| **WebSocket reconnection** | **FIXED** | Workspace.jsx | Auto-reconnect with exponential backoff implemented |
 
 ### Important Issues
 
 | Issue | Status | Location | Fix |
 |-------|--------|----------|-----|
-| **VibeCoding not integrated** | **OPEN** | VibeCoding.jsx exists but not embedded in Workspace | Import and render in Workspace.jsx |
-| **AdvancedIDEUX not integrated** | **OPEN** | AdvancedIDEUX.jsx exists but not embedded | Import and render alongside Monaco |
-| **ManusComputer partially wired** | **OPEN** | ManusComputer.jsx renders but WebSocket feed incomplete | Wire agentActivity to ManusComputer props |
-| **Quality gate sometimes returns 0** | **OPEN** | Workspace.jsx quality-gate call | Ensure parsedFiles content is passed correctly |
+| **VibeCoding not integrated** | **FIXED** | VibeCoding.jsx | Imported and rendered in Workspace (VibeCodingInput); mode toggle Standard/Vibe/Advanced IDE |
+| **AdvancedIDEUX not integrated** | **FIXED** | AdvancedIDEUX.jsx | CommandPalette imported and used in Workspace.jsx |
+| **ManusComputer partially wired** | **FIXED** | ManusComputer.jsx | WebSocket progress and agentActivity wired; tokens and phase/agent passed |
+| **Quality gate sometimes returns 0** | **OPEN** | Workspace.jsx quality-gate call | Verify parsedFiles content passed correctly; logApiError added for failures |
 | **Voice stop not cleaning up** | **FIXED** | Workspace.jsx `stopRecording()` | Added `streamRef.current.getTracks().forEach(t => t.stop())` |
 | **Auto-fix targets wrong file** | **FIXED** | Workspace.jsx auto-fix handler | Now targets `activeFile` instead of hardcoded `/App.js` |
 

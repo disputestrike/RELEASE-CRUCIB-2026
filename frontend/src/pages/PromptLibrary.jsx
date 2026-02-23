@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { BookOpen, Plus, Copy, Check, Save } from 'lucide-react';
 import { useAuth, API } from '../App';
 import axios from 'axios';
+import { logApiError } from '../utils/apiError';
 
 export default function PromptLibrary() {
   const navigate = useNavigate();
@@ -39,14 +40,14 @@ export default function PromptLibrary() {
   useEffect(() => {
     axios.get(`${API}/prompts/templates`, token ? { headers: { Authorization: `Bearer ${token}` } } : {})
       .then((r) => setTemplates(r.data.templates || []))
-      .catch(() => {});
+      .catch((e) => logApiError('PromptLibrary', e));
     if (token) {
       axios.get(`${API}/prompts/saved`, { headers: { Authorization: `Bearer ${token}` } })
         .then((r) => setSaved(r.data.prompts || []))
-        .catch(() => {});
+        .catch((e) => logApiError('PromptLibrary', e));
       axios.get(`${API}/prompts/recent`, { headers: { Authorization: `Bearer ${token}` } })
         .then((r) => setRecent(r.data.prompts || []))
-        .catch(() => {});
+        .catch((e) => logApiError('PromptLibrary', e));
     }
   }, [token]);
 

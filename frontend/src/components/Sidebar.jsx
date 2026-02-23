@@ -27,7 +27,7 @@ import './Sidebar.css';
  * Footer: Token balance + user avatar + logout
  */
 
-export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [] }) => {
+export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], onDeleteProject }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -38,6 +38,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [] }
   const [renameTaskId, setRenameTaskId] = useState(null);
   const [renameValue, setRenameValue] = useState('');
   const [deleteConfirmTask, setDeleteConfirmTask] = useState(null);
+  const [deleteConfirmProject, setDeleteConfirmProject] = useState(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const { tasks: storeTasks, removeTask, updateTask } = useTaskStore();
 
@@ -335,6 +336,11 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [] }
                           <Trash2 size={14} /> Delete
                         </button>
                       )}
+                      {item.isProject && onDeleteProject && (
+                        <button type="button" className="danger" onClick={() => { setDeleteConfirmProject({ id: item.id, name: item.name }); setMenuTaskId(null); }}>
+                          <Trash2 size={14} /> Delete project
+                        </button>
+                      )}
                     </div>,
                     document.body
                   )}
@@ -376,7 +382,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [] }
         )}
       </div>
 
-      {/* Delete confirmation — over right pane */}
+      {/* Delete task confirmation */}
       {deleteConfirmTask && (
         <div className="sidebar-delete-overlay" onClick={() => setDeleteConfirmTask(null)}>
           <div className="sidebar-delete-modal" onClick={(e) => e.stopPropagation()}>
@@ -391,14 +397,14 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [] }
         </div>
       )}
 
-      {/* Delete confirmation — over right pane */}
-      {deleteConfirmTask && (
-        <div className="sidebar-delete-overlay" onClick={() => setDeleteConfirmTask(null)}>
+      {/* Delete project confirmation */}
+      {deleteConfirmProject && onDeleteProject && (
+        <div className="sidebar-delete-overlay" onClick={() => setDeleteConfirmProject(null)}>
           <div className="sidebar-delete-modal" onClick={(e) => e.stopPropagation()}>
-            <p className="sidebar-delete-title">Delete &quot;{deleteConfirmTask.name}&quot;?</p>
+            <p className="sidebar-delete-title">Delete project &quot;{deleteConfirmProject.name}&quot;? This cannot be undone.</p>
             <div className="sidebar-delete-actions">
-              <button type="button" onClick={() => setDeleteConfirmTask(null)}>Cancel</button>
-              <button type="button" className="danger" onClick={handleDeleteConfirm}>Delete</button>
+              <button type="button" onClick={() => setDeleteConfirmProject(null)}>Cancel</button>
+              <button type="button" className="danger" onClick={async () => { await onDeleteProject(deleteConfirmProject.id); setDeleteConfirmProject(null); }}>Delete project</button>
             </div>
           </div>
         </div>

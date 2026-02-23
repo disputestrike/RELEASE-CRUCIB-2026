@@ -421,7 +421,7 @@ from query_optimizer import optimize_query, query_cache, QueryAnalyzer
 # Use the decorator on query functions
 @optimize_query(cache_key="get_user_projects", cache_ttl=3600)
 async def get_user_projects(user_id: str):
-    return await db.projects.find({'user_id': user_id}).to_list(None)
+    return await db.projects.find({'user_id': user_id}).to_list(1000)
 
 # Clear cache when data changes
 @api_router.post("/projects")

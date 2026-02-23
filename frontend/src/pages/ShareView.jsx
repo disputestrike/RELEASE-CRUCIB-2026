@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { ExternalLink, Lock, AlertCircle } from 'lucide-react';
 import { API } from '../App';
 import axios from 'axios';
+import { logApiError } from '../utils/apiError';
 
 export default function ShareView() {
   const { token } = useParams();
@@ -18,6 +19,7 @@ export default function ShareView() {
         setReadOnly(r.data.read_only !== false);
       })
       .catch((e) => {
+        logApiError('ShareView', e);
         setError(e.response?.data?.detail || e.message);
       })
       .finally(() => setLoading(false));

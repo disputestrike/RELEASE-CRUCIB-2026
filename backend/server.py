@@ -43,7 +43,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, model_validator
 from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone, timedelta
@@ -62,6 +62,7 @@ import zipfile
 import io
 from urllib.parse import quote, urlencode
 
+from env_encryption import encrypt_env, decrypt_env
 from agent_dag import AGENT_DAG, get_execution_phases, build_context_from_previous_agents, get_system_prompt_for_agent
 from real_agent_runner import REAL_AGENT_NAMES, run_real_agent, persist_agent_output, run_real_post_step
 from automation.models import AgentCreate, AgentUpdate, TriggerConfig, ActionConfig
@@ -154,6 +155,15 @@ JWT_ALGORITHM = "HS256"
 _build_events: Dict[str, List[Dict[str, Any]]] = {}
 _BUILD_EVENTS_MAX = 500
 
+# Cap list fetches for performance (audit fix Phase B)
+MAX_PROJECTS_LIST = 500
+MAX_TOKEN_LEDGER_REVENUE = 5000
+MAX_EXPORTS_LIST = 200
+MAX_USER_PROJECTS_DASHBOARD = 500
+MAX_TOKEN_USAGE_LIST = 1000
+MAX_ADMIN_USER_EXPORT_PROJECTS = 1000
+MAX_ADMIN_USER_LEDGER = 1000
+
 def emit_build_event(project_id: str, event_type: str, **kwargs: Any) -> None:
     """Emit event for SSE stream. Called from orchestration so UI can show Manus-style timeline."""
     if project_id not in _build_events:
@@ -195,8 +205,12 @@ class ChatResponse(BaseModel):
 class TokenPurchase(BaseModel):
     bundle: str
 
+MAX_PROMPT_LENGTH = 50000
+MAX_PROJECT_DESCRIPTION_LENGTH = 10000
+MAX_PROJECT_REQUIREMENTS_JSON_LENGTH = 100000
+
 class BuildPlanRequest(BaseModel):
-    prompt: str
+    prompt: str = Field(..., min_length=1, max_length=MAX_PROMPT_LENGTH)
     swarm: Optional[bool] = False  # run plan + suggestions in parallel; token multiplier applied
     build_kind: Optional[str] = None  # fullstack | mobile | saas | bot | ai_agent | game | trading | any
 
@@ -209,11 +223,21 @@ class EnterpriseContact(BaseModel):
     message: Optional[str] = None
 
 class ProjectCreate(BaseModel):
-    name: str
-    description: str
-    project_type: str
-    requirements: Dict[str, Any]
+    name: str = Field(..., min_length=1, max_length=500)
+    description: str = Field("", max_length=MAX_PROJECT_DESCRIPTION_LENGTH)
+    project_type: str = Field(..., max_length=100)
+    requirements: Dict[str, Any] = Field(default_factory=dict)
     estimated_tokens: Optional[int] = None
+
+    @model_validator(mode="after")
+    def check_requirements_size(self):
+        try:
+            s = json.dumps(self.requirements or {})
+            if len(s) > MAX_PROJECT_REQUIREMENTS_JSON_LENGTH:
+                raise ValueError(f"requirements too large (max {MAX_PROJECT_REQUIREMENTS_JSON_LENGTH} chars)")
+        except TypeError:
+            pass
+        return self
 
 class TaskSync(BaseModel):
     """Sync task from Workspace when build completes (single-task authority)."""
@@ -309,6 +333,9 @@ class SecurityScanBody(BaseModel):
 class OptimizeBody(BaseModel):
     code: str
     language: Optional[str] = "javascript"
+
+class DeleteAccountBody(BaseModel):
+    password: str  # required for confirmation
 
 class ShareCreateBody(BaseModel):
     project_id: str
@@ -773,11 +800,11 @@ def _get_model_chain(model_key: str, message: str, effective_keys: Optional[Dict
 
 
 async def get_workspace_api_keys(user: Optional[dict]) -> Dict[str, Optional[str]]:
-    """Load OpenAI/Anthropic from user's Settings (workspace_env). Returns raw keys from DB."""
+    """Load OpenAI/Anthropic from user's Settings (workspace_env). Returns raw keys from DB (decrypted)."""
     if not user:
         return {}
     row = await db.workspace_env.find_one({"user_id": user["id"]}, {"_id": 0})
-    env = (row.get("env", {}) if row else {})
+    env = decrypt_env(row.get("env", {}) if row else {})
     return {
         "openai": (env.get("OPENAI_API_KEY") or "").strip() or None,
         "anthropic": (env.get("ANTHROPIC_API_KEY") or "").strip() or None,
@@ -1385,7 +1412,7 @@ async def transcribe_voice(
     api_key = None
     if user:
         row = await db.workspace_env.find_one({"user_id": user["id"]}, {"_id": 0})
-        env = (row.get("env", {}) if row else {})
+        env = decrypt_env(row.get("env", {}) if row else {})
         api_key = (env.get("OPENAI_API_KEY") or "").strip() or None
     if not api_key:
         api_key = OPENAI_API_KEY
@@ -2043,6 +2070,32 @@ async def export_audit_logs(
         return Response(content=result, media_type="application/json")
     return Response(content=result, media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=audit-log-{start_date}-{end_date}.csv"})
 
+@api_router.post("/users/me/delete")
+async def delete_account(body: DeleteAccountBody, user: dict = Depends(get_current_user)):
+    """Permanently delete the current user's account and all associated data. Requires password confirmation."""
+    u = await db.users.find_one({"id": user["id"]}, {"password": 1})
+    if not u or not verify_password(body.password, u["password"]):
+        raise HTTPException(status_code=401, detail="Invalid password")
+    uid = user["id"]
+    projects = await db.projects.find({"user_id": uid}, {"id": 1}).to_list(500)
+    for p in projects:
+        pid = p["id"]
+        await db.project_logs.delete_many({"project_id": pid})
+        await db.agent_status.delete_many({"project_id": pid})
+        await db.shares.delete_many({"project_id": pid})
+        if pid in _build_events:
+            del _build_events[pid]
+    await db.projects.delete_many({"user_id": uid})
+    await db.workspace_env.delete_many({"user_id": uid})
+    await db.chat_history.delete_many({"user_id": uid})
+    await db.token_ledger.delete_many({"user_id": uid})
+    await db.shares.delete_many({"user_id": uid})
+    await db.user_agents.delete_many({"user_id": uid})
+    await db.backup_codes.delete_many({"user_id": uid})
+    await db.mfa_setup_temp.delete_many({"user_id": uid})
+    await db.users.delete_one({"id": uid})
+    return Response(status_code=204)
+
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
 FRONTEND_URL = (os.environ.get("FRONTEND_URL") or os.environ.get("CORS_ORIGINS") or "http://localhost:3000").split(",")[0].strip()
@@ -2185,7 +2238,7 @@ async def get_token_history(user: dict = Depends(get_current_user)):
 
 @api_router.get("/tokens/usage")
 async def get_token_usage(user: dict = Depends(get_current_user)):
-    usage = await db.token_usage.find({"user_id": user["id"]}, {"_id": 0}).to_list(1000)
+    usage = await db.token_usage.find({"user_id": user["id"]}, {"_id": 0}).to_list(MAX_TOKEN_USAGE_LIST)
     
     by_agent = {}
     by_project = {}
@@ -2910,6 +2963,27 @@ async def agents_get(agent_id: str, user: dict = Depends(get_current_user)):
     }
 
 
+@api_router.post("/agents/{agent_id}/webhook-rotate-secret")
+async def agents_webhook_rotate_secret(agent_id: str, request: Request, user: dict = Depends(get_current_user)):
+    """Rotate webhook secret for a webhook-triggered agent. Returns new secret and URL once; update your caller."""
+    agent = await db.user_agents.find_one({"id": agent_id, "user_id": user["id"]})
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    if agent.get("trigger_type") != "webhook":
+        raise HTTPException(status_code=400, detail="Agent is not webhook-triggered")
+    new_secret = secrets.token_urlsafe(24)
+    base = os.environ.get("FRONTEND_URL", request.base_url.rstrip("/")).rstrip("/")
+    webhook_url = f"{base}/api/agents/webhook/{agent_id}?secret={new_secret}"
+    tc = dict(agent.get("trigger_config") or {})
+    tc["webhook_secret"] = new_secret
+    now = datetime.now(timezone.utc).isoformat()
+    await db.user_agents.update_one(
+        {"id": agent_id, "user_id": user["id"]},
+        {"$set": {"trigger_config": tc, "updated_at": now}},
+    )
+    return {"webhook_secret": new_secret, "webhook_url": webhook_url}
+
+
 @api_router.patch("/agents/{agent_id}")
 async def agents_update(agent_id: str, data: AgentUpdate, user: dict = Depends(get_current_user)):
     """Update agent (partial)."""
@@ -3243,6 +3317,15 @@ async def create_project(
     if cred < estimated_credits:
         raise HTTPException(status_code=402, detail=f"Insufficient credits. Need {estimated_credits}, have {cred}. Buy more in Credit Center.")
 
+    # Free tier: landing-only unless user has a paid purchase
+    if plan == "free":
+        has_paid = await db.token_ledger.find_one({"user_id": user["id"], "type": "purchase"})
+        if not has_paid and (data.project_type or "").strip().lower() != "landing":
+            raise HTTPException(
+                status_code=402,
+                detail="Free tier is for landing pages only. Set project_type to 'landing' or upgrade/buy credits in Credit Center to create full apps.",
+            )
+
     # Legal / AUP compliance: block prohibited build requests
     prompt = (data.requirements or {}).get("prompt") or data.description or ""
     if isinstance(prompt, dict):
@@ -3293,7 +3376,7 @@ async def create_project(
     return {"project": {k: v for k, v in project.items() if k != "_id"}}
 
 @api_router.get("/projects")
-async def get_projects(user: dict = Depends(get_current_user)):
+async def get_projects(user: dict = Depends(get_current_user), _: dict = Depends(require_permission(Permission.VIEW_PROJECT if Permission else None))):
     projects = await db.projects.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(100)
     return {"projects": projects}
 
@@ -3307,7 +3390,7 @@ def _safe_import_path(path: str) -> str:
 
 
 @api_router.post("/projects/import")
-async def import_project(data: ProjectImportBody, user: dict = Depends(get_current_user)):
+async def import_project(data: ProjectImportBody, user: dict = Depends(require_permission(Permission.CREATE_PROJECT if Permission else None))):
     """Import a project from paste (files), ZIP (base64), or Git URL. Creates project and writes files to workspace."""
     project_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
@@ -3420,11 +3503,33 @@ async def import_project(data: ProjectImportBody, user: dict = Depends(get_curre
 
 
 @api_router.get("/projects/{project_id}")
-async def get_project(project_id: str, user: dict = Depends(get_current_user)):
+async def get_project(project_id: str, user: dict = Depends(get_current_user), _: dict = Depends(require_permission(Permission.VIEW_PROJECT if Permission else None))):
     project = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"_id": 0})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     return {"project": project}
+
+
+@api_router.delete("/projects/{project_id}")
+async def delete_project(project_id: str, user: dict = Depends(require_permission(Permission.DELETE_PROJECT if Permission else None))):
+    """Delete a project and its related data. Only the project owner can delete."""
+    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    await db.project_logs.delete_many({"project_id": project_id})
+    await db.agent_status.delete_many({"project_id": project_id})
+    await db.shares.delete_many({"project_id": project_id})
+    await db.projects.delete_one({"id": project_id, "user_id": user["id"]})
+    if project_id in _build_events:
+        del _build_events[project_id]
+    try:
+        workspace_path = _project_workspace_path(project_id)
+        if workspace_path.exists():
+            import shutil
+            shutil.rmtree(workspace_path, ignore_errors=True)
+    except Exception as e:
+        logger.warning("Could not remove project workspace dir %s: %s", project_id, e)
+    return Response(status_code=204)
 
 
 @api_router.get("/projects/{project_id}/state")
@@ -3503,7 +3608,8 @@ async def get_settings_capabilities(user: dict = Depends(get_current_user)):
     """Returns sandbox (Docker) availability and other capabilities for UI polish."""
     sandbox_available = False
     try:
-        proc = subprocess.run(
+        proc = await asyncio.to_thread(
+            subprocess.run,
             ["docker", "run", "--rm", "hello-world"],
             capture_output=True,
             timeout=10,
@@ -3783,7 +3889,7 @@ async def one_click_deploy_vercel(
     project_id: str,
     request: Request,
     body: DeployOneClickBody = None,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_permission(Permission.DEPLOY_PROJECT if Permission else None)),
 ):
     """One-click deploy to Vercel. Uses token from body, or user's stored deploy_tokens.vercel, or env VERCEL_TOKEN."""
     deploy_files, project_name = await _get_project_deploy_files(project_id, user["id"])
@@ -3845,7 +3951,7 @@ async def one_click_deploy_netlify(
     project_id: str,
     request: Request,
     body: Optional[DeployOneClickBody] = None,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_permission(Permission.DEPLOY_PROJECT if Permission else None)),
 ):
     """One-click deploy to Netlify. Uses token from body, or user's stored deploy_tokens.netlify, or env NETLIFY_TOKEN."""
     buf = await _build_project_deploy_zip(project_id, user["id"])
@@ -3902,7 +4008,7 @@ async def one_click_deploy_netlify(
 async def retry_project_phase(
     project_id: str,
     background_tasks: BackgroundTasks,
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_permission(Permission.EDIT_PROJECT if Permission else None)),
 ):
     """10/10: Retry full orchestration when Quality phase had many failures. Full re-run (no partial state)."""
     project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
@@ -3952,7 +4058,7 @@ async def build_plan(data: BuildPlanRequest, user: dict = Depends(get_current_us
     if not prompt:
         raise HTTPException(status_code=400, detail="Prompt is required")
     build_kind = (getattr(data, "build_kind", None) or "").strip().lower() or "fullstack"
-    if build_kind not in ("fullstack", "mobile", "saas", "bot", "ai_agent", "game", "trading", "any"):
+    if build_kind not in ("landing", "fullstack", "mobile", "saas", "bot", "ai_agent", "game", "trading", "any"):
         build_kind = "fullstack"
     use_swarm = getattr(data, "swarm", False) and user is not None
     if user is not None and not user.get("public_api"):
@@ -4683,7 +4789,7 @@ async def create_export(data: dict, user: dict = Depends(get_current_user)):
 
 @api_router.get("/exports")
 async def get_exports(user: dict = Depends(get_current_user)):
-    exports = await db.exports.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    exports = await db.exports.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(MAX_EXPORTS_LIST)
     return {"exports": exports}
 
 # ==================== EXAMPLES (GENERATED APP SHOWCASE) ====================
@@ -4788,7 +4894,7 @@ class SuspendBody(BaseModel):
     reason: str
 
 async def _revenue_for_query(q: dict) -> float:
-    rows = await db.token_ledger.find(q).to_list(5000)
+    rows = await db.token_ledger.find(q).to_list(MAX_TOKEN_LEDGER_REVENUE)
     total = 0.0
     for r in rows:
         p = r.get("price")
@@ -5061,8 +5167,8 @@ async def admin_export_user(user_id: str, admin: dict = Depends(get_current_admi
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     user.pop("password", None)
-    ledger = await db.token_ledger.find({"user_id": user_id}, {"_id": 0}).to_list(1000)
-    project_ids = await db.projects.find({"user_id": user_id}, {"id": 1}).to_list(1000)
+    ledger = await db.token_ledger.find({"user_id": user_id}, {"_id": 0}).to_list(MAX_ADMIN_USER_LEDGER)
+    project_ids = await db.projects.find({"user_id": user_id}, {"id": 1}).to_list(MAX_ADMIN_USER_EXPORT_PROJECTS)
     return {
         "user": {k: v for k, v in user.items() if k != "password"},
         "ledger_entries": ledger,
@@ -5217,11 +5323,137 @@ async def admin_segments(
     return {"segment": users, "count": len(users)}
 
 
+@api_router.get("/admin/analytics/usage")
+async def admin_analytics_usage(
+    days: int = 30,
+    admin: dict = Depends(get_current_admin(ADMIN_ROLES)),
+):
+    """Usage analytics: token consumption, build counts. Optional days (default 30)."""
+    since = (datetime.now(timezone.utc) - timedelta(days=max(1, min(days, 365)))).isoformat()
+    builds = await db.projects.count_documents({"created_at": {"$gte": since}, "status": {"$in": ["completed", "failed"]}})
+    pipeline = [{"$match": {"created_at": {"$gte": since}}}, {"$group": {"_id": None, "total": {"$sum": "$tokens_used"}}}]
+    cursor = db.projects.aggregate(pipeline)
+    row = await cursor.to_list(length=1)
+    total_tokens = row[0]["total"] if row else 0
+    return {"period_days": days, "builds_count": builds, "tokens_used_total": total_tokens, "since": since}
+
+
+@api_router.get("/admin/analytics/revenue")
+async def admin_analytics_revenue(
+    days: int = 30,
+    admin: dict = Depends(get_current_admin(ADMIN_ROLES)),
+):
+    """Revenue analytics for the period. Optional days (default 30)."""
+    since = (datetime.now(timezone.utc) - timedelta(days=max(1, min(days, 365)))).isoformat()
+    total = await _revenue_for_query({"type": "purchase", "created_at": {"$gte": since}})
+    return {"period_days": days, "revenue": total, "since": since}
+
+
+@api_router.get("/admin/analytics/agents")
+async def admin_analytics_agents(
+    days: int = 30,
+    limit: int = 50,
+    admin: dict = Depends(get_current_admin(ADMIN_ROLES)),
+):
+    """Agent performance: runs per agent, success rate. Optional days (default 30)."""
+    since = (datetime.now(timezone.utc) - timedelta(days=max(1, min(days, 365)))).isoformat()
+    pipeline = [
+        {"$match": {"triggered_at": {"$gte": since}}},
+        {"$group": {"_id": "$agent_id", "runs": {"$sum": 1}, "completed": {"$sum": {"$cond": [{"$eq": ["$status", "completed"]}, 1, 0]}}}},
+        {"$sort": {"runs": -1}},
+        {"$limit": limit},
+    ]
+    try:
+        cursor = db.agent_runs.aggregate(pipeline)
+        rows = await cursor.to_list(length=limit)
+    except Exception:
+        return {"agents": [], "period_days": days}
+    agents = []
+    for r in rows:
+        aid = r["_id"]
+        runs = r.get("runs", 0)
+        completed = r.get("completed", 0)
+        agents.append({"agent_id": aid, "runs": runs, "completed": completed, "success_rate": round(100 * completed / runs, 1) if runs else 0})
+    return {"agents": agents, "period_days": days}
+
+
+@api_router.post("/admin/settings/update")
+async def admin_settings_update(
+    data: dict,
+    admin: dict = Depends(get_current_admin(("owner", "operations"))),
+):
+    """Update system-wide settings (stored in db.admin_settings). Body: key-value pairs."""
+    key = (data.get("key") or data.get("name") or "").strip()
+    value = data.get("value") if "value" in data else data.get("settings")
+    if not key:
+        raise HTTPException(status_code=400, detail="key or name required")
+    now = datetime.now(timezone.utc).isoformat()
+    await db.admin_settings.update_one(
+        {"key": key},
+        {"$set": {"key": key, "value": value, "updated_at": now, "updated_by": admin.get("id")}},
+        upsert=True,
+    )
+    return {"ok": True, "key": key}
+
+
+@api_router.get("/admin/audit-log")
+async def admin_audit_log(
+    user_id: Optional[str] = None,
+    action: Optional[str] = None,
+    limit: int = 100,
+    skip: int = 0,
+    admin: dict = Depends(get_current_admin(ADMIN_ROLES)),
+):
+    """View audit logs. Optional user_id, action filter. Pagination: limit, skip."""
+    q = {}
+    if user_id:
+        q["user_id"] = user_id
+    if action:
+        q["action"] = action
+    if not hasattr(db, "audit_log"):
+        return {"logs": [], "total": 0, "limit": limit, "skip": skip}
+    cursor = db.audit_log.find(q).sort("timestamp", -1).skip(skip).limit(limit)
+    logs = await cursor.to_list(length=limit)
+    total = await db.audit_log.count_documents(q)
+    out = []
+    for log in logs:
+        d = {"id": str(log.get("_id")), "user_id": log.get("user_id"), "action": log.get("action"), "resource_type": log.get("resource_type"), "status": log.get("status"), "ip_address": log.get("ip_address")}
+        ts = log.get("timestamp")
+        d["timestamp"] = ts.isoformat() if hasattr(ts, "isoformat") else str(ts)
+        out.append(d)
+    return {"logs": out, "total": total, "limit": limit, "skip": skip}
+
+
+class AdminNotificationBody(BaseModel):
+    target: Optional[str] = None  # user_id or "all"
+    subject: str = ""
+    body: str = ""
+
+
+@api_router.post("/admin/notifications/send")
+async def admin_notifications_send(
+    data: AdminNotificationBody,
+    admin: dict = Depends(get_current_admin(("owner", "operations"))),
+):
+    """Send system notification. Stores in db.notifications; optionally trigger email when implemented."""
+    now = datetime.now(timezone.utc).isoformat()
+    doc = {
+        "id": str(uuid.uuid4()),
+        "target": data.target or "all",
+        "subject": data.subject,
+        "body": data.body,
+        "created_at": now,
+        "created_by": admin.get("id"),
+    }
+    await db.notifications.insert_one(doc)
+    return {"ok": True, "notification_id": doc["id"]}
+
+
 # ==================== DASHBOARD STATS ====================
 
 @api_router.get("/dashboard/stats")
 async def get_dashboard_stats(user: dict = Depends(get_current_user)):
-    projects = await db.projects.find({"user_id": user["id"]}).to_list(1000)
+    projects = await db.projects.find({"user_id": user["id"]}).to_list(MAX_USER_PROJECTS_DASHBOARD)
     
     total_projects = len(projects)
     completed_projects = len([p for p in projects if p.get("status") == "completed"])
@@ -5420,15 +5652,17 @@ async def get_workspace_env(user: dict = Depends(get_optional_user)):
     if not user:
         return {"env": {}}
     row = await db.workspace_env.find_one({"user_id": user["id"]}, {"_id": 0})
-    return {"env": row.get("env", {}) if row else {}}
+    env = decrypt_env(row.get("env", {}) if row else {})
+    return {"env": env}
 
 @api_router.post("/workspace/env")
 async def set_workspace_env(data: ProjectEnvBody, user: dict = Depends(get_current_user)):
-    await db.workspace_env.update_one({"user_id": user["id"]}, {"$set": {"user_id": user["id"], "env": data.env, "updated_at": datetime.now(timezone.utc).isoformat()}}, upsert=True)
+    env_to_store = encrypt_env(data.env)
+    await db.workspace_env.update_one({"user_id": user["id"]}, {"$set": {"user_id": user["id"], "env": env_to_store, "updated_at": datetime.now(timezone.utc).isoformat()}}, upsert=True)
     return {"ok": True}
 
 @api_router.post("/projects/{project_id}/duplicate")
-async def duplicate_project(project_id: str, user: dict = Depends(get_current_user)):
+async def duplicate_project(project_id: str, user: dict = Depends(require_permission(Permission.EDIT_PROJECT if Permission else None))):
     project = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"_id": 0})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -5439,7 +5673,7 @@ async def duplicate_project(project_id: str, user: dict = Depends(get_current_us
     return {"project": new_project}
 
 @api_router.post("/share/create")
-async def share_create(data: ShareCreateBody, user: dict = Depends(get_current_user)):
+async def share_create(data: ShareCreateBody, user: dict = Depends(require_permission(Permission.EDIT_PROJECT if Permission else None))):
     project = await db.projects.find_one({"id": data.project_id, "user_id": user["id"]})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -5470,7 +5704,7 @@ async def get_templates(user: dict = Depends(get_optional_user)):
     return {"templates": TEMPLATES_GALLERY}
 
 @api_router.post("/projects/from-template")
-async def create_from_template(body: dict, user: dict = Depends(get_current_user)):
+async def create_from_template(body: dict, user: dict = Depends(require_permission(Permission.CREATE_PROJECT if Permission else None))):
     tid = body.get("template_id")
     t = next((x for x in TEMPLATES_GALLERY if x["id"] == tid), None)
     if not t:
@@ -5483,7 +5717,7 @@ async def create_from_template(body: dict, user: dict = Depends(get_current_user
     return {"files": {"/App.js": code}, "template_id": tid}
 
 @api_router.post("/projects/{project_id}/save-as-template")
-async def save_project_as_template(project_id: str, body: dict, user: dict = Depends(get_current_user)):
+async def save_project_as_template(project_id: str, body: dict, user: dict = Depends(require_permission(Permission.EDIT_PROJECT if Permission else None))):
     project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -5636,7 +5870,22 @@ async def root():
     return {"message": "CrucibAI Platform API", "version": "1.0.0"}
 
 @api_router.get("/health")
-async def health():
+async def health(deps: bool = Query(False, description="Check dependencies (MongoDB); return 503 if unavailable")):
+    check_deps = deps or os.environ.get("HEALTH_CHECK_DEPS", "").strip().lower() in ("1", "true", "yes")
+    if check_deps:
+        try:
+            await db.command("ping")
+            return {
+                "status": "healthy",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "mongodb": "ok",
+            }
+        except Exception as e:
+            logger.warning("Health check MongoDB ping failed: %s", e)
+            raise HTTPException(
+                status_code=503,
+                detail={"status": "degraded", "mongodb": "unavailable", "error": str(e)[:200]},
+            )
     return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
 
 # ==================== CLIENT ERROR LOGGING ====================
@@ -5753,6 +6002,16 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["Content-Type", "Authorization", "X-Requested-With", "X-Request-ID"],
 )
+
+@app.on_event("startup")
+async def ensure_db_indexes():
+    """Create MongoDB indexes for hot-path collections (performance)."""
+    try:
+        from db_indexes import ensure_indexes
+        await ensure_indexes(db)
+    except Exception as e:
+        logger.warning("Ensure DB indexes: %s", e)
+
 
 @app.on_event("startup")
 async def seed_examples_if_empty():

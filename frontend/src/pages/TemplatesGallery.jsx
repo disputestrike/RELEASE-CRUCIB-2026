@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Layout, FileCode, Loader2 } from 'lucide-react';
 import { useAuth, API } from '../App';
 import axios from 'axios';
+import { logApiError } from '../utils/apiError';
 
 export default function TemplatesGallery() {
   const navigate = useNavigate();
@@ -14,7 +15,7 @@ export default function TemplatesGallery() {
   useEffect(() => {
     axios.get(`${API}/templates`, token ? { headers: { Authorization: `Bearer ${token}` } } : {})
       .then((r) => setTemplates(r.data.templates || []))
-      .catch(() => setTemplates([]));
+      .catch((e) => { logApiError('TemplatesGallery', e); setTemplates([]); });
   }, [token]);
 
   const createFromTemplate = (templateId) => {
@@ -29,7 +30,7 @@ export default function TemplatesGallery() {
         const query = new URLSearchParams({ prompt: (r.data.template_id && templates.find(t => t.id === r.data.template_id)?.prompt) || '' });
         navigate(`/app/workspace?${query.toString()}`, { state: { initialFiles: files } });
       })
-      .catch(() => setCreatingId(null))
+      .catch((e) => { logApiError('TemplatesGallery from-template', e); setCreatingId(null); })
       .finally(() => setCreatingId(null));
   };
 
