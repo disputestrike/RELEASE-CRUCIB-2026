@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FileCode, Loader2, GitFork } from 'lucide-react';
 import { useAuth, API } from '../App';
 import axios from 'axios';
+import { logApiError } from '../utils/apiError';
 import QualityScore from '../components/QualityScore';
 
 export default function ExamplesGallery() {
@@ -16,7 +17,7 @@ export default function ExamplesGallery() {
   useEffect(() => {
     axios.get(`${API}/examples`, token ? { headers: { Authorization: `Bearer ${token}` } } : {})
       .then((r) => setExamples(r.data.examples || []))
-      .catch(() => setExamples([]))
+      .catch((e) => { logApiError('ExamplesGallery', e); setExamples([]); })
       .finally(() => setLoading(false));
   }, [token]);
 
@@ -31,7 +32,7 @@ export default function ExamplesGallery() {
         const project = r.data.project;
         if (project?.id) navigate(`/app/projects/${project.id}`);
       })
-      .catch(() => setForking(null))
+      .catch((e) => { logApiError('ExamplesGallery fork', e); setForking(null); })
       .finally(() => setForking(null));
   };
 

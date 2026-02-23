@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Key, Plus, Trash2 } from 'lucide-react';
 import { useAuth, API } from '../App';
 import axios from 'axios';
+import { logApiError } from '../utils/apiError';
 
 export default function EnvPanel() {
   const { token } = useAuth();
@@ -14,7 +15,7 @@ export default function EnvPanel() {
     if (!token) return;
     axios.get(`${API}/workspace/env`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => setEnv(r.data.env || {}))
-      .catch(() => setEnv({}));
+      .catch((e) => { logApiError('EnvPanel', e); setEnv({}); });
   }, [token]);
 
   const addVar = () => {

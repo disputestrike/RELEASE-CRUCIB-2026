@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth, API } from '../App';
 import axios from 'axios';
+import { logApiError } from '../utils/apiError';
 import { Zap, Plus, ChevronRight, Copy, Check, Pencil, Trash2 } from 'lucide-react';
 
 const getToken = () => localStorage.getItem('token');
@@ -37,12 +38,13 @@ export default function AgentsPage() {
   const [logLines, setLogLines] = useState([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [rotateModal, setRotateModal] = useState(null);
 
   const refetchAgents = () => {
     setLoading(true);
     axios.get(`${API}/agents`, { headers: { Authorization: `Bearer ${getToken()}` } })
       .then((r) => setAgents(r.data.items || []))
-      .catch(() => setAgents([]))
+      .catch((e) => { logApiError('AgentsPage list', e); setAgents([]); })
       .finally(() => setLoading(false));
   };
 
@@ -51,7 +53,7 @@ export default function AgentsPage() {
     const headers = { Authorization: `Bearer ${getToken()}` };
     axios.get(`${API}/agents`, { headers })
       .then((r) => setAgents(r.data.items || []))
-      .catch(() => setAgents([]))
+      .catch((e) => { logApiError('AgentsPage list', e); setAgents([]); })
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -60,10 +62,10 @@ export default function AgentsPage() {
     const headers = { Authorization: `Bearer ${getToken()}` };
     axios.get(`${API}/agents/${id}`, { headers })
       .then((r) => setAgent(r.data))
-      .catch(() => setAgent(null));
+      .catch((e) => { logApiError('AgentsPage detail', e); setAgent(null); });
     axios.get(`${API}/agents/${id}/runs`, { headers })
       .then((r) => setRuns(r.data.items || []))
-      .catch(() => setRuns([]));
+      .catch((e) => { logApiError('AgentsPage runs', e); setRuns([]); });
   }, [id]);
 
   useEffect(() => {
@@ -71,10 +73,29 @@ export default function AgentsPage() {
     const headers = { Authorization: `Bearer ${getToken()}` };
     axios.get(`${API}/agents/runs/${logRunId}/logs`, { headers })
       .then((r) => setLogLines(r.data.log_lines || []))
-      .catch(() => setLogLines([]));
+      .catch((e) => { logApiError('AgentsPage logs', e); setLogLines([]); });
   }, [logRunId]);
 
   const copyWebhook = (url) => {
+    if (!url) return;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+  };
+  const rotateWebhookSecret = () => {
+    if (!id || !agent?.webhook_url) return;
+    setLoading(true);
+    axios.post(`${API}/agents/${id}/webhook-rotate-secret`, {}, { headers: { Authorization: `Bearer ${getToken()}` } })
+      .then((r) => {
+        setRotateModal({ secret: r.data.webhook_secret, url: r.data.webhook_url });
+        setAgent((a) => a ? { ...a, webhook_url: r.data.webhook_url } : null);
+      })
+      .catch((e) => logApiError('AgentsPage', e))
+      .finally(() => setLoading(false));
+  };
+  const closeRotateModal = () => {
+    setRotateModal(null);
+  };
+  const copyWebhookModal = (url) => {
     if (!url) return;
     navigator.clipboard.writeText(url);
     setCopied(true);
@@ -153,11 +174,27 @@ export default function AgentsPage() {
             {agent.description && <p className="text-[#666666] text-sm mt-1">{agent.description}</p>}
             <div className="mt-2 text-sm text-[#666666]">Trigger: {agent.trigger_type}</div>
             {agent.webhook_url && (
-              <div className="mt-3 flex items-center gap-2">
-                <code className="text-xs bg-zinc-900/30 px-2 py-1 rounded truncate max-w-md">{agent.webhook_url}</code>
-                <button onClick={() => copyWebhook(agent.webhook_url)} className="p-1 rounded hover:bg-white/10">
-                  {copied ? <Check className="w-4 h-4 text-[#1A1A1A]" /> : <Copy className="w-4 h-4" />}
-                </button>
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <code className="text-xs bg-zinc-900/30 px-2 py-1 rounded truncate max-w-md">{agent.webhook_url}</code>
+                  <button onClick={() => copyWebhook(agent.webhook_url)} className="p-1 rounded hover:bg-white/10" title="Copy URL">
+                    {copied ? <Check className="w-4 h-4 text-[#1A1A1A]" /> : <Copy className="w-4 h-4" />}
+                  </button>
+                  <button onClick={rotateWebhookSecret} className="text-xs px-2 py-1 rounded border border-white/20 hover:bg-white/10" title="Regenerate secret (old URL will stop working)">
+                    Regenerate secret
+                  </button>
+                </div>
+                {rotateModal && (
+                  <div className="p-3 rounded bg-amber-50 border border-amber-200 text-sm text-[#1A1A1A]">
+                    <p className="font-medium mb-1">New secret — copy and save; shown once.</p>
+                    <p className="text-xs text-[#666666] mb-1">Secret: <code className="bg-white/80 px-1 rounded">{rotateModal.secret}</code></p>
+                    <div className="flex items-center gap-2">
+                      <code className="text-xs flex-1 truncate bg-white/80 px-2 py-1 rounded">{rotateModal.url}</code>
+                      <button onClick={() => copyWebhookModal(rotateModal.url)} className="p-1 rounded hover:bg-white/80">{copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}</button>
+                    </div>
+                    <button onClick={closeRotateModal} className="mt-2 text-xs text-[#666666] hover:text-[#1A1A1A]">Dismiss</button>
+                  </div>
+                )}
               </div>
             )}
             <div className="mt-4">

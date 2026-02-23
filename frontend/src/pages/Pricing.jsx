@@ -6,6 +6,7 @@ import { useAuth, API } from '../App';
 import PublicNav from '../components/PublicNav';
 import PublicFooter from '../components/PublicFooter';
 import axios from 'axios';
+import { logApiError } from '../utils/apiError';
 
 // Final Model: Starter, Builder, Pro, Agency (+ add-ons). No LLM names on landing/pricing (Manus-style).
 const DEFAULT_BUNDLES = {
@@ -120,7 +121,7 @@ export default function Pricing() {
         }
         if (r.data?.annual_prices && typeof r.data.annual_prices === 'object') setAnnualPrices((prev) => ({ ...prev, ...r.data.annual_prices }));
       })
-      .catch(() => {});
+      .catch((e) => logApiError('Pricing', e));
   }, []);
 
   return (

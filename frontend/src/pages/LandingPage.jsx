@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Send, Loader2, ArrowRight, Check, Menu, X, Play, ArrowUpRight, Paperclip, Image, FileText, Mic, MicOff, FileCode, GitFork } from 'lucide-react';
 import { useAuth, API } from '../App';
 import axios from 'axios';
+import { logApiError } from '../utils/apiError';
 import Logo from '../components/Logo';
 
 const LandingPage = () => {
@@ -33,7 +34,7 @@ const LandingPage = () => {
   const voiceChunksRef = useRef([]);
 
   useEffect(() => {
-    axios.get(`${API}/examples`).then((r) => setLiveExamples((r.data.examples || []).slice(0, 3))).catch(() => setLiveExamples([]));
+    axios.get(`${API}/examples`).then((r) => setLiveExamples((r.data.examples || []).slice(0, 3))).catch((e) => { logApiError('LandingPage examples', e); setLiveExamples([]); });
   }, [API]);
 
   useEffect(() => {

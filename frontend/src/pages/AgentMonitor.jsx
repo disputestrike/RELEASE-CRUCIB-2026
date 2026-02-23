@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuth, API } from '../App';
 import axios from 'axios';
+import { logApiError } from '../utils/apiError';
 import BuildProgress from '../components/BuildProgress';
 import QualityScore from '../components/QualityScore';
 
@@ -43,7 +44,7 @@ const AgentMonitor = () => {
           axios.get(`${API}/projects/${id}`, { headers: { Authorization: `Bearer ${token}` } }),
           axios.get(`${API}/agents/status/${id}`, { headers: { Authorization: `Bearer ${token}` } }),
           axios.get(`${API}/projects/${id}/logs`, { headers: { Authorization: `Bearer ${token}` } }),
-          axios.get(`${API}/projects/${id}/phases`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { phases: [] } }))
+          axios.get(`${API}/projects/${id}/phases`, { headers: { Authorization: `Bearer ${token}` } }).catch((e) => { logApiError('AgentMonitor phases', e); return { data: { phases: [] } }; })
         ]);
         setProject(projectRes.data.project);
         setAgents(agentsRes.data.statuses);
@@ -52,19 +53,22 @@ const AgentMonitor = () => {
         try {
           const stateRes = await axios.get(`${API}/projects/${id}/state`, { headers: { Authorization: `Bearer ${token}` } });
           setProjectState(stateRes.data?.state || null);
-        } catch (_) {
+        } catch (e) {
+          logApiError('AgentMonitor state', e);
           setProjectState(null);
         }
         try {
           const eventsRes = await axios.get(`${API}/projects/${id}/events/snapshot`, { headers: { Authorization: `Bearer ${token}` } });
           setBuildEvents(eventsRes.data?.events || []);
-        } catch (_) {
+        } catch (e) {
+          logApiError('AgentMonitor events', e);
           setBuildEvents([]);
         }
         try {
           const filesRes = await axios.get(`${API}/projects/${id}/workspace/files`, { headers: { Authorization: `Bearer ${token}` } });
           setWorkspaceFiles(filesRes.data?.files || []);
-        } catch (_) {
+        } catch (e) {
+          logApiError('AgentMonitor workspace/files', e);
           setWorkspaceFiles([]);
         }
         if (projectRes.data.project.status === 'completed' || projectRes.data.project.status === 'failed') {
@@ -91,7 +95,7 @@ const AgentMonitor = () => {
     if (!project?.id || !token) return;
     axios.get(`${API}/projects/${id}/preview-token`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => setPreviewUrl(r.data?.url || null))
-      .catch(() => setPreviewUrl(null));
+      .catch((e) => { logApiError('AgentMonitor preview-token', e); setPreviewUrl(null); });
   }, [id, project?.id, token]);
 
   const getAgentStatus = (agentName) => {
@@ -115,10 +119,10 @@ const AgentMonitor = () => {
 
   const getLayerColor = (layer) => {
     switch (layer) {
-      case 'planning': return 'orange';
+      case 'planning': return 'gray';
       case 'execution': return 'green';
-      case 'validation': return 'orange';
-      case 'deployment': return 'orange';
+      case 'validation': return 'gray';
+      case 'deployment': return 'gray';
       default: return 'gray';
     }
   };
@@ -378,7 +382,7 @@ const AgentMonitor = () => {
             <div className="text-right">
               <p className="text-sm text-gray-500">Total tokens this run</p>
               <p className="font-bold text-lg flex items-center gap-1">
-                <Zap className="w-4 h-4 text-yellow-500" />
+                <Zap className="w-4 h-4 text-gray-500" />
                 {(agents.reduce((sum, a) => sum + (a.tokens_used || 0), 0) || project.tokens_used || 0).toLocaleString()}
               </p>
             </div>

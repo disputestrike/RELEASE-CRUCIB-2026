@@ -6,6 +6,7 @@ import { useAuth, API } from '../App';
 import PublicNav from '../components/PublicNav';
 import PublicFooter from '../components/PublicFooter';
 import axios from 'axios';
+import { logApiError } from '../utils/apiError';
 
 const FALLBACK_PROMPTS = [
   { id: 'ecommerce', name: 'E-commerce with cart', prompt: 'Build a modern e-commerce product list with add-to-cart, cart sidebar, and checkout button. Use React and Tailwind.', category: 'app' },
@@ -41,7 +42,7 @@ export default function PromptsPublic() {
   useEffect(() => {
     axios.get(`${API}/prompts/templates`, { timeout: 5000 })
       .then((r) => { if (r.data?.templates?.length) setTemplates(r.data.templates); })
-      .catch(() => {});
+      .catch((e) => logApiError('PromptsPublic', e));
   }, []);
 
   const copyPrompt = (text, id) => {

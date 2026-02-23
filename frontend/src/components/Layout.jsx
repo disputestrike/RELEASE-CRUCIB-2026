@@ -4,6 +4,7 @@ import { useAuth, API } from '../App';
 import { useLayoutStore } from '../stores/useLayoutStore';
 import { useTaskStore } from '../stores/useTaskStore';
 import axios from 'axios';
+import { logApiError } from '../utils/apiError';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Menu, X, PanelRightOpen, PanelRightClose } from 'lucide-react';
 import Layout3Column from './Layout3Column';
@@ -55,7 +56,7 @@ const Layout = () => {
     setBackendOk(null);
     axios.get(`${API}/health`, { timeout: 5000 })
       .then(() => setBackendOk(true))
-      .catch(() => setBackendOk(false));
+      .catch((e) => { logApiError('Layout health', e); setBackendOk(false); });
   }, []);
 
   // Fetch projects for sidebar. Do NOT overwrite task store — All Tasks list is from local store so clicks open workspace with correct task.
@@ -63,12 +64,12 @@ const Layout = () => {
     if (!token) return;
     try {
       const headers = { Authorization: `Bearer ${token}` };
-      const projRes = await axios.get(`${API}/projects`, { headers, timeout: 5000 }).catch(() => null);
+      const projRes = await axios.get(`${API}/projects`, { headers, timeout: 5000 }).catch((e) => { logApiError('Layout projects', e); return null; });
       if (projRes?.data) {
         setProjects(projRes.data?.projects || projRes.data || []);
       }
     } catch (e) {
-      // Silently fail
+      logApiError('Layout fetchSidebarData', e);
     }
   }, [token]);
 
@@ -82,6 +83,19 @@ const Layout = () => {
     navigate('/');
   };
 
+  const handleDeleteProject = useCallback(async (projectId) => {
+    if (!token) return;
+    try {
+      await axios.delete(`${API}/projects/${projectId}`, { headers: { Authorization: `Bearer ${token}` } });
+      await fetchSidebarData();
+      if (location.pathname === `/app/projects/${projectId}` || location.pathname.startsWith(`/app/projects/${projectId}/`)) {
+        navigate('/app');
+      }
+    } catch (err) {
+      alert(err.response?.data?.detail || err.message || 'Failed to delete project');
+    }
+  }, [token, fetchSidebarData, location.pathname, navigate]);
+
   // Sidebar content
   const sidebarContent = (
     <Sidebar
@@ -89,6 +103,7 @@ const Layout = () => {
       onLogout={handleLogout}
       projects={projects}
       tasks={storeTasks}
+      onDeleteProject={handleDeleteProject}
     />
   );
 

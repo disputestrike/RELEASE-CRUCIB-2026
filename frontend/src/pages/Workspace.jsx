@@ -62,6 +62,7 @@ import {
   Rocket,
 } from 'lucide-react';
 import { useAuth, API } from '../App';
+import { logApiError } from '../utils/apiError';
 import { useLayoutStore } from '../stores/useLayoutStore';
 import { useTaskStore } from '../stores/useTaskStore';
 import axios from 'axios';
@@ -454,7 +455,15 @@ const Workspace = () => {
   const [tokensPerStep, setTokensPerStep] = useState({ plan: 0, generate: 0 });
   const [showDeployModal, setShowDeployModal] = useState(false);
   const [mobileView, setMobileView] = useState(false);
-  const [showVibeInput, setShowVibeInput] = useState(false);
+  const [workspaceInputMode, setWorkspaceInputMode] = useState(() => localStorage.getItem('crucibai_workspace_input_mode') || 'standard');
+  const [showVibeInput, setShowVibeInput] = useState(() => (localStorage.getItem('crucibai_workspace_input_mode') || 'standard') === 'vibe');
+  const setWorkspaceInputModeAndPersist = useCallback((mode) => {
+    setWorkspaceInputMode(mode);
+    localStorage.setItem('crucibai_workspace_input_mode', mode);
+    if (mode === 'vibe') setShowVibeInput(true);
+    else if (mode === 'standard') setShowVibeInput(false);
+    if (mode === 'advanced') setCommandPaletteOpen(true);
+  }, []);
   const projectIdFromUrl = searchParams.get('projectId');
   const taskIdFromUrl = searchParams.get('taskId');
   const [projectBuildProgress, setProjectBuildProgress] = useState({ phase: 0, agent: '', progress: 0, status: '', tokens_used: 0 });
@@ -478,7 +487,7 @@ const Workspace = () => {
   const workspaceFilesLoadedForProject = useRef(null);
 
   useEffect(() => {
-    axios.get(`${API}/build/phases`).then(r => setBuildPhases(r.data.phases || [])).catch(() => {});
+    axios.get(`${API}/build/phases`).then(r => setBuildPhases(r.data.phases || [])).catch((e) => logApiError('Workspace', e));
   }, []);
 
   // Initial terminal message so panel isn't empty
@@ -506,7 +515,7 @@ const Workspace = () => {
           list.map((path) =>
             axios.get(`${API}/projects/${projectIdFromUrl}/workspace/file`, { params: { path }, headers })
               .then((f) => ({ path: f.data.path, content: f.data.content }))
-              .catch(() => null)
+              .catch((e) => { logApiError('Workspace', e); return null; })
           )
         ).then((results) => {
           const loaded = results.filter(Boolean).reduce((acc, { path, content }) => {
@@ -520,14 +529,14 @@ const Workspace = () => {
           }
         });
       })
-      .catch(() => {});
+      .catch((e) => logApiError('Workspace', e));
   }, [projectIdFromUrl, token, API]);
 
   useEffect(() => {
     if (token) {
       axios.get(`${API}/agents/activity`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => setAgentsActivity(r.data.activities || []))
-        .catch(() => {});
+        .catch((e) => logApiError('Workspace', e));
     }
   }, [token, messages.length]);
 
@@ -609,7 +618,7 @@ const Workspace = () => {
                   }
                   if (r.data?.quality_score) setQualityGateResult({ score: r.data.quality_score });
                 })
-                .catch(() => {});
+                .catch((e) => logApiError('Workspace', e));
               setBuildProgress(100);
               setIsBuilding(false);
             }
@@ -645,7 +654,7 @@ const Workspace = () => {
           setMessages(asMessages);
         }
       })
-      .catch(() => {});
+      .catch((e) => logApiError('Workspace', e));
   }, [sessionId]);
 
   useEffect(() => {
@@ -1031,7 +1040,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
                   setTimeout(() => fetchSuggestNext(), 400);
                   const mainCode = parsedFiles['/App.js']?.code || parsedFiles['/src/App.jsx']?.code || parsedFiles['/App.jsx']?.code || Object.values(parsedFiles)[0]?.code || '';
                   const filesForQuality = Object.fromEntries(Object.entries(parsedFiles || {}).map(([k, v]) => [k, (v && v.code) || '']));
-                  axios.post(`${API}/ai/quality-gate`, { code: mainCode, files: Object.keys(filesForQuality).length ? filesForQuality : undefined }).then(r => setQualityGateResult(r.data)).catch(() => setQualityGateResult(null));
+                  axios.post(`${API}/ai/quality-gate`, { code: mainCode, files: Object.keys(filesForQuality).length ? filesForQuality : undefined }).then(r => setQualityGateResult(r.data)).catch((e) => { logApiError('Workspace quality-gate', e); setQualityGateResult(null); });
                   return next;
                 });
                 setActivePanel('preview'); // AUTO-WIRE: switch to preview on build complete
@@ -1051,7 +1060,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
                     session_id: sessionId,
                     status: 'completed',
                     files: Object.keys(parsedFiles),
-                  }, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+                  }, { headers: { Authorization: `Bearer ${token}` } }).catch((e) => logApiError('Workspace', e));
                 }
                 // AUTO-WIRE: Also try to fetch multi-file deploy output if project exists
                 if (projectIdFromUrl) {
@@ -1068,7 +1077,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
                         addLog(`Loaded ${Object.keys(df).length} files from orchestration.`, 'info', 'deploy');
                       }
                       if (r.data?.quality_score) setQualityGateResult({ score: r.data.quality_score });
-                    }).catch(() => {});
+                    }).catch((e) => logApiError('Workspace', e));
                 }
                 break;
               }
@@ -1093,7 +1102,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
         setTimeout(() => fetchSuggestNext(), 400);
         const mainCode = parsedFiles['/App.js']?.code || parsedFiles['/src/App.jsx']?.code || parsedFiles['/App.jsx']?.code || Object.values(parsedFiles)[0]?.code || '';
         const filesForQuality = Object.fromEntries(Object.entries(parsedFiles || {}).map(([k, v]) => [k, (v && v.code) || '']));
-        axios.post(`${API}/ai/quality-gate`, { code: mainCode, files: Object.keys(filesForQuality).length ? filesForQuality : undefined }).then(r => setQualityGateResult(r.data)).catch(() => setQualityGateResult(null));
+        axios.post(`${API}/ai/quality-gate`, { code: mainCode, files: Object.keys(filesForQuality).length ? filesForQuality : undefined }).then(r => setQualityGateResult(r.data)).catch((e) => { logApiError('Workspace quality-gate', e); setQualityGateResult(null); });
         setActivePanel('preview'); // AUTO-WIRE: switch to preview on build complete
         // PHASE 7: Single task authority — update existing task or add new
         if (taskIdFromUrl) {
@@ -1110,7 +1119,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
             session_id: sessionId,
             status: 'completed',
             files: Object.keys(parsedFiles),
-          }, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+          }, { headers: { Authorization: `Bearer ${token}` } }).catch((e) => logApiError('Workspace', e));
         }
         // AUTO-WIRE: Also try to fetch multi-file deploy output if project exists
         if (projectIdFromUrl) {
@@ -1127,7 +1136,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
                 addLog(`Loaded ${Object.keys(df).length} files from orchestration.`, 'info', 'deploy');
               }
               if (r.data?.quality_score) setQualityGateResult({ score: r.data.quality_score });
-            }).catch(() => {});
+            }).catch((e) => logApiError('Workspace', e));
         }
       }
     } catch (error) {
@@ -2034,7 +2043,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
             )}
 
             <button
-              className="ml-auto mr-1 px-3 py-1 rounded text-sm font-semibold transition bg-orange-500 text-white hover:bg-orange-600"
+              className="ml-auto mr-1 px-3 py-1 rounded text-sm font-semibold transition bg-gray-600 text-white hover:bg-gray-700"
               onClick={() => setShowDeployModal(true)}
             >
               Deploy
@@ -2365,7 +2374,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
                 setShowVibeInput(false);
               }}
             />
-            <button type="button" onClick={() => setShowVibeInput(false)} className="mt-2 text-xs text-gray-500 hover:text-gray-900">Close Vibe</button>
+            <button type="button" onClick={() => { setShowVibeInput(false); setWorkspaceInputModeAndPersist('standard'); }} className="mt-2 text-xs text-gray-500 hover:text-gray-900">Close Vibe</button>
           </div>
         )}
 
@@ -2399,6 +2408,16 @@ Respond with ONLY the complete App.js code, nothing else.`;
             <option value="plan">Plan</option>
             <option value="thinking">Thinking</option>
             <option value="swarm">Swarm</option>
+          </select>
+          <select
+            value={workspaceInputMode}
+            onChange={(e) => setWorkspaceInputModeAndPersist(e.target.value)}
+            className="px-2 py-1 rounded border border-gray-200 bg-white text-gray-700 text-xs cursor-pointer outline-none"
+            title="Input mode: Standard, Vibe (voice-first), or Advanced IDE (command palette)"
+          >
+            <option value="standard">Standard</option>
+            <option value="vibe">Vibe</option>
+            <option value="advanced">Advanced IDE</option>
           </select>
           <span><kbd className="px-1 py-0.5 rounded bg-gray-200 text-gray-600">Ctrl+K</kbd></span>
         </div>
@@ -2442,7 +2461,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
               type="button"
               onClick={() => setShowVibeInput(v => !v)}
               title="Vibe Coding - voice-first input"
-              className={`p-2 rounded-md transition ${showVibeInput ? 'text-orange-500 bg-orange-50' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-200'}`}
+              className={`p-2 rounded-md transition ${showVibeInput ? 'text-gray-600 bg-gray-100' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-200'}`}
             >
               <Sparkles className="w-4 h-4" />
             </button>

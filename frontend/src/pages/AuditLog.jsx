@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth, API } from '../App';
+import { logApiError } from '../utils/apiError';
 import { Download, Filter } from 'lucide-react';
 
 export default function AuditLog() {
@@ -24,7 +25,7 @@ export default function AuditLog() {
         setLogs(r.data.logs || []);
         setTotal(r.data.total || 0);
       })
-      .catch(() => setLogs([]))
+      .catch((e) => { logApiError('AuditLog', e); setLogs([]); })
       .finally(() => setLoading(false));
   }, [token, limit, skip, actionFilter]);
 

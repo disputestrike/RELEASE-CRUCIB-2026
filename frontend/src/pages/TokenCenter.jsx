@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuth, API } from '../App';
 import axios from 'axios';
+import { logApiError } from '../utils/apiError';
 import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis } from 'recharts';
 
 const TokenCenter = () => {
@@ -33,8 +34,8 @@ const TokenCenter = () => {
           axios.get(`${API}/tokens/bundles`),
           axios.get(`${API}/tokens/history`, { headers }),
           axios.get(`${API}/tokens/usage`, { headers }),
-          token ? axios.get(`${API}/referrals/code`, { headers }).catch(() => ({ data: {} })) : Promise.resolve({ data: {} }),
-          token ? axios.get(`${API}/referrals/stats`, { headers }).catch(() => ({ data: {} })) : Promise.resolve({ data: {} })
+          token ? axios.get(`${API}/referrals/code`, { headers }).catch((e) => { logApiError('TokenCenter referrals/code', e); return { data: {} }; }) : Promise.resolve({ data: {} }),
+          token ? axios.get(`${API}/referrals/stats`, { headers }).catch((e) => { logApiError('TokenCenter referrals/stats', e); return { data: {} }; }) : Promise.resolve({ data: {} })
         ]);
         setBundles(bundlesRes.data.bundles);
         setHistory(historyRes.data.history);
@@ -42,7 +43,7 @@ const TokenCenter = () => {
         setReferralCode(codeRes.data?.code ?? null);
         setReferralStats(statsRes.data ? { this_month: statsRes.data.this_month, total: statsRes.data.total, cap: statsRes.data.cap } : null);
       } catch (e) {
-        console.error(e);
+        logApiError('TokenCenter fetchData', e);
       } finally {
         setLoading(false);
       }
