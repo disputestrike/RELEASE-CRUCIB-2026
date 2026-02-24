@@ -6,7 +6,6 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
 import json
 import os
-from openai import AsyncOpenAI
 from anthropic import AsyncAnthropic
 
 
@@ -108,7 +107,7 @@ class BaseAgent(ABC):
         self,
         user_prompt: str,
         system_prompt: str,
-        model: str = "gpt-4o",
+        model: str = "claude-3-5-haiku-20241022",
         temperature: float = 0.7,
         max_tokens: int = 4000
     ) -> tuple[str, int]:
@@ -118,38 +117,18 @@ class BaseAgent(ABC):
         Args:
             user_prompt: User message
             system_prompt: System message
-            model: Model name (gpt-4o, gpt-4o-mini, claude-3-5-sonnet-20241022, etc.)
+            model: Model name (claude-3-5-haiku-20241022 for Anthropic, or cerebras for free tier)
             temperature: Temperature for generation
             max_tokens: Maximum tokens to generate
             
         Returns:
             Tuple of (response_text, tokens_used)
         """
-        # Try OpenAI models first
-        if model.startswith("gpt-"):
-            openai_key = os.getenv("OPENAI_API_KEY")
-            if openai_key:
-                try:
-                    client = AsyncOpenAI(api_key=openai_key)
-                    response = await client.chat.completions.create(
-                        model=model,
-                        messages=[
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": user_prompt}
-                        ],
-                        temperature=temperature,
-                        max_tokens=max_tokens
-                    )
-                    content = response.choices[0].message.content
-                    tokens = response.usage.total_tokens if response.usage else 0
-                    return content, tokens
-                except Exception as e:
-                    raise AgentValidationError(f"{self.name}: OpenAI API call failed: {e}")
-        
-        # Try Anthropic models
-        elif model.startswith("claude-"):
+        # Anthropic (Haiku) or Cerebras (free tier)
+        if model.startswith("claude-") or model == "cerebras":
+            # Try Anthropic first (Haiku)
             anthropic_key = os.getenv("ANTHROPIC_API_KEY")
-            if anthropic_key:
+            if anthropic_key and model.startswith("claude-"):
                 try:
                     client = AsyncAnthropic(api_key=anthropic_key)
                     response = await client.messages.create(
@@ -166,6 +145,26 @@ class BaseAgent(ABC):
                     return content, tokens
                 except Exception as e:
                     raise AgentValidationError(f"{self.name}: Anthropic API call failed: {e}")
+            
+            # Fallback to Cerebras for free tier
+            cerebras_key = os.getenv("CEREBRAS_API_KEY")
+            if cerebras_key and model == "cerebras":
+                try:
+                    client = AsyncAnthropic(api_key=cerebras_key, base_url="https://api.cerebras.ai/v1")
+                    response = await client.messages.create(
+                        model="claude-3-5-haiku-20241022",
+                        max_tokens=max_tokens,
+                        temperature=temperature,
+                        system=system_prompt,
+                        messages=[
+                            {"role": "user", "content": user_prompt}
+                        ]
+                    )
+                    content = response.content[0].text
+                    tokens = response.usage.input_tokens + response.usage.output_tokens
+                    return content, tokens
+                except Exception as e:
+                    raise AgentValidationError(f"{self.name}: Cerebras API call failed: {e}")
         
         raise AgentValidationError(f"{self.name}: No API key found for model {model}")
     

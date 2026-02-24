@@ -9,7 +9,7 @@ from typing import Dict, Any
 logger = logging.getLogger(__name__)
 
 # Prohibited keywords (lowercase) -> category for blocking and logging.
-# Kept in sync with industry (OpenAI, Anthropic, Vercel) and lawful standards.
+# Anthropic
 PROHIBITED_KEYWORDS: Dict[str, list] = {
     "illegal": [
         "drug marketplace", "sell drugs", "buy drugs", "dark web market",

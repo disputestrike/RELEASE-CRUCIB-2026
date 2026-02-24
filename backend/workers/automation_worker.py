@@ -1,7 +1,7 @@
 """
 Automation worker: polls user_agents (schedule) and automation_tasks (legacy), executes runs, updates next_run_at.
 Run as: python -m backend.workers.automation_worker
-Requires: MONGO_URL, DB_NAME; optional CRUCIBAI_API_URL, CRUCIBAI_INTERNAL_TOKEN for run_agent actions.
+Requires: DATABASE_URL; optional CRUCIBAI_API_URL, CRUCIBAI_INTERNAL_TOKEN for run_agent actions.
 """
 import asyncio
 import logging
@@ -11,8 +11,6 @@ from datetime import datetime, timezone
 
 # Add parent to path so backend imports work
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from motor.motor_asyncio import AsyncIOMotorClient
 
 from automation.constants import (
     CREDITS_PER_AGENT_RUN,
@@ -33,11 +31,9 @@ COLLECTION_LEGACY_TASKS = "automation_tasks"
 
 
 async def get_db():
-    """Connect to MongoDB (same as server)."""
-    mongo_url = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
-    db_name = os.environ.get("DB_NAME", "crucibai")
-    client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000)
-    return client[db_name]
+    """Connect to PostgreSQL (same as server)."""
+    from db_pg import get_db as get_pg_db
+    return await get_pg_db()
 
 
 async def check_credits(db, user_id: str) -> bool:

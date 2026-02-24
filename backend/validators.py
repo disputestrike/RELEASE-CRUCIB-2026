@@ -101,7 +101,7 @@ class UserUpdateValidator(BaseValidator):
 class ChatMessageValidator(BaseValidator):
     message: str = Field(..., min_length=1, max_length=10000)
     session_id: Optional[str] = Field(None, max_length=100)
-    model: Optional[str] = Field("auto", pattern="^(auto|gpt-4o|claude|gemini)$")
+    model: Optional[str] = Field("auto", pattern="^(auto|haiku)$")
     mode: Optional[str] = Field(None, pattern="^(thinking|normal)?$")
     
     @validator('message')
