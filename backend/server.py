@@ -5923,8 +5923,8 @@ async def monitoring_track_event(body: TrackEventRequest):
     """Track a monitoring event. Stored in PostgreSQL when DATABASE_URL is set."""
     import uuid
     event_id = str(uuid.uuid4())
-    from db_pg import get_pg_pool
-    pool = await get_pg_pool()
+    from db_postgres import get_pool
+    pool = await get_pool()
     if pool:
         try:
             async with pool.acquire() as conn:
@@ -5941,8 +5941,8 @@ async def monitoring_track_event(body: TrackEventRequest):
 @api_router.get("/monitoring/events")
 async def monitoring_list_events(limit: int = Query(50, le=200)):
     """List recent monitoring events from PostgreSQL (proof)."""
-    from db_pg import get_pg_pool
-    pool = await get_pg_pool()
+    from db_postgres import get_pool
+    pool = await get_pool()
     if not pool:
         return {"events": [], "message": "PostgreSQL not configured (DATABASE_URL)"}
     try:
