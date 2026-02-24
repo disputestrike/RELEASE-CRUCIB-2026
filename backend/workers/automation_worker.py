@@ -4,6 +4,7 @@ Run as: python -m backend.workers.automation_worker
 Requires: DATABASE_URL; optional CRUCIBAI_API_URL, CRUCIBAI_INTERNAL_TOKEN for run_agent actions.
 """
 import asyncio
+from agents.base_agent import BaseAgent
 import logging
 import os
 import sys

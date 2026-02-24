@@ -3,6 +3,7 @@ Video placeholders via Pexels API. Finds relevant stock videos for app hero/feat
 Legal: Pexels content is free to use; we only search and return URLs per their API terms.
 """
 import os
+from agents.base_agent import BaseAgent
 import logging
 from typing import Dict, Optional
 
