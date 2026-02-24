@@ -1,0 +1,17 @@
+{
+  "platform": "Mathematical Research Platform",
+  "problems": [
+    "riemann_hypothesis",
+    "navier_stokes",
+    "yang_mills",
+    "p_vs_np"
+  ],
+  "agents_used": [
+    "Yang-Mills Existence and Mass Gap",
+    "Navier-Stokes Equations",
+    "P versus NP",
+    "Riemann Hypothesis"
+  ],
+  "files_generated": 15,
+  "timestamp": "2026-02-23T23:12:16.882789"
+}

@@ -1,0 +1,177 @@
+**Database Schema for Mathematical Research Platform**
+
+The following PostgreSQL database schema is designed to store various types of data related to mathematical research, including problem definitions, computation results, research hypotheses, user annotations, and performance metrics.
+
+```sql
+-- Create database
+CREATE DATABASE research_platform;
+
+-- Connect to database
+\c research_platform
+
+-- Create table for problem definitions
+CREATE TABLE problems (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create table for problem metadata
+CREATE TABLE problem_metadata (
+    id SERIAL PRIMARY KEY,
+    problem_id INTEGER NOT NULL REFERENCES problems(id),
+    metadata_key VARCHAR(255) NOT NULL,
+    metadata_value TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create table for computation results
+CREATE TABLE computation_results (
+    id SERIAL PRIMARY KEY,
+    problem_id INTEGER NOT NULL REFERENCES problems(id),
+    result_type VARCHAR(255) NOT NULL,
+    result_data TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create table for computation result history
+CREATE TABLE computation_result_history (
+    id SERIAL PRIMARY KEY,
+    computation_result_id INTEGER NOT NULL REFERENCES computation_results(id),
+    previous_result_data TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create table for research hypotheses
+CREATE TABLE research_hypotheses (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create table for research hypothesis tests
+CREATE TABLE research_hypothesis_tests (
+    id SERIAL PRIMARY KEY,
+    research_hypothesis_id INTEGER NOT NULL REFERENCES research_hypotheses(id),
+    test_type VARCHAR(255) NOT NULL,
+    test_data TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create table for user annotations
+CREATE TABLE user_annotations (
+    id SERIAL PRIMARY KEY,
+    problem_id INTEGER NOT NULL REFERENCES problems(id),
+    user_id INTEGER NOT NULL,
+    annotation_text TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create table for user notes
+CREATE TABLE user_notes (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    note_text TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create table for performance metrics
+CREATE TABLE performance_metrics (
+    id SERIAL PRIMARY KEY,
+    problem_id INTEGER NOT NULL REFERENCES problems(id),
+    metric_type VARCHAR(255) NOT NULL,
+    metric_value NUMERIC(10, 2) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create table for benchmarks
+CREATE TABLE benchmarks (
+    id SERIAL PRIMARY KEY,
+    problem_id INTEGER NOT NULL REFERENCES problems(id),
+    benchmark_type VARCHAR(255) NOT NULL,
+    benchmark_value NUMERIC(10, 2) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes
+CREATE INDEX idx_problems_title ON problems (title);
+CREATE INDEX idx_problem_metadata_problem_id ON problem_metadata (problem_id);
+CREATE INDEX idx_computation_results_problem_id ON computation_results (problem_id);
+CREATE INDEX idx_computation_result_history_computation_result_id ON computation_result_history (computation_result_id);
+CREATE INDEX idx_research_hypotheses_title ON research_hypotheses (title);
+CREATE INDEX idx_research_hypothesis_tests_research_hypothesis_id ON research_hypothesis_tests (research_hypothesis_id);
+CREATE INDEX idx_user_annotations_problem_id ON user_annotations (problem_id);
+CREATE INDEX idx_user_annotations_user_id ON user_annotations (user_id);
+CREATE INDEX idx_performance_metrics_problem_id ON performance_metrics (problem_id);
+CREATE INDEX idx_benchmarks_problem_id ON benchmarks (problem_id);
+```
+
+This schema includes the following tables:
+
+1.  **problems**: Stores information about mathematical problems, including title, description, and timestamps for creation and update.
+2.  **problem_metadata**: Stores additional metadata about each problem, such as key-value pairs.
+3.  **computation_results**: Stores results of computations performed on problems, including the result type and data.
+4.  **computation_result_history**: Stores a history of previous results for each computation result.
+5.  **research_hypotheses**: Stores research hypotheses, including title, description, and timestamps for creation and update.
+6.  **research_hypothesis_tests**: Stores tests performed on research hypotheses, including the test type and data.
+7.  **user_annotations**: Stores annotations made by users on problems, including the annotation text and timestamps for creation and update.
+8.  **user_notes**: Stores notes made by users, including the note text and timestamps for creation and update.
+9.  **performance_metrics**: Stores performance metrics for problems, including the metric type and value.
+10. **benchmarks**: Stores benchmarks for problems, including the benchmark type and value.
+
+The schema also includes indexes on various columns to improve query performance.
+
+**Example Use Cases**
+
+1.  **Retrieving problem information**: You can use the following query to retrieve the title and description of a problem with a specific ID:
+
+    ```sql
+SELECT title, description
+FROM problems
+WHERE id = 1;
+```
+
+2.  **Storing computation result**: You can use the following query to store a new computation result for a problem:
+
+    ```sql
+INSERT INTO computation_results (problem_id, result_type, result_data)
+VALUES (1, 'numeric', '123.45');
+```
+
+3.  **Retrieving research hypothesis tests**: You can use the following query to retrieve the tests performed on a research hypothesis with a specific ID:
+
+    ```sql
+SELECT test_type, test_data
+FROM research_hypothesis_tests
+WHERE research_hypothesis_id = 1;
+```
+
+4.  **Updating user annotation**: You can use the following query to update an existing user annotation for a problem:
+
+    ```sql
+UPDATE user_annotations
+SET annotation_text = 'New annotation text'
+WHERE problem_id = 1 AND user_id = 1;
+```
+
+5.  **Retrieving performance metrics**: You can use the following query to retrieve the performance metrics for a problem with a specific ID:
+
+    ```sql
+SELECT metric_type, metric_value
+FROM performance_metrics
+WHERE problem_id = 1;
+```
+
+Note that these are just basic examples, and you may need to modify the queries to suit your specific use case. Additionally, you should ensure that your database schema is properly normalized and optimized for performance.
