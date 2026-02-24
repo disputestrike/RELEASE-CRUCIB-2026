@@ -40,6 +40,7 @@ import {
   RefreshCw,
   ExternalLink,
   Github,
+  GitBranch,
   History,
   Undo2,
   Settings,
@@ -71,6 +72,9 @@ import InlineAgentMonitor from '../components/InlineAgentMonitor';
 import ManusComputer from '../components/ManusComputer';
 import { CommandPalette } from '../components/AdvancedIDEUX';
 import { VibeCodingInput } from '../components/VibeCoding';
+import IDETerminal from '../components/IDETerminal';
+import IDEGit from '../components/IDEGit';
+import VibeCodePage from './VibeCodePage';
 
 /** Format message content — avoid [object Object] */
 function formatMsgContent(c) {
@@ -466,6 +470,7 @@ const Workspace = () => {
   }, []);
   const projectIdFromUrl = searchParams.get('projectId');
   const taskIdFromUrl = searchParams.get('taskId');
+  const panelFromUrl = searchParams.get('panel'); // deep link: ?panel=shell|git|vibecode|tools opens that right-panel tab
   const [projectBuildProgress, setProjectBuildProgress] = useState({ phase: 0, agent: '', progress: 0, status: '', tokens_used: 0 });
   const fileInputRef = useRef(null);
   const chatInputRef = useRef(null);
@@ -489,6 +494,16 @@ const Workspace = () => {
   useEffect(() => {
     axios.get(`${API}/build/phases`).then(r => setBuildPhases(r.data.phases || [])).catch((e) => logApiError('Workspace', e));
   }, []);
+
+  // Deep link: open right panel to a specific tab when ?panel= is in URL (so sidebar "Terminal & Git" / "VibeCode" open inside Workspace)
+  const validPanels = ['preview', 'console', 'history', 'review', 'tools', 'shell', 'git', 'vibecode'];
+  useEffect(() => {
+    if (panelFromUrl && validPanels.includes(panelFromUrl)) {
+      if (['shell', 'git', 'vibecode'].includes(panelFromUrl)) setLayoutMode('dev'); // ensure dev view so those tabs exist
+      setActivePanel(panelFromUrl);
+      setRightSidebarOpen(true);
+    }
+  }, [panelFromUrl, setLayoutMode]);
 
   // Initial terminal message so panel isn't empty
   useEffect(() => {
@@ -1987,10 +2002,13 @@ Respond with ONLY the complete App.js code, nothing else.`;
               {(devMode
                 ? [
                     { id: 'preview', label: 'Preview', icon: Eye },
-                    { id: 'console', label: 'Terminal', icon: Terminal },
+                    { id: 'console', label: 'Logs', icon: FileText },
                     { id: 'history', label: 'History', icon: History },
                     { id: 'review', label: 'Code', icon: FileCode },
                     { id: 'tools', label: 'Tools', icon: Wrench },
+                    { id: 'shell', label: 'Shell', icon: Terminal },
+                    { id: 'git', label: 'Git', icon: GitBranch },
+                    { id: 'vibecode', label: 'VibeCode', icon: Sparkles },
                   ]
                 : [{ id: 'preview', label: 'Preview', icon: Eye }]
               ).map(tab => (
@@ -2232,6 +2250,21 @@ Respond with ONLY the complete App.js code, nothing else.`;
                     )}
                   </div>
                 )}
+              </div>
+            )}
+            {devMode && activePanel === 'shell' && (
+              <div className="p-4 h-full overflow-auto">
+                <IDETerminal />
+              </div>
+            )}
+            {devMode && activePanel === 'git' && (
+              <div className="p-4 h-full overflow-auto">
+                <IDEGit />
+              </div>
+            )}
+            {devMode && activePanel === 'vibecode' && (
+              <div className="p-4 h-full overflow-auto">
+                <VibeCodePage />
               </div>
             )}
           </div>

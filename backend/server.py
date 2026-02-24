@@ -3893,6 +3893,10 @@ async def one_click_deploy_vercel(
 ):
     """One-click deploy to Vercel. Uses token from body, or user's stored deploy_tokens.vercel, or env VERCEL_TOKEN."""
     deploy_files, project_name = await _get_project_deploy_files(project_id, user["id"])
+    from validate_deployment import validate_deployment
+    validation = validate_deployment("vercel", deploy_files, None)
+    if not validation.valid and validation.errors:
+        raise HTTPException(status_code=400, detail={"message": "Deploy validation failed", "errors": validation.errors, "warnings": validation.warnings})
     u = await db.users.find_one({"id": user["id"]}, {"deploy_tokens": 1})
     vercel_token = (
         (body.token if body and body.token else None)
@@ -3954,6 +3958,11 @@ async def one_click_deploy_netlify(
     user: dict = Depends(require_permission(Permission.DEPLOY_PROJECT if Permission else None)),
 ):
     """One-click deploy to Netlify. Uses token from body, or user's stored deploy_tokens.netlify, or env NETLIFY_TOKEN."""
+    deploy_files, _ = await _get_project_deploy_files(project_id, user["id"])
+    from validate_deployment import validate_deployment
+    validation = validate_deployment("netlify", deploy_files, None)
+    if not validation.valid and validation.errors:
+        raise HTTPException(status_code=400, detail={"message": "Deploy validation failed", "errors": validation.errors, "warnings": validation.warnings})
     buf = await _build_project_deploy_zip(project_id, user["id"])
     zip_bytes = buf.getvalue()
     u = await db.users.find_one({"id": user["id"]}, {"deploy_tokens": 1})
@@ -4439,6 +4448,17 @@ async def _run_single_agent_with_context(
     return result
 
 
+def _agent_cache_input(agent_name: str, project_prompt: str, previous_outputs: Dict[str, Dict[str, Any]]) -> str:
+    """Build stable input string for agent cache key (prompt + dependent outputs)."""
+    parts = [project_prompt]
+    deps = list(AGENT_DAG.get(agent_name, {}).get("depends_on", []))
+    for dep in sorted(deps):
+        if dep in previous_outputs:
+            out = (previous_outputs[dep].get("output") or previous_outputs[dep].get("result") or "")[:800]
+            parts.append(f"{dep}:{out}")
+    return "\n".join(parts)
+
+
 async def _run_single_agent_with_retry(
     project_id: str,
     user_id: str,
@@ -4450,6 +4470,11 @@ async def _run_single_agent_with_retry(
     max_retries: int = 3,
     build_kind: Optional[str] = None,
 ) -> Dict[str, Any]:
+    from agent_cache import get as cache_get, set as cache_set
+    input_data = _agent_cache_input(agent_name, project_prompt, previous_outputs)
+    cached = await cache_get(db, agent_name, input_data)
+    if cached and isinstance(cached, dict) and (cached.get("output") or cached.get("result")):
+        return cached
     last_err = None
     for attempt in range(max_retries):
         try:
@@ -4458,6 +4483,7 @@ async def _run_single_agent_with_retry(
             )
             if not (r.get("output") or r.get("result")):
                 raise AgentError(agent_name, "Empty output", "medium")
+            await cache_set(db, agent_name, input_data, r)
             return r
         except Exception as e:
             last_err = e
@@ -5946,6 +5972,391 @@ async def use_deployment_tool(request: dict):
     agent = DeploymentOperationsAgent(llm_client=None, config={})
     return await agent.run(request)
 
+# ==================== MONITORING (PostgreSQL proof) ====================
+class TrackEventRequest(BaseModel):
+    event_type: str
+    user_id: str
+    duration: Optional[float] = None
+    metadata: Optional[Dict[str, Any]] = None
+    success: bool = True
+    error_message: Optional[str] = None
+
+@api_router.post("/monitoring/events/track")
+async def monitoring_track_event(body: TrackEventRequest):
+    """Track a monitoring event. Stored in PostgreSQL when DATABASE_URL is set."""
+    import uuid
+    event_id = str(uuid.uuid4())
+    from db_pg import get_pg_pool
+    pool = await get_pg_pool()
+    if pool:
+        try:
+            async with pool.acquire() as conn:
+                await conn.execute(
+                    """INSERT INTO monitoring_events (event_id, event_type, user_id, duration, metadata, success, error_message)
+                       VALUES ($1, $2, $3, $4, $5, $6, $7)""",
+                    event_id, body.event_type, body.user_id, body.duration,
+                    json.dumps(body.metadata or {}), body.success, body.error_message
+                )
+        except Exception as e:
+            logger.warning("monitoring_track_event pg insert failed: %s", e)
+    return {"status": "ok", "event_id": event_id}
+
+@api_router.get("/monitoring/events")
+async def monitoring_list_events(limit: int = Query(50, le=200)):
+    """List recent monitoring events from PostgreSQL (proof)."""
+    from db_pg import get_pg_pool
+    pool = await get_pg_pool()
+    if not pool:
+        return {"events": [], "message": "PostgreSQL not configured (DATABASE_URL)"}
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """SELECT event_id, event_type, user_id, timestamp, duration, metadata, success, error_message
+                   FROM monitoring_events ORDER BY timestamp DESC LIMIT $1""",
+                limit
+            )
+        events = [
+            {
+                "event_id": r["event_id"],
+                "event_type": r["event_type"],
+                "user_id": r["user_id"],
+                "timestamp": r["timestamp"].isoformat() if r["timestamp"] else None,
+                "duration": r["duration"],
+                "metadata": r["metadata"],
+                "success": r["success"],
+                "error_message": r["error_message"],
+            }
+            for r in rows
+        ]
+        return {"events": events}
+    except Exception as e:
+        logger.warning("monitoring_list_events failed: %s", e)
+        return {"events": [], "error": str(e)}
+
+# ==================== VIBECODING (vibe analysis + code gen) ====================
+class VibeAnalyzeRequest(BaseModel):
+    text: str
+    context: Optional[str] = None
+
+class VibeGenerateRequest(BaseModel):
+    prompt: str
+    language: Optional[str] = None
+    framework: Optional[str] = None
+    vibe_analysis: Optional[Dict[str, Any]] = None
+
+@api_router.post("/vibecoding/analyze")
+async def vibecoding_analyze(body: VibeAnalyzeRequest):
+    """Analyze natural language to detect vibe (style, frameworks, complexity)."""
+    try:
+        from vibe_analysis import vibe_analyzer
+        vibe = vibe_analyzer.analyze(body.text)
+        return {"status": "success", "vibe": vibe.to_dict(), "confidence": vibe.confidence_score}
+    except Exception as e:
+        logger.warning("vibecoding_analyze failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/vibecoding/generate")
+async def vibecoding_generate(body: VibeGenerateRequest):
+    """Generate code from prompt using vibe analysis."""
+    try:
+        from vibe_analysis import vibe_analyzer
+        from vibe_code_generator import vibe_code_generator
+        vibe_obj = vibe_analyzer.analyze(body.prompt)
+        gen = vibe_code_generator.generate(vibe_obj, body.prompt, body.language)
+        return {
+            "status": "success",
+            "language": gen.language,
+            "framework": gen.framework,
+            "code": gen.code,
+            "style": gen.style,
+            "structure": gen.structure,
+            "explanation": gen.explanation,
+        }
+    except Exception as e:
+        logger.warning("vibecoding_generate failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+class VibeAnalyzeAudioRequest(BaseModel):
+    transcript: Optional[str] = None  # if audio not provided, use transcript for vibe analysis
+    audio_base64: Optional[str] = None
+
+@api_router.post("/vibecoding/analyze-audio")
+async def vibecoding_analyze_audio(body: VibeAnalyzeAudioRequest):
+    """Analyze vibe from transcript or from audio (transcribe then analyze). When transcript provided, runs vibe analysis."""
+    try:
+        from vibe_analysis import vibe_analyzer
+        text = body.transcript or ""
+        if body.audio_base64 and not text:
+            # Stub: no server-side transcription here; caller should use /voice/transcribe then pass transcript
+            return {"status": "error", "detail": "Provide transcript or transcribe audio via /voice/transcribe first"}
+        if not text:
+            return {"status": "error", "detail": "transcript required"}
+        vibe = vibe_analyzer.analyze(text)
+        return {"status": "success", "vibe": vibe.to_dict(), "confidence": vibe.confidence_score}
+    except Exception as e:
+        logger.warning("vibecoding_analyze_audio failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+class VibeDetectFrameworksRequest(BaseModel):
+    text: Optional[str] = None
+    project_id: Optional[str] = None
+
+@api_router.post("/vibecoding/detect-frameworks")
+async def vibecoding_detect_frameworks(body: VibeDetectFrameworksRequest):
+    """Detect frameworks and languages from text (or from project description when project_id given)."""
+    try:
+        from vibe_analysis import vibe_analyzer
+        text = body.text or ""
+        if body.project_id and not text:
+            proj = await db.projects.find_one({"id": body.project_id}, {"description": 1, "requirements": 1})
+            if proj:
+                req = proj.get("requirements") or {}
+                text = req.get("prompt") or req.get("description") or proj.get("description") or ""
+        if not text:
+            return {"status": "success", "frameworks": [], "languages": []}
+        vibe = vibe_analyzer.analyze(text)
+        return {"status": "success", "frameworks": vibe.detected_frameworks, "languages": vibe.detected_languages}
+    except Exception as e:
+        logger.warning("vibecoding_detect_frameworks failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==================== IDE (debug, profiler, linter) ====================
+class IDEBreakpointRequest(BaseModel):
+    file_path: str
+    line: int
+    column: int = 0
+    condition: Optional[str] = None
+
+@api_router.post("/ide/debug/start")
+async def ide_debug_start(project_id: str = Query(...)):
+    """Start a debug session (stub)."""
+    from ide_features import debugger_manager
+    session_id = str(uuid.uuid4())
+    session = await debugger_manager.start_debug_session(session_id, project_id)
+    return {"session_id": session.session_id, "project_id": session.project_id, "status": session.status}
+
+@api_router.post("/ide/debug/{session_id}/breakpoint")
+async def ide_debug_set_breakpoint(session_id: str, body: IDEBreakpointRequest):
+    """Set a breakpoint in a debug session."""
+    from ide_features import debugger_manager, BreakPoint
+    bp = BreakPoint(file_path=body.file_path, line=body.line, column=body.column, condition=body.condition)
+    result = await debugger_manager.set_breakpoint(session_id, bp)
+    return {"id": result.id, "file_path": result.file_path, "line": result.line, "column": result.column, "condition": result.condition, "enabled": result.enabled}
+
+@api_router.delete("/ide/debug/{session_id}/breakpoint/{breakpoint_id}")
+async def ide_debug_remove_breakpoint(session_id: str, breakpoint_id: str):
+    """Remove a breakpoint."""
+    from ide_features import debugger_manager
+    await debugger_manager.remove_breakpoint(session_id, breakpoint_id)
+    return {"status": "removed"}
+
+@api_router.post("/ide/profiler/start")
+async def ide_profiler_start(project_id: str = Query(...)):
+    """Start profiler (stub)."""
+    from ide_features import profiler_manager
+    session_id = str(uuid.uuid4())
+    out = await profiler_manager.start_profiler(session_id, project_id)
+    return out
+
+@api_router.post("/ide/profiler/stop")
+async def ide_profiler_stop(session_id: str = Query(...)):
+    """Stop profiler (stub)."""
+    from ide_features import profiler_manager
+    out = await profiler_manager.stop_profiler(session_id)
+    return out
+
+@api_router.post("/ide/lint")
+async def ide_lint(project_id: str = Query(...), file_path: Optional[str] = None, code: Optional[str] = None):
+    """Run linter (stub). Returns empty list until wired to real linter."""
+    from ide_features import linter_manager
+    issues = await linter_manager.run_lint(project_id, file_path or "", code)
+    return {"issues": [{"file_path": i.file_path, "line": i.line, "column": i.column, "message": i.message, "severity": i.severity} for i in issues]}
+
+# ==================== GIT ====================
+@api_router.get("/git/status")
+async def git_status(repo_path: str = Query(None), project_id: Optional[str] = Query(None), user: dict = Depends(get_optional_user)):
+    """Real git status. Pass repo_path (server path) or project_id (resolved when authenticated)."""
+    from git_integration import git_manager
+    path = repo_path
+    if project_id and user and not path:
+        proj = await db.projects.find_one({"id": project_id, "user_id": user.get("id")})
+        if proj:
+            path = str(_project_workspace_path(project_id).resolve())
+    if not path:
+        raise HTTPException(status_code=400, detail="repo_path or project_id required")
+    status = await git_manager.get_status(path)
+    return {"branch": status.branch, "ahead": status.ahead, "behind": status.behind, "modified": status.modified, "untracked": status.untracked, "staged": status.staged, "conflicted": status.conflicted, "is_repo": status.is_repo, "error": status.error}
+
+@api_router.post("/git/stage")
+async def git_stage(repo_path: str = Query(None), project_id: Optional[str] = Query(None), file_path: str = Query(...), user: dict = Depends(get_optional_user)):
+    from git_integration import git_manager
+    path = repo_path
+    if project_id and user and not path:
+        proj = await db.projects.find_one({"id": project_id, "user_id": user.get("id")})
+        if proj:
+            path = str(_project_workspace_path(project_id).resolve())
+    if not path:
+        raise HTTPException(status_code=400, detail="repo_path or project_id required")
+    ok = await git_manager.stage_file(path, file_path)
+    return {"status": "staged" if ok else "error"}
+
+class GitCommitRequest(BaseModel):
+    message: str
+    author: Optional[str] = None
+
+@api_router.post("/git/commit")
+async def git_commit(repo_path: str = Query(None), project_id: Optional[str] = Query(None), body: GitCommitRequest = None, user: dict = Depends(get_optional_user)):
+    """Real git commit. Pass repo_path or project_id (when authenticated)."""
+    from git_integration import git_manager
+    if not body:
+        raise HTTPException(status_code=400, detail="body required")
+    path = repo_path
+    if project_id and user and not path:
+        proj = await db.projects.find_one({"id": project_id, "user_id": user.get("id")})
+        if proj:
+            path = str(_project_workspace_path(project_id).resolve())
+    if not path:
+        raise HTTPException(status_code=400, detail="repo_path or project_id required")
+    ok = await git_manager.commit(path, body.message, body.author)
+    return {"status": "ok" if ok else "error"}
+
+@api_router.get("/git/branches")
+async def git_branches(repo_path: str = Query(None), project_id: Optional[str] = Query(None), user: dict = Depends(get_optional_user)):
+    """List branches. Pass repo_path or project_id (when authenticated)."""
+    from git_integration import git_manager
+    path = repo_path
+    if project_id and user and not path:
+        proj = await db.projects.find_one({"id": project_id, "user_id": user.get("id")})
+        if proj:
+            path = str(_project_workspace_path(project_id).resolve())
+    if not path:
+        raise HTTPException(status_code=400, detail="repo_path or project_id required")
+    branches = await git_manager.list_branches(path)
+    return {"branches": branches}
+
+@api_router.post("/git/merge")
+async def git_merge(repo_path: str = Query(None), project_id: Optional[str] = Query(None), branch: str = Query(...), user: dict = Depends(get_optional_user)):
+    """Merge branch into current branch."""
+    from git_integration import git_manager
+    path = repo_path
+    if project_id and user and not path:
+        proj = await db.projects.find_one({"id": project_id, "user_id": user.get("id")})
+        if proj:
+            path = str(_project_workspace_path(project_id).resolve())
+    if not path:
+        raise HTTPException(status_code=400, detail="repo_path or project_id required")
+    ok, msg = await git_manager.merge_branch(path, branch)
+    return {"status": "ok" if ok else "error", "message": msg}
+
+class GitResolveRequest(BaseModel):
+    file_path: str
+    resolution: str = "ours"  # ours | theirs
+
+@api_router.post("/git/resolve-conflict")
+async def git_resolve_conflict(repo_path: str = Query(None), project_id: Optional[str] = Query(None), body: GitResolveRequest = None, user: dict = Depends(get_optional_user)):
+    """Resolve conflict by checking out ours or theirs and staging."""
+    from git_integration import git_manager
+    if not body:
+        raise HTTPException(status_code=400, detail="body required")
+    path = repo_path
+    if project_id and user and not path:
+        proj = await db.projects.find_one({"id": project_id, "user_id": user.get("id")})
+        if proj:
+            path = str(_project_workspace_path(project_id).resolve())
+    if not path:
+        raise HTTPException(status_code=400, detail="repo_path or project_id required")
+    ok = await git_manager.resolve_conflict(path, body.file_path, body.resolution)
+    return {"status": "ok" if ok else "error"}
+
+# ==================== TERMINAL ====================
+@api_router.post("/terminal/create")
+async def terminal_create(project_path: str = Query(...), project_id: Optional[str] = Query(None), shell: str = Query("/bin/bash"), user: dict = Depends(get_optional_user)):
+    """Create terminal session. Use project_path (server workspace path) or project_id (resolved server-side when authenticated)."""
+    from terminal_integration import terminal_manager
+    path = project_path
+    if project_id and user:
+        proj = await db.projects.find_one({"id": project_id, "user_id": user.get("id")})
+        if proj:
+            path = str(_project_workspace_path(project_id).resolve())
+    session = await terminal_manager.create_terminal(path, shell)
+    return {"session_id": session.session_id, "project_path": session.project_path, "shell": session.shell, "columns": session.columns, "rows": session.rows}
+
+class TerminalExecuteRequest(BaseModel):
+    command: str
+    timeout: Optional[int] = 60
+
+@api_router.post("/terminal/{session_id}/execute")
+async def terminal_execute(session_id: str, body: TerminalExecuteRequest):
+    """Execute command in the session's project path. Full implementation — runs real shell command."""
+    from terminal_integration import terminal_manager
+    result = await terminal_manager.execute(session_id, body.command, body.timeout or 60)
+    return result
+
+@api_router.delete("/terminal/{session_id}")
+async def terminal_close(session_id: str):
+    from terminal_integration import terminal_manager
+    await terminal_manager.close_terminal(session_id)
+    return {"status": "closed", "session_id": session_id}
+
+# ==================== ECOSYSTEM ====================
+@api_router.get("/ecosystem/vscode/config")
+async def ecosystem_vscode_config():
+    from ecosystem_integration import ecosystem_manager
+    config = ecosystem_manager.vscode.generate_extension_config()
+    return {"status": "success", "extension_id": ecosystem_manager.vscode.extension_id, "version": ecosystem_manager.vscode.version, "config": config}
+
+@api_router.get("/ecosystem/vscode/extension-code")
+async def ecosystem_vscode_extension_code():
+    from ecosystem_integration import ecosystem_manager
+    code = ecosystem_manager.vscode.generate_extension_code()
+    return {"status": "success", "code": code}
+
+# ==================== AI FEATURES (extra) ====================
+class AIGenerateTestRequest(BaseModel):
+    code: str
+    language: str
+    framework: Optional[str] = None
+    test_type: str = "unit"
+
+@api_router.post("/ai/tests/generate")
+async def ai_tests_generate(body: AIGenerateTestRequest):
+    from ai_features import test_generator
+    if (body.test_type or "unit").lower() == "unit":
+        result = test_generator.generate_unit_tests(body.code, body.language, body.framework)
+    else:
+        result = test_generator.generate_integration_tests(body.code, body.language, body.framework)
+    return {"code": result.code, "description": result.description, "test_type": result.test_type}
+
+class AIDocsGenerateRequest(BaseModel):
+    project_name: str
+    description: Optional[str] = None
+    features: Optional[List[str]] = None
+
+@api_router.post("/ai/docs/generate")
+async def ai_docs_generate(body: AIDocsGenerateRequest):
+    from ai_features import documentation_generator
+    readme = documentation_generator.generate_readme(body.project_name, body.description, body.features)
+    return {"status": "success", "readme": readme}
+
+# ==================== DEPLOY VALIDATION & CACHE (modules 9–13) ====================
+class DeployValidateRequest(BaseModel):
+    platform: str  # vercel | netlify | railway
+    files: Dict[str, str] = {}
+    config: Optional[Dict[str, Any]] = None
+
+@api_router.post("/deploy/validate")
+async def deploy_validate(body: DeployValidateRequest):
+    from validate_deployment import validate_deployment
+    result = validate_deployment(body.platform, body.files, body.config)
+    return {"valid": result.valid, "errors": result.errors, "warnings": result.warnings, "platform": result.platform}
+
+@api_router.post("/cache/invalidate")
+async def cache_invalidate(agent_name: Optional[str] = Query(None), user: dict = Depends(get_optional_user)):
+    """Invalidate agent cache (optional: by agent_name)."""
+    from agent_cache import invalidate
+    n = await invalidate(db, agent_name=agent_name)
+    return {"status": "ok", "deleted": n}
+
 # Include router
 app.include_router(api_router)
 
@@ -6011,6 +6422,19 @@ async def ensure_db_indexes():
         await ensure_indexes(db)
     except Exception as e:
         logger.warning("Ensure DB indexes: %s", e)
+
+
+@app.on_event("startup")
+async def init_postgres_if_configured():
+    """Initialize PostgreSQL pool and schema when DATABASE_URL is set (proof)."""
+    try:
+        from db_pg import get_pg_pool
+        from db_schema_pg import init_pg_schema
+        pool = await get_pg_pool()
+        if pool:
+            await init_pg_schema(pool)
+    except Exception as e:
+        logger.warning("PostgreSQL init: %s", e)
 
 
 @app.on_event("startup")
@@ -6100,4 +6524,9 @@ async def seed_internal_agents_if_requested():
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
+    try:
+        from db_pg import close_pg_pool
+        await close_pg_pool()
+    except Exception:
+        pass
     client.close()

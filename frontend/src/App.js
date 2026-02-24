@@ -81,6 +81,9 @@ import AdminLegal from "./pages/AdminLegal";
 import AuditLog from "./pages/AuditLog";
 import AgentsPage from "./pages/AgentsPage";
 import OnboardingPage from "./pages/OnboardingPage";
+import MonitoringDashboard from "./pages/MonitoringDashboard";
+import VibeCodePage from "./pages/VibeCodePage";
+import UnifiedIDEPage from "./pages/UnifiedIDEPage";
 import { LayoutProvider } from "./stores/useLayoutStore";
 import { TaskProvider } from "./stores/useTaskStore";
 
@@ -351,6 +354,9 @@ function App() {
             <Route path="agents/:id" element={<AgentsPage />} />
             <Route path="settings" element={<Settings />} />
             <Route path="audit-log" element={<AuditLog />} />
+            <Route path="monitoring" element={<MonitoringDashboard />} />
+            <Route path="vibecode" element={<VibeCodePage />} />
+            <Route path="ide" element={<UnifiedIDEPage />} />
             <Route path="admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
             <Route path="admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
             <Route path="admin/users/:id" element={<AdminRoute><AdminUserProfile /></AdminRoute>} />
