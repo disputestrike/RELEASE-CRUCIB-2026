@@ -1,0 +1,11 @@
+{
+  "presets": ["react-app"],
+  "env": {
+    "production": {
+      "plugins": []
+    },
+    "development": {
+      "plugins": ["react-refresh/babel"]
+    }
+  }
+}
