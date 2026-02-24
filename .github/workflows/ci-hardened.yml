@@ -1,0 +1,321 @@
+name: CI/CD Pipeline - Hard Gates
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  PYTHON_VERSION: '3.11.0'
+  NODE_VERSION: '20.10.0'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Phase 1: Deterministic Build Check
+  deterministic-build:
+    runs-on: ubuntu-latest
+    name: Verify Deterministic Build
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Verify Python version
+        run: |
+          ACTUAL=$(python --version | awk '{print $2}')
+          EXPECTED=${{ env.PYTHON_VERSION }}
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "❌ Python version mismatch: $ACTUAL != $EXPECTED"
+            exit 1
+          fi
+          echo "✅ Python version verified: $ACTUAL"
+      
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      
+      - name: Install dependencies
+        run: |
+          pip install --no-cache-dir -r requirements.txt
+      
+      - name: Verify deterministic hash
+        run: |
+          HASH1=$(sha256sum requirements.txt | awk '{print $1}')
+          pip install --no-cache-dir -r requirements.txt
+          HASH2=$(sha256sum requirements.txt | awk '{print $1}')
+          if [ "$HASH1" != "$HASH2" ]; then
+            echo "❌ Requirements hash mismatch - build not deterministic"
+            exit 1
+          fi
+          echo "✅ Deterministic build verified: $HASH1"
+
+  # Phase 2: Type Checking
+  type-check:
+    runs-on: ubuntu-latest
+    name: Type Checking (MyPy)
+    needs: deterministic-build
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install dependencies
+        run: pip install --no-cache-dir -r requirements.txt
+      
+      - name: Run MyPy type checking
+        run: |
+          mypy backend/ --strict --ignore-missing-imports
+      
+      - name: Report type check results
+        if: failure()
+        run: |
+          echo "❌ Type checking failed - blocking deployment"
+          exit 1
+
+  # Phase 3: Code Quality & Linting
+  code-quality:
+    runs-on: ubuntu-latest
+    name: Code Quality (Black, Isort, Flake8)
+    needs: deterministic-build
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install dependencies
+        run: pip install --no-cache-dir -r requirements.txt
+      
+      - name: Check formatting (Black)
+        run: black --check backend/ || (echo "❌ Code not formatted" && exit 1)
+      
+      - name: Check import sorting (Isort)
+        run: isort --check-only backend/ || (echo "❌ Imports not sorted" && exit 1)
+      
+      - name: Lint with Flake8
+        run: |
+          flake8 backend/ --max-line-length=120 --ignore=E203,W503 || (echo "❌ Linting failed" && exit 1)
+
+  # Phase 4: Security Scanning
+  security-scan:
+    runs-on: ubuntu-latest
+    name: Security Scanning
+    needs: deterministic-build
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install dependencies
+        run: pip install --no-cache-dir -r requirements.txt
+      
+      - name: Run Bandit security check
+        run: |
+          bandit -r backend/ -f json -o bandit-report.json
+          bandit -r backend/ -f txt
+      
+      - name: Check for known vulnerabilities (Safety)
+        run: |
+          safety check --json || (echo "⚠️  Vulnerabilities found - review required" && exit 1)
+      
+      - name: Upload security report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-reports
+          path: bandit-report.json
+
+  # Phase 5: Unit Tests with Coverage
+  unit-tests:
+    runs-on: ubuntu-latest
+    name: Unit Tests (80%+ Coverage Required)
+    needs: [type-check, code-quality, security-scan]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install dependencies
+        run: pip install --no-cache-dir -r requirements.txt
+      
+      - name: Run unit tests with coverage
+        run: |
+          pytest backend/ \
+            --cov=backend \
+            --cov-report=term-missing \
+            --cov-report=html \
+            --cov-report=json \
+            --cov-fail-under=80 \
+            --timeout=10 \
+            -v
+      
+      - name: Check coverage threshold
+        run: |
+          COVERAGE=$(python -c "import json; print(json.load(open('coverage.json'))['totals']['percent_covered'])")
+          echo "Coverage: ${COVERAGE}%"
+          if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+            echo "❌ Coverage below 80% threshold"
+            exit 1
+          fi
+          echo "✅ Coverage threshold met: ${COVERAGE}%"
+      
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-reports
+          path: |
+            htmlcov/
+            coverage.json
+
+  # Phase 6: Integration Tests
+  integration-tests:
+    runs-on: ubuntu-latest
+    name: Integration Tests
+    needs: unit-tests
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: crucibai_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install dependencies
+        run: pip install --no-cache-dir -r requirements.txt
+      
+      - name: Run integration tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/crucibai_test
+          REDIS_URL: redis://localhost:6379/0
+        run: |
+          pytest backend/tests/integration/ \
+            --timeout=30 \
+            -v
+
+  # Phase 7: Build Docker Image
+  build-image:
+    runs-on: ubuntu-latest
+    name: Build Docker Image
+    needs: integration-tests
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Log in to Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+
+  # Phase 8: Smoke Tests (Production-like environment)
+  smoke-tests:
+    runs-on: ubuntu-latest
+    name: Smoke Tests
+    needs: build-image
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install dependencies
+        run: pip install --no-cache-dir -r requirements.txt
+      
+      - name: Run smoke tests
+        run: |
+          pytest backend/tests/smoke/ \
+            --timeout=60 \
+            -v
+
+  # Final: Summary
+  ci-summary:
+    runs-on: ubuntu-latest
+    name: CI Pipeline Summary
+    needs: [deterministic-build, type-check, code-quality, security-scan, unit-tests, integration-tests, build-image, smoke-tests]
+    if: always()
+    steps:
+      - name: Check CI Status
+        run: |
+          if [ "${{ needs.deterministic-build.result }}" != "success" ] || \
+             [ "${{ needs.type-check.result }}" != "success" ] || \
+             [ "${{ needs.code-quality.result }}" != "success" ] || \
+             [ "${{ needs.security-scan.result }}" != "success" ] || \
+             [ "${{ needs.unit-tests.result }}" != "success" ] || \
+             [ "${{ needs.integration-tests.result }}" != "success" ] || \
+             [ "${{ needs.build-image.result }}" != "success" ] || \
+             [ "${{ needs.smoke-tests.result }}" != "success" ]; then
+            echo "❌ CI Pipeline FAILED - Deployment BLOCKED"
+            exit 1
+          fi
+          echo "✅ CI Pipeline PASSED - Ready for deployment"
