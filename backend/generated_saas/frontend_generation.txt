@@ -1,0 +1,67 @@
+# Frontend Generation
+
+Generated: 2026-02-23T23:00:49.639357
+
+import { useEffect, useState } from 'react';
+import Head from 'next/head';
+import dynamic from 'next/dynamic';
+import { createStore, combineReducers, applyMiddleware } from 'redux';
+import { Provider } from 'react-redux';
+import { composeWithDevTools } from 'redux-devtools-extension';
+import { BrowserRouter as Router, Switch, Route } from 'react-router-dom';
+import { Layout } from '@components/Layout';
+import { Navbar } from '@components/Navbar';
+import { Footer } from '@components/Footer';
+import { Home } from '@pages/Home';
+import { Features } from '@pages/Features';
+import { Pricing } from '@pages/Pricing';
+import { Contact } from '@pages/Contact';
+import { reducer } from '@reducers/index';
+import { authMiddleware } from '@middleware/authMiddleware';
+import 'tailwindcss/base';
+import 'tailwindcss/components';
+import 'tailwindcss/utilities';
+
+const store = createStore(
+  combineReducers(reducer),
+  composeWithDevTools(applyMiddleware(authMiddleware))
+);
+
+const App = () => {
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setLoading(false);
+    }, 2000);
+
+    return () => clearTimeout(timeout);
+  }, []);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  return (
+    <Provider store={store}>
+      <Head>
+        <title>SaaS App</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </Head>
+      <Router>
+        <Layout>
+          <Navbar />
+          <Switch>
+            <Route path="/" exact component={Home} />
+            <Route path="/features" component={Features} />
+            <Route path="/pricing" component={Pricing} />
+            <Route path="/contact" component={Contact} />
+          </Switch>
+          <Footer />
+        </Layout>
+      </Router>
+    </Provider>
+  );
+};
+
+export default App;

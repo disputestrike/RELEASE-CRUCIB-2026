@@ -1,0 +1,41 @@
+# Stack Selector
+
+Generated: 2026-02-23T23:00:48.989013
+
+Based on the requirements, I recommend the following tech stack for a 100-feature SaaS:
+
+```json
+{
+  "frontend": {
+    "framework": "Next.js",
+    "language": "JavaScript",
+    "styling": "TailwindCSS",
+    "state_management": "Redux",
+    "reason": "Next.js is a modern, server-rendered React framework, ideal for complex, data-driven applications. TailwindCSS provides a simple, customizable styling solution. Redux is a popular state management library for managing complex application state."
+  },
+  "backend": {
+    "framework": "Nest.js",
+    "language": "TypeScript",
+    "reason": "Nest.js is a Node.js framework that provides a robust, scalable, and maintainable foundation for building complex backend applications. TypeScript ensures type safety and maintainability."
+  },
+  "database": {
+    "type": "PostgreSQL",
+    "reason": "PostgreSQL is a powerful, open-source relational database that supports complex queries, transactions, and JSON data types. It's ideal for large-scale, data-driven applications like a 100-feature SaaS."
+  }
+}
+```
+
+Justification:
+
+* Frontend:
+	+ Next.js is chosen for its server-rendered capabilities, which improve SEO and provide a fast, scalable solution for complex applications.
+	+ TailwindCSS is chosen for its simplicity, flexibility, and customization options, making it ideal for styling complex UI components.
+	+ Redux is chosen for its robust state management capabilities, which are essential for managing complex application state in a 100-feature SaaS.
+* Backend:
+	+ Nest.js is chosen for its robust, scalable, and maintainable foundation, which is essential for building complex backend applications.
+	+ TypeScript is chosen for its type safety and maintainability features, which help prevent errors and make the codebase easier to maintain.
+* Database:
+	+ PostgreSQL is chosen for its powerful, open-source relational database capabilities, which support complex queries, transactions, and JSON data types.
+	+ Its reliability, scalability, and performance make it an ideal choice for large-scale, data-driven applications like a 100-feature SaaS.
+
+This tech stack provides a robust, scalable, and maintainable foundation for building a 100-feature SaaS, with a focus on performance, security, and ease of maintenance.

@@ -1,0 +1,185 @@
+# Database Agent
+
+Generated: 2026-02-23T23:00:50.061435
+
+Based on the project request and tech stack selected, I will design a PostgreSQL schema for the 100-feature SaaS application.
+
+**Database Schema Design**
+
+The schema will consist of the following tables:
+
+1. **users**
+2. **projects**
+3. **tasks**
+4. **features**
+5. **feature_requests**
+6. **feature_assignments**
+7. **user_projects**
+8. **project_tasks**
+9. **task_features**
+10. **feature_comments**
+
+**Table Definitions**
+
+```sql
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE projects (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE tasks (
+  id SERIAL PRIMARY KEY,
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  due_date DATE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE features (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE feature_requests (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  feature_id INTEGER NOT NULL REFERENCES features(id),
+  request_date DATE,
+  status VARCHAR(255) NOT NULL CHECK(status IN ('open', 'in_progress', 'closed')),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE feature_assignments (
+  id SERIAL PRIMARY KEY,
+  feature_id INTEGER NOT NULL REFERENCES features(id),
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  assigned_date DATE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE user_projects (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  role VARCHAR(255) NOT NULL CHECK(role IN ('owner', 'member')),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE project_tasks (
+  id SERIAL PRIMARY KEY,
+  project_id INTEGER NOT NULL REFERENCES projects(id),
+  task_id INTEGER NOT NULL REFERENCES tasks(id),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE task_features (
+  id SERIAL PRIMARY KEY,
+  task_id INTEGER NOT NULL REFERENCES tasks(id),
+  feature_id INTEGER NOT NULL REFERENCES features(id),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE feature_comments (
+  id SERIAL PRIMARY KEY,
+  feature_id INTEGER NOT NULL REFERENCES features(id),
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  comment TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+**Index Definitions**
+
+```sql
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_projects_user_id ON projects(user_id);
+CREATE INDEX idx_tasks_project_id ON tasks(project_id);
+CREATE INDEX idx_features_name ON features(name);
+CREATE INDEX idx_feature_requests_user_id ON feature_requests(user_id);
+CREATE INDEX idx_feature_requests_project_id ON feature_requests(project_id);
+CREATE INDEX idx_feature_requests_feature_id ON feature_requests(feature_id);
+CREATE INDEX idx_feature_assignments_feature_id ON feature_assignments(feature_id);
+CREATE INDEX idx_feature_assignments_user_id ON feature_assignments(user_id);
+CREATE INDEX idx_user_projects_user_id ON user_projects(user_id);
+CREATE INDEX idx_user_projects_project_id ON user_projects(project_id);
+CREATE INDEX idx_project_tasks_project_id ON project_tasks(project_id);
+CREATE INDEX idx_project_tasks_task_id ON project_tasks(task_id);
+CREATE INDEX idx_task_features_task_id ON task_features(task_id);
+CREATE INDEX idx_task_features_feature_id ON task_features(feature_id);
+CREATE INDEX idx_feature_comments_feature_id ON feature_comments(feature_id);
+CREATE INDEX idx_feature_comments_user_id ON feature_comments(user_id);
+```
+
+**Migration Steps**
+
+1. Create the `users` table.
+2. Create the `projects` table.
+3. Create the `tasks` table.
+4. Create the `features` table.
+5. Create the `feature_requests` table.
+6. Create the `feature_assignments` table.
+7. Create the `user_projects` table.
+8. Create the `project_tasks` table.
+9. Create the `task_features` table.
+10. Create the `feature_comments` table.
+11. Create indexes on the tables.
+
+**Sample Data**
+
+```sql
+INSERT INTO users (email, password_hash) VALUES
+  ('user1@example.com', 'password1'),
+  ('user2@example.com', 'password2');
+
+INSERT INTO projects (user_id, name, description) VALUES
+  (1, 'Project 1', 'This is project 1'),
+  (2, 'Project 2', 'This is project 2');
+
+INSERT INTO tasks (project_id, name, description, due_date) VALUES
+  (1, 'Task 1', 'This is task 1', '2024-03-01'),
+  (2, 'Task 2', 'This is task 2', '2024-03-02');
+
+INSERT INTO features (name, description) VALUES
+  ('Feature 1', 'This is feature 1'),
+  ('Feature 2', 'This is feature 2');
+
+INSERT INTO feature_requests (user_id, project_id, feature_id, request_date, status) VALUES
+  (1, 1, 1, '2024-02-01', 'open'),
+  (2, 2, 2, '2024-02-02', 'in_progress');
+
+INSERT INTO feature_assignments (feature_id, user_id, assigned_date) VALUES
+  (1, 1, '2024-02-03'),
+  (2, 2, '2024-02-04');
+
+INSERT INTO user_projects (user_id, project_id, role) VALUES
+  (1, 1, 'owner'),
+  (2, 2, 'member');
+
+INSERT INTO project_tasks (project_id, task_id) VALUES
+  (1, 1),
+  (2, 2);
+
+INSERT INTO task_features (task_id, feature_id) VALUES
+  (1, 1),
+  (2, 2);
+
+INSERT INTO feature_comments (feature_id, user_id, comment) VALUES
+  (1, 1, 'This is a comment'),
+  (2, 2, 'This is another comment');
+```
+
+This schema design meets the requirements of the 100-feature SaaS application, including tables for users, projects, tasks, features, feature requests, feature assignments, user projects, project tasks, task features, and feature comments. The indexes are defined to improve query performance. The sample data is provided to demonstrate the schema in action.

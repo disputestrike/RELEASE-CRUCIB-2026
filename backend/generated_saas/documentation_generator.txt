@@ -1,0 +1,257 @@
+# Documentation Generator
+
+Generated: 2026-02-23T23:00:53.415015
+
+**API Documentation for 100-Feature SaaS**
+
+**Introduction**
+
+This API documentation outlines the features and endpoints of a 100-feature SaaS application. The application provides a comprehensive suite of tools for businesses to manage their operations, including customer relationship management, project management, and analytics.
+
+**Endpoints**
+
+### Authentication
+
+* **POST /auth/login**: Logs in a user and returns an access token.
+	+ Request Body:
+		- `username`: string (required)
+		- `password`: string (required)
+	+ Response:
+		- `access_token`: string (required)
+* **POST /auth/register**: Creates a new user account.
+	+ Request Body:
+		- `username`: string (required)
+		- `email`: string (required)
+		- `password`: string (required)
+	+ Response:
+		- `user_id`: integer (required)
+
+### Customer Management
+
+* **GET /customers**: Retrieves a list of customers.
+	+ Query Parameters:
+		- `page`: integer (optional)
+		- `limit`: integer (optional)
+	+ Response:
+		- `customers`: array of objects (required)
+* **GET /customers/{customer_id}**: Retrieves a customer by ID.
+	+ Path Parameters:
+		- `customer_id`: integer (required)
+	+ Response:
+		- `customer`: object (required)
+* **POST /customers**: Creates a new customer.
+	+ Request Body:
+		- `name`: string (required)
+		- `email`: string (required)
+		- `phone`: string (optional)
+	+ Response:
+		- `customer_id`: integer (required)
+* **PUT /customers/{customer_id}**: Updates a customer.
+	+ Path Parameters:
+		- `customer_id`: integer (required)
+	+ Request Body:
+		- `name`: string (optional)
+		- `email`: string (optional)
+		- `phone`: string (optional)
+	+ Response:
+		- `customer_id`: integer (required)
+* **DELETE /customers/{customer_id}**: Deletes a customer.
+	+ Path Parameters:
+		- `customer_id`: integer (required)
+	+ Response:
+		- `success`: boolean (required)
+
+### Project Management
+
+* **GET /projects**: Retrieves a list of projects.
+	+ Query Parameters:
+		- `page`: integer (optional)
+		- `limit`: integer (optional)
+	+ Response:
+		- `projects`: array of objects (required)
+* **GET /projects/{project_id}**: Retrieves a project by ID.
+	+ Path Parameters:
+		- `project_id`: integer (required)
+	+ Response:
+		- `project`: object (required)
+* **POST /projects**: Creates a new project.
+	+ Request Body:
+		- `name`: string (required)
+		- `description`: string (optional)
+		- `start_date`: date (optional)
+		- `end_date`: date (optional)
+	+ Response:
+		- `project_id`: integer (required)
+* **PUT /projects/{project_id}**: Updates a project.
+	+ Path Parameters:
+		- `project_id`: integer (required)
+	+ Request Body:
+		- `name`: string (optional)
+		- `description`: string (optional)
+		- `start_date`: date (optional)
+		- `end_date`: date (optional)
+	+ Response:
+		- `project_id`: integer (required)
+* **DELETE /projects/{project_id}**: Deletes a project.
+	+ Path Parameters:
+		- `project_id`: integer (required)
+	+ Response:
+		- `success`: boolean (required)
+
+### Analytics
+
+* **GET /analytics**: Retrieves analytics data.
+	+ Query Parameters:
+		- `date_range`: string (optional)
+		- `metric`: string (optional)
+	+ Response:
+		- `analytics`: object (required)
+
+### Settings
+
+* **GET /settings**: Retrieves settings.
+	+ Response:
+		- `settings`: object (required)
+* **PUT /settings**: Updates settings.
+	+ Request Body:
+		- `setting_name`: string (required)
+		- `value`: string (required)
+	+ Response:
+		- `success`: boolean (required)
+
+### Billing
+
+* **GET /billing**: Retrieves billing information.
+	+ Response:
+		- `billing`: object (required)
+* **POST /billing**: Creates a new invoice.
+	+ Request Body:
+		- `customer_id`: integer (required)
+		- `amount`: decimal (required)
+	+ Response:
+		- `invoice_id`: integer (required)
+
+### Payments
+
+* **GET /payments**: Retrieves a list of payments.
+	+ Query Parameters:
+		- `page`: integer (optional)
+		- `limit`: integer (optional)
+	+ Response:
+		- `payments`: array of objects (required)
+* **GET /payments/{payment_id}**: Retrieves a payment by ID.
+	+ Path Parameters:
+		- `payment_id`: integer (required)
+	+ Response:
+		- `payment`: object (required)
+* **POST /payments**: Creates a new payment.
+	+ Request Body:
+		- `invoice_id`: integer (required)
+		- `amount`: decimal (required)
+	+ Response:
+		- `payment_id`: integer (required)
+* **PUT /payments/{payment_id}**: Updates a payment.
+	+ Path Parameters:
+		- `payment_id`: integer (required)
+	+ Request Body:
+		- `amount`: decimal (optional)
+	+ Response:
+		- `payment_id`: integer (required)
+* **DELETE /payments/{payment_id}**: Deletes a payment.
+	+ Path Parameters:
+		- `payment_id`: integer (required)
+	+ Response:
+		- `success`: boolean (required)
+
+### Invoices
+
+* **GET /invoices**: Retrieves a list of invoices.
+	+ Query Parameters:
+		- `page`: integer (optional)
+		- `limit`: integer (optional)
+	+ Response:
+		- `invoices`: array of objects (required)
+* **GET /invoices/{invoice_id}**: Retrieves an invoice by ID.
+	+ Path Parameters:
+		- `invoice_id`: integer (required)
+	+ Response:
+		- `invoice`: object (required)
+* **POST /invoices**: Creates a new invoice.
+	+ Request Body:
+		- `customer_id`: integer (required)
+		- `amount`: decimal (required)
+	+ Response:
+		- `invoice_id`: integer (required)
+* **PUT /invoices/{invoice_id}**: Updates an invoice.
+	+ Path Parameters:
+		- `invoice_id`: integer (required)
+	+ Request Body:
+		- `amount`: decimal (optional)
+	+ Response:
+		- `invoice_id`: integer (required)
+* **DELETE /invoices/{invoice_id}**: Deletes an invoice.
+	+ Path Parameters:
+		- `invoice_id`: integer (required)
+	+ Response:
+		- `success`: boolean (required)
+
+### Reports
+
+* **GET /reports**: Retrieves a list of reports.
+	+ Query Parameters:
+		- `page`: integer (optional)
+		- `limit`: integer (optional)
+	+ Response:
+		- `reports`: array of objects (required)
+* **GET /reports/{report_id}**: Retrieves a report by ID.
+	+ Path Parameters:
+		- `report_id`: integer (required)
+	+ Response:
+		- `report`: object (required)
+* **POST /reports**: Creates a new report.
+	+ Request Body:
+		- `name`: string (required)
+		- `description`: string (optional)
+		- `data`: object (required)
+	+ Response:
+		- `report_id`: integer (required)
+* **PUT /reports/{report_id}**: Updates a report.
+	+ Path Parameters:
+		- `report_id`: integer (required)
+	+ Request Body:
+		- `name`: string (optional)
+		- `description`: string (optional)
+		- `data`: object (optional)
+	+ Response:
+		- `report_id`: integer (required)
+* **DELETE /reports/{report_id}**: Deletes a report.
+	+ Path Parameters:
+		- `report_id`: integer (required)
+	+ Response:
+		- `success`: boolean (required)
+
+### Integrations
+
+* **GET /integrations**: Retrieves a list of integrations.
+	+ Query Parameters:
+		- `page`: integer (optional)
+		- `limit`: integer (optional)
+	+ Response:
+		- `integrations`: array of objects (required)
+* **GET /integrations/{integration_id}**: Retrieves an integration by ID.
+	+ Path Parameters:
+		- `integration_id`: integer (required)
+	+ Response:
+		- `integration`: object (required)
+* **POST /integrations**: Creates a new integration.
+	+ Request Body:
+		- `name`: string (required)
+		- `description`: string (optional)
+		- `data`: object (required)
+	+ Response:
+		- `integration_id`: integer (required)
+* **PUT /integrations/{integration_id}**: Updates an integration.
+	+ Path Parameters:
+		- `integration_id`: integer (required)
+	+ Request Body:
+	
