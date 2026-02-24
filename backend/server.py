@@ -39,7 +39,6 @@ from structured_logging import (
 )
 from api_docs_generator import generate_api_docs
 from endpoint_wrapper import wrap_all_endpoints, safe_endpoint
-from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
@@ -109,16 +108,13 @@ load_dotenv(ROOT_DIR / '.env', override=True)
 if not os.environ.get('JWT_SECRET'):
     print("FATAL: JWT_SECRET not set. Set JWT_SECRET in Railway/Production Variables.", file=sys.stderr)
     sys.exit(1)
-if not os.environ.get('MONGO_URL'):
-    print("FATAL: MONGO_URL not set. Set MONGO_URL in Railway/Production Variables.", file=sys.stderr)
+if not os.environ.get('DATABASE_URL'):
+    print("FATAL: DATABASE_URL not set. Set DATABASE_URL in .env (PostgreSQL connection string).", file=sys.stderr)
     sys.exit(1)
-if not os.environ.get('DB_NAME'):
-    os.environ.setdefault('DB_NAME', 'crucibai')
 
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000)
-db = client[os.environ['DB_NAME']]
-audit_logger = AuditLogger(db) if AuditLogger else None
+# db and audit_logger set at startup (async) via get_db()
+db = None
+audit_logger = None
 
 def _mfa_temp_token_payload(user_id: str) -> dict:
     return {"user_id": user_id, "purpose": "mfa_verification", "exp": datetime.now(timezone.utc) + timedelta(minutes=5)}
@@ -5986,8 +5982,8 @@ async def monitoring_track_event(body: TrackEventRequest):
     """Track a monitoring event. Stored in PostgreSQL when DATABASE_URL is set."""
     import uuid
     event_id = str(uuid.uuid4())
-    from db_pg import get_pg_pool
-    pool = await get_pg_pool()
+    from db_postgres import get_pool
+    pool = await get_pool()
     if pool:
         try:
             async with pool.acquire() as conn:
@@ -6004,8 +6000,8 @@ async def monitoring_track_event(body: TrackEventRequest):
 @api_router.get("/monitoring/events")
 async def monitoring_list_events(limit: int = Query(50, le=200)):
     """List recent monitoring events from PostgreSQL (proof)."""
-    from db_pg import get_pg_pool
-    pool = await get_pg_pool()
+    from db_postgres import get_pool
+    pool = await get_pool()
     if not pool:
         return {"events": [], "message": "PostgreSQL not configured (DATABASE_URL)"}
     try:
@@ -6415,26 +6411,13 @@ app.add_middleware(
 )
 
 @app.on_event("startup")
-async def ensure_db_indexes():
-    """Create MongoDB indexes for hot-path collections (performance)."""
-    try:
-        from db_indexes import ensure_indexes
-        await ensure_indexes(db)
-    except Exception as e:
-        logger.warning("Ensure DB indexes: %s", e)
-
-
-@app.on_event("startup")
-async def init_postgres_if_configured():
-    """Initialize PostgreSQL pool and schema when DATABASE_URL is set (proof)."""
-    try:
-        from db_pg import get_pg_pool
-        from db_schema_pg import init_pg_schema
-        pool = await get_pg_pool()
-        if pool:
-            await init_pg_schema(pool)
-    except Exception as e:
-        logger.warning("PostgreSQL init: %s", e)
+async def init_db_and_audit():
+    """Initialize PostgreSQL (full migration) and audit logger."""
+    global db, audit_logger
+    from db_postgres import get_db
+    db = await get_db()
+    audit_logger = AuditLogger(db) if AuditLogger else None
+    logger.info("Database: PostgreSQL (full migration mode)")
 
 
 @app.on_event("startup")
@@ -6525,8 +6508,7 @@ async def seed_internal_agents_if_requested():
 @app.on_event("shutdown")
 async def shutdown_db_client():
     try:
-        from db_pg import close_pg_pool
-        await close_pg_pool()
+        from db_postgres import close_pool
+        await close_pool()
     except Exception:
         pass
-    client.close()

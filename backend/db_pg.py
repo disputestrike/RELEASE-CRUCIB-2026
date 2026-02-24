@@ -2,6 +2,9 @@
 PostgreSQL connection layer for CrucibAI (optional).
 When DATABASE_URL is set, provides asyncpg pool for monitoring and future tables.
 MongoDB remains primary until full migration.
+
+IMPORTANT: DATABASE_URL must be a PostgreSQL connection string (postgresql://...).
+MySQL, TiDB, or other databases are NOT supported here; asyncpg is PostgreSQL-only.
 """
 import os
 import logging
