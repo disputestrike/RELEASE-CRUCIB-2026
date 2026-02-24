@@ -20,7 +20,8 @@ from agents.base_agent import BaseAgent
 class APIAgent(BaseAgent):
     """HTTP API interaction agent"""
     
-    def __init__(self, llm_client, config):
+    def __init__(self, db=None, llm_client, config):
+        super().__init__(db=db)
         super().__init__(llm_client, config)
         self.name = "APIAgent"
     
