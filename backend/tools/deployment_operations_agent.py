@@ -17,7 +17,7 @@ from agents.base_agent import BaseAgent
 class DeploymentOperationsAgent(BaseAgent):
     """Cloud deployment agent"""
     
-    def __init__(self, db=None, llm_client, config):
+    def __init__(self, llm_client, config, db=None):
         super().__init__(db=db)
         super().__init__(llm_client, config)
         self.name = "DeploymentOperationsAgent"
