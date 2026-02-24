@@ -2,6 +2,7 @@
 Cerebras LLM Integration for CrucibAI
 Provides async interface to Cerebras API (llama-3.1-8b model)
 Used for free tier and high-speed inference.
+Uses streaming by default for reliability.
 """
 
 import os
@@ -17,7 +18,7 @@ CEREBRAS_MODEL = "llama-3.1-8b"
 
 
 class CerebrasClient:
-    """Async client for Cerebras API"""
+    """Async client for Cerebras API - uses streaming by default"""
     
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.environ.get("CEREBRAS_API_KEY")
@@ -27,9 +28,14 @@ class CerebrasClient:
         self.session = None
     
     async def _get_session(self) -> aiohttp.ClientSession:
-        """Get or create aiohttp session"""
+        """Get or create aiohttp session with proper headers"""
         if self.session is None or self.session.closed:
-            self.session = aiohttp.ClientSession()
+            connector = aiohttp.TCPConnector()
+            timeout = aiohttp.ClientTimeout(total=120)
+            self.session = aiohttp.ClientSession(
+                connector=connector,
+                timeout=timeout
+            )
         return self.session
     
     async def close(self):
@@ -43,21 +49,24 @@ class CerebrasClient:
         max_tokens: int = 1024,
         temperature: float = 0.7,
         top_p: float = 0.9,
-        stream: bool = False,
+        stream: bool = True,  # Default to streaming
     ) -> Dict[str, Any]:
         """
-        Send a chat completion request to Cerebras.
+        Send a chat completion request to Cerebras using streaming.
         
         Args:
             messages: List of message dicts with 'role' and 'content'
             max_tokens: Maximum tokens in response
             temperature: Sampling temperature (0-2)
             top_p: Nucleus sampling parameter
-            stream: Whether to stream the response
+            stream: Whether to stream (always True for reliability)
         
         Returns:
-            Response dict with choices, usage, etc.
+            Response dict with content, model, usage
         """
+        
+        # Always use streaming for reliability
+        stream = True
         
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -80,14 +89,35 @@ class CerebrasClient:
                 f"{CEREBRAS_API_URL}/chat/completions",
                 headers=headers,
                 json=payload,
-                timeout=aiohttp.ClientTimeout(total=60),
             ) as resp:
                 if resp.status != 200:
                     error_text = await resp.text()
                     logger.error(f"Cerebras API error {resp.status}: {error_text}")
                     raise Exception(f"Cerebras API error {resp.status}: {error_text}")
                 
-                return await resp.json()
+                # Handle streaming response
+                full_response = ""
+                async for line in resp.content:
+                    try:
+                        line_str = line.decode('utf-8').strip()
+                        if line_str.startswith("data: "):
+                            data = line_str[6:]
+                            if data == "[DONE]":
+                                break
+                            chunk = json.loads(data)
+                            if "choices" in chunk and len(chunk["choices"]) > 0:
+                                delta = chunk["choices"][0].get("delta", {})
+                                if "content" in delta:
+                                    full_response += delta["content"]
+                    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+                        logger.debug(f"Stream parsing note: {e}")
+                        continue
+                
+                return {
+                    "content": full_response,
+                    "model": CEREBRAS_MODEL,
+                    "usage": {"total_tokens": len(full_response) // 4}
+                }
         
         except Exception as e:
             logger.error(f"Cerebras chat completion failed: {e}")
@@ -128,7 +158,6 @@ class CerebrasClient:
                 f"{CEREBRAS_API_URL}/chat/completions",
                 headers=headers,
                 json=payload,
-                timeout=aiohttp.ClientTimeout(total=120),
             ) as resp:
                 if resp.status != 200:
                     error_text = await resp.text()
@@ -136,19 +165,19 @@ class CerebrasClient:
                     raise Exception(f"Cerebras stream error {resp.status}: {error_text}")
                 
                 async for line in resp.content:
-                    line = line.decode('utf-8').strip()
-                    if line.startswith("data: "):
-                        data = line[6:]
-                        if data == "[DONE]":
-                            break
-                        try:
+                    try:
+                        line_str = line.decode('utf-8').strip()
+                        if line_str.startswith("data: "):
+                            data = line_str[6:]
+                            if data == "[DONE]":
+                                break
                             chunk = json.loads(data)
                             if "choices" in chunk and len(chunk["choices"]) > 0:
                                 delta = chunk["choices"][0].get("delta", {})
                                 if "content" in delta:
                                     yield delta["content"]
-                        except json.JSONDecodeError:
-                            continue
+                    except (json.JSONDecodeError, UnicodeDecodeError):
+                        continue
         
         except Exception as e:
             logger.error(f"Cerebras stream failed: {e}")
@@ -157,6 +186,8 @@ class CerebrasClient:
     async def extract_text(self, response: Dict[str, Any]) -> str:
         """Extract text from Cerebras response"""
         try:
+            if "content" in response:
+                return response["content"]
             return response["choices"][0]["message"]["content"]
         except (KeyError, IndexError):
             return ""
@@ -175,7 +206,7 @@ async def invoke_cerebras(
     temperature: float = 0.7,
 ) -> Dict[str, Any]:
     """
-    Convenience function to invoke Cerebras with a single request.
+    Convenience function to invoke Cerebras with streaming.
     
     Args:
         messages: Chat messages
@@ -183,7 +214,7 @@ async def invoke_cerebras(
         temperature: Sampling temperature
     
     Returns:
-        Response dict
+        Response dict with content
     """
     
     client = CerebrasClient()
@@ -192,6 +223,7 @@ async def invoke_cerebras(
             messages=messages,
             max_tokens=max_tokens,
             temperature=temperature,
+            stream=True
         )
         return response
     finally:

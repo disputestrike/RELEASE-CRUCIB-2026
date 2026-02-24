@@ -1,0 +1,264 @@
+# Test Generation
+
+Generated: 2026-02-23T23:00:51.272330
+
+```python
+# imports
+from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi.responses import JSONResponse
+from fastapi.requests import Request
+from pydantic import BaseModel
+from typing import Optional
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+
+# SQLAlchemy
+SQLALCHEMY_DATABASE_URL = "sqlite:///saas.db"
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+Base = declarative_base()
+
+# FastAPI
+app = FastAPI()
+
+# Models
+class User(BaseModel):
+    id: int
+    name: str
+    email: str
+
+class Item(BaseModel):
+    id: int
+    title: str
+    description: str
+    price: float
+
+class UserInDB(User):
+    hashed_password: str
+
+# Database
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# Endpoints
+@app.post("/users/", response_model=User)
+async def create_user(user: UserInDB):
+    db = next(get_db())
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+@app.get("/users/", response_model=list[User])
+async def read_users():
+    db = next(get_db())
+    users = db.query(User).all()
+    return users
+
+@app.get("/users/{user_id}", response_model=User)
+async def read_user(user_id: int):
+    db = next(get_db())
+    user = db.query(User).filter(User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+@app.put("/users/{user_id}", response_model=User)
+async def update_user(user_id: int, user: UserInDB):
+    db = next(get_db())
+    existing_user = db.query(User).filter(User.id == user_id).first()
+    if existing_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    existing_user.name = user.name
+    existing_user.email = user.email
+    db.add(existing_user)
+    db.commit()
+    db.refresh(existing_user)
+    return existing_user
+
+@app.delete("/users/{user_id}")
+async def delete_user(user_id: int):
+    db = next(get_db())
+    user = db.query(User).filter(User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    db.delete(user)
+    db.commit()
+    return {"status": "deleted"}
+
+# Item Endpoints
+@app.post("/items/", response_model=Item)
+async def create_item(item: Item):
+    db = next(get_db())
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+@app.get("/items/", response_model=list[Item])
+async def read_items():
+    db = next(get_db())
+    items = db.query(Item).all()
+    return items
+
+@app.get("/items/{item_id}", response_model=Item)
+async def read_item(item_id: int):
+    db = next(get_db())
+    item = db.query(Item).filter(Item.id == item_id).first()
+    if item is None:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return item
+
+@app.put("/items/{item_id}", response_model=Item)
+async def update_item(item_id: int, item: Item):
+    db = next(get_db())
+    existing_item = db.query(Item).filter(Item.id == item_id).first()
+    if existing_item is None:
+        raise HTTPException(status_code=404, detail="Item not found")
+    existing_item.title = item.title
+    existing_item.description = item.description
+    existing_item.price = item.price
+    db.add(existing_item)
+    db.commit()
+    db.refresh(existing_item)
+    return existing_item
+
+@app.delete("/items/{item_id}")
+async def delete_item(item_id: int):
+    db = next(get_db())
+    item = db.query(Item).filter(Item.id == item_id).first()
+    if item is None:
+        raise HTTPException(status_code=404, detail="Item not found")
+    db.delete(item)
+    db.commit()
+    return {"status": "deleted"}
+
+# Authentication Endpoints
+@app.post("/login/access-token")
+async def login_access_token(form_data: UserLogin):
+    user = await get_user(form_data.username)
+    if not user:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    access_token = Security(scopes=["user"], get_token=auth.get_token, get_creds=auth.get_creds)
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@app.post("/login/token")
+async def login_token(form_data: UserLogin):
+    user = await get_user(form_data.username)
+    if not user:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    return {"access_token": "token"}
+
+# Test Endpoints
+@app.get("/test/")
+async def test():
+    return {"status": "OK"}
+
+# Main
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+```
+
+Test Cases:
+```python
+import pytest
+from fastapi.testclient import TestClient
+from app import app
+
+client = TestClient(app)
+
+def test_create_user_success():
+    response = client.post("/users/", json={"name": "Test", "email": "test@example.com"})
+    assert response.status_code == 200
+    assert response.json()["name"] == "Test"
+    assert response.json()["email"] == "test@example.com"
+
+def test_create_user_invalid_email():
+    response = client.post("/users/", json={"name": "Test", "email": "invalid_email"})
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "email"]
+    assert response.json()["detail"][0]["msg"] == "value is not a valid email address"
+
+def test_read_users():
+    response = client.get("/users/")
+    assert response.status_code == 200
+    assert response.json() is not None
+
+def test_read_user():
+    response = client.get("/users/1")
+    assert response.status_code == 200
+    assert response.json()["name"] == "Test"
+    assert response.json()["email"] == "test@example.com"
+
+def test_update_user():
+    response = client.put("/users/1", json={"name": "Updated Test", "email": "updated_test@example.com"})
+    assert response.status_code == 200
+    assert response.json()["name"] == "Updated Test"
+    assert response.json()["email"] == "updated_test@example.com"
+
+def test_delete_user():
+    response = client.delete("/users/1")
+    assert response.status_code == 200
+    assert response.json()["status"] == "deleted"
+
+def test_create_item_success():
+    response = client.post("/items/", json={"title": "Test Item", "description": "Test Item Description", "price": 10.0})
+    assert response.status_code == 200
+    assert response.json()["title"] == "Test Item"
+    assert response.json()["description"] == "Test Item Description"
+    assert response.json()["price"] == 10.0
+
+def test_create_item_invalid_price():
+    response = client.post("/items/", json={"title": "Test Item", "description": "Test Item Description", "price": -10.0})
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "price"]
+    assert response.json()["detail"][0]["msg"] == "value is less than 0"
+
+def test_read_items():
+    response = client.get("/items/")
+    assert response.status_code == 200
+    assert response.json() is not None
+
+def test_read_item():
+    response = client.get("/items/1")
+    assert response.status_code == 200
+    assert response.json()["title"] == "Test Item"
+    assert response.json()["description"] == "Test Item Description"
+    assert response.json()["price"] == 10.0
+
+def test_update_item():
+    response = client.put("/items/1", json={"title": "Updated Test Item", "description": "Updated Test Item Description", "price": 20.0})
+    assert response.status_code == 200
+    assert response.json()["title"] == "Updated Test Item"
+    assert response.json()["description"] == "Updated Test Item Description"
+    assert response.json()["price"] == 20.0
+
+def test_delete_item():
+    response = client.delete("/items/1")
+    assert response.status_code == 200
+    assert response.json()["status"] == "deleted"
+
+def test_login_access_token():
+    response = client.post("/login/access-token", json={"username": "test", "password": "password"})
+    assert response.status_code == 200
+    assert "access_token" in response.json()
+
+def test_login_token():
+    response = client.post("/login/token", json={"username": "test", "password": "password"})
+    assert response.status_code == 200
+    assert "access_token" in response.json()
+
+def test_test():
+    response = client.get("/test/")
+    assert response.status_code == 200
+    assert response.json()["status"] == "OK"
+```
+
+Note: This is a basic example and you may need to modify it to

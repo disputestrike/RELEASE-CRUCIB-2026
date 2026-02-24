@@ -1,0 +1,167 @@
+# Deployment Agent
+
+Generated: 2026-02-23T23:00:52.428596
+
+**Deployment Configuration for 100-feature SaaS**
+
+**Step 1: Environment Setup**
+
+1.1. Set up a new Ubuntu 20.04 LTS server on a cloud provider (e.g., AWS, DigitalOcean, or Google Cloud) with the following specifications:
+   - CPU: 4 cores
+   - Memory: 16 GB
+   - Storage: 100 GB SSD
+
+1.2. Install the necessary packages:
+   ```bash
+sudo apt update
+sudo apt install -y python3-pip python3-dev libpq-dev nginx certbot python3-certbot-nginx
+```
+
+**Step 2: Backend Code and Stack**
+
+2.1. Clone the repository:
+   ```bash
+git clone https://github.com/user/project.git
+```
+
+2.2. Install dependencies:
+   ```bash
+pip3 install -r requirements.txt
+```
+
+2.3. Create a new virtual environment:
+   ```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+**Step 3: Database Setup**
+
+3.1. Set up PostgreSQL database:
+   ```bash
+sudo apt install -y postgresql postgresql-contrib
+sudo -u postgres psql -c "CREATE DATABASE project;"
+sudo -u postgres psql -c "CREATE ROLE project WITH PASSWORD 'password';"
+```
+
+3.2. Update the `DATABASE_URL` environment variable:
+   ```bash
+export DATABASE_URL=postgresql://project:password@localhost/project
+```
+
+**Step 4: Database Migration**
+
+4.1. Create a new migration:
+   ```bash
+alembic revision --autogenerate -m "Initial migration"
+```
+
+4.2. Apply the migration:
+   ```bash
+alembic upgrade head
+```
+
+**Step 5: Server Setup**
+
+5.1. Start the server:
+   ```bash
+uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+5.2. Set up Nginx reverse proxy:
+   ```bash
+sudo ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/
+```
+
+5.3. Configure Nginx:
+   ```bash
+sudo nano /etc/nginx/sites-available/default
+```
+
+   Update the configuration to point to the server:
+   ```
+server {
+    listen 80;
+    server_name example.com;
+
+    location / {
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+5.4. Restart Nginx:
+   ```bash
+sudo service nginx restart
+```
+
+**Step 6: SSL Configuration**
+
+6.1. Obtain an SSL certificate from Let's Encrypt:
+   ```bash
+sudo certbot certonly --webroot --webroot-path=/var/www/html --email email@example.com --agree-tos --non-interactive --domains -d example.com
+```
+
+6.2. Update the Nginx configuration to use the SSL certificate:
+   ```bash
+sudo nano /etc/nginx/sites-available/default
+```
+
+   Update the configuration to use the SSL certificate:
+   ```
+server {
+    listen 443 ssl;
+    server_name example.com;
+
+    ssl_certificate /etc/letsencrypt/live/example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+
+    location / {
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+6.3. Restart Nginx:
+   ```bash
+sudo service nginx restart
+```
+
+**Step 7: Monitoring Setup**
+
+7.1. Set up Sentry:
+   ```bash
+sudo apt install -y sentry
+```
+
+7.2. Configure Sentry:
+   ```bash
+sudo nano /etc/sentry/sentry.conf.py
+```
+
+   Update the configuration to point to the server:
+   ```
+sentry = {
+    'sources': ['http://localhost:8000'],
+}
+```
+
+7.3. Restart Sentry:
+   ```bash
+sudo service sentry restart
+```
+
+**Step 8: Finalize Deployment**
+
+8.1. Test the application:
+   ```bash
+curl http://example.com
+```
+
+8.2. Verify that the application is running correctly and that all features are accessible.
+
+Note: This is a basic deployment configuration and may need to be customized to fit the specific needs of your application. Additionally, this configuration assumes that you have a basic understanding of Linux, Python, and web development.

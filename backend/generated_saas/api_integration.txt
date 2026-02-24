@@ -1,0 +1,291 @@
+# API Integration
+
+Generated: 2026-02-23T23:00:51.314264
+
+**Project Overview**
+
+For this project, we will build a 100-feature SaaS application that utilizes both GraphQL and REST APIs. We will use Node.js as the backend framework and MongoDB as the database.
+
+**Feature List**
+
+Here are the 100 features that we will implement:
+
+1. User Management
+2. Role-Based Access Control
+3. User Authentication
+4. Password Reset
+5. Email Verification
+6. Profile Management
+7. Dashboard
+8. Task Management
+9. Project Management
+10. File Management
+11. Chat Integration
+12. Notification System
+13. Reporting
+14. Analytics
+15. Integration with third-party services (e.g. Google Drive, Slack)
+16. Customizable dashboard
+17. Customizable workflows
+18. Customizable reports
+19. Customizable analytics
+20. User onboarding
+21. User engagement metrics
+22. User retention metrics
+23. User churn metrics
+24. User segmentation
+25. Customizable user roles
+26. Customizable user permissions
+27. Customizable user access control
+28. Customizable user authentication
+29. Customizable user password reset
+30. Customizable user email verification
+31. Customizable user profile management
+32. Customizable user dashboard
+33. Customizable user task management
+34. Customizable user project management
+35. Customizable user file management
+36. Customizable user chat integration
+37. Customizable user notification system
+38. Customizable user reporting
+39. Customizable user analytics
+40. Customizable user integration with third-party services
+41. Customizable user customizable dashboard
+42. Customizable user customizable workflows
+43. Customizable user customizable reports
+44. Customizable user customizable analytics
+45. Customizable user user onboarding
+46. Customizable user user engagement metrics
+47. Customizable user user retention metrics
+48. Customizable user user churn metrics
+49. Customizable user user segmentation
+50. Customizable user customizable user roles
+51. Customizable user customizable user permissions
+52. Customizable user customizable user access control
+53. Customizable user customizable user authentication
+54. Customizable user customizable user password reset
+55. Customizable user customizable user email verification
+56. Customizable user customizable user profile management
+57. Customizable user customizable user dashboard
+58. Customizable user customizable user task management
+59. Customizable user customizable user project management
+60. Customizable user customizable user file management
+61. Customizable user customizable user chat integration
+62. Customizable user customizable user notification system
+63. Customizable user customizable user reporting
+64. Customizable user customizable user analytics
+65. Customizable user customizable user integration with third-party services
+66. Customizable user customizable user customizable dashboard
+67. Customizable user customizable user customizable workflows
+68. Customizable user customizable user customizable reports
+69. Customizable user customizable user customizable analytics
+70. Customizable user customizable user user onboarding
+71. Customizable user customizable user user engagement metrics
+72. Customizable user customizable user user retention metrics
+73. Customizable user customizable user user churn metrics
+74. Customizable user customizable user user segmentation
+75. Customizable user customizable user customizable user roles
+76. Customizable user customizable user customizable user permissions
+77. Customizable user customizable user customizable user access control
+78. Customizable user customizable user customizable user authentication
+79. Customizable user customizable user customizable user password reset
+80. Customizable user customizable user customizable user email verification
+81. Customizable user customizable user customizable user profile management
+82. Customizable user customizable user customizable user dashboard
+83. Customizable user customizable user customizable user task management
+84. Customizable user customizable user customizable user project management
+85. Customizable user customizable user customizable user file management
+86. Customizable user customizable user customizable user chat integration
+87. Customizable user customizable user customizable user notification system
+88. Customizable user customizable user customizable user reporting
+89. Customizable user customizable user customizable user analytics
+90. Customizable user customizable user customizable user integration with third-party services
+91. Customizable user customizable user customizable user customizable dashboard
+92. Customizable user customizable user customizable user customizable workflows
+93. Customizable user customizable user customizable user customizable reports
+94. Customizable user customizable user customizable user customizable analytics
+95. Customizable user customizable user customizable user user onboarding
+96. Customizable user customizable user customizable user user engagement metrics
+97. Customizable user customizable user customizable user user retention metrics
+98. Customizable user customizable user customizable user user churn metrics
+99. Customizable user customizable user customizable user user segmentation
+100. Customizable user customizable user customizable user customizable user roles
+
+**Backend API Design**
+
+We will use Node.js as the backend framework and MongoDB as the database. We will use the following technologies:
+
+* Express.js as the web framework
+* Apollo Server as the GraphQL server
+* Mongoose as the MongoDB ORM
+* Passport.js as the authentication middleware
+
+We will design the API using RESTful principles and GraphQL.
+
+**GraphQL Schema**
+
+Here is an example of the GraphQL schema:
+```graphql
+type Query {
+  users: [User]
+  user(id: ID!): User
+  tasks: [Task]
+  task(id: ID!): Task
+  projects: [Project]
+  project(id: ID!): Project
+}
+
+type Mutation {
+  createUser(name: String!, email: String!, password: String!): User
+  updateUser(id: ID!, name: String, email: String, password: String): User
+  deleteUser(id: ID!): Boolean
+  createTask(title: String!, description: String!): Task
+  updateTask(id: ID!, title: String, description: String): Task
+  deleteTask(id: ID!): Boolean
+  createProject(title: String!, description: String!): Project
+  updateProject(id: ID!, title: String, description: String): Project
+  deleteProject(id: ID!): Boolean
+}
+
+type User {
+  id: ID!
+  name: String
+  email: String
+  password: String
+  tasks: [Task]
+  projects: [Project]
+}
+
+type Task {
+  id: ID!
+  title: String
+  description: String
+  user: User
+}
+
+type Project {
+  id: ID!
+  title: String
+  description: String
+  user: User
+}
+```
+**REST API Endpoints**
+
+Here are some examples of REST API endpoints:
+```bash
+GET /users
+GET /users/:id
+POST /users
+PUT /users/:id
+DELETE /users/:id
+
+GET /tasks
+GET /tasks/:id
+POST /tasks
+PUT /tasks/:id
+DELETE /tasks/:id
+
+GET /projects
+GET /projects/:id
+POST /projects
+PUT /projects/:id
+DELETE /projects/:id
+```
+**Implementation**
+
+We will implement the API using Node.js and Express.js. We will use Mongoose as the MongoDB ORM and Passport.js as the authentication middleware.
+
+Here is an example of the implementation:
+```javascript
+const express = require('express');
+const mongoose = require('mongoose');
+const passport = require('passport');
+const graphql = require('graphql');
+
+const app = express();
+
+mongoose.connect('mongodb://localhost/mydb', { useNewUrlParser: true, useUnifiedTopology: true });
+
+const User = mongoose.model('User', {
+  name: String,
+  email: String,
+  password: String
+});
+
+const Task = mongoose.model('Task', {
+  title: String,
+  description: String
+});
+
+const Project = mongoose.model('Project', {
+  title: String,
+  description: String
+});
+
+const graphqlSchema = new graphql.GraphQLSchema({
+  query: new graphql.GraphQLObjectType({
+    name: 'Query',
+    fields: {
+      users: {
+        type: new graphql.GraphQLList(graphql.GraphQLObjectType({
+          name: 'User',
+          fields: {
+            id: { type: graphql.GraphQLID },
+            name: { type: graphql.GraphQLString },
+            email: { type: graphql.GraphQLString },
+            password: { type: graphql.GraphQLString }
+          }
+        }))
+      },
+      user: {
+        type: graphql.GraphQLObjectType({
+          name: 'User',
+          fields: {
+            id: { type: graphql.GraphQLID },
+            name: { type: graphql.GraphQLString },
+            email: { type: graphql.GraphQLString },
+            password: { type: graphql.GraphQLString }
+          }
+        }),
+        args: {
+          id: { type: graphql.GraphQLID }
+        }
+      },
+      tasks: {
+        type: new graphql.GraphQLList(graphql.GraphQLObjectType({
+          name: 'Task',
+          fields: {
+            id: { type: graphql.GraphQLID },
+            title: { type: graphql.GraphQLString },
+            description: { type: graphql.GraphQLString }
+          }
+        }))
+      },
+      task: {
+        type: graphql.GraphQLObjectType({
+          name: 'Task',
+          fields: {
+            id: { type: graphql.GraphQLID },
+            title: { type: graphql.GraphQLString },
+            description: { type: graphql.GraphQLString }
+          }
+        }),
+        args: {
+          id: { type: graphql.GraphQLID }
+        }
+      },
+      projects: {
+        type: new graphql.GraphQLList(graphql.GraphQLObjectType({
+          name: 'Project',
+          fields: {
+            id: { type: graphql.GraphQLID },
+            title: { type: graphql.GraphQLString },
+            description: { type: graphql.GraphQLString }
+          }
+        }))
+      },
+      project: {
+        type: graphql.GraphQLObjectType({
+          name: 'Project',
+         

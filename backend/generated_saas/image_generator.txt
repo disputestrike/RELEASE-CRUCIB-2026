@@ -1,0 +1,65 @@
+# Image Generator
+
+Generated: 2026-02-23T23:00:50.752102
+
+**Project Overview**
+
+For a 100-feature SaaS, we'll need to create hero and feature images that effectively communicate the value proposition and unique selling points of the platform. Here's a step-by-step plan to generate these images:
+
+**Hero Image**
+
+The hero image is a key visual element that represents the entire SaaS. It should be attention-grabbing, informative, and memorable.
+
+1. **Concept Development**
+	* Define the target audience and their pain points.
+	* Identify the core benefits and unique selling points of the SaaS.
+	* Brainstorm ideas for the hero image, considering the brand's tone, style, and messaging.
+2. **Design and Mockups**
+	* Create high-fidelity mockups of the hero image, considering various formats (e.g., desktop, mobile, tablet).
+	* Use design tools like Figma, Sketch, or Adobe XD to create interactive and shareable mockups.
+3. **Color Palette and Typography**
+	* Establish a consistent color palette and typography scheme that aligns with the brand's identity.
+	* Ensure the color palette is accessible and meets web accessibility standards (WCAG 2.1).
+4. **Image Creation and Editing**
+	* Commission a professional designer or photographer to create the hero image.
+	* Edit and refine the image using Adobe Creative Cloud tools (e.g., Photoshop, Illustrator).
+
+**Feature Image**
+
+Feature images are used to illustrate specific features or benefits of the SaaS. They should be concise, informative, and visually appealing.
+
+1. **Feature Identification**
+	* Prioritize the 100 features and group them into categories (e.g., user management, project management, analytics).
+	* Identify the most important features that require visual representation.
+2. **Design and Mockups**
+	* Create high-fidelity mockups of each feature image, considering various formats (e.g., desktop, mobile, tablet).
+	* Use design tools like Figma, Sketch, or Adobe XD to create interactive and shareable mockups.
+3. **Color Palette and Typography**
+	* Establish a consistent color palette and typography scheme that aligns with the brand's identity.
+	* Ensure the color palette is accessible and meets web accessibility standards (WCAG 2.1).
+4. **Image Creation and Editing**
+	* Commission a professional designer or photographer to create the feature images.
+	* Edit and refine the images using Adobe Creative Cloud tools (e.g., Photoshop, Illustrator).
+
+**Deliverables**
+
+* 1 Hero Image (various formats: desktop, mobile, tablet)
+* 100 Feature Images (various formats: desktop, mobile, tablet)
+* Design files and mockups for each image
+* Color palette and typography scheme documentation
+* Image editing and refinement documentation
+
+**Timeline**
+
+* Concept development and design: 2 weeks
+* Design and mockups: 4 weeks
+* Image creation and editing: 8 weeks
+* Total project duration: 14 weeks
+
+**Budget**
+
+* Design and development: $30,000
+* Image creation and editing: $20,000
+* Total budget: $50,000
+
+This project plan outlines a comprehensive approach to generating hero and feature images for a 100-feature SaaS. By following this plan, you'll create visually appealing and effective images that communicate the value proposition and unique selling points of your platform.
