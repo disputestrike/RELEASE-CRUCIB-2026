@@ -6,7 +6,7 @@ import {
   Plus, Search, Library, FolderOpen, CheckCircle, Clock,
   MessageCircle, Zap, AlertCircle, LogOut, ChevronRight,
   FileOutput, FileText, LayoutGrid, BookOpen, Key, Keyboard,
-  CreditCard, ScrollText, BarChart3, Wrench, HelpCircle, Coins,
+  CreditCard, ScrollText, BarChart3, Wrench, HelpCircle, Coins, Activity, Code, Terminal,
   X, Bell, MoreHorizontal, ExternalLink, Pencil, Share2,
   Trash2, FolderPlus, FolderInput, Star
 } from 'lucide-react';
@@ -66,6 +66,9 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     { label: 'Benchmarks', icon: BarChart3, href: '/benchmarks' },
     { label: 'Add Payments', icon: CreditCard, href: '/app/payments-wizard' },
     { label: 'Audit Log', icon: ScrollText, href: '/app/audit-log' },
+    { label: 'Monitoring', icon: Activity, href: '/app/monitoring' },
+    { label: 'Terminal & Git', icon: Terminal, href: '/app/workspace?panel=shell' },
+    { label: 'VibeCode', icon: Code, href: '/app/workspace?panel=vibecode' },
   ];
 
   // Show BOTH projects and store tasks — chat tasks must always be visible
@@ -372,7 +375,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
               <Link
                 key={item.href}
                 to={item.href}
-                className={`sidebar-engine-item ${isActive(item.href) ? 'active' : ''}`}
+                className={`sidebar-engine-item ${isEngineItemActive(item.href) ? 'active' : ''}`}
               >
                 <item.icon size={14} />
                 <span>{item.label}</span>
