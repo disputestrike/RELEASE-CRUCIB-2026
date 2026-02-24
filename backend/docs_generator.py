@@ -116,7 +116,6 @@ MONGO_URL=mongodb://localhost:27017
 JWT_SECRET=your_secret_key
 OPENAI_API_KEY=your_openai_key
 ANTHROPIC_API_KEY=your_anthropic_key
-GROQ_API_KEY=your_groq_key
 STRIPE_API_KEY=your_stripe_key
 ```
 

@@ -34,7 +34,7 @@ def sample_chat_message() -> Dict[str, Any]:
     """Sample chat message"""
     return {
         "message": "Hello, how can you help me?",
-        "model": "gpt-4o",
+        "model": "claude-3-5-haiku-20241022",
         "mode": "normal"
     }
 
@@ -126,7 +126,7 @@ class TestChat:
         """Test sending empty chat message"""
         response = await client.post("/api/ai/chat", json={
             "message": "",
-            "model": "gpt-4o"
+            "model": "claude-3-5-haiku-20241022"
         })
         assert response.status_code == 400
     
@@ -135,7 +135,7 @@ class TestChat:
         """Test sending very long chat message"""
         response = await client.post("/api/ai/chat", json={
             "message": "x" * 50000,
-            "model": "gpt-4o"
+            "model": "claude-3-5-haiku-20241022"
         })
         assert response.status_code == 400
 

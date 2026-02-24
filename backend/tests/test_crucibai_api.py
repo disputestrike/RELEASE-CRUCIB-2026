@@ -272,12 +272,12 @@ class TestAIChatEndpoints:
             assert "session_id" in data
 
     async def test_ai_chat_gpt4o_model(self, app_client):
-        r = await app_client.post("/api/ai/chat", json={"message": "What is 2+2?", "model": "gpt-4o"})
+        r = await app_client.post("/api/ai/chat", json={"message": "What is 2+2?", "model": "claude-3-5-haiku-20241022"})
         assert r.status_code in AI_OK_STATUSES
         if r.status_code == 200:
             data = r.json()
             assert "response" in data
-            assert "gpt-4o" in data["model_used"].lower() or "openai" in data["model_used"].lower()
+            assert "claude-3-5-haiku-20241022" in data["model_used"].lower() or "openai" in data["model_used"].lower()
 
     async def test_ai_chat_claude_model(self, app_client):
         r = await app_client.post("/api/ai/chat", json={"message": "Say hello", "model": "claude"})
@@ -286,16 +286,6 @@ class TestAIChatEndpoints:
             data = r.json()
             assert "response" in data
             assert "claude" in data["model_used"].lower() or "anthropic" in data["model_used"].lower()
-
-    async def test_ai_chat_gemini_model(self, app_client):
-        r = await app_client.post("/api/ai/chat", json={"message": "Hi there", "model": "gemini"})
-        assert r.status_code in AI_OK_STATUSES
-        if r.status_code == 200:
-            data = r.json()
-            assert "response" in data
-            assert "model_used" in data
-            # Gemini when key set; otherwise fallback to openai/claude
-            assert "gemini" in data["model_used"].lower() or "openai" in data["model_used"].lower() or "anthropic" in data["model_used"].lower() or "claude" in data["model_used"].lower()
 
     async def test_ai_chat_with_session(self, app_client):
         session_id = f"test_session_{int(time.time())}"

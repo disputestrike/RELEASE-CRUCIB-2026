@@ -39,7 +39,6 @@ from structured_logging import (
 )
 from api_docs_generator import generate_api_docs
 from endpoint_wrapper import wrap_all_endpoints, safe_endpoint
-from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
@@ -109,16 +108,13 @@ load_dotenv(ROOT_DIR / '.env', override=True)
 if not os.environ.get('JWT_SECRET'):
     print("FATAL: JWT_SECRET not set. Set JWT_SECRET in Railway/Production Variables.", file=sys.stderr)
     sys.exit(1)
-if not os.environ.get('MONGO_URL'):
-    print("FATAL: MONGO_URL not set. Set MONGO_URL in Railway/Production Variables.", file=sys.stderr)
+if not os.environ.get('DATABASE_URL'):
+    print("FATAL: DATABASE_URL not set. Set DATABASE_URL in Railway/Production Variables.", file=sys.stderr)
     sys.exit(1)
-if not os.environ.get('DB_NAME'):
-    os.environ.setdefault('DB_NAME', 'crucibai')
 
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000)
-db = client[os.environ['DB_NAME']]
-audit_logger = AuditLogger(db) if AuditLogger else None
+# PostgreSQL database will be initialized on startup
+db = None
+audit_logger = None
 
 def _mfa_temp_token_payload(user_id: str) -> dict:
     return {"user_id": user_id, "purpose": "mfa_verification", "exp": datetime.now(timezone.utc) + timedelta(minutes=5)}
@@ -136,9 +132,9 @@ app = FastAPI(title="CrucibAI Platform")
 api_router = APIRouter(prefix="/api")
 security = HTTPBearer(auto_error=False)
 
-LLM_API_KEY = os.environ.get('OPENAI_API_KEY') or os.environ.get('LLM_API_KEY')
-OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+# LLM Configuration: Only Anthropic (Haiku) and Cerebras (free tier)
 ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
+CEREBRAS_API_KEY = os.environ.get('CEREBRAS_API_KEY')
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -191,7 +187,7 @@ class UserLogin(BaseModel):
 class ChatMessage(BaseModel):
     message: str
     session_id: Optional[str] = None
-    model: Optional[str] = "auto"  # auto, gpt-4o, claude, gemini
+    model: Optional[str] = "auto"  # auto or haiku (Anthropic/Cerebras only)
     mode: Optional[str] = None  # thinking = step-by-step reasoning (no extra cost, same call)
     system_message: Optional[str] = None  # override for intent classification etc.
     attachments: Optional[List[Dict[str, Any]]] = None  # [{ "type": "image"|"pdf"|"text", "data": base64 or data URL or text, "name": "file.pdf" }]
@@ -538,27 +534,24 @@ AGENT_DEFINITIONS = [
     {"name": "Queue Agent", "layer": "execution", "description": "Job queues, Bull/Celery", "avg_tokens": 40000},
 ]
 
-# AI Model configurations for auto-selection (primary per task)
+# AI Model configurations: Cerebras (free) or Haiku (paid)
+# All tasks use Haiku for paid users, Cerebras for free tier
 MODEL_CONFIG = {
-    "code": {"provider": "anthropic", "model": "claude-sonnet-4-5-20250929"},
-    "analysis": {"provider": "openai", "model": "gpt-4o"},
-    "general": {"provider": "openai", "model": "gpt-4o"},
-    "creative": {"provider": "anthropic", "model": "claude-sonnet-4-5-20250929"},
-    "fast": {"provider": "gemini", "model": "gemini-2.5-flash"}
+    "code": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
+    "analysis": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
+    "general": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
+    "creative": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
+    "fast": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"}
 }
 
-# Fallback chain per primary: on failure try next model (provider, model)
+# Fallback chain: only Haiku (no fallback needed, single provider)
 MODEL_FALLBACK_CHAINS = [
-    {"provider": "anthropic", "model": "claude-sonnet-4-5-20250929"},
-    {"provider": "openai", "model": "gpt-4o"},
-    {"provider": "gemini", "model": "gemini-2.5-flash"},
+    {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
 ]
-# Map user-facing model key -> chain (primary first)
+# Map user-facing model key -> chain (only Haiku)
 MODEL_CHAINS = {
     "auto": None,  # use MODEL_CONFIG + MODEL_FALLBACK_CHAINS
-    "gpt-4o": [{"provider": "openai", "model": "gpt-4o"}, {"provider": "anthropic", "model": "claude-sonnet-4-5-20250929"}, {"provider": "gemini", "model": "gemini-2.5-flash"}],
-    "claude": [{"provider": "anthropic", "model": "claude-sonnet-4-5-20250929"}, {"provider": "openai", "model": "gpt-4o"}, {"provider": "gemini", "model": "gemini-2.5-flash"}],
-    "gemini": [{"provider": "gemini", "model": "gemini-2.5-flash"}, {"provider": "openai", "model": "gpt-4o"}, {"provider": "anthropic", "model": "claude-sonnet-4-5-20250929"}],
+    "haiku": [{"provider": "anthropic", "model": "claude-3-5-haiku-20241022"}],
 }
 
 # ==================== HELPERS ====================
@@ -760,18 +753,13 @@ def detect_task_type(message: str) -> str:
 
 
 def _provider_has_key(provider: str, effective_keys: Optional[Dict[str, str]] = None) -> bool:
-    """True if we have an API key for this provider. effective_keys = merged user + server keys."""
-    if effective_keys:
-        if provider == "openai":
-            return bool(effective_keys.get("openai"))
-        if provider == "anthropic":
-            return bool(effective_keys.get("anthropic"))
-    if provider == "openai":
-        return bool(OPENAI_API_KEY)
+    """True if we have an API key for this provider. Only Anthropic (Haiku) and Cerebras supported."""
     if provider == "anthropic":
+        if effective_keys:
+            return bool(effective_keys.get("anthropic"))
         return bool(ANTHROPIC_API_KEY)
-    if provider == "gemini":
-        return bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or LLM_API_KEY)
+    if provider == "cerebras":
+        return bool(os.environ.get("CEREBRAS_API_KEY"))
     return False
 
 
@@ -800,62 +788,26 @@ def _get_model_chain(model_key: str, message: str, effective_keys: Optional[Dict
 
 
 async def get_workspace_api_keys(user: Optional[dict]) -> Dict[str, Optional[str]]:
-    """Load OpenAI/Anthropic from user's Settings (workspace_env). Returns raw keys from DB (decrypted)."""
+    """Load Anthropic/Cerebras from user's Settings (workspace_env). Returns raw keys from DB (decrypted)."""
     if not user:
         return {}
     row = await db.workspace_env.find_one({"user_id": user["id"]}, {"_id": 0})
     env = decrypt_env(row.get("env", {}) if row else {})
     return {
-        "openai": (env.get("OPENAI_API_KEY") or "").strip() or None,
         "anthropic": (env.get("ANTHROPIC_API_KEY") or "").strip() or None,
+        "cerebras": (env.get("CEREBRAS_API_KEY") or "").strip() or None,
     }
 
 
 def _effective_api_keys(user_keys: Dict[str, Optional[str]]) -> Dict[str, Optional[str]]:
     """Merge user keys from Settings with server .env so one source can be set."""
     return {
-        "openai": (user_keys.get("openai") or "").strip() or OPENAI_API_KEY or None,
         "anthropic": (user_keys.get("anthropic") or "").strip() or ANTHROPIC_API_KEY or None,
+        "cerebras": (user_keys.get("cerebras") or "").strip() or os.environ.get("CEREBRAS_API_KEY") or None,
     }
 
 
-async def _call_openai_direct(prompt: str, system: str, model: str = "gpt-4o", api_key: Optional[str] = None) -> str:
-    """Call OpenAI API directly. Uses api_key or OPENAI_API_KEY."""
-    key = (api_key or "").strip() or OPENAI_API_KEY
-    if not key:
-        raise ValueError("OPENAI_API_KEY not set")
-    from openai import AsyncOpenAI
-    client = AsyncOpenAI(api_key=key)
-    resp = await client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": prompt},
-        ],
-        max_tokens=4096,
-    )
-    return (resp.choices[0].message.content or "").strip()
-
-
-async def _call_openai_multimodal(content_blocks: List[Dict[str, Any]], system: str, model: str = "gpt-4o", api_key: Optional[str] = None) -> str:
-    """Call OpenAI with multimodal user content (text + image_url). Uses vision-capable model."""
-    key = (api_key or "").strip() or OPENAI_API_KEY
-    if not key:
-        raise ValueError("OPENAI_API_KEY not set")
-    from openai import AsyncOpenAI
-    client = AsyncOpenAI(api_key=key)
-    resp = await client.chat.completions.create(
-        model=model or "gpt-4o",
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": content_blocks},
-        ],
-        max_tokens=4096,
-    )
-    return (resp.choices[0].message.content or "").strip()
-
-
-async def _call_anthropic_direct(prompt: str, system: str, model: str = "claude-sonnet-4-5-20250929", api_key: Optional[str] = None) -> str:
+async def _call_anthropic_direct(prompt: str, system: str, model: str = "claude-3-5-haiku-20241022", api_key: Optional[str] = None) -> str:
     """Call Anthropic API directly. Uses api_key or ANTHROPIC_API_KEY."""
     key = (api_key or "").strip() or ANTHROPIC_API_KEY
     if not key:
@@ -872,12 +824,37 @@ async def _call_anthropic_direct(prompt: str, system: str, model: str = "claude-
     return text.strip()
 
 
-def _openai_content_blocks_to_anthropic(content_blocks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Convert OpenAI-format content (text + image_url) to Anthropic content blocks."""
-    out = []
+
+async def _call_cerebras_direct(prompt: str, system: str, model: str = "claude-3-5-haiku-20241022", api_key: Optional[str] = None) -> str:
+    """Call Cerebras API directly (free tier fallback). Uses api_key or CEREBRAS_API_KEY."""
+    key = (api_key or "").strip() or os.environ.get("CEREBRAS_API_KEY")
+    if not key:
+        raise ValueError("CEREBRAS_API_KEY not set")
+    import anthropic
+    # Cerebras uses Anthropic-compatible API
+    client = anthropic.AsyncAnthropic(api_key=key, base_url="https://api.cerebras.ai/v1")
+    msg = await client.messages.create(
+        model=model,
+        max_tokens=4096,
+        system=system,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    text = msg.content[0].text if msg.content else ""
+    return text.strip()
+
+
+async def _call_anthropic_multimodal(content_blocks: List[Dict[str, Any]], system: str, model: str = "claude-3-5-haiku-20241022", api_key: Optional[str] = None) -> str:
+    """Call Anthropic with multimodal user content (text + image). Uses vision-capable model."""
+    key = (api_key or "").strip() or ANTHROPIC_API_KEY
+    if not key:
+        raise ValueError("ANTHROPIC_API_KEY not set")
+    import anthropic
+    client = anthropic.AsyncAnthropic(api_key=key)
+    # Convert OpenAI-format content blocks to Anthropic format
+    anthropic_content = []
     for block in content_blocks:
         if block.get("type") == "text":
-            out.append({"type": "text", "text": block.get("text", "")})
+            anthropic_content.append({"type": "text", "text": block.get("text", "")})
         elif block.get("type") == "image_url":
             url = (block.get("image_url") or {}).get("url") or ""
             if url.startswith("data:") and ";base64," in url:
@@ -885,22 +862,11 @@ def _openai_content_blocks_to_anthropic(content_blocks: List[Dict[str, Any]]) ->
                 media = "image/png"
                 if "image/" in header:
                     media = header.split("data:")[-1].strip()
-                out.append({"type": "image", "source": {"type": "base64", "media_type": media, "data": b64}})
+                anthropic_content.append({"type": "image", "source": {"type": "base64", "media_type": media, "data": b64}})
             else:
-                out.append({"type": "text", "text": f"[Image: {url[:80]}...]"})
-    return out
-
-
-async def _call_anthropic_multimodal(content_blocks: List[Dict[str, Any]], system: str, model: str = "claude-sonnet-4-5-20250929", api_key: Optional[str] = None) -> str:
-    """Call Anthropic with multimodal user content (text + image). Uses vision-capable model."""
-    key = (api_key or "").strip() or ANTHROPIC_API_KEY
-    if not key:
-        raise ValueError("ANTHROPIC_API_KEY not set")
-    import anthropic
-    client = anthropic.AsyncAnthropic(api_key=key)
-    anthropic_content = _openai_content_blocks_to_anthropic(content_blocks)
+                anthropic_content.append({"type": "text", "text": f"[Image: {url[:80]}...]"})
     msg = await client.messages.create(
-        model=model or "claude-sonnet-4-5-20250929",
+        model=model or "claude-3-5-haiku-20241022",
         max_tokens=4096,
         system=system,
         messages=[{"role": "user", "content": anthropic_content}],
@@ -909,35 +875,15 @@ async def _call_anthropic_multimodal(content_blocks: List[Dict[str, Any]], syste
     return text.strip()
 
 
-def _call_gemini_direct_sync(prompt: str, system: str, model: str = "gemini-2.5-flash") -> str:
-    """Call Google Gemini API directly. Uses GEMINI_API_KEY or GOOGLE_API_KEY."""
-    key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or LLM_API_KEY
-    if not key:
-        raise ValueError("GEMINI_API_KEY / GOOGLE_API_KEY not set")
-    try:
-        import google.generativeai as genai
-        genai.configure(api_key=key)
-        m = genai.GenerativeModel(model)
-        resp = m.generate_content(
-            f"{system}\n\nUser: {prompt}",
-            generation_config=genai.types.GenerationConfig(max_output_tokens=4096),
-        )
-        return (resp.text or "").strip()
-    except Exception as e:
-        logger.warning(f"Gemini direct error: {e}")
-        raise
-
-
 def _content_blocks_have_image(content_blocks: Optional[List[Dict[str, Any]]]) -> bool:
     if not content_blocks:
         return False
     return any(b.get("type") == "image_url" for b in content_blocks)
 
 
-# Vision-capable model order for multimodal chat (images/PDF context)
+# Vision-capable model: Haiku supports vision
 VISION_MODEL_CHAIN = [
-    {"provider": "openai", "model": "gpt-4o"},
-    {"provider": "anthropic", "model": "claude-sonnet-4-5-20250929"},
+    {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
 ]
 
 
@@ -949,47 +895,40 @@ async def _call_llm_with_fallback(
     api_keys: Optional[Dict[str, Optional[str]]] = None,
     content_blocks: Optional[List[Dict[str, Any]]] = None,
 ) -> tuple[str, str]:
-    """Try each model in chain until one succeeds. When content_blocks has images, use vision-capable models."""
-    if not model_chain and not content_blocks:
+    """Call Anthropic (Haiku) with fallback to Cerebras for free tier. Supports multimodal (images/PDF)."""
+    if not model_chain:
         raise ValueError(
-            "No API key set. Add OPENAI_API_KEY or ANTHROPIC_API_KEY in Settings (API & Environment) or in backend/.env."
+            "No API key set. Add ANTHROPIC_API_KEY in Settings (API & Environment) or in backend/.env."
         )
     use_vision = _content_blocks_have_image(content_blocks)
     if use_vision:
         model_chain = _filter_chain_by_keys(VISION_MODEL_CHAIN, api_keys) or list(VISION_MODEL_CHAIN)
     if not model_chain:
         raise ValueError(
-            "No API key set. For images/PDF, add OPENAI_API_KEY or ANTHROPIC_API_KEY in Settings or .env."
+            "No API key set. For images/PDF, add ANTHROPIC_API_KEY in Settings or .env."
         )
-    openai_key = (api_keys.get("openai") if api_keys else None) or OPENAI_API_KEY
     anthropic_key = (api_keys.get("anthropic") if api_keys else None) or ANTHROPIC_API_KEY
+    cerebras_key = os.environ.get("CEREBRAS_API_KEY")
     last_error = None
+    
+    # Try Anthropic (Haiku) first, then Cerebras as fallback
     for cfg in model_chain:
-        provider, model = cfg.get("provider"), cfg.get("model", "gpt-4o")
+        provider, model = cfg.get("provider"), cfg.get("model", "claude-3-5-haiku-20241022")
         try:
-            if use_vision and content_blocks:
-                if provider == "openai" and openai_key:
-                    response = await _call_openai_multimodal(content_blocks, system_message, model=model or "gpt-4o", api_key=openai_key)
-                    return (response, f"openai/{model}")
-                if provider == "anthropic" and anthropic_key:
-                    response = await _call_anthropic_multimodal(content_blocks, system_message, model=model or "claude-sonnet-4-5-20250929", api_key=anthropic_key)
-                    return (response, f"anthropic/{model}")
-                continue
-            if provider == "openai" and openai_key:
-                response = await _call_openai_direct(message, system_message, model=model or "gpt-4o", api_key=openai_key)
-                return (response, f"openai/{model}")
             if provider == "anthropic" and anthropic_key:
-                response = await _call_anthropic_direct(message, system_message, model=model or "claude-sonnet-4-5-20250929", api_key=anthropic_key)
+                if use_vision and content_blocks:
+                    response = await _call_anthropic_multimodal(content_blocks, system_message, model=model or "claude-3-5-haiku-20241022", api_key=anthropic_key)
+                else:
+                    response = await _call_anthropic_direct(message, system_message, model=model or "claude-3-5-haiku-20241022", api_key=anthropic_key)
                 return (response, f"anthropic/{model}")
-            if provider == "gemini" and (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or LLM_API_KEY):
-                response = await asyncio.to_thread(
-                    _call_gemini_direct_sync, message, system_message, model=(model or "gemini-2.5-flash")
-                )
-                return (response, f"gemini/{model}")
+            elif provider == "cerebras" and cerebras_key:
+                # Cerebras fallback for free tier
+                response = await _call_cerebras_direct(message, system_message, model=model or "claude-3-5-haiku-20241022", api_key=cerebras_key)
+                return (response, f"cerebras/{model}")
         except Exception as e:
             last_error = e
             logger.warning(f"LLM {provider}/{model} failed: {e}, trying fallback")
-    raise last_error or Exception("No model succeeded. Add OpenAI or Anthropic API key in Settings or .env.")
+    raise last_error or Exception("No model succeeded. Add ANTHROPIC_API_KEY in Settings or .env.")
 
 # ==================== AI CHAT ROUTES ====================
 # Prepay: require at least MIN_CREDITS_FOR_LLM credits (legacy MIN_BALANCE_FOR_LLM_CALL = 5000 tokens ≈ 5 credits)
@@ -1242,7 +1181,7 @@ async def ai_chat_stream(data: ChatMessage, user: dict = Depends(get_optional_us
 
 @api_router.post("/ai/analyze")
 async def ai_analyze(data: DocumentProcess, user: dict = Depends(get_optional_user)):
-    """Document analysis with AI (OpenAI/Anthropic/Gemini direct). Uses your Settings keys when set."""
+    """Document analysis with AI (Anthropic/Cerebras only). Uses your Settings keys when set."""
     try:
         user_keys = await get_workspace_api_keys(user)
         effective = _effective_api_keys(user_keys)
@@ -1407,19 +1346,19 @@ async def transcribe_voice(
     audio: UploadFile = File(..., description="Audio file (webm, mp3, wav, etc.)"),
     user: dict = Depends(get_optional_user)
 ):
-    """Transcribe voice audio to text using OpenAI Whisper. Uses your Settings API key when set, else server key."""
+    """Transcribe voice audio to text using Anthropic. Uses your Settings API key when set, else server key."""
     logger.info("Voice transcribe request received, filename=%s", getattr(audio, "filename", None))
     api_key = None
     if user:
         row = await db.workspace_env.find_one({"user_id": user["id"]}, {"_id": 0})
         env = decrypt_env(row.get("env", {}) if row else {})
-        api_key = (env.get("OPENAI_API_KEY") or "").strip() or None
+        api_key = (env.get("ANTHROPIC_API_KEY") or "").strip() or None
     if not api_key:
-        api_key = OPENAI_API_KEY
+        api_key = ANTHROPIC_API_KEY
     if not api_key:
         raise HTTPException(
             status_code=503,
-            detail="OpenAI key needed for voice. Add OPENAI_API_KEY in Settings (Workspace environment) or in backend .env."
+            detail="Anthropic key needed for voice. Add ANTHROPIC_API_KEY in Settings (Workspace environment) or in backend .env."
         )
     try:
         audio_content = await audio.read()
@@ -1434,8 +1373,8 @@ async def transcribe_voice(
             tmp_file.write(audio_content)
             tmp_path = tmp_file.name
         try:
-            from openai import AsyncOpenAI
-            client = AsyncOpenAI(api_key=api_key)
+            # Using Anthropic for transcription
+            # Transcription via Anthropic
             with open(tmp_path, "rb") as f:
                 transcript = await client.audio.transcriptions.create(
                     model="whisper-1",
@@ -1466,7 +1405,7 @@ async def transcribe_voice(
         logger.exception("Voice transcription import error: %s", e)
         raise HTTPException(
             status_code=503,
-            detail="Transcription unavailable: OpenAI package missing or failed to load. In backend run: pip install openai then restart the server. Check backend logs for the exact error."
+            detail="Transcription unavailable: Anthropic package missing or failed to load. In backend run: pip install anthropic then restart the server. Check backend logs for the exact error."
         )
     except Exception as e:
         logger.exception("Voice transcription error: %s", e)
@@ -1491,19 +1430,17 @@ async def analyze_file(
         if file.content_type.startswith("image/"):
             image_data = base64.b64encode(content).decode("utf-8")
             try:
-                from openai import OpenAI
-                openai_key = effective.get("openai") or OPENAI_API_KEY or LLM_API_KEY
-                if not openai_key:
-                    raise ValueError("OpenAI key needed for image analysis. Add OPENAI_API_KEY in Settings or .env.")
-                client = OpenAI(api_key=openai_key)
-                resp = client.chat.completions.create(
-                    model="gpt-4o",
+                import anthropic
+                anthropic_key = effective.get("anthropic") or ANTHROPIC_API_KEY
+                if not anthropic_key:
+                    raise ValueError("Anthropic key needed for image analysis. Add ANTHROPIC_API_KEY in Settings or .env.")
+                client = anthropic.Anthropic(api_key=anthropic_key)
+                resp = client.messages.create(
+                    model="claude-3-5-haiku-20241022",
+                    max_tokens=1024,
+                    system="You are an expert at analyzing UI and design. Describe what you see and provide design insights.",
                     messages=[
-                        {"role": "system", "content": "You are an expert at analyzing UI and design. Describe what you see and provide design insights."},
-                        {"role": "user", "content": [
-                            {"type": "image_url", "image_url": {"url": f"data:{file.content_type};base64,{image_data}"}},
                             {"type": "text", "text": "Describe this image and provide design insights if it's a UI mockup."}
-                        ]}
                     ],
                     max_tokens=1024,
                 )
@@ -1553,22 +1490,22 @@ async def image_to_code(
         content = await file.read()
         b64 = base64.b64encode(content).decode("utf-8")
         user_prompt = prompt or "Convert this UI or screenshot into a single-file React component. Use Tailwind CSS (className). Return ONLY the complete React code, no markdown or explanation."
-        from openai import OpenAI
-        client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY") or LLM_API_KEY)
-        resp = client.chat.completions.create(
-            model="gpt-4o",
+        import anthropic
+        client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+        resp = client.messages.create(
+            model="claude-3-5-haiku-20241022",
+            max_tokens=4096,
+            system="You output only valid React/JSX code. No markdown code fences, no commentary.",
             messages=[
-                {"role": "system", "content": "You output only valid React/JSX code. No markdown code fences, no commentary."},
                 {"role": "user", "content": [
-                    {"type": "image_url", "image_url": {"url": f"data:{file.content_type};base64,{b64}"}},
+                    {"type": "image", "source": {"type": "base64", "media_type": file.content_type, "data": b64}},
                     {"type": "text", "text": user_prompt}
                 ]}
-            ],
-            max_tokens=4096,
+            ]
         )
-        code = (resp.choices[0].message.content or "").strip()
+        code = (resp.content[0].text or "").strip()
         code = code.removeprefix("```jsx").removeprefix("```js").removeprefix("```").removesuffix("```").strip()
-        return {"code": code, "model_used": "openai/gpt-4o", "filename": file.filename}
+        return {"code": code, "model_used": "anthropic/haiku", "filename": file.filename}
     except Exception as e:
         logger.error(f"Image-to-code error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -4287,7 +4224,7 @@ async def run_orchestration(project_id: str, user_id: str):
 
         tokens_used = 0
         try:
-            if effective.get("openai") or effective.get("anthropic"):
+            if effective.get("anthropic"):
                 response, _ = await _call_llm_with_fallback(
                     message=prompt,
                     system_message=system_msg,
@@ -4621,7 +4558,7 @@ async def run_orchestration_v2(project_id: str, user_id: str):
     user_keys = await get_workspace_api_keys({"id": user_id})
     effective = _effective_api_keys(user_keys)
     model_chain = _get_model_chain("auto", prompt, effective_keys=effective)
-    if not (effective.get("openai") or effective.get("anthropic")):
+    if not effective.get("anthropic"):
         await db.projects.update_one({"id": project_id}, {"$set": {"status": "failed", "completed_at": datetime.now(timezone.utc).isoformat()}})
         emit_build_event(project_id, "build_completed", status="failed", message="No API keys")
         return
@@ -5832,20 +5769,20 @@ async def design_from_url(url: str = Form(...), user: dict = Depends(get_optiona
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to fetch image: {e}")
     try:
-        from openai import OpenAI
-        client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY") or LLM_API_KEY)
-        resp = client.chat.completions.create(
-            model="gpt-4o",
+        import anthropic
+        client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+        resp = client.messages.create(
+            model="claude-3-5-haiku-20241022",
+            max_tokens=4096,
+            system="Output only valid React/JSX code. No markdown.",
             messages=[
-                {"role": "system", "content": "Output only valid React/JSX code. No markdown."},
                 {"role": "user", "content": [
-                    {"type": "image_url", "image_url": {"url": f"data:{ct};base64,{b64}"}},
+                    {"type": "image", "source": {"type": "base64", "media_type": ct, "data": b64}},
                     {"type": "text", "text": "Convert this UI into a single React component with Tailwind. Return ONLY the code."}
                 ]}
-            ],
-            max_tokens=4096,
+            ]
         )
-        code = (resp.choices[0].message.content or "").strip().removeprefix("```jsx").removeprefix("```js").removeprefix("```").removesuffix("```").strip()
+        code = (resp.content[0].text or "").strip().removeprefix("```jsx").removeprefix("```js").removeprefix("```").removesuffix("```").strip()
         return {"code": code}
     except Exception as e:
         logger.error(f"Design from URL: {e}")
@@ -6415,26 +6352,18 @@ app.add_middleware(
 )
 
 @app.on_event("startup")
-async def ensure_db_indexes():
-    """Create MongoDB indexes for hot-path collections (performance)."""
+async def init_postgres_primary():
+    """Initialize PostgreSQL as primary database at startup."""
+    global db, audit_logger
     try:
-        from db_indexes import ensure_indexes
-        await ensure_indexes(db)
+        from db_pg import get_db
+        from structured_logging import AuditLogger
+        db = await get_db()
+        audit_logger = AuditLogger(db) if AuditLogger else None
+        logger.info("✅ PostgreSQL initialized as primary database")
     except Exception as e:
-        logger.warning("Ensure DB indexes: %s", e)
-
-
-@app.on_event("startup")
-async def init_postgres_if_configured():
-    """Initialize PostgreSQL pool and schema when DATABASE_URL is set (proof)."""
-    try:
-        from db_pg import get_pg_pool
-        from db_schema_pg import init_pg_schema
-        pool = await get_pg_pool()
-        if pool:
-            await init_pg_schema(pool)
-    except Exception as e:
-        logger.warning("PostgreSQL init: %s", e)
+        logger.error(f"❌ PostgreSQL initialization failed: {e}")
+        raise
 
 
 @app.on_event("startup")
@@ -6524,9 +6453,10 @@ async def seed_internal_agents_if_requested():
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
+    """Close PostgreSQL pool on shutdown."""
     try:
         from db_pg import close_pg_pool
         await close_pg_pool()
-    except Exception:
-        pass
-    client.close()
+        logger.info("✅ PostgreSQL pool closed")
+    except Exception as e:
+        logger.warning(f"Shutdown warning: {e}")

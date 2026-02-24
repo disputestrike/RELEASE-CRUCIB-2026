@@ -57,7 +57,7 @@ async def test_agent_failure_recovery_returns_fallback_or_skip():
     project_prompt = "Build a todo app"
     previous_outputs = {}
     effective = {"openai": "sk-mock", "anthropic": None}
-    model_chain = [{"provider": "openai", "model": "gpt-4o"}]
+    model_chain = [{"provider": "openai", "model": "claude-3-5-haiku-20241022"}]
 
     with patch("server.db") as mock_db:
         mock_db.projects.update_one = AsyncMock()
@@ -90,7 +90,7 @@ async def test_high_agent_failure_returns_fallback():
     project_prompt = "Build a todo app"
     previous_outputs = {}
     effective = {"openai": "sk-mock", "anthropic": None}
-    model_chain = [{"provider": "openai", "model": "gpt-4o"}]
+    model_chain = [{"provider": "openai", "model": "claude-3-5-haiku-20241022"}]
 
     with patch("server.db") as mock_db:
         mock_db.projects.update_one = AsyncMock()

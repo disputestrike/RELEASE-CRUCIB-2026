@@ -27,8 +27,7 @@ class SecurityAudit:
             'JWT_SECRET',
             'OPENAI_API_KEY',
             'ANTHROPIC_API_KEY',
-            'GROQ_API_KEY',
-            'STRIPE_API_KEY'
+            '            'STRIPE_API_KEY'
         ]
         
         results = {}
