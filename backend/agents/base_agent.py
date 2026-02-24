@@ -11,7 +11,7 @@ import time
 import logging
 from anthropic import AsyncAnthropic
 from agent_recursive_learning import AgentMemory, PerformanceTracker, AdaptiveStrategy, ExecutionStatus
-from llm_cerebras import invoke_cerebras
+from llm_cerebras import invoke_cerebras, invoke_cerebras_stream
 
 logger = logging.getLogger(__name__)
 
@@ -180,38 +180,61 @@ class BaseAgent(ABC):
         system_prompt: str,
         model: str = "cerebras",
         temperature: float = 0.7,
-        max_tokens: int = 4000
+        max_tokens: int = 4000,
+        stream: bool = True
     ) -> tuple[str, int]:
         """
-        Call LLM with given prompts. Defaults to Cerebras (free tier).
+        Call LLM with given prompts. Defaults to Cerebras (free tier) with streaming.
         
         Args:
             user_prompt: User message
             system_prompt: System message
-            model: Model name (cerebras for free, claude-* for Anthropic)
+            model: Model name ("cerebras" for free tier, "claude-*" for Anthropic)
             temperature: Temperature for generation
             max_tokens: Maximum tokens to generate
+            stream: Whether to use streaming (default True, more reliable)
             
         Returns:
             Tuple of (response_text, tokens_used)
         """
-        # Use Cerebras by default (free tier, always working)
+        # Use Cerebras by default (free tier, streaming is more reliable)
         if model == "cerebras" or not os.getenv("ANTHROPIC_API_KEY"):
             try:
-                response = await invoke_cerebras(
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ],
-                    max_tokens=max_tokens,
-                    temperature=temperature
-                )
+                if stream:
+                    # Use streaming API (more reliable, no compression issues)
+                    content = ""
+                    async for chunk in invoke_cerebras_stream(
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_prompt}
+                        ],
+                        max_tokens=max_tokens,
+                        temperature=temperature
+                    ):
+                        content += chunk
+                    
+                    # Estimate tokens (rough: 1 token ≈ 4 chars)
+                    tokens = len(content) // 4 + len(user_prompt) // 4
+                    
+                    logger.info(f"{self.name} used Cerebras (streaming): ~{tokens} tokens")
+                    return content, tokens
                 
-                content = response["choices"][0]["message"]["content"]
-                tokens = response.get("usage", {}).get("prompt_tokens", 0) + response.get("usage", {}).get("completion_tokens", 0)
-                
-                logger.info(f"{self.name} used Cerebras: {tokens} tokens")
-                return content, tokens
+                else:
+                    # Non-streaming API (has compression issues, avoid)
+                    response = await invoke_cerebras(
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_prompt}
+                        ],
+                        max_tokens=max_tokens,
+                        temperature=temperature
+                    )
+                    
+                    content = response["choices"][0]["message"]["content"]
+                    tokens = response.get("usage", {}).get("prompt_tokens", 0) + response.get("usage", {}).get("completion_tokens", 0)
+                    
+                    logger.info(f"{self.name} used Cerebras: {tokens} tokens")
+                    return content, tokens
             
             except Exception as e:
                 logger.error(f"{self.name}: Cerebras API call failed: {e}")
@@ -238,9 +261,9 @@ class BaseAgent(ABC):
             
             except Exception as e:
                 logger.error(f"{self.name}: Anthropic API call failed: {e}")
-                # Fallback to Cerebras
+                # Fallback to Cerebras streaming
                 logger.info(f"{self.name} falling back to Cerebras")
-                return await self.call_llm(user_prompt, system_prompt, "cerebras", temperature, max_tokens)
+                return await self.call_llm(user_prompt, system_prompt, "cerebras", temperature, max_tokens, stream=True)
         
         raise AgentValidationError(f"{self.name}: No valid LLM model specified")
     
