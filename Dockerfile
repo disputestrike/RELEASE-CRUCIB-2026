@@ -14,15 +14,18 @@ ENV REACT_APP_BACKEND_URL=
 RUN npm run build 2>/dev/null || yarn build
 
 # Stage 2: backend + serve frontend static
-FROM python:3.11-slim
+FROM python:3.11.0-slim
 WORKDIR /app
 
-COPY backend/requirements.txt requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt .
+RUN pip install --no-cache-dir --no-deps -r requirements.txt
 COPY backend/ ./
 COPY --from=frontend /app/build ./static
 
 ENV PORT=8000
 EXPOSE 8000
 
-CMD ["sh", "-c", "uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000}"]
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+CMD ["sh", "-c", "uvicorn backend.server:app --host 0.0.0.0 --port ${PORT:-8000}"]
