@@ -33,7 +33,7 @@ def _resolve_under_workspace(workspace: Path, path: str) -> Path:
 class FileAgent(BaseAgent):
     """File system operations agent"""
     
-    def __init__(self, db=None, llm_client, config):
+    def __init__(self, llm_client, config, db=None):
         super().__init__(db=db)
         super().__init__(llm_client, config)
         self.name = "FileAgent"

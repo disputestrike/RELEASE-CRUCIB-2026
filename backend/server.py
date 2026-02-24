@@ -1441,8 +1441,7 @@ async def analyze_file(
                     system="You are an expert at analyzing UI and design. Describe what you see and provide design insights.",
                     messages=[
                             {"type": "text", "text": "Describe this image and provide design insights if it's a UI mockup."}
-                    ],
-                    max_tokens=1024,
+                    ]
                 )
                 analysis_result = resp.choices[0].message.content or "No description."
             except Exception as vision_err:
