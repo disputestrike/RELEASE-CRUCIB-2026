@@ -190,7 +190,7 @@ export default function Enterprise() {
                   className="w-full px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-[#1A1A1A] focus:border-kimi-accent outline-none"
                 >
                   <option value="">Select</option>
-                  <option value="agency">Agency</option>
+                  <option value="teams">Teams</option>
                   <option value="enterprise">Enterprise</option>
                   <option value="startup">Startup</option>
                   <option value="other">Other</option>

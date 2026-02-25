@@ -67,7 +67,7 @@ const AdminUsers = () => {
           <option value="starter">Starter</option>
           <option value="builder">Builder</option>
           <option value="pro">Pro</option>
-          <option value="agency">Agency</option>
+          <option value="teams">Teams</option>
         </select>
       </div>
       {loading ? (
