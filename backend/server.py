@@ -214,7 +214,7 @@ class EnterpriseContact(BaseModel):
     company: str
     email: EmailStr
     team_size: Optional[str] = None  # e.g. "1-10", "11-50", "51+"
-    use_case: Optional[str] = None  # e.g. "agency", "startup", "enterprise"
+    use_case: Optional[str] = None  # e.g. "teams", "startup", "enterprise"
     budget: Optional[str] = None  # e.g. "10K", "50K", "100K+", "custom"
     message: Optional[str] = None
 
@@ -398,17 +398,17 @@ CREDITS_PER_TOKEN = 1000
 MIN_CREDITS_FOR_LLM = 5
 FREE_TIER_CREDITS = 50  # Generous free tier (~1 landing page); ~91% margin on paid
 
-# New pricing tiers (Final Model): Starter, Builder, Pro, Agency + add-ons. Single source of truth.
+# New pricing tiers (Final Model): Starter, Builder, Pro, Teams + add-ons. Single source of truth.
 CREDIT_PLANS = {
-    "free": {"credits": 50, "price": 0, "name": "Free", "speed": "Standard speed", "landing_only": True},
-    "starter": {"credits": 100, "price": 12.99, "name": "Starter", "speed": "Fast builds"},
-    "builder": {"credits": 500, "price": 29.99, "name": "Builder", "speed": "Fast builds"},
-    "pro": {"credits": 2000, "price": 79.99, "name": "Pro", "speed": "Priority speed"},
-    "agency": {"credits": 10000, "price": 199.99, "name": "Agency", "speed": "Priority speed"},
+    "free": {"credits": 50, "price": 0, "name": "Free", "speed_tiers": ["lite"], "model": "cerebras", "swarm": False},
+    "starter": {"credits": 200, "price": 14.99, "name": "Starter", "speed_tiers": ["lite", "pro"], "models": {"lite": "cerebras", "pro": "haiku"}, "swarm": False},
+    "builder": {"credits": 500, "price": 29.99, "name": "Builder", "speed_tiers": ["lite", "pro"], "models": {"lite": "cerebras", "pro": "haiku"}, "swarm": True},
+    "pro": {"credits": 2000, "price": 79.99, "name": "Pro", "speed_tiers": ["lite", "pro", "max"], "models": {"lite": "cerebras", "pro": "haiku", "max": "haiku"}, "swarm": True, "max_swarm": True},
+    "teams": {"credits": 10000, "price": 199.99, "name": "Teams", "speed_tiers": ["lite", "pro", "max"], "models": {"lite": "cerebras", "pro": "haiku", "max": "haiku"}, "swarm": True, "max_swarm": True},
 }
 ADDONS = {"light": {"credits": 50, "price": 7, "name": "Light"}, "dev": {"credits": 250, "price": 30, "name": "Dev"}}
 # Annual pricing: 17% off (2 months free). Matches Manus positioning; no margin loss; better retention.
-ANNUAL_PRICES = {"starter": 129, "builder": 299, "pro": 799, "agency": 1999}
+ANNUAL_PRICES = {"starter": 149.99, "builder": 299.99, "pro": 799.99, "teams": 1999.99}
 
 # Purchasable bundles for Stripe & /tokens/bundles: tiers (excl. free) + add-ons. tokens = credits * CREDITS_PER_TOKEN for legacy.
 TOKEN_BUNDLES = {}
@@ -726,7 +726,7 @@ async def get_optional_user(credentials: HTTPAuthorizationCredentials = Depends(
     if request:
         api_key = request.headers.get("X-API-Key") or request.headers.get("x-api-key")
         if api_key and (api_key in PUBLIC_API_KEYS or await _check_api_key_db(api_key)):
-            return {"id": f"api_key_{api_key[:8]}", "token_balance": 999999, "credit_balance": 999999, "plan": "agency", "public_api": True}
+            return {"id": f"api_key_{api_key[:8]}", "token_balance": 999999, "credit_balance": 999999, "plan": "teams", "public_api": True}
     return None
 
 def detect_task_type(message: str) -> str:
@@ -5237,7 +5237,7 @@ async def admin_segments(
     format: Optional[str] = None,
     admin: dict = Depends(get_current_admin(ADMIN_ROLES)),
 ):
-    """Export user segment: filter by plan (free|starter|builder|pro|agency). Returns list of users; ?format=csv returns CSV."""
+    """Export user segment: filter by plan (free|starter|builder|pro|teams). Returns list of users; ?format=csv returns CSV."""
     q = {}
     if plan:
         q["plan"] = plan
@@ -6459,3 +6459,51 @@ async def shutdown_db_client():
         logger.info("✅ PostgreSQL pool closed")
     except Exception as e:
         logger.warning(f"Shutdown warning: {e}")
+
+# Speed tier configuration
+SPEED_TIERS = {
+    "lite": {
+        "name": "CrucibAI 1.0 Lite",
+        "description": "Lightweight agent for everyday tasks.",
+        "model": "cerebras",
+        "parallelism": 1,
+        "timeout": 300,
+        "build_time_estimate": "30-40s",
+        "token_multiplier": 1.0,
+        "credit_cost": 50,
+        "label": "Sequential",
+        "icon": "clock"
+    },
+    "pro": {
+        "name": "CrucibAI 1.0",
+        "description": "Versatile agent capable of handling most tasks.",
+        "model": "haiku",
+        "parallelism": 2.5,
+        "timeout": 180,
+        "build_time_estimate": "12-16s",
+        "token_multiplier": 1.5,
+        "credit_cost": 100,
+        "label": "Parallel",
+        "icon": "faster",
+        "badge": "POPULAR"
+    },
+    "max": {
+        "name": "CrucibAI 1.0 Max",
+        "description": "High-performance agent designed for complex tasks.",
+        "model": "haiku",
+        "parallelism": 4.0,
+        "timeout": 120,
+        "build_time_estimate": "8-10s",
+        "token_multiplier": 2.0,
+        "credit_cost": 150,
+        "label": "Full Swarm",
+        "icon": "lightning",
+        "badge": "FASTEST",
+        "all_agents": True
+    }
+}
+
+# Token multipliers for consistency
+SWARM_TOKEN_MULTIPLIER = 1.5  # Pro speed with swarm
+MAX_TOKEN_MULTIPLIER = 2.0    # Max speed (full swarm)
+

@@ -233,7 +233,7 @@ class EnterpriseContactValidator(BaseValidator):
     company: str = Field(..., min_length=2, max_length=200)
     email: EmailStr
     team_size: Optional[str] = Field(None, pattern="^(1-10|11-50|51-100|100\\+)$")
-    use_case: Optional[str] = Field(None, pattern="^(agency|startup|enterprise|other)$")
+    use_case: Optional[str] = Field(None, pattern="^(teams|startup|enterprise|other)$")
     budget: Optional[str] = Field(None, pattern="^(10K|50K|100K|custom)$")
     message: Optional[str] = Field(None, max_length=5000)
 

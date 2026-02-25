@@ -8,14 +8,15 @@ import PublicFooter from '../components/PublicFooter';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';
 
-// Final Model: Starter, Builder, Pro, Agency (+ add-ons). No LLM names on landing/pricing (Manus-style).
+// Final Model: Starter, Builder, Pro, Teams (+ add-ons). No LLM names on landing/pricing (Manus-style).
 const DEFAULT_BUNDLES = {
-  starter: { credits: 100, price: 12.99, name: 'Starter', speed: 'Fast builds' },
-  builder: { credits: 500, price: 29.99, name: 'Builder', speed: 'Fast builds' },
-  pro: { credits: 2000, price: 79.99, name: 'Pro', speed: 'Priority speed' },
-  agency: { credits: 10000, price: 199.99, name: 'Agency', speed: 'Priority speed' },
+  free: { credits: 50, price: 0, name: 'Free', speed: 'Lite only' },
+  starter: { credits: 200, price: 14.99, name: 'Starter', speed: 'Lite + Pro' },
+  builder: { credits: 500, price: 29.99, name: 'Builder', speed: 'Lite + Pro with swarm' },
+  pro: { credits: 2000, price: 79.99, name: 'Pro', speed: 'All speeds' },
+  teams: { credits: 10000, price: 199.99, name: 'Teams', speed: 'All speeds' },
 };
-const BUNDLE_ORDER = ['starter', 'builder', 'pro', 'agency'];
+const BUNDLE_ORDER = ['free', 'starter', 'builder', 'pro', 'teams'];
 
 const DEFAULT_ADDONS = {
   light: { credits: 50, price: 7, name: 'Light' },
@@ -25,15 +26,16 @@ const ADDON_ORDER = ['light', 'dev'];
 
 // CrucibAI-specific features per plan (Manus-style: list what they get, not model names)
 const PLAN_FEATURES = {
-  starter: ['Landing pages & simple apps', 'Plan-first build & preview', 'Export to ZIP & GitHub', 'All features'],
-  builder: ['Landing pages & full web apps', 'Plan-first build & live preview', 'Export to ZIP & GitHub', '120-agent swarm & templates'],
-  pro: ['Everything in Builder', 'Dashboards & data-heavy apps', 'Priority build speed', 'Higher credit volume'],
-  agency: ['Everything in Pro', 'High-volume builds', 'Priority speed & support', 'Team-ready credits'],
+  free: ['Landing pages', 'Lite speed only', 'Plan-first build', 'Export to ZIP'],
+  starter: ['Landing pages & simple apps', 'Lite + Pro speeds', 'Plan-first build & preview', 'Export to ZIP & GitHub'],
+  builder: ['Landing pages & full web apps', 'Lite + Pro with swarm', 'Live preview', 'Swarm enabled — parallel agents'],
+  pro: ['Everything in Builder', 'All 3 speeds (Lite/Pro/Max)', 'Max speed with full 123 agents', 'Priority support'],
+  teams: ['Everything in Pro', 'High-volume builds', 'For teams & agencies', 'Priority speed & support'],
 };
 
 const CREDITS_PER_LANDING = 50;
 const CREDITS_PER_APP = 100;
-const RECOMMEND_ORDER = ['starter', 'builder', 'pro', 'agency'];
+const RECOMMEND_ORDER = ['free', 'starter', 'builder', 'pro', 'teams'];
 
 function OutcomeCalculator({ bundles, onSelectPlan }) {
   const [landings, setLandings] = useState(0);
@@ -49,9 +51,9 @@ function OutcomeCalculator({ bundles, onSelectPlan }) {
       break;
     }
   }
-  if (!recommended && bundles.agency) {
-    recommended = 'agency';
-    recommendedCredits = bundles.agency.credits;
+  if (!recommended && bundles.teams) {
+    recommended = 'teams';
+    recommendedCredits = bundles.teams.credits;
   }
   return (
     <div className="space-y-4">
@@ -101,7 +103,7 @@ export default function Pricing() {
   const { user } = useAuth();
   const [bundles, setBundles] = useState(DEFAULT_BUNDLES);
   const [addons, setAddons] = useState(DEFAULT_ADDONS);
-  const [annualPrices, setAnnualPrices] = useState({ starter: 129, builder: 299, pro: 799, agency: 1999 });
+  const [annualPrices, setAnnualPrices] = useState({ free: 0, starter: 149.99, builder: 299.99, pro: 799.99, teams: 1999.99 });
   const [billingPeriod, setBillingPeriod] = useState('monthly'); // 'monthly' | 'annual'
 
   useEffect(() => {

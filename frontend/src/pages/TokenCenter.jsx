@@ -96,7 +96,7 @@ const TokenCenter = () => {
     }
   };
 
-  const bundleOrder = ['starter', 'builder', 'pro', 'agency', 'light', 'dev'];
+  const bundleOrder = ['starter', 'builder', 'pro', 'teams', 'light', 'dev'];
   const sortedBundles = bundleOrder.filter(k => bundles[k]).map(k => ({ key: k, ...bundles[k] }));
 
   const usageChartData = usage?.by_agent ? Object.entries(usage.by_agent).map(([name, value]) => ({
