@@ -6358,7 +6358,7 @@ async def init_postgres_primary():
         from db_pg import get_db
         from structured_logging import AuditLogger
         db = await get_db()
-        audit_logger = AuditLogger(db) if AuditLogger else None
+        audit_logger = AuditLogger() if AuditLogger else None
         logger.info("✅ PostgreSQL initialized as primary database")
     except Exception as e:
         logger.error(f"❌ PostgreSQL initialization failed: {e}")
