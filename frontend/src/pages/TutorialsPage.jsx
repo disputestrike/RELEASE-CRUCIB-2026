@@ -22,7 +22,7 @@ const TUTORIALS = [
     category: 'getting-started',
     icon: Rocket,
     steps: [
-      { title: 'Sign up and open Workspace', content: 'Create a free account at crucibai.com. Click "Open Workspace" from the landing page or navigate to /app/workspace. You get 50 free credits to start.' },
+      { title: 'Sign up and open Workspace', content: 'Create a free account at crucibai.com. Click "Open Workspace" from the landing page or navigate to /app/workspace. You get 100 free credits to start.' },
       { title: 'Describe your app', content: 'In the chat input, type: "Build a todo app with user authentication, dark mode, and the ability to mark tasks as complete." Press Enter or click the send button.' },
       { title: 'Review the plan', content: 'CrucibAI generates a structured plan showing: features, components, database schema, and estimated token cost. Review it and click "Approve" to start the build.' },
       { title: 'Watch the agents work', content: 'Open the Agent Monitor (click the agents icon in the toolbar). You\'ll see 15-20 agents activate: Planner, Stack Selector, Frontend Generator, Backend Generator, Database Designer, Stylist, and more. Each shows real-time status.' },

@@ -10,7 +10,7 @@ import { logApiError } from '../utils/apiError';
 
 // Final Model: Starter, Builder, Pro, Teams (+ add-ons). No LLM names on landing/pricing (Manus-style).
 const DEFAULT_BUNDLES = {
-  free: { credits: 50, price: 0, name: 'Free', speed: 'Lite only' },
+  free: { credits: 100, price: 0, name: 'Free', speed: 'Lite only' },
   starter: { credits: 200, price: 14.99, name: 'Starter', speed: 'Lite + Pro' },
   builder: { credits: 500, price: 29.99, name: 'Builder', speed: 'Lite + Pro with swarm' },
   pro: { credits: 2000, price: 79.99, name: 'Pro', speed: 'All speeds' },
@@ -133,7 +133,7 @@ export default function Pricing() {
         <div className="text-center mb-16">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Plans</span>
           <h1 className="text-kimi-section font-bold text-kimi-text mt-2 mb-4">Pricing</h1>
-          <p className="text-kimi-muted max-w-xl mx-auto">Inevitable outcomes: plan-first, 120-agent swarm, full transparency. Free tier includes 50 credits. No surprises, no hidden limitations.</p>
+          <p className="text-kimi-muted max-w-xl mx-auto">Inevitable outcomes: plan-first, 120-agent swarm, full transparency. Free tier includes 100 credits. No surprises, no hidden limitations.</p>
           <div className="mt-8 max-w-2xl mx-auto p-4 rounded-xl border border-stone-200 bg-white text-left">
             <p className="text-sm font-medium text-[#1A1A1A] mb-2">Why CrucibAI — Inevitable AI</p>
             <ul className="text-sm text-[#1A1A1A] space-y-1">
