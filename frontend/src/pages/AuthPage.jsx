@@ -193,7 +193,7 @@ const AuthPage = () => {
                 ? 'Enter the 6-digit code from your authenticator app'
                 : isLogin
                   ? 'Sign in to continue building'
-                  : 'Start building with 50 free credits'}
+                  : 'Start building with 100 free credits'}
             </p>
 
             {/* Error */}
@@ -432,7 +432,7 @@ const AuthPage = () => {
               { text: 'Plan-first architecture — no black boxes', check: true },
               { text: 'Full transparency into every agent decision', check: true },
               { text: 'Web, mobile, and automation — one platform', check: true },
-              { text: '50 free credits, no credit card required', check: true },
+              { text: '100 free credits, no credit card required', check: true },
             ].map((item, i) => (
               <motion.div
                 key={item.text}

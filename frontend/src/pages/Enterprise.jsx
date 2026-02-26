@@ -14,7 +14,7 @@ const USE_CASES = [
 ];
 
 const PLAN_TABLE = [
-  { plan: 'Free', credits: '50 credits', price: '$0', note: 'Landing pages, export & deploy' },
+  { plan: 'Free', credits: '100 credits', price: '$0', note: 'Landing pages, export & deploy' },
   { plan: 'Starter', credits: '100K credits', price: '$9.99/mo', note: 'Landing & simple apps' },
   { plan: 'Pro', credits: '500K credits', price: '$49.99/mo', note: 'Full apps & dashboards' },
   { plan: 'Business', credits: '2M credits', price: '$199.99/mo', note: 'Team, high volume' },

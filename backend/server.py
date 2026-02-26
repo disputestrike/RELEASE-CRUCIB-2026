@@ -396,11 +396,11 @@ class AgentAutomationBody(BaseModel):
 
 CREDITS_PER_TOKEN = 1000
 MIN_CREDITS_FOR_LLM = 5
-FREE_TIER_CREDITS = 50  # Generous free tier (~1 landing page); ~91% margin on paid
+FREE_TIER_CREDITS = 100  # Generous free tier (~2 landing pages); ~91% margin on paid
 
 # New pricing tiers (Final Model): Starter, Builder, Pro, Teams + add-ons. Single source of truth.
 CREDIT_PLANS = {
-    "free": {"credits": 50, "price": 0, "name": "Free", "speed_tiers": ["lite"], "model": "cerebras", "swarm": False},
+    "free": {"credits": 100, "price": 0, "name": "Free", "speed_tiers": ["lite"], "model": "cerebras", "swarm": False},
     "starter": {"credits": 200, "price": 14.99, "name": "Starter", "speed_tiers": ["lite", "pro"], "models": {"lite": "cerebras", "pro": "haiku"}, "swarm": False},
     "builder": {"credits": 500, "price": 29.99, "name": "Builder", "speed_tiers": ["lite", "pro"], "models": {"lite": "cerebras", "pro": "haiku"}, "swarm": True},
     "pro": {"credits": 2000, "price": 79.99, "name": "Pro", "speed_tiers": ["lite", "pro", "max"], "models": {"lite": "cerebras", "pro": "haiku", "max": "haiku"}, "swarm": True, "max_swarm": True},
