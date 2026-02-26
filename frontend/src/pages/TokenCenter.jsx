@@ -121,7 +121,7 @@ const TokenCenter = () => {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold mb-2">Credit Center</h1>
-        <p className="text-[#666666]">Buy credits and track your usage. 50 credits ≈ 1 landing page.</p>
+        <p className="text-[#666666]">Buy credits and track your usage. 100 credits ≈ 1 landing page.</p>
       </div>
 
       {/* Balance Card */}

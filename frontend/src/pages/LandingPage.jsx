@@ -214,7 +214,7 @@ const LandingPage = () => {
 
   const faqs = [
     { q: 'What is CrucibAI?', a: 'CrucibAI is Inevitable AI — the platform where intelligence doesn\'t just act, it makes outcomes inevitable. Describe what you need in plain language; we generate production-ready code with plan-first flow and a 120-agent swarm. Full transparency: every phase, every agent, no black boxes.' },
-    { q: 'Is CrucibAI free to use?', a: 'Yes. We offer a free tier with 50 credits. Paid plans are monthly (Starter, Builder, Pro, Teams) with more credits per month; add-ons (Light, Dev) are one-time top-ups. Unused credits roll over.' },
+    { q: 'Is CrucibAI free to use?', a: 'Yes. We offer a free tier with 100 credits. Paid plans are monthly (Starter, Builder, Pro, Teams) with more credits per month; add-ons (Light, Dev) are one-time top-ups. Unused credits roll over.' },
     { q: 'Do I need coding experience?', a: 'No. Our platform is designed for everyone. Just describe your idea and our AI handles the technical implementation.' },
     { q: 'What can I build?', a: 'Websites, dashboards, task managers, onboarding portals, pricing pages, e-commerce stores, internal tools, and more. If you can describe it, we can build it.' },
     { q: 'What is design-to-code?', a: 'Upload a UI screenshot or mockup and CrucibAI generates structured, responsive code (HTML/CSS, React, Tailwind). Use the attach button on the landing or in the workspace.' },

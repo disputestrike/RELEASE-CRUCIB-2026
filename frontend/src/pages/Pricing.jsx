@@ -158,9 +158,9 @@ export default function Pricing() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div>
               <h2 className="text-2xl font-semibold mb-2">Start for free</h2>
-              <p className="text-stone-500 mb-4">50 credits. Build landing pages, export, and deploy. No credit card.</p>
+              <p className="text-stone-500 mb-4">100 credits. Build landing pages, export, and deploy. No credit card.</p>
               <ul className="space-y-2 text-sm text-[#1A1A1A]">
-                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> 50 credits for landing pages</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> 100 credits for landing pages</li>
                 <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> Plan-first build & live preview</li>
                 <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> Export to ZIP & push to GitHub</li>
                 <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> 120-agent swarm, templates & prompt library</li>
