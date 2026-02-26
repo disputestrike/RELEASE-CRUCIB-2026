@@ -88,8 +88,9 @@ import { LayoutProvider } from "./stores/useLayoutStore";
 import { TaskProvider } from "./stores/useTaskStore";
 
 // Empty REACT_APP_BACKEND_URL => same-origin /api (for single-URL deploy on Railway)
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL !== undefined ? process.env.REACT_APP_BACKEND_URL : 'http://localhost:8000';
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || process.env.REACT_APP_API_URL || 'http://localhost:3001';
 export const API = BACKEND_URL ? `${BACKEND_URL}/api` : '/api';
+console.log('API configured as:', API, 'BACKEND_URL:', BACKEND_URL);
 
 // Auth Context
 const AuthContext = createContext(null);
