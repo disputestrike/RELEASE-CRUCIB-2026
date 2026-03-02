@@ -64,33 +64,6 @@ from urllib.parse import quote, urlencode
 from env_encryption import encrypt_env, decrypt_env
 from agent_dag import AGENT_DAG, get_execution_phases, build_context_from_previous_agents, get_system_prompt_for_agent
 from real_agent_runner import REAL_AGENT_NAMES, run_real_agent, persist_agent_output, run_real_post_step
-
-# Agent Learning System — wired into production path
-from agent_recursive_learning import AgentMemory, PerformanceTracker, AdaptiveStrategy, ExecutionStatus
-
-from critic_agent import CriticAgent, TruthModule
-
-from vector_memory import vector_memory as _vector_memory
-
-# Monitoring & Metrics
-try:
-    from metrics_system import metrics as _metrics
-    from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
-    _metrics_available = True
-except ImportError:
-    _metrics_available = False
-    logger.warning("⚠️ prometheus_client not installed — /metrics endpoint disabled")
-_critic_agent = CriticAgent()
-_truth_module = TruthModule()
-_agent_memory = None  # Initialized in startup after db is ready
-
-async def _init_agent_learning():
-    """Initialize the agent learning system with the database connection."""
-    global _agent_memory
-    if _agent_memory is None:
-        _agent_memory = AgentMemory(db)
-    return _agent_memory
-
 from automation.models import AgentCreate, AgentUpdate, TriggerConfig, ActionConfig
 from automation.constants import (
     CREDITS_PER_AGENT_RUN,
@@ -125,11 +98,6 @@ except ImportError:
     Permission = None
     get_user_role = lambda u: "owner"
 import hashlib
-
-# Environment validation
-from env_setup import validate_environment
-validate_environment(strict=False)  # Log warnings but don't crash
-
 import pyotp
 import qrcode
 
@@ -2138,6 +2106,32 @@ async def auth_google_callback(request: Request, code: Optional[str] = None, sta
         except Exception:
             payload = {}
         email = (payload.get("email") or "").strip()
+    base = str(request.base_url).rstrip("/")
+    callback = f"{base}/api/auth/google/callback"
+    async with __import__("httpx").AsyncClient() as client:
+        r = await client.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "client_id": GOOGLE_CLIENT_ID,
+                "client_secret": GOOGLE_CLIENT_SECRET,
+                "code": code,
+                "grant_type": "authorization_code",
+                "redirect_uri": callback,
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+    if r.status_code != 200:
+        logger.warning(f"Google token exchange failed: {r.text}")
+        return RedirectResponse(url=f"{frontend_base}/auth?error=google_failed")
+    data = r.json()
+    id_token = data.get("id_token") or data.get("access_token")
+    if not id_token:
+        return RedirectResponse(url=f"{frontend_base}/auth?error=no_token")
+    try:
+        payload = jwt.decode(id_token, options={"verify_signature": False})
+    except Exception:
+        payload = {}
+    email = (payload.get("email") or "").strip()
     name = (payload.get("name") or payload.get("given_name") or email.split("@")[0] or "User").strip()
     if not email:
         return RedirectResponse(url=f"{frontend_base}/auth?error=no_email")
@@ -2181,17 +2175,6 @@ async def auth_google_callback(request: Request, code: Optional[str] = None, sta
     if redirect_path and redirect_path.startswith("/"):
         target += f"&redirect={quote(redirect_path)}"
     return RedirectResponse(url=target)
-
-
-# ==================== PROMETHEUS METRICS ====================
-@api_router.get("/metrics")
-async def prometheus_metrics():
-    """Expose Prometheus metrics for Grafana scraping."""
-    if not _metrics_available:
-        from starlette.responses import PlainTextResponse
-        return PlainTextResponse("# metrics not available\n", media_type="text/plain")
-    from starlette.responses import Response
-    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 # ==================== TOKEN ROUTES ====================
 
@@ -4320,36 +4303,6 @@ async def run_orchestration(project_id: str, user_id: str):
             "created_at": datetime.now(timezone.utc).isoformat()
         })
         total_used += tokens_used
-
-        
-        # --- METRICS: Track build completion ---
-        try:
-            _metrics.builds_total.labels(status="success").inc()
-            _metrics.build_queue_depth.dec()
-        except Exception:
-            pass
-
-# --- POST-BUILD CRITIC REVIEW ---
-        try:
-            critic_review = await _critic_agent.review_build(
-                project_id=project_id,
-                agent_outputs=previous_outputs,
-                llm_caller=_call_llm_with_fallback,
-                model_chain=model_chain,
-                api_keys=effective,
-            )
-            logger.info(f"Critic review: score={critic_review.get('overall_score')}, pass_rate={critic_review.get('pass_rate')}%")
-            # Store the review in the project
-            await db.project_logs.insert_one({
-                "id": str(__import__('uuid').uuid4()),
-                "project_id": project_id,
-                "type": "critic_review",
-                "data": critic_review,
-                "created_at": __import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat(),
-            })
-        except Exception as _critic_err:
-            logger.debug(f"Critic review failed (non-fatal): {_critic_err}")
-        # --- END CRITIC REVIEW ---
         await db.project_logs.insert_one({
             "id": str(uuid.uuid4()),
             "project_id": project_id,
@@ -4469,45 +4422,6 @@ async def _run_single_agent_with_context(
         run_agent_real_behavior(agent_name, project_id, result, previous_outputs)
     except Exception as e:
         logger.warning("run_agent_real_behavior %s: %s", agent_name, e)
-
-    
-    # --- METRICS: Track agent execution ---
-    try:
-        _metrics.agent_executions_total.labels(agent=agent_name, status="success" if out and len(out) > 50 else "partial").inc()
-        _metrics.active_agents.dec()
-    except Exception:
-        pass
-
-# --- AGENT LEARNING: Record execution for recursive learning ---
-    try:
-        memory = await _init_agent_learning()
-        if memory:
-            await memory.record_execution(
-                agent_name=agent_name,
-                input_data={"prompt": (enhanced_message or "")[:500], "project_id": project_id},
-                output={"result": (out or "")[:500], "tokens": tokens_used},
-                status=ExecutionStatus.SUCCESS if out and len(out) > 50 else ExecutionStatus.PARTIAL,
-                duration_ms=0,  # Could add timing if needed
-                metadata={"build_kind": build_kind or "web"}
-            )
-    except Exception as _learn_err:
-        logger.debug(f"Agent learning record failed (non-fatal): {_learn_err}")
-    
-    # --- VECTOR MEMORY: Store output for RAG ---
-    try:
-        if _vector_memory.is_available():
-            await _vector_memory.store_agent_output(
-                project_id=project_id,
-                agent_name=agent_name,
-                output=(out or "")[:2000],
-                tokens_used=tokens_used,
-            )
-    except Exception as _vec_err:
-        logger.debug(f"Vector memory store failed (non-fatal): {_vec_err}")
-    # --- END VECTOR MEMORY ---
-
-    # --- END AGENT LEARNING ---
-
     return result
 
 
@@ -4670,11 +4584,6 @@ def _infer_build_kind(prompt: str) -> str:
 
 async def run_orchestration_v2(project_id: str, user_id: str):
     """DAG-based orchestration: parallel phases, output chaining, retry, timeout, quality score."""
-    # --- METRICS: Track build start ---
-    try:
-        _metrics.build_queue_depth.inc()
-    except Exception:
-        pass
     project = await db.projects.find_one({"id": project_id})
     if not project:
         return

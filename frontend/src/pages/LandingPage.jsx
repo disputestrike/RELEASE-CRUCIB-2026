@@ -213,12 +213,12 @@ const LandingPage = () => {
   ];
 
   const faqs = [
-    { q: 'What is CrucibAI?', a: 'CrucibAI is Inevitable AI — the platform where intelligence doesn\'t just act, it makes outcomes inevitable. Describe what you need in plain language; we generate production-ready code with plan-first flow and a 120-agent swarm. Full transparency: every phase, every agent, no black boxes.' },
+    { q: 'What is CrucibAI?', a: 'CrucibAI is Inevitable AI — the platform where intelligence doesn\'t just act, it makes outcomes inevitable. Describe what you need in plain language; we generate production-ready code with plan-first flow and a 100+ specialized agents. Full transparency: every phase, every agent, no black boxes.' },
     { q: 'Is CrucibAI free to use?', a: 'Yes. We offer a free tier with 100 credits. Paid plans are monthly (Starter, Builder, Pro, Teams) with more credits per month; add-ons (Light, Dev) are one-time top-ups. Unused credits roll over.' },
     { q: 'Do I need coding experience?', a: 'No. Our platform is designed for everyone. Just describe your idea and our AI handles the technical implementation.' },
     { q: 'What can I build?', a: 'Websites, dashboards, task managers, onboarding portals, pricing pages, e-commerce stores, internal tools, and more. If you can describe it, we can build it.' },
     { q: 'What is design-to-code?', a: 'Upload a UI screenshot or mockup and CrucibAI generates structured, responsive code (HTML/CSS, React, Tailwind). Use the attach button on the landing or in the workspace.' },
-    { q: 'What are Quick, Plan, Agent, and Thinking modes?', a: 'Quick: single-shot generation, no plan step. Plan: we create a structured plan first, then build. Agent: full orchestration with our 120-agent swarm (planning, frontend, backend, design, SEO, tests, deploy). Thinking: step-by-step reasoning before code. Swarm runs selected agents in parallel for speed.' },
+    { q: 'What are Quick, Plan, Agent, and Thinking modes?', a: 'Quick: single-shot generation, no plan step. Plan: we create a structured plan first, then build. Agent: full orchestration with our 100+ specialized agents (planning, frontend, backend, design, SEO, tests, deploy). Thinking: step-by-step reasoning before code. Swarm runs selected agents in parallel for speed.' },
     { q: 'How do I make changes?', a: 'Just ask in the chat. Say "make it dark mode", "add a sidebar", or "change the colors" and we update the code instantly.' },
     { q: 'How are apps deployed?', a: 'You export your code as a ZIP or push to GitHub. We give you the files; you deploy to Vercel, Netlify, or any host. You own the code.' },
     { q: 'Is my data secure?', a: 'Yes. We use industry-standard practices. Your API keys stay in your environment; we don’t store them. See our Privacy and Terms for details.' },
@@ -241,7 +241,7 @@ const LandingPage = () => {
     { q: 'How do I get help or report a bug?', a: 'Use the Documentation and Support links in the footer. For bugs, include steps to reproduce and your environment (browser, OS).' },
     { q: 'Can I build mobile apps?', a: 'Currently we focus on web apps (React). Mobile and PWA support are on the roadmap.' },
     { q: 'What browsers are supported?', a: 'We recommend Chrome, Firefox, or Edge. Safari is supported; voice input may have limitations on some browsers.' },
-    { q: 'How does CrucibAI compare to Kimi?', a: 'Kimi excels at long-context chat and research. CrucibAI is Inevitable AI for app creation: plan-first builds, 120-agent swarm, design-to-code, and one workspace from idea to export. Use CrucibAI when you want inevitable outcomes — ship software, not just promises.' }
+    { q: 'How does CrucibAI compare to Kimi?', a: 'Kimi excels at long-context chat and research. CrucibAI is Inevitable AI for app creation: plan-first builds, 100+ specialized agents, design-to-code, and one workspace from idea to export. Use CrucibAI when you want inevitable outcomes — ship software, not just promises.' }
   ];
   const allFaqs = [...faqs, ...faqsExtra];
 
@@ -328,7 +328,7 @@ const LandingPage = () => {
       <section className="pt-32 pb-20 px-6">
         <div className="max-w-3xl mx-auto text-center">
           <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-sm text-kimi-muted mb-4">
-            Agentic · 120-agent swarm · 99.2% success · Full transparency
+            Agentic · 100+ specialized agents · High success rate · Full transparency
           </motion.p>
           <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-kimi-hero font-bold tracking-tight text-kimi-text mb-6">
             Describe it Monday. Ship it Friday.
@@ -350,8 +350,8 @@ const LandingPage = () => {
         {/* Hero stats — 4 items, remove 72 hours */}
         <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }} className="max-w-4xl mx-auto mt-12 px-6">
           <div className="flex flex-wrap items-center justify-center gap-6 py-5 px-6 rounded-xl border border-gray-200 bg-kimi-bg-elevated/50">
-            <span className="text-sm font-medium text-kimi-text">120 agents in parallel</span>
-            <span className="text-sm font-medium text-kimi-text">99.2% deployment success</span>
+            <span className="text-sm font-medium text-kimi-text">100+ agents in parallel</span>
+            <span className="text-sm font-medium text-kimi-text">Production-grade output</span>
             <span className="text-sm font-medium text-kimi-text">Half the price of Lovable</span>
             <span className="text-sm font-medium text-kimi-text">Web · Mobile · Automation</span>
           </div>
@@ -543,7 +543,7 @@ const LandingPage = () => {
             <div className="p-6 rounded-2xl border border-gray-200 bg-kimi-bg-card">
               <h3 className="text-xl font-semibold text-kimi-accent mb-3">Build</h3>
               <p className="text-sm text-kimi-muted leading-relaxed">
-                Describe your app in plain language. Our 120-agent swarm plans, builds, tests, and deploys it. Watch every agent work in real time. Web apps, mobile apps, landing pages — production-ready code you own.
+                Describe your app in plain language. Our 100+ specialized agents plans, builds, tests, and deploys it. Watch every agent work in real time. Web apps, mobile apps, landing pages — production-ready code you own.
               </p>
             </div>
             <div className="p-6 rounded-2xl border border-gray-200 bg-kimi-bg-card">
@@ -571,7 +571,7 @@ const LandingPage = () => {
           <div className="grid sm:grid-cols-3 gap-6 mb-10">
             <div className="p-4 rounded-xl border border-gray-200 bg-kimi-bg">
               <h4 className="font-semibold text-kimi-text mb-2">Per-agent visibility</h4>
-              <p className="text-sm text-kimi-muted">See exactly which of the 120 agents is running, what it&apos;s doing, and how many tokens it used. Nothing hidden.</p>
+              <p className="text-sm text-kimi-muted">See exactly which of the 100+ agents is running, what it&apos;s doing, and how many tokens it used. Nothing hidden.</p>
             </div>
             <div className="p-4 rounded-xl border border-gray-200 bg-kimi-bg">
               <h4 className="font-semibold text-kimi-text mb-2">Quality score</h4>
@@ -605,7 +605,7 @@ const LandingPage = () => {
               <span className="text-kimi-accent font-mono shrink-0">Tue–Wed</span>
               <div>
                 <h4 className="font-semibold text-kimi-text mb-1">Build</h4>
-                <p className="text-sm text-kimi-muted">Our 120-agent swarm runs in parallel. Frontend, backend, database, tests, security, deployment — each phase handled by dedicated agents. You watch the AgentMonitor. You see every step.</p>
+                <p className="text-sm text-kimi-muted">Our 100+ specialized agents runs in parallel. Frontend, backend, database, tests, security, deployment — each phase handled by dedicated agents. You watch the AgentMonitor. You see every step.</p>
               </div>
             </div>
             <div className="flex gap-4">
@@ -662,7 +662,7 @@ const LandingPage = () => {
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Already have code?</span>
           <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-6 text-center">Bring it. We&apos;ll keep building.</h2>
           <p className="text-kimi-muted text-center mb-10 max-w-2xl mx-auto">
-            Paste your code. Upload a ZIP. Drop a Git URL. We stand up your existing project in the workspace, run a security scan and accessibility check, and you keep building — with the full 120-agent swarm behind you.
+            Paste your code. Upload a ZIP. Drop a Git URL. We stand up your existing project in the workspace, run a security scan and accessibility check, and you keep building — with the full 100+ specialized agents behind you.
           </p>
           <div className="grid sm:grid-cols-3 gap-6">
             <div className="p-4 rounded-xl border border-gray-200 bg-kimi-bg">
@@ -675,7 +675,7 @@ const LandingPage = () => {
             </div>
             <div className="p-4 rounded-xl border border-gray-200 bg-kimi-bg">
               <h4 className="font-semibold text-kimi-text mb-2">Keep building with AI</h4>
-              <p className="text-sm text-kimi-muted">Your existing codebase, our 120 agents. Ask for features, fixes, or a full rebuild. You own the code throughout.</p>
+              <p className="text-sm text-kimi-muted">Your existing codebase, our 100+ agents. Ask for features, fixes, or a full rebuild. You own the code throughout.</p>
             </div>
           </div>
           <div className="mt-10 text-center">
@@ -721,7 +721,7 @@ const LandingPage = () => {
             {[
               { step: '1', title: 'Describe', desc: 'Tell us what you want in plain language. Attach a screenshot for design-to-code. Or import existing code — paste, ZIP, or Git URL. Voice input supported.' },
               { step: '2', title: 'Plan & approve', desc: 'For every build, we generate a structured plan first — features, components, design decisions. You see the plan. You approve it. Then we build. No surprises.' },
-              { step: '3', title: '120 agents build in parallel', desc: 'Planning, frontend, backend, database, styling, testing, security, deployment — each phase handled by dedicated agents running in parallel. Watch them work in AgentMonitor.' },
+              { step: '3', title: '100+ agents build in parallel', desc: 'Planning, frontend, backend, database, styling, testing, security, deployment — each phase handled by dedicated agents running in parallel. Watch them work in AgentMonitor.' },
               { step: '4', title: 'Ship what you own', desc: 'Export to ZIP or push to GitHub. Deploy to Vercel or Netlify in one click. You own all the code. Your automations are running. You\'re live.' }
             ].map((item, i) => (
               <div key={i} className="p-6 rounded-xl border border-gray-200 bg-kimi-bg">
@@ -739,7 +739,7 @@ const LandingPage = () => {
         <div className="max-w-5xl mx-auto">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Live Examples</span>
           <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-2">See What CrucibAI Built</h2>
-          <p className="text-kimi-muted mb-8">Real apps from our 120-agent swarm. Inevitable outcomes — fork any example to open it in your workspace.</p>
+          <p className="text-kimi-muted mb-8">Real apps from our 100+ specialized agents. Inevitable outcomes — fork any example to open it in your workspace.</p>
           <div className="grid sm:grid-cols-3 gap-6">
             {liveExamples.length > 0 ? liveExamples.map((ex) => (
               <div key={ex.name} className="p-5 rounded-xl border border-gray-200 bg-kimi-bg hover:border-gray-200 transition">
@@ -823,7 +823,7 @@ const LandingPage = () => {
             {[
               { step: '1', title: 'Describe', desc: 'Tell us what you want in plain language. Attach a screenshot for design-to-code. Or import existing code — paste, ZIP, or Git URL. Voice input supported.' },
               { step: '2', title: 'Plan & approve', desc: 'For every build, we generate a structured plan first — features, components, design decisions. You see the plan. You approve it. Then we build. No surprises.' },
-              { step: '3', title: '120 agents build in parallel', desc: 'Planning, frontend, backend, database, styling, testing, security, deployment — each phase handled by dedicated agents running in parallel. Watch them work in AgentMonitor.' },
+              { step: '3', title: '100+ agents build in parallel', desc: 'Planning, frontend, backend, database, styling, testing, security, deployment — each phase handled by dedicated agents running in parallel. Watch them work in AgentMonitor.' },
               { step: '4', title: 'Ship what you own', desc: 'Export to ZIP or push to GitHub. Deploy to Vercel or Netlify in one click. You own all the code. Your automations are running. You\'re live.' }
             ].map((item, i) => (
               <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="p-6 rounded-xl border border-gray-200 bg-kimi-bg">
@@ -877,7 +877,7 @@ const LandingPage = () => {
         <div className="max-w-3xl mx-auto text-center">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Trust</span>
           <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-6">We Build CrucibAI Using CrucibAI</h2>
-          <p className="text-kimi-muted mb-8">We dogfood our own platform. Every feature we ship is built and tested with the same 120-agent swarm our customers use.</p>
+          <p className="text-kimi-muted mb-8">We dogfood our own platform. Every feature we ship is built and tested with the same 100+ specialized agents our customers use.</p>
           <div className="flex flex-wrap justify-center gap-8 text-sm">
             <div className="flex items-center gap-2">
               <Check className="w-5 h-5 text-kimi-accent shrink-0" />
@@ -905,7 +905,7 @@ const LandingPage = () => {
           <div className="grid md:grid-cols-3 gap-8">
             <div className="p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
               <h3 className="text-lg font-semibold text-kimi-text mb-3">Better</h3>
-              <p className="text-sm text-kimi-muted mb-3">Structured plans, 120 verifiable agents, quality score, and full audit trail. You see every step and every artifact.</p>
+              <p className="text-sm text-kimi-muted mb-3">Structured plans, 100+ verifiable agents, quality score, and full audit trail. You see every step and every artifact.</p>
               <p className="text-xs text-kimi-accent font-medium">CrucibAI → structure, visibility, verifiable steps</p>
             </div>
             <div className="p-6 rounded-xl border border-gray-200 bg-kimi-bg hover:border-kimi-accent/30 transition">
