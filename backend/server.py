@@ -4442,7 +4442,31 @@ async def _run_single_agent_with_context(
                 run_agent_real_behavior(agent_name, project_id, result, previous_outputs)
             except Exception as e:
                 logger.warning("run_agent_real_behavior %s: %s", agent_name, e)
-            return result
+            # Record execution for learning
+    try:
+        agent_memory.record_execution(agent_name, {
+            "input": input_data,
+            "output": result,
+            "timestamp": datetime.now(),
+            "tokens_used": tokens_used
+        })
+    except Exception as e:
+        logger.error(f"Failed to record execution: {e}")
+    
+    # Store in vector memory
+    try:
+        await vector_store.store_execution(
+            agent_id=agent_name,
+            execution_data={
+                "input": input_data,
+                "output": result,
+                "agent": agent_name
+            }
+        )
+    except Exception as e:
+        logger.debug(f"Vector store unavailable: {e}")
+    
+    return result
         except Exception as e:
             logger.warning("Image generation agent failed: %s", e)
     # Video Generation: LLM returns JSON search queries -> Pexels finds videos
@@ -5655,6 +5679,30 @@ async def quality_gate(data: QualityGateBody):
         frontend_code = "\n".join(parts)
     result = score_generated_code(frontend_code=frontend_code, backend_code="", database_schema="", test_code="")
     result["score"] = result.get("overall_score", 0)  # Frontend expects .score
+    # Record execution for learning
+    try:
+        agent_memory.record_execution(agent_name, {
+            "input": input_data,
+            "output": result,
+            "timestamp": datetime.now(),
+            "tokens_used": tokens_used
+        })
+    except Exception as e:
+        logger.error(f"Failed to record execution: {e}")
+    
+    # Store in vector memory
+    try:
+        await vector_store.store_execution(
+            agent_id=agent_name,
+            execution_data={
+                "input": input_data,
+                "output": result,
+                "agent": agent_name
+            }
+        )
+    except Exception as e:
+        logger.debug(f"Vector store unavailable: {e}")
+    
     return result
 
 @api_router.post("/ai/explain-error")
