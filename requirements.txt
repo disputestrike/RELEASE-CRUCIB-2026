@@ -10,7 +10,7 @@ pydantic==2.5.0
 pydantic-settings==2.1.0
 
 # Async & Concurrency
-asyncio-contextmanager==1.0.0
+asyncio-contextmanager==1.0.1
 aiohttp==3.9.1
 httpx==0.25.2
 
