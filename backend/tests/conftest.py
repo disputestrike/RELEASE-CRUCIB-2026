@@ -104,3 +104,64 @@ async def auth_headers_with_project(app_client, auth_headers):
     if not project_id:
         pytest.skip("No project id in response")
     return {**auth_headers, "x-test-project-id": project_id}
+
+
+# ─── Additional Fixtures for New Test Suites ─────────────────────────
+
+@pytest.fixture
+def mock_llm_response():
+    """Standard mock LLM response for agent tests."""
+    return {
+        "content": "Generated code output from LLM",
+        "model": "test-model",
+        "tokens_used": 150,
+        "finish_reason": "stop",
+    }
+
+
+@pytest.fixture
+def mock_llm_caller(mock_llm_response):
+    """Mock the _call_llm_with_fallback function."""
+    from unittest.mock import AsyncMock
+    async def _caller(message, system_message, session_id, model_chain, api_keys):
+        return mock_llm_response["content"], mock_llm_response["tokens_used"]
+    return _caller
+
+
+@pytest.fixture
+def test_user():
+    """Standard test user data."""
+    return {
+        "id": "test-user-id-12345",
+        "email": "testuser@crucibai.com",
+        "name": "Test User",
+        "plan": "pro",
+        "tokens_remaining": 10000,
+        "role": "user",
+    }
+
+
+@pytest.fixture
+def sample_agent_config():
+    """Sample agent configuration for testing."""
+    return {
+        "name": "test_agent",
+        "role": "code_generator",
+        "system_message": "You are a test agent that generates Python code.",
+        "model_preference": ["cerebras", "haiku"],
+        "timeout": 30,
+        "max_retries": 2,
+    }
+
+
+@pytest.fixture
+def mock_metrics():
+    """Mock the metrics collector."""
+    from unittest.mock import MagicMock
+    metrics = MagicMock()
+    metrics.builds_total = MagicMock()
+    metrics.build_queue_depth = MagicMock()
+    metrics.agent_executions_total = MagicMock()
+    metrics.active_agents = MagicMock()
+    metrics.errors_total = MagicMock()
+    return metrics

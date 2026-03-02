@@ -1,0 +1,45 @@
+{
+  "dashboard": {
+    "title": "CrucibAI Production Dashboard",
+    "uid": "crucibai-main",
+    "version": 1,
+    "panels": [
+      {
+        "title": "Build Requests (rate/min)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [{"expr": "rate(crucibai_builds_total[5m]) * 60"}]
+      },
+      {
+        "title": "Active Builds",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+        "targets": [{"expr": "crucibai_active_builds"}]
+      },
+      {
+        "title": "LLM Latency (p95)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [{"expr": "histogram_quantile(0.95, rate(crucibai_llm_latency_seconds_bucket[5m]))"}]
+      },
+      {
+        "title": "Token Usage (total)",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 4},
+        "targets": [{"expr": "crucibai_tokens_total"}]
+      },
+      {
+        "title": "Error Rate",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "targets": [{"expr": "rate(crucibai_errors_total[5m]) * 60"}]
+      },
+      {
+        "title": "Agent Success Rate",
+        "type": "gauge",
+        "gridPos": {"h": 8, "w": 6, "x": 12, "y": 8},
+        "targets": [{"expr": "crucibai_agent_success_total / (crucibai_agent_success_total + crucibai_agent_failure_total) * 100"}]
+      }
+    ]
+  }
+}
