@@ -161,6 +161,7 @@ def decode_mfa_temp_token(token: str) -> dict:
     return payload
 
 app = FastAPI(title="CrucibAI Platform")
+add_security_headers(app)
 api_router = APIRouter(prefix="/api")
 security = HTTPBearer(auto_error=False)
 
@@ -6430,6 +6431,36 @@ app.include_router(api_router)
 
 # Free-tier branding: served from our server so it cannot be removed from user's source (they only have an iframe tag).
 BRANDING_HTML = """<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:0;font-family:system-ui,sans-serif;font-size:12px;display:flex;align-items:center;justify-content:center;min-height:28px;background:transparent;color:#808080;"><a href="https://crucibai.com" target="_blank" rel="noopener noreferrer" style="color:#808080;text-decoration:none;">Built with CrucibAI</a></body></html>"""
+
+@api_router.get('/metrics')
+async def get_metrics():
+    """Prometheus metrics endpoint"""
+    from metrics_system import metrics_collector
+    return metrics_collector.generate_metrics()
+
+@api_router.post('/stripe/webhook')
+async def stripe_webhook(request: Request):
+    """Handle Stripe webhook events"""
+    import stripe
+    payload = await request.body()
+    sig_header = request.headers.get('stripe-signature')
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, os.getenv('STRIPE_WEBHOOK_SECRET')
+        )
+        if event['type'] == 'checkout.session.completed':
+            session = event['data']['object']
+            user_id = session['client_reference_id']
+            credits = int(session['metadata']['credits'])
+            # Add credits to user
+            await db.execute(
+                "UPDATE users SET credits = credits + %s WHERE id = %s",
+                (credits, user_id)
+            )
+            await send_email(user_id, "Credits Added", f"You received {credits} credits")
+        return {"status": "success"}
+    except Exception as e:
+        return {"error": str(e)}, 400
 
 @app.get("/branding")
 async def branding_badge():
