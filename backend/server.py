@@ -7030,6 +7030,16 @@ MAX_TOKEN_MULTIPLIER = 2.0    # Max speed (full swarm)
 
 
 # ==================== STATIC FILES & SPA ROUTING ====================
+# Catch-all route for SPA - serves index.html for all non-API routes
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str):
+    """Serve index.html for all non-API routes (SPA client-side routing)"""
+    static_dir = Path(__file__).resolve().parent / "static"
+    index_path = static_dir / "index.html"
+    if index_path.exists():
+        return FileResponse(index_path)
+    raise HTTPException(status_code=404, detail="Frontend not found")
+
 # Serve frontend static files (Docker/Railway: frontend built and copied to /app/static)
 # Mount AFTER all API routes so /api/* routes are handled first
 _static_dir = Path(__file__).resolve().parent / "static"
