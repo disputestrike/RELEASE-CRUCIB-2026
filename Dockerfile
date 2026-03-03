@@ -11,6 +11,7 @@ COPY frontend/scripts ./scripts
 RUN npm ci --omit=optional 2>/dev/null || yarn install --frozen-lockfile
 COPY frontend/ ./
 ENV REACT_APP_BACKEND_URL=
+ENV FAST_REFRESH=false
 RUN npm run build 2>/dev/null || yarn build
 
 # Stage 2: backend + serve frontend static
