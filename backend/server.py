@@ -66,12 +66,51 @@ from agent_dag import AGENT_DAG, get_execution_phases, build_context_from_previo
 from real_agent_runner import REAL_AGENT_NAMES, run_real_agent, persist_agent_output, run_real_post_step
 from security_headers import add_security_headers
 
+# CSRF Protection Middleware
+class CSRFMiddleware:
+    """Middleware to protect against CSRF attacks on state-changing requests."""
+    def __init__(self, app):
+        self.app = app
+    
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        
+        method = scope["method"]
+        # Only check CSRF for state-changing methods
+        if method in ["POST", "PUT", "DELETE", "PATCH"]:
+            headers = dict(scope.get("headers", []))
+            csrf_token = headers.get(b"x-csrf-token", b"").decode()
+            
+            # If no CSRF token header, reject the request
+            if not csrf_token:
+                async def send_error(message):
+                    if message["type"] == "http.response.start":
+                        await send({
+                            "type": "http.response.start",
+                            "status": 403,
+                            "headers": [[b"content-type", b"application/json"]],
+                        })
+                    elif message["type"] == "http.response.body":
+                        await send({
+                            "type": "http.response.body",
+                            "body": b'{"detail": "CSRF token missing"}',
+                        })
+                await send_error({"type": "http.response.start"})
+                await send_error({"type": "http.response.body"})
+                return
+        
+        await self.app(scope, receive, send)
+
+
 # Agent Learning System — wired into production path
 from agent_recursive_learning import AgentMemory, PerformanceTracker, AdaptiveStrategy, ExecutionStatus
 
 from critic_agent import CriticAgent, TruthModule
 
 from vector_memory import vector_memory as _vector_memory
+from pgvector_memory import pgvector_memory as _pgvector_memory
 
 # Monitoring & Metrics
 try:
@@ -6597,6 +6636,7 @@ if _static_dir.exists():
     app.mount("/", StaticFiles(directory=str(_static_dir), html=True), name="frontend")
 
 # Add security and performance middleware (order matters - added in reverse)
+app.add_middleware(CSRFMiddleware)
 app.add_middleware(PerformanceMonitoringMiddleware)
 app.add_middleware(RequestValidationMiddleware)
 app.add_middleware(RequestTrackerMiddleware)
