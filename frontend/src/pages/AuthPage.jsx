@@ -81,20 +81,18 @@ const AuthPage = () => {
   }, [user, searchParams, navigate, loginWithToken, processingToken]);
 
   const handleGoogleSignIn = () => {
-    const backendUrl = API.replace('/api', '');
     const redirect = searchParams.get('redirect');
     const url = redirect
-      ? `${backendUrl}/api/auth/google?redirect=${encodeURIComponent(redirect)}`
-      : `${backendUrl}/api/auth/google`;
+      ? `/api/auth/google?redirect=${encodeURIComponent(redirect)}`
+      : `/api/auth/google`;
     window.location.href = url;
   };
 
   const handleGithubSignIn = () => {
-    const backendUrl = API.replace('/api', '');
     const redirect = searchParams.get('redirect');
     const url = redirect
-      ? `${backendUrl}/api/auth/github?redirect=${encodeURIComponent(redirect)}`
-      : `${backendUrl}/api/auth/github`;
+      ? `/api/auth/github?redirect=${encodeURIComponent(redirect)}`
+      : `/api/auth/github`;
     window.location.href = url;
   };
 
