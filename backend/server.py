@@ -2413,11 +2413,15 @@ async def auth_google_callback(request: Request, code: Optional[str] = None, sta
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
             )
         if r.status_code != 200:
-            logger.warning(f"Google token exchange failed: {r.text}")
+            error_detail = r.text
+            logger.error(f"Google token exchange failed with status {r.status_code}: {error_detail}")
+            logger.error(f"Token request params - code: {code}, redirect_uri: {callback}, client_id: {GOOGLE_CLIENT_ID}")
             return RedirectResponse(url=f"{frontend_base}/auth?error=google_failed")
         data = r.json()
+        logger.debug(f"Google token response: {data}")
         id_token = data.get("id_token") or data.get("access_token")
         if not id_token:
+            logger.error(f"No id_token in Google response: {data}")
             return RedirectResponse(url=f"{frontend_base}/auth?error=no_token")
         try:
             from google.oauth2 import id_token as google_id_token
