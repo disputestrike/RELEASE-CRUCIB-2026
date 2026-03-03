@@ -92,7 +92,6 @@ jsonschema==4.20.0
 
 # Deployment
 gunicorn==21.2.0
-python-multipart==0.0.6
 
 # Development
 ipython==8.18.1
