@@ -17,13 +17,15 @@ RUN npm run build 2>/dev/null || yarn build
 FROM python:3.11.0-slim
 WORKDIR /app
 
-# Cache-bust: force rebuild to pick up updated requirements.txt
-RUN echo "Build: $(date)"
+# Cache-bust: force rebuild - timestamp: 2026-03-03-08-42
+RUN echo "Build: 2026-03-03-08-42"
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN echo "Installing dependencies..." && pip install --no-cache-dir -r requirements.txt && echo "Dependencies installed successfully"
 COPY backend/ ./
+RUN echo "Backend files copied"
 COPY --from=frontend /app/build ./static
+RUN echo "Frontend static files copied"
 
 ENV PORT=8000
 EXPOSE 8000
