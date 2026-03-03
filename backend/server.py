@@ -2420,9 +2420,15 @@ async def auth_google_callback(request: Request, code: Optional[str] = None, sta
         if not id_token:
             return RedirectResponse(url=f"{frontend_base}/auth?error=no_token")
         try:
-            payload = jwt.decode(id_token, options={"verify_signature": False})
-        except Exception:
-            payload = {}
+            from google.oauth2 import id_token as google_id_token
+            from google.auth.transport import requests
+            
+            # Verify ID token with Google's public keys (secure)
+            request_obj = requests.Request()
+            payload = google_id_token.verify_oauth2_token(id_token, request_obj, GOOGLE_CLIENT_ID)
+        except Exception as e:
+            logger.warning(f"Failed to verify Google ID token: {e}")
+            return RedirectResponse(url=f"{frontend_base}/auth?error=invalid_token")
         email = (payload.get("email") or "").strip()
     name = (payload.get("name") or payload.get("given_name") or email.split("@")[0] or "User").strip()
     if not email:
