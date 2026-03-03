@@ -41,6 +41,7 @@ from api_docs_generator import generate_api_docs
 from endpoint_wrapper import wrap_all_endpoints, safe_endpoint
 import os
 import logging
+import httpx
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr, model_validator
 from typing import List, Optional, Dict, Any
@@ -111,6 +112,8 @@ from critic_agent import CriticAgent, TruthModule
 
 from vector_memory import vector_memory as _vector_memory
 from pgvector_memory import pgvector_memory as _pgvector_memory
+from llm_router import router, classifier, TaskComplexity
+from credit_tracker import tracker
 
 # Monitoring & Metrics
 try:
@@ -208,6 +211,10 @@ security = HTTPBearer(auto_error=False)
 # LLM Configuration: Only Anthropic (Haiku) and Cerebras (free tier)
 ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
 CEREBRAS_API_KEY = os.environ.get('CEREBRAS_API_KEY')
+
+# Groq API configuration (third LLM fallback)
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "").strip()
+GROQ_MODEL = "mixtral-8x7b-32768"  # Fast, cost-effective
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -1011,13 +1018,236 @@ VISION_MODEL_CHAIN = [
 ]
 
 
+
+
+# ==================== LLM IMPLEMENTATIONS ====================
+
+async def _call_llama_direct(
+    message: str,
+    system_message: str,
+    model: str = "meta-llama/Llama-2-70b-chat-hf",
+    api_key: str = None,
+) -> str:
+    """Call Llama 70B via Together AI."""
+    import httpx
+    if not api_key:
+        raise ValueError("LLAMA_API_KEY not set")
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.together.xyz/inference",
+                headers={"Authorization": f"Bearer {api_key}"},
+                json={
+                    "model": model,
+                    "prompt": f"{system_message}\n\nUser: {message}\n\nAssistant:",
+                    "max_tokens": 4096,
+                    "temperature": 0.7,
+                    "top_p": 0.9,
+                },
+                timeout=120,
+            )
+            if response.status_code != 200:
+                logger.warning(f"Llama API error: {response.text}")
+                raise Exception(f"Llama API returned {response.status_code}")
+            
+            data = response.json()
+            output = data.get("output", {}).get("choices", [{}])[0].get("text", "")
+            return output.strip()
+    except Exception as e:
+        logger.error(f"Llama call failed: {e}")
+        raise
+
+
+async def _call_cerebras_direct(
+    message: str,
+    system_message: str,
+    model: str = "llama-2-70b",
+    api_key: str = None,
+) -> str:
+    """Call Cerebras Llama 2 70B."""
+    import httpx
+    if not api_key:
+        raise ValueError("CEREBRAS_API_KEY not set")
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.cerebras.ai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}"},
+                json={
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": system_message},
+                        {"role": "user", "content": message},
+                    ],
+                    "max_tokens": 4096,
+                    "temperature": 0.7,
+                },
+                timeout=120,
+            )
+            if response.status_code != 200:
+                logger.warning(f"Cerebras API error: {response.text}")
+                raise Exception(f"Cerebras API returned {response.status_code}")
+            
+            data = response.json()
+            output = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+            return output.strip()
+    except Exception as e:
+        logger.error(f"Cerebras call failed: {e}")
+        raise
+
+
+async def _call_anthropic_direct(
+    message: str,
+    system_message: str,
+    model: str = "claude-3-5-haiku-20241022",
+    api_key: str = None,
+) -> str:
+    """Call Anthropic Claude Haiku."""
+    import httpx
+    if not api_key:
+        raise ValueError("ANTHROPIC_API_KEY not set")
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": api_key,
+                    "anthropic-version": "2023-06-01",
+                },
+                json={
+                    "model": model,
+                    "max_tokens": 4096,
+                    "system": system_message,
+                    "messages": [{"role": "user", "content": message}],
+                },
+                timeout=120,
+            )
+            if response.status_code != 200:
+                logger.warning(f"Anthropic API error: {response.text}")
+                raise Exception(f"Anthropic API returned {response.status_code}")
+            
+            data = response.json()
+            output = data.get("content", [{}])[0].get("text", "")
+            return output.strip()
+    except Exception as e:
+        logger.error(f"Anthropic call failed: {e}")
+        raise
+
+
 async def _call_llm_with_fallback(
     message: str,
     system_message: str,
     session_id: str,
     model_chain: list,
+    user_id: str = None,
+    user_tier: str = "free",
+    speed_selector: str = "lite",
+    available_credits: int = 0,
+    agent_name: str = "",
     api_keys: Optional[Dict[str, Optional[str]]] = None,
     content_blocks: Optional[List[Dict[str, Any]]] = None,
+) -> tuple[str, str]:
+    """
+    Intelligent LLM router with Llama + Cerebras primary, Haiku fallback.
+    
+    Routes based on:
+    - Task complexity (simple vs complex)
+    - User tier (free, starter, builder, pro, teams)
+    - Speed selector (lite, pro, max)
+    - Available credits
+    """
+    
+    # Classify task complexity
+    task_complexity = classifier.classify(message, agent_name)
+    
+    # Get intelligent model chain
+    model_chain = router.get_model_chain(
+        task_complexity=task_complexity,
+        user_tier=user_tier,
+        speed_selector=speed_selector,
+        available_credits=available_credits,
+    )
+    
+    if not model_chain:
+        raise ValueError("No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.")
+    
+    last_error = None
+    
+    # Try each model in the chain
+    for model_info in model_chain:
+        model_name, model_id, provider = model_info
+        
+        try:
+            logger.info(f"Trying {provider}/{model_name} for task: {task_complexity}")
+            
+            if provider == "together" and router.llama_available:
+                # Llama 70B via Together AI
+                response = await _call_llama_direct(
+                    message, system_message, 
+                    model=model_id, 
+                    api_key=router.llama_available and os.environ.get("LLAMA_API_KEY")
+                )
+                
+                # Record usage
+                if user_id and db:
+                    await tracker.record_usage(
+                        db, user_id, "llama", 
+                        len(message.split()) * 1.3,  # Estimate tokens
+                        user_tier, agent_name, session_id
+                    )
+                
+                return (response, f"llama/{model_id}")
+            
+            elif provider == "cerebras" and router.cerebras_available:
+                # Cerebras Llama 2 70B
+                response = await _call_cerebras_direct(
+                    message, system_message,
+                    model=model_id,
+                    api_key=os.environ.get("CEREBRAS_API_KEY")
+                )
+                
+                # Record usage
+                if user_id and db:
+                    await tracker.record_usage(
+                        db, user_id, "cerebras",
+                        len(message.split()) * 1.3,  # Estimate tokens
+                        user_tier, agent_name, session_id
+                    )
+                
+                return (response, f"cerebras/{model_id}")
+            
+            elif provider == "anthropic" and router.haiku_available:
+                # Anthropic Claude Haiku (fallback)
+                response = await _call_anthropic_direct(
+                    message, system_message,
+                    model=model_id,
+                    api_key=os.environ.get("ANTHROPIC_API_KEY")
+                )
+                
+                # Record usage
+                if user_id and db:
+                    await tracker.record_usage(
+                        db, user_id, "haiku",
+                        len(message.split()) * 1.3,  # Estimate tokens
+                        user_tier, agent_name, session_id
+                    )
+                
+                return (response, f"haiku/{model_id}")
+        
+        except Exception as e:
+            last_error = e
+            logger.warning(f"LLM {provider}/{model_name} failed: {e}, trying next fallback")
+            continue
+    
+    # All models failed
+    error_msg = f"All LLM models failed. Last error: {last_error}"
+    logger.error(error_msg)
+    raise last_error or Exception(error_msg)
+
+
 ) -> tuple[str, str]:
     """Call Anthropic (Haiku) with fallback to Cerebras for free tier. Supports multimodal (images/PDF)."""
     if not model_chain:
@@ -1052,6 +1282,15 @@ async def _call_llm_with_fallback(
         except Exception as e:
             last_error = e
             logger.warning(f"LLM {provider}/{model} failed: {e}, trying fallback")
+        # Try Groq as third fallback (fast, cost-effective)
+    if GROQ_API_KEY:
+        try:
+            response = await _call_groq_direct(message, system_message, model=GROQ_MODEL, api_key=GROQ_API_KEY)
+            return (response, f"groq/{GROQ_MODEL}")
+        except Exception as e:
+            last_error = e
+            logger.warning(f"LLM groq/{GROQ_MODEL} failed: {e}, no more fallbacks")
+    
     raise last_error or Exception("No model succeeded. Add ANTHROPIC_API_KEY in Settings or .env.")
 
 # ==================== AI CHAT ROUTES ====================
@@ -4344,6 +4583,14 @@ async def run_orchestration(project_id: str, user_id: str):
         prompt = prompt.get("prompt") or str(prompt)
     user_keys = await get_workspace_api_keys({"id": user_id})
     effective = _effective_api_keys(user_keys)
+    
+    # Get user tier and speed selector for LLM routing
+    user = await db.users.find_one({"id": user_id}, {"plan": 1, "credit_balance": 1})
+    user_tier = user.get("plan", "free") if user else "free"
+    available_credits = user.get("credit_balance", 0) if user else 0
+    speed_selector = req.get("speed_selector", "lite").strip().lower() or "lite"
+    if speed_selector not in ("lite", "pro", "max"):
+        speed_selector = "lite"
     model_chain = _get_model_chain("auto", prompt, effective_keys=effective)
 
     await db.projects.update_one({"id": project_id}, {"$set": {"status": "running"}})
@@ -4805,6 +5052,14 @@ async def run_orchestration_v2(project_id: str, user_id: str):
     project_prompt_with_kind = f"[Build kind: {build_kind}]\n{prompt}"
     user_keys = await get_workspace_api_keys({"id": user_id})
     effective = _effective_api_keys(user_keys)
+    
+    # Get user tier and speed selector for LLM routing
+    user = await db.users.find_one({"id": user_id}, {"plan": 1, "credit_balance": 1})
+    user_tier = user.get("plan", "free") if user else "free"
+    available_credits = user.get("credit_balance", 0) if user else 0
+    speed_selector = req.get("speed_selector", "lite").strip().lower() or "lite"
+    if speed_selector not in ("lite", "pro", "max"):
+        speed_selector = "lite"
     model_chain = _get_model_chain("auto", prompt, effective_keys=effective)
     if not effective.get("anthropic"):
         await db.projects.update_one({"id": project_id}, {"$set": {"status": "failed", "completed_at": datetime.now(timezone.utc).isoformat()}})
