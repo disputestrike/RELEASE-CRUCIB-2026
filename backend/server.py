@@ -2417,6 +2417,8 @@ async def auth_google_callback(request: Request, code: Optional[str] = None, sta
                 },
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
             )
+        logger.error(f"Token exchange attempt - base: {base}, callback: {callback}")
+        logger.error(f"Token response status: {r.status_code}")
         if r.status_code != 200:
             error_detail = r.text
             logger.error(f"Google token exchange failed with status {r.status_code}: {error_detail}")
