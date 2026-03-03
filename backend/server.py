@@ -1248,51 +1248,6 @@ async def _call_llm_with_fallback(
     raise last_error or Exception(error_msg)
 
 
-) -> tuple[str, str]:
-    """Call Anthropic (Haiku) with fallback to Cerebras for free tier. Supports multimodal (images/PDF)."""
-    if not model_chain:
-        raise ValueError(
-            "No API key set. Add ANTHROPIC_API_KEY in Settings (API & Environment) or in backend/.env."
-        )
-    use_vision = _content_blocks_have_image(content_blocks)
-    if use_vision:
-        model_chain = _filter_chain_by_keys(VISION_MODEL_CHAIN, api_keys) or list(VISION_MODEL_CHAIN)
-    if not model_chain:
-        raise ValueError(
-            "No API key set. For images/PDF, add ANTHROPIC_API_KEY in Settings or .env."
-        )
-    anthropic_key = (api_keys.get("anthropic") if api_keys else None) or ANTHROPIC_API_KEY
-    cerebras_key = os.environ.get("CEREBRAS_API_KEY")
-    last_error = None
-    
-    # Try Anthropic (Haiku) first, then Cerebras as fallback
-    for cfg in model_chain:
-        provider, model = cfg.get("provider"), cfg.get("model", "claude-3-5-haiku-20241022")
-        try:
-            if provider == "anthropic" and anthropic_key:
-                if use_vision and content_blocks:
-                    response = await _call_anthropic_multimodal(content_blocks, system_message, model=model or "claude-3-5-haiku-20241022", api_key=anthropic_key)
-                else:
-                    response = await _call_anthropic_direct(message, system_message, model=model or "claude-3-5-haiku-20241022", api_key=anthropic_key)
-                return (response, f"anthropic/{model}")
-            elif provider == "cerebras" and cerebras_key:
-                # Cerebras fallback for free tier
-                response = await _call_cerebras_direct(message, system_message, model=model or "claude-3-5-haiku-20241022", api_key=cerebras_key)
-                return (response, f"cerebras/{model}")
-        except Exception as e:
-            last_error = e
-            logger.warning(f"LLM {provider}/{model} failed: {e}, trying fallback")
-        # Try Groq as third fallback (fast, cost-effective)
-    if GROQ_API_KEY:
-        try:
-            response = await _call_groq_direct(message, system_message, model=GROQ_MODEL, api_key=GROQ_API_KEY)
-            return (response, f"groq/{GROQ_MODEL}")
-        except Exception as e:
-            last_error = e
-            logger.warning(f"LLM groq/{GROQ_MODEL} failed: {e}, no more fallbacks")
-    
-    raise last_error or Exception("No model succeeded. Add ANTHROPIC_API_KEY in Settings or .env.")
-
 # ==================== AI CHAT ROUTES ====================
 # Prepay: require at least MIN_CREDITS_FOR_LLM credits (legacy MIN_BALANCE_FOR_LLM_CALL = 5000 tokens ≈ 5 credits)
 MIN_BALANCE_FOR_LLM_CALL = 5_000  # legacy token value; we check credits now
