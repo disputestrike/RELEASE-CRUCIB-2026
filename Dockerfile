@@ -17,6 +17,9 @@ RUN npm run build 2>/dev/null || yarn build
 FROM python:3.11.0-slim
 WORKDIR /app
 
+# Cache-bust: force rebuild to pick up updated requirements.txt
+RUN echo "Build: $(date)"
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ ./
