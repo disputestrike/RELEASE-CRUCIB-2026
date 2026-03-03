@@ -2354,6 +2354,11 @@ GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
 FRONTEND_URL = (os.environ.get("FRONTEND_URL") or os.environ.get("CORS_ORIGINS") or "http://localhost:3000").split(",")[0].strip()
 
+# Debug logging for Google OAuth configuration
+logger.info(f"Google OAuth Config - FRONTEND_URL: {FRONTEND_URL}")
+logger.info(f"Google OAuth Config - GOOGLE_CLIENT_ID: {GOOGLE_CLIENT_ID[:20]}..." if GOOGLE_CLIENT_ID else "GOOGLE_CLIENT_ID not set")
+logger.info(f"Google OAuth Config - GOOGLE_CLIENT_SECRET: {'SET' if GOOGLE_CLIENT_SECRET else 'NOT SET'}")
+
 @api_router.get("/auth/google")
 async def auth_google_redirect(request: Request, redirect: Optional[str] = None):
     """Redirect user to Google OAuth consent screen."""
