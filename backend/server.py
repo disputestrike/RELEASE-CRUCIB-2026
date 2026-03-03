@@ -2352,7 +2352,19 @@ async def delete_account(body: DeleteAccountBody, user: dict = Depends(get_curre
 
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
-FRONTEND_URL = (os.environ.get("FRONTEND_URL") or os.environ.get("CORS_ORIGINS") or "http://localhost:3000").split(",")[0].strip()
+# Get FRONTEND_URL - ensure it's properly formatted
+_raw_frontend_url = os.environ.get("FRONTEND_URL", "").strip()
+if _raw_frontend_url:
+    # Ensure it starts with https:// for production
+    if not _raw_frontend_url.startswith(("http://", "https://")):
+        _raw_frontend_url = f"https://{_raw_frontend_url}"
+    # For Railway: convert http:// to https:// since Railway handles TLS at the edge
+    if _raw_frontend_url.startswith("http://") and ("railway" in _raw_frontend_url or "up.railway" in _raw_frontend_url):
+        _raw_frontend_url = _raw_frontend_url.replace("http://", "https://", 1)
+    FRONTEND_URL = _raw_frontend_url
+else:
+    # Fallback for local development
+    FRONTEND_URL = "http://localhost:3000"
 
 # Debug logging for Google OAuth configuration
 logger.info(f"Google OAuth Config - FRONTEND_URL: {FRONTEND_URL}")
