@@ -6786,7 +6786,14 @@ async def cache_invalidate(agent_name: Optional[str] = Query(None), user: dict =
     n = await invalidate(db, agent_name=agent_name)
     return {"status": "ok", "deleted": n}
 
-# Include router
+# Serve frontend static BEFORE router so /api routes take priority
+# The static mount with html=True serves index.html for SPA client-side routing
+_static_dir = Path(__file__).resolve().parent / "static"
+if _static_dir.exists():
+    from fastapi.staticfiles import StaticFiles
+    app.mount("/", StaticFiles(directory=str(_static_dir), html=True), name="frontend")
+
+# Include router - API routes take priority over static mount
 app.include_router(api_router)
 
 # Free-tier branding: served from our server so it cannot be removed from user's source (they only have an iframe tag).
@@ -7027,9 +7034,3 @@ MAX_TOKEN_MULTIPLIER = 2.0    # Max speed (full swarm)
 
 
 
-# Serve frontend static (Docker/Railway: frontend built and copied to /app/static)
-# MUST be last so API routes take priority over static file fallback
-_static_dir = Path(__file__).resolve().parent / "static"
-if _static_dir.exists():
-    from fastapi.staticfiles import StaticFiles
-    app.mount("/", StaticFiles(directory=str(_static_dir), html=True), name="frontend")
