@@ -2359,14 +2359,14 @@ async def auth_google_redirect(request: Request, redirect: Optional[str] = None)
     """Redirect user to Google OAuth consent screen."""
     # For testing: if credentials are invalid, show mock consent screen
     if not GOOGLE_CLIENT_ID or GOOGLE_CLIENT_ID.startswith("123456"):
-        base = str(request.base_url).rstrip("/")
+        base = FRONTEND_URL.rstrip("/")
         callback = f"{base}/api/auth/google/callback"
         state = json.dumps({"redirect": redirect or ""}) if redirect else ""
         import base64 as b64
         state_param = b64.urlsafe_b64encode(state.encode()).decode() if state else ""
         mock_consent_url = f"{callback}?code=mock_auth_code_test&state={state_param}"
         return RedirectResponse(url=mock_consent_url)
-    base = str(request.base_url).rstrip("/")
+    base = FRONTEND_URL.rstrip("/")
     callback = f"{base}/api/auth/google/callback"
     state = json.dumps({"redirect": redirect or ""}) if redirect else ""
     params = {
@@ -2398,7 +2398,7 @@ async def auth_google_callback(request: Request, code: Optional[str] = None, sta
     else:
         if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
             raise HTTPException(status_code=503, detail="Google sign-in is not configured")
-        base = str(request.base_url).rstrip("/")
+        base = FRONTEND_URL.rstrip("/")
         callback = f"{base}/api/auth/google/callback"
         async with __import__("httpx").AsyncClient() as client:
             r = await client.post(
