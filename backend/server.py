@@ -6849,12 +6849,6 @@ async def websocket_project_progress(websocket: WebSocket, project_id: str):
     except WebSocketDisconnect:
         pass
 
-# Serve frontend static (Docker/Railway: frontend built and copied to /app/static)
-_static_dir = Path(__file__).resolve().parent / "static"
-if _static_dir.exists():
-    from fastapi.staticfiles import StaticFiles
-    app.mount("/", StaticFiles(directory=str(_static_dir), html=True), name="frontend")
-
 # Add security and performance middleware (order matters - added in reverse)
 app.add_middleware(CSRFMiddleware)
 app.add_middleware(PerformanceMonitoringMiddleware)
@@ -7031,3 +7025,11 @@ SPEED_TIERS = {
 SWARM_TOKEN_MULTIPLIER = 1.5  # Pro speed with swarm
 MAX_TOKEN_MULTIPLIER = 2.0    # Max speed (full swarm)
 
+
+
+# Serve frontend static (Docker/Railway: frontend built and copied to /app/static)
+# MUST be last so API routes take priority over static file fallback
+_static_dir = Path(__file__).resolve().parent / "static"
+if _static_dir.exists():
+    from fastapi.staticfiles import StaticFiles
+    app.mount("/", StaticFiles(directory=str(_static_dir), html=True), name="frontend")
