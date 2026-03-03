@@ -40,8 +40,21 @@ def api_url(base_url):
 @pytest.fixture
 async def app_client():
     """Real FastAPI app via AsyncClient (in-process). For auth/DB tests, Motor may hit 'Future attached to a different loop'; run backend then use CRUCIBAI_API_URL=http://localhost:8000 for full suite."""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).parent.parent))
     from httpx import ASGITransport, AsyncClient
     from server import app
+    
+    # Initialize database before running tests
+    import server as server_module
+    if server_module.db is None:
+        try:
+            from db_pg import get_db
+            server_module.db = await get_db()
+        except Exception as e:
+            print(f"Warning: Could not initialize database: {e}")
+    
     async with AsyncClient(
         transport=ASGITransport(app=app, raise_app_exceptions=False),
         base_url="http://test",

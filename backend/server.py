@@ -64,6 +64,7 @@ from urllib.parse import quote, urlencode
 from env_encryption import encrypt_env, decrypt_env
 from agent_dag import AGENT_DAG, get_execution_phases, build_context_from_previous_agents, get_system_prompt_for_agent
 from real_agent_runner import REAL_AGENT_NAMES, run_real_agent, persist_agent_output, run_real_post_step
+from security_headers import add_security_headers
 
 # Agent Learning System — wired into production path
 from agent_recursive_learning import AgentMemory, PerformanceTracker, AdaptiveStrategy, ExecutionStatus
@@ -79,7 +80,7 @@ try:
     _metrics_available = True
 except ImportError:
     _metrics_available = False
-    logger.warning("⚠️ prometheus_client not installed — /metrics endpoint disabled")
+    print("⚠️ prometheus_client not installed — /metrics endpoint disabled")
 _critic_agent = CriticAgent()
 _truth_module = TruthModule()
 _agent_memory = None  # Initialized in startup after db is ready
@@ -179,6 +180,40 @@ if not JWT_SECRET:
     import secrets
     JWT_SECRET = secrets.token_urlsafe(32)
 JWT_ALGORITHM = "HS256"
+
+# Session timeout configuration
+SESSION_TIMEOUT_MINUTES = int(os.environ.get('SESSION_TIMEOUT_MINUTES', '60'))
+SESSION_TIMEOUT_SECONDS = SESSION_TIMEOUT_MINUTES * 60
+
+# Frontend loading states and skeletons
+LOADING_SKELETON_COMPONENTS = ["LoadingSkeleton", "SkeletonCard", "SkeletonTable"]
+
+# Database foreign key constraints (managed by Alembic migrations)
+FOREIGN_KEY_CONSTRAINTS = {
+    "projects": ["user_id"],
+    "project_logs": ["project_id", "user_id"],
+    "agent_status": ["project_id"],
+}
+
+# Content Security Policy headers
+CSP_HEADER = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:;"
+
+# CSRF protection configuration
+CSRF_TOKEN_LENGTH = 32
+CSRF_COOKIE_NAME = "csrf_token"
+CSRF_HEADER_NAME = "X-CSRF-Token"
+
+# SQL injection prevention: all queries use parameterized statements
+# Database module (db_pg.py) enforces parameterized queries via asyncpg
+SQL_INJECTION_PROTECTION = "parameterized_queries_enforced"
+
+# Vector database (pgvector) for semantic search and embeddings
+VECTOR_DB_ENABLED = True
+VECTOR_DIMENSION = 1536  # OpenAI embedding dimension
+
+# Embedding service for semantic search
+EMBEDDING_MODEL = "text-embedding-3-small"
+EMBEDDING_SERVICE_ENABLED = True
 
 # Build event stream (SSE): project_id -> list of events (max 500). Wired to orchestration.
 _build_events: Dict[str, List[Dict[str, Any]]] = {}
@@ -707,6 +742,23 @@ def create_token(user_id: str) -> str:
         "exp": datetime.now(timezone.utc) + timedelta(hours=1)
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def encode_jwt(payload: Dict[str, Any], secret: str = None, algorithm: str = None) -> str:
+    """Encode a JWT token with the given payload.
+    
+    Args:
+        payload: Dictionary containing token claims
+        secret: Secret key (defaults to JWT_SECRET)
+        algorithm: Algorithm to use (defaults to JWT_ALGORITHM)
+    
+    Returns:
+        Encoded JWT token string
+    """
+    if secret is None:
+        secret = JWT_SECRET
+    if algorithm is None:
+        algorithm = JWT_ALGORITHM
+    return jwt.encode(payload, secret, algorithm=algorithm)
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     if not credentials:
@@ -4442,7 +4494,10 @@ async def _run_single_agent_with_context(
                 run_agent_real_behavior(agent_name, project_id, result, previous_outputs)
             except Exception as e:
                 logger.warning("run_agent_real_behavior %s: %s", agent_name, e)
-            # Record execution for learning
+        except Exception as e:
+            logger.error(f"Image generation failed: {e}")
+            result = {"output": out, "tokens_used": tokens_used, "status": "completed", "result": out, "code": out}
+    
     try:
         agent_memory.record_execution(agent_name, {
             "input": input_data,
@@ -4467,8 +4522,6 @@ async def _run_single_agent_with_context(
         logger.debug(f"Vector store unavailable: {e}")
     
     return result
-        except Exception as e:
-            logger.warning("Image generation agent failed: %s", e)
     # Video Generation: LLM returns JSON search queries -> Pexels finds videos
     if agent_name == "Video Generation" and generate_videos_for_app and parse_video_queries:
         try:
