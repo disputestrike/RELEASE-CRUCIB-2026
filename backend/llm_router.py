@@ -3,7 +3,7 @@ CrucibAI LLM Router: Intelligent Routing System
 ================================================
 Routes requests to Llama 70B, Cerebras, or Haiku based on:
 - Task complexity (simple vs complex)
-- User tier (free, starter, builder, pro, teams)
+- User tier (free, builder, pro, scale, teams)
 - Speed selector (lite, pro, max)
 - Credit availability
 
@@ -113,7 +113,7 @@ class LLMRouter:
         
         Args:
             task_complexity: SIMPLE, MODERATE, COMPLEX, CRITICAL
-            user_tier: free, starter, builder, pro, teams
+            user_tier: free, builder, pro, scale, teams
             speed_selector: lite, pro, max
             available_credits: User's available credits
             
@@ -131,13 +131,6 @@ class LLMRouter:
             else:
                 chain = ["llama", "cerebras", "haiku"]
         
-        elif user_tier == "starter":
-            # Starter: Llama + Cerebras → Haiku
-            if speed_selector == "lite":
-                chain = ["cerebras", "llama", "haiku"]
-            else:  # pro
-                chain = ["llama", "cerebras", "haiku"]
-        
         elif user_tier == "builder":
             # Builder: Llama + Cerebras (swarm enabled) → Haiku
             if speed_selector == "lite":
@@ -145,7 +138,7 @@ class LLMRouter:
             else:  # pro
                 chain = ["llama", "cerebras", "haiku"]
         
-        elif user_tier in ["pro", "teams"]:
+        elif user_tier in ["pro", "scale", "teams"]:
             # Pro/Teams: Llama + Cerebras (max_swarm enabled) → Haiku
             if speed_selector == "lite":
                 chain = ["cerebras", "llama", "haiku"]

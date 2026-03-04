@@ -38,9 +38,9 @@ class SpeedTierRouter:
     
     PLAN_SPEED_ACCESS = {
         "free": ["lite"],
-        "starter": ["lite", "pro"],
         "builder": ["lite", "pro"],
         "pro": ["lite", "pro", "max"],
+        "scale": ["lite", "pro", "max"],
         "teams": ["lite", "pro", "max"]
     }
     
@@ -55,7 +55,7 @@ class SpeedTierRouter:
         
         if speed_tier not in allowed_speeds:
             if speed_tier == "pro":
-                return False, "Pro and Max speeds are available on paid plans only. Upgrade to Starter or higher."
+                return False, "Pro and Max speeds are available on paid plans only. Upgrade to Builder or higher."
             elif speed_tier == "max":
                 return False, "Max speed is available on Pro and Teams plans only. Upgrade to Pro or higher."
             else:

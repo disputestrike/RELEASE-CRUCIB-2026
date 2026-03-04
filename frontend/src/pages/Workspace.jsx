@@ -388,7 +388,6 @@ const Workspace = () => {
   const [buildProgress, setBuildProgress] = useState(0);
   const [sessionId, setSessionId] = useState(() => `session_${Date.now()}`);
   const [selectedModel, setSelectedModel] = useState('auto');
-  const [speedSelector, setSpeedSelector] = useState('lite'); // lite | pro | max
   const [autoLevel, setAutoLevel] = useState('balanced'); // quick | balanced | deep
   const [logs, setLogs] = useState([]);
   const [copied, setCopied] = useState(false);
@@ -1022,7 +1021,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
         const res = await fetch(`${API}/ai/chat/stream`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...headers },
-          body: JSON.stringify({ message: messageContent, session_id: sessionId, model: selectedModel, mode: buildMode === 'thinking' ? 'thinking' : undefined, speed_selector: speedSelector }),
+          body: JSON.stringify({ message: messageContent, session_id: sessionId, model: selectedModel, mode: buildMode === 'thinking' ? 'thinking' : undefined }),
         });
         if (!res.ok) throw new Error(await res.text());
         const reader = res.body.getReader();
@@ -2459,24 +2458,6 @@ Respond with ONLY the complete App.js code, nothing else.`;
         <form onSubmit={handleSubmit} className="flex gap-2 items-stretch min-w-0 flex-wrap">
           <div className="flex shrink-0 gap-2">
             <ModelSelector selectedModel={selectedModel} onSelectModel={setSelectedModel} variant="chat" />
-            {/* Speed Selector: Lite | Pro | Max */}
-            <div className="flex items-center gap-1 rounded-lg border border-gray-300 bg-white p-1">
-              {['lite', 'pro', 'max'].map((speed) => (
-                <button
-                  key={speed}
-                  type="button"
-                  onClick={() => setSpeedSelector(speed)}
-                  className={`px-3 py-1.5 rounded text-sm font-medium transition ${
-                    speedSelector === speed
-                      ? 'bg-[#E05A25] text-white'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                  }`}
-                  title={speed === 'lite' ? 'Fast (Cerebras)' : speed === 'pro' ? 'Balanced (Llama)' : 'Quality (Llama)'}
-                >
-                  {speed.charAt(0).toUpperCase() + speed.slice(1)}
-                </button>
-              ))}
-            </div>
           </div>
           <div className="flex-1 flex items-center gap-2 px-3 py-2.5 bg-white rounded-lg border border-gray-300 min-w-0 shadow-sm">
             {isRecording ? (

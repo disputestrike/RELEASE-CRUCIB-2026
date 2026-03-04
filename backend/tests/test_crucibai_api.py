@@ -108,8 +108,10 @@ class TestTokenEndpoints:
         assert r.status_code == 200
         data = r.json()
         assert "bundles" in data
-        assert "starter" in data["bundles"]
+        assert "builder" in data["bundles"]
         assert "pro" in data["bundles"]
+        assert "scale" in data["bundles"]
+        assert "teams" in data["bundles"]
 
     async def test_purchase_tokens(self, app_client):
         test_email = f"test_purchase_{int(time.time())}@example.com"
@@ -122,12 +124,12 @@ class TestTokenEndpoints:
         user = reg.json()["user"]
         # API returns new_balance in credits (not tokens)
         initial_credits = user.get("credit_balance") or (user.get("token_balance", 0) // 1000)
-        r = await app_client.post("/api/tokens/purchase", json={"bundle": "starter"}, headers={"Authorization": f"Bearer {token}"})
+        r = await app_client.post("/api/tokens/purchase", json={"bundle": "builder"}, headers={"Authorization": f"Bearer {token}"})
         assert r.status_code == 200
         data = r.json()
-        # starter bundle adds 100 credits
-        assert data["new_balance"] == initial_credits + 100
-        assert data["credits_added"] == 100
+        # builder bundle adds 250 credits
+        assert data["new_balance"] == initial_credits + 250
+        assert data["credits_added"] == 250
 
     async def test_get_token_history(self, app_client):
         test_email = f"test_history_{int(time.time())}@example.com"
@@ -392,7 +394,7 @@ class TestStripeEndpoints:
     """Stripe – 401/503 when not configured or no auth."""
 
     async def test_stripe_checkout_requires_auth(self, app_client):
-        r = await app_client.post("/api/stripe/create-checkout-session", json={"bundle": "starter"})
+        r = await app_client.post("/api/stripe/create-checkout-session", json={"bundle": "builder"})
         assert r.status_code in (401, 503)
 
     async def test_stripe_checkout_invalid_bundle(self, app_client):

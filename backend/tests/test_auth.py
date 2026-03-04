@@ -6,8 +6,17 @@ Tests for OAuth flow, JWT tokens, session management, and protected routes.
 import pytest
 import jwt
 import uuid
+from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, patch, MagicMock
+
+# Resolve paths from this file so tests pass from repo root or backend/
+_BACKEND_DIR = Path(__file__).resolve().parent.parent
+_SERVER_PY = _BACKEND_DIR / "server.py"
+
+
+def _read_server():
+    return _SERVER_PY.read_text(encoding="utf-8")
 
 
 # Test constants
@@ -66,9 +75,7 @@ class TestOAuthCallbackFlow:
         The duplicate token exchange bug (lines 2109-2134) was the #1 blocker.
         Google auth codes are single-use — exchanging twice always fails.
         """
-        with open("backend/server.py", "r") as f:
-            content = f.read()
-        
+        content = _read_server()
         count = content.count("oauth2.googleapis.com/token")
         assert count == 1, (
             f"CRITICAL BUG: Found {count} token exchange calls. "
@@ -77,18 +84,14 @@ class TestOAuthCallbackFlow:
 
     def test_no_hardcoded_redirect_urls(self):
         """Redirect URLs should use request.base_url, not hardcoded domains."""
-        with open("backend/server.py", "r") as f:
-            content = f.read()
-        
+        content = _read_server()
         # Should not contain hardcoded Railway or production URLs in OAuth
         assert "crucibai.up.railway.app/api/auth" not in content, \
             "Found hardcoded Railway URL in OAuth — should use request.base_url"
 
     def test_frontend_redirect_after_auth(self):
         """After OAuth, user should be redirected to frontend with token."""
-        with open("backend/server.py", "r") as f:
-            content = f.read()
-        
+        content = _read_server()
         # Should redirect to frontend with token parameter
         assert "?token=" in content or "token=" in content, \
             "OAuth callback should redirect with token parameter"
@@ -99,14 +102,12 @@ class TestProtectedRoutes:
 
     def test_auth_me_endpoint_exists(self):
         """The /auth/me endpoint must exist for session verification."""
-        with open("backend/server.py", "r") as f:
-            content = f.read()
+        content = _read_server()
         assert "/auth/me" in content, "Missing /auth/me endpoint"
 
     def test_protected_routes_check_authorization(self):
         """Protected routes should check for Authorization header."""
-        with open("backend/server.py", "r") as f:
-            content = f.read()
+        content = _read_server()
         assert "Authorization" in content, "No Authorization header check found"
         assert "Bearer" in content, "No Bearer token handling found"
 
@@ -116,9 +117,7 @@ class TestSessionSecurity:
 
     def test_jwt_secret_not_hardcoded(self):
         """JWT_SECRET should come from environment, not hardcoded."""
-        with open("backend/server.py", "r") as f:
-            content = f.read()
-        
+        content = _read_server()
         # Should reference os.environ or os.getenv for JWT_SECRET
         assert "JWT_SECRET" in content, "JWT_SECRET not referenced"
         # Should not have a hardcoded secret value (common patterns)

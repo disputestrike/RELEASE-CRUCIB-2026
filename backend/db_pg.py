@@ -4,8 +4,8 @@ Provides Motor-like API (db.users.find_one(), db.projects.find(), etc.)
 backed by PostgreSQL with JSONB document storage.
 """
 import os
-import logging
 import json
+import logging
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 
@@ -13,6 +13,32 @@ logger = logging.getLogger(__name__)
 _pool = None
 _db = None
 
+# Table config: (table_name, pk_columns for WHERE, optional serial_pk returned as _id)
+TABLE_CONFIG = {
+    "users": ("users", ["id"], None),
+    "projects": ("projects", ["id"], None),
+    "project_logs": ("project_logs", ["id"], None),
+    "agent_status": ("agent_status", ["project_id", "agent_name"], None),
+    "chat_history": ("chat_history", ["id"], None),
+    "workspace_env": ("workspace_env", ["user_id"], None),
+    "token_ledger": ("token_ledger", ["id"], None),
+    "token_usage": ("token_usage", ["id"], None),
+    "tasks": ("tasks", ["id"], None),
+    "user_agents": ("user_agents", ["id"], None),
+    "agent_runs": ("agent_runs", ["id"], None),
+    "referral_codes": ("referral_codes", ["code"], None),
+    "referrals": ("referrals", ["id"], None),
+    "api_keys": ("api_keys", ["key"], None),
+    "enterprise_inquiries": ("enterprise_inquiries", ["id"], None),
+    "backup_codes": ("backup_codes", [], "_id"),
+    "mfa_setup_temp": ("mfa_setup_temp", ["user_id"], None),
+    "shares": ("shares", ["id"], None),
+    "blocked_requests": ("blocked_requests", ["id"], None),
+    "agent_memory": ("agent_memory", ["id"], None),
+    "automation_tasks": ("automation_tasks", ["id"], None),
+    "audit_log": ("audit_log", [], "_id"),
+    "examples": ("examples", ["id"], None),
+}
 
 async def get_pg_pool():
     """Return asyncpg pool, creating if needed."""
@@ -45,6 +71,12 @@ async def close_pg_pool():
 def is_pg_available() -> bool:
     """Return True if DATABASE_URL is set."""
     return bool(os.environ.get("DATABASE_URL", "").strip())
+
+
+# Aliases for server/db_postgres that expect get_pool and close_pool
+get_pool = get_pg_pool
+async def close_pool():
+    await close_pg_pool()
 
 
 class PGCollection:

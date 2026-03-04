@@ -45,7 +45,7 @@ async def main():
         sys.exit(1)
 
     from motor.motor_asyncio import AsyncIOMotorClient
-    from db_postgres import get_db
+    from db_pg import get_db
 
     client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=10000)
     mongo_db = client[db_name]
@@ -80,7 +80,7 @@ async def main():
             print(f"{coll_name}: {count} docs")
         except Exception as e:
             print(f"{coll_name}: error {e}", file=sys.stderr)
-    from db_postgres import close_pool
+    from db_pg import close_pool
     await close_pool()
     client.close()
     print("Done.")

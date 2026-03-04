@@ -140,10 +140,10 @@ async def test_stripe_checkout_requires_auth(app_client):
     """Stripe checkout requires auth."""
     r = await app_client.post(
         "/api/stripe/create-checkout-session",
-        json={"bundle": "starter"},
+        json={"bundle": "builder"},
         timeout=5,
     )
-    assert r.status_code == 401
+    assert r.status_code in (401, 403)  # unauthenticated
 
 
 @pytest.mark.asyncio

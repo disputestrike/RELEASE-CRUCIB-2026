@@ -217,7 +217,7 @@ class RAGQueryValidator(BaseValidator):
 # ==================== PAYMENT MODELS ====================
 
 class TokenPurchaseValidator(BaseValidator):
-    bundle: str = Field(..., pattern="^(starter|pro|enterprise|custom)$")
+    bundle: str = Field(..., pattern="^(builder|pro|scale|teams|enterprise|custom)$")
     quantity: Optional[int] = Field(1, ge=1, le=1000)
     promo_code: Optional[str] = Field(None, max_length=50)
 

@@ -96,8 +96,62 @@ const TokenCenter = () => {
     }
   };
 
-  const bundleOrder = ['starter', 'builder', 'pro', 'teams', 'light', 'dev'];
+  const bundleOrder = ['builder', 'pro', 'scale', 'teams'];
   const sortedBundles = bundleOrder.filter(k => bundles[k]).map(k => ({ key: k, ...bundles[k] }));
+
+  // Custom credits slider (100–5000 at $0.06/credit)
+  const [customCredits, setCustomCredits] = useState(500);
+  const customMin = 100;
+  const customMax = 5000;
+  const customStep = 100;
+  const pricePerCredit = 0.06;
+  const customTotal = Math.round(customCredits * pricePerCredit * 100) / 100;
+
+  const handlePurchaseCustom = async () => {
+    setPurchasing('custom');
+    try {
+      await axios.post(`${API}/tokens/purchase-custom`, { credits: customCredits }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      await refreshUser();
+      const historyRes = await axios.get(`${API}/tokens/history`, { headers: { Authorization: `Bearer ${token}` } });
+      setHistory(historyRes.data.history);
+    } catch (e) {
+      const detail = e.response?.data?.detail ?? '';
+      if (typeof detail === 'string' && detail.includes('Stripe')) {
+        try {
+          const { data } = await axios.post(
+            `${API}/stripe/create-checkout-session-custom`,
+            { credits: customCredits },
+            { headers: { Authorization: `Bearer ${token}` } },
+          );
+          if (data?.url) window.location.href = data.url;
+        } catch (e2) {
+          logApiError('TokenCenter Stripe custom', e2);
+        }
+      } else {
+        logApiError('TokenCenter purchase-custom', e);
+      }
+    } finally {
+      setPurchasing(null);
+    }
+  };
+
+  const handleStripeCheckoutCustom = async () => {
+    setPurchasing('stripe-custom');
+    try {
+      const { data } = await axios.post(
+        `${API}/stripe/create-checkout-session-custom`,
+        { credits: customCredits },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (data?.url) window.location.href = data.url;
+    } catch (e) {
+      logApiError('TokenCenter Stripe custom', e);
+    } finally {
+      setPurchasing(null);
+    }
+  };
 
   const usageChartData = usage?.by_agent ? Object.entries(usage.by_agent).map(([name, value]) => ({
     name,
@@ -238,15 +292,12 @@ const TokenCenter = () => {
               )}
               <h3 className="text-xl font-semibold mb-2">{bundle.name || bundle.key}</h3>
               <div className="mb-4">
-                <span className="text-3xl font-bold">${bundle.price}</span>
-                <span className="text-gray-500 text-sm ml-1">
-                  {['light', 'dev'].includes(bundle.key) ? ' one-time' : '/month'}
-                </span>
+                <span className="text-3xl font-bold">${Number(bundle.price).toFixed(2)}</span>
+                <span className="text-gray-500 text-sm ml-1">/month</span>
               </div>
               <p className="text-[#666666] mb-6">
                 <Zap className="w-4 h-4 inline mr-1 text-[#666666]" />
-                {(bundle.credits ?? (bundle.tokens / 1000)).toLocaleString()} credits
-                {!['light', 'dev'].includes(bundle.key) && ' per month'}
+                {(bundle.credits ?? (bundle.tokens / 1000)).toLocaleString()} credits per month
               </p>
               <button
                 onClick={() => handlePurchase(bundle.key)}
@@ -278,6 +329,44 @@ const TokenCenter = () => {
               </button>
             </motion.div>
           ))}
+        </div>
+        {/* Need more? Buy credits (slider) */}
+        <div className="mt-8 p-6 rounded-xl border border-black/10 bg-[#F5F5F4]">
+          <h3 className="text-lg font-semibold text-[#1A1A1A] mb-2">Need more? Buy credits</h3>
+          <p className="text-sm text-gray-500 mb-4">100–5,000 credits at $0.06/credit. Credits roll over.</p>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-[#1A1A1A] mb-2">Credits: {customCredits}</label>
+              <input
+                type="range"
+                min={customMin}
+                max={customMax}
+                step={customStep}
+                value={customCredits}
+                onChange={(e) => setCustomCredits(Number(e.target.value))}
+                className="w-full h-2 rounded-lg appearance-none bg-stone-200 accent-[#1A1A1A]"
+              />
+            </div>
+            <div className="flex items-center gap-4 shrink-0">
+              <span className="text-lg font-bold text-[#1A1A1A]">Total: ${customTotal.toFixed(2)}</span>
+              <button
+                type="button"
+                onClick={handlePurchaseCustom}
+                disabled={purchasing === 'custom' || purchasing === 'stripe-custom'}
+                className="py-2 px-4 rounded-lg bg-[#1A1A1A] hover:bg-[#333] text-white text-sm font-medium disabled:opacity-50"
+              >
+                {purchasing === 'custom' ? 'Processing…' : `Buy ${customCredits} credits`}
+              </button>
+              <button
+                type="button"
+                onClick={handleStripeCheckoutCustom}
+                disabled={purchasing === 'custom' || purchasing === 'stripe-custom'}
+                className="py-2 px-4 rounded-lg border border-[#1A1A1A] text-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white text-sm font-medium disabled:opacity-50"
+              >
+                {purchasing === 'stripe-custom' ? 'Redirecting…' : 'Pay with Stripe'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

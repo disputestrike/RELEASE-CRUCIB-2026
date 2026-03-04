@@ -13,11 +13,13 @@ from playwright.async_api import async_playwright, Browser, Page
 from typing import Dict, Any, List
 import base64
 import sys
+import tempfile
 from pathlib import Path
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from agents.base_agent import BaseAgent
+from ssrf_url_validator import validate_url_for_request
 
 
 class BrowserAgent(BaseAgent):
@@ -70,10 +72,17 @@ class BrowserAgent(BaseAgent):
                 await self.browser.close()
                 return {"error": str(e), "success": False}
     
+    def _validate_url(self, url: str) -> None:
+        """SSRF: block private IPs, file:, localhost (unless allowed in config)."""
+        allow_private = self.config.get("allow_private_urls", False)
+        validate_url_for_request(url, allow_private=allow_private)
+
     async def _navigate(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        """Navigate to URL"""
+        """Navigate to URL (SSRF-safe)."""
         url = context.get("url")
-        
+        if not url:
+            return {"error": "url is required", "success": False}
+        self._validate_url(url)
         await self.page.goto(url)
         title = await self.page.title()
         content = await self.page.content()
@@ -86,30 +95,42 @@ class BrowserAgent(BaseAgent):
         }
     
     async def _screenshot(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        """Take screenshot"""
+        """Take screenshot; path is restricted to temp dir (no path traversal)."""
         url = context.get("url")
-        path = context.get("screenshot_path", "screenshot.png")
-        
-        await self.page.goto(url)
-        await self.page.screenshot(path=path)
-        
-        # Read and encode
-        with open(path, 'rb') as f:
-            img_bytes = f.read()
-            img_base64 = base64.b64encode(img_bytes).decode()
-        
-        return {
-            "url": url,
-            "screenshot_path": path,
-            "screenshot_base64": img_base64,
-            "success": True
-        }
+        if not url:
+            return {"error": "url is required", "success": False}
+        self._validate_url(url)
+        # Always write to temp dir — never use user-provided path for filesystem write
+        suffix = Path(context.get("screenshot_path") or "screenshot.png").suffix or ".png"
+        if suffix and not suffix.startswith("."):
+            suffix = "." + suffix
+        fd, path = tempfile.mkstemp(suffix=suffix, prefix="browser_screenshot_")
+        try:
+            await self.page.goto(url)
+            await self.page.screenshot(path=path)
+            with open(path, "rb") as f:
+                img_bytes = f.read()
+                img_base64 = base64.b64encode(img_bytes).decode()
+            return {
+                "url": url,
+                "screenshot_base64": img_base64,
+                "success": True,
+            }
+        finally:
+            import os as _os
+            try:
+                _os.close(fd)
+                _os.unlink(path)
+            except Exception:
+                pass
     
     async def _scrape(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        """Scrape content from page"""
+        """Scrape content from page (SSRF-safe)."""
         url = context.get("url")
+        if not url:
+            return {"error": "url is required", "success": False}
+        self._validate_url(url)
         selector = context.get("selector", "body")
-        
         await self.page.goto(url)
         
         # Get text content
@@ -130,10 +151,12 @@ class BrowserAgent(BaseAgent):
         }
     
     async def _fill_form(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        """Fill and submit form"""
+        """Fill and submit form (SSRF-safe)."""
         url = context.get("url")
+        if not url:
+            return {"error": "url is required", "success": False}
+        self._validate_url(url)
         form_data = context.get("form_data", {})
-        
         await self.page.goto(url)
         
         # Fill each field
@@ -155,10 +178,12 @@ class BrowserAgent(BaseAgent):
         }
     
     async def _click(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        """Click element"""
+        """Click element (SSRF-safe)."""
         url = context.get("url")
+        if not url:
+            return {"error": "url is required", "success": False}
+        self._validate_url(url)
         selector = context.get("selector")
-        
         await self.page.goto(url)
         await self.page.click(selector)
         await self.page.wait_for_load_state("networkidle")

@@ -33,6 +33,7 @@ class AppErrorBoundary extends Component {
 
 // Pages
 import LandingPage from "./pages/LandingPage";
+import OurProjectsPage from "./pages/OurProjectsPage";
 import AuthPage from "./pages/AuthPage";
 import Dashboard from "./pages/Dashboard";
 import ProjectBuilder from "./pages/ProjectBuilder";
@@ -308,6 +309,7 @@ function App() {
         <ScrollToPlace />
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/our-projects" element={<OurProjectsPage />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/onboarding" element={<OnboardingRoute><OnboardingPage /></OnboardingRoute>} />
           <Route path="/builder" element={<Builder />} />

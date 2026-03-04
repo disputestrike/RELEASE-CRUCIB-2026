@@ -53,10 +53,6 @@ class CreditTracker:
         if user_tier == "free" and model_name != "haiku":
             return 0.0
         
-        # Starter tier: pay for Haiku only
-        if user_tier == "starter" and model_name != "haiku":
-            return 0.0
-        
         # Builder+ tiers: pay based on model
         base_cost = CreditTracker.MODEL_CREDIT_COST.get(model_name, 0)
         credit_cost = (tokens_used / 1000) * base_cost
