@@ -65,7 +65,7 @@ export default function ShareView() {
           )}
         </div>
         <p className="mt-8 text-zinc-500 text-sm">This is a read-only share. Sign in to edit or duplicate.</p>
-        <Link to="/auth" className="inline-block mt-4 text-[#1A1A1A] hover:text-[#333]">Sign in to CrucibAI</Link>
+        <Link to="/app" className="inline-block mt-4 text-[#1A1A1A] hover:text-[#333]">Go to CrucibAI</Link>
       </div>
     </div>
   );

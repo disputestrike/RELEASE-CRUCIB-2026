@@ -42,7 +42,7 @@ function CustomCreditsSlider({ min, max, step, pricePerCredit, user, token, api,
 
   const handleBuy = async () => {
     if (!user) {
-      navigate(`/auth?mode=register&redirect=${encodeURIComponent('/app/tokens')}`);
+      navigate('/app/tokens');
       return;
     }
     setLoading(true);
@@ -238,7 +238,7 @@ export default function Pricing() {
               <p className="text-3xl font-bold mb-2">$0</p>
               <p className="text-stone-500 text-sm mb-4">Start today with the free tier.</p>
               <button
-                onClick={() => navigate(user ? '/app' : '/auth?mode=register')}
+                onClick={() => navigate('/app')}
                 className="w-full md:w-auto px-6 py-3 bg-[#1A1A1A] text-white font-medium rounded-lg hover:opacity-90 transition"
               >
                 {user ? 'Go to Workspace' : 'Get started free'}
@@ -308,7 +308,7 @@ export default function Pricing() {
                   <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-[#1A1A1A] shrink-0" /> Unused credits roll over</li>
                 </ul>
                 <button
-                  onClick={() => navigate(user ? '/app/tokens' : '/auth?mode=register')}
+                  onClick={() => navigate('/app/tokens')}
                   className={`w-full py-2.5 rounded-lg font-medium transition flex items-center justify-center gap-2 text-white ${
                     isBuilder ? 'bg-[#1A1A1A] hover:opacity-90' : 'bg-[#1A1A1A] hover:opacity-90'
                   }`}
@@ -352,7 +352,7 @@ export default function Pricing() {
           <p className="text-stone-500 text-sm mb-4">Rough guide: ~50 credits ≈ 1 landing page, ~100 credits ≈ 1 full app. Enter your goals for a recommendation.</p>
           <OutcomeCalculator bundles={bundles} onSelectPlan={(key) => {
             if (user) navigate('/app/tokens', { state: { addon: key } });
-            else navigate(`/auth?mode=register&redirect=${encodeURIComponent('/app/tokens?addon=' + encodeURIComponent(key))}`);
+            else navigate('/app/tokens?addon=' + encodeURIComponent(key));
           }} />
         </div>
 

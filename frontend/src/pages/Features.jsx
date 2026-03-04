@@ -84,8 +84,8 @@ export default function Features() {
         </div>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mt-20 text-center">
           <p className="text-kimi-muted mb-6">Make your outcome inevitable. Start today.</p>
-          <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="px-6 py-3 bg-white text-gray-900 font-medium rounded-lg hover:bg-gray-200 transition">
-            {user ? 'Go to workspace' : 'Get started free'}
+          <button onClick={() => navigate('/app/workspace')} className="px-6 py-3 bg-white text-gray-900 font-medium rounded-lg hover:bg-gray-200 transition">
+            Go to workspace
           </button>
         </motion.div>
       </div>

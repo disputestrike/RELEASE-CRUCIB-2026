@@ -23,7 +23,7 @@ export default function ExamplesGallery() {
 
   const forkExample = (name) => {
     if (!token) {
-      navigate('/auth');
+      navigate('/app');
       return;
     }
     setForking(name);
