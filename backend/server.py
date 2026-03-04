@@ -2414,9 +2414,10 @@ async def delete_account(body: DeleteAccountBody, user: dict = Depends(get_curre
     await db.users.delete_one({"id": uid})
     return Response(status_code=204)
 
+# Google OAuth: CrucibAI's own flow only (docs/GOOGLE_AUTH_SETUP.md). One token exchange, verify with google-auth, redirect to FRONTEND_URL. Do not replace with another repo's or third-party OAuth implementation.
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
-# Get FRONTEND_URL - ensure it's properly formatted
+# Get FRONTEND_URL - ensure it's properly formatted (single source for post-login redirect)
 _raw_frontend_url = os.environ.get("FRONTEND_URL", "").strip()
 if _raw_frontend_url:
     # Ensure it starts with https:// for production
@@ -2476,8 +2477,10 @@ async def auth_google_redirect(request: Request, redirect: Optional[str] = None)
 
 @auth_router.get("/auth/google/callback")
 async def auth_google_callback(request: Request, code: Optional[str] = None, state: Optional[str] = None):
-    """Exchange Google code for tokens, create or find user, redirect to frontend with JWT."""
-    frontend_base = (os.environ.get("FRONTEND_URL") or os.environ.get("CORS_ORIGINS") or "http://localhost:3000").strip().split(",")[0].strip().rstrip("/")
+    """Exchange Google code for tokens, create or find user, redirect to frontend with JWT.
+    Uses only CrucibAI flow per docs/GOOGLE_AUTH_SETUP.md: one token exchange, verify with google-auth, redirect to FRONTEND_URL. Do not replace with any other OAuth implementation."""
+    # Single source of truth for post-login redirect: FRONTEND_URL (set at startup). Do not use CORS_ORIGINS here (can be "*").
+    frontend_base = FRONTEND_URL.rstrip("/")
     if not code:
         return RedirectResponse(url=f"{frontend_base}/auth?error=no_code")
 
