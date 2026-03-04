@@ -58,6 +58,9 @@ const AdminDashboard = () => {
       <div>
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
         <p className="text-[#666666] mt-1">Operational overview</p>
+        <p className="text-sm text-[#666666] mt-2 max-w-2xl">
+          <strong>Access:</strong> Use the <strong>Admin</strong> link in the app footer (bottom of every app page), or go to <code className="bg-black/5 px-1 rounded">/app/admin</code>. Only accounts with admin role can use this section. Typical use: view signups and revenue, manage users and grant credits, run analytics and exports. See <a href="/docs" className="underline text-[#1A1A1A]">Docs</a> or <code className="bg-black/5 px-1 rounded">docs/ADMIN_ACCESS_AND_USE.md</code> for details.
+        </p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {cards.map(({ label, value, icon: Icon, href }) => (

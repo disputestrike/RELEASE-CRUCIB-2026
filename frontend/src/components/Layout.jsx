@@ -165,6 +165,7 @@ const Layout = () => {
           {backendOk === null && <span className="status-gray">● Checking…</span>}
         </span>
         <span className="layout-footer-links">
+          <Link to="/app/admin">Admin</Link>
           <Link to="/about">About</Link>
           <Link to="/privacy">Privacy</Link>
           <Link to="/terms">Terms</Link>

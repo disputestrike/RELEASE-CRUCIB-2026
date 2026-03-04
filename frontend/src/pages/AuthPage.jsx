@@ -46,6 +46,9 @@ const AuthPage = () => {
     { label: '1 special character', met: /[!@#$%^&*(),.?":{}|<>]/.test(formData.password) },
   ];
 
+  const redirectParam = searchParams.get('redirect') || '';
+  const hasSavedPrompt = redirectParam.includes('prompt=') || (typeof sessionStorage !== 'undefined' && !!sessionStorage.getItem('crucibai_pending_prompt'));
+
   useEffect(() => {
     if (user) {
       if (!user.workspace_mode) {
@@ -94,20 +97,20 @@ const AuthPage = () => {
     }
   }, [user, searchParams, navigate, loginWithToken, processingToken]);
 
+  // Show "We saved your idea" when user was sent here with a prompt to preserve (from landing)
+  const savedIdeaMessage = hasSavedPrompt ? "We've saved your idea. It'll be ready when you're signed in." : '';
+
+  // When frontend and backend are different origins (e.g. Vercel + Railway), OAuth must hit the backend URL, not relative /api (which would go to frontend host and fail).
+  const authBase = API.startsWith('http') ? API.replace(/\/api\/?$/, '') : '';
+  const googlePath = '/api/auth/google' + (searchParams.get('redirect') ? `?redirect=${encodeURIComponent(searchParams.get('redirect'))}` : '');
+  const githubPath = '/api/auth/github' + (searchParams.get('redirect') ? `?redirect=${encodeURIComponent(searchParams.get('redirect'))}` : '');
+
   const handleGoogleSignIn = () => {
-    const redirect = searchParams.get('redirect');
-    const url = redirect
-      ? `/api/auth/google?redirect=${encodeURIComponent(redirect)}`
-      : `/api/auth/google`;
-    window.location.href = url;
+    window.location.href = authBase ? `${authBase}${googlePath}` : googlePath;
   };
 
   const handleGithubSignIn = () => {
-    const redirect = searchParams.get('redirect');
-    const url = redirect
-      ? `/api/auth/github?redirect=${encodeURIComponent(redirect)}`
-      : `/api/auth/github`;
-    window.location.href = url;
+    window.location.href = authBase ? `${authBase}${githubPath}` : githubPath;
   };
 
   const handleSubmit = async (e) => {
@@ -213,6 +216,11 @@ const AuthPage = () => {
               <div className="mb-6 p-3 bg-[#F5F5F4] border border-black/10 rounded-lg text-[#666666] text-sm flex items-start gap-2" data-testid="auth-error">
                 <X className="w-4 h-4 mt-0.5 flex-shrink-0" />
                 <span>{error}</span>
+              </div>
+            )}
+            {!error && hasSavedPrompt && (
+              <div className="mb-6 p-3 bg-[#F0FDF4] border border-[#86EFAC]/50 rounded-lg text-[#166534] text-sm">
+                We've saved your idea. It'll be ready when you're signed in.
               </div>
             )}
 
