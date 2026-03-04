@@ -2435,11 +2435,23 @@ logger.info(f"Google OAuth Config - FRONTEND_URL: {FRONTEND_URL}")
 logger.info(f"Google OAuth Config - GOOGLE_CLIENT_ID: {GOOGLE_CLIENT_ID[:20]}..." if GOOGLE_CLIENT_ID else "GOOGLE_CLIENT_ID not set")
 logger.info(f"Google OAuth Config - GOOGLE_CLIENT_SECRET: {'SET' if GOOGLE_CLIENT_SECRET else 'NOT SET'}")
 
+def _backend_base_for_oauth(request: Request) -> str:
+    """Prefer HTTPS for OAuth callback when behind a TLS proxy (e.g. Railway)."""
+    # Env override (e.g. BACKEND_PUBLIC_URL=https://crucibai-production.up.railway.app)
+    base = os.environ.get("BACKEND_PUBLIC_URL", "").strip().rstrip("/")
+    if base:
+        return base
+    # Behind proxy: use X-Forwarded-Proto so callback is https in production
+    proto = (request.headers.get("x-forwarded-proto") or request.url.scheme or "http").strip().lower()
+    host = request.headers.get("x-forwarded-host") or request.url.netloc or "localhost:8000"
+    return f"{proto}://{host}".rstrip("/")
+
+
 @auth_router.get("/auth/google")
 async def auth_google_redirect(request: Request, redirect: Optional[str] = None):
     """Redirect user to Google OAuth consent screen. Callback URL must be this backend (Google sends user here)."""
     # For testing: if credentials are invalid, show mock consent screen
-    backend_base = str(request.base_url).rstrip("/")
+    backend_base = _backend_base_for_oauth(request)
     callback = f"{backend_base}/api/auth/google/callback"
     if not GOOGLE_CLIENT_ID or GOOGLE_CLIENT_ID.startswith("123456"):
         state = json.dumps({"redirect": redirect or ""}) if redirect else ""
@@ -2478,8 +2490,8 @@ async def auth_google_callback(request: Request, code: Optional[str] = None, sta
     else:
         if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
             raise HTTPException(status_code=503, detail="Google sign-in is not configured")
-        # Callback must be the BACKEND URL (where Google sends the user). Use request.base_url.
-        base = str(request.base_url).rstrip("/")
+        # Callback must match the redirect_uri we sent to Google (use same base as auth_google_redirect).
+        base = _backend_base_for_oauth(request)
         callback = f"{base}/api/auth/google/callback"
         async with __import__("httpx").AsyncClient() as client:
             r = await client.post(
