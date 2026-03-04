@@ -1169,14 +1169,14 @@ Respond with ONLY the complete App.js code, nothing else.`;
       setLastError(error.message);
       const detail = String(error.response?.data?.detail || '');
       const is402 = error.response?.status === 402;
-      const isKeyError = error.response?.status === 401 || detail.toLowerCase().includes('api key') || detail.toLowerCase().includes('no api key') || error.message?.toLowerCase().includes('key');
+      const isKeyError = error.response?.status === 401 || error.message?.toLowerCase().includes('key');
       const friendlyMessage = is402
         ? (detail || 'Insufficient tokens. Buy more in Token Center to keep building.')
         : error.code === 'ERR_NETWORK' || error.message?.includes('Network') || error.message?.includes('Failed to fetch')
           ? "Connection lost. Check your connection and try again."
           : isKeyError
-            ? "AI couldn't run. Add Anthropic or Cerebras API keys in Settings → API & Environment, or set ANTHROPIC_API_KEY / CEREBRAS_API_KEY on the server."
-            : "The build didn't complete. Try again or check Settings if you use your own API keys.";
+            ? "AI couldn't run. The server's API keys may not be configured. Contact support or check the server logs."
+            : "The build didn't complete. Try again or contact support if the problem persists.";
       setMessages(prev => prev.map((msg, i) => i === prev.length - 1 ? { role: 'assistant', content: friendlyMessage, error: true } : msg));
     } finally {
       setIsBuilding(false);
@@ -2367,13 +2367,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
           </div>
         )}
 
-        {/* Add API key banner when last message is key/network error */}
-        {messages.some(m => m.error && (m.content || '').toLowerCase().includes('api key')) && (
-          <div className="mb-3 flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg bg-[#F5F5F4] border border-black/10 text-[#1A1A1A] text-sm">
-            <span>Builds use Anthropic or Cerebras. Add keys in Settings → API & Environment, or set CEREBRAS_API_KEY / ANTHROPIC_API_KEY in Railway for everyone.</span>
-            <button type="button" onClick={() => navigate('/app/settings')} className="shrink-0 px-3 py-1.5 rounded-lg font-medium text-white" style={{ background: '#E05A25' }}>Open Settings</button>
-          </div>
-        )}
+
 
         {showSavedPromptWelcome && (
           <div className="mb-3 px-4 py-2.5 rounded-lg bg-[#F0FDF4] border border-[#86EFAC]/50 text-[#166534] text-sm">
@@ -2384,7 +2378,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
         {/* Try these prompts when no messages yet — disappear the moment user hits Build */}
         {messages.length === 0 && !isBuilding && (
           <div className="mb-3">
-            <p className="text-xs text-gray-500 mb-2">First time? Add your API keys in <button type="button" onClick={() => navigate('/app/settings')} className="underline hover:text-gray-700">Settings</button> to build with AI.</p>
+            <p className="text-xs text-gray-500 mb-2">First time? Start building with AI right away—no configuration needed!</p>
             <span className="text-xs text-gray-500">Try these:</span>
             <div className="flex flex-wrap gap-2 mt-1">
               {['Build a todo app', 'Create a landing page', 'Add a contact form', 'Make a counter component'].map((prompt) => (

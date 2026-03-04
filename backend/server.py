@@ -948,22 +948,20 @@ def _get_model_chain(model_key: str, message: str, effective_keys: Optional[Dict
 
 
 async def get_workspace_api_keys(user: Optional[dict]) -> Dict[str, Optional[str]]:
-    """Load Anthropic/Cerebras from user's Settings (workspace_env). Returns raw keys from DB (decrypted)."""
-    if not user:
-        return {}
-    row = await db.workspace_env.find_one({"user_id": user["id"]}, {"_id": 0})
-    env = decrypt_env(row.get("env", {}) if row else {})
+    """Load Anthropic/Cerebras from server environment only. User-provided keys are no longer supported."""
+    # Always use server-side keys from environment variables
+    # User-provided keys are no longer stored or used
     return {
-        "anthropic": (env.get("ANTHROPIC_API_KEY") or "").strip() or None,
-        "cerebras": (env.get("CEREBRAS_API_KEY") or "").strip() or None,
+        "anthropic": ANTHROPIC_API_KEY or None,
+        "cerebras": os.environ.get("CEREBRAS_API_KEY") or None,
     }
 
 
 def _effective_api_keys(user_keys: Dict[str, Optional[str]]) -> Dict[str, Optional[str]]:
-    """Merge user keys from Settings with server .env so one source can be set."""
+    """Use server-side API keys only. User-provided keys are no longer supported."""
     return {
-        "anthropic": (user_keys.get("anthropic") or "").strip() or ANTHROPIC_API_KEY or None,
-        "cerebras": (user_keys.get("cerebras") or "").strip() or os.environ.get("CEREBRAS_API_KEY") or None,
+        "anthropic": ANTHROPIC_API_KEY or None,
+        "cerebras": os.environ.get("CEREBRAS_API_KEY") or None,
     }
 
 
@@ -1707,19 +1705,14 @@ async def transcribe_voice(
     audio: UploadFile = File(..., description="Audio file (webm, mp3, wav, etc.)"),
     user: dict = Depends(get_optional_user)
 ):
-    """Transcribe voice audio to text using Anthropic. Uses your Settings API key when set, else server key."""
+    """Transcribe voice audio to text using Anthropic. Uses server-side API key."""
     logger.info("Voice transcribe request received, filename=%s", getattr(audio, "filename", None))
-    api_key = None
-    if user:
-        row = await db.workspace_env.find_one({"user_id": user["id"]}, {"_id": 0})
-        env = decrypt_env(row.get("env", {}) if row else {})
-        api_key = (env.get("ANTHROPIC_API_KEY") or "").strip() or None
-    if not api_key:
-        api_key = ANTHROPIC_API_KEY
+    # Always use server-side API key
+    api_key = ANTHROPIC_API_KEY
     if not api_key:
         raise HTTPException(
             status_code=503,
-            detail="Anthropic key needed for voice. Add ANTHROPIC_API_KEY in Settings (Workspace environment) or in backend .env."
+            detail="Anthropic API key not configured on server. Contact support."
         )
     try:
         audio_content = await audio.read()
@@ -6433,16 +6426,13 @@ async def generate_faq_schema(data: GenerateFaqSchemaBody, user: dict = Depends(
 
 @api_router.get("/workspace/env")
 async def get_workspace_env(user: dict = Depends(get_optional_user)):
-    if not user:
-        return {"env": {}}
-    row = await db.workspace_env.find_one({"user_id": user["id"]}, {"_id": 0})
-    env = decrypt_env(row.get("env", {}) if row else {})
-    return {"env": env}
+    # API keys are now managed server-side only. This endpoint returns empty for backward compatibility.
+    return {"env": {}}
 
 @api_router.post("/workspace/env")
 async def set_workspace_env(data: ProjectEnvBody, user: dict = Depends(get_current_user)):
-    env_to_store = encrypt_env(data.env)
-    await db.workspace_env.update_one({"user_id": user["id"]}, {"$set": {"user_id": user["id"], "env": env_to_store, "updated_at": datetime.now(timezone.utc).isoformat()}}, upsert=True)
+    # API keys are now managed server-side only. This endpoint is deprecated.
+    # Users cannot set API keys anymore - they are configured in the server environment.
     return {"ok": True}
 
 @projects_router.post("/projects/{project_id}/duplicate")
