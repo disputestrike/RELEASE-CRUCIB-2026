@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, User, Eye, EyeOff, Check, X, ArrowLeft, Github } from 'lucide-react';
@@ -36,6 +36,7 @@ const AuthPage = () => {
   const [mfaCode, setMfaCode] = useState('');
   const [processingToken, setProcessingToken] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const tokenProcessedRef = useRef(false);
 
   // Password validation rules (Bubble-inspired inline validation)
   const passwordChecks = [
@@ -48,11 +49,12 @@ const AuthPage = () => {
   useEffect(() => {
     if (user) {
       if (!user.workspace_mode) {
-        navigate('/onboarding');
+        navigate('/onboarding', { replace: true });
         return;
       }
       const redirect = searchParams.get('redirect');
-      navigate(redirect && redirect.startsWith('/') ? redirect : '/app');
+      const target = redirect && redirect.startsWith('/') ? redirect : '/app';
+      navigate(target, { replace: true });
       return;
     }
     const tokenFromUrl = searchParams.get('token');
@@ -68,18 +70,27 @@ const AuthPage = () => {
       );
       return;
     }
-    if (tokenFromUrl && loginWithToken && !processingToken) {
+    // Process token only once (avoids double call from Strict Mode or re-renders)
+    if (tokenFromUrl && loginWithToken && !tokenProcessedRef.current) {
+      tokenProcessedRef.current = true;
       setProcessingToken(true);
       setError('');
-      loginWithToken(tokenFromUrl).catch((err) => {
-        const msg = err?.response?.status === 401
-          ? 'Session invalid. Please sign in again.'
-          : err?.message?.includes('Network') || err?.code === 'ERR_NETWORK'
-            ? 'Cannot reach server. Is the backend running?'
-            : 'Sign-in failed. Please try again.';
-        setError(msg);
-        setProcessingToken(false);
-      });
+      loginWithToken(tokenFromUrl)
+        .then(() => { /* user set by loginWithToken; effect will run again and navigate */ })
+        .catch((err) => {
+          const msg = err?.response?.status === 401
+            ? 'Session invalid. Please sign in again.'
+            : err?.response?.status === 404
+            ? 'User not found. Please sign in again.'
+            : err?.message?.includes('Network') || err?.code === 'ERR_NETWORK'
+              ? 'Cannot reach server. Is the backend running?'
+              : 'Sign-in failed. Please try again.';
+          setError(msg);
+          setProcessingToken(false);
+          tokenProcessedRef.current = false;
+          // Remove token from URL so we don't retry the same bad token
+          navigate('/auth', { replace: true });
+        });
     }
   }, [user, searchParams, navigate, loginWithToken, processingToken]);
 

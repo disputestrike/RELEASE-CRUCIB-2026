@@ -2482,6 +2482,7 @@ async def auth_google_callback(request: Request, code: Optional[str] = None, sta
     # Single source of truth for post-login redirect: FRONTEND_URL (set at startup). Do not use CORS_ORIGINS here (can be "*").
     frontend_base = FRONTEND_URL.rstrip("/")
     if not code:
+        logger.info("Google callback: no code, redirecting to auth?error=no_code")
         return RedirectResponse(url=f"{frontend_base}/auth?error=no_code")
 
     # Handle mock auth code for testing
@@ -2510,11 +2511,12 @@ async def auth_google_callback(request: Request, code: Optional[str] = None, sta
             )
         logger.debug(f"Token exchange - callback: {callback}, status: {r.status_code}")
         if r.status_code != 200:
-            logger.warning(f"Google token exchange failed: {r.text}")
+            logger.warning(f"Google token exchange failed: status={r.status_code} body={r.text[:200]}")
             return RedirectResponse(url=f"{frontend_base}/auth?error=google_failed")
         data = r.json()
         id_token = data.get("id_token") or data.get("access_token")
         if not id_token:
+            logger.info("Google callback: no id_token in response, redirecting to auth?error=no_token")
             return RedirectResponse(url=f"{frontend_base}/auth?error=no_token")
         try:
             from google.oauth2 import id_token as google_id_token
@@ -2528,6 +2530,7 @@ async def auth_google_callback(request: Request, code: Optional[str] = None, sta
         email = (payload.get("email") or "").strip()
     name = (payload.get("name") or payload.get("given_name") or email.split("@")[0] or "User").strip()
     if not email:
+        logger.info("Google callback: no email in payload, redirecting to auth?error=no_email")
         return RedirectResponse(url=f"{frontend_base}/auth?error=no_email")
     user = await db.users.find_one({"email": email}, {"_id": 0})
     if not user:
@@ -2568,6 +2571,7 @@ async def auth_google_callback(request: Request, code: Optional[str] = None, sta
     target = f"{frontend_base}/auth?token={token}"
     if redirect_path and redirect_path.startswith("/"):
         target += f"&redirect={quote(redirect_path)}"
+    logger.info("Google callback: success, redirecting to frontend with token (user_id=%s)", user.get("id", ""))
     return RedirectResponse(url=target)
 
 
