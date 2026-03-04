@@ -38,8 +38,30 @@ async def get_pg_pool():
         raise RuntimeError("DATABASE_URL not set")
     try:
         import asyncpg
-        _pool = await asyncpg.create_pool(url, min_size=2, max_size=10, command_timeout=60)
-        logger.info("✅ PostgreSQL pool created")
+
+        async def init_conn(conn):
+            """Register JSONB codec so asyncpg returns dicts, not strings."""
+            await conn.set_type_codec(
+                'jsonb',
+                encoder=json.dumps,
+                decoder=json.loads,
+                schema='pg_catalog'
+            )
+            await conn.set_type_codec(
+                'json',
+                encoder=json.dumps,
+                decoder=json.loads,
+                schema='pg_catalog'
+            )
+
+        _pool = await asyncpg.create_pool(
+            url,
+            min_size=2,
+            max_size=10,
+            command_timeout=60,
+            init=init_conn
+        )
+        logger.info("✅ PostgreSQL pool created with JSONB codec")
         return _pool
     except Exception as e:
         logger.error(f"❌ PostgreSQL pool failed: {e}")
@@ -89,6 +111,23 @@ class PGCollection:
     def _get_id_from_doc(self, doc: Dict) -> Optional[str]:
         """Extract the document ID - check 'id' first, then '_id'."""
         return doc.get('id') or doc.get('_id')
+
+    def _parse_doc(self, raw) -> Dict:
+        """Parse a JSONB value from asyncpg - may be str, dict, or None."""
+        if raw is None:
+            return {}
+        if isinstance(raw, str):
+            try:
+                return json.loads(raw)
+            except Exception:
+                return {}
+        if isinstance(raw, dict):
+            return raw
+        # asyncpg Record or other mapping
+        try:
+            return dict(raw)
+        except Exception:
+            return {}
 
     def _build_where(self, query: Dict[str, Any]) -> tuple:
         """Build WHERE clause from query dict. All fields are in doc JSONB."""
@@ -206,7 +245,7 @@ class PGCollection:
             sql = f"SELECT id, doc FROM {self.table_name} WHERE {where_clause} LIMIT 1"
             row = await conn.fetchrow(sql, *params)
             if row:
-                doc = dict(row['doc']) if row['doc'] else {}
+                doc = self._parse_doc(row['doc'])
                 # Ensure 'id' is always in the returned doc
                 if 'id' not in doc:
                     doc['id'] = row['id']
@@ -265,7 +304,7 @@ class PGCollection:
             rows = await conn.fetch(sql, *params)
             docs = []
             for row in rows:
-                doc = dict(row['doc']) if row['doc'] else {}
+                doc = self._parse_doc(row['doc'])
                 if 'id' not in doc:
                     doc['id'] = row['id']
                 docs.append(doc)
