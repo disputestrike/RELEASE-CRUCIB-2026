@@ -153,12 +153,22 @@ const LandingPage = () => {
           <div className="hidden md:flex items-center gap-6">
             <Link to="/features" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Features</Link>
             <Link to="/pricing" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Pricing</Link>
-            <Link to="/our-projects" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Our Projects</Link>
+            <Link to="/our-projects" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Our Project</Link>
             <Link to="/blog" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Blog</Link>
             {user ? (
-              <button onClick={() => navigate('/app')} className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Dashboard</button>
+              <button
+                onClick={() => navigate('/app')}
+                className="px-4 py-2 rounded-full bg-black text-white text-sm font-medium hover:bg-black/90 transition"
+              >
+                Dashboard
+              </button>
             ) : (
-              <button onClick={() => navigate('/auth')} className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Sign In</button>
+              <button
+                onClick={() => navigate('/auth')}
+                className="px-4 py-2 rounded-full bg-black text-white text-sm font-medium hover:bg-black/90 transition"
+              >
+                Sign In
+              </button>
             )}
             <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="px-4 py-2 bg-white text-gray-900 text-sm font-medium rounded-lg hover:bg-gray-100 transition">Get Started</button>
           </div>
@@ -174,7 +184,7 @@ const LandingPage = () => {
             <div className="flex flex-col gap-6 text-kimi-text min-h-min">
               <Link to="/features" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Features</Link>
               <Link to="/pricing" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Pricing</Link>
-              <Link to="/our-projects" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Our Projects</Link>
+              <Link to="/our-projects" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Our Project</Link>
               <Link to="/blog" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Blog</Link>
               {user ? (
                 <button onClick={() => { navigate('/app'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-gray-900 rounded-lg font-medium mt-4">Dashboard</button>
@@ -189,13 +199,13 @@ const LandingPage = () => {
         )}
       </AnimatePresence>
 
-      {/* Hero — softer typography, single border on input, suggestion chips (Manus-style) */}
+      {/* Hero — softer typography, smaller input, suggestion chips (Manus-style) */}
       <section className="pt-32 pb-16 px-6">
-        <div className="max-w-[900px] mx-auto">
+        <div className="max-w-[780px] mx-auto">
           <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-[2.5rem] font-semibold tracking-tight text-[#1a1a1a] mb-6 text-center">
             What can I do for you?
           </motion.h1>
-          <div className="landing-input-wrap rounded-2xl overflow-hidden bg-white border border-[#d1d5db] shadow-[0_1px_3px_rgba(0,0,0,0.05)] focus-within:border-[#3b82f6] focus-within:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] transition-all">
+          <div className="landing-input-wrap rounded-2xl overflow-hidden bg-white border border-[#d1d5db] shadow-[0_1px_3px_rgba(0,0,0,0.05)] focus-within:border-[#3b82f6] focus-within:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] transition-all max-w-[720px] mx-auto">
             {messages.length > 0 && (
               <div className="max-h-48 overflow-y-auto p-4 space-y-3">
                 {messages.map((msg, i) => (
@@ -222,12 +232,12 @@ const LandingPage = () => {
             <form onSubmit={handleSubmit} className="p-4">
               <div className="flex gap-2 items-end">
                 <div className="flex-1 flex flex-col gap-2 relative">
-                  <div className="flex gap-2 items-end min-h-[80px] py-2 pr-24">
+                  <div className="flex gap-2 items-end min-h-[64px] py-1.5 pr-24">
                     <textarea
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       placeholder="Describe what you want to build..."
-                      className="flex-1 bg-transparent text-gray-900 placeholder-gray-400 outline-none resize-none min-h-[60px] max-h-[200px] text-base leading-relaxed py-2 pl-2"
+                      className="flex-1 bg-transparent text-gray-900 placeholder-gray-400 outline-none resize-none min-h-[40px] max-h-[160px] text-[0.95rem] leading-relaxed py-1.5 pl-2"
                       disabled={isBuilding}
                       rows={2}
                     />
@@ -262,8 +272,8 @@ const LandingPage = () => {
       {/* CTA — softer tagline and buttons */}
       <section className="py-16 px-6 border-t border-gray-200">
         <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-xl md:text-2xl font-semibold text-[#111827] mb-2">Your idea is inevitable. Start Monday.</h2>
-          <p className="text-base text-[#6b7280] mb-6">100 free credits. No credit card. Describe it today. Ship it Friday.</p>
+          <h2 className="text-xl md:text-2xl font-semibold text-[#111827] mb-2">Your idea is inevitable. Start today.</h2>
+          <p className="text-base text-[#6b7280] mb-6">Describe what you want to build. Ship it today.</p>
           <div className="flex flex-wrap justify-center gap-4">
             <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="px-5 py-2.5 text-[0.95rem] font-medium rounded-lg bg-[#111827] text-white border-none hover:bg-[#1f2937] hover:-translate-y-0.5 transition-all shadow-sm">
               Make It Inevitable

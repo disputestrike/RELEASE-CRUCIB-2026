@@ -17,13 +17,23 @@ export default function PublicNav() {
         <div className="flex items-center gap-6">
           <Link to="/features" className={`${linkClass} hidden sm:flex`}>Features</Link>
           <Link to="/pricing" className={`${linkClass} hidden sm:flex`}>Pricing</Link>
-          <Link to="/our-projects" className={`${linkClass} hidden sm:flex`}>Our Projects</Link>
+          <Link to="/our-projects" className={`${linkClass} hidden sm:flex`}>Our Project</Link>
           <Link to="/blog" className={`${linkClass} hidden sm:flex`}>Blog</Link>
           {user ? (
-            <Link to="/app" className={ctaClass}>Dashboard</Link>
+            <Link
+              to="/app"
+              className="px-4 py-2 bg-black text-white text-sm font-medium rounded-full hover:bg-black/90 transition"
+            >
+              Dashboard
+            </Link>
           ) : (
             <>
-              <Link to="/auth" className={linkClass}>Sign In</Link>
+              <Link
+                to="/auth"
+                className="px-4 py-2 bg-black text-white text-sm font-medium rounded-full hover:bg-black/90 transition"
+              >
+                Sign In
+              </Link>
               <button onClick={() => navigate('/auth?mode=register')} className={ctaClass}>
                 Get Started
               </button>

@@ -59,13 +59,13 @@ describe('Nav and pages — link and click-through verification', () => {
     expect(screen.getByRole('heading', { name: /what can i do for you\?/i })).toBeInTheDocument();
   });
 
-  it('LandingPage: CTA section has "Your idea is inevitable. Start Monday."', () => {
+  it('LandingPage: CTA section has "Your idea is inevitable. Start today."', () => {
     render(
       <MemoryRouter>
         <LandingPage />
       </MemoryRouter>
     );
-    expect(screen.getByText(/your idea is inevitable\. start monday\./i)).toBeInTheDocument();
+    expect(screen.getByText(/your idea is inevitable\. start today\./i)).toBeInTheDocument();
   });
 
   it('LandingPage: CTA has "Make It Inevitable" and "Learn More"', () => {
@@ -129,7 +129,7 @@ describe('Nav and pages — link and click-through verification', () => {
     expect(src).toMatch(/Monday to Friday\. One platform/);
   });
 
-  it('PublicNav: has Features, Pricing, Our Projects, Blog, Sign In, Get Started', () => {
+  it('PublicNav: has Features, Pricing, Our Project, Blog, Sign In, Get Started', () => {
     render(
       <MemoryRouter>
         <PublicNav />
@@ -137,7 +137,7 @@ describe('Nav and pages — link and click-through verification', () => {
     );
     expect(screen.getByRole('link', { name: /features/i })).toHaveAttribute('href', '/features');
     expect(screen.getByRole('link', { name: /pricing/i })).toHaveAttribute('href', '/pricing');
-    expect(screen.getByRole('link', { name: /our projects/i })).toHaveAttribute('href', '/our-projects');
+    expect(screen.getByRole('link', { name: /our project/i })).toHaveAttribute('href', '/our-projects');
     expect(screen.getByRole('link', { name: /blog/i })).toHaveAttribute('href', '/blog');
     expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute('href', '/auth');
     expect(screen.getByRole('button', { name: /get started/i })).toBeInTheDocument();
