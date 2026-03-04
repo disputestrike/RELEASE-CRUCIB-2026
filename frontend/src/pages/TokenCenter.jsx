@@ -273,6 +273,7 @@ const TokenCenter = () => {
 
       {/* Purchase Tab */}
       {activeTab === 'purchase' && (
+        <>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {sortedBundles.map((bundle, i) => (
             <motion.div
@@ -368,6 +369,7 @@ const TokenCenter = () => {
             </div>
           </div>
         </div>
+        </>
       )}
 
       {/* History Tab */}
