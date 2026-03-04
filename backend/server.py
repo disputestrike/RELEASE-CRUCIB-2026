@@ -1095,7 +1095,7 @@ async def _call_llama_direct(
 async def _call_cerebras_direct(
     message: str,
     system_message: str,
-    model: str = "llama-2-70b",
+    model: str = "llama3.1-8b",
     api_key: str = None,
 ) -> str:
     """Call Cerebras Llama 2 70B."""
