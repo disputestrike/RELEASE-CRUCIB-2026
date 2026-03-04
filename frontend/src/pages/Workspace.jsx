@@ -415,6 +415,7 @@ const Workspace = () => {
   const [lastTokensUsed, setLastTokensUsed] = useState(0);
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(false); // collapsed by default; View → "Show code / files" for devs
   const [showFirstRunBanner, setShowFirstRunBanner] = useState(() => !localStorage.getItem('crucibai_first_run'));
+  const [showSavedPromptWelcome, setShowSavedPromptWelcome] = useState(false);
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
   const [splitEditor, setSplitEditor] = useState(false);
   const [buildCardExpanded, setBuildCardExpanded] = useState(false);
@@ -731,23 +732,32 @@ const Workspace = () => {
     }
   }, [taskIdFromUrl, storeTasks]);
 
-  // Auto-start build from navigation state (Dashboard) or task prompt (sidebar click) — no re-typing required.
+  // Auto-start build from navigation state (Dashboard), URL prompt, sessionStorage (saved from landing before auth), or task prompt (sidebar click).
   const autoStartedRef = useRef(null);
+  const PENDING_PROMPT_KEY = 'crucibai_pending_prompt';
   useEffect(() => {
     const statePrompt = location.state?.initialPrompt || searchParams.get('prompt');
     const stateAutoStart = location.state?.autoStart;
     const initialFiles = location.state?.initialAttachedFiles;
+    let storedPrompt = null;
+    try {
+      storedPrompt = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(PENDING_PROMPT_KEY) : null;
+      if (storedPrompt) sessionStorage.removeItem(PENDING_PROMPT_KEY);
+    } catch (_) {}
     const task = taskIdFromUrl ? storeTasks?.find(t => t.id === taskIdFromUrl) : null;
     const hasExistingBuild = task?.files && Object.keys(task.files || {}).length > 0;
     if (taskIdFromUrl && hasExistingBuild) return;
-    // Prompt from state (Dashboard) or from task (sidebar click when task has prompt and no build yet)
-    // NEVER auto-start for chat tasks — a conversation stays a conversation
-    const promptToUse = statePrompt || (task?.prompt && !hasExistingBuild ? task.prompt : null);
+    const promptToUse = statePrompt || storedPrompt || (task?.prompt && !hasExistingBuild ? task.prompt : null);
     const isChatTask = task?.type === 'chat' || task?.type === 'query';
-    const shouldAutoStart = stateAutoStart || (taskIdFromUrl && task?.prompt && !hasExistingBuild && !isChatTask);
+    const shouldAutoStart = stateAutoStart || !!storedPrompt || (taskIdFromUrl && task?.prompt && !hasExistingBuild && !isChatTask);
     if (!promptToUse || !shouldAutoStart) return;
-    if (autoStartedRef.current === `${location.key}-${taskIdFromUrl}`) return;
-    autoStartedRef.current = `${location.key}-${taskIdFromUrl}`;
+    if (autoStartedRef.current === `${location.key}-${taskIdFromUrl}-${!!storedPrompt}`) return;
+    autoStartedRef.current = `${location.key}-${taskIdFromUrl}-${!!storedPrompt}`;
+    if (storedPrompt) {
+      setInput(storedPrompt);
+      setShowSavedPromptWelcome(true);
+      setTimeout(() => setShowSavedPromptWelcome(false), 5000);
+    }
     if (initialFiles?.length) setAttachedFiles(initialFiles);
     handleBuild(promptToUse, initialFiles || undefined);
   }, [location.key, location.state, taskIdFromUrl, storeTasks]);
@@ -2362,6 +2372,12 @@ Respond with ONLY the complete App.js code, nothing else.`;
           <div className="mb-3 flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg bg-[#F5F5F4] border border-black/10 text-[#1A1A1A] text-sm">
             <span>Check Settings → API & Environment: your saved keys are used for builds. If you see errors, re-save your OpenAI or Anthropic key and try again.</span>
             <button type="button" onClick={() => navigate('/app/settings')} className="shrink-0 px-3 py-1.5 rounded-lg font-medium text-white" style={{ background: '#E05A25' }}>Open Settings</button>
+          </div>
+        )}
+
+        {showSavedPromptWelcome && (
+          <div className="mb-3 px-4 py-2.5 rounded-lg bg-[#F0FDF4] border border-[#86EFAC]/50 text-[#166534] text-sm">
+            Welcome back! Your idea is loaded.
           </div>
         )}
 

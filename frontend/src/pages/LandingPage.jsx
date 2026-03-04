@@ -6,6 +6,10 @@ import { useAuth, API } from '../App';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';
 import Logo from '../components/Logo';
+import SuggestionChips from '../components/SuggestionChips';
+
+const PENDING_PROMPT_KEY = 'crucibai_pending_prompt';
+const MAX_PROMPT_IN_URL = 1500;
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -33,14 +37,20 @@ const LandingPage = () => {
   const startBuild = async (promptOverride = null, filesOverride = null) => {
     const prompt = (promptOverride ?? input).trim();
     if (!prompt || isBuilding) return;
-    const q = `prompt=${encodeURIComponent(prompt)}`;
-    const workspacePath = `/app/workspace?${q}`;
     const state = (filesOverride?.length || attachedFiles?.length) ? { initialAttachedFiles: filesOverride || attachedFiles } : undefined;
     if (user) {
-      navigate(workspacePath, { state });
-    } else {
-      navigate(`/auth?mode=register&redirect=${encodeURIComponent(workspacePath)}`, { state: state ? { ...state } : undefined });
+      const q = `prompt=${encodeURIComponent(prompt)}`;
+      navigate(`/app/workspace?${q}`, { state });
+      return;
     }
+    // Preserve prompt through auth: save to sessionStorage; use URL only for short prompts (URL length limit).
+    try {
+      sessionStorage.setItem(PENDING_PROMPT_KEY, prompt);
+    } catch (_) {}
+    const workspacePath = prompt.length <= MAX_PROMPT_IN_URL
+      ? `/app/workspace?prompt=${encodeURIComponent(prompt)}`
+      : '/app/workspace';
+    navigate(`/auth?mode=register&redirect=${encodeURIComponent(workspacePath)}`, { state: state ? { ...state } : undefined });
   };
 
   const handleLandingFileSelect = (e) => {
@@ -179,13 +189,13 @@ const LandingPage = () => {
         )}
       </AnimatePresence>
 
-      {/* Hero — "What can I do for you?" + input */}
+      {/* Hero — softer typography, single border on input, suggestion chips (Manus-style) */}
       <section className="pt-32 pb-16 px-6">
-        <div className="max-w-2xl mx-auto">
-          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-kimi-hero font-bold tracking-tight text-kimi-text mb-8 text-center">
+        <div className="max-w-[900px] mx-auto">
+          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-[2.5rem] font-semibold tracking-tight text-[#1a1a1a] mb-6 text-center">
             What can I do for you?
           </motion.h1>
-          <div className="glass-kimi-panel rounded-2xl overflow-hidden">
+          <div className="landing-input-wrap rounded-2xl overflow-hidden bg-white border border-[#d1d5db] shadow-[0_1px_3px_rgba(0,0,0,0.05)] focus-within:border-[#3b82f6] focus-within:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] transition-all">
             {messages.length > 0 && (
               <div className="max-h-48 overflow-y-auto p-4 space-y-3">
                 {messages.map((msg, i) => (
@@ -211,31 +221,33 @@ const LandingPage = () => {
             )}
             <form onSubmit={handleSubmit} className="p-4">
               <div className="flex gap-2 items-end">
-                <div className="flex-1 flex flex-col gap-2">
-                  <div className="flex gap-2 px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 focus-within:ring-1 focus-within:ring-gray-300 transition min-h-[120px]">
+                <div className="flex-1 flex flex-col gap-2 relative">
+                  <div className="flex gap-2 items-end min-h-[80px] py-2 pr-24">
                     <textarea
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       placeholder="Describe what you want to build..."
-                      className="flex-1 bg-transparent text-gray-900 placeholder-gray-400 outline-none resize-none min-h-[80px] text-base leading-relaxed"
+                      className="flex-1 bg-transparent text-gray-900 placeholder-gray-400 outline-none resize-none min-h-[60px] max-h-[200px] text-base leading-relaxed py-2 pl-2"
                       disabled={isBuilding}
-                      rows={3}
+                      rows={2}
                     />
-                    <button type="button" onClick={isRecording ? stopVoiceRecording : startVoiceRecording} disabled={isBuilding || isTranscribing} className={`p-2.5 rounded-lg transition self-end shrink-0 ${isRecording ? 'bg-[#EBE8E2] text-[#1A1A1A] ring-2 ring-black/10' : 'text-kimi-muted hover:text-kimi-text hover:bg-gray-100'}`} title="Voice input">
-                      {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-                    </button>
-                    <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2.5 rounded-lg text-kimi-muted hover:text-kimi-text hover:bg-gray-100 transition self-end shrink-0" title="Attach file">
-                      <Paperclip className="w-5 h-5" />
-                    </button>
+                    <div className="absolute right-2 bottom-3 flex items-center gap-1">
+                      <button type="button" onClick={isRecording ? stopVoiceRecording : startVoiceRecording} disabled={isBuilding || isTranscribing} className={`p-2 rounded-lg transition shrink-0 ${isRecording ? 'bg-[#EBE8E2] text-[#1A1A1A] ring-2 ring-black/10' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`} title="Voice input">
+                        {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                      </button>
+                      <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition shrink-0" title="Attach file">
+                        <Paperclip className="w-5 h-5" />
+                      </button>
+                      <button type="submit" disabled={(!input.trim() && !attachedFiles.some(f => f.type?.startsWith('image/'))) || isBuilding} className="p-2 rounded-lg bg-[#3b82f6] text-white hover:bg-[#2563eb] disabled:opacity-40 disabled:cursor-not-allowed transition shrink-0" title="Send">
+                        {isBuilding ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" />}
+                      </button>
+                    </div>
                   </div>
                   <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.txt,.md" onChange={handleLandingFileSelect} className="hidden" />
                 </div>
-                <button type="submit" disabled={(!input.trim() && !attachedFiles.some(f => f.type?.startsWith('image/'))) || isBuilding} className="px-6 py-4 bg-white text-gray-900 rounded-xl text-base font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 transition shrink-0">
-                  {isBuilding ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" />}
-                </button>
               </div>
               {(isRecording || isTranscribing || voiceError) && (
-                <div className="mt-2 flex items-center gap-2 min-h-[24px] text-sm text-kimi-muted">
+                <div className="mt-2 flex items-center gap-2 min-h-[24px] text-sm text-gray-500">
                   {isRecording && <span>Listening…</span>}
                   {isTranscribing && !isRecording && <span>Transcribing…</span>}
                   {voiceError && !isRecording && !isTranscribing && <span>{voiceError}</span>}
@@ -243,19 +255,20 @@ const LandingPage = () => {
               )}
             </form>
           </div>
+          <SuggestionChips onSelect={(prompt) => setInput(prompt)} disabled={isBuilding} />
         </div>
       </section>
 
-      {/* CTA — "Your idea is inevitable. Start Monday." + two buttons */}
+      {/* CTA — softer tagline and buttons */}
       <section className="py-16 px-6 border-t border-gray-200">
         <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-kimi-text mb-4">Your idea is inevitable. Start Monday.</h2>
-          <p className="text-kimi-muted mb-8">100 free credits. No credit card. Describe it today. Ship it Friday.</p>
+          <h2 className="text-xl md:text-2xl font-semibold text-[#111827] mb-2">Your idea is inevitable. Start Monday.</h2>
+          <p className="text-base text-[#6b7280] mb-6">100 free credits. No credit card. Describe it today. Ship it Friday.</p>
           <div className="flex flex-wrap justify-center gap-4">
-            <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="px-6 py-3 bg-white text-gray-900 font-medium rounded-lg hover:bg-gray-100 transition border border-black/10">
+            <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="px-5 py-2.5 text-[0.95rem] font-medium rounded-lg bg-[#111827] text-white border-none hover:bg-[#1f2937] hover:-translate-y-0.5 transition-all shadow-sm">
               Make It Inevitable
             </button>
-            <Link to="/learn" className="px-6 py-3 bg-transparent text-kimi-text font-medium rounded-lg border border-gray-300 hover:border-gray-400 transition">
+            <Link to="/learn" className="px-5 py-2.5 text-[0.95rem] font-medium rounded-lg bg-white text-[#374151] border border-[#d1d5db] hover:bg-[#f9fafb] hover:border-[#9ca3af] transition">
               Learn More
             </Link>
           </div>
