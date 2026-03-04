@@ -145,7 +145,7 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="marketing-page min-h-screen flex flex-col bg-kimi-bg text-kimi-text grid-pattern-kimi">
+    <div className="marketing-page bg-kimi-bg text-kimi-text grid-pattern-kimi">
       {/* Navigation — 6 items only */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-kimi-bg border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
@@ -199,8 +199,10 @@ const LandingPage = () => {
         )}
       </AnimatePresence>
 
+      {/* First screen only: exactly 100vh so footer is never visible until scroll */}
+      <div className="h-screen flex flex-col overflow-hidden">
       {/* Hero — softer typography, smaller input, suggestion chips (Manus-style) */}
-      <section className="flex-1 pt-32 pb-16 px-6">
+      <section className="flex-1 min-h-0 overflow-y-auto pt-32 pb-16 px-6">
         <div className="max-w-[780px] mx-auto">
           <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-[2.5rem] font-semibold tracking-tight text-[#1a1a1a] mb-6 text-center">
             What can I do for you?
@@ -269,14 +271,15 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* CTA — single line, pushed to bottom of first screen */}
-      <section className="mt-auto py-12 px-6 border-t border-gray-200">
+      {/* CTA — single line, last thing visible on first screen */}
+      <section className="mt-auto shrink-0 py-12 px-6 border-t border-gray-200">
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="text-xl md:text-2xl font-semibold text-[#111827]">Your idea is inevitable.</h2>
         </div>
       </section>
+      </div>
 
-      {/* Footer — below the fold; visible when user scrolls */}
+      {/* Footer — below the fold; only visible when user scrolls */}
       <footer className="py-12 px-6 border-t border-gray-200 bg-kimi-bg">
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-4 gap-12 mb-12">
