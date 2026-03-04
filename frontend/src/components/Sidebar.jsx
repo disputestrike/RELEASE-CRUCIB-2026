@@ -44,6 +44,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
 
   const isActive = (path) => location.pathname === path;
   const isActivePrefix = (path) => location.pathname.startsWith(path);
+  const isEngineItemActive = (href) => isActive(href) || isActivePrefix(href);
   const currentTaskId = location.pathname === '/app/workspace' ? searchParams.get('taskId') : null;
 
   // 4 pinned navigation items — spec requirement

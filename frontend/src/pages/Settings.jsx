@@ -22,9 +22,7 @@ const Settings = () => {
   const [deleteAccountError, setDeleteAccountError] = useState(null);
   const [activeTab, setActiveTab] = useState(location.state?.openTab || 'profile');
   const [saved, setSaved] = useState(false);
-  const [env, setEnv] = useState({});
-  const [envSaving, setEnvSaving] = useState(false);
-  const [envSaved, setEnvSaved] = useState(false);
+
   const [deployTokens, setDeployTokens] = useState({ vercel: '', netlify: '' });
   const [deployTokensStatus, setDeployTokensStatus] = useState({ has_vercel: false, has_netlify: false });
   const [deploySaving, setDeploySaving] = useState(false);
@@ -66,13 +64,7 @@ const Settings = () => {
     if (location.state?.openTab) setActiveTab(location.state.openTab);
   }, [location.state?.openTab]);
 
-  useEffect(() => {
-    if (token) {
-      axios.get(`${API}/workspace/env`, { headers: { Authorization: `Bearer ${token}` } })
-        .then(r => setEnv(r.data.env || {}))
-        .catch((e) => logApiError('Settings', e));
-    }
-  }, [token]);
+
 
   useEffect(() => {
     if (token && activeTab === 'deploy') {
@@ -148,19 +140,7 @@ const Settings = () => {
     }
   };
 
-  const handleSaveEnv = async () => {
-    setEnvSaving(true);
-    setEnvSaved(false);
-    try {
-      await axios.post(`${API}/workspace/env`, { env }, { headers: { Authorization: `Bearer ${token}` } });
-      setEnvSaved(true);
-      setTimeout(() => setEnvSaved(false), 3000);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setEnvSaving(false);
-    }
-  };
+
 
   const handleSaveDeployTokens = async () => {
     const body = {};
@@ -188,7 +168,6 @@ const Settings = () => {
   const sidebarNav = [
     { id: 'profile', name: 'Account', icon: User },
     { id: 'general', name: 'General', icon: SettingsIcon },
-    { id: 'api', name: 'API & Environment', icon: Key },
     { id: 'notifications', name: 'Notifications', icon: Bell },
     { id: 'security', name: 'Security', icon: Shield },
     { id: 'billing', name: 'Billing & Usage', icon: CreditCard },
@@ -345,89 +324,7 @@ const Settings = () => {
       )}
 
       {/* API & Environment Tab */}
-      {activeTab === 'api' && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="p-6 bg-white rounded-xl border border-black/10"
-        >
-          <h3 className="text-lg font-semibold mb-2">Workspace environment (API keys)</h3>
-          <p className="text-sm text-gray-500 mb-4">Keys are stored per-user and used for AI builds. Never commit keys to git.</p>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">OPENAI_API_KEY</label>
-              <input
-                type="password"
-                value={env.OPENAI_API_KEY ?? ''}
-                onChange={(e) => setEnv(prev => ({ ...prev, OPENAI_API_KEY: e.target.value }))}
-                placeholder="sk-..."
-                className="w-full px-4 py-3 bg-[#FAFAF8] border border-black/10 rounded-lg focus:border-gray-700 outline-none transition"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">ANTHROPIC_API_KEY</label>
-              <input
-                type="password"
-                value={env.ANTHROPIC_API_KEY ?? ''}
-                onChange={(e) => setEnv(prev => ({ ...prev, ANTHROPIC_API_KEY: e.target.value }))}
-                placeholder="sk-ant-..."
-                className="w-full px-4 py-3 bg-[#FAFAF8] border border-black/10 rounded-lg focus:border-gray-700 outline-none transition"
-              />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center gap-2">
-            <button
-              onClick={handleSaveEnv}
-              disabled={envSaving}
-              className="flex items-center gap-2 px-4 py-2 bg-[#E05A25] hover:bg-[#c94d1e] text-white rounded-lg font-medium transition disabled:opacity-50"
-            >
-              {envSaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-              {envSaving ? 'Saving...' : envSaved ? 'Saved!' : 'Save environment'}
-            </button>
-            <Link to="/app/env" className="flex items-center gap-2 text-sm text-[#1A1A1A] hover:underline">
-              <ExternalLink className="w-4 h-4" /> Full env panel
-            </Link>
-          </div>
 
-          {/* Deploy integrations (merged from separate tab) */}
-          <div className="mt-8 pt-8 border-t border-black/10">
-            <h4 className="font-medium mb-2 flex items-center gap-2"><Rocket className="w-4 h-4 text-[#1A1A1A]" /> One-click deploy tokens</h4>
-            <p className="text-sm text-gray-500 mb-4">Add tokens to deploy directly to Vercel or Netlify. Get tokens from Vercel (Account → Settings → Tokens) and Netlify (User settings → Applications → Personal access tokens).</p>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Vercel token {deployTokensStatus.has_vercel && <span className="text-[#1A1A1A] text-xs">(saved)</span>}</label>
-                <input
-                  type="password"
-                  value={deployTokens.vercel}
-                  onChange={(e) => setDeployTokens(prev => ({ ...prev, vercel: e.target.value }))}
-                  placeholder={deployTokensStatus.has_vercel ? "Leave blank to keep existing" : "Paste Vercel token"}
-                  className="w-full px-4 py-3 bg-[#FAFAF8] border border-black/10 rounded-lg focus:border-gray-700 outline-none transition"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Netlify token {deployTokensStatus.has_netlify && <span className="text-[#1A1A1A] text-xs">(saved)</span>}</label>
-                <input
-                  type="password"
-                  value={deployTokens.netlify}
-                  onChange={(e) => setDeployTokens(prev => ({ ...prev, netlify: e.target.value }))}
-                  placeholder={deployTokensStatus.has_netlify ? "Leave blank to keep existing" : "Paste Netlify token"}
-                  className="w-full px-4 py-3 bg-[#FAFAF8] border border-black/10 rounded-lg focus:border-gray-700 outline-none transition"
-                />
-              </div>
-            </div>
-            <div className="mt-4">
-              <button
-                onClick={handleSaveDeployTokens}
-                disabled={deploySaving || (!deployTokens.vercel && !deployTokens.netlify)}
-                className="flex items-center gap-2 px-4 py-2 bg-[#E05A25] hover:bg-[#c94d1e] text-white rounded-lg font-medium transition disabled:opacity-50"
-              >
-                {deploySaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                {deploySaving ? 'Saving...' : deploySaved ? 'Saved!' : 'Save deploy tokens'}
-              </button>
-            </div>
-          </div>
-        </motion.div>
-      )}
 
       {/* Deploy integrations Tab */}
       {activeTab === 'deploy' && (
