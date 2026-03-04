@@ -2544,6 +2544,7 @@ async def auth_google_callback(request: Request, code: Optional[str] = None, sta
             "credit_balance": FREE_TIER_CREDITS,
             "plan": "free",
             "auth_provider": "google",
+            "workspace_mode": "simple",
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
         await db.users.insert_one(user)
@@ -2556,6 +2557,10 @@ async def auth_google_callback(request: Request, code: Optional[str] = None, sta
             "description": "Welcome (Free tier)",
             "created_at": datetime.now(timezone.utc).isoformat(),
         })
+    else:
+        if not user.get("workspace_mode"):
+            await db.users.update_one({"id": user["id"]}, {"$set": {"workspace_mode": "simple"}})
+            user["workspace_mode"] = "simple"
     token = create_token(user["id"])
     redirect_path = ""
     if state:
