@@ -182,21 +182,55 @@ class PGCollection:
     async def insert_one(self, document: Dict[str, Any]) -> Dict:
         """Insert a document."""
         await self._ensure_table()
-        _id = document.get('_id', self._generate_id())
-        doc_json = json.dumps(document)
         
-        async with self.pool.acquire() as conn:
-            try:
-                await conn.execute(
-                    f"INSERT INTO {self.table_name} (_id, doc) VALUES ($1, $2::jsonb)",
-                    _id, doc_json
-                )
-            except Exception as e:
-                if "duplicate" in str(e).lower():
-                    raise ValueError(f"Duplicate _id: {_id}")
-                raise
+        # Get table config to know which column is the primary key
+        table_config = TABLE_CONFIG.get(self.table_name)
+        if not table_config:
+            raise ValueError(f"Unknown table: {self.table_name}")
         
-        return {"_id": _id, "inserted_id": _id}
+        table_name, pk_columns, serial_pk = table_config
+        
+        # For tables with real PK columns (not JSONB-only)
+        if pk_columns and pk_columns[0] != "_id":
+            # Extract PK value from document
+            pk_col = pk_columns[0]
+            pk_value = document.get(pk_col)
+            if not pk_value:
+                pk_value = self._generate_id()
+                document[pk_col] = pk_value
+            
+            doc_json = json.dumps(document)
+            
+            async with self.pool.acquire() as conn:
+                try:
+                    # Insert with real PK column
+                    await conn.execute(
+                        f"INSERT INTO {self.table_name} ({pk_col}, doc) VALUES ($1, $2::jsonb)",
+                        pk_value, doc_json
+                    )
+                except Exception as e:
+                    if "duplicate" in str(e).lower():
+                        raise ValueError(f"Duplicate {pk_col}: {pk_value}")
+                    raise
+            
+            return {"_id": pk_value, "inserted_id": pk_value}
+        else:
+            # For JSONB-only tables
+            _id = document.get('_id', self._generate_id())
+            doc_json = json.dumps(document)
+            
+            async with self.pool.acquire() as conn:
+                try:
+                    await conn.execute(
+                        f"INSERT INTO {self.table_name} (_id, doc) VALUES ($1, $2::jsonb)",
+                        _id, doc_json
+                    )
+                except Exception as e:
+                    if "duplicate" in str(e).lower():
+                        raise ValueError(f"Duplicate _id: {_id}")
+                    raise
+            
+            return {"_id": _id, "inserted_id": _id}
     
     async def insert_many(self, documents: List[Dict[str, Any]]) -> Dict:
         """Insert multiple documents."""
