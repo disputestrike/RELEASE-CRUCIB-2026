@@ -24,7 +24,7 @@ LLAMA_MODEL = "meta-llama/Llama-2-70b-chat-hf"
 LLAMA_PROVIDER = "together"  # Using Together AI for hosted Llama
 
 CEREBRAS_API_KEY = os.environ.get("CEREBRAS_API_KEY", "").strip()
-CEREBRAS_MODEL = "llama-2-70b"
+CEREBRAS_MODEL = "llama3.1-8b"
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
 HAIKU_MODEL = "claude-3-5-haiku-20241022"
