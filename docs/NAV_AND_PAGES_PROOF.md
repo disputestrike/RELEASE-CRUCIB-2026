@@ -23,7 +23,7 @@ npm test -- --testPathPattern="NavAndPagesClickThrough" --watchAll=false --no-ca
 |---|------|----------------|
 | 1 | **LandingPage: nav contains required links and no Prompts/Templates/Documentation** | On `/`, the nav bar has links to `/features`, `/pricing`, `/our-projects`, `/blog` and buttons for Sign In and Get Started. No link in the nav goes to `/prompts`, `/templates`, or `/learn`. |
 | 2 | **LandingPage: hero headline is "What can I do for you?"** | New minimal homepage has the correct hero copy. |
-| 3 | **LandingPage: CTA section has "Your idea is inevitable. Start Monday."** | CTA block is present on the new homepage. |
+| 3 | **LandingPage: CTA section has "Your idea is inevitable."** | CTA block is present on the new homepage. |
 | 4 | **LandingPage: CTA has "Make It Inevitable" and "Learn More"** | Both CTA buttons/links exist. |
 | 5 | **LandingPage: Learn More link goes to /learn** | Learn More correctly points to `/learn`. |
 | 6 | **LandingPage: footer has Product, Resources, Legal columns** | Footer structure is correct. |
@@ -88,7 +88,7 @@ PASS src/__tests__/NavAndPagesClickThrough.test.jsx
   Nav and pages — link and click-through verification
     √ LandingPage: nav contains required links (Features, Pricing, Our Projects, Blog) and no Prompts/Templates/Documentation (468 ms)
     √ LandingPage: hero headline is "What can I do for you?" (73 ms)
-    √ LandingPage: CTA section has "Your idea is inevitable. Start Monday." (42 ms)
+    √ LandingPage: CTA section has "Your idea is inevitable." (42 ms)
     √ LandingPage: CTA has "Make It Inevitable" and "Learn More" (123 ms)
     √ LandingPage: Learn More link goes to /learn (113 ms)
     √ LandingPage: footer has Product, Resources, Legal columns (53 ms)

@@ -272,8 +272,8 @@ const LandingPage = () => {
       {/* CTA — softer tagline and buttons */}
       <section className="py-16 px-6 border-t border-gray-200">
         <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-xl md:text-2xl font-semibold text-[#111827] mb-2">Your idea is inevitable. Start today.</h2>
-          <p className="text-base text-[#6b7280] mb-6">Describe what you want to build. Ship it today.</p>
+          <h2 className="text-xl md:text-2xl font-semibold text-[#111827] mb-2">Your idea is inevitable.</h2>
+          <p className="text-base text-[#6b7280] mb-6">Describe what you want to build now. Ship it today.</p>
           <div className="flex flex-wrap justify-center gap-4">
             <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="px-5 py-2.5 text-[0.95rem] font-medium rounded-lg bg-[#111827] text-white border-none hover:bg-[#1f2937] hover:-translate-y-0.5 transition-all shadow-sm">
               Make It Inevitable
