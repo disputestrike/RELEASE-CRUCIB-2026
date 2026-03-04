@@ -58,6 +58,7 @@ This doc describes **how CrucibAI implements** Google Auth: sign up, sign in, an
      - Used to redirect after login: `{FRONTEND_URL}/auth?token=...`.  
    - **`BACKEND_PUBLIC_URL`** (recommended for production): The public URL of the backend (e.g. `https://crucibai-production.up.railway.app`).  
      - Ensures the OAuth callback URL sent to Google uses **HTTPS**; without it, the app may send `http://` and cause `redirect_uri_mismatch` or require you to register `http://` in Google (insecure).  
+   - **`GOOGLE_REDIRECT_URI`** (optional but recommended if you see redirect_uri_mismatch): The **exact** callback URL (e.g. `https://crucibai-production.up.railway.app/api/auth/google/callback`). When set, the backend uses this value for both the initial redirect to Google and the token exchange, so it must match one of your Authorized redirect URIs in Google Console character-for-character.  
    - **If you see "Google sign-in failed"**: Check backend logs for `Google token exchange failed` and the logged `redirect_uri`. Add that **exact** URL to Google Cloud Console → Credentials → [your OAuth client] → **Authorized redirect URIs** (e.g. `https://crucibai-production.up.railway.app/api/auth/google/callback`).
 
 ---

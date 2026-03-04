@@ -2431,10 +2431,14 @@ else:
     # Unset or localhost: use same host as backend at runtime (see auth_google_callback) so we never redirect to localhost in production
     FRONTEND_URL = ""
 
+# Optional: exact callback URL for Google (must match Authorized redirect URI in Google Console)
+GOOGLE_REDIRECT_URI = (os.environ.get("GOOGLE_REDIRECT_URI") or "").strip().rstrip("/")
+
 # Debug logging for Google OAuth configuration
 logger.info(f"Google OAuth Config - FRONTEND_URL: {FRONTEND_URL or '(use request host at redirect)'}")
 logger.info(f"Google OAuth Config - GOOGLE_CLIENT_ID: {GOOGLE_CLIENT_ID[:20]}..." if GOOGLE_CLIENT_ID else "GOOGLE_CLIENT_ID not set")
 logger.info(f"Google OAuth Config - GOOGLE_CLIENT_SECRET: {'SET' if GOOGLE_CLIENT_SECRET else 'NOT SET'}")
+logger.info(f"Google OAuth Config - GOOGLE_REDIRECT_URI: {GOOGLE_REDIRECT_URI or '(derive from BACKEND_PUBLIC_URL or request)'}")
 
 def _backend_base_for_oauth(request: Request) -> str:
     """Prefer HTTPS for OAuth callback when behind a TLS proxy (e.g. Railway)."""
@@ -2447,13 +2451,19 @@ def _backend_base_for_oauth(request: Request) -> str:
     host = request.headers.get("x-forwarded-host") or request.url.netloc or "localhost:8000"
     return f"{proto}://{host}".rstrip("/")
 
+def _oauth_callback_url(request: Request) -> str:
+    """Exact redirect_uri to send to Google. Use GOOGLE_REDIRECT_URI if set, else derive from backend base."""
+    if GOOGLE_REDIRECT_URI:
+        return GOOGLE_REDIRECT_URI
+    base = _backend_base_for_oauth(request)
+    return f"{base}/api/auth/google/callback"
+
 
 @auth_router.get("/auth/google")
 async def auth_google_redirect(request: Request, redirect: Optional[str] = None):
     """Redirect user to Google OAuth consent screen. Callback URL must be this backend (Google sends user here)."""
     # For testing: if credentials are invalid, show mock consent screen
-    backend_base = _backend_base_for_oauth(request)
-    callback = f"{backend_base}/api/auth/google/callback"
+    callback = _oauth_callback_url(request)
     if not GOOGLE_CLIENT_ID or GOOGLE_CLIENT_ID.startswith("123456"):
         state = json.dumps({"redirect": redirect or ""}) if redirect else ""
         import base64 as b64
@@ -2497,9 +2507,8 @@ async def auth_google_callback(request: Request, code: Optional[str] = None, sta
     else:
         if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
             raise HTTPException(status_code=503, detail="Google sign-in is not configured")
-        # Callback must match the redirect_uri we sent to Google (use same base as auth_google_redirect).
-        base = _backend_base_for_oauth(request)
-        callback = f"{base}/api/auth/google/callback"
+        # Use same redirect_uri as we sent in the auth redirect (GOOGLE_REDIRECT_URI or derived).
+        callback = _oauth_callback_url(request)
         logger.info("Google callback: exchanging code (redirect_uri=%s). Add this exact URL to Google Cloud Console > Credentials > Authorized redirect URIs if you see redirect_uri_mismatch.", callback)
         async with __import__("httpx").AsyncClient() as client:
             r = await client.post(
