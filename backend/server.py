@@ -686,21 +686,21 @@ AGENT_DEFINITIONS = [
 # AI Model configurations: Cerebras (free) or Haiku (paid)
 # All tasks use Haiku for paid users, Cerebras for free tier
 MODEL_CONFIG = {
-    "code": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
-    "analysis": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
-    "general": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
-    "creative": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
-    "fast": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"}
+    "code": {"provider": "anthropic", "model": "claude-3-haiku-20240307"},
+    "analysis": {"provider": "anthropic", "model": "claude-3-haiku-20240307"},
+    "general": {"provider": "anthropic", "model": "claude-3-haiku-20240307"},
+    "creative": {"provider": "anthropic", "model": "claude-3-haiku-20240307"},
+    "fast": {"provider": "anthropic", "model": "claude-3-haiku-20240307"}
 }
 
 # Fallback chain: only Haiku (no fallback needed, single provider)
 MODEL_FALLBACK_CHAINS = [
-    {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
+    {"provider": "anthropic", "model": "claude-3-haiku-20240307"},
 ]
 # Map user-facing model key -> chain (only Haiku)
 MODEL_CHAINS = {
     "auto": None,  # use MODEL_CONFIG + MODEL_FALLBACK_CHAINS
-    "haiku": [{"provider": "anthropic", "model": "claude-3-5-haiku-20241022"}],
+    "haiku": [{"provider": "anthropic", "model": "claude-3-haiku-20240307"}],
 }
 
 # ==================== HELPERS ====================
@@ -971,7 +971,7 @@ def _effective_api_keys(user_keys: Dict[str, Optional[str]]) -> Dict[str, Option
     }
 
 
-async def _call_anthropic_direct(prompt: str, system: str, model: str = "claude-3-5-haiku-20241022", api_key: Optional[str] = None) -> str:
+async def _call_anthropic_direct(prompt: str, system: str, model: str = "claude-3-haiku-20240307", api_key: Optional[str] = None) -> str:
     """Call Anthropic API directly. Uses api_key or ANTHROPIC_API_KEY."""
     key = (api_key or "").strip() or ANTHROPIC_API_KEY
     if not key:
@@ -989,7 +989,7 @@ async def _call_anthropic_direct(prompt: str, system: str, model: str = "claude-
 
 
 
-async def _call_cerebras_direct(prompt: str, system: str, model: str = "claude-3-5-haiku-20241022", api_key: Optional[str] = None) -> str:
+async def _call_cerebras_direct(prompt: str, system: str, model: str = "claude-3-haiku-20240307", api_key: Optional[str] = None) -> str:
     """Call Cerebras API directly (free tier fallback). Uses api_key or CEREBRAS_API_KEY."""
     key = (api_key or "").strip() or os.environ.get("CEREBRAS_API_KEY")
     if not key:
@@ -1007,7 +1007,7 @@ async def _call_cerebras_direct(prompt: str, system: str, model: str = "claude-3
     return text.strip()
 
 
-async def _call_anthropic_multimodal(content_blocks: List[Dict[str, Any]], system: str, model: str = "claude-3-5-haiku-20241022", api_key: Optional[str] = None) -> str:
+async def _call_anthropic_multimodal(content_blocks: List[Dict[str, Any]], system: str, model: str = "claude-3-haiku-20240307", api_key: Optional[str] = None) -> str:
     """Call Anthropic with multimodal user content (text + image). Uses vision-capable model."""
     key = (api_key or "").strip() or ANTHROPIC_API_KEY
     if not key:
@@ -1030,7 +1030,7 @@ async def _call_anthropic_multimodal(content_blocks: List[Dict[str, Any]], syste
             else:
                 anthropic_content.append({"type": "text", "text": f"[Image: {url[:80]}...]"})
     msg = await client.messages.create(
-        model=model or "claude-3-5-haiku-20241022",
+        model=model or "claude-3-haiku-20240307",
         max_tokens=4096,
         system=system,
         messages=[{"role": "user", "content": anthropic_content}],
@@ -1047,7 +1047,7 @@ def _content_blocks_have_image(content_blocks: Optional[List[Dict[str, Any]]]) -
 
 # Vision-capable model: Haiku supports vision
 VISION_MODEL_CHAIN = [
-    {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
+    {"provider": "anthropic", "model": "claude-3-haiku-20240307"},
 ]
 
 
@@ -1134,7 +1134,7 @@ async def _call_cerebras_direct(
 async def _call_anthropic_direct(
     message: str,
     system_message: str,
-    model: str = "claude-3-5-haiku-20241022",
+    model: str = "claude-3-haiku-20240307",
     api_key: str = None,
 ) -> str:
     """Call Anthropic Claude Haiku."""
@@ -1797,7 +1797,7 @@ async def analyze_file(
                     raise ValueError("Anthropic key needed for image analysis. Add ANTHROPIC_API_KEY in Settings or .env.")
                 client = anthropic.Anthropic(api_key=anthropic_key)
                 resp = client.messages.create(
-                    model="claude-3-5-haiku-20241022",
+                    model="claude-3-haiku-20240307",
                     max_tokens=1024,
                     system="You are an expert at analyzing UI and design. Describe what you see and provide design insights.",
                     messages=[
@@ -1853,7 +1853,7 @@ async def image_to_code(
         import anthropic
         client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
         resp = client.messages.create(
-            model="claude-3-5-haiku-20241022",
+            model="claude-3-haiku-20240307",
             max_tokens=4096,
             system="You output only valid React/JSX code. No markdown code fences, no commentary.",
             messages=[
@@ -6598,7 +6598,7 @@ async def design_from_url(url: str = Form(...), user: dict = Depends(get_optiona
         import anthropic
         client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
         resp = client.messages.create(
-            model="claude-3-5-haiku-20241022",
+            model="claude-3-haiku-20240307",
             max_tokens=4096,
             system="Output only valid React/JSX code. No markdown.",
             messages=[

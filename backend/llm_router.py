@@ -27,7 +27,7 @@ CEREBRAS_API_KEY = os.environ.get("CEREBRAS_API_KEY", "").strip()
 CEREBRAS_MODEL = "llama3.1-8b"
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
-HAIKU_MODEL = "claude-3-5-haiku-20241022"
+HAIKU_MODEL = "claude-3-haiku-20240307"
 
 class TaskComplexity(str, Enum):
     """Task complexity classification"""
