@@ -236,7 +236,7 @@ export default function Pricing() {
             </div>
             <div className="shrink-0">
               <p className="text-3xl font-bold mb-2">$0</p>
-              <p className="text-stone-500 text-sm mb-4">No credit card required</p>
+              <p className="text-stone-500 text-sm mb-4">Start today with the free tier.</p>
               <button
                 onClick={() => navigate(user ? '/app' : '/auth?mode=register')}
                 className="w-full md:w-auto px-6 py-3 bg-[#1A1A1A] text-white font-medium rounded-lg hover:opacity-90 transition"
