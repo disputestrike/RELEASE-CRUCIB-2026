@@ -4,6 +4,10 @@ This doc describes **how CrucibAI implements** Google Auth: sign up, sign in, an
 
 ---
 
+**Checkpoint (bring forward):** This is **our** flow only. Backend: one token exchange at `oauth2.googleapis.com/token`, verify with `google.oauth2.id_token.verify_oauth2_token`, redirect to `{FRONTEND_URL}/auth?token=...`. Do not import or use another project's Google OAuth. Keep FRONTEND_URL and BACKEND_PUBLIC_URL as the single source for redirect targets.
+
+---
+
 ## 1. What we use
 
 - **Backend:** OAuth 2.0 **authorization code** flow (server-side).
