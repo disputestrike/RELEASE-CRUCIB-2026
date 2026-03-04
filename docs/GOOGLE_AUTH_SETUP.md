@@ -57,7 +57,8 @@ This doc describes **how CrucibAI implements** Google Auth: sign up, sign in, an
    - `FRONTEND_URL` = where the React app lives (e.g. `http://localhost:3000` or `https://app.crucibai.com`).  
      - Used to redirect after login: `{FRONTEND_URL}/auth?token=...`.  
    - **`BACKEND_PUBLIC_URL`** (recommended for production): The public URL of the backend (e.g. `https://crucibai-production.up.railway.app`).  
-     - Ensures the OAuth callback URL sent to Google uses **HTTPS**; without it, the app may send `http://` and cause `redirect_uri_mismatch` or require you to register `http://` in Google (insecure).
+     - Ensures the OAuth callback URL sent to Google uses **HTTPS**; without it, the app may send `http://` and cause `redirect_uri_mismatch` or require you to register `http://` in Google (insecure).  
+   - **If you see "Google sign-in failed"**: Check backend logs for `Google token exchange failed` and the logged `redirect_uri`. Add that **exact** URL to Google Cloud Console → Credentials → [your OAuth client] → **Authorized redirect URIs** (e.g. `https://crucibai-production.up.railway.app/api/auth/google/callback`).
 
 ---
 
@@ -117,7 +118,15 @@ This doc describes **how CrucibAI implements** Google Auth: sign up, sign in, an
 
 ---
 
-## 6. Checklist
+## 6. Troubleshooting "Google sign-in failed"
+
+1. **Set `BACKEND_PUBLIC_URL`** in your deployment (e.g. Railway): set it to your app’s public URL with no trailing slash (e.g. `https://crucibai-production.up.railway.app`). This fixes callback URL consistency.
+2. **Check backend logs** after a failed sign-in: look for `Google token exchange failed` and the logged `redirect_uri` (and `error` / `description` from Google).
+3. **Authorized redirect URIs**: In Google Cloud Console → Credentials → your OAuth 2.0 client → **Authorized redirect URIs**, add the **exact** callback URL (e.g. `https://crucibai-production.up.railway.app/api/auth/google/callback`). It must match the `redirect_uri` in the logs character-for-character (including `https`, no trailing slash on the origin).
+
+---
+
+## 7. Checklist
 
 - [ ] Google Cloud project created.  
 - [ ] OAuth consent screen configured (External/Internal, scopes `openid`, `email`, `profile`).  
@@ -127,5 +136,6 @@ This doc describes **how CrucibAI implements** Google Auth: sign up, sign in, an
 - [ ] Backend uses **verified** ID token (e.g. `google.oauth2.id_token.verify_oauth2_token`), not unverified decode.  
 - [ ] Frontend “Sign in with Google” links to `GET {BACKEND}/api/auth/google?redirect=...`.  
 - [ ] Frontend `/auth` page reads `token` (and optional `redirect`) from query and stores token, then redirects.
+- [ ] (Production) `BACKEND_PUBLIC_URL` set so the callback URL is stable and can be added to Google Console.
 
 Using this process and our backend implementation, Google Auth will behave consistently across environments. When you pull from git, keep using **this** flow and **this** setup; do not replace it with another repo’s Google Auth implementation.

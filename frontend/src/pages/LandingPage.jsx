@@ -269,12 +269,64 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* CTA — single line, pushed to bottom; no footer on landing */}
+      {/* CTA — single line, pushed to bottom of first screen */}
       <section className="mt-auto py-12 px-6 border-t border-gray-200">
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="text-xl md:text-2xl font-semibold text-[#111827]">Your idea is inevitable.</h2>
         </div>
       </section>
+
+      {/* Footer — below the fold; visible when user scrolls */}
+      <footer className="py-12 px-6 border-t border-gray-200 bg-kimi-bg">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-4 gap-12 mb-12">
+            <div>
+              <div className="mb-4">
+                <Logo variant="full" height={28} href="/" />
+              </div>
+              <p className="text-sm text-kimi-muted mb-3">Turn ideas into inevitable outcomes. Plan, build, ship.</p>
+              <ul className="space-y-2 text-sm">
+                <li><Link to="/about" className="text-kimi-muted hover:text-kimi-text transition">About us</Link></li>
+              </ul>
+            </div>
+            <div>
+              <div className="text-xs text-kimi-muted uppercase tracking-wider mb-4">Product</div>
+              <ul className="space-y-3 text-sm">
+                <li><Link to="/features" className="text-kimi-muted hover:text-kimi-text transition">Features</Link></li>
+                <li><Link to="/pricing" className="text-kimi-muted hover:text-kimi-text transition">Pricing</Link></li>
+                <li><Link to="/templates" className="text-kimi-muted hover:text-kimi-text transition">Templates</Link></li>
+                <li><Link to="/patterns" className="text-kimi-muted hover:text-kimi-text transition">Patterns</Link></li>
+                <li><Link to="/enterprise" className="text-kimi-muted hover:text-kimi-text transition">Enterprise</Link></li>
+              </ul>
+            </div>
+            <div>
+              <div className="text-xs text-kimi-muted uppercase tracking-wider mb-4">Resources</div>
+              <ul className="space-y-3 text-sm">
+                <li><Link to="/blog" className="text-kimi-muted hover:text-kimi-text transition">Blog</Link></li>
+                <li><Link to="/learn" className="text-kimi-muted hover:text-kimi-text transition">Learn</Link></li>
+                <li><Link to="/shortcuts" className="text-kimi-muted hover:text-kimi-text transition">Shortcuts</Link></li>
+                <li><Link to="/benchmarks" className="text-kimi-muted hover:text-kimi-text transition">Benchmarks</Link></li>
+                <li><Link to="/prompts" className="text-kimi-muted hover:text-kimi-text transition">Prompt Library</Link></li>
+                <li><Link to="/security" className="text-kimi-muted hover:text-kimi-text transition">Security &amp; Trust</Link></li>
+                <li><Link to="/about" className="text-kimi-muted hover:text-kimi-text transition">Why CrucibAI</Link></li>
+              </ul>
+            </div>
+            <div>
+              <div className="text-xs text-kimi-muted uppercase tracking-wider mb-4">Legal</div>
+              <ul className="space-y-3 text-sm">
+                <li><Link to="/privacy" className="text-kimi-muted hover:text-kimi-text transition">Privacy</Link></li>
+                <li><Link to="/terms" className="text-kimi-muted hover:text-kimi-text transition">Terms</Link></li>
+                <li><Link to="/aup" className="text-kimi-muted hover:text-kimi-text transition">Acceptable Use</Link></li>
+                <li><Link to="/dmca" className="text-kimi-muted hover:text-kimi-text transition">DMCA</Link></li>
+                <li><Link to="/cookies" className="text-kimi-muted hover:text-kimi-text transition">Cookies</Link></li>
+              </ul>
+            </div>
+          </div>
+          <div className="pt-8 border-t border-gray-200 text-center">
+            <p className="text-xs text-kimi-muted">© 2026 CrucibAI. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
