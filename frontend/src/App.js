@@ -220,8 +220,13 @@ const AuthProvider = ({ children }) => {
     return false;
   }, []);
 
+  const enterDemoMode = useCallback(() => {
+    setUser(mergeWorkspaceMode({ id: "demo", email: "demo@local", name: "Guest", workspace_mode: "simple" }));
+    setToken(null);
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout, loading, refreshUser, loginWithToken, verifyMfa, ensureGuest }}>
+    <AuthContext.Provider value={{ user, token, login, register, logout, loading, refreshUser, loginWithToken, verifyMfa, ensureGuest, enterDemoMode }}>
       <LayoutProvider>
         <TaskProvider>
           {children}
@@ -252,7 +257,7 @@ const OnboardingRoute = ({ children }) => {
 
 // Protected Route — no redirect to /auth; retry guest so user always gets in
 const ProtectedRoute = ({ children }) => {
-  const { user, loading, ensureGuest } = useAuth();
+  const { user, loading, ensureGuest, enterDemoMode } = useAuth();
   const [retrying, setRetrying] = useState(false);
   const didRetryRef = useRef(false);
 
@@ -282,12 +287,14 @@ const ProtectedRoute = ({ children }) => {
           <p className="text-[#666666]">Could not start session.</p>
           <button
             type="button"
-            onClick={() => { setRetryFailed(false); setRetrying(true); ensureGuest().then((ok) => { setRetryFailed(!ok); setRetrying(false); }); }}
+            onClick={() => { setRetrying(true); ensureGuest().then(() => setRetrying(false)); }}
             className="w-full py-3 px-6 bg-[#1A1A1A] text-white font-medium rounded-lg hover:bg-[#333]"
           >
             Retry
           </button>
           <a href="/" className="text-sm text-[#666666] hover:text-[#1A1A1A]">Go to home</a>
+          <button type="button" onClick={enterDemoMode} className="mt-4 text-sm text-[#666666] hover:text-[#1A1A1A] underline">Continue to workspace (demo — won&apos;t save)</button>
+          <p className="text-xs text-[#888] mt-4 max-w-xs">If this keeps happening, redeploy the backend so <code className="bg-black/10 px-1 rounded">POST /api/auth/guest</code> is available. Check Railway logs for errors.</p>
         </div>
       </div>
     );
