@@ -327,7 +327,7 @@ const OurProjectsPage = () => {
             Agentic · 100+ specialized agents · High success rate · Full transparency
           </motion.p>
           <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-kimi-hero font-bold tracking-tight text-kimi-text mb-6">
-            Describe it Monday. Ship it Friday.
+            Describe it now. Ship it today.
           </motion.h1>
           <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-lg text-kimi-muted mb-12 max-w-2xl mx-auto leading-relaxed">
             The only platform where the same AI that builds your app runs inside your automations. Web apps, mobile apps, and automations — one platform, one AI, no switching tools.
@@ -991,8 +991,8 @@ const OurProjectsPage = () => {
       {/* Final CTA */}
       <section className="py-24 px-6 border-t border-gray-200">
         <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-kimi-text mb-4">Your idea is inevitable. Start today.</h2>
-          <p className="text-kimi-muted mb-8">Describe what you want to build. Ship it today.</p>
+          <h2 className="text-3xl md:text-4xl font-bold text-kimi-text mb-4">Your idea is inevitable.</h2>
+          <p className="text-kimi-muted mb-8">Describe what you want to build now. Ship it today.</p>
           <div className="flex flex-wrap justify-center gap-4">
             <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="px-6 py-3 bg-white text-gray-900 font-medium rounded-lg hover:bg-gray-100 transition border border-black/10">
               Make It Inevitable

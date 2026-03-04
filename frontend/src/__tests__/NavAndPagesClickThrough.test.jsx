@@ -59,13 +59,13 @@ describe('Nav and pages — link and click-through verification', () => {
     expect(screen.getByRole('heading', { name: /what can i do for you\?/i })).toBeInTheDocument();
   });
 
-  it('LandingPage: CTA section has "Your idea is inevitable. Start today."', () => {
+  it('LandingPage: CTA section has "Your idea is inevitable."', () => {
     render(
       <MemoryRouter>
         <LandingPage />
       </MemoryRouter>
     );
-    expect(screen.getByText(/your idea is inevitable\. start today\./i)).toBeInTheDocument();
+    expect(screen.getByText(/your idea is inevitable\./i)).toBeInTheDocument();
   });
 
   it('LandingPage: CTA has "Make It Inevitable" and "Learn More"', () => {
