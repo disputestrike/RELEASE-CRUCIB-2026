@@ -1463,10 +1463,11 @@ async def ai_chat(data: ChatMessage, user: dict = Depends(get_optional_user)):
 @api_router.get("/ai/chat/history/{session_id}")
 async def get_chat_history(session_id: str):
     """Get chat history for a session"""
-    history = await db.chat_history.find(
+    cursor = db.chat_history.find(
         {"session_id": session_id}, 
         {"_id": 0}
-    ).sort("created_at", 1).to_list(100)
+    ).sort("created_at", 1)
+    history = await cursor.to_list(100)
     return {"history": history}
 
 async def _stream_string_chunks(text: str, chunk_size: int = 8):
@@ -2733,7 +2734,8 @@ async def purchase_tokens_custom(data: TokenPurchaseCustom, user: dict = Depends
 async def get_token_history(user: dict = Depends(get_current_user)):
     await _ensure_credit_balance(user["id"])
     cred = _user_credits(user)
-    history = await db.token_ledger.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    cursor = db.token_ledger.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1)
+    history = await cursor.to_list(100)
     return {"history": history, "current_balance": cred, "credit_balance": cred}
 
 @api_router.get("/tokens/usage")
@@ -3768,7 +3770,8 @@ async def agents_run_reject(run_id: str, user: dict = Depends(get_current_user),
 @api_router.get("/tasks")
 async def get_tasks(user: dict = Depends(get_current_user)):
     """List tasks for current user (synced from Workspace)."""
-    tasks = await db.tasks.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    cursor = db.tasks.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1)
+    tasks = await cursor.to_list(100)
     return {"tasks": tasks}
 
 @api_router.post("/tasks")
@@ -3880,7 +3883,8 @@ async def create_project(
 
 @projects_router.get("/projects")
 async def get_projects(user: dict = Depends(get_current_user), _: dict = Depends(require_permission(Permission.VIEW_PROJECT if Permission else None))):
-    projects = await db.projects.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    cursor = db.projects.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1)
+    projects = await cursor.to_list(100)
     return {"projects": projects}
 
 
@@ -4544,7 +4548,8 @@ async def retry_project_phase(
 
 @projects_router.get("/projects/{project_id}/logs")
 async def get_project_logs(project_id: str, user: dict = Depends(get_current_user)):
-    logs = await db.project_logs.find({"project_id": project_id}, {"_id": 0}).sort("created_at", 1).to_list(500)
+    cursor = db.project_logs.find({"project_id": project_id}, {"_id": 0}).sort("created_at", 1)
+    logs = await cursor.to_list(500)
     return {"logs": logs}
 
 # Build phases for real-time progress UI (planning -> generating -> validating -> deployment)
@@ -5542,7 +5547,8 @@ async def create_export(data: dict, user: dict = Depends(get_current_user)):
 
 @projects_router.get("/exports")
 async def get_exports(user: dict = Depends(get_current_user)):
-    exports = await db.exports.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(MAX_EXPORTS_LIST)
+    cursor = db.exports.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1)
+    exports = await cursor.to_list(MAX_EXPORTS_LIST)
     return {"exports": exports}
 
 # ==================== EXAMPLES (GENERATED APP SHOWCASE) ====================
@@ -5845,7 +5851,8 @@ async def admin_user_profile(user_id: str, admin: dict = Depends(get_current_adm
     user["credit_balance"] = _user_credits(user)
     projects_count = await db.projects.count_documents({"user_id": user_id})
     referrals = await db.referrals.find({"referrer_id": user_id}, {"_id": 0}).to_list(100) if hasattr(db, "referrals") else []
-    ledger = await db.token_ledger.find({"user_id": user_id}, {"_id": 0}).sort("created_at", -1).limit(20).to_list(20)
+    cursor = db.token_ledger.find({"user_id": user_id}, {"_id": 0}).sort("created_at", -1).limit(20)
+    ledger = await cursor.to_list(20)
     purchases = await db.token_ledger.find({"user_id": user_id, "type": "purchase"}, {"_id": 0}).to_list(1000)
     lifetime_revenue = round(sum(float(r.get("price") or TOKEN_BUNDLES.get(r.get("bundle", ""), {}).get("price", 0)) for r in purchases), 2)
     return {
@@ -6252,7 +6259,8 @@ async def get_prompt_templates(user: dict = Depends(get_optional_user)):
 async def get_recent_prompts(user: dict = Depends(get_optional_user)):
     if not user:
         return {"prompts": []}
-    recents = await db.chat_history.find({"user_id": user["id"]}, {"message": 1, "created_at": 1}).sort("created_at", -1).limit(20).to_list(20)
+    cursor = db.chat_history.find({"user_id": user["id"]}, {"message": 1, "created_at": 1}).sort("created_at", -1).limit(20)
+    recents = await cursor.to_list(20)
     seen = set()
     out = []
     for r in recents:
@@ -6270,7 +6278,8 @@ async def save_prompt(data: SavePromptBody, user: dict = Depends(get_current_use
 
 @api_router.get("/prompts/saved")
 async def get_saved_prompts(user: dict = Depends(get_current_user)):
-    items = await db.saved_prompts.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(50)
+    cursor = db.saved_prompts.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1)
+    items = await cursor.to_list(50)
     return {"prompts": items}
 
 # ==================== REFERENCE BUILD / EXPLAIN ERROR / SUGGEST NEXT ====================
