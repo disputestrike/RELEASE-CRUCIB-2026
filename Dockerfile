@@ -6,13 +6,14 @@
 FROM node:20-alpine AS frontend
 WORKDIR /app
 # Copy package files + scripts so postinstall (patch-ajv-formats.js) can run
-COPY frontend/package.json frontend/package-lock.json frontend/yarn.lock* ./
+COPY frontend/package.json frontend/package-lock.json ./
 COPY frontend/scripts ./scripts
-RUN npm ci --omit=optional 2>/dev/null || yarn install --frozen-lockfile
+# Use npm-only install for deterministic, registry-friendly builds
+RUN npm ci --omit=optional
 COPY frontend/ ./
 ENV REACT_APP_BACKEND_URL=
 ENV FAST_REFRESH=false
-RUN npm run build 2>/dev/null || yarn build
+RUN npm run build
 
 # Stage 2: backend + serve frontend static
 FROM python:3.11.0-slim
