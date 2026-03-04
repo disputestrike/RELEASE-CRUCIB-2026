@@ -2500,6 +2500,7 @@ async def auth_google_callback(request: Request, code: Optional[str] = None, sta
         # Callback must match the redirect_uri we sent to Google (use same base as auth_google_redirect).
         base = _backend_base_for_oauth(request)
         callback = f"{base}/api/auth/google/callback"
+        logger.info("Google callback: exchanging code (redirect_uri=%s). Add this exact URL to Google Cloud Console > Credentials > Authorized redirect URIs if you see redirect_uri_mismatch.", callback)
         async with __import__("httpx").AsyncClient() as client:
             r = await client.post(
                 "https://oauth2.googleapis.com/token",
@@ -2512,9 +2513,18 @@ async def auth_google_callback(request: Request, code: Optional[str] = None, sta
                 },
                 headers={"Content-Type": "application/x-www-form-urlencoded"},
             )
-        logger.debug(f"Token exchange - callback: {callback}, status: {r.status_code}")
         if r.status_code != 200:
-            logger.warning(f"Google token exchange failed: status={r.status_code} body={r.text[:200]}")
+            try:
+                err_body = r.json()
+                err_code = err_body.get("error", "")
+                err_desc = err_body.get("error_description", r.text[:300])
+            except Exception:
+                err_code = ""
+                err_desc = r.text[:300]
+            logger.warning(
+                "Google token exchange failed: status=%s error=%s description=%s. Callback used: %s",
+                r.status_code, err_code, err_desc, callback,
+            )
             return RedirectResponse(url=f"{frontend_base}/auth?error=google_failed")
         data = r.json()
         id_token = data.get("id_token") or data.get("access_token")

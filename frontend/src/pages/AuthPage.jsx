@@ -65,7 +65,7 @@ const AuthPage = () => {
     if (errorFromUrl) {
       setError(
         errorFromUrl === 'no_code' ? 'Google sign-in was cancelled.' :
-        errorFromUrl === 'google_failed' ? 'Google sign-in failed. Try again.' :
+        errorFromUrl === 'google_failed' ? 'Google sign-in failed. Add your callback URL to Google Cloud Console → Credentials → Authorized redirect URIs (see server logs for the exact URL).' :
         errorFromUrl === 'google_verify_failed' ? 'Google sign-in verification failed. Try again.' :
         errorFromUrl === 'no_token' ? 'Google did not return a token. Try again.' :
         errorFromUrl === 'no_email' ? 'Google did not provide an email. Try again.' :
