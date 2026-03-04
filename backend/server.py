@@ -548,7 +548,7 @@ from pricing_plans import CREDIT_PLANS, TOKEN_BUNDLES, _speed_from_plan, CREDITS
 
 MIN_CREDITS_FOR_LLM = 5
 FREE_TIER_CREDITS = 100  # Free tier (email signup)
-GUEST_TIER_CREDITS = 700  # Guest users get more for testing (one full build)
+GUEST_TIER_CREDITS = 1000  # Guest users get 1000 credits for testing
 
 AGENT_DEFINITIONS = [
     {"name": "Planner", "layer": "planning", "description": "Decomposes user requests into executable tasks", "avg_tokens": 50000},
