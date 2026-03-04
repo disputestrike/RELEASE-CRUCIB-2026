@@ -88,9 +88,10 @@ import UnifiedIDEPage from "./pages/UnifiedIDEPage";
 import { LayoutProvider } from "./stores/useLayoutStore";
 import { TaskProvider } from "./stores/useTaskStore";
 
-// Empty REACT_APP_BACKEND_URL => same-origin /api (for single-URL deploy on Railway)
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || process.env.REACT_APP_API_URL || 'http://localhost:3001';
-export const API = BACKEND_URL ? `${BACKEND_URL}/api` : '/api';
+// Empty or unset REACT_APP_BACKEND_URL => same-origin /api (Railway single-URL deploy). Must treat '' explicitly so we don't fall back to localhost.
+const _raw = process.env.REACT_APP_BACKEND_URL;
+const BACKEND_URL = (_raw === '' || _raw === undefined) ? '' : (_raw || process.env.REACT_APP_API_URL || 'http://localhost:3001');
+export const API = BACKEND_URL ? `${BACKEND_URL.replace(/\/$/, '')}/api` : '/api';
 console.log('API configured as:', API, 'BACKEND_URL:', BACKEND_URL);
 
 // Auth Context
