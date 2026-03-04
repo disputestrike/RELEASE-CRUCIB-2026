@@ -68,34 +68,6 @@ describe('Nav and pages — link and click-through verification', () => {
     expect(screen.getByText(/your idea is inevitable\./i)).toBeInTheDocument();
   });
 
-  it('LandingPage: footer has Product, Resources, Legal columns', () => {
-    render(
-      <MemoryRouter>
-        <LandingPage />
-      </MemoryRouter>
-    );
-    expect(screen.getByText('Product')).toBeInTheDocument();
-    expect(screen.getByText('Resources')).toBeInTheDocument();
-    expect(screen.getByText('Legal')).toBeInTheDocument();
-  });
-
-  it('LandingPage: footer has Features, Pricing, Blog, Privacy, Terms links', () => {
-    render(
-      <MemoryRouter>
-        <LandingPage />
-      </MemoryRouter>
-    );
-    const footer = document.querySelector('footer');
-    expect(footer).toBeInTheDocument();
-    const links = footer.querySelectorAll('a[href]');
-    const hrefs = Array.from(links).map((a) => a.getAttribute('href'));
-    expect(hrefs).toContain('/features');
-    expect(hrefs).toContain('/pricing');
-    expect(hrefs).toContain('/blog');
-    expect(hrefs).toContain('/privacy');
-    expect(hrefs).toContain('/terms');
-  });
-
   it('OurProjectsPage source: nav has required links and page has full-content sections (file check)', () => {
     const fs = require('fs');
     const path = require('path');

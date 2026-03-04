@@ -145,7 +145,7 @@ const LandingPage = () => {
   };
 
   return (
-    <div className="marketing-page min-h-screen bg-kimi-bg text-kimi-text grid-pattern-kimi">
+    <div className="marketing-page min-h-screen flex flex-col bg-kimi-bg text-kimi-text grid-pattern-kimi">
       {/* Navigation — 6 items only */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-kimi-bg border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
@@ -200,7 +200,7 @@ const LandingPage = () => {
       </AnimatePresence>
 
       {/* Hero — softer typography, smaller input, suggestion chips (Manus-style) */}
-      <section className="pt-32 pb-16 px-6">
+      <section className="flex-1 pt-32 pb-16 px-6">
         <div className="max-w-[780px] mx-auto">
           <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-[2.5rem] font-semibold tracking-tight text-[#1a1a1a] mb-6 text-center">
             What can I do for you?
@@ -269,64 +269,12 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* CTA — single line */}
-      <section className="py-16 px-6 border-t border-gray-200">
+      {/* CTA — single line, pushed to bottom; no footer on landing */}
+      <section className="mt-auto py-12 px-6 border-t border-gray-200">
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="text-xl md:text-2xl font-semibold text-[#111827]">Your idea is inevitable.</h2>
         </div>
       </section>
-
-      {/* Footer — Product, Resources, Legal */}
-      <footer className="py-12 px-6 border-t border-gray-200 bg-kimi-bg">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid md:grid-cols-4 gap-12 mb-12">
-            <div>
-              <div className="mb-4">
-                <Logo variant="full" height={28} href="/" />
-              </div>
-              <p className="text-sm text-kimi-muted mb-3">Turn ideas into inevitable outcomes. Plan, build, ship.</p>
-              <ul className="space-y-2 text-sm">
-                <li><Link to="/about" className="text-kimi-muted hover:text-kimi-text transition">About us</Link></li>
-              </ul>
-            </div>
-            <div>
-              <div className="text-xs text-kimi-muted uppercase tracking-wider mb-4">Product</div>
-              <ul className="space-y-3 text-sm">
-                <li><Link to="/features" className="text-kimi-muted hover:text-kimi-text transition">Features</Link></li>
-                <li><Link to="/pricing" className="text-kimi-muted hover:text-kimi-text transition">Pricing</Link></li>
-                <li><Link to="/templates" className="text-kimi-muted hover:text-kimi-text transition">Templates</Link></li>
-                <li><Link to="/patterns" className="text-kimi-muted hover:text-kimi-text transition">Patterns</Link></li>
-                <li><Link to="/enterprise" className="text-kimi-muted hover:text-kimi-text transition">Enterprise</Link></li>
-              </ul>
-            </div>
-            <div>
-              <div className="text-xs text-kimi-muted uppercase tracking-wider mb-4">Resources</div>
-              <ul className="space-y-3 text-sm">
-                <li><Link to="/blog" className="text-kimi-muted hover:text-kimi-text transition">Blog</Link></li>
-                <li><Link to="/learn" className="text-kimi-muted hover:text-kimi-text transition">Learn</Link></li>
-                <li><Link to="/shortcuts" className="text-kimi-muted hover:text-kimi-text transition">Shortcuts</Link></li>
-                <li><Link to="/benchmarks" className="text-kimi-muted hover:text-kimi-text transition">Benchmarks</Link></li>
-                <li><Link to="/prompts" className="text-kimi-muted hover:text-kimi-text transition">Prompt Library</Link></li>
-                <li><Link to="/security" className="text-kimi-muted hover:text-kimi-text transition">Security &amp; Trust</Link></li>
-                <li><Link to="/about" className="text-kimi-muted hover:text-kimi-text transition">Why CrucibAI</Link></li>
-              </ul>
-            </div>
-            <div>
-              <div className="text-xs text-kimi-muted uppercase tracking-wider mb-4">Legal</div>
-              <ul className="space-y-3 text-sm">
-                <li><Link to="/privacy" className="text-kimi-muted hover:text-kimi-text transition">Privacy</Link></li>
-                <li><Link to="/terms" className="text-kimi-muted hover:text-kimi-text transition">Terms</Link></li>
-                <li><Link to="/aup" className="text-kimi-muted hover:text-kimi-text transition">Acceptable Use</Link></li>
-                <li><Link to="/dmca" className="text-kimi-muted hover:text-kimi-text transition">DMCA</Link></li>
-                <li><Link to="/cookies" className="text-kimi-muted hover:text-kimi-text transition">Cookies</Link></li>
-              </ul>
-            </div>
-          </div>
-          <div className="pt-8 border-t border-gray-200 text-center">
-            <p className="text-xs text-kimi-muted">© 2026 CrucibAI. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };
