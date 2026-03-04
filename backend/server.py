@@ -103,6 +103,12 @@ class CSRFMiddleware:
             return
         if method in ["POST", "PUT", "DELETE", "PATCH"]:
             headers = dict(scope.get("headers", []))
+            # Skip CSRF check if a Bearer token is present — JWT auth already prevents CSRF
+            # because cross-origin requests cannot inject Authorization headers.
+            auth_header = headers.get(b"authorization", b"").decode()
+            if auth_header.startswith("Bearer "):
+                await self.app(scope, receive, send)
+                return
             csrf_token = headers.get(b"x-csrf-token", b"").decode()
             
             # If no CSRF token header, reject the request
