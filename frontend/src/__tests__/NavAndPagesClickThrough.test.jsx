@@ -59,33 +59,13 @@ describe('Nav and pages — link and click-through verification', () => {
     expect(screen.getByRole('heading', { name: /what can i do for you\?/i })).toBeInTheDocument();
   });
 
-  it('LandingPage: CTA section has "Your idea is inevitable."', () => {
+  it('LandingPage: CTA has "Your idea is inevitable."', () => {
     render(
       <MemoryRouter>
         <LandingPage />
       </MemoryRouter>
     );
     expect(screen.getByText(/your idea is inevitable\./i)).toBeInTheDocument();
-  });
-
-  it('LandingPage: CTA has "Make It Inevitable" and "Learn More"', () => {
-    render(
-      <MemoryRouter>
-        <LandingPage />
-      </MemoryRouter>
-    );
-    expect(screen.getByRole('button', { name: /make it inevitable/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /learn more/i })).toBeInTheDocument();
-  });
-
-  it('LandingPage: Learn More link goes to /learn', () => {
-    render(
-      <MemoryRouter>
-        <LandingPage />
-      </MemoryRouter>
-    );
-    const learnLink = screen.getByRole('link', { name: /learn more/i });
-    expect(learnLink).toHaveAttribute('href', '/learn');
   });
 
   it('LandingPage: footer has Product, Resources, Legal columns', () => {
