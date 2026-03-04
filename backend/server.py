@@ -2419,7 +2419,7 @@ GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
 # Get FRONTEND_URL - ensure it's properly formatted (single source for post-login redirect)
 _raw_frontend_url = os.environ.get("FRONTEND_URL", "").strip()
-if _raw_frontend_url:
+if _raw_frontend_url and not _raw_frontend_url.startswith("http://localhost"):
     # Ensure it starts with https:// for production
     if not _raw_frontend_url.startswith(("http://", "https://")):
         _raw_frontend_url = f"https://{_raw_frontend_url}"
@@ -2428,11 +2428,11 @@ if _raw_frontend_url:
         _raw_frontend_url = _raw_frontend_url.replace("http://", "https://", 1)
     FRONTEND_URL = _raw_frontend_url
 else:
-    # Fallback for local development
-    FRONTEND_URL = "http://localhost:3000"
+    # Unset or localhost: use same host as backend at runtime (see auth_google_callback) so we never redirect to localhost in production
+    FRONTEND_URL = ""
 
 # Debug logging for Google OAuth configuration
-logger.info(f"Google OAuth Config - FRONTEND_URL: {FRONTEND_URL}")
+logger.info(f"Google OAuth Config - FRONTEND_URL: {FRONTEND_URL or '(use request host at redirect)'}")
 logger.info(f"Google OAuth Config - GOOGLE_CLIENT_ID: {GOOGLE_CLIENT_ID[:20]}..." if GOOGLE_CLIENT_ID else "GOOGLE_CLIENT_ID not set")
 logger.info(f"Google OAuth Config - GOOGLE_CLIENT_SECRET: {'SET' if GOOGLE_CLIENT_SECRET else 'NOT SET'}")
 
@@ -2479,8 +2479,11 @@ async def auth_google_redirect(request: Request, redirect: Optional[str] = None)
 async def auth_google_callback(request: Request, code: Optional[str] = None, state: Optional[str] = None):
     """Exchange Google code for tokens, create or find user, redirect to frontend with JWT.
     Uses only CrucibAI flow per docs/GOOGLE_AUTH_SETUP.md: one token exchange, verify with google-auth, redirect to FRONTEND_URL. Do not replace with any other OAuth implementation."""
-    # Single source of truth for post-login redirect: FRONTEND_URL (set at startup). Do not use CORS_ORIGINS here (can be "*").
-    frontend_base = FRONTEND_URL.rstrip("/")
+    # Post-login redirect: use FRONTEND_URL if set; else same host as backend (request) so we never send users to localhost in production
+    if FRONTEND_URL and not FRONTEND_URL.startswith("http://localhost"):
+        frontend_base = FRONTEND_URL.rstrip("/")
+    else:
+        frontend_base = _backend_base_for_oauth(request).rstrip("/")
     if not code:
         logger.info("Google callback: no code, redirecting to auth?error=no_code")
         return RedirectResponse(url=f"{frontend_base}/auth?error=no_code")
