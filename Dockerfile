@@ -8,8 +8,8 @@ WORKDIR /app
 # Copy package files + scripts so postinstall (patch-ajv-formats.js) can run
 COPY frontend/package.json frontend/package-lock.json ./
 COPY frontend/scripts ./scripts
-# Use npm-only install for deterministic, registry-friendly builds
-RUN npm ci --omit=optional
+# Use npm-only install; relax peer-deps to avoid CI ERESOLVE on dev tooling
+RUN npm ci --omit=optional --legacy-peer-deps
 COPY frontend/ ./
 ENV REACT_APP_BACKEND_URL=
 ENV FAST_REFRESH=false
