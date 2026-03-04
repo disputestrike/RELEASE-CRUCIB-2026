@@ -70,6 +70,17 @@ from security_headers import add_security_headers
 # CSRF Protection Middleware
 class CSRFMiddleware:
     """Middleware to protect against CSRF attacks on state-changing requests."""
+    # Endpoints that don't require CSRF protection (public/guest endpoints)
+    CSRF_EXEMPT_PATHS = {
+        "/api/auth/guest",
+        "/api/auth/register",
+        "/api/auth/signup",
+        "/api/auth/login",
+        "/api/auth/google",
+        "/api/auth/google/callback",
+        "/api/health",
+    }
+    
     def __init__(self, app):
         self.app = app
     
@@ -79,6 +90,13 @@ class CSRFMiddleware:
             return
         
         method = scope["method"]
+        path = scope.get("path", "")
+        
+        # Skip CSRF check for exempt paths
+        if path in self.CSRF_EXEMPT_PATHS:
+            await self.app(scope, receive, send)
+            return
+        
         # Only check CSRF for state-changing methods (skip when disabled for tests)
         if os.environ.get("DISABLE_CSRF_FOR_TEST", "").strip().lower() in ("1", "true", "yes"):
             await self.app(scope, receive, send)
