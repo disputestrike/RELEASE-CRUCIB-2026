@@ -5,10 +5,9 @@
 # Stage 1: build frontend (same-origin API: REACT_APP_BACKEND_URL="" => /api)
 FROM node:20-alpine AS frontend
 WORKDIR /app
-# Copy package files + scripts so postinstall (patch-ajv-formats.js) can run
-COPY frontend/package.json frontend/package-lock.json ./
+# Copy package files + scripts + .npmrc so postinstall and peer-deps work
+COPY frontend/package.json frontend/package-lock.json frontend/.npmrc ./
 COPY frontend/scripts ./scripts
-# Use npm-only install; relax peer-deps to avoid CI ERESOLVE on dev tooling
 RUN npm ci --omit=optional --legacy-peer-deps
 COPY frontend/ ./
 ENV REACT_APP_BACKEND_URL=
@@ -19,8 +18,8 @@ RUN npm run build
 FROM python:3.11.0-slim
 WORKDIR /app
 
-# Cache-bust: force rebuild - timestamp: 2026-03-03-08-42
-RUN echo "Build: 2026-03-03-08-42"
+# Cache-bust: force rebuild - timestamp: 2026-03-04
+RUN echo "Build: 2026-03-04"
 
 COPY requirements.txt .
 RUN echo "Installing dependencies..." && pip install --no-cache-dir -r requirements.txt && echo "Dependencies installed successfully"
