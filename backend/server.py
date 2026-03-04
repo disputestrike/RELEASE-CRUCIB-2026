@@ -529,7 +529,8 @@ class AgentAutomationBody(BaseModel):
 from pricing_plans import CREDIT_PLANS, TOKEN_BUNDLES, _speed_from_plan, CREDITS_PER_TOKEN, ADDONS, ANNUAL_PRICES
 
 MIN_CREDITS_FOR_LLM = 5
-FREE_TIER_CREDITS = 100  # Generous free tier (~2 landing pages); ~91% margin on paid
+FREE_TIER_CREDITS = 100  # Free tier (email signup)
+GUEST_TIER_CREDITS = 700  # Guest users get more for testing (one full build)
 
 AGENT_DEFINITIONS = [
     {"name": "Planner", "layer": "planning", "description": "Decomposes user requests into executable tasks", "avg_tokens": 50000},
@@ -2206,13 +2207,14 @@ async def auth_guest(request: Request):
         raise HTTPException(status_code=503, detail="Database not ready")
     user_id = str(uuid.uuid4())
     email = f"guest-{user_id[:8]}@crucibai.guest"
+    guest_credits = GUEST_TIER_CREDITS
     user = {
         "id": user_id,
         "email": email,
         "password": "",
         "name": "Guest",
-        "token_balance": FREE_TIER_CREDITS * CREDITS_PER_TOKEN,
-        "credit_balance": FREE_TIER_CREDITS,
+        "token_balance": guest_credits * CREDITS_PER_TOKEN,
+        "credit_balance": guest_credits,
         "plan": "free",
         "auth_provider": "guest",
         "workspace_mode": "simple",
@@ -2222,8 +2224,8 @@ async def auth_guest(request: Request):
     await db.token_ledger.insert_one({
         "id": str(uuid.uuid4()),
         "user_id": user_id,
-        "tokens": FREE_TIER_CREDITS * CREDITS_PER_TOKEN,
-        "credits": FREE_TIER_CREDITS,
+        "tokens": guest_credits * CREDITS_PER_TOKEN,
+        "credits": guest_credits,
         "type": "bonus",
         "description": "Guest session",
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -2267,10 +2269,18 @@ async def verify_mfa_login(body: MFAVerifyLogin, request: Request):
 @auth_router.get("/auth/me")
 async def get_me(user: dict = Depends(get_current_user)):
     await _ensure_credit_balance(user["id"])
-    await db.users.update_one({"id": user["id"]}, {"$set": {"last_login": datetime.now(timezone.utc).isoformat()}})
     u = await db.users.find_one({"id": user["id"]}, {"_id": 0})
     if not u:
         raise HTTPException(status_code=404, detail="User not found")
+    # Backfill guest users who have 0 credits (e.g. created before we gave credits)
+    if u.get("auth_provider") == "guest" and (u.get("credit_balance") or 0) == 0 and (u.get("token_balance") or 0) == 0:
+        await db.users.update_one(
+            {"id": u["id"]},
+            {"$set": {"credit_balance": GUEST_TIER_CREDITS, "token_balance": GUEST_TIER_CREDITS * CREDITS_PER_TOKEN}}
+        )
+        u["credit_balance"] = GUEST_TIER_CREDITS
+        u["token_balance"] = GUEST_TIER_CREDITS * CREDITS_PER_TOKEN
+    await db.users.update_one({"id": user["id"]}, {"$set": {"last_login": datetime.now(timezone.utc).isoformat()}})
     u["credit_balance"] = _user_credits(u)
     if u["id"] in ADMIN_USER_IDS and not u.get("admin_role"):
         u["admin_role"] = "owner"
@@ -3788,7 +3798,10 @@ async def create_project(
                 detail="You've saved 3 projects. Upgrade to Builder to save unlimited projects and get faster builds.",
                 headers={"X-Upgrade-Required": "builder"}
             )
-    estimated_tokens = data.estimated_tokens or 675000
+    # Landing pages need fewer credits so free/guest (100–700) can build
+    project_type_lower = (data.project_type or "").strip().lower()
+    default_tokens = 80000 if project_type_lower == "landing" else 675000
+    estimated_tokens = data.estimated_tokens or default_tokens
     estimated_credits = _tokens_to_credits(estimated_tokens)
     await _ensure_credit_balance(user["id"])
     cred = _user_credits(user)

@@ -1175,7 +1175,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
         : error.code === 'ERR_NETWORK' || error.message?.includes('Network') || error.message?.includes('Failed to fetch')
           ? "Connection lost. Check your connection and try again."
           : isKeyError
-            ? "AI couldn't run. Check Settings → API & Environment: add and save your OpenAI or Anthropic key, then try again."
+            ? "AI couldn't run. Add Anthropic or Cerebras API keys in Settings → API & Environment, or set ANTHROPIC_API_KEY / CEREBRAS_API_KEY on the server."
             : "The build didn't complete. Try again or check Settings if you use your own API keys.";
       setMessages(prev => prev.map((msg, i) => i === prev.length - 1 ? { role: 'assistant', content: friendlyMessage, error: true } : msg));
     } finally {
@@ -2370,7 +2370,7 @@ Respond with ONLY the complete App.js code, nothing else.`;
         {/* Add API key banner when last message is key/network error */}
         {messages.some(m => m.error && (m.content || '').toLowerCase().includes('api key')) && (
           <div className="mb-3 flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg bg-[#F5F5F4] border border-black/10 text-[#1A1A1A] text-sm">
-            <span>Check Settings → API & Environment: your saved keys are used for builds. If you see errors, re-save your OpenAI or Anthropic key and try again.</span>
+            <span>Builds use Anthropic or Cerebras. Add keys in Settings → API & Environment, or set CEREBRAS_API_KEY / ANTHROPIC_API_KEY in Railway for everyone.</span>
             <button type="button" onClick={() => navigate('/app/settings')} className="shrink-0 px-3 py-1.5 rounded-lg font-medium text-white" style={{ background: '#E05A25' }}>Open Settings</button>
           </div>
         )}
