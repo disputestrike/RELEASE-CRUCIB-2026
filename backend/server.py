@@ -2201,6 +2201,9 @@ async def login(data: UserLogin, request: Request):
 @auth_router.post("/auth/guest")
 async def auth_guest(request: Request):
     """Create a guest user and return token so the app can be used without sign-up. No auth required."""
+    if db is None:
+        logger.warning("POST /auth/guest called but db not initialized (DATABASE_URL or startup failed)")
+        raise HTTPException(status_code=503, detail="Database not ready")
     user_id = str(uuid.uuid4())
     email = f"guest-{user_id[:8]}@crucibai.guest"
     user = {
