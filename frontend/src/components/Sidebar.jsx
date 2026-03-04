@@ -413,10 +413,17 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
         </div>
       )}
 
-      {/* Token Balance */}
+      {/* Credits (credit_balance preferred; fallback token_balance/1000) */}
       <Link to="/app/tokens" className="sidebar-token-balance" title="Credit Center">
         <Coins size={16} className="sidebar-token-icon" />
-        <span className="sidebar-token-amount">{(user?.token_balance ?? 0).toLocaleString()}</span>
+        <span className="sidebar-token-amount">
+          {(user?.credit_balance != null
+            ? user.credit_balance
+            : user?.token_balance != null
+              ? Math.floor(user.token_balance / 1000)
+              : 0
+          ).toLocaleString()}
+        </span>
         <span className="sidebar-token-label">credits</span>
       </Link>
 

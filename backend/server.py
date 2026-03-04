@@ -2272,8 +2272,9 @@ async def get_me(user: dict = Depends(get_current_user)):
     u = await db.users.find_one({"id": user["id"]}, {"_id": 0})
     if not u:
         raise HTTPException(status_code=404, detail="User not found")
-    # Backfill guest users who have 0 credits (e.g. created before we gave credits)
-    if u.get("auth_provider") == "guest" and (u.get("credit_balance") or 0) == 0 and (u.get("token_balance") or 0) == 0:
+    # Backfill guest users who have no/low credits (e.g. created before we gave credits)
+    guest_credits_low = (u.get("credit_balance") or 0) < 100
+    if u.get("auth_provider") == "guest" and guest_credits_low:
         await db.users.update_one(
             {"id": u["id"]},
             {"$set": {"credit_balance": GUEST_TIER_CREDITS, "token_balance": GUEST_TIER_CREDITS * CREDITS_PER_TOKEN}}
