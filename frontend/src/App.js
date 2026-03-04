@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, createContext, useContext, Component } from "react";
+import { useState, useEffect, useRef, createContext, useContext, Component, useCallback } from "react";
 
 // Force light theme — no dark mode anywhere in the app
 const ForceLightTheme = () => {
@@ -207,8 +207,21 @@ const AuthProvider = ({ children }) => {
     }
   };
 
+  const ensureGuest = useCallback(async () => {
+    try {
+      const res = await axios.post(`${API}/auth/guest`, {}, { timeout: 10000 });
+      if (res.data?.token && res.data?.user) {
+        localStorage.setItem("token", res.data.token);
+        setToken(res.data.token);
+        setUser(mergeWorkspaceMode(res.data.user));
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout, loading, refreshUser, loginWithToken, verifyMfa }}>
+    <AuthContext.Provider value={{ user, token, login, register, logout, loading, refreshUser, loginWithToken, verifyMfa, ensureGuest }}>
       <LayoutProvider>
         <TaskProvider>
           {children}
@@ -232,36 +245,52 @@ const OnboardingRoute = ({ children }) => {
       </div>
     );
   }
-  if (!user) return <Navigate to="/auth" state={{ from: location }} replace />;
+  if (!user) return <Navigate to="/app" replace />;
   if (user.workspace_mode) return <Navigate to="/app" replace />;
   return children;
 };
 
-// Protected Route
+// Protected Route — no redirect to /auth; retry guest so user always gets in
 const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useAuth();
-  const location = useLocation();
+  const { user, loading, ensureGuest } = useAuth();
+  const [retrying, setRetrying] = useState(false);
+  const didRetryRef = useRef(false);
 
-  if (loading) {
+  useEffect(() => {
+    if (user || loading || retrying || didRetryRef.current) return;
+    didRetryRef.current = true;
+    setRetrying(true);
+    ensureGuest().then(() => setRetrying(false));
+  }, [user, loading, retrying, ensureGuest]);
+
+  if (loading || (retrying && !user)) {
     return (
       <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center p-6">
         <div className="flex flex-col items-center gap-6 max-w-sm text-center">
           <div className="w-12 h-12 border-2 border-[#666666] border-t-transparent rounded-full animate-spin" />
-          <p className="text-[#666666]">Checking login...</p>
-          <a
-            href="/"
-            className="w-full py-3 px-6 bg-[#1A1A1A] text-white font-medium rounded-lg hover:bg-[#333] no-underline"
-          >
-            View website →
-          </a>
-          <p className="text-xs text-[#666666]">Or wait a few seconds</p>
+          <p className="text-[#666666]">Opening workspace...</p>
+          <a href="/" className="w-full py-3 px-6 bg-[#1A1A1A] text-white font-medium rounded-lg hover:bg-[#333] no-underline">View website →</a>
         </div>
       </div>
     );
   }
 
   if (!user) {
-    return <Navigate to="/auth" state={{ from: location }} replace />;
+    return (
+      <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center p-6">
+        <div className="flex flex-col items-center gap-6 max-w-sm text-center">
+          <p className="text-[#666666]">Could not start session.</p>
+          <button
+            type="button"
+            onClick={() => { setRetryFailed(false); setRetrying(true); ensureGuest().then((ok) => { setRetryFailed(!ok); setRetrying(false); }); }}
+            className="w-full py-3 px-6 bg-[#1A1A1A] text-white font-medium rounded-lg hover:bg-[#333]"
+          >
+            Retry
+          </button>
+          <a href="/" className="text-sm text-[#666666] hover:text-[#1A1A1A]">Go to home</a>
+        </div>
+      </div>
+    );
   }
   if (!user.workspace_mode) {
     return <Navigate to="/onboarding" replace />;
