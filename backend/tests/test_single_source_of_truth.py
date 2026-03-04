@@ -23,12 +23,9 @@ async def test_tokens_bundles_returns_200_and_bundles_with_expected_keys(app_cli
     data = r.json()
     assert "bundles" in data
     bundles = data["bundles"]
-    # Must include add-ons light, dev (Pricing → Token Center flow)
-    assert "light" in bundles
-    assert "dev" in bundles
-    # At least one tier (e.g. builder)
-    assert "builder" in bundles or "starter" in bundles
-    for key in ["light", "dev"]:
+    # Credit plans: builder, pro, scale, teams (no starter; add-ons via custom slider)
+    for key in ["builder", "pro", "scale", "teams"]:
+        assert key in bundles, f"expected bundle {key}"
         b = bundles[key]
         assert "credits" in b
         assert "price" in b

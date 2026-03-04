@@ -1,6 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
-import { CreditCard, Layout, FileText, BookOpen } from 'lucide-react';
 import Logo from './Logo';
 
 export default function PublicNav() {
@@ -17,18 +16,16 @@ export default function PublicNav() {
         <Logo variant="full" height={32} href="/" className="shrink-0" />
         <div className="flex items-center gap-6">
           <Link to="/features" className={`${linkClass} hidden sm:flex`}>Features</Link>
-          <Link to="/pricing" className={`${linkClass} hidden sm:flex`}><CreditCard className="w-4 h-4" /> Pricing</Link>
-          <Link to="/templates" className={`${linkClass} hidden sm:flex`}><Layout className="w-4 h-4" /> Templates</Link>
-          <Link to="/prompts" className={`${linkClass} hidden sm:flex`}><FileText className="w-4 h-4" /> Prompts</Link>
-          <Link to="/learn" className={`${linkClass} hidden sm:flex`}><BookOpen className="w-4 h-4" /> Documentation</Link>
+          <Link to="/pricing" className={`${linkClass} hidden sm:flex`}>Pricing</Link>
+          <Link to="/our-projects" className={`${linkClass} hidden sm:flex`}>Our Projects</Link>
           <Link to="/blog" className={`${linkClass} hidden sm:flex`}>Blog</Link>
           {user ? (
             <Link to="/app" className={ctaClass}>Dashboard</Link>
           ) : (
             <>
-              <Link to="/auth" className={linkClass}>Sign in</Link>
+              <Link to="/auth" className={linkClass}>Sign In</Link>
               <button onClick={() => navigate('/auth?mode=register')} className={ctaClass}>
-                Get started free
+                Get Started
               </button>
             </>
           )}

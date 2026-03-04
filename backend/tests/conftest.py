@@ -11,6 +11,8 @@ os.environ.setdefault("MONGO_URL", "mongodb://localhost:27017")
 os.environ.setdefault("DB_NAME", "crucibai")
 # Avoid 429 in tests: raise limit so suite can run without rate-limit failures
 os.environ.setdefault("RATE_LIMIT_PER_MINUTE", "99999")
+# Allow register/login in test client without CSRF token
+os.environ["DISABLE_CSRF_FOR_TEST"] = "1"
 
 # Enable async tests (test_orchestration_e2e)
 pytest_plugins = ("pytest_asyncio",)

@@ -1,41 +1,109 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Zap, Check, ArrowRight, Plus } from 'lucide-react';
+import { Zap, Check, ArrowRight } from 'lucide-react';
 import { useAuth, API } from '../App';
 import PublicNav from '../components/PublicNav';
 import PublicFooter from '../components/PublicFooter';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';
 
-// Final Model: Starter, Builder, Pro, Teams (+ add-ons). No LLM names on landing/pricing (Manus-style).
+// Linear pricing: Free (top block), paid tiers Builder / Pro / Scale / Teams. Custom credits via slider.
 const DEFAULT_BUNDLES = {
-  free: { credits: 100, price: 0, name: 'Free', speed: 'Lite only' },
-  starter: { credits: 200, price: 14.99, name: 'Starter', speed: 'Lite + Pro' },
-  builder: { credits: 500, price: 29.99, name: 'Builder', speed: 'Lite + Pro with swarm' },
-  pro: { credits: 2000, price: 79.99, name: 'Pro', speed: 'All speeds' },
-  teams: { credits: 10000, price: 199.99, name: 'Teams', speed: 'All speeds' },
+  free: { credits: 100, price: 0, name: 'Free' },
+  builder: { credits: 250, price: 15, name: 'Builder' },
+  pro: { credits: 500, price: 30, name: 'Pro' },
+  scale: { credits: 1000, price: 60, name: 'Scale' },
+  teams: { credits: 2500, price: 150, name: 'Teams' },
 };
-const BUNDLE_ORDER = ['free', 'starter', 'builder', 'pro', 'teams'];
+const BUNDLE_ORDER = ['builder', 'pro', 'scale', 'teams'];
 
-const DEFAULT_ADDONS = {
-  light: { credits: 50, price: 7, name: 'Light' },
-  dev: { credits: 250, price: 30, name: 'Dev' },
-};
-const ADDON_ORDER = ['light', 'dev'];
-
-// CrucibAI-specific features per plan (Manus-style: list what they get, not model names)
+// Outcome-only features (no speed wording)
 const PLAN_FEATURES = {
-  free: ['Landing pages', 'Lite speed only', 'Plan-first build', 'Export to ZIP'],
-  starter: ['Landing pages & simple apps', 'Lite + Pro speeds', 'Plan-first build & preview', 'Export to ZIP & GitHub'],
-  builder: ['Landing pages & full web apps', 'Lite + Pro with swarm', 'Live preview', 'Swarm enabled — parallel agents'],
-  pro: ['Everything in Builder', 'All 3 speeds (Lite/Pro/Max)', 'Max speed with full 123 agents', 'Priority support'],
-  teams: ['Everything in Pro', 'High-volume builds', 'For teams & agencies', 'Priority speed & support'],
+  free: ['Landing pages', 'Plan-first build', 'Export to ZIP'],
+  builder: ['Landing pages & full web apps', 'Live preview', 'Swarm enabled — parallel agents'],
+  pro: ['Everything in Builder', 'More credits & capacity', 'Priority support'],
+  scale: ['Everything in Pro', 'High-volume builds', 'More credits per month'],
+  teams: ['Everything in Scale', 'For teams & agencies', 'Priority support'],
 };
 
 const CREDITS_PER_LANDING = 50;
 const CREDITS_PER_APP = 100;
-const RECOMMEND_ORDER = ['free', 'starter', 'builder', 'pro', 'teams'];
+const RECOMMEND_ORDER = ['free', 'builder', 'pro', 'scale', 'teams'];
+const CUSTOM_CREDITS_MIN = 100;
+const CUSTOM_CREDITS_MAX = 5000;
+const CUSTOM_CREDITS_STEP = 100;
+const PRICE_PER_CREDIT = 0.06;
+
+function CustomCreditsSlider({ min, max, step, pricePerCredit, user, token, api, navigate, axios, logApiError }) {
+  const [credits, setCredits] = useState(min);
+  const [loading, setLoading] = useState(false);
+  const total = Math.round(credits * pricePerCredit * 100) / 100;
+
+  const handleBuy = async () => {
+    if (!user) {
+      navigate(`/auth?mode=register&redirect=${encodeURIComponent('/app/tokens')}`);
+      return;
+    }
+    setLoading(true);
+    try {
+      await axios.post(`${api}/tokens/purchase-custom`, { credits }, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      navigate('/app/tokens?success=1');
+      window.location.reload();
+    } catch (e) {
+      const detail = e.response?.data?.detail ?? '';
+      const useStripe = typeof detail === 'string' && detail.includes('Stripe');
+      if (useStripe) {
+        try {
+          const { data } = await axios.post(
+            `${api}/stripe/create-checkout-session-custom`,
+            { credits },
+            { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+          );
+          if (data?.url) window.location.href = data.url;
+        } catch (e2) {
+          logApiError('Stripe custom checkout', e2);
+        }
+      } else {
+        logApiError('Purchase custom credits', e);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-2xl mx-auto p-6 rounded-2xl border border-stone-200 bg-white shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="flex-1">
+          <label className="block text-sm font-medium text-[#1A1A1A] mb-2">Credits: {credits}</label>
+          <input
+            type="range"
+            min={min}
+            max={max}
+            step={step}
+            value={credits}
+            onChange={(e) => setCredits(Number(e.target.value))}
+            className="w-full h-2 rounded-lg appearance-none bg-stone-200 accent-[#1A1A1A]"
+          />
+        </div>
+        <div className="flex items-center gap-4 shrink-0">
+          <span className="text-lg font-bold text-[#1A1A1A]">Total: ${total.toFixed(2)}</span>
+          <button
+            type="button"
+            onClick={handleBuy}
+            disabled={loading}
+            className="py-2 px-4 rounded-lg bg-[#1A1A1A] hover:opacity-90 text-white text-sm font-medium disabled:opacity-60"
+          >
+            {loading ? 'Processing…' : `Buy ${credits} credits`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function OutcomeCalculator({ bundles, onSelectPlan }) {
   const [landings, setLandings] = useState(0);
@@ -100,28 +168,32 @@ function OutcomeCalculator({ bundles, onSelectPlan }) {
 
 export default function Pricing() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [bundles, setBundles] = useState(DEFAULT_BUNDLES);
-  const [addons, setAddons] = useState(DEFAULT_ADDONS);
-  const [annualPrices, setAnnualPrices] = useState({ free: 0, starter: 149.99, builder: 299.99, pro: 799.99, teams: 1999.99 });
+  const [annualPrices, setAnnualPrices] = useState({ free: 0, builder: 150, pro: 300, scale: 600, teams: 1500 });
   const [billingPeriod, setBillingPeriod] = useState('monthly'); // 'monthly' | 'annual'
+  const [customAddon, setCustomAddon] = useState({ min_credits: CUSTOM_CREDITS_MIN, max_credits: CUSTOM_CREDITS_MAX, price_per_credit: PRICE_PER_CREDIT });
 
   useEffect(() => {
     axios.get(`${API}/tokens/bundles`, { timeout: 5000 })
       .then((r) => {
         if (r.data?.bundles && typeof r.data.bundles === 'object') {
           const b = {};
-          const a = {};
           for (const [key, val] of Object.entries(r.data.bundles)) {
+            if (!BUNDLE_ORDER.includes(key)) continue;
             const credits = val.credits ?? (val.tokens / 1000);
-            const item = { credits, price: val.price, name: val.name || key, speed: val.speed || '' };
-            if (ADDON_ORDER.includes(key)) a[key] = item;
-            else if (BUNDLE_ORDER.includes(key)) b[key] = item;
+            b[key] = { credits, price: val.price, name: val.name || key };
           }
           if (Object.keys(b).length > 0) setBundles((prev) => ({ ...prev, ...b }));
-          if (Object.keys(a).length > 0) setAddons((prev) => ({ ...prev, ...a }));
         }
         if (r.data?.annual_prices && typeof r.data.annual_prices === 'object') setAnnualPrices((prev) => ({ ...prev, ...r.data.annual_prices }));
+        if (r.data?.custom_addon && typeof r.data.custom_addon === 'object') {
+          setCustomAddon((prev) => ({
+            min_credits: r.data.custom_addon.min_credits ?? prev.min_credits,
+            max_credits: r.data.custom_addon.max_credits ?? prev.max_credits,
+            price_per_credit: r.data.custom_addon.price_per_credit ?? prev.price_per_credit,
+          }));
+        }
       })
       .catch((e) => logApiError('Pricing', e));
   }, []);
@@ -142,11 +214,7 @@ export default function Pricing() {
               <li>• No surprises — credits, caps, and rollover are transparent.</li>
             </ul>
           </div>
-          <div className="mt-6 max-w-2xl mx-auto p-4 rounded-xl border border-stone-200 bg-white text-left">
-            <p className="text-sm font-medium text-[#1A1A1A] mb-2">vs Lovable</p>
-            <p className="text-sm text-[#1A1A1A] mb-2">Lovable charges $25/month for 100 credits — plus a separate bill for Lovable Cloud for deployment. CrucibAI: $12.99 for 100 credits. Add-ons (Light $7, Dev $30) when you need more — Lovable has no top-up.</p>
-            <p className="text-sm text-[#1A1A1A]">Half the price. Web, mobile, and automations in one platform.</p>
-          </div>
+          <p className="text-sm text-kimi-muted mt-4">Cost preview before running · Auto-refund on failures · Credits roll over on all plans.</p>
         </div>
 
         {/* Free tier */}
@@ -204,7 +272,6 @@ export default function Pricing() {
             const b = bundles[key];
             const isBuilder = key === 'builder';
             const features = PLAN_FEATURES[key] || ['All features'];
-            const showSpeed = b.speed && !String(b.speed).toLowerCase().includes('haiku') && !String(b.speed).toLowerCase().includes('cerebras');
             const annualPrice = annualPrices[key];
             const displayPrice = billingPeriod === 'annual' && annualPrice ? annualPrice : b.price;
             const monthlyEquivalent = billingPeriod === 'annual' && annualPrice ? (annualPrice / 12).toFixed(2) : null;
@@ -233,8 +300,7 @@ export default function Pricing() {
                   {monthlyEquivalent && <span className="text-stone-500 text-sm block mt-0.5">${monthlyEquivalent}/mo</span>}
                   {savePct > 0 && <span className="text-stone-500 text-xs font-medium">Save {savePct}%</span>}
                 </div>
-                <p className="text-stone-500 text-sm mb-1">{b.credits} credits per month</p>
-                {showSpeed && <p className="text-stone-500 text-xs mb-4">{b.speed}</p>}
+                <p className="text-stone-500 text-sm mb-4">{b.credits} credits per month</p>
                 <ul className="space-y-2 text-xs text-[#1A1A1A] mb-6">
                   {features.map((f, j) => (
                     <li key={j} className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-[#1A1A1A] shrink-0" /> {f}</li>
@@ -260,43 +326,21 @@ export default function Pricing() {
           Every paid plan includes 5 pre-built automation agent templates (daily digest, lead finder, inbox summarizer, status checker, YouTube poster). Describe your automation in plain language — we create it.
         </p>
 
-        {/* Add-ons */}
-        <h2 className="text-lg font-semibold text-center mt-14 mb-2">Add-ons</h2>
-        <p className="text-zinc-500 text-center mb-6">One-time top-ups. Buy as many as you need, anytime—no limit. Credits roll over. Light (50 credits, $7) or Dev (250 credits, $30).</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
-          {ADDON_ORDER.filter((k) => addons[k]).map((key) => {
-            const a = addons[key];
-            return (
-              <motion.div
-                key={key}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-4 p-6 rounded-2xl border border-stone-200 bg-white shadow-sm"
-              >
-                <Plus className="w-5 h-5 text-stone-500 shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <span className="font-medium text-[#1A1A1A]">{a.name}</span>
-                  <span className="text-stone-500 text-sm ml-2">— {a.credits} credits</span>
-                </div>
-                <span className="text-lg font-bold text-[#1A1A1A]">${Number(a.price).toFixed(2)}</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (user) {
-                      navigate('/app/tokens', { state: { addon: key } });
-                    } else {
-                      const redirect = `/app/tokens?addon=${encodeURIComponent(key)}`;
-                      navigate(`/auth?mode=register&redirect=${encodeURIComponent(redirect)}`);
-                    }
-                  }}
-                  className="py-2 px-4 rounded-lg bg-[#1A1A1A] hover:opacity-90 text-white text-sm font-medium shrink-0"
-                >
-                  {user ? 'Buy' : 'Get started'}
-                </button>
-              </motion.div>
-            );
-          })}
-        </div>
+        {/* Custom credits (slider) */}
+        <h2 className="text-lg font-semibold text-center mt-14 mb-2">Need more credits?</h2>
+        <p className="text-zinc-500 text-center mb-6">Buy credits in bulk. ${(customAddon.price_per_credit || PRICE_PER_CREDIT).toFixed(2)}/credit, 100–{customAddon.max_credits || CUSTOM_CREDITS_MAX} credits. Credits roll over.</p>
+        <CustomCreditsSlider
+          min={customAddon.min_credits ?? CUSTOM_CREDITS_MIN}
+          max={customAddon.max_credits ?? CUSTOM_CREDITS_MAX}
+          step={CUSTOM_CREDITS_STEP}
+          pricePerCredit={customAddon.price_per_credit ?? PRICE_PER_CREDIT}
+          user={user}
+          token={token}
+          api={API}
+          navigate={navigate}
+          axios={axios}
+          logApiError={logApiError}
+        />
 
         <p className="text-center text-stone-500 text-sm mt-10">
           Need a custom plan? <Link to="/enterprise" className="text-[#1A1A1A] hover:underline">Enterprise / Contact sales</Link>.
@@ -315,7 +359,7 @@ export default function Pricing() {
         <div className="mt-20 max-w-2xl mx-auto border-t border-stone-200 pt-16">
           <h3 className="text-lg font-semibold mb-4">Clarity & how credits work</h3>
           <p className="text-stone-500 text-sm leading-relaxed">
-            Know exactly what you're building. No surprises, no hidden limitations. Plans are monthly (or annual for 17% off). Each build uses credits (1 credit ≈ 1,000 tokens). Unused credits roll over. Add-ons anytime—no limit. Sustainable unit economics (e.g. 92% margin on paid) means we survive and keep improving—unlike VC-funded competitors.
+            Know exactly what you're building. No surprises, no hidden limitations. Plans are monthly (or annual for 17% off). Unused credits roll over. Buy more credits anytime—no limit.
           </p>
         </div>
       </div>

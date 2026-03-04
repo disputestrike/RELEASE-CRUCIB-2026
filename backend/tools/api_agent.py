@@ -15,6 +15,7 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from agents.base_agent import BaseAgent
+from ssrf_url_validator import validate_url_for_request
 
 
 class APIAgent(BaseAgent):
@@ -29,10 +30,8 @@ class APIAgent(BaseAgent):
         """
         Make HTTP request.
         
-        Security Note: This agent makes requests to user-provided URLs.
-        In production, implement URL allowlisting or blocklisting to prevent SSRF attacks.
-        Consider restricting access to internal networks (localhost, 127.0.0.1, 10.0.0.0/8, etc.).
-        
+        SSRF: URLs are validated (private IPs, file:, localhost blocked unless allow_private in config).
+
         Expected context:
         {
             "method": "GET|POST|PUT|DELETE",
@@ -47,12 +46,13 @@ class APIAgent(BaseAgent):
         headers = context.get("headers", {})
         body = context.get("body")
         params = context.get("params")
-        
-        # Security Note: URL validation should be implemented here in production
-        # Example: Check against allowlist, block internal IPs, etc.
         if not url:
             return {"error": "URL is required", "success": False}
-        
+        allow_private = (self.config or {}).get("allow_private_urls", False)
+        try:
+            validate_url_for_request(url, allow_private=allow_private)
+        except ValueError as e:
+            return {"error": str(e), "success": False}
         async with httpx.AsyncClient() as client:
             try:
                 if method == "GET":
