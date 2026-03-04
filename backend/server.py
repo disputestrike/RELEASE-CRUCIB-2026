@@ -7285,8 +7285,18 @@ SWARM_TOKEN_MULTIPLIER = 1.5  # Pro speed with swarm
 MAX_TOKEN_MULTIPLIER = 2.0    # Max speed (full swarm)
 
 # Serve frontend static files (Docker/Railway: frontend built and copied to /app/static)
-# Mount AFTER all API routes so /api/* routes are handled first
+# SPA fallback: serve index.html for paths like /auth, /dashboard so client-side router works
 _static_dir = Path(__file__).resolve().parent / "static"
 if _static_dir.exists():
     from fastapi.staticfiles import StaticFiles
-    app.mount("/", StaticFiles(directory=str(_static_dir), html=True), name="frontend")
+
+    class SpaStaticFiles(StaticFiles):
+        """Serve index.html for unknown paths so React Router handles /auth, /dashboard, etc."""
+
+        async def lookup_path(self, path: str):
+            full_path, stat_result = await super().lookup_path(path)
+            if stat_result is None:
+                full_path, stat_result = await super().lookup_path("index.html")
+            return full_path, stat_result
+
+    app.mount("/", SpaStaticFiles(directory=str(_static_dir), html=True), name="frontend")
