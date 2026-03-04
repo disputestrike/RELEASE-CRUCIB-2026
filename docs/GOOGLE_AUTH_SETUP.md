@@ -39,9 +39,10 @@ This doc describes **how CrucibAI implements** Google Auth: sign up, sign in, an
    - APIs & Services → **Credentials** → **Create credentials** → **OAuth client ID**.  
    - Application type: **Web application**.  
    - Name: e.g. “CrucibAI Web”.  
-   - **Authorized redirect URIs:** add your callback URL, e.g.:  
+   - **Authorized redirect URIs:** add your callback URL(s). **The value must match exactly** what the app sends.  
      - Local: `http://localhost:8000/api/auth/google/callback`  
-     - Production: `https://your-api-domain.com/api/auth/google/callback`  
+     - **Railway:** `https://crucibai-production.up.railway.app/api/auth/google/callback` (if you see `Error 400: redirect_uri_mismatch`, add this exact URI here).  
+     - Other production: `https://your-api-domain.com/api/auth/google/callback`  
    - Create → copy **Client ID** and **Client secret**.
 
 5. **Env vars (backend)**  
@@ -50,7 +51,9 @@ This doc describes **how CrucibAI implements** Google Auth: sign up, sign in, an
    - `GOOGLE_CLIENT_ID` = Client ID from step 4.  
    - `GOOGLE_CLIENT_SECRET` = Client secret from step 4.  
    - `FRONTEND_URL` = where the React app lives (e.g. `http://localhost:3000` or `https://app.crucibai.com`).  
-     - Used to redirect after login: `{FRONTEND_URL}/auth?token=...`.
+     - Used to redirect after login: `{FRONTEND_URL}/auth?token=...`.  
+   - **`BACKEND_PUBLIC_URL`** (recommended for production): The public URL of the backend (e.g. `https://crucibai-production.up.railway.app`).  
+     - Ensures the OAuth callback URL sent to Google uses **HTTPS**; without it, the app may send `http://` and cause `redirect_uri_mismatch` or require you to register `http://` in Google (insecure).
 
 ---
 
