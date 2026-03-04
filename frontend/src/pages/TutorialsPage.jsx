@@ -362,7 +362,7 @@ export default function TutorialsPage() {
                         {/* CTA */}
                         <div className="mt-4 flex items-center gap-3">
                           <button
-                            onClick={() => navigate(user ? '/app/workspace' : '/auth')}
+                            onClick={() => navigate('/app/workspace')}
                             className="flex items-center gap-2 px-4 py-2 bg-[#1A1A1A] hover:bg-[#333] rounded-lg text-sm font-medium transition"
                           >
                             <Play size={14} /> Try it now
@@ -398,7 +398,7 @@ export default function TutorialsPage() {
             <button onClick={() => navigate('/learn')} className="flex items-center gap-2 px-5 py-2.5 border border-zinc-700 hover:border-zinc-600 rounded-lg text-sm font-medium transition">
               <BookOpen size={16} /> Learn
             </button>
-            <button onClick={() => navigate(user ? '/app/workspace' : '/auth')} className="flex items-center gap-2 px-5 py-2.5 bg-[#1A1A1A] hover:bg-[#333] rounded-lg text-sm font-medium transition">
+            <button onClick={() => navigate('/app/workspace')} className="flex items-center gap-2 px-5 py-2.5 bg-[#1A1A1A] hover:bg-[#333] rounded-lg text-sm font-medium transition">
               <Zap size={16} /> Open Workspace
             </button>
           </div>

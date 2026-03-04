@@ -38,19 +38,8 @@ const LandingPage = () => {
     const prompt = (promptOverride ?? input).trim();
     if (!prompt || isBuilding) return;
     const state = (filesOverride?.length || attachedFiles?.length) ? { initialAttachedFiles: filesOverride || attachedFiles } : undefined;
-    if (user) {
-      const q = `prompt=${encodeURIComponent(prompt)}`;
-      navigate(`/app/workspace?${q}`, { state });
-      return;
-    }
-    // Preserve prompt through auth: save to sessionStorage; use URL only for short prompts (URL length limit).
-    try {
-      sessionStorage.setItem(PENDING_PROMPT_KEY, prompt);
-    } catch (_) {}
-    const workspacePath = prompt.length <= MAX_PROMPT_IN_URL
-      ? `/app/workspace?prompt=${encodeURIComponent(prompt)}`
-      : '/app/workspace';
-    navigate(`/auth?mode=register&redirect=${encodeURIComponent(workspacePath)}`, { state: state ? { ...state } : undefined });
+    const q = `prompt=${encodeURIComponent(prompt)}`;
+    navigate(`/app/workspace?${q}`, { state });
   };
 
   const handleLandingFileSelect = (e) => {
@@ -155,22 +144,13 @@ const LandingPage = () => {
             <Link to="/pricing" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Pricing</Link>
             <Link to="/our-projects" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Our Project</Link>
             <Link to="/blog" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Blog</Link>
-            {user ? (
-              <button
-                onClick={() => navigate('/app')}
-                className="px-4 py-2 rounded-full bg-black text-white text-sm font-medium hover:bg-black/90 transition"
-              >
-                Dashboard
-              </button>
-            ) : (
-              <button
-                onClick={() => navigate('/auth')}
-                className="px-4 py-2 rounded-full bg-black text-white text-sm font-medium hover:bg-black/90 transition"
-              >
-                Sign In
-              </button>
-            )}
-            <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="px-4 py-2 bg-white text-gray-900 text-sm font-medium rounded-lg hover:bg-gray-100 transition">Get Started</button>
+            <button
+              onClick={() => navigate('/app')}
+              className="px-4 py-2 rounded-full bg-black text-white text-sm font-medium hover:bg-black/90 transition"
+            >
+              Dashboard
+            </button>
+            <button onClick={() => navigate('/app/workspace')} className="px-4 py-2 bg-white text-gray-900 text-sm font-medium rounded-lg hover:bg-gray-100 transition">Get Started</button>
           </div>
           <button className="md:hidden text-kimi-text" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -186,14 +166,8 @@ const LandingPage = () => {
               <Link to="/pricing" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Pricing</Link>
               <Link to="/our-projects" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Our Project</Link>
               <Link to="/blog" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Blog</Link>
-              {user ? (
-                <button onClick={() => { navigate('/app'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-gray-900 rounded-lg font-medium mt-4">Dashboard</button>
-              ) : (
-                <>
-                  <Link to="/auth" className="text-lg py-2" onClick={() => setMobileMenuOpen(false)}>Sign In</Link>
-                  <button onClick={() => { navigate('/auth?mode=register'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-gray-900 rounded-lg font-medium mt-2">Get Started</button>
-                </>
-              )}
+              <button onClick={() => { navigate('/app'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-gray-900 rounded-lg font-medium mt-4">Dashboard</button>
+              <button onClick={() => { navigate('/app/workspace'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-gray-900 rounded-lg font-medium mt-2">Get Started</button>
             </div>
           </motion.div>
         )}

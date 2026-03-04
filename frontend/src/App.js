@@ -101,7 +101,7 @@ export const useAuth = () => useContext(AuthContext);
 
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(localStorage.getItem("token"));
 
   const mergeWorkspaceMode = (u) => {
@@ -115,6 +115,18 @@ const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     let cancelled = false;
+    const ensureGuest = async () => {
+      try {
+        const res = await axios.post(`${API}/auth/guest`, {}, { timeout: 10000 });
+        if (!cancelled && res.data?.token && res.data?.user) {
+          localStorage.setItem("token", res.data.token);
+          setToken(res.data.token);
+          setUser(mergeWorkspaceMode(res.data.user));
+        }
+      } catch (e) {
+        if (!cancelled) setUser(null);
+      }
+    };
     const checkAuth = async () => {
       if (token) {
         try {
@@ -127,9 +139,13 @@ const AuthProvider = ({ children }) => {
           if (!cancelled) {
             localStorage.removeItem("token");
             setToken(null);
+            await ensureGuest();
           }
         }
+      } else {
+        await ensureGuest();
       }
+      if (!cancelled) setLoading(false);
     };
     checkAuth();
     return () => { cancelled = true; };

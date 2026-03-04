@@ -35,7 +35,7 @@ export default function TemplatesPublic() {
   }, []);
 
   const handleUse = () => {
-    navigate(user ? '/app/templates' : '/auth?mode=register');
+    navigate('/app/templates');
   };
 
   return (

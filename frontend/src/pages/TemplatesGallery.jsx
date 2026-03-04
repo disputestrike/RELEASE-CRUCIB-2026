@@ -20,7 +20,7 @@ export default function TemplatesGallery() {
 
   const createFromTemplate = (templateId) => {
     if (!token) {
-      navigate('/auth');
+      navigate('/app');
       return;
     }
     setCreatingId(templateId);

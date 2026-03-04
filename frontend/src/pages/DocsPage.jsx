@@ -316,7 +316,7 @@ export default function DocsPage() {
           <p className="text-zinc-500 mb-4">Start using the CrucibAI API to build apps with 120 agents.</p>
           <div className="flex items-center justify-center gap-3">
             <button
-              onClick={() => navigate(user ? '/app/workspace' : '/auth')}
+              onClick={() => navigate('/app/workspace')}
               className="px-6 py-3 bg-[#1A1A1A] hover:bg-[#333] text-white rounded-lg font-medium transition"
             >
               {user ? 'Open Workspace' : 'Get Started Free'}

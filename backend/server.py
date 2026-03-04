@@ -2198,6 +2198,37 @@ async def login(data: UserLogin, request: Request):
         await audit_logger.log(user["id"], "login", ip_address=ip)
     return {"token": token, "user": {k: v for k, v in user.items() if k != "password"}}
 
+@auth_router.post("/auth/guest")
+async def auth_guest(request: Request):
+    """Create a guest user and return token so the app can be used without sign-up. No auth required."""
+    user_id = str(uuid.uuid4())
+    email = f"guest-{user_id[:8]}@crucibai.guest"
+    user = {
+        "id": user_id,
+        "email": email,
+        "password": "",
+        "name": "Guest",
+        "token_balance": FREE_TIER_CREDITS * CREDITS_PER_TOKEN,
+        "credit_balance": FREE_TIER_CREDITS,
+        "plan": "free",
+        "auth_provider": "guest",
+        "workspace_mode": "simple",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.users.insert_one(user)
+    await db.token_ledger.insert_one({
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "tokens": FREE_TIER_CREDITS * CREDITS_PER_TOKEN,
+        "credits": FREE_TIER_CREDITS,
+        "type": "bonus",
+        "description": "Guest session",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    token = create_token(user["id"])
+    u = {k: v for k, v in user.items() if k not in ("password", "_id")}
+    return {"token": token, "user": u}
+
 class MFAVerifyLogin(BaseModel):
     code: str
     mfa_token: str

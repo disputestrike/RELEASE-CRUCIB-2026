@@ -55,7 +55,7 @@ export default function PromptsPublic() {
     if (user) {
       navigate('/app/workspace', { state: { initialPrompt: prompt } });
     } else {
-      navigate(`/auth?mode=register&prompt=${encodeURIComponent(prompt)}`);
+      navigate(`/app/workspace?prompt=${encodeURIComponent(prompt)}`);
     }
   };
 

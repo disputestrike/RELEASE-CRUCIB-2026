@@ -47,11 +47,7 @@ const OurProjectsPage = () => {
     const q = `prompt=${encodeURIComponent(prompt)}`;
     const workspacePath = `/app/workspace?${q}`;
     const state = (filesOverride?.length || attachedFiles?.length) ? { initialAttachedFiles: filesOverride || attachedFiles } : undefined;
-    if (user) {
-      navigate(workspacePath, { state });
-    } else {
-      navigate(`/auth?mode=register&redirect=${encodeURIComponent(workspacePath)}`, { state: state ? { ...state } : undefined });
-    }
+    navigate(workspacePath, { state });
   };
 
   const handleLandingFileSelect = (e) => {
@@ -288,9 +284,9 @@ const OurProjectsPage = () => {
             {user ? (
               <button onClick={() => navigate('/app')} className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Dashboard</button>
             ) : (
-              <button onClick={() => navigate('/auth')} className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Sign In</button>
+              <button onClick={() => navigate('/app')} className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Dashboard</button>
             )}
-            <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="px-4 py-2 bg-white text-gray-900 text-sm font-medium rounded-lg hover:bg-gray-100 transition">Get Started</button>
+            <button onClick={() => navigate('/app/workspace')} className="px-4 py-2 bg-white text-gray-900 text-sm font-medium rounded-lg hover:bg-gray-100 transition">Get Started</button>
           </div>
           <button className="md:hidden text-kimi-text" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -311,8 +307,8 @@ const OurProjectsPage = () => {
                 <button onClick={() => { navigate('/app'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-gray-900 rounded-lg font-medium mt-4">Dashboard</button>
               ) : (
                 <>
-                  <Link to="/auth" className="text-lg py-2" onClick={() => setMobileMenuOpen(false)}>Sign In</Link>
-                  <button onClick={() => { navigate('/auth?mode=register'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-gray-900 rounded-lg font-medium mt-2">Get Started</button>
+                  <button onClick={() => { navigate('/app'); setMobileMenuOpen(false); }} className="text-lg py-2">Dashboard</button>
+                  <button onClick={() => { navigate('/app/workspace'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-gray-900 rounded-lg font-medium mt-2">Get Started</button>
                 </>
               )}
             </div>
@@ -333,7 +329,7 @@ const OurProjectsPage = () => {
             The only platform where the same AI that builds your app runs inside your automations. Web apps, mobile apps, and automations — one platform, one AI, no switching tools.
           </motion.p>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }} className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-3">
-            <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="glass-kimi-btn px-6 py-3 text-gray-900 font-medium rounded-xl transition">
+            <button onClick={() => navigate('/app/workspace')} className="glass-kimi-btn px-6 py-3 text-gray-900 font-medium rounded-xl transition">
               Make It Inevitable
             </button>
             <Link to="/app/workspace" className="px-6 py-3 bg-gray-50 text-kimi-text font-medium rounded-xl border border-gray-200 hover:bg-gray-100 transition">Open Workspace</Link>
@@ -675,7 +671,7 @@ const OurProjectsPage = () => {
             </div>
           </div>
           <div className="mt-10 text-center">
-            <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="px-6 py-3 bg-white text-gray-900 font-medium rounded-lg hover:bg-gray-100 transition">
+            <button onClick={() => navigate('/app/workspace')} className="px-6 py-3 bg-white text-gray-900 font-medium rounded-lg hover:bg-gray-100 transition">
               {user ? 'Import in Dashboard' : 'Get started free'}
             </button>
           </div>
@@ -752,7 +748,7 @@ const OurProjectsPage = () => {
                   <p className="text-xs text-kimi-muted mb-3">Quality score: {ex.quality_metrics.overall_score}/100</p>
                 )}
                 <button
-                  onClick={() => user ? navigate(`/app/examples`) : navigate(`/auth?mode=register&redirect=${encodeURIComponent('/app/examples')}`)}
+                  onClick={() => navigate('/app/examples')}
                   className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-gray-50 text-kimi-text hover:bg-gray-100 transition text-sm font-medium"
                 >
                   <GitFork className="w-4 h-4" />
@@ -768,10 +764,10 @@ const OurProjectsPage = () => {
                       <h3 className="font-semibold text-kimi-text">{label}</h3>
                     </div>
                     <button
-                      onClick={() => navigate(user ? '/app' : '/auth?mode=register')}
+                      onClick={() => navigate('/app')}
                       className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-gray-50 text-kimi-text hover:bg-gray-100 transition text-sm"
                     >
-                      <ArrowRight className="w-4 h-4" /> {user ? 'Open workspace' : 'Get started'}
+                      <ArrowRight className="w-4 h-4" /> Open workspace
                     </button>
                   </div>
                 ))}
@@ -994,7 +990,7 @@ const OurProjectsPage = () => {
           <h2 className="text-3xl md:text-4xl font-bold text-kimi-text mb-4">Your idea is inevitable.</h2>
           <p className="text-kimi-muted mb-8">Describe what you want to build now. Ship it today.</p>
           <div className="flex flex-wrap justify-center gap-4">
-            <button onClick={() => navigate(user ? '/app' : '/auth?mode=register')} className="px-6 py-3 bg-white text-gray-900 font-medium rounded-lg hover:bg-gray-100 transition border border-black/10">
+            <button onClick={() => navigate('/app/workspace')} className="px-6 py-3 bg-white text-gray-900 font-medium rounded-lg hover:bg-gray-100 transition border border-black/10">
               Make It Inevitable
             </button>
             <Link to="/learn" className="px-6 py-3 bg-transparent text-kimi-text font-medium rounded-lg border border-white/30 hover:border-white/50 transition">
