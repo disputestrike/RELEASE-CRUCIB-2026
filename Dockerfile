@@ -12,13 +12,14 @@ RUN npm ci --omit=optional --legacy-peer-deps
 COPY frontend/ ./
 ENV REACT_APP_BACKEND_URL=
 ENV FAST_REFRESH=false
+ENV NODE_ENV=production
 RUN npm run build
 
 # Stage 2: backend + serve frontend static
 FROM python:3.11.0-slim
 WORKDIR /app
 
-# Cache-bust: force rebuild - timestamp: 2026-03-04
+# Cache-bust: force rebuild - timestamp: 2026-03-04-1937
 RUN echo "Build: 2026-03-04"
 
 COPY requirements.txt .
