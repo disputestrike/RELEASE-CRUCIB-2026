@@ -942,7 +942,7 @@ const Workspace = () => {
       if (isBigBuild) {
         try {
           const useSwarm = buildMode === 'swarm' && !!token;
-const planRes = await axios.post(`${API}/build/plan`, { prompt, swarm: useSwarm }, { headers, timeout: 45000 });
+const planRes = await axios.post(`${API}/build/plan`, { prompt, swarm: useSwarm, build_kind: 'any' }, { headers, timeout: 45000 });
           const planText = (planRes.data.plan_text || '').trim();
           planSuggestions = planRes.data.suggestions || [];
           const planTokens = planRes.data.plan_tokens ?? planRes.data.tokens_estimate ?? 0;
