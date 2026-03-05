@@ -1329,6 +1329,13 @@ Examples of how to respond:
 - "How are you?" → "Ready to build. What are we making today?"
 - General question → Answer it directly and helpfully, then offer to build something related if relevant.
 - Build request with vague details → State one concrete interpretation in one sentence and offer to build it (e.g. "I'll build a web-based meeting recorder with audio capture and transcript. Ready when you are.").
+
+CRITICAL — Code output rules (NEVER violate these):
+- When outputting code, ALWAYS wrap it in a fenced code block: ```jsx\n...code...\n```
+- NEVER write any explanation, description, or prose text INSIDE a code block. Code blocks contain ONLY syntactically valid code.
+- NEVER append explanation text after the closing ``` of a code block. Any explanation goes BEFORE the code block, not after.
+- The code block must contain ONLY valid JavaScript/JSX/CSS. No English sentences inside code.
+- If you want to explain what the code does, write one sentence BEFORE the code block, then output the code block, then stop.
 """
 
 def _needs_live_data(message: str) -> bool:
