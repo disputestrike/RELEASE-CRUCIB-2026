@@ -442,18 +442,41 @@ const Workspace = () => {
 
   // Section 06: parseMultiFileOutput — extract fenced code blocks with file paths
   const parseMultiFileOutput = (responseText) => {
-    const filePattern = /```(?:jsx?|tsx?|css|html)?:([\w./\-]+)\n([\s\S]*?)```/g;
     const parsedFiles = {};
     let match;
-    while ((match = filePattern.exec(responseText)) !== null) {
+
+    // 1. Named file blocks: ```jsx:/App.js\n...code...```
+    const namedPattern = /```(?:jsx?|tsx?|css|html)?:([\w./\-]+)\n([\s\S]*?)```/g;
+    while ((match = namedPattern.exec(responseText)) !== null) {
       const filePath = match[1].startsWith('/') ? match[1] : `/${match[1]}`;
       parsedFiles[filePath] = { code: match[2] };
     }
-    // Fallback: if no file markers, put everything in /App.js
-    if (Object.keys(parsedFiles).length === 0) {
-      const cleaned = responseText.replace(/```jsx?/g, '').replace(/```/g, '').trim();
-      parsedFiles['/App.js'] = { code: cleaned };
+    if (Object.keys(parsedFiles).length > 0) return parsedFiles;
+
+    // 2. Any fenced code block — extract ONLY the code inside, not surrounding prose
+    const fencePattern = /```(?:jsx?|tsx?|javascript|js|css|html)?\n([\s\S]*?)```/g;
+    const codeBlocks = [];
+    while ((match = fencePattern.exec(responseText)) !== null) {
+      codeBlocks.push(match[1]);
     }
+    if (codeBlocks.length > 0) {
+      // Use the largest code block (most likely the main App.js)
+      const mainCode = codeBlocks.reduce((a, b) => (b.length > a.length ? b : a), '');
+      parsedFiles['/App.js'] = { code: mainCode };
+      return parsedFiles;
+    }
+
+    // 3. Last resort: strip ALL markdown fences then cut off any trailing prose
+    let cleaned = responseText
+      .replace(/```[\w]*\n?/g, '')  // strip opening fences
+      .replace(/```/g, '')           // strip closing fences
+      .trim();
+    // Cut off prose that appears after the last JS closing token
+    const lastBrace = Math.max(cleaned.lastIndexOf('}'), cleaned.lastIndexOf(');'), cleaned.lastIndexOf(';'));
+    if (lastBrace > 0 && lastBrace > cleaned.length * 0.4) {
+      cleaned = cleaned.substring(0, lastBrace + 1).trim();
+    }
+    parsedFiles['/App.js'] = { code: cleaned };
     return parsedFiles;
   };
   const [qualityGateResult, setQualityGateResult] = useState(null); // { passed, score, verdict } after build
