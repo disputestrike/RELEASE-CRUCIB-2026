@@ -244,16 +244,20 @@ const Dashboard = () => {
     const intent = (!userPrompt && filesToSend.length > 0) ? 'chat' : (isDefinitelyChat(userPrompt) ? 'chat' : await detectIntent(userPrompt, API, token));
 
     if (intent === 'build') {
-      const spec = await inferBuildSpec(userPrompt, API, token);
-      const oneLiner = spec.endsWith('.') ? spec : `${spec}.`;
-      const summary = `Got it — I'll build ${oneLiner.charAt(0).toLowerCase() + oneLiner.slice(1)}`;
-      const buildOfferMsg = {
-        role: 'assistant',
-        content: summary,
-        buildOffer: { spec: spec.trim(), attachedFiles: filesToSend.length > 0 ? filesToSend : undefined }
-      };
-      setChatMessages(prev => [...prev, buildOfferMsg]);
+      // Auto-navigate directly to workspace — no offer card, no extra click needed
       setChatLoading(false);
+      const spec = await inferBuildSpec(userPrompt, API, token).catch(() => userPrompt);
+      const taskName = (spec || userPrompt).slice(0, 60);
+      const taskId = addTask({ name: taskName, prompt: spec || userPrompt, status: 'pending', type: 'build' });
+      navigate({
+        pathname: '/app/workspace',
+        search: taskId ? `?taskId=${encodeURIComponent(taskId)}` : '',
+        state: {
+          initialPrompt: spec || userPrompt,
+          autoStart: true,
+          initialAttachedFiles: filesToSend.length > 0 ? filesToSend : undefined
+        }
+      });
       return;
     }
 
