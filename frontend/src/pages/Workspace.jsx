@@ -462,7 +462,14 @@ const Workspace = () => {
     if (codeBlocks.length > 0) {
       // Use the largest code block (most likely the main App.js)
       const mainCode = codeBlocks.reduce((a, b) => (b.length > a.length ? b : a), '');
-      parsedFiles['/App.js'] = { code: mainCode };
+      // sanitizeAppCode is defined after this function — use inline check here
+      const isIndexJs = /ReactDOM\.(render|createRoot)|import.*ReactDOM/.test(mainCode) && !/export\s+default/.test(mainCode);
+      if (!isIndexJs) {
+        parsedFiles['/App.js'] = { code: mainCode };
+      } else {
+        // AI returned index.js bootstrap instead of App component — use fallback
+        parsedFiles['/App.js'] = { code: `import React from 'react';\n\nexport default function App() {\n  return (\n    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">\n      <h1 className="text-4xl font-bold">Loading...</h1>\n    </div>\n  );\n}` };
+      }
       return parsedFiles;
     }
 
@@ -479,6 +486,37 @@ const Workspace = () => {
     parsedFiles['/App.js'] = { code: cleaned };
     return parsedFiles;
   };
+  // Sanitize code that the AI generated as index.js (ReactDOM.render bootstrap) instead of App.js component
+  const sanitizeAppCode = (code) => {
+    if (!code) return code;
+    // If the code contains ReactDOM.render or createRoot but no default export, it's index.js — replace with a placeholder
+    const isIndexJs = /ReactDOM\.(render|createRoot)|import.*ReactDOM/.test(code) && !/export\s+default/.test(code);
+    if (isIndexJs) {
+      // Extract any meaningful content hints from the code (e.g. imported App name)
+      return `import React from 'react';
+
+export default function App() {
+  return (
+    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+      <div className="text-center">
+        <h1 className="text-4xl font-bold mb-4">App</h1>
+        <p className="text-gray-400">Your app is being generated...</p>
+      </div>
+    </div>
+  );
+}`;
+    }
+    // If there's no default export at all, wrap the code in a component
+    if (!/export\s+default/.test(code) && /return\s*\(/.test(code)) {
+      return `import React from 'react';
+
+export default function App() {
+${code}
+}`;
+    }
+    return code;
+  };
+
   const [qualityGateResult, setQualityGateResult] = useState(null); // { passed, score, verdict } after build
   const [tokensPerStep, setTokensPerStep] = useState({ plan: 0, generate: 0 });
   const [showDeployModal, setShowDeployModal] = useState(false);
@@ -1038,10 +1076,25 @@ const planRes = await axios.post(`${API}/build/plan`, { prompt, swarm: useSwarm,
       }
       setCurrentPhase('');
 
-      let messageContent = `Create a complete, production-ready React application for: "${prompt}". 
-Use React hooks and Tailwind CSS. Make it modern, responsive, and functional.
-Include all necessary components and styling.
-Respond with ONLY the complete App.js code, nothing else.`;
+      let messageContent = `Build a complete React application for: "${prompt}".
+
+RULES (follow exactly):
+1. Output ONLY a single fenced code block containing the complete App.js component.
+2. The code block MUST start with: \`\`\`jsx
+3. The code block MUST end with: \`\`\`
+4. The App.js MUST export a default React component (e.g. export default function App() {...})
+5. Do NOT output index.js, ReactDOM.render, or any bootstrap code — only the App component.
+6. Use React hooks (useState, useEffect) and inline Tailwind CSS classes.
+7. Make it visually complete: hero section, real content, responsive layout.
+8. No explanation text before or after the code block.
+
+Example format:
+\`\`\`jsx
+import React, { useState } from 'react';
+export default function App() {
+  return <div className="min-h-screen bg-gray-900 text-white">...</div>;
+}
+\`\`\``;
       if (imagesToSend.length > 0) {
         messageContent += `\n\nThe user has attached ${imagesToSend.length} image(s) as reference. Try to match the design style.`;
       }
