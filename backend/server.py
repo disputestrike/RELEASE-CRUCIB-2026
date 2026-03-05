@@ -4590,14 +4590,8 @@ async def build_plan(data: BuildPlanRequest, user: dict = Depends(get_current_us
         if credits < required:
             raise HTTPException(status_code=402, detail=f"Insufficient credits for {'Swarm ' if use_swarm else ''}plan. Need at least {int(required)}. Buy more in Credit Center.")
         # Free/referral credits = landing only: if user has no paid purchase and requests non-landing, block
-        plan = user.get("plan") or "free"
-        if plan == "free" and build_kind != "landing":
-            has_paid = await db.token_ledger.find_one({"user_id": user["id"], "type": "purchase"})
-            if not has_paid:
-                raise HTTPException(
-                    status_code=402,
-                    detail="Full apps (CRUD, SaaS, mobile, etc.) require paid credits. Free tier is for landing pages only. Upgrade or buy add-on credits in Credit Center.",
-                )
+        # Free users with credits can build anything - no landing-only restriction
+        # (The credit balance check above already ensures they have enough credits)
     kind_instruction = {
         "landing": " The user wants a LANDING PAGE (single page or simple multi-section). Plan for hero, features, CTA, optional waitlist/form; no full app backend or SaaS billing.",
         "mobile": " The user wants a MOBILE APP (React Native, Flutter, or PWA). Plan for mobile-first UI, native or cross-platform, and app store / install considerations. Include in the plan: Mobile stack: Expo (or Flutter), targets: iOS, Android.",
