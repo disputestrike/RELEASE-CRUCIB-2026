@@ -102,7 +102,7 @@ const TokenCenter = () => {
   // Custom credits slider (100–5000 at $0.06/credit)
   const [customCredits, setCustomCredits] = useState(500);
   const customMin = 100;
-  const customMax = 5000;
+  const customMax = 10000;
   const customStep = 100;
   const pricePerCredit = 0.06;
   const customTotal = Math.round(customCredits * pricePerCredit * 100) / 100;
@@ -175,7 +175,7 @@ const TokenCenter = () => {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold mb-2">Credit Center</h1>
-        <p className="text-[#666666]">Buy credits and track your usage. 100 credits ≈ 1 landing page.</p>
+        <p className="text-[#666666]">Buy credits and track your usage. 50 credits ≈ 1 landing page · 100 credits ≈ 1 full app · 150 credits ≈ 1 mobile app. Credits roll over.</p>
       </div>
 
       {/* Balance Card */}

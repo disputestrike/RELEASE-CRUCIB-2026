@@ -206,9 +206,12 @@ const LandingPage = () => {
       {/* Hero — softer typography, smaller input, suggestion chips (Manus-style) */}
       <section className="flex-1 min-h-0 overflow-y-auto pt-32 pb-16 px-6">
         <div className="max-w-[780px] mx-auto">
-          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-[2.5rem] font-semibold tracking-tight text-[#1a1a1a] mb-6 text-center">
+          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-[2.5rem] font-semibold tracking-tight text-[#1a1a1a] mb-2 text-center">
             What can I do for you?
           </motion.h1>
+          <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-center text-sm text-gray-500 mb-6">
+            126-agent swarm · web + mobile + App Store · full stack in minutes
+          </motion.p>
           <div className="landing-input-wrap rounded-2xl overflow-hidden bg-white border border-[#d1d5db] shadow-[0_1px_3px_rgba(0,0,0,0.05)] focus-within:border-[#3b82f6] focus-within:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] transition-all max-w-[720px] mx-auto">
             {messages.length > 0 && (
               <div className="max-h-48 overflow-y-auto p-4 space-y-3">
@@ -274,9 +277,15 @@ const LandingPage = () => {
       </section>
 
       {/* CTA — single line, last thing visible on first screen */}
-      <section className="mt-auto shrink-0 py-12 px-6 border-t border-gray-200">
+      <section className="mt-auto shrink-0 py-10 px-6 border-t border-gray-200">
         <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-xl md:text-2xl font-semibold text-[#111827]">Your idea is inevitable.</h2>
+          <h2 className="text-xl md:text-2xl font-semibold text-[#111827] mb-3">Your idea is inevitable.</h2>
+          <div className="flex items-center justify-center gap-6 text-xs text-gray-400">
+            <span>✦ 126 specialized agents</span>
+            <span>✦ Web · Mobile · App Store</span>
+            <span>✦ Deploy in minutes</span>
+            <span>✦ Free to start</span>
+          </div>
         </div>
       </section>
       </div>

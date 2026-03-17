@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { flushSync } from 'react-dom';
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Mic, MicOff, Paperclip, Loader2,
   Sparkles, ArrowRight, Upload, X, Github,
   Layout, Smartphone, Code, Zap, Globe,
-  Copy, Pencil
+  Copy, Pencil, Play, CheckCircle, Clock, AlertCircle,
+  BarChart3, ExternalLink
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import { useAuth, API } from '../App';
@@ -143,6 +144,43 @@ const Dashboard = () => {
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const mediaRecorderRef = useRef(null);
+
+  // Live projects — fetched from API, polled every 5s when any are running
+  const [liveProjects, setLiveProjects] = useState([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
+  const liveProjectsPollRef = useRef(null);
+
+  const fetchLiveProjects = async () => {
+    if (!token || !API) return;
+    try {
+      const res = await axios.get(`${API}/projects`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { limit: 10 },
+        timeout: 8000,
+      });
+      const projects = res.data?.projects || res.data || [];
+      setLiveProjects(Array.isArray(projects) ? projects.slice(0, 10) : []);
+    } catch (e) {
+      // silent — dashboard still works without live projects
+    }
+  };
+
+  useEffect(() => {
+    if (!token) return;
+    setProjectsLoading(true);
+    fetchLiveProjects().finally(() => setProjectsLoading(false));
+  }, [token]);
+
+  // Poll every 4s if any project is running
+  useEffect(() => {
+    const hasRunning = liveProjects.some(p => p.status === 'running' || p.status === 'pending');
+    if (hasRunning) {
+      liveProjectsPollRef.current = setInterval(fetchLiveProjects, 4000);
+    } else {
+      clearInterval(liveProjectsPollRef.current);
+    }
+    return () => clearInterval(liveProjectsPollRef.current);
+  }, [liveProjects, token]);
   const streamRef = useRef(null);
 
   // Restore chat when opening a chat task from sidebar (state or URL). Stay on task until user navigates away or New Task.
@@ -642,6 +680,82 @@ const Dashboard = () => {
                 ))}
               </div>
             </motion.div>
+
+            {/* Live Builds Panel — real-time build progress, polled every 4s when builds are running */}
+            {liveProjects.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.3 }}
+                style={{ marginTop: '24px', maxWidth: '720px', width: '100%', margin: '24px auto 0' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 500, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Your builds
+                  </span>
+                  <Link to="/app/projects" style={{ fontSize: '12px', color: '#6b7280', textDecoration: 'none' }}>View all →</Link>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {liveProjects.slice(0, 5).map((project) => {
+                    const isRunning = project.status === 'running' || project.status === 'pending';
+                    const isCompleted = project.status === 'completed';
+                    const isFailed = project.status === 'failed';
+                    const progress = project.progress_percent || 0;
+                    return (
+                      <Link key={project.id} to={`/app/projects/${project.id}`} style={{ textDecoration: 'none' }}>
+                        <div style={{
+                          padding: '12px 16px', background: '#fff',
+                          border: isRunning ? '1px solid #3b82f6' : '1px solid #e5e7eb',
+                          borderRadius: '12px', cursor: 'pointer', transition: 'border-color 0.2s',
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isRunning ? '8px' : '0' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                              {isRunning && <Loader2 size={14} style={{ color: '#3b82f6', flexShrink: 0 }} />}
+                              {isCompleted && <CheckCircle size={14} style={{ color: '#10b981', flexShrink: 0 }} />}
+                              {isFailed && <AlertCircle size={14} style={{ color: '#ef4444', flexShrink: 0 }} />}
+                              {!isRunning && !isCompleted && !isFailed && <Clock size={14} style={{ color: '#9ca3af', flexShrink: 0 }} />}
+                              <span style={{ fontSize: '13px', fontWeight: 500, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {project.name || project.description || 'Untitled build'}
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                              {project.quality_score != null && (
+                                <span style={{ fontSize: '11px', color: '#10b981', fontWeight: 500 }}>
+                                  {Math.round(project.quality_score)}% quality
+                                </span>
+                              )}
+                              <span style={{
+                                fontSize: '11px', padding: '2px 8px', borderRadius: '999px', fontWeight: 500,
+                                background: isRunning ? '#eff6ff' : isCompleted ? '#f0fdf4' : isFailed ? '#fef2f2' : '#f9fafb',
+                                color: isRunning ? '#3b82f6' : isCompleted ? '#10b981' : isFailed ? '#ef4444' : '#9ca3af',
+                              }}>
+                                {isRunning ? `Building ${progress > 0 ? `· ${progress}%` : ''}` : project.status}
+                              </span>
+                              <ExternalLink size={12} style={{ color: '#9ca3af' }} />
+                            </div>
+                          </div>
+                          {isRunning && (
+                            <>
+                              <div style={{ height: '4px', background: '#e5e7eb', borderRadius: '999px', overflow: 'hidden' }}>
+                                <div style={{
+                                  height: '100%', background: '#3b82f6', borderRadius: '999px',
+                                  width: `${Math.max(progress, 6)}%`, transition: 'width 0.6s ease',
+                                }} />
+                              </div>
+                              {project.current_agent && (
+                                <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>
+                                  Running: {project.current_agent}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
           </>
         )}
         {hasChat && (
