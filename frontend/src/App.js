@@ -69,6 +69,8 @@ import LearnPublic from "./pages/LearnPublic";
 import DocsPage from "./pages/DocsPage";
 import TutorialsPage from "./pages/TutorialsPage";
 import ShortcutsPublic from "./pages/ShortcutsPublic";
+import Changelog from "./pages/Changelog";
+import Status from "./pages/Status";
 import PromptsPublic from "./pages/PromptsPublic";
 import Benchmarks from "./pages/Benchmarks";
 import Blog from "./pages/Blog";
@@ -394,6 +396,8 @@ function App() {
           <Route path="/benchmarks" element={<Benchmarks />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/:slug" element={<Blog />} />
+          <Route path="/changelog" element={<Changelog />} />
+          <Route path="/status" element={<Status />} />
           <Route path="/app" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route index element={<Dashboard />} />
             <Route path="builder" element={<Builder />} />

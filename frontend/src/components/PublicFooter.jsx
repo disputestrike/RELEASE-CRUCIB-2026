@@ -46,6 +46,8 @@ export default function PublicFooter() {
             <div className="text-xs text-kimi-muted uppercase tracking-wider mb-4">Resources</div>
             <ul className="space-y-3 text-sm">
               <li><Link to="/blog" className="text-kimi-muted hover:text-kimi-text transition">Blog</Link></li>
+              <li><Link to="/changelog" className="text-kimi-muted hover:text-kimi-text transition">Changelog</Link></li>
+              <li><Link to="/status" className="text-kimi-muted hover:text-kimi-text transition">Status</Link></li>
               <li><Link to="/learn" className="text-kimi-muted hover:text-kimi-text transition">Learn</Link></li>
               <li><Link to="/shortcuts" className="text-kimi-muted hover:text-kimi-text transition">Shortcuts</Link></li>
               <li><Link to="/benchmarks" className="text-kimi-muted hover:text-kimi-text transition">Benchmarks</Link></li>
