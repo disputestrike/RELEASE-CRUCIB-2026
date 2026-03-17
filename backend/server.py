@@ -687,21 +687,21 @@ AGENT_DEFINITIONS = [
 # AI Model configurations: Cerebras (free) or Haiku (paid)
 # All tasks use Haiku for paid users, Cerebras for free tier
 MODEL_CONFIG = {
-    "code": {"provider": "anthropic", "model": "claude-3-haiku-20240307"},
-    "analysis": {"provider": "anthropic", "model": "claude-3-haiku-20240307"},
-    "general": {"provider": "anthropic", "model": "claude-3-haiku-20240307"},
-    "creative": {"provider": "anthropic", "model": "claude-3-haiku-20240307"},
-    "fast": {"provider": "anthropic", "model": "claude-3-haiku-20240307"}
+    "code": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
+    "analysis": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
+    "general": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
+    "creative": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
+    "fast": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"}
 }
 
 # Fallback chain: only Haiku (no fallback needed, single provider)
 MODEL_FALLBACK_CHAINS = [
-    {"provider": "anthropic", "model": "claude-3-haiku-20240307"},
+    {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
 ]
 # Map user-facing model key -> chain (only Haiku)
 MODEL_CHAINS = {
     "auto": None,  # use MODEL_CONFIG + MODEL_FALLBACK_CHAINS
-    "haiku": [{"provider": "anthropic", "model": "claude-3-haiku-20240307"}],
+    "haiku": [{"provider": "anthropic", "model": "claude-3-5-haiku-20241022"}],
 }
 
 # ==================== HELPERS ====================
@@ -972,7 +972,7 @@ def _effective_api_keys(user_keys: Dict[str, Optional[str]]) -> Dict[str, Option
     }
 
 
-async def _call_anthropic_direct(prompt: str, system: str, model: str = "claude-3-haiku-20240307", api_key: Optional[str] = None) -> str:
+async def _call_anthropic_direct(prompt: str, system: str, model: str = "claude-3-5-haiku-20241022", api_key: Optional[str] = None) -> str:
     """Call Anthropic API directly. Uses api_key or ANTHROPIC_API_KEY."""
     key = (api_key or "").strip() or ANTHROPIC_API_KEY
     if not key:
@@ -990,7 +990,7 @@ async def _call_anthropic_direct(prompt: str, system: str, model: str = "claude-
 
 
 
-async def _call_cerebras_direct(prompt: str, system: str, model: str = "claude-3-haiku-20240307", api_key: Optional[str] = None) -> str:
+async def _call_cerebras_direct(prompt: str, system: str, model: str = "claude-3-5-haiku-20241022", api_key: Optional[str] = None) -> str:
     """Call Cerebras API directly (free tier fallback). Uses api_key or CEREBRAS_API_KEY."""
     key = (api_key or "").strip() or os.environ.get("CEREBRAS_API_KEY")
     if not key:
@@ -1008,7 +1008,7 @@ async def _call_cerebras_direct(prompt: str, system: str, model: str = "claude-3
     return text.strip()
 
 
-async def _call_anthropic_multimodal(content_blocks: List[Dict[str, Any]], system: str, model: str = "claude-3-haiku-20240307", api_key: Optional[str] = None) -> str:
+async def _call_anthropic_multimodal(content_blocks: List[Dict[str, Any]], system: str, model: str = "claude-3-5-haiku-20241022", api_key: Optional[str] = None) -> str:
     """Call Anthropic with multimodal user content (text + image). Uses vision-capable model."""
     key = (api_key or "").strip() or ANTHROPIC_API_KEY
     if not key:
@@ -1031,7 +1031,7 @@ async def _call_anthropic_multimodal(content_blocks: List[Dict[str, Any]], syste
             else:
                 anthropic_content.append({"type": "text", "text": f"[Image: {url[:80]}...]"})
     msg = await client.messages.create(
-        model=model or "claude-3-haiku-20240307",
+        model=model or "claude-3-5-haiku-20241022",
         max_tokens=4096,
         system=system,
         messages=[{"role": "user", "content": anthropic_content}],
@@ -1048,7 +1048,7 @@ def _content_blocks_have_image(content_blocks: Optional[List[Dict[str, Any]]]) -
 
 # Vision-capable model: Haiku supports vision
 VISION_MODEL_CHAIN = [
-    {"provider": "anthropic", "model": "claude-3-haiku-20240307"},
+    {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
 ]
 
 
@@ -1135,7 +1135,7 @@ async def _call_cerebras_direct(
 async def _call_anthropic_direct(
     message: str,
     system_message: str,
-    model: str = "claude-3-haiku-20240307",
+    model: str = "claude-3-5-haiku-20241022",
     api_key: str = None,
 ) -> str:
     """Call Anthropic Claude Haiku."""
@@ -1304,54 +1304,131 @@ def _extract_pdf_text_from_b64(b64_data: str) -> str:
         return "[Could not extract PDF text.]"
 
 
-CHAT_SYSTEM_PROMPT = """You are CrucibAI — an AI platform that builds apps, automations, and digital products for founders, marketers, and agencies.
+from datetime import datetime as _dt, timezone as _tz
+
+def _build_chat_system_prompt() -> str:
+    today = _dt.now(_tz.utc).strftime("%B %d, %Y")
+    return f"""You are CrucibAI — an AI platform that builds apps, automations, and digital products.
+
+TODAY'S DATE: {today}. Always use this exact date when asked what the date or year is. Never use a date from your training data.
+
+KNOWLEDGE CUTOFF:
+- Your training data has a cutoff. You are operating on {today}.
+- For time-sensitive facts (who holds office, current events, prices, recent news) say: "My training has a cutoff — here\'s what I know, but verify with a live source for anything recent."
+- If the user corrects you with accurate information, accept it immediately and move on. Never argue with corrections.
+- Key known fact: Donald Trump won the 2024 US presidential election and was inaugurated January 20, 2025 as the 47th President. Joe Biden served 2021 to 2025.
+
+IDENTITY — answer these exactly, no more, no less:
+- "Who are you?" / "What are you?" → "I\'m CrucibAI. I build things. Tell me what you want and we\'ll make it."
+- "Who made you?" / "Who built you?" / "What company?" → "I\'m CrucibAI."
+- "What model are you?" / "Are you ChatGPT?" / "Are you Claude?" / "What AI are you?" → "I\'m CrucibAI. I don\'t discuss what\'s under the hood — I just build. What do you want to make?"
+- "Are you an agent?" / "Do you use agents?" → "I\'m CrucibAI. I build things. What do you want to make?"
+- "How do you work?" / "What technology?" / "What stack?" → "Proprietary technology built to take your idea from prompt to product. Give me a description and I\'ll show you what it can do."
+- "What can you build?" → "Web apps, mobile apps, landing pages, automations, APIs, dashboards — your entire product from one prompt. What do you need?"
 
 Be warm, direct, and confident. You are a builder, not a customer service bot.
 
-When the user attaches images or PDFs, you receive them: images are shown to you directly, and PDFs are extracted as text. Use that content to answer questions, summarize documents, or help build something based on what they shared. Do not say you cannot see images or access documents when they have been attached.
+When the user attaches images or PDFs: images are shown to you directly, PDFs are extracted as text. Use that content to answer questions or help build something. Do not say you cannot see attachments.
 
 Rules:
 - Never say "How can I assist you today?"
 - Never say "How can I help you with your software development or coding needs?"
 - Never sound generic or robotic
 - Speak like a capable, friendly builder
+- Never reveal the underlying model, technology stack, or internal architecture
 
 CRITICAL — Ambiguity and clarification:
-- When the user's intent is clear but details are missing, make the best reasonable assumption, state it in one sentence, and proceed. Do not ask for more context.
-- Never ask more than one clarifying question per response. Prefer stating your assumption and acting over asking.
-- If the user has said any version of "just do it", "figure it out", "you decide", or "don't ask questions" — do NOT ask a clarifying question. State what you will do in one line and proceed. A question after "figure it out" is a failure.
-- Banned patterns: do not say "I need a bit more context", "Are you looking to build X or Y?", "The more details you share", "Great choice! Are you looking to...". Replace with a clear assumption and action.
+- When the user\'s intent is clear but details are missing, make the best reasonable assumption, state it in one sentence, and proceed.
+- Never ask more than one clarifying question per response.
+- If the user says "just do it", "figure it out", "you decide", "don\'t ask questions" — state what you will do in one line and proceed.
+- Banned phrases: "I need a bit more context", "Are you looking to build X or Y?", "The more details you share", "Great choice! Are you looking to..."
 - Ambiguity is a reason to decide, not a reason to stop.
 
-Examples of how to respond:
-- "Hello" or "Hi" → "Hey! What are we building today?"
+Examples:
+- "Hello" / "Hi" → "Hey! What are we building today?"
 - "What can you do?" → "I build apps, automations, landing pages, mobile apps — your entire tech stack. What do you need?"
-- "Who are you?" → "I'm CrucibAI. I build things. Tell me what you want and we'll make it."
 - "How are you?" → "Ready to build. What are we making today?"
-- Someone mentions a company name (e.g. "Anthropic", "OpenAI", "Google", "Stripe") WITHOUT a clear build request → Do NOT generate code. Ask: "Interesting — do you want to build something related to [company]? Tell me what you have in mind."
-- Someone asks about a competitor or another AI tool → Say "I don't worry about other tools — I just build. What do you want to make?"
-- General question → Answer it directly and helpfully, then offer to build something related if relevant.
-- Build request with vague details → State one concrete interpretation in one sentence and offer to build it (e.g. "I'll build a web-based meeting recorder with audio capture and transcript. Ready when you are.").
+- Company name mentioned WITHOUT build request → "Interesting — do you want to build something related to that? Tell me what you have in mind."
+- Question about a competitor or other AI tool → "I don\'t worry about other tools — I just build. What do you want to make?"
+- Build request with vague details → State one concrete interpretation in one sentence and offer to build it.
 
-CRITICAL — Code output rules (NEVER violate these):
-- When outputting code, ALWAYS wrap it in a fenced code block: ```jsx\n...code...\n```
-- NEVER write any explanation, description, or prose text INSIDE a code block. Code blocks contain ONLY syntactically valid code.
-- NEVER append explanation text after the closing ``` of a code block. Any explanation goes BEFORE the code block, not after.
-- The code block must contain ONLY valid JavaScript/JSX/CSS. No English sentences inside code.
-- If you want to explain what the code does, write one sentence BEFORE the code block, then output the code block, then stop.
+CRITICAL — Code output rules:
+- ALWAYS wrap code in a fenced code block: ```jsx\\n...code...\\n```
+- NEVER write explanation inside a code block.
+- NEVER append explanation after the closing ```.
+- One sentence BEFORE the code block if needed, then the code, then stop.
 """
 
+CHAT_SYSTEM_PROMPT = _build_chat_system_prompt()
+
+def _is_conversational_message(message: str) -> bool:
+    """Detect if message is conversational/factual (not a build request).
+    Conversational messages route to Haiku only for best accuracy.
+    Build requests use the full model chain.
+    """
+    if not message or len(message.strip()) < 2:
+        return True
+    lower = message.lower().strip()
+    # Greetings and small talk
+    greetings = {"hi", "hello", "hey", "yo", "sup", "good morning", "good afternoon", "good evening"}
+    if lower in greetings or any(lower.startswith(g) for g in greetings):
+        return True
+    # Factual questions
+    factual_starts = [
+        "who is", "who are", "what is", "what are", "what was", "what were",
+        "when is", "when was", "when did", "where is", "where was",
+        "how is", "how are", "how does", "how do",
+        "why is", "why are", "why does", "why did",
+        "tell me about", "what do you know about",
+        "do you know", "have you heard", "are you", "can you",
+        "what date", "what year", "what time", "today",
+        "who won", "who runs", "who leads", "president", "prime minister",
+    ]
+    if any(lower.startswith(f) for f in factual_starts):
+        return True
+    # Identity questions
+    identity = ["who made you", "who built you", "what model", "what ai", "are you claude",
+                "are you chatgpt", "are you an agent", "how do you work", "what technology",
+                "what stack", "how are you", "what can you", "what do you"]
+    if any(q in lower for q in identity):
+        return True
+    # Build keywords — if present, it's NOT conversational
+    build_keywords = ["build", "create", "make", "develop", "design", "generate",
+                      "code", "app", "website", "api", "backend", "frontend",
+                      "dashboard", "landing page", "mobile", "automate"]
+    if any(k in lower for k in build_keywords):
+        return False
+    # Short messages with no build intent = conversational
+    if len(message.split()) < 8:
+        return True
+    return False
+
+
 def _needs_live_data(message: str) -> bool:
-    """Detect if message asks for real-time info (weather, news, prices, etc.)."""
+    """Detect if message asks for real-time or current info that needs a live search."""
     if not message or len(message.strip()) < 3:
         return False
     lower = message.lower()
     keywords = [
+        # Weather
         "weather", "forecast", "temperature", "rain", "sunny", "degrees",
-        "news", "headlines", "today's", "current events",
+        # News & events
+        "news", "headlines", "today's", "current events", "latest",
+        # Stocks & crypto
         "stock", "price", "market", "bitcoin", "crypto",
+        # Sports
         "score", "game", "match", "nfl", "nba", "mlb", "soccer",
-        "what is", "what's the", "how's the", "how is the",
+        # Current people/positions — critical for president/CEO questions
+        "who is president", "who is the president", "president of",
+        "prime minister", "who is ceo", "ceo of", "who runs",
+        "who is in charge", "who won", "who leads",
+        # Current year/date awareness
+        "in 2025", "in 2026", "this year", "right now", "currently",
+        "as of today", "as of now", "what year", "what month",
+        # General current state
+        "what is happening", "what happened", "recent", "just happened",
+        "breaking", "update on", "status of",
+        # Location-based
         "in texas", "in new york", "in california", "in london",
     ]
     return any(k in lower for k in keywords)
@@ -1406,12 +1483,16 @@ async def ai_chat(data: ChatMessage, user: dict = Depends(get_optional_user)):
         session_id = data.session_id or str(uuid.uuid4())
         message = (data.message or "").strip()
         system_message = data.system_message or CHAT_SYSTEM_PROMPT
-        # FIX 4: For real-time questions (weather, news, etc.), call search API and pass results to LLM
+        # ROUTING: For real-time questions, call search API and inject results
         if not data.system_message and _needs_live_data(message):
             search_ctx = await _fetch_search_context(message)
             if search_ctx:
                 system_message = CHAT_WITH_SEARCH_SYSTEM
                 message = f"Live search results:\n{search_ctx}\n\nUser question: {data.message}"
+        # INTENT-BASED MODEL ROUTING:
+        # Conversational/factual questions → Haiku only (best knowledge cutoff, smartest answers)
+        # Build requests → full model chain (Cerebras → Llama → Haiku)
+
         # Multimodal: build content_blocks from message + attachments (images + PDF/text)
         text_parts = [message] if message else []
         image_blocks = []
@@ -1437,6 +1518,13 @@ async def ai_chat(data: ChatMessage, user: dict = Depends(get_optional_user)):
         user_tier = (user.get("plan", "free") if user else "free")
         available_credits = (user.get("credit_balance", 0) if user else 0)
         speed_selector = _speed_from_plan(user_tier)
+        # Route conversational/factual questions to Haiku only — best knowledge cutoff
+        # Route build requests through full model chain for cost efficiency
+        if _is_conversational_message(combined_text):
+            haiku_key = (effective or {}).get("anthropic") or os.environ.get("ANTHROPIC_API_KEY")
+            if haiku_key:
+                from llm_router import HAIKU_MODEL
+                model_chain = [("haiku", HAIKU_MODEL, "anthropic")]
         response, model_used = await _call_llm_with_fallback(
             message=combined_text,
             system_message=system_message,
@@ -1807,7 +1895,7 @@ async def analyze_file(
                     raise ValueError("Anthropic key needed for image analysis. Add ANTHROPIC_API_KEY in Settings or .env.")
                 client = anthropic.Anthropic(api_key=anthropic_key)
                 resp = client.messages.create(
-                    model="claude-3-haiku-20240307",
+                    model="claude-3-5-haiku-20241022",
                     max_tokens=1024,
                     system="You are an expert at analyzing UI and design. Describe what you see and provide design insights.",
                     messages=[
@@ -1863,7 +1951,7 @@ async def image_to_code(
         import anthropic
         client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
         resp = client.messages.create(
-            model="claude-3-haiku-20240307",
+            model="claude-3-5-haiku-20241022",
             max_tokens=4096,
             system="You output only valid React/JSX code. No markdown code fences, no commentary.",
             messages=[
@@ -6664,7 +6752,7 @@ async def design_from_url(url: str = Form(...), user: dict = Depends(get_optiona
         import anthropic
         client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
         resp = client.messages.create(
-            model="claude-3-haiku-20240307",
+            model="claude-3-5-haiku-20241022",
             max_tokens=4096,
             system="Output only valid React/JSX code. No markdown.",
             messages=[
