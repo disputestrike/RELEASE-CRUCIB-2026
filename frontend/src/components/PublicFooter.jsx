@@ -12,6 +12,12 @@ export default function PublicFooter() {
           <button onClick={() => navigate('/app/workspace')} className="px-6 py-3 bg-white text-gray-900 font-medium rounded-lg hover:bg-gray-200 transition border border-black/10">
             Make It Inevitable
           </button>
+          <Link to="/auth?mode=register" className="px-6 py-3 bg-transparent text-kimi-text font-medium rounded-lg border border-white/30 hover:border-white/50 transition">
+            Sign up
+          </Link>
+          <Link to="/auth" className="px-6 py-3 bg-transparent text-kimi-text font-medium rounded-lg border border-white/30 hover:border-white/50 transition">
+            Log in
+          </Link>
           <Link to="/learn" className="px-6 py-3 bg-transparent text-kimi-text font-medium rounded-lg border border-white/30 hover:border-white/50 transition">
             View Documentation
           </Link>

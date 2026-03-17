@@ -381,6 +381,7 @@ class ProjectCreate(BaseModel):
     project_type: str = Field(..., max_length=100)
     requirements: Dict[str, Any] = Field(default_factory=dict)
     estimated_tokens: Optional[int] = None
+    quick_build: Optional[bool] = False  # Item 29: fast preview — run only first 2 phases, preview in ~2 min
 
     @model_validator(mode="after")
     def check_requirements_size(self):
@@ -3878,7 +3879,8 @@ async def create_project(
         "tokens_used": 0,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "completed_at": None,
-        "live_url": None
+        "live_url": None,
+        "quick_build": getattr(data, "quick_build", False) or False,
     }
     await db.projects.insert_one(project)
     if audit_logger:
@@ -4565,6 +4567,16 @@ async def get_project_logs(project_id: str, user: dict = Depends(get_current_use
     logs = await cursor.to_list(500)
     return {"logs": logs}
 
+
+@projects_router.get("/projects/{project_id}/build-history")
+async def get_build_history(project_id: str, user: dict = Depends(get_current_user)):
+    """Version history (item 13): list of past builds for this project (completed_at, status, quality_score, tokens_used)."""
+    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"build_history": 1})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    history = project.get("build_history") or []
+    return {"build_history": history}
+
 # Build phases for real-time progress UI (planning -> generating -> validating -> deployment)
 BUILD_PHASES = [
     {"id": "planning", "name": "Planning", "agents": ["Planner", "Requirements Clarifier", "Stack Selector"]},
@@ -5097,10 +5109,17 @@ async def _run_single_agent_with_retry(
                 await asyncio.sleep(2 ** attempt)
     crit = get_criticality(agent_name)
     if crit == "critical":
+        completed_at = datetime.now(timezone.utc).isoformat()
         await db.projects.update_one(
             {"id": project_id},
-            {"$set": {"status": "failed", "completed_at": datetime.now(timezone.utc).isoformat()}}
+            {"$set": {"status": "failed", "completed_at": completed_at}}
         )
+        # Append to build_history for version history UI (item 13)
+        proj = await db.projects.find_one({"id": project_id})
+        if proj is not None:
+            history = list(proj.get("build_history") or [])
+            history.insert(0, {"completed_at": completed_at, "status": "failed", "quality_score": None, "tokens_used": 0})
+            await db.projects.update_one({"id": project_id}, {"$set": {"build_history": history[:50]}})
         return {"output": "", "tokens_used": 0, "status": "failed", "reason": str(last_err), "recoverable": False}
     if crit == "high":
         fallback = generate_fallback(agent_name)
@@ -5259,7 +5278,12 @@ async def run_orchestration_v2(project_id: str, user_id: str):
         return
     await db.projects.update_one({"id": project_id}, {"$set": {"status": "running", "current_phase": 0, "progress_percent": 0}})
     phases = get_execution_phases(AGENT_DAG)
-    emit_build_event(project_id, "build_started", phases=len(phases), message="Orchestration started")
+    # Item 29: Quick build — run only first 2 phases for preview in ~2 min
+    if project.get("quick_build"):
+        phases = phases[:2]
+        emit_build_event(project_id, "build_started", phases=len(phases), message="Quick build started (preview in ~2 min)")
+    else:
+        emit_build_event(project_id, "build_started", phases=len(phases), message="Orchestration started")
     results: Dict[str, Dict[str, Any]] = {}
     total_used = 0
     suggest_retry_phase: Optional[int] = None
@@ -5515,6 +5539,17 @@ async def run_orchestration_v2(project_id: str, user_id: str):
     if suggest_retry_phase is None:
         update_op["$unset"] = {"suggest_retry_phase": "", "suggest_retry_reason": ""}
     await db.projects.update_one({"id": project_id}, update_op)
+    # Version history (item 13): append this build to build_history for UI
+    project_after = await db.projects.find_one({"id": project_id})
+    if project_after is not None:
+        history = list(project_after.get("build_history") or [])
+        history.insert(0, {
+            "completed_at": set_payload.get("completed_at"),
+            "status": "completed",
+            "quality_score": quality,
+            "tokens_used": total_used,
+        })
+        await db.projects.update_one({"id": project_id}, {"$set": {"build_history": history[:50]}})
     emit_build_event(
         project_id, "build_completed", status="completed", tokens=total_used, message="Build completed",
         deploy_files=deploy_files, quality_score=quality,
@@ -5575,6 +5610,33 @@ async def get_example(name: str, user: dict = Depends(get_optional_user)):
         raise HTTPException(status_code=404, detail="Example not found")
     return ex
 
+@api_router.post("/examples/from-project")
+async def create_example_from_project(body: dict, user: dict = Depends(get_current_user)):
+    """Item 20: Mark a completed project as an example (publish to Examples Gallery). Build 5 apps, then use this to add them as examples."""
+    project_id = (body or {}).get("project_id")
+    name = (body or {}).get("name", "").strip().replace(" ", "-").lower() or f"example-{project_id[:8]}"
+    if not project_id:
+        raise HTTPException(status_code=400, detail="project_id required")
+    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    if project.get("status") != "completed":
+        raise HTTPException(status_code=400, detail="Only completed projects can be published as examples")
+    existing = await db.examples.find_one({"name": name})
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Example name '{name}' already exists; choose another.")
+    deploy_files = project.get("deploy_files") or {}
+    generated_code = deploy_files if isinstance(deploy_files, dict) else {"frontend": "", "backend": "", "database": "", "tests": ""}
+    example_doc = {
+        "name": name,
+        "prompt": project.get("description") or project.get("requirements", {}).get("prompt") or "Generated with CrucibAI",
+        "generated_code": generated_code,
+        "quality_metrics": project.get("quality_score"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.examples.insert_one(example_doc)
+    return {"example": {"name": name, "prompt": example_doc["prompt"]}}
+
 @api_router.post("/examples/{name}/fork")
 async def fork_example(name: str, user: dict = Depends(get_current_user)):
     """Create a new project from an example (copy generated code)."""
@@ -5588,6 +5650,7 @@ async def fork_example(name: str, user: dict = Depends(get_current_user)):
     if cred < estimated_credits:
         raise HTTPException(status_code=402, detail=f"Insufficient credits. Need {estimated_credits}, have {cred}. Buy more in Credit Center.")
     code = ex.get("generated_code") or {}
+    estimated_tokens = 100000
     project = {
         "id": project_id,
         "user_id": user["id"],
@@ -5596,7 +5659,7 @@ async def fork_example(name: str, user: dict = Depends(get_current_user)):
         "project_type": "fullstack",
         "requirements": {"prompt": ex.get("prompt", ""), "from_example": name},
         "status": "completed",
-        "tokens_allocated": estimated,
+        "tokens_allocated": estimated_tokens,
         "tokens_used": 0,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "completed_at": datetime.now(timezone.utc).isoformat(),
@@ -5605,7 +5668,7 @@ async def fork_example(name: str, user: dict = Depends(get_current_user)):
         "orchestration_version": "example_fork",
     }
     await db.projects.insert_one(project)
-    await db.users.update_one({"id": user["id"]}, {"$inc": {"token_balance": -estimated}})
+    await db.users.update_one({"id": user["id"]}, {"$inc": {"credit_balance": -estimated_credits}})
     return {"project": {k: v for k, v in project.items() if k != "_id"}}
 
 # ==================== PATTERNS ROUTES ====================

@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Bot, CheckCircle, Clock, AlertCircle, Play, Pause,
-  Zap, ArrowLeft, ExternalLink, Download, RefreshCw, ChevronDown, ChevronRight, Database, Code, List, Eye, ShieldCheck
+  Zap, ArrowLeft, ExternalLink, Download, RefreshCw, ChevronDown, ChevronRight, Database, Code, List, Eye, ShieldCheck, Star
 } from 'lucide-react';
 import { useAuth, API } from '../App';
 import axios from 'axios';
@@ -29,6 +29,9 @@ const AgentMonitor = () => {
   const [retrying, setRetrying] = useState(false);
   const [dependencyAudit, setDependencyAudit] = useState(null);
   const [dependencyAuditLoading, setDependencyAuditLoading] = useState(false);
+  const [buildHistory, setBuildHistory] = useState([]);
+  const [publishExampleLoading, setPublishExampleLoading] = useState(false);
+  const [publishExampleError, setPublishExampleError] = useState(null);
 
   const agentLayers = {
     planning: ['Planner', 'Requirements Clarifier', 'Stack Selector'],
@@ -63,6 +66,13 @@ const AgentMonitor = () => {
         } catch (e) {
           logApiError('AgentMonitor events', e);
           setBuildEvents([]);
+        }
+        try {
+          const historyRes = await axios.get(`${API}/projects/${id}/build-history`, { headers: { Authorization: `Bearer ${token}` } });
+          setBuildHistory(historyRes.data?.build_history || []);
+        } catch (e) {
+          logApiError('AgentMonitor build-history', e);
+          setBuildHistory([]);
         }
         try {
           const filesRes = await axios.get(`${API}/projects/${id}/workspace/files`, { headers: { Authorization: `Bearer ${token}` } });
@@ -327,6 +337,32 @@ const AgentMonitor = () => {
             <Code className="w-4 h-4" />
             Open in Workspace
           </Link>
+          {project.status === 'completed' && (
+            <button
+              type="button"
+              onClick={async () => {
+                const name = window.prompt('Example name (e.g. my-todo-app):', (project.name || '').replace(/\s+/g, '-').toLowerCase().slice(0, 30));
+                if (!name) return;
+                setPublishExampleError(null);
+                setPublishExampleLoading(true);
+                try {
+                  await axios.post(`${API}/examples/from-project`, { project_id: id, name }, { headers: { Authorization: `Bearer ${token}` } });
+                  window.alert('Published to Examples Gallery. Others can fork it.');
+                } catch (e) {
+                  setPublishExampleError(e.response?.data?.detail || e.message || 'Failed');
+                  logApiError('Publish as example', e);
+                } finally {
+                  setPublishExampleLoading(false);
+                }
+              }}
+              disabled={publishExampleLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-50 hover:bg-amber-100 rounded-lg font-medium transition border border-amber-200 text-amber-800 disabled:opacity-50"
+            >
+              <Star className="w-4 h-4" />
+              {publishExampleLoading ? 'Publishing…' : 'Publish as example'}
+            </button>
+          )}
+          {publishExampleError && <p className="text-sm text-red-600 col-span-full">{publishExampleError}</p>}
         </div>
       </div>
 
@@ -343,6 +379,33 @@ const AgentMonitor = () => {
               className="w-full h-[280px] border-0"
               sandbox="allow-scripts"
             />
+          </div>
+        </div>
+      )}
+
+      {/* Version history (item 13): past builds for this project */}
+      {buildHistory.length > 0 && (
+        <div className="p-4 rounded-xl border border-black/10 bg-white">
+          <h3 className="text-sm font-medium text-[#666666] mb-2 flex items-center gap-2">
+            <List className="w-4 h-4" /> Build history
+          </h3>
+          <div className="max-h-40 overflow-y-auto space-y-2 text-sm">
+            {buildHistory.map((entry, i) => (
+              <div key={i} className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-[#FAFAF8] border border-black/5">
+                <span className="text-[#666666]">
+                  {entry.completed_at ? new Date(entry.completed_at).toLocaleString() : '—'}
+                </span>
+                <span className={`font-medium ${entry.status === 'completed' ? 'text-[#1A1A1A]' : 'text-amber-600'}`}>
+                  {entry.status === 'completed' ? 'Completed' : (entry.status || '—')}
+                </span>
+                {entry.quality_score != null && (
+                  <span className="text-[#666666]">Quality: {Number(entry.quality_score).toFixed(0)}</span>
+                )}
+                {entry.tokens_used != null && (
+                  <span className="text-[#666666]">{Number(entry.tokens_used).toLocaleString()} tokens</span>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}

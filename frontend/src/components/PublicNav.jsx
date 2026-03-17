@@ -19,15 +19,18 @@ export default function PublicNav() {
           <Link to="/pricing" className={`${linkClass} hidden sm:flex`}>Pricing</Link>
           <Link to="/our-projects" className={`${linkClass} hidden sm:flex`}>Our Project</Link>
           <Link to="/blog" className={`${linkClass} hidden sm:flex`}>Blog</Link>
-          <Link
-            to="/app"
-            className="px-4 py-2 bg-black text-white text-sm font-medium rounded-full hover:bg-black/90 transition"
-          >
-            Dashboard
-          </Link>
-          <button onClick={() => navigate('/app/workspace')} className={ctaClass}>
-            Get Started
-          </button>
+          {user ? (
+            <>
+              <Link to="/app" className="px-4 py-2 bg-black text-white text-sm font-medium rounded-full hover:bg-black/90 transition">Dashboard</Link>
+              <button onClick={() => navigate('/app/workspace')} className={ctaClass}>Get Started</button>
+            </>
+          ) : (
+            <>
+              <Link to="/auth" className={`${linkClass} hidden sm:flex`}>Log in</Link>
+              <Link to="/auth?mode=register" className="px-4 py-2 bg-black text-white text-sm font-medium rounded-full hover:bg-black/90 transition">Sign up</Link>
+              <button onClick={() => navigate('/app/workspace')} className={ctaClass}>Get Started</button>
+            </>
+          )}
         </div>
       </div>
     </nav>

@@ -20,6 +20,7 @@ const ProjectBuilder = () => {
     name: '',
     description: '',
     project_type: searchParams.get('type') || '',
+    quick_build: false,
     requirements: {
       features: [],
       tech_stack: '',
@@ -52,7 +53,10 @@ const ProjectBuilder = () => {
     
     try {
       const payload = {
-        ...formData,
+        name: formData.name,
+        description: formData.description,
+        project_type: formData.project_type,
+        quick_build: !!formData.quick_build,
         estimated_tokens: selectedType?.tokens,
         requirements: {
           ...formData.requirements,
@@ -310,6 +314,20 @@ const ProjectBuilder = () => {
                 </p>
               </div>
             </div>
+
+            {/* Item 29: Quick build — preview in ~2 min */}
+            <label className="flex items-start gap-3 p-4 bg-[#0a0a0a] border border-white/10 rounded-lg cursor-pointer hover:border-white/20 transition">
+              <input
+                type="checkbox"
+                checked={!!formData.quick_build}
+                onChange={(e) => setFormData({ ...formData, quick_build: e.target.checked })}
+                className="mt-1 w-4 h-4 rounded border-white/20 bg-white/5 text-[#1A1A1A] focus:ring-black/10"
+              />
+              <div>
+                <p className="font-medium text-gray-300">Quick build</p>
+                <p className="text-sm text-[#666666]">Get a preview in ~2 minutes (runs planning + first generation phase only). You can run a full build later from the project.</p>
+              </div>
+            </label>
 
             <div className="p-4 bg-[#F5F5F4] border border-black/10 rounded-lg">
               <div className="flex items-center justify-between">
