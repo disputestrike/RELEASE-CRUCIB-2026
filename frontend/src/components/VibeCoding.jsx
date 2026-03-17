@@ -150,7 +150,7 @@ export const VibeCodingInput = ({ onSubmit, isLoading = false, API }) => {
             className={`absolute bottom-3 right-3 p-2 rounded-lg transition-all ${
               isRecording
                 ? 'bg-red-500 text-[#1A1A1A]'
-                : 'bg-gray-600 hover:bg-gray-700 text-white'
+                : 'bg-gray-500 hover:bg-gray-600 text-[#1A1A1A]'
             } disabled:opacity-50`}
             title={isRecording ? 'Stop recording' : 'Start recording'}
           >
@@ -175,25 +175,25 @@ export const VibeCodingInput = ({ onSubmit, isLoading = false, API }) => {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-4 bg-gray-100 border border-gray-200 rounded-lg"
+            className="p-4 bg-gray-900/30 border border-gray-700/50 rounded-lg"
           >
             <div className="flex items-center gap-2 mb-3">
               <Palette size={16} className="text-[#1A1A1A]" />
-              <span className="font-medium text-gray-700">Vibe Analysis</span>
+              <span className="font-medium text-gray-300">Vibe Analysis</span>
             </div>
 
             <div className="space-y-2 text-sm text-slate-300">
               <div>
                 <span className="text-slate-400">Style:</span>
-                <span className="ml-2 text-gray-700 font-medium">{vibeAnalysis.style}</span>
+                <span className="ml-2 text-gray-300 font-medium">{vibeAnalysis.style}</span>
               </div>
               <div>
                 <span className="text-slate-400">Complexity:</span>
-                <span className="ml-2 text-gray-700 font-medium">{vibeAnalysis.complexity}</span>
+                <span className="ml-2 text-gray-300 font-medium">{vibeAnalysis.complexity}</span>
               </div>
               <div>
                 <span className="text-slate-400">Tone:</span>
-                <span className="ml-2 text-gray-700 font-medium">{vibeAnalysis.tone}</span>
+                <span className="ml-2 text-gray-300 font-medium">{vibeAnalysis.tone}</span>
               </div>
             </div>
           </motion.div>
@@ -229,7 +229,7 @@ export const VibeCodingInput = ({ onSubmit, isLoading = false, API }) => {
       <button
         onClick={handleSubmit}
         disabled={!input.trim() || isLoading}
-        className="w-full bg-gray-700 hover:bg-gray-800 text-white font-medium py-3 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full bg-gradient-to-r from-gray-600 to-gray-600 hover:from-gray-700 hover:to-gray-700 text-[#1A1A1A] font-medium py-3 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {isLoading ? (
           <>
@@ -301,7 +301,7 @@ export const VibePreset = ({ preset, onApply }) => {
 
       <button
         onClick={() => onApply(preset)}
-        className="w-full bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium py-2 rounded-lg transition-colors"
+        className="w-full bg-gray-600 hover:bg-gray-700 text-[#1A1A1A] text-sm font-medium py-2 rounded-lg transition-colors"
       >
         Use This Vibe
       </button>

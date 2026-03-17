@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Editor from '@monaco-editor/react';
@@ -40,7 +40,6 @@ import {
   RefreshCw,
   ExternalLink,
   Github,
-  GitBranch,
   History,
   Undo2,
   Settings,
@@ -61,9 +60,9 @@ import {
   Smartphone,
   Monitor,
   Rocket,
+  RotateCcw,
 } from 'lucide-react';
 import { useAuth, API } from '../App';
-import { logApiError } from '../utils/apiError';
 import { useLayoutStore } from '../stores/useLayoutStore';
 import { useTaskStore } from '../stores/useTaskStore';
 import axios from 'axios';
@@ -72,9 +71,6 @@ import InlineAgentMonitor from '../components/InlineAgentMonitor';
 import ManusComputer from '../components/ManusComputer';
 import { CommandPalette } from '../components/AdvancedIDEUX';
 import { VibeCodingInput } from '../components/VibeCoding';
-import IDETerminal from '../components/IDETerminal';
-import IDEGit from '../components/IDEGit';
-import VibeCodePage from './VibeCodePage';
 
 /** Format message content — avoid [object Object] */
 function formatMsgContent(c) {
@@ -124,7 +120,7 @@ function BuildProgressCard({ expanded, onToggle, buildProgress, currentPhase, la
         onClick={onToggle}
         className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50 transition"
       >
-        <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#E05A25' }} />
+        <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#1A1A1A' }} />
         <span className="text-sm font-medium text-gray-900 flex-1 truncate">
           {currentPhase || 'Building...'} — {Math.round(buildProgress)}%
         </span>
@@ -136,7 +132,7 @@ function BuildProgressCard({ expanded, onToggle, buildProgress, currentPhase, la
         <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
           <motion.div
             className="h-full rounded-full"
-            style={{ background: '#E05A25' }}
+            style={{ background: '#1A1A1A' }}
             initial={{ width: 0 }}
             animate={{ width: `${buildProgress}%` }}
             transition={{ duration: 0.3 }}
@@ -159,14 +155,20 @@ const DEFAULT_FILES = {
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold text-[#1A1A1A] mb-4">
+    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter, sans-serif' }}>
+      <div style={{ textAlign: 'center', padding: '2rem' }}>
+        <div style={{ width: 64, height: 64, background: '#3b82f6', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+          <span style={{ fontSize: 28 }}>⚡</span>
+        </div>
+        <h1 style={{ fontSize: '2.25rem', fontWeight: 700, color: '#f8fafc', marginBottom: '0.75rem', letterSpacing: '-0.02em' }}>
           Welcome to CrucibAI
         </h1>
-        <p className="text-slate-400 text-lg">
-          Describe what you want to build in the chat...
+        <p style={{ color: '#94a3b8', fontSize: '1.125rem', marginBottom: '2rem' }}>
+          Describe what you want to build in the chat
         </p>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '0.5rem 1rem', color: '#64748b', fontSize: '0.875rem' }}>
+          <span>💬</span> Type a prompt to get started
+        </div>
       </div>
     </div>
   );
@@ -182,60 +184,145 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App />);`,
   },
   '/styles.css': {
-    code: `@import url('https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css');
-
+    code: `/* Tailwind CSS loaded via CDN (see externalResources in Sandpack config) */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }`,
   },
 };
 
 // File tree component
-const FileTree = ({ files, activeFile, onSelectFile, onAddFile }) => {
-  const getFileIcon = (filename) => {
-    if (filename.endsWith('.js') || filename.endsWith('.jsx')) return <FileCode className="w-4 h-4 text-[#666666]" />;
-    if (filename.endsWith('.css')) return <FileText className="w-4 h-4 text-gray-800" />;
-    if (filename.endsWith('.html')) return <FileText className="w-4 h-4 text-gray-800" />;
-    return <File className="w-4 h-4 text-gray-500" />;
+const FileTree = ({ files, activeFile, onSelectFile, onAddFile, onAddFolder, onOpenFolder, onDeleteFile }) => {
+  const [expandedFolders, setExpandedFolders] = useState({});
+
+  const getFileIcon = (name) => {
+    if (/\.(jsx?|tsx?)$/.test(name)) return <FileCode className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0" />;
+    if (/\.css$/.test(name)) return <FileText className="w-3.5 h-3.5 text-pink-500 flex-shrink-0" />;
+    if (/\.html$/.test(name)) return <FileText className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" />;
+    if (/\.json$/.test(name)) return <FileText className="w-3.5 h-3.5 text-yellow-600 flex-shrink-0" />;
+    if (/\.(py|c|cpp|h)$/.test(name)) return <FileCode className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />;
+    if (/\.(md|txt)$/.test(name)) return <FileText className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />;
+    return <File className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />;
   };
 
-  const fileList = Object.keys(files).sort();
+  // Group files into root-level files and folders
+  const tree = {};
+  Object.keys(files).sort().forEach(path => {
+    const clean = path.replace(/^\//, '');
+    const parts = clean.split('/');
+    if (parts.length === 1) {
+      tree[path] = null;
+    } else {
+      const folder = '/' + parts[0];
+      if (!tree[folder]) tree[folder] = [];
+      tree[folder].push(path);
+    }
+  });
+
+  const toggleFolder = (folder) => {
+    setExpandedFolders(prev => ({ ...prev, [folder]: prev[folder] === false ? true : false }));
+  };
+
+  const isExpanded = (folder) => expandedFolders[folder] !== false; // expanded by default
 
   return (
-    <div className="text-sm">
-      <div className="flex items-center justify-between gap-2 px-3 py-2 text-gray-500 text-xs uppercase tracking-wider">
-        <div className="flex items-center gap-2">
-          <FolderOpen className="w-4 h-4" />
-          <span>Files</span>
+    <div className="text-sm flex flex-col h-full">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between px-2 py-1.5 border-b border-gray-200 bg-[#FAF9F7] flex-shrink-0">
+        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Explorer</span>
+        <div className="flex items-center gap-0.5">
+          {onAddFile && (
+            <button onClick={onAddFile} className="p-1 text-gray-400 hover:text-gray-700 rounded" title="New file">
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {onAddFolder && (
+            <button onClick={onAddFolder} className="p-1 text-gray-400 hover:text-gray-700 rounded" title="New folder">
+              <FolderOpen className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {onOpenFolder && (
+            <button onClick={onOpenFolder} className="p-1 text-gray-400 hover:text-gray-700 rounded" title="Open local folder">
+              <Upload className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
-        {onAddFile && (
-          <button type="button" onClick={onAddFile} className="flex items-center gap-1 text-gray-500 hover:text-gray-900" title="New file">
-            <Plus className="w-3.5 h-3.5" /> New file
-          </button>
-        )}
       </div>
-      {fileList.map((filename) => (
-        <button
-          key={filename}
-          onClick={() => onSelectFile(filename)}
-          data-testid={`file-${filename.replace('/', '')}`}
-          className={`w-full flex items-center gap-2 px-4 py-1.5 text-left transition ${
-            activeFile === filename
-              ? 'bg-gray-200 text-gray-900'
-              : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
-          }`}
-        >
-          {getFileIcon(filename)}
-          <span className="truncate">{filename.replace('/', '')}</span>
-        </button>
-      ))}
+
+      {/* File tree */}
+      <div className="overflow-y-auto flex-1 py-1">
+        {Object.entries(tree).map(([key, children]) => {
+          if (children === null) {
+            // Root-level file
+            const name = key.replace(/^\//, '');
+            return (
+              <div key={key} className="group flex items-center">
+                <button
+                  onClick={() => onSelectFile(key)}
+                  className={`flex-1 flex items-center gap-2 px-3 py-1 text-left text-xs transition truncate ${
+                    activeFile === key ? 'bg-blue-50 text-blue-800 font-medium' : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  {getFileIcon(name)}
+                  <span className="truncate">{name}</span>
+                </button>
+                {onDeleteFile && (
+                  <button onClick={() => onDeleteFile(key)} className="opacity-0 group-hover:opacity-100 pr-2 text-gray-400 hover:text-red-500 transition" title="Delete file">
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            );
+          } else {
+            // Folder
+            const folderName = key.replace(/^\//, '');
+            const expanded = isExpanded(key);
+            return (
+              <div key={key}>
+                <button
+                  onClick={() => toggleFolder(key)}
+                  className="w-full flex items-center gap-1.5 px-2 py-1 text-left text-xs text-gray-500 hover:bg-gray-100 font-medium"
+                >
+                  {expanded ? <ChevronDown className="w-3 h-3 flex-shrink-0" /> : <ChevronRight className="w-3 h-3 flex-shrink-0" />}
+                  <FolderOpen className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0" />
+                  <span>{folderName}</span>
+                </button>
+                {expanded && children.map(path => {
+                  const name = path.split('/').pop();
+                  return (
+                    <div key={path} className="group flex items-center">
+                      <button
+                        onClick={() => onSelectFile(path)}
+                        className={`flex-1 flex items-center gap-2 pl-7 pr-2 py-1 text-left text-xs transition truncate ${
+                          activeFile === path ? 'bg-blue-50 text-blue-800 font-medium' : 'text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        {getFileIcon(name)}
+                        <span className="truncate">{name}</span>
+                      </button>
+                      {onDeleteFile && (
+                        <button onClick={() => onDeleteFile(path)} className="opacity-0 group-hover:opacity-100 pr-2 text-gray-400 hover:text-red-500 transition" title="Delete file">
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          }
+        })}
+      </div>
     </div>
   );
 };
 
-// Console/Logs component (Terminal)
+// Console/Logs component (Terminal) — dark theme to match app
 const ConsolePanel = ({ logs, placeholder = "Terminal output will appear here. Run a build to see logs." }) => {
   const consoleRef = useRef(null);
 
@@ -246,23 +333,18 @@ const ConsolePanel = ({ logs, placeholder = "Terminal output will appear here. R
   }, [logs]);
 
   return (
-    <div ref={consoleRef} className="h-full overflow-auto font-mono text-xs p-3 space-y-1 bg-white text-gray-800">
+    <div ref={consoleRef} className="workspace-console-panel h-full overflow-auto font-mono text-xs p-3 space-y-1">
       {logs.length === 0 ? (
-        <div className="text-gray-500">{placeholder}</div>
+        <div className="workspace-console-placeholder">{placeholder}</div>
       ) : (
         logs.map((log, i) => (
           <div
             key={i}
-            className={`flex items-start gap-2 ${
-              log.type === 'error' ? 'text-[#666666]' :
-              log.type === 'success' ? 'text-[#1A1A1A]' :
-              log.type === 'warning' ? 'text-[#666666]' :
-              'text-gray-600'
-            }`}
+            className={`workspace-console-line flex items-start gap-2 workspace-console-line--${log.type || 'info'}`}
           >
-            <span className="text-[#666666]">[{log.time}]</span>
-            <span className="text-gray-500">{log.agent || 'system'}:</span>
-            <span className="flex-1">{log.message}</span>
+            <span className="workspace-console-time">[{log.time}]</span>
+            <span className="workspace-console-agent">{log.agent || 'system'}:</span>
+            <span className="flex-1 workspace-console-message">{log.message}</span>
           </div>
         ))
       )}
@@ -382,6 +464,64 @@ const Workspace = () => {
   
   const [files, setFiles] = useState(DEFAULT_FILES);
   const [activeFile, setActiveFile] = useState('/App.js');
+
+  // Files safe to pass to Sandpack — exclude backend/test/config files.
+  // Also post-process: BrowserRouter → MemoryRouter (BrowserRouter breaks in iframes),
+  // and inject Tailwind CDN into styles.css so classes render correctly.
+  const sandpackFiles = useMemo(() => {
+    const EXCLUDED = /\.(test|spec)\.[jt]sx?$|Dockerfile|docker-compose|\.md$|\.sh$|\.ya?ml$|\.env|\.gitignore|server\.(js|ts)$|express|mongoose/i;
+    const ALLOWED  = /\.(jsx?|tsx?|css|html|json)$/i;
+    const BACKEND_CODE = /require\(['"]express['"]\)|require\(['"]mongoose['"]\)|require\(['"]mongodb['"]\)|from ['"]express['"]|from ['"]mongoose['"]|app\.listen\(|mongoose\.connect\(/;
+
+    const filtered = Object.entries(files).filter(([path, f]) => {
+      if (!ALLOWED.test(path) || EXCLUDED.test(path)) return false;
+      // Drop files that are clearly Node/Express backend
+      if (f?.code && BACKEND_CODE.test(f.code)) return false;
+      return true;
+    });
+
+    return Object.fromEntries(
+      filtered.map(([path, f]) => {
+        let code = f?.code || '';
+        // Fix: BrowserRouter doesn't work in Sandpack iframes → use MemoryRouter
+        code = code
+          .replace(/import\s*\{\s*BrowserRouter(\s*,\s*|\s+as\s+\w+\s*,?\s*)/g, 'import { MemoryRouter$1')
+          .replace(/import\s*\{\s*([^}]*),?\s*BrowserRouter\s*,?\s*([^}]*)\}/g, (_, a, b) =>
+            `import { ${[a, b].filter(Boolean).join(', ')}, MemoryRouter }`)
+          .replace(/<BrowserRouter>/g, '<MemoryRouter>')
+          .replace(/<\/BrowserRouter>/g, '</MemoryRouter>')
+          .replace(/BrowserRouter\b/g, 'MemoryRouter');
+
+        // Inject Tailwind CDN into styles.css if not already present
+        if ((path === '/styles.css' || path === 'styles.css') && !code.includes('tailwindcss') && !code.includes('tailwind')) {
+          code = `@import url('https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css');\n\n` + code;
+        }
+
+        return [path, { ...f, code }];
+      })
+    );
+  }, [files]);
+
+  // Parse dependencies from package.json if the AI generated one
+  const sandpackDeps = useMemo(() => {
+    const base = {
+      axios: '^1.6.2',
+      'react-router-dom': '^6.8.0',
+      'lucide-react': '^0.263.1',
+      'date-fns': '^2.30.0',
+      recharts: '^2.8.0',
+      'framer-motion': '^10.16.4',
+      clsx: '^2.0.0',
+    };
+    try {
+      const pkgJson = files['/package.json']?.code || files['package.json']?.code;
+      if (pkgJson) {
+        const pkg = JSON.parse(pkgJson);
+        return { ...base, ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
+      }
+    } catch (_) {}
+    return base;
+  }, [files]);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
   const [isBuilding, setIsBuilding] = useState(false);
@@ -413,10 +553,23 @@ const Workspace = () => {
   const [chatMaximized, setChatMaximized] = useState(false);
   const [fileSearchOpen, setFileSearchOpen] = useState(false);
   const [lastTokensUsed, setLastTokensUsed] = useState(0);
-  const [leftSidebarOpen, setLeftSidebarOpen] = useState(false); // collapsed by default; View → "Show code / files" for devs
+  const [leftSidebarOpen, setLeftSidebarOpen] = useState(true); // open by default
   const [showFirstRunBanner, setShowFirstRunBanner] = useState(() => !localStorage.getItem('crucibai_first_run'));
-  const [showSavedPromptWelcome, setShowSavedPromptWelcome] = useState(false);
-  const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(() => {
+    try {
+      const v = localStorage.getItem('crucibai_workspace_right_panel');
+      return v !== 'false';
+    } catch { return true; }
+  });
+  const setRightSidebarOpenPersisted = useCallback((value) => {
+    setRightSidebarOpen(value);
+    try { localStorage.setItem('crucibai_workspace_right_panel', String(value)); } catch (_) {}
+  }, []);
+  const resetLayout = useCallback(() => {
+    setLeftSidebarOpen(true);
+    setRightSidebarOpenPersisted(true);
+    setActivePanel('preview');
+  }, [setRightSidebarOpenPersisted]);
   const [splitEditor, setSplitEditor] = useState(false);
   const [buildCardExpanded, setBuildCardExpanded] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState(null); // 'file' | 'edit' | 'view' | 'go' | 'run' | 'terminal' | 'help' | null
@@ -442,99 +595,30 @@ const Workspace = () => {
 
   // Section 06: parseMultiFileOutput — extract fenced code blocks with file paths
   const parseMultiFileOutput = (responseText) => {
+    const filePattern = /```(?:jsx?|tsx?|css|html)?:([\w./\-]+)\n([\s\S]*?)```/g;
     const parsedFiles = {};
     let match;
-
-    // 1. Named file blocks: ```jsx:/App.js\n...code...```
-    const namedPattern = /```(?:jsx?|tsx?|css|html)?:([\w./\-]+)\n([\s\S]*?)```/g;
-    while ((match = namedPattern.exec(responseText)) !== null) {
+    while ((match = filePattern.exec(responseText)) !== null) {
       const filePath = match[1].startsWith('/') ? match[1] : `/${match[1]}`;
       parsedFiles[filePath] = { code: match[2] };
     }
-    if (Object.keys(parsedFiles).length > 0) return parsedFiles;
-
-    // 2. Any fenced code block — extract ONLY the code inside, not surrounding prose
-    const fencePattern = /```(?:jsx?|tsx?|javascript|js|css|html)?\n([\s\S]*?)```/g;
-    const codeBlocks = [];
-    while ((match = fencePattern.exec(responseText)) !== null) {
-      codeBlocks.push(match[1]);
+    // Fallback: if no file markers, put everything in /App.js
+    if (Object.keys(parsedFiles).length === 0) {
+      const cleaned = responseText.replace(/```jsx?/g, '').replace(/```/g, '').trim();
+      parsedFiles['/App.js'] = { code: cleaned };
     }
-    if (codeBlocks.length > 0) {
-      // Use the largest code block (most likely the main App.js)
-      const mainCode = codeBlocks.reduce((a, b) => (b.length > a.length ? b : a), '');
-      // sanitizeAppCode is defined after this function — use inline check here
-      const isIndexJs = /ReactDOM\.(render|createRoot)|import.*ReactDOM/.test(mainCode) && !/export\s+default/.test(mainCode);
-      if (!isIndexJs) {
-        parsedFiles['/App.js'] = { code: mainCode };
-      } else {
-        // AI returned index.js bootstrap instead of App component — use fallback
-        parsedFiles['/App.js'] = { code: `import React from 'react';\n\nexport default function App() {\n  return (\n    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">\n      <h1 className="text-4xl font-bold">Loading...</h1>\n    </div>\n  );\n}` };
-      }
-      return parsedFiles;
-    }
-
-    // 3. Last resort: strip ALL markdown fences then cut off any trailing prose
-    let cleaned = responseText
-      .replace(/```[\w]*\n?/g, '')  // strip opening fences
-      .replace(/```/g, '')           // strip closing fences
-      .trim();
-    // Cut off prose that appears after the last JS closing token
-    const lastBrace = Math.max(cleaned.lastIndexOf('}'), cleaned.lastIndexOf(');'), cleaned.lastIndexOf(';'));
-    if (lastBrace > 0 && lastBrace > cleaned.length * 0.4) {
-      cleaned = cleaned.substring(0, lastBrace + 1).trim();
-    }
-    parsedFiles['/App.js'] = { code: cleaned };
     return parsedFiles;
   };
-  // Sanitize code that the AI generated as index.js (ReactDOM.render bootstrap) instead of App.js component
-  const sanitizeAppCode = (code) => {
-    if (!code) return code;
-    // If the code contains ReactDOM.render or createRoot but no default export, it's index.js — replace with a placeholder
-    const isIndexJs = /ReactDOM\.(render|createRoot)|import.*ReactDOM/.test(code) && !/export\s+default/.test(code);
-    if (isIndexJs) {
-      // Extract any meaningful content hints from the code (e.g. imported App name)
-      return `import React from 'react';
-
-export default function App() {
-  return (
-    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">App</h1>
-        <p className="text-gray-400">Your app is being generated...</p>
-      </div>
-    </div>
-  );
-}`;
-    }
-    // If there's no default export at all, wrap the code in a component
-    if (!/export\s+default/.test(code) && /return\s*\(/.test(code)) {
-      return `import React from 'react';
-
-export default function App() {
-${code}
-}`;
-    }
-    return code;
-  };
-
   const [qualityGateResult, setQualityGateResult] = useState(null); // { passed, score, verdict } after build
   const [tokensPerStep, setTokensPerStep] = useState({ plan: 0, generate: 0 });
   const [showDeployModal, setShowDeployModal] = useState(false);
   const [mobileView, setMobileView] = useState(false);
-  const [workspaceInputMode, setWorkspaceInputMode] = useState(() => localStorage.getItem('crucibai_workspace_input_mode') || 'standard');
-  const [showVibeInput, setShowVibeInput] = useState(() => (localStorage.getItem('crucibai_workspace_input_mode') || 'standard') === 'vibe');
-  const setWorkspaceInputModeAndPersist = useCallback((mode) => {
-    setWorkspaceInputMode(mode);
-    localStorage.setItem('crucibai_workspace_input_mode', mode);
-    if (mode === 'vibe') setShowVibeInput(true);
-    else if (mode === 'standard') setShowVibeInput(false);
-    if (mode === 'advanced') setCommandPaletteOpen(true);
-  }, []);
+  const [showVibeInput, setShowVibeInput] = useState(false);
   const projectIdFromUrl = searchParams.get('projectId');
   const taskIdFromUrl = searchParams.get('taskId');
-  const panelFromUrl = searchParams.get('panel'); // deep link: ?panel=shell|git|vibecode|tools opens that right-panel tab
   const [projectBuildProgress, setProjectBuildProgress] = useState({ phase: 0, agent: '', progress: 0, status: '', tokens_used: 0 });
   const fileInputRef = useRef(null);
+  const folderInputRef = useRef(null);
   const chatInputRef = useRef(null);
   const chatEndRef = useRef(null);
 
@@ -554,18 +638,8 @@ ${code}
   const workspaceFilesLoadedForProject = useRef(null);
 
   useEffect(() => {
-    axios.get(`${API}/build/phases`).then(r => setBuildPhases(r.data.phases || [])).catch((e) => logApiError('Workspace', e));
+    axios.get(`${API}/build/phases`).then(r => setBuildPhases(r.data.phases || [])).catch(() => {});
   }, []);
-
-  // Deep link: open right panel to a specific tab when ?panel= is in URL (so sidebar "Terminal & Git" / "VibeCode" open inside Workspace)
-  const validPanels = ['preview', 'console', 'history', 'review', 'tools', 'shell', 'git', 'vibecode'];
-  useEffect(() => {
-    if (panelFromUrl && validPanels.includes(panelFromUrl)) {
-      if (['shell', 'git', 'vibecode'].includes(panelFromUrl)) setLayoutMode('dev'); // ensure dev view so those tabs exist
-      setActivePanel(panelFromUrl);
-      setRightSidebarOpen(true);
-    }
-  }, [panelFromUrl, setLayoutMode]);
 
   // Initial terminal message so panel isn't empty
   useEffect(() => {
@@ -592,7 +666,7 @@ ${code}
           list.map((path) =>
             axios.get(`${API}/projects/${projectIdFromUrl}/workspace/file`, { params: { path }, headers })
               .then((f) => ({ path: f.data.path, content: f.data.content }))
-              .catch((e) => { logApiError('Workspace', e); return null; })
+              .catch(() => null)
           )
         ).then((results) => {
           const loaded = results.filter(Boolean).reduce((acc, { path, content }) => {
@@ -606,14 +680,14 @@ ${code}
           }
         });
       })
-      .catch((e) => logApiError('Workspace', e));
+      .catch(() => {});
   }, [projectIdFromUrl, token, API]);
 
   useEffect(() => {
     if (token) {
       axios.get(`${API}/agents/activity`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => setAgentsActivity(r.data.activities || []))
-        .catch((e) => logApiError('Workspace', e));
+        .catch(() => {});
     }
   }, [token, messages.length]);
 
@@ -695,7 +769,7 @@ ${code}
                   }
                   if (r.data?.quality_score) setQualityGateResult({ score: r.data.quality_score });
                 })
-                .catch((e) => logApiError('Workspace', e));
+                .catch(() => {});
               setBuildProgress(100);
               setIsBuilding(false);
             }
@@ -731,7 +805,7 @@ ${code}
           setMessages(asMessages);
         }
       })
-      .catch((e) => logApiError('Workspace', e));
+      .catch(() => {});
   }, [sessionId]);
 
   useEffect(() => {
@@ -771,7 +845,8 @@ ${code}
     return () => window.removeEventListener('keydown', onKey);
   }, [navigate]);
 
-  // Restore existing task workspace when opening by taskId — load files + messages; never pre-fill input for task clicks.
+  // Restore existing task workspace when opening by taskId — load files + messages.
+  // Pre-fill input with task.prompt when task has no build yet so user can click Submit/Go to run.
   const taskRestoredRef = useRef(null);
   useEffect(() => {
     if (!taskIdFromUrl || !storeTasks?.length) return;
@@ -786,6 +861,8 @@ ${code}
     }
     if (task.messages && Array.isArray(task.messages) && task.messages.length > 0) {
       setMessages(task.messages);
+    } else if (task.prompt && (!task.files || Object.keys(task.files || {}).length === 0)) {
+      setInput(task.prompt);
     }
     if (task.versions?.length) {
       setVersions(task.versions);
@@ -793,35 +870,19 @@ ${code}
     }
   }, [taskIdFromUrl, storeTasks]);
 
-  // Auto-start build from navigation state (Dashboard), URL prompt, sessionStorage (saved from landing before auth), or task prompt (sidebar click).
+  // Auto-start build ONLY when user explicitly clicks "Start Building" / "Go" (e.g. from Dashboard).
+  // Opening a task from the sidebar just loads the task; execution happens on Submit/Go/Update.
   const autoStartedRef = useRef(null);
-  const PENDING_PROMPT_KEY = 'crucibai_pending_prompt';
   useEffect(() => {
     const statePrompt = location.state?.initialPrompt || searchParams.get('prompt');
-    const stateAutoStart = location.state?.autoStart;
+    const stateAutoStart = location.state?.autoStart || searchParams.get('autoStart') === '1';
     const initialFiles = location.state?.initialAttachedFiles;
-    let storedPrompt = null;
-    try {
-      storedPrompt = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(PENDING_PROMPT_KEY) : null;
-      if (storedPrompt) sessionStorage.removeItem(PENDING_PROMPT_KEY);
-    } catch (_) {}
-    const task = taskIdFromUrl ? storeTasks?.find(t => t.id === taskIdFromUrl) : null;
-    const hasExistingBuild = task?.files && Object.keys(task.files || {}).length > 0;
-    if (taskIdFromUrl && hasExistingBuild) return;
-    const promptToUse = statePrompt || storedPrompt || (task?.prompt && !hasExistingBuild ? task.prompt : null);
-    const isChatTask = task?.type === 'chat' || task?.type === 'query';
-    const shouldAutoStart = stateAutoStart || !!storedPrompt || (taskIdFromUrl && task?.prompt && !hasExistingBuild && !isChatTask);
-    if (!promptToUse || !shouldAutoStart) return;
-    if (autoStartedRef.current === `${location.key}-${taskIdFromUrl}-${!!storedPrompt}`) return;
-    autoStartedRef.current = `${location.key}-${taskIdFromUrl}-${!!storedPrompt}`;
-    if (storedPrompt) {
-      setInput(storedPrompt);
-      setShowSavedPromptWelcome(true);
-      setTimeout(() => setShowSavedPromptWelcome(false), 5000);
-    }
+    if (!stateAutoStart || !statePrompt) return;
+    if (autoStartedRef.current === `${location.key}-${taskIdFromUrl}`) return;
+    autoStartedRef.current = `${location.key}-${taskIdFromUrl}`;
     if (initialFiles?.length) setAttachedFiles(initialFiles);
-    handleBuild(promptToUse, initialFiles || undefined);
-  }, [location.key, location.state, taskIdFromUrl, storeTasks]);
+    handleBuild(statePrompt, initialFiles || undefined);
+  }, [location.key, location.state, taskIdFromUrl]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -833,105 +894,79 @@ ${code}
     setLogs(prev => [...prev, { message, type, time, agent }]);
   };
 
-  const startRecording = async () => {
+  // ── Voice input via Web Speech API (browser-native, no API key needed) ──
+  const speechRecognitionRef = useRef(null);
+
+  const startRecording = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      addLog('Voice input not supported. Please use Chrome, Edge, or Safari.', 'error', 'voice');
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Voice input requires Chrome, Edge, or Safari.', error: true }]);
+      return;
+    }
     try {
-      if (!navigator.mediaDevices?.getUserMedia) {
-        addLog('Microphone not supported in this browser.', 'error', 'voice');
-        return;
-      }
-      if (typeof MediaRecorder === 'undefined') {
-        addLog('Voice recording not supported. Try Chrome or Firefox.', 'error', 'voice');
-        return;
-      }
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mimeTypes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
-      const mimeType = mimeTypes.find(mt => MediaRecorder.isTypeSupported(mt)) || 'audio/webm';
-      const recorder = new MediaRecorder(stream, { mimeType });
-      const chunks = [];
-      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-      recorder.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop());
-        setIsRecording(false);
-        const blob = new Blob(chunks, { type: mimeType.split(';')[0] });
-        if (blob.size < 100) {
-          addLog('Recording too short. Speak for at least a second.', 'error', 'voice');
-          return;
-        }
-        const ext = mimeType.includes('mp4') ? 'm4a' : 'webm';
-        setIsTranscribing(true);
-        addLog('Transcribing...', 'info', 'voice');
-        try {
-          await transcribeAudio(blob, ext);
-        } finally {
-          setIsTranscribing(false);
-        }
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        setIsRecording(true);
+        addLog('Listening...', 'info', 'voice');
       };
-      recorder.start(1000);
-      mediaRecorderRef.current = { recorder, stream };
-      setAudioStream(stream);
-      setIsRecording(true);
-      addLog('Listening...', 'info', 'voice');
+
+      recognition.onresult = (e) => {
+        const transcript = e.results[0][0].transcript.trim();
+        setInput(prev => (prev ? prev + ' ' + transcript : transcript));
+        setIsRecording(false);
+        addLog(`Voice: "${transcript}"`, 'success', 'voice');
+      };
+
+      recognition.onerror = (e) => {
+        setIsRecording(false);
+        const msg = e.error === 'not-allowed'
+          ? 'Microphone access denied. Please allow mic in your browser settings.'
+          : e.error === 'no-speech'
+          ? 'No speech detected. Please try again.'
+          : `Voice error: ${e.error}`;
+        addLog(msg, 'error', 'voice');
+      };
+
+      recognition.onend = () => {
+        setIsRecording(false);
+        speechRecognitionRef.current = null;
+      };
+
+      speechRecognitionRef.current = recognition;
+      recognition.start();
     } catch (err) {
       setIsRecording(false);
-      const micMsg = err?.name === 'NotAllowedError'
-        ? 'Microphone access denied. Allow it in browser settings.'
-        : 'Could not start microphone. Check browser permissions.';
-      addLog(micMsg, 'error', 'voice');
-      setMessages(prev => [...prev, { role: 'assistant', content: micMsg, error: true }]);
+      addLog(`Voice failed: ${err.message}`, 'error', 'voice');
     }
   };
 
   const stopRecording = () => {
-    // ISSUE 7: Cancel recording — stop without transcribing, fully release mic
+    if (speechRecognitionRef.current) {
+      speechRecognitionRef.current.stop();
+      speechRecognitionRef.current = null;
+    }
+    // Also stop old MediaRecorder if any
     const ref = mediaRecorderRef.current;
-    if (ref?.recorder) {
-      ref.recorder.onstop = () => {
-        // Stop ALL tracks on the stream to fully release microphone
-        if (ref.stream) ref.stream.getTracks().forEach(t => t.stop());
-      };
-      if (ref.recorder.state !== 'inactive') ref.recorder.stop();
-    }
-    // Also stop stream directly in case recorder didn't clean up
-    if (ref?.stream) {
-      ref.stream.getTracks().forEach(t => t.stop());
-    }
+    if (ref?.recorder?.state !== 'inactive') ref?.recorder?.stop();
+    if (ref?.stream) ref.stream.getTracks().forEach(t => t.stop());
     mediaRecorderRef.current = null;
     setAudioStream(null);
     setIsRecording(false);
-    addLog('Recording cancelled.', 'info', 'voice');
   };
 
   const confirmRecording = () => {
-    // Stop recording and send to Whisper for transcription
-    const ref = mediaRecorderRef.current;
-    if (ref?.recorder?.state === 'recording') {
-      ref.recorder.stop(); // onstop handler will call transcribeAudio
-    }
-    setAudioStream(null);
+    // Legacy — just stop
+    stopRecording();
   };
 
-  const transcribeAudio = async (blob, ext = 'webm') => {
-    try {
-      const formData = new FormData();
-      formData.append('audio', blob, `recording.${ext}`);
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const response = await axios.post(`${API}/voice/transcribe`, formData, {
-        headers: { ...headers },
-        timeout: 30000,
-        maxContentLength: Infinity,
-        maxBodyLength: Infinity,
-      });
-      if (response.data?.text) {
-        setInput(response.data.text);
-        addLog(`Transcribed: "${response.data.text}"`, 'success', 'voice');
-      } else {
-        addLog('No text in response. Try speaking clearly.', 'error', 'voice');
-      }
-    } catch (err) {
-      const msg = err.response?.data?.detail || err.message || 'Transcription failed.';
-      addLog(msg, 'error', 'voice');
-      setLastError(msg);
-    }
+  const transcribeAudio = async () => {
+    // No-op: replaced by Web Speech API
   };
 
   const handleFileSelect = (e) => {
@@ -1003,7 +1038,7 @@ ${code}
       if (isBigBuild) {
         try {
           const useSwarm = buildMode === 'swarm' && !!token;
-const planRes = await axios.post(`${API}/build/plan`, { prompt, swarm: useSwarm, build_kind: 'any' }, { headers, timeout: 45000 });
+          const planRes = await axios.post(`${API}/build/plan`, { prompt, swarm: useSwarm }, { headers, timeout: 45000 });
           const planText = (planRes.data.plan_text || '').trim();
           planSuggestions = planRes.data.suggestions || [];
           const planTokens = planRes.data.plan_tokens ?? planRes.data.tokens_estimate ?? 0;
@@ -1019,7 +1054,8 @@ const planRes = await axios.post(`${API}/build/plan`, { prompt, swarm: useSwarm,
           addLog('Plan ready. Starting build...', 'info', 'planner');
           setMessages(prev => [...prev, { role: 'assistant', content: 'Building...', isBuilding: true }]);
         } catch (planErr) {
-          addLog(`Plan failed: ${planErr.message}, building directly`, 'info', 'planner');
+          const is404 = planErr.response?.status === 404 || planErr.response?.status === 405;
+          addLog(is404 ? 'Plan endpoint not available, building without plan.' : `Plan failed: ${planErr.message}, building directly`, 'info', 'planner');
           setMessages(prev => prev.map((msg, i) => i === prev.length - 1 ? { ...msg, content: 'Building...' } : msg));
         }
       }
@@ -1059,48 +1095,167 @@ const planRes = await axios.post(`${API}/build/plan`, { prompt, swarm: useSwarm,
         { id: 'validating', name: 'Validating' },
         { id: 'deployment', name: 'Deployment' }
       ];
-      const agents = [
-        { name: 'Planner', delay: 300, phase: phaseLabels[0]?.name || 'Planning' },
-        { name: 'Frontend', delay: 500, phase: phaseLabels[1]?.name || 'Generating' },
-        { name: 'Styling', delay: 400, phase: phaseLabels[1]?.name || 'Generating' },
-        { name: 'Testing', delay: 300, phase: phaseLabels[2]?.name || 'Validating' },
-        { name: 'Finalizing', delay: 200, phase: phaseLabels[3]?.name || 'Deployment' }
+      // ── Detect if the request is for native code (C, Python, algorithm, CLI) ──
+      const nativeLangMap = {
+        python: /\bpython\b/i,
+        c:      /\b(c\s+program|in\s+c\b|\.c\b|c\s+code|write\s+c\b)/i,
+        cpp:    /\b(c\+\+|cpp)\b/i,
+        bash:   /\b(bash|shell\s+script|sh\b)\b/i,
+        java:   /\bjava\b/i,
+      };
+      let nativeLang = null;
+      for (const [lang, rx] of Object.entries(nativeLangMap)) {
+        if (rx.test(prompt)) { nativeLang = lang; break; }
+      }
+      // Also treat algorithm/data-structure requests as native code
+      const isAlgorithm = /\b(algorithm|sort|binary search|linked list|stack|queue|graph|tree|dynamic programming|compile|compiler|assembler|interpreter)\b/i.test(prompt);
+      if (!nativeLang && isAlgorithm) nativeLang = 'c'; // default to C for algorithm tasks
+
+      const isNativeCode = !!nativeLang;
+      const langExt = { python: 'py', c: 'c', cpp: 'cpp', bash: 'sh', java: 'java' };
+      const ext = langExt[nativeLang] || 'c';
+
+      // ── Choose agent set based on request type ──
+      const agents = isNativeCode ? [
+        { name: 'Planner',   delay: 200, phase: phaseLabels[0]?.name || 'Planning',   desc: `Analyzing ${nativeLang} requirements...` },
+        { name: 'Coder',     delay: 350, phase: phaseLabels[1]?.name || 'Generating', desc: `Writing ${nativeLang} source code...` },
+        { name: 'Compiler',  delay: 300, phase: phaseLabels[1]?.name || 'Generating', desc: `Compiling and checking for errors...` },
+        { name: 'Tester',    delay: 250, phase: phaseLabels[2]?.name || 'Validating', desc: 'Running test cases and verifying output...' },
+        { name: 'Optimizer', delay: 150, phase: phaseLabels[3]?.name || 'Deployment', desc: 'Reviewing code quality and edge cases...' },
+      ] : [
+        { name: 'Planner',     delay: 250, phase: phaseLabels[0]?.name || 'Planning',    desc: 'Analyzing requirements and breaking into tasks...' },
+        { name: 'Architect',   delay: 200, phase: phaseLabels[0]?.name || 'Planning',    desc: 'Designing component structure and data flow...' },
+        { name: 'Frontend',    delay: 300, phase: phaseLabels[1]?.name || 'Generating',  desc: 'Building React components with hooks...' },
+        { name: 'Styling',     delay: 250, phase: phaseLabels[1]?.name || 'Generating',  desc: 'Applying Tailwind CSS and responsive layout...' },
+        { name: 'Logic',       delay: 200, phase: phaseLabels[1]?.name || 'Generating',  desc: 'Implementing business logic and state management...' },
+        { name: 'Validator',   delay: 200, phase: phaseLabels[2]?.name || 'Validating',  desc: 'Checking for syntax errors and best practices...' },
+        { name: 'Optimizer',   delay: 150, phase: phaseLabels[3]?.name || 'Deployment',  desc: 'Optimizing bundle and adding deployment config...' },
       ];
       let progress = 0;
+      setAgentsActivity([]);
       for (const agent of agents) {
         setCurrentPhase(agent.phase);
-        addLog(`${agent.name} agent processing...`, 'info', agent.name.toLowerCase());
+        addLog(`[${agent.name}] ${agent.desc}`, 'info', agent.name.toLowerCase());
+        setAgentsActivity(prev => [
+          ...prev.filter(a => a.name !== agent.name),
+          { name: agent.name, status: 'running', phase: agent.phase, progress: Math.round(progress), updated: Date.now() }
+        ]);
         await new Promise(r => setTimeout(r, agent.delay));
-        progress += 20;
-        setBuildProgress(Math.min(progress, 90));
+        progress += 100 / agents.length;
+        setBuildProgress(Math.min(Math.round(progress * 0.9), 90));
+        setAgentsActivity(prev => prev.map(a => a.name === agent.name ? { ...a, status: 'done' } : a));
       }
       setCurrentPhase('');
 
-      let messageContent = `Build a complete React application for: "${prompt}".
+      // ── Build generation prompt ──
+      let messageContent;
 
-RULES (follow exactly):
-1. Output ONLY a single fenced code block containing the complete App.js component.
-2. The code block MUST start with: \`\`\`jsx
-3. The code block MUST end with: \`\`\`
-4. The App.js MUST export a default React component (e.g. export default function App() {...})
-5. Do NOT output index.js, ReactDOM.render, or any bootstrap code — only the App component.
-6. Use React hooks (useState, useEffect) and inline Tailwind CSS classes.
-7. Make it visually complete: hero section, real content, responsive layout.
-8. No explanation text before or after the code block.
+      if (isNativeCode) {
+        messageContent = `You are CrucibAI, an expert ${nativeLang} developer.
 
-Example format:
-\`\`\`jsx
+Create a complete, working ${nativeLang} program for: "${prompt}"
+
+OUTPUT FORMAT — generate ONLY these files:
+
+1. The main source file:
+\`\`\`${nativeLang}:/main.${ext}
+// complete ${nativeLang} source code here — NO placeholders
+\`\`\`
+
+2. If more source files are needed, add them:
+\`\`\`${nativeLang}:/helpers.${ext}
+// additional code
+\`\`\`
+
+3. A simple React viewer App.js that displays the source code and run instructions:
+\`\`\`jsx:/App.js
 import React, { useState } from 'react';
+
+const SOURCE = \`[the exact source code]\`;
+
 export default function App() {
-  return <div className="min-h-screen bg-gray-900 text-white">...</div>;
+  return (
+    <div className="min-h-screen bg-gray-900 text-gray-100 p-6 font-mono">
+      <h1 className="text-2xl font-bold text-green-400 mb-4">${prompt}</h1>
+      <div className="bg-gray-800 rounded-lg p-4 overflow-auto">
+        <pre className="text-sm text-green-300 whitespace-pre-wrap">{SOURCE}</pre>
+      </div>
+      <p className="mt-4 text-gray-400 text-sm">Click Run ▶ in the terminal below to execute this program.</p>
+    </div>
+  );
 }
-\`\`\``;
+\`\`\`
+
+RULES:
+- Write COMPLETE, compilable/runnable code — no placeholders, no "// TODO"
+- Include all necessary headers/imports
+- Add comments explaining the algorithm
+- Handle edge cases`;
+      } else {
+        messageContent = `You are CrucibAI. Build a COMPLETE, BEAUTIFUL, MULTI-PAGE React application for: "${prompt}"
+
+⚠️ CRITICAL RULES — THIS IS A BROWSER-ONLY SANDPACK PREVIEW:
+
+❌ ABSOLUTELY FORBIDDEN (will break the preview):
+   - NO Node.js, Express, Koa, Fastify or any backend server
+   - NO MongoDB, Mongoose, PostgreSQL, MySQL or any database
+   - NO require('...') CommonJS imports — use ES module imports only
+   - NO server.js, api.js, app.listen(), mongoose.connect()
+   - NO Dockerfile, .env, .yml, CI/CD, deployment scripts
+   - NO next.js, remix, or any SSR framework
+   - NO BrowserRouter — use MemoryRouter (BrowserRouter breaks in iframes)
+
+✅ REQUIRED:
+1. ROUTING: Use react-router-dom with MemoryRouter (NOT BrowserRouter):
+   import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
+   <Router><Routes><Route path="/" element={<Home />} /></Routes></Router>
+   Build 3-5 meaningful pages. Example "flower website": Home, Shop, Gallery, About, Contact.
+
+2. COMPONENTS: Always create:
+   - /components/Navbar.js — navigation links using <Link to="...">
+   - /components/Footer.js — footer section
+
+3. PAGES: One file per page under /pages/:
+   /pages/Home.js, /pages/About.js, /pages/[relevant].js, etc.
+
+4. STYLING — all Tailwind classes (loaded via CDN, no config needed):
+   - Bold hero sections, gradient backgrounds, card grids
+   - lucide-react icons, framer-motion entrance animations
+   - Realistic hardcoded data (no "Lorem ipsum", real product names, prices, etc.)
+   - Use inline styles for dynamic values, Tailwind for everything else
+
+5. DATA: Use hardcoded JavaScript arrays/objects — no API calls, no fetch()
+
+6. OUTPUT FORMAT — every file on its own fenced block:
+\`\`\`jsx:/App.js
+import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
+// ... rest of App
+\`\`\`
+\`\`\`jsx:/components/Navbar.js
+// ...
+\`\`\`
+\`\`\`jsx:/pages/Home.js
+// ...
+\`\`\`
+
+Allowed imports ONLY: react, react-router-dom, lucide-react, framer-motion, recharts, date-fns, clsx
+Build it NOW — no placeholders, no TODOs, no backend code:`;
+      }
+
       if (imagesToSend.length > 0) {
-        messageContent += `\n\nThe user has attached ${imagesToSend.length} image(s) as reference. Try to match the design style.`;
+        messageContent += `\n\n- The user attached ${imagesToSend.length} image(s) as design reference. Match the style closely.`;
       }
       const wantsPayments = /payment|stripe|subscription|checkout|pay|billing/i.test(prompt);
       if (wantsPayments) {
-        messageContent += `\n\nIMPORTANT: Include Stripe Checkout integration. Use @stripe/react-stripe-js or Stripe.js. Add a checkout/pay button and handle payment success. Include placeholder for STRIPE_PUBLISHABLE_KEY.`;
+        messageContent += `\n\n- Include Stripe Checkout integration with a working payment button and STRIPE_PUBLISHABLE_KEY placeholder.`;
+      }
+      const wantsAuth = /login|auth|sign.?in|register|user|account/i.test(prompt);
+      if (wantsAuth) {
+        messageContent += `\n\n- Include a working login/register UI with form validation and localStorage-based session simulation.`;
+      }
+      const wantsDB = /database|db|data|crud|list|todo|tasks?|store/i.test(prompt);
+      if (wantsDB) {
+        messageContent += `\n\n- Include localStorage-based data persistence with full CRUD operations.`;
       }
 
       if (useStreaming) {
@@ -1109,7 +1264,61 @@ export default function App() {
           headers: { 'Content-Type': 'application/json', ...headers },
           body: JSON.stringify({ message: messageContent, session_id: sessionId, model: selectedModel, mode: buildMode === 'thinking' ? 'thinking' : undefined }),
         });
-        if (!res.ok) throw new Error(await res.text());
+        if (!res.ok) {
+          const responseText = await res.text();
+          const isStreamMissing = res.status === 404 || res.status === 405 || /Cannot POST|<!DOCTYPE/i.test(responseText);
+          if (isStreamMissing) {
+            addLog('Stream endpoint not available, using non-streaming build...', 'info', 'deploy');
+            const response = await axios.post(`${API}/ai/chat`, {
+              message: messageContent,
+              session_id: sessionId,
+              model: selectedModel,
+            }, { headers, timeout: 90000 });
+            setBuildProgress(100);
+            if (response.data.tokens_used != null) { setLastTokensUsed(response.data.tokens_used); setTokensPerStep(prev => ({ ...prev, generate: response.data.tokens_used })); }
+            addLog('Build completed successfully!', 'success', 'deploy');
+            const parsedFiles = parseMultiFileOutput(response.data.response || response.data.message || '');
+            const newFiles = { ...files, ...parsedFiles };
+            setFiles(newFiles);
+            setVersions(prev => [{ id: `v_${Date.now()}`, prompt, files: newFiles, time: new Date().toLocaleTimeString() }, ...prev]);
+            setCurrentVersion(`v_${Date.now()}`);
+            setMessages(prev => prev.map((msg, i) => i === prev.length - 1 ? { role: 'assistant', content: 'Done! Your app is ready.', hasCode: true, planSuggestions } : msg));
+            setTimeout(() => fetchSuggestNext(), 400);
+            const mainCode = parsedFiles['/App.js']?.code || parsedFiles['/src/App.jsx']?.code || parsedFiles['/App.jsx']?.code || Object.values(parsedFiles)[0]?.code || '';
+            const filesForQuality = Object.fromEntries(Object.entries(parsedFiles || {}).map(([k, v]) => [k, (v && v.code) || '']));
+            const qgHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+            axios.post(`${API}/ai/quality-gate`, { code: mainCode, files: Object.keys(filesForQuality).length ? filesForQuality : undefined }, { headers: qgHeaders }).then(r => setQualityGateResult(r.data)).catch(() => setQualityGateResult(null));
+            setActivePanel('preview');
+            if (taskIdFromUrl) {
+              const finalMsgs = [{ role: 'user', content: prompt }, { role: 'assistant', content: 'Done! Your app is ready.', hasCode: true, planSuggestions }];
+              const vId = `v_${Date.now()}`;
+              updateTask(taskIdFromUrl, { files: newFiles, messages: finalMsgs, versions: [{ id: vId, prompt, files: newFiles, time: new Date().toLocaleTimeString() }], status: 'completed' });
+            } else {
+              addTask({ name: prompt.slice(0, 120), prompt, status: 'completed', createdAt: Date.now() });
+            }
+            if (token) {
+              axios.post(`${API}/tasks`, { name: prompt.slice(0, 120), prompt, session_id: sessionId, status: 'completed', files: Object.keys(parsedFiles) }, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+            }
+            if (projectIdFromUrl) {
+              const hdr = token ? { Authorization: `Bearer ${token}` } : {};
+              axios.get(`${API}/projects/${projectIdFromUrl}/deploy/files`, { headers: hdr })
+                .then(r => {
+                  const df = r.data?.files || {};
+                  if (Object.keys(df).length > 0) {
+                    const spFiles = {};
+                    for (const [fp, content] of Object.entries(df)) {
+                      spFiles[fp.startsWith('/') ? fp : `/${fp}`] = { code: content };
+                    }
+                    setFiles(prev => ({ ...prev, ...spFiles }));
+                    addLog(`Loaded ${Object.keys(df).length} files from orchestration.`, 'info', 'deploy');
+                  }
+                  if (r.data?.quality_score) setQualityGateResult({ score: r.data.quality_score });
+                }).catch(() => {});
+            }
+          } else {
+            throw new Error(responseText);
+          }
+        } else {
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let accumulated = '';
@@ -1141,10 +1350,34 @@ export default function App() {
                   setTimeout(() => fetchSuggestNext(), 400);
                   const mainCode = parsedFiles['/App.js']?.code || parsedFiles['/src/App.jsx']?.code || parsedFiles['/App.jsx']?.code || Object.values(parsedFiles)[0]?.code || '';
                   const filesForQuality = Object.fromEntries(Object.entries(parsedFiles || {}).map(([k, v]) => [k, (v && v.code) || '']));
-                  axios.post(`${API}/ai/quality-gate`, { code: mainCode, files: Object.keys(filesForQuality).length ? filesForQuality : undefined }).then(r => setQualityGateResult(r.data)).catch((e) => { logApiError('Workspace quality-gate', e); setQualityGateResult(null); });
+                  const qgHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+                  axios.post(`${API}/ai/quality-gate`, { code: mainCode, files: Object.keys(filesForQuality).length ? filesForQuality : undefined }, { headers: qgHeaders }).then(r => setQualityGateResult(r.data)).catch(() => setQualityGateResult(null));
                   return next;
                 });
-                setActivePanel('preview'); // AUTO-WIRE: switch to preview on build complete
+                // AUTO-RUN: if native code files were generated, compile + run them
+                const nativeFileKeys = Object.keys(parsedFiles).filter(p => /\.(c|cpp|py|sh|rb|go|rs|java)$/i.test(p));
+                if (nativeFileKeys.length > 0) {
+                  const fileToRun = nativeFileKeys[0];
+                  const runCode = parsedFiles[fileToRun]?.code || '';
+                  const runLang = /\.py$/.test(fileToRun) ? 'python'
+                               : /\.cpp$/.test(fileToRun) ? 'cpp'
+                               : /\.sh$/.test(fileToRun) ? 'bash'
+                               : /\.java$/.test(fileToRun) ? 'java'
+                               : 'c';
+                  setActiveFile(fileToRun);
+                  setActiveBottomPanel('terminal');
+                  addLog(`[Compiler] Compiling and running ${fileToRun}...`, 'info', 'compiler');
+                  axios.post(`${API}/code/run`, { code: runCode, language: runLang, filename: fileToRun }, { timeout: 20000 })
+                    .then(r => {
+                      if (r.data.stdout) addLog(`[Output]\n${r.data.stdout}`, r.data.exit_code === 0 ? 'success' : 'info', 'run');
+                      if (r.data.stderr && r.data.exit_code !== 0) addLog(`[Error]\n${r.data.stderr}`, 'error', 'run');
+                      else if (r.data.stderr) addLog(`[Warnings]\n${r.data.stderr}`, 'warning', 'run');
+                      addLog(`Exited with code ${r.data.exit_code}`, r.data.exit_code === 0 ? 'success' : 'error', 'run');
+                    })
+                    .catch(e => addLog(`Auto-run failed: ${e.message}`, 'error', 'run'));
+                } else {
+                  setActivePanel('preview'); // AUTO-WIRE: switch to preview on build complete
+                }
                 // PHASE 7: Single task authority — update existing task or add new
                 if (taskIdFromUrl) {
                   const merged = { ...files, ...parsedFiles };
@@ -1161,7 +1394,7 @@ export default function App() {
                     session_id: sessionId,
                     status: 'completed',
                     files: Object.keys(parsedFiles),
-                  }, { headers: { Authorization: `Bearer ${token}` } }).catch((e) => logApiError('Workspace', e));
+                  }, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
                 }
                 // AUTO-WIRE: Also try to fetch multi-file deploy output if project exists
                 if (projectIdFromUrl) {
@@ -1178,14 +1411,15 @@ export default function App() {
                         addLog(`Loaded ${Object.keys(df).length} files from orchestration.`, 'info', 'deploy');
                       }
                       if (r.data?.quality_score) setQualityGateResult({ score: r.data.quality_score });
-                    }).catch((e) => logApiError('Workspace', e));
+                    }).catch(() => {});
                 }
                 break;
               }
             } catch (_) {}
           }
         }
-      } else {
+      }
+    } else {
         const response = await axios.post(`${API}/ai/chat`, {
           message: messageContent,
           session_id: sessionId,
@@ -1203,7 +1437,8 @@ export default function App() {
         setTimeout(() => fetchSuggestNext(), 400);
         const mainCode = parsedFiles['/App.js']?.code || parsedFiles['/src/App.jsx']?.code || parsedFiles['/App.jsx']?.code || Object.values(parsedFiles)[0]?.code || '';
         const filesForQuality = Object.fromEntries(Object.entries(parsedFiles || {}).map(([k, v]) => [k, (v && v.code) || '']));
-        axios.post(`${API}/ai/quality-gate`, { code: mainCode, files: Object.keys(filesForQuality).length ? filesForQuality : undefined }).then(r => setQualityGateResult(r.data)).catch((e) => { logApiError('Workspace quality-gate', e); setQualityGateResult(null); });
+        const qgHdrs = token ? { Authorization: `Bearer ${token}` } : {};
+        axios.post(`${API}/ai/quality-gate`, { code: mainCode, files: Object.keys(filesForQuality).length ? filesForQuality : undefined }, { headers: qgHdrs }).then(r => setQualityGateResult(r.data)).catch(() => setQualityGateResult(null));
         setActivePanel('preview'); // AUTO-WIRE: switch to preview on build complete
         // PHASE 7: Single task authority — update existing task or add new
         if (taskIdFromUrl) {
@@ -1220,7 +1455,7 @@ export default function App() {
             session_id: sessionId,
             status: 'completed',
             files: Object.keys(parsedFiles),
-          }, { headers: { Authorization: `Bearer ${token}` } }).catch((e) => logApiError('Workspace', e));
+          }, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
         }
         // AUTO-WIRE: Also try to fetch multi-file deploy output if project exists
         if (projectIdFromUrl) {
@@ -1237,22 +1472,31 @@ export default function App() {
                 addLog(`Loaded ${Object.keys(df).length} files from orchestration.`, 'info', 'deploy');
               }
               if (r.data?.quality_score) setQualityGateResult({ score: r.data.quality_score });
-            }).catch((e) => logApiError('Workspace', e));
+            }).catch(() => {});
         }
       }
     } catch (error) {
-      addLog(`Build failed: ${error.message}`, 'error', 'system');
-      setLastError(error.message);
+      const rawMsg = error.message || '';
+      const is404 = error.response?.status === 404 || error.response?.status === 405;
+      const isHtmlError = /<!DOCTYPE|Cannot POST|<\/?(html|body|pre)>/i.test(rawMsg);
+      const backendUnavailable = "Backend not available. Start the CrucibAI backend to use AI build (see BACKEND_SETUP.md). If the backend is running, ensure it exposes POST /api/ai/chat and optionally /api/build/plan and /api/ai/chat/stream.";
+      addLog(`Build failed: ${is404 || isHtmlError ? 'Backend endpoint unavailable' : rawMsg.slice(0, 200)}`, 'error', 'system');
+      setLastError(is404 || isHtmlError ? 'Backend endpoint unavailable' : error.message);
       const detail = String(error.response?.data?.detail || '');
       const is402 = error.response?.status === 402;
-      const isKeyError = error.response?.status === 401 || error.message?.toLowerCase().includes('key');
-      const friendlyMessage = is402
-        ? (detail || 'Insufficient tokens. Buy more in Token Center to keep building.')
-        : error.code === 'ERR_NETWORK' || error.message?.includes('Network') || error.message?.includes('Failed to fetch')
-          ? "Connection lost. Check your connection and try again."
-          : isKeyError
-            ? "AI couldn't run. The server's API keys may not be configured. Contact support or check the server logs."
-            : "The build didn't complete. Try again or contact support if the problem persists.";
+      const isKeyError = error.response?.status === 401 || detail.toLowerCase().includes('api key') || detail.toLowerCase().includes('no api key') || (error.message && error.message.toLowerCase().includes('key'));
+      let friendlyMessage;
+      if (is402) {
+        friendlyMessage = detail || 'Insufficient tokens. Buy more in Token Center to keep building.';
+      } else if (is404 || isHtmlError || (error.message && (error.message.includes('Cannot POST') || error.message.includes('<!DOCTYPE') || error.message.includes('status code 404')))) {
+        friendlyMessage = backendUnavailable;
+      } else if (error.code === 'ERR_NETWORK' || (error.message && (error.message.includes('Network') || error.message.includes('Failed to fetch')))) {
+        friendlyMessage = "Connection lost. Make sure the backend server is running (e.g. port 8000) and try again. See BACKEND_SETUP.md.";
+      } else if (isKeyError) {
+        friendlyMessage = "AI service error. Make sure CEREBRAS_API_KEY is set in backend/.env and the server is running.";
+      } else {
+        friendlyMessage = `Build failed: ${detail || (isHtmlError ? "Backend returned an error. See BACKEND_SETUP.md." : rawMsg) || 'Unknown error. Please try again.'}`;
+      }
       setMessages(prev => prev.map((msg, i) => i === prev.length - 1 ? { role: 'assistant', content: friendlyMessage, error: true } : msg));
     } finally {
       setIsBuilding(false);
@@ -1314,9 +1558,11 @@ export default function App() {
         ));
       }
     } catch (error) {
-      addLog(`Modification failed: ${error.message}`, 'error', 'system');
+      const is404 = error.response?.status === 404 || error.response?.status === 405;
+      const backendUnavailable = "Backend not available. Start the CrucibAI backend to use AI build (see BACKEND_SETUP.md).";
+      addLog(`Modification failed: ${is404 ? 'Backend endpoint unavailable' : error.message}`, 'error', 'system');
       setMessages(prev => prev.map((msg, i) => 
-        i === prev.length - 1 ? { role: 'assistant', content: 'Error updating. Try again.', error: true } : msg
+        i === prev.length - 1 ? { role: 'assistant', content: is404 ? backendUnavailable : (error.response?.data?.detail || 'Error updating. Try again.'), error: true } : msg
       ));
     } finally {
       setIsBuilding(false);
@@ -1347,18 +1593,88 @@ export default function App() {
   };
 
   const addNewFileToProject = () => {
-    const base = '/NewFile';
-    const ext = '.jsx';
-    let path = base + ext;
-    let n = 0;
-    while (files[path]) {
-      n += 1;
-      path = base + n + ext;
-    }
-    const code = `// ${path}\nimport React from 'react';\n\nexport default function Component() {\n  return <div>New component</div>;\n}\n`;
+    const name = window.prompt('File name (e.g. Button.jsx):');
+    if (!name) return;
+    const path = name.startsWith('/') ? name : `/${name}`;
+    if (files[path]) { addLog(`File ${path} already exists`, 'warning', 'files'); return; }
+    const isReact = /\.(jsx?|tsx?)$/.test(name);
+    const code = isReact
+      ? `import React from 'react';\n\nexport default function ${name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9]/g, '')}() {\n  return <div>New component</div>;\n}\n`
+      : '';
     setFiles(prev => ({ ...prev, [path]: { code } }));
     setActiveFile(path);
-    addLog(`Added file ${path}`, 'info', 'files');
+    addLog(`Created ${path}`, 'success', 'files');
+  };
+
+  const addNewFolderToProject = () => {
+    const name = window.prompt('Folder name:');
+    if (!name) return;
+    const folder = name.replace(/^\//, '').replace(/\/$/, '');
+    const placeholder = `/${folder}/.gitkeep`;
+    setFiles(prev => ({ ...prev, [placeholder]: { code: '' } }));
+    addLog(`Created folder /${folder}`, 'success', 'files');
+  };
+
+  const deleteFileFromProject = (path) => {
+    if (!window.confirm(`Delete ${path}?`)) return;
+    setFiles(prev => {
+      const next = { ...prev };
+      delete next[path];
+      return next;
+    });
+    if (activeFile === path) setActiveFile(Object.keys(files).find(f => f !== path) || '/App.js');
+    addLog(`Deleted ${path}`, 'info', 'files');
+  };
+
+  const handleFolderOpen = (e) => {
+    const items = Array.from(e.target.files);
+    if (!items.length) return;
+    const CODE_EXTS = /\.(jsx?|tsx?|css|html|json|py|c|cpp|h|hpp|md|txt|env\.example|gitignore)$/i;
+    const eligible = items.filter(f => CODE_EXTS.test(f.name));
+    if (!eligible.length) { addLog('No code files found in folder', 'warning', 'files'); return; }
+    let loaded = 0;
+    const newFiles = {};
+    eligible.forEach(file => {
+      const rel = file.webkitRelativePath || file.name;
+      // Strip the top folder name so paths start from "/"
+      const path = '/' + rel.split('/').slice(1).join('/');
+      const reader = new FileReader();
+      reader.onload = ev => {
+        newFiles[path] = { code: ev.target.result };
+        loaded++;
+        if (loaded === eligible.length) {
+          setFiles(prev => ({ ...prev, ...newFiles }));
+          const first = Object.keys(newFiles)[0];
+          if (first) setActiveFile(first);
+          addLog(`Loaded ${loaded} files from local folder`, 'success', 'files');
+        }
+      };
+      reader.readAsText(file);
+    });
+    e.target.value = '';
+  };
+
+  const runCurrentCode = async () => {
+    const code = files[activeFile]?.code ?? '';
+    if (!code.trim()) { addLog('No code to run — open a file first', 'warning', 'system'); return; }
+    const lang = /\.py$/.test(activeFile) ? 'python'
+               : /\.(c)$/.test(activeFile) ? 'c'
+               : /\.cpp$/.test(activeFile) ? 'cpp'
+               : /\.sh$/.test(activeFile) ? 'bash'
+               : 'javascript';
+    addLog(`Running ${activeFile} as ${lang}...`, 'info', 'system');
+    setActiveBottomPanel('terminal');
+    try {
+      const res = await axios.post(`${API}/code/run`, {
+        code, language: lang, filename: activeFile,
+      }, { timeout: 20000 });
+      const { stdout, stderr, exit_code } = res.data;
+      if (stdout) addLog(`[stdout]\n${stdout}`, exit_code === 0 ? 'success' : 'info', 'run');
+      if (stderr) addLog(`[stderr]\n${stderr}`, 'error', 'run');
+      if (!stdout && !stderr) addLog(`Exited with code ${exit_code}`, exit_code === 0 ? 'success' : 'error', 'run');
+    } catch (e) {
+      addLog(`Run failed: ${e.message}`, 'error', 'run');
+    }
   };
 
   const runValidate = async () => {
@@ -1658,34 +1974,30 @@ export default function App() {
     else if (cmd === 'payments') navigate('/app/payments-wizard');
   };
 
+
   return (
-    <div className="h-full min-h-0 flex flex-col overflow-hidden bg-[#FAF9F7] text-gray-900 font-sans text-[13px] antialiased">
-      {/* Command palette (Ctrl+K / Cmd+K) */}
+    <div className="h-full min-h-0 flex flex-col overflow-hidden font-sans text-[13px] antialiased" style={{ background: '#111113', color: 'white' }}>
+
+      {/* ── Command Palette (Ctrl+K) ── */}
       {commandPaletteOpen && (
-        <div className="fixed inset-0 z-[200] flex items-start justify-center pt-[15vh] bg-zinc-900/40 backdrop-blur-sm" onClick={() => setCommandPaletteOpen(false)}>
-          <div className="w-full max-w-lg bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="px-4 py-2 border-b border-gray-200 text-xs text-gray-500">Command palette</div>
-            <div className="max-h-80 overflow-y-auto">
+        <div className="fixed inset-0 z-[200] flex items-start justify-center pt-[15vh]" style={{ background: 'rgba(0,0,0,0.75)' }} onClick={() => setCommandPaletteOpen(false)}>
+          <div className="w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border" style={{ background: '#1C1C1E', borderColor: 'rgba(255,255,255,0.1)' }} onClick={e => e.stopPropagation()}>
+            <div className="px-4 py-2.5 border-b text-xs" style={{ borderColor: 'rgba(255,255,255,0.08)', color: '#71717a' }}>Command palette</div>
+            <div className="max-h-80 overflow-y-auto py-1">
               {[
-                { id: 'newAgent', label: 'New Agent / New chat (Ctrl+Shift+L)', icon: Plus },
-                { id: 'searchFiles', label: 'Search / Open file (Ctrl+P)', icon: Search },
-                { id: 'terminal', label: 'Show Terminal (Ctrl+J)', icon: Terminal },
-                { id: 'maximizeChat', label: 'Maximize Chat (Ctrl+Alt+E)', icon: Maximize2 },
-                { id: 'openBrowser', label: 'Open preview in browser (Ctrl+Shift+B)', icon: Globe },
-                { id: 'deploy', label: 'Deploy (download ZIP for Vercel/Netlify)', icon: ExternalLink },
-                { id: 'export', label: 'Export / Download code', icon: Download },
-                { id: 'github', label: 'Push to GitHub (download ZIP)', icon: Github },
+                { id: 'newAgent', label: 'New chat (Ctrl+Shift+L)', icon: Plus },
+                { id: 'searchFiles', label: 'Open file (Ctrl+P)', icon: Search },
+                { id: 'terminal', label: 'Show Console', icon: Terminal },
+                { id: 'deploy', label: 'Deploy (ZIP → Vercel/Netlify)', icon: ExternalLink },
+                { id: 'export', label: 'Download code', icon: Download },
+                { id: 'github', label: 'Push to GitHub', icon: Github },
                 ...(lastError ? [{ id: 'autofix', label: 'Auto-fix errors', icon: RefreshCw }] : []),
-                { id: 'templates', label: 'Templates gallery', icon: FileCode },
-                { id: 'prompts', label: 'Prompt Library', icon: FileText },
-                { id: 'shortcuts', label: 'Shortcut cheat sheet (?)', icon: HelpCircle },
-                { id: 'payments', label: 'Add payments (Stripe) wizard', icon: CreditCard },
                 { id: 'tokens', label: 'Token Center', icon: Zap },
                 { id: 'settings', label: 'Settings', icon: Settings },
               ].map(({ id, label, icon: Icon }) => (
-                <button key={id} onClick={() => runCommand(id)} className="w-full flex items-center gap-3 px-4 py-3 text-left text-gray-800 hover:bg-gray-100 transition">
-                  <Icon className="w-4 h-4 text-gray-500" />
-                  <span>{label}</span>
+                <button key={id} onClick={() => runCommand(id)} className="w-full flex items-center gap-3 px-4 py-3 text-left transition hover:bg-white/5">
+                  <Icon className="w-4 h-4" style={{ color: '#71717a' }} />
+                  <span style={{ color: '#e4e4e7' }}>{label}</span>
                 </button>
               ))}
             </div>
@@ -1693,16 +2005,16 @@ export default function App() {
         </div>
       )}
 
-      {/* File search (Ctrl+P) */}
+      {/* ── File Search (Ctrl+P) ── */}
       {fileSearchOpen && (
-        <div className="fixed inset-0 z-[200] flex items-start justify-center pt-[20vh] bg-zinc-900/40 backdrop-blur-sm" onClick={() => setFileSearchOpen(false)}>
-          <div className="w-full max-w-md bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="px-4 py-2 border-b border-gray-200 text-xs text-gray-500">Open file (Ctrl+P)</div>
-            <div className="max-h-60 overflow-y-auto">
+        <div className="fixed inset-0 z-[200] flex items-start justify-center pt-[20vh]" style={{ background: 'rgba(0,0,0,0.75)' }} onClick={() => setFileSearchOpen(false)}>
+          <div className="w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border" style={{ background: '#1C1C1E', borderColor: 'rgba(255,255,255,0.1)' }} onClick={e => e.stopPropagation()}>
+            <div className="px-4 py-2.5 border-b text-xs" style={{ borderColor: 'rgba(255,255,255,0.08)', color: '#71717a' }}>Open file</div>
+            <div className="max-h-64 overflow-y-auto py-1">
               {Object.keys(files).sort().map((filename) => (
-                <button key={filename} onClick={() => { setActiveFile(filename); setFileSearchOpen(false); }} className="w-full flex items-center gap-2 px-4 py-2.5 text-left hover:bg-gray-100 text-sm text-gray-800">
-                  <FileCode className="w-4 h-4 text-gray-500" />
-                  {filename.replace('/', '')}
+                <button key={filename} onClick={() => { setActiveFile(filename); setActivePanel('code'); setFileSearchOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left transition hover:bg-white/5">
+                  <FileCode className="w-4 h-4" style={{ color: '#eab308' }} />
+                  <span style={{ color: '#d4d4d8' }}>{filename.replace(/^\//, '')}</span>
                 </button>
               ))}
             </div>
@@ -1710,959 +2022,491 @@ export default function App() {
         </div>
       )}
 
-      {/* Paywall banner when low/zero tokens */}
-      {user && (user.token_balance === 0 || (user.token_balance < 10000 && user.token_balance > 0)) && (
-        <div className="flex-shrink-0 px-4 py-2 bg-[#F3F1ED] border-b border-black/10 flex items-center justify-between">
-          <span className="text-sm text-[#1A1A1A]">
-            {user.token_balance === 0 ? 'Out of tokens.' : 'Running low on tokens.'} Get more to keep building.
-          </span>
-          <button onClick={() => navigate('/app/tokens')} className="text-sm font-medium text-[#1A1A1A] hover:text-[#333]">
-            Buy tokens
-          </button>
-        </div>
-      )}
-
-      {/* Click outside to close menu */}
-      {menuAnchor && <div className="fixed inset-0 z-40" onClick={() => setMenuAnchor(null)} aria-hidden />}
-      {/* Menu bar – File, Edit, Selection, View, Go, Run, Terminal, Help (Developer mode only) */}
-      {devMode && (
-      <div className="h-9 border-b border-stone-200 flex items-center px-2 gap-0 flex-shrink-0 text-[13px] relative z-50 bg-[#FAF9F7]">
-        {['File', 'Edit', 'Selection', 'View', 'Go', 'Run', 'Terminal', 'Help'].map((name) => (
-          <div key={name} className="relative">
-            <button
-              onClick={() => setMenuAnchor(menuAnchor === name.toLowerCase() ? null : name.toLowerCase())}
-              className="px-3 py-1.5 rounded text-gray-600 hover:text-gray-900 hover:bg-gray-200"
-            >
-              {name}
-            </button>
-            {menuAnchor === name.toLowerCase() && (
-              <div className="absolute left-0 top-full mt-0.5 w-48 py-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50">
-                {name === 'File' && (
-                  <>
-                    <button onClick={() => setFileSearchOpen(true)} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">Open File... (Ctrl+P)</button>
-                    <button onClick={() => { setMenuAnchor(null); navigate('/app', { state: { newAgent: Date.now() } }); }} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">New Agent (Ctrl+Shift+L)</button>
-                    <div className="h-px bg-gray-200 my-1" />
-                    <button onClick={downloadCode} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">Export</button>
-                    <button onClick={() => { handleExportZip(); setMenuAnchor(null); }} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">Download ZIP</button>
-                    <button onClick={() => { handleExportGitHub(); setMenuAnchor(null); }} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">Push to GitHub</button>
-                    <button onClick={() => setMenuAnchor(null)} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">Close</button>
-                  </>
-                )}
-                {name === 'Edit' && (
-                  <>
-                    <button onClick={copyCode} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">Copy</button>
-                    <button onClick={() => { versions.length > 1 && restoreVersion(versions[1]); setMenuAnchor(null); }} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">Undo</button>
-                    <button onClick={() => { runCommand('autofix'); setMenuAnchor(null); }} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">Auto-fix</button>
-                  </>
-                )}
-                {name === 'View' && (
-                  <>
-                    <button onClick={() => { setActivePanel('preview'); setMenuAnchor(null); }} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">Preview</button>
-                    <button onClick={() => { setActivePanel('console'); setMenuAnchor(null); }} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">Terminal (Ctrl+J)</button>
-                    <button onClick={() => setChatMaximized(prev => !prev)} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">Maximize Chat (Ctrl+Alt+E)</button>
-                    <button onClick={() => setAgentsPanelOpen(prev => !prev)} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">Agents Panel</button>
-                    <div className="h-px bg-gray-200 my-1" />
-                    <div className="px-3 py-1.5 text-xs text-gray-500">Build level</div>
-                    {['quick', 'balanced', 'deep'].map((level) => (
-                      <button key={level} onClick={() => { setAutoLevel(level); setMenuAnchor(null); }} className={`w-full px-3 py-2 text-left text-xs capitalize ${autoLevel === level ? 'text-gray-900 bg-gray-200' : 'text-gray-700 hover:bg-gray-100'}`}>{level}</button>
-                    ))}
-                    <div className="h-px bg-gray-200 my-1" />
-                    <button onClick={() => setLeftSidebarOpen(prev => !prev)} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">Show code / files</button>
-                    <button onClick={() => setRightSidebarOpen(prev => !prev)} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">Toggle Right Sidebar</button>
-                  </>
-                )}
-                {name === 'Go' && (
-                  <>
-                    <button onClick={() => versions.length > 1 && restoreVersion(versions[1])} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">Back (previous version)</button>
-                    <button onClick={() => setFileSearchOpen(true)} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">Go to File... (Ctrl+P)</button>
-                  </>
-                )}
-                {name === 'Run' && (
-                  <>
-                    <button onClick={() => { setActivePanel('preview'); setMenuAnchor(null); }} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">Run Preview</button>
-                    <button onClick={() => { handleExportDeploy(); setMenuAnchor(null); }} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">Deploy</button>
-                  </>
-                )}
-                {name === 'Terminal' && (
-                  <>
-                    <button onClick={() => { setActivePanel('console'); setRightSidebarOpen(true); setMenuAnchor(null); }} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">Show Terminal (Ctrl+J)</button>
-                  </>
-                )}
-                {name === 'Help' && (
-                  <>
-                    <button onClick={() => navigate('/app/shortcuts')} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">Shortcuts (?)</button>
-                    <button onClick={() => navigate('/app/learn')} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">Learn</button>
-                    <button onClick={() => setCommandPaletteOpen(true)} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">Command Palette (Ctrl+K)</button>
-                  </>
-                )}
-                {(name === 'Selection' && (
-                  <>
-                    <button onClick={copyCode} className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 text-xs">Copy</button>
-                  </>
-                ))}
-              </div>
-            )}
+      {/* ── Header ── */}
+      <header className="h-12 flex items-center px-4 gap-3 shrink-0 border-b" style={{ background: '#18181B', borderColor: 'rgba(255,255,255,0.08)' }}>
+        <button onClick={() => navigate('/app')} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: '#71717a' }} title="Back">
+          <ArrowLeft className="w-4 h-4" />
+        </button>
+        <Logo variant="mark" height={22} href="/app" className="shrink-0" />
+        <div className="h-4 w-px shrink-0" style={{ background: 'rgba(255,255,255,0.1)' }} />
+        <span className="text-sm truncate max-w-xs" style={{ color: '#a1a1aa' }}>
+          {messages.find(m => m.role === 'user')?.content?.toString().slice(0, 55) || 'New project'}
+        </span>
+        {isBuilding && (
+          <div className="flex items-center gap-2 ml-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
+            <span className="text-xs text-orange-400">{currentPhase || 'Building'}... {Math.round(buildProgress)}%</span>
           </div>
-        ))}
-      </div>
-      )}
-
-      {/* Header – branding + Settings */}
-      <header className="h-11 border-b border-stone-200 flex items-center justify-between px-3 flex-shrink-0 bg-[#FAF9F7]">
-        <div className="flex items-center gap-3 min-w-0">
+        )}
+        {qualityGateResult && !isBuilding && (
+          <div className="flex items-center gap-1.5 ml-1 text-xs" style={{ color: qualityGateResult.score >= 70 ? '#86efac' : '#fbbf24' }}>
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>{qualityGateResult.score}%</span>
+          </div>
+        )}
+        <div className="ml-auto flex items-center gap-1.5">
           <button
-            onClick={() => navigate('/')}
-            data-testid="back-button"
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition shrink-0"
-            aria-label="Back to home"
+            onClick={resetLayout}
+            className="p-1.5 rounded-lg transition hover:bg-white/10"
+            style={{ color: '#71717a' }}
+            title="Reset layout (show Explorer, Preview panel, default view)"
+            aria-label="Reset layout"
           >
-            <ArrowLeft className="w-4 h-4 shrink-0" />
+            <RotateCcw className="w-4 h-4" />
           </button>
-          <Logo variant="full" height={24} href="/app" className="shrink-0" showTagline={false} />
-          <div className="h-4 w-px bg-gray-200 shrink-0" />
-          <span className="text-xs text-gray-500 truncate">
-            {versions.length > 0 ? `v${versions.length}` : 'New Project'}
-          </span>
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
+          {/* Simple / Code toggle */}
           <button
             onClick={toggleDevMode}
-            className={`dev-toggle-btn ${devMode ? 'active' : ''}`}
-            title={devMode ? 'Switch to Simple view' : 'Switch to Developer view'}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition border"
+            style={{
+              background: devMode ? 'rgba(255,255,255,0.1)' : 'transparent',
+              color: devMode ? '#e4e4e7' : '#71717a',
+              borderColor: 'rgba(255,255,255,0.1)',
+            }}
+            title={devMode ? 'Switch to Simple view' : 'Switch to Code view'}
           >
-            {devMode ? '\u25FB Simple' : '< > Code'}
+            <FileCode className="w-3.5 h-3.5" />
+            {devMode ? 'Code' : 'Simple'}
           </button>
           <button
-            onClick={() => navigate('/app/settings')}
-            data-testid="settings-button"
-            className="p-2 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition"
-            title="Settings – add API keys to build with AI"
+            onClick={() => setCommandPaletteOpen(true)}
+            className="p-1.5 rounded-lg transition hover:bg-white/10"
+            style={{ color: '#71717a' }}
+            title="Command palette (Ctrl+K)"
           >
             <Settings className="w-4 h-4" />
           </button>
         </div>
       </header>
 
-      {/* First-run banner (one-time) */}
-      {showFirstRunBanner && (
-        <div className="flex-shrink-0 px-3 py-2 bg-gray-100 border-b border-gray-200 flex items-center justify-between gap-3" data-testid="first-run-banner">
-          <p className="text-sm text-gray-900">
-            Describe your app in the chat and we&apos;ll build it with 120 specialized agents. Plan, code, test, and deploy in one flow.
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              localStorage.setItem('crucibai_first_run', '1');
-              setShowFirstRunBanner(false);
-            }}
-            className="shrink-0 px-2 py-1 text-xs font-medium text-gray-800 hover:bg-gray-200 rounded transition"
-            aria-label="Dismiss"
-          >
-            Dismiss
-          </button>
+      {/* ── Token low banner ── */}
+      {user && user.token_balance === 0 && (
+        <div className="shrink-0 px-4 py-2 flex items-center justify-between" style={{ background: '#292524', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <span className="text-sm text-orange-300">Out of tokens — get more to keep building.</span>
+          <button onClick={() => navigate('/app/tokens')} className="text-sm font-medium text-orange-300 underline">Buy tokens</button>
         </div>
       )}
 
-      {/* Main Content */}
+      {/* ── Main 3-panel layout ── */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left: Agents panel (optional) */}
-        {agentsPanelOpen && (
-          <div className="w-64 border-r border-stone-200 flex-shrink-0 overflow-y-auto bg-[#FAF9F7]">
-            <div className="p-3 border-b border-gray-200 flex items-center justify-between">
-              <span className="text-xs font-medium text-gray-600">Agents</span>
-              <button onClick={() => setAgentsPanelOpen(false)} className="text-gray-500 hover:text-gray-900">×</button>
-            </div>
-            <div className="p-2 space-y-2">
-              {agentsActivity.length === 0 ? (
-                <p className="text-xs text-gray-500 p-2">When you build, activity will appear here.</p>
-              ) : (
-                agentsActivity.slice(0, 10).map((a, i) => (
-                  <div key={i} className="p-2 rounded-lg bg-white border border-gray-200 text-xs">
-                    <p className="text-gray-800 line-clamp-2">{a.message}</p>
-                    <div className="flex justify-between mt-1 text-gray-500">
-                      <span>{a.model || 'auto'}</span>
-                      <span>{a.tokens_used ? `~${a.tokens_used}` : ''}</span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-        {/* === DEVELOPER MODE: Left Sidebar + Code Editor === */}
-        {devMode && (
-          <>
-            {/* Left Sidebar – Code / Files */}
-            {leftSidebarOpen && (
-              <div className="w-56 border-r border-stone-200 flex-shrink-0 overflow-y-auto flex flex-col bg-[#FAF9F7]">
-                <div className="flex items-center justify-between px-2 py-1 border-b border-gray-200">
-                  <span className="text-xs text-gray-500">Files</span>
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => fileInputRef.current?.click()} className="p-1 text-gray-500 hover:text-gray-900" title="Attach file to chat"><Paperclip className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => setLeftSidebarOpen(false)} className="p-1 text-gray-500 hover:text-gray-900" title="Hide code"><PanelLeftClose className="w-3.5 h-3.5" /></button>
-                  </div>
-                </div>
-                <FileTree 
-                  files={files} 
-                  activeFile={activeFile} 
-                  onSelectFile={setActiveFile}
-                  onAddFile={addNewFileToProject}
-                />
-              </div>
-            )}
-            {!leftSidebarOpen && (
-              <button onClick={() => setLeftSidebarOpen(true)} className="w-8 border-r border-gray-200 flex-shrink-0 flex items-center justify-center text-gray-500 hover:text-gray-900 bg-gray-50" title="Show code / files"><PanelRightOpen className="w-4 h-4" /></button>
-            )}
 
-            {/* Code Editor */}
-            <div className="flex-1 flex flex-col min-w-0 bg-white">
-              {/* Editor Tabs */}
-              <div className="h-10 border-b border-stone-200 flex items-center px-2 gap-1 flex-shrink-0 bg-[#FAF9F7]">
-                {Object.keys(files).map(filename => (
-                  <button
-                    key={filename}
-                    onClick={() => setActiveFile(filename)}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm transition ${
-                      activeFile === filename 
-                        ? 'bg-white text-gray-900 border border-gray-200 border-b-white -mb-px' 
-                        : 'text-gray-500 hover:text-gray-800'
-                    }`}
-                  >
-                    <FileCode className="w-3.5 h-3.5" />
-                    {filename.replace('/', '')}
+        {/* ── Left: File Explorer ── */}
+        {leftSidebarOpen ? (
+          <div className="w-52 flex flex-col shrink-0 border-r" style={{ background: '#18181B', borderColor: 'rgba(255,255,255,0.07)' }}>
+            <input ref={folderInputRef} type="file" webkitdirectory="" multiple onChange={handleFolderOpen} className="hidden" />
+            {/* Explorer header */}
+            <div className="flex items-center justify-between px-3 py-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+              <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#52525b' }}>Explorer</span>
+              <div className="flex items-center gap-0.5">
+                <button onClick={addNewFileToProject} className="p-1 rounded transition hover:bg-white/10" style={{ color: '#52525b' }} title="New file"><Plus className="w-3 h-3" /></button>
+                <button onClick={() => setLeftSidebarOpen(false)} className="p-1 rounded transition hover:bg-white/10" style={{ color: '#52525b' }} title="Collapse sidebar"><PanelLeftClose className="w-3 h-3" /></button>
+              </div>
+            </div>
+            {/* Project name */}
+            <div className="px-3 py-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+              <span className="text-xs truncate block" style={{ color: '#3f3f46' }}>
+                {messages.find(m => m.role === 'user')?.content?.toString().slice(0, 30) || 'project'}
+              </span>
+            </div>
+            {/* File list */}
+            <div className="flex-1 overflow-y-auto py-1">
+              {Object.keys(files).sort().map(fp => {
+                const name = fp.replace(/^\//, '');
+                const isActive = activeFile === fp;
+                const ext = name.split('.').pop();
+                const iconColor = ext === 'jsx' || ext === 'js' ? '#eab308' : ext === 'css' ? '#ec4899' : ext === 'html' ? '#f97316' : ext === 'json' ? '#a78bfa' : '#71717a';
+                return (
+                  <div key={fp} className="group flex items-center">
+                    <button
+                      onClick={() => { setActiveFile(fp); setActivePanel('code'); }}
+                      className="flex-1 flex items-center gap-2 px-3 py-1.5 text-left text-xs transition"
+                      style={{ background: isActive ? 'rgba(255,255,255,0.09)' : 'transparent', color: isActive ? '#e4e4e7' : '#a1a1aa' }}
+                    >
+                      <FileCode className="w-3 h-3 shrink-0" style={{ color: iconColor }} />
+                      <span className="truncate">{name}</span>
+                    </button>
+                    <button onClick={() => deleteFileFromProject(fp)} className="opacity-0 group-hover:opacity-100 pr-2 transition" style={{ color: '#52525b' }} title="Delete">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Versions */}
+            {versions.length > 0 && (
+              <div className="border-t px-3 py-2" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+                <div className="text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#52525b' }}>History</div>
+                {versions.slice(0, 4).map((v, i) => (
+                  <button key={v.id} onClick={() => restoreVersion(v)} className="w-full flex items-center gap-2 py-1 text-left text-xs transition hover:bg-white/5 rounded px-1" style={{ color: currentVersion === v.id ? '#e4e4e7' : '#71717a' }}>
+                    <History className="w-3 h-3 shrink-0" />
+                    <span className="truncate">v{versions.length - i} — {v.time}</span>
                   </button>
                 ))}
-                
-                <div className="ml-auto flex items-center gap-2">
-                  <button
-                    onClick={copyCode}
-                    className="p-1.5 text-gray-500 hover:text-gray-900 transition"
-                    title="Copy code"
-                  >
-                    {copied ? <Check className="w-4 h-4 text-[#1A1A1A]" /> : <Copy className="w-4 h-4" />}
-                  </button>
-                </div>
               </div>
-
-              {/* Monaco Editor OR InlineAgentMonitor during BUILD */}
-              <div className="flex-1 flex flex-col min-h-0">
-                {isBuilding ? (
-                  <>
-                    <InlineAgentMonitor
-                      isBuilding={isBuilding}
-                      buildProgress={buildProgress}
-                      currentPhase={currentPhase}
-                      agentsActivity={agentsActivity}
-                      buildEvents={[]}
-                      tokensUsed={lastTokensUsed}
-                      projectBuildProgress={projectBuildProgress}
-                      qualityScore={qualityGateResult?.score ?? null}
-                    />
-                    {/* CrucibAI Computer thumbnail — inline in conversation (Developer mode) */}
-                    <div className="flex-shrink-0 p-3 border-t border-gray-200">
-                      <CrucibAIComputer
-                        files={files}
-                        isActive={projectIdFromUrl ? (projectBuildProgress.status === 'running' || (projectBuildProgress.progress > 0 && projectBuildProgress.progress < 100)) : isBuilding}
-                        hasBuild={versions.length > 0}
-                        thinking={projectIdFromUrl ? (projectBuildProgress.agent || 'Building...') : (isBuilding ? 'Analyzing your request and generating code...' : '')}
-                        activityText={projectIdFromUrl ? `${projectBuildProgress.agent || 'Building...'} — ${currentPhase || 'Processing'}` : (isBuilding ? `Building your app — ${currentPhase || 'Generating code'}` : '')}
-                        tokensUsed={projectIdFromUrl ? projectBuildProgress.tokens_used : (versions.length * 1000)}
-                        tokensTotal={projectIdFromUrl ? 100000 : 50000}
-                        currentStep={projectIdFromUrl ? (projectBuildProgress.phase + 1) : (versions.length > 0 ? Math.min(versions.length, 7) : 0)}
-                        totalSteps={projectIdFromUrl ? 12 : 7}
-                        onError={(err) => { setLastError(err); addLog(`Preview error: ${err}`, 'error', 'preview'); }}
-                        onAutoFix={async (errorMsg) => {
-                          try {
-                            const headers = token ? { Authorization: `Bearer ${token}` } : {};
-                            const res = await axios.post(`${API}/ai/explain-error`, { error: errorMsg, code: files[activeFile]?.code || files['/App.js']?.code || '' }, { headers, timeout: 30000 });
-                            if (res.data.fixed_code) {
-                              setFiles(prev => ({ ...prev, [activeFile || '/App.js']: { code: res.data.fixed_code } }));
-                              addLog('Auto-fix applied successfully', 'success', 'system');
-                              setLastError(null);
-                            }
-                          } catch (e) { addLog(`Auto-fix failed: ${e.message}`, 'error', 'system'); }
-                        }}
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <Editor
-                    height="100%"
-                    language={activeFile.endsWith('.css') ? 'css' : 'javascript'}
-                    value={files[activeFile]?.code || ''}
-                    onChange={handleCodeChange}
-                    theme="light"
-                    options={{
-                      minimap: { enabled: false },
-                      fontSize: 13,
-                      lineNumbers: 'on',
-                      scrollBeyondLastLine: false,
-                      wordWrap: 'on',
-                      tabSize: 2,
-                      padding: { top: 16 },
-                    }}
-                  />
-                )}
-              </div>
-            </div>
-          </>
+            )}
+          </div>
+        ) : (
+          <button onClick={() => setLeftSidebarOpen(true)} className="w-8 flex items-center justify-center shrink-0 border-r transition hover:bg-white/5" style={{ background: '#18181B', borderColor: 'rgba(255,255,255,0.07)', color: '#52525b' }} title="Show files">
+            <PanelRightOpen className="w-4 h-4" />
+          </button>
         )}
 
-        {/* === SIMPLE MODE: Compact build card + Chat (coexist) === */}
-        {!devMode && (
-          <div className="flex-1 flex flex-col min-w-0 bg-white min-h-0 overflow-hidden">
-            {/* Compact collapsible build card — at top when building, chat below */}
+        {/* ── Center: Chat / Build Steps ── */}
+        <div className="flex-1 flex flex-col min-w-0" style={{ background: '#111113' }}>
+          {/* Messages area */}
+          <div className="flex-1 overflow-y-auto px-5 py-6 space-y-4 min-h-0">
+            {messages.length === 0 && !isBuilding && (
+              <div className="flex flex-col items-center justify-center h-full gap-4" style={{ color: '#3f3f46' }}>
+                <Sparkles className="w-10 h-10" style={{ color: '#27272a' }} />
+                <p className="text-sm">Describe what you want to build...</p>
+              </div>
+            )}
+
+            {/* ── Agent steps card (Manus-style) ── */}
             {isBuilding && (
-              <BuildProgressCard
-                expanded={buildCardExpanded}
-                onToggle={() => setBuildCardExpanded(v => !v)}
-                buildProgress={buildProgress}
-                currentPhase={currentPhase}
-                agentsActivity={agentsActivity}
-                lastTokensUsed={lastTokensUsed}
-                projectBuildProgress={projectBuildProgress}
-                qualityScore={qualityGateResult?.score ?? null}
-                agentsActivityLength={agentsActivity.length}
-              >
-                <InlineAgentMonitor
-                  isBuilding={isBuilding}
-                  buildProgress={buildProgress}
-                  currentPhase={currentPhase}
-                  agentsActivity={agentsActivity}
-                  buildEvents={[]}
-                  tokensUsed={lastTokensUsed}
-                  projectBuildProgress={projectBuildProgress}
-                  qualityScore={qualityGateResult?.score ?? null}
-                />
-              </BuildProgressCard>
-            )}
-            {/* Chat history — always visible, scrolls inside */}
-            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
-                {/* CrucibAI Computer thumbnail — inline below progress bar, opens modal on click */}
-                <CrucibAIComputer
-                  files={files}
-                  isActive={projectIdFromUrl ? (projectBuildProgress.status === 'running' || (projectBuildProgress.progress > 0 && projectBuildProgress.progress < 100)) : isBuilding}
-                  hasBuild={versions.length > 0}
-                  thinking={projectIdFromUrl ? (projectBuildProgress.agent || 'Building...') : (isBuilding ? 'Analyzing your request and generating code...' : '')}
-                  activityText={projectIdFromUrl ? `${projectBuildProgress.agent || 'Building...'} — ${currentPhase || 'Processing'}` : (isBuilding ? `Building your app — ${currentPhase || 'Generating code'}` : '')}
-                  tokensUsed={projectIdFromUrl ? projectBuildProgress.tokens_used : (versions.length * 1000)}
-                  tokensTotal={projectIdFromUrl ? 100000 : 50000}
-                  currentStep={projectIdFromUrl ? (projectBuildProgress.phase + 1) : (versions.length > 0 ? Math.min(versions.length, 7) : 0)}
-                  totalSteps={projectIdFromUrl ? 12 : 7}
-                  onError={(err) => { setLastError(err); addLog(`Preview error: ${err}`, 'error', 'preview'); }}
-                  onAutoFix={async (errorMsg) => {
-                    try {
-                      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-                      const res = await axios.post(`${API}/ai/explain-error`, { error: errorMsg, code: files[activeFile]?.code || files['/App.js']?.code || '' }, { headers, timeout: 30000 });
-                      if (res.data.fixed_code) {
-                        setFiles(prev => ({ ...prev, [activeFile || '/App.js']: { code: res.data.fixed_code } }));
-                        addLog('Auto-fix applied successfully', 'success', 'system');
-                        setLastError(null);
-                      }
-                    } catch (e) { addLog(`Auto-fix failed: ${e.message}`, 'error', 'system'); }
-                  }}
-                />
-                {messages.length === 0 ? (
-                  <div className="flex items-center justify-center h-full min-h-[120px] text-gray-400 text-sm">
-                    Describe what you want to build...
-                  </div>
-                ) : (
-                  messages.map((msg, i) => (
-                    <ChatMessage key={i} msg={msg} />
-                  ))
-                )}
-                <div ref={chatEndRef} />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Right Panel - Zone 4: 420px fixed, always visible unless user closes */}
-        {rightSidebarOpen && (
-        <div className="w-[420px] flex-shrink-0 border-l border-stone-200 flex flex-col bg-white">
-          {/* Manus-Style Panel Header — Section 06 */}
-          <div className="h-10 border-b border-stone-200 flex items-center px-2 gap-1 flex-shrink-0 bg-[#FAF9F7]">
-            {/* Tab selectors — PHASE 6: Simple mode shows only Preview */}
-            <div className="flex items-center gap-0.5">
-              {(devMode
-                ? [
-                    { id: 'preview', label: 'Preview', icon: Eye },
-                    { id: 'console', label: 'Logs', icon: FileText },
-                    { id: 'history', label: 'History', icon: History },
-                    { id: 'review', label: 'Code', icon: FileCode },
-                    { id: 'tools', label: 'Tools', icon: Wrench },
-                    { id: 'shell', label: 'Shell', icon: Terminal },
-                    { id: 'git', label: 'Git', icon: GitBranch },
-                    { id: 'vibecode', label: 'VibeCode', icon: Sparkles },
-                  ]
-                : [{ id: 'preview', label: 'Preview', icon: Eye }]
-              ).map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActivePanel(tab.id)}
-                  data-testid={`${tab.id}-tab`}
-                  title={tab.label}
-                  className={`p-2 rounded text-sm transition ${
-                    activePanel === tab.id ? 'bg-white text-gray-900 border border-stone-200 border-b-white -mb-px shadow-sm' : 'text-stone-600 hover:text-gray-900'
-                  }`}
-                >
-                  <tab.icon className="w-4 h-4" />
-                </button>
-              ))}
-            </div>
-
-            {/* Preview controls — only visible when Preview tab active */}
-            {activePanel === 'preview' && (
-              <div className="flex items-center gap-1 ml-2">
-                <button
-                  className={`p-1.5 rounded transition ${mobileView ? 'bg-gray-200 text-gray-900' : 'text-stone-500 hover:text-gray-900'}`}
-                  onClick={() => setMobileView(v => !v)}
-                  title={mobileView ? 'Switch to desktop view' : 'Switch to mobile view'}
-                >
-                  {mobileView ? <Monitor className="w-4 h-4" /> : <Smartphone className="w-4 h-4" />}
-                </button>
-                <button
-                  className="p-1.5 text-stone-500 hover:text-gray-900 transition rounded"
-                  onClick={() => {
-                    const current = { ...files };
-                    setFiles({});
-                    setTimeout(() => setFiles(current), 50);
-                  }}
-                  title="Refresh preview"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                </button>
-                <button
-                  className="p-1.5 text-stone-500 hover:text-gray-900 transition rounded"
-                  onClick={() => {
-                    const iframe = document.querySelector('.sp-preview-iframe');
-                    if (iframe?.src) window.open(iframe.src, '_blank');
-                  }}
-                  title="Open in new tab"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-
-            <button
-              className="ml-auto mr-1 px-3 py-1 rounded text-sm font-semibold transition bg-gray-600 text-white hover:bg-gray-700"
-              onClick={() => setShowDeployModal(true)}
-            >
-              Deploy
-            </button>
-
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setIsFullscreen(!isFullscreen)}
-                className="p-1.5 text-stone-500 hover:text-gray-900 transition"
-              >
-                {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-              </button>
-              <button
-                onClick={() => setRightSidebarOpen(false)}
-                className="p-1.5 text-stone-500 hover:text-gray-900 transition"
-                title="Close panel"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Panel Content — PHASE 6: Simple mode only shows Preview */}
-          <div className="flex-1 overflow-hidden">
-            {(activePanel === 'preview' || !devMode) && (
-              <div className={`flex-1 h-full overflow-hidden transition-all duration-300 relative ${mobileView ? 'flex justify-center' : ''}`}>
-              <div className={mobileView ? 'w-[375px] h-full border-l border-r border-gray-200' : 'w-full h-full'}>
-              {/* Skeleton loading — pulsing light grey shapes during build */}
-              {isBuilding && (
-                <div className="absolute inset-0 z-10 flex flex-col gap-4 p-4 bg-[#FAF9F7] overflow-hidden">
-                  <div className="h-8 w-3/4 rounded bg-gray-200 animate-pulse" />
-                  <div className="flex gap-4">
-                    <div className="h-24 flex-1 rounded bg-gray-200 animate-pulse" />
-                    <div className="h-24 flex-1 rounded bg-gray-200 animate-pulse" />
-                  </div>
-                  <div className="h-16 w-full rounded bg-gray-200 animate-pulse" />
-                  <div className="flex gap-4">
-                    <div className="h-20 w-1/4 rounded bg-gray-200 animate-pulse" />
-                    <div className="h-20 flex-1 rounded bg-gray-200 animate-pulse" />
-                  </div>
-                  <div className="h-32 w-full rounded bg-gray-200 animate-pulse" />
+              <div className="rounded-2xl p-4 border" style={{ background: '#1C1C1E', borderColor: 'rgba(255,255,255,0.08)' }}>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
+                  <span className="text-sm font-medium text-white">{currentPhase || 'Building your app...'}</span>
+                  <span className="ml-auto text-xs" style={{ color: '#52525b' }}>{Math.round(buildProgress)}%</span>
                 </div>
-              )}
-              <SandpackProvider
-                template="react"
-                files={files}
-                theme="light"
-                options={{
-                  externalResources: ['https://cdn.tailwindcss.com'],
-                }}
-              >
-                <div style={{ position: 'relative', height: '100%' }}>
-                  <SandpackPreview
-                    showNavigator={false}
-                    showRefreshButton={true}
-                    style={{ height: '100%' }}
-                  />
-                  <SandpackErrorBoundary
-                    onAutoFix={async (errorMsg) => {
-                      addLog(`Auto-fix triggered: ${errorMsg}`, 'info', 'system');
-                      try {
-                        const headers = token ? { Authorization: `Bearer ${token}` } : {};
-                        const res = await axios.post(`${API}/ai/explain-error`, {
-                          error: errorMsg,
-                          code: files[activeFile]?.code || files['/App.js']?.code || ''
-                        }, { headers, timeout: 30000 });
-                        if (res.data.fixed_code) {
-                          setFiles(prev => ({ ...prev, [activeFile || '/App.js']: { code: res.data.fixed_code } }));
-                          addLog('Auto-fix applied successfully', 'success', 'system');
-                          setLastError(null);
-                        }
-                      } catch (e) {
-                        addLog(`Auto-fix failed: ${e.message}`, 'error', 'system');
-                      }
-                    }}
-                    onError={(err) => {
-                      setLastError(err);
-                      addLog(`Preview error: ${err}`, 'error', 'preview');
-                    }}
-                    maxRetries={3}
-                    autoFixEnabled={true}
-                  />
+                {/* Progress bar */}
+                <div className="h-0.5 rounded-full mb-3 overflow-hidden" style={{ background: '#27272a' }}>
+                  <div className="h-full rounded-full bg-orange-400 transition-all duration-500" style={{ width: `${buildProgress}%` }} />
                 </div>
-              </SandpackProvider>
-              </div>
-              </div>
-            )}
-            
-            {devMode && activePanel === 'console' && (
-              <ConsolePanel logs={logs} placeholder="Build and agent output appears here. Use View → Terminal or Ctrl+J to focus." />
-            )}
-            
-            {devMode && activePanel === 'history' && (
-              <VersionHistory 
-                versions={versions} 
-                onRestore={restoreVersion}
-                currentVersion={currentVersion}
-              />
-            )}
-            {devMode && activePanel === 'review' && (
-              <div className="p-4 h-full overflow-auto">
-                <div className="text-xs text-gray-500 uppercase tracking-wider mb-3">Review changes</div>
-                <p className="text-sm text-gray-600 mb-4">{Object.keys(files).length} file(s) in current version.</p>
-                <div className="flex flex-col gap-2">
-                  {Object.keys(files).sort().map((filename) => (
-                    <div key={filename} className="flex items-center gap-2 py-2 border-b border-gray-200 text-sm">
-                      <FileCode className="w-4 h-4 text-gray-500" />
-                      <span className="text-gray-800">{filename.replace('/', '')}</span>
+                {/* Agent steps */}
+                <div className="space-y-2">
+                  {agentsActivity.map((a, i) => (
+                    <div key={i} className="flex items-center gap-2.5 text-xs">
+                      {a.status === 'done' ? (
+                        <div className="w-4 h-4 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(74,222,128,0.15)' }}>
+                          <Check className="w-2.5 h-2.5 text-green-400" />
+                        </div>
+                      ) : a.status === 'running' ? (
+                        <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                          <Loader2 className="w-3.5 h-3.5 text-orange-400 animate-spin" />
+                        </div>
+                      ) : (
+                        <div className="w-4 h-4 rounded-full border shrink-0" style={{ borderColor: '#3f3f46' }} />
+                      )}
+                      <span className="font-medium" style={{ color: a.status === 'done' ? '#86efac' : a.status === 'running' ? '#fb923c' : '#52525b' }}>
+                        {a.name}
+                      </span>
+                      <span className="truncate" style={{ color: '#3f3f46' }}>{a.phase}</span>
                     </div>
                   ))}
                 </div>
-                <div className="flex gap-2 mt-6">
-                  <button onClick={() => versions.length > 1 && restoreVersion(versions[1])} className="px-4 py-2 rounded-lg bg-gray-200 text-gray-800 hover:bg-gray-300 text-sm">Undo All</button>
-                  <button onClick={() => setActivePanel('preview')} className="px-4 py-2 rounded-lg bg-gray-200 text-gray-900 hover:bg-gray-300 text-sm">Keep All</button>
-                </div>
               </div>
             )}
-            {devMode && activePanel === 'tools' && (
-              <div className="p-4 h-full overflow-auto">
-                <div className="text-xs text-gray-500 uppercase tracking-wider mb-3">Quality & checks</div>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  <button onClick={runValidate} disabled={toolsLoading} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200 text-sm disabled:opacity-50">
-                    <Check className="w-4 h-4" /> Validate current file
-                  </button>
-                  <button onClick={runSecurityScan} disabled={toolsLoading} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200 text-sm disabled:opacity-50">
-                    <ShieldCheck className="w-4 h-4" /> Security scan
-                  </button>
-                  <button onClick={runA11yCheck} disabled={toolsLoading} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200 text-sm disabled:opacity-50">
-                    <Eye className="w-4 h-4" /> Accessibility check
-                  </button>
-                  <button onClick={runOptimize} disabled={toolsLoading} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200 text-sm disabled:opacity-50">
-                    <Zap className="w-4 h-4" /> Optimize
-                  </button>
-                  <button onClick={runExplainError} disabled={toolsLoading} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200 text-sm disabled:opacity-50">
-                    <HelpCircle className="w-4 h-4" /> Explain error
-                  </button>
-                  <button onClick={runAnalyze} disabled={toolsLoading} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200 text-sm disabled:opacity-50">
-                    <FileCode className="w-4 h-4" /> Analyze code
-                  </button>
-                  <button onClick={runFilesAnalyze} disabled={toolsLoading} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200 text-sm disabled:opacity-50">
-                    <FileText className="w-4 h-4" /> Analyze files
-                  </button>
-                  <button onClick={runDesignFromUrl} disabled={toolsLoading} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200 text-sm disabled:opacity-50">
-                    <Globe className="w-4 h-4" /> Design from URL
-                  </button>
-                </div>
-                {toolsLoading && <p className="text-sm text-gray-500 mb-2">Running…</p>}
-                {toolsReport && (
-                  <div className="mt-3 p-3 rounded-lg bg-gray-50 border border-gray-200 text-sm">
-                    {toolsReport.type === 'validate' && (
-                      <>
-                        {toolsReport.data.error ? (
-                          <p className="text-[#666666]">{toolsReport.data.error}</p>
-                        ) : (
-                          <>
-                            <p className={toolsReport.data.valid ? 'text-[#1A1A1A]' : 'text-[#666666]'}>
-                              {toolsReport.data.valid ? 'No issues found.' : 'Issues found. Fix available below.'}
-                            </p>
-                            {!toolsReport.data.valid && toolsReport.data.fixed_code && (
-                              <button onClick={applyValidateFix} className="mt-2 px-3 py-1.5 rounded bg-gray-200 text-gray-900 hover:bg-gray-300 text-xs">Apply fix</button>
-                            )}
-                          </>
-                        )}
-                      </>
-                    )}
-                    {toolsReport.type === 'security' && (
-                      <pre className="whitespace-pre-wrap text-gray-700 font-mono text-xs">{toolsReport.data.error || toolsReport.data.report || (toolsReport.data.checklist || []).join('\n')}</pre>
-                    )}
-                    {toolsReport.type === 'a11y' && (
-                      <pre className="whitespace-pre-wrap text-gray-700 font-mono text-xs">{toolsReport.data.error || toolsReport.data.report}</pre>
-                    )}
-                    {toolsReport.type === 'optimize' && (
-                      <pre className="whitespace-pre-wrap text-gray-700 font-mono text-xs">{toolsReport.data.error || toolsReport.data.optimized_code || toolsReport.data.report || JSON.stringify(toolsReport.data)}</pre>
-                    )}
-                    {toolsReport.type === 'explain' && (
-                      <pre className="whitespace-pre-wrap text-gray-700 font-mono text-xs">{toolsReport.data.error || toolsReport.data.explanation || toolsReport.data.report}</pre>
-                    )}
-                    {toolsReport.type === 'analyze' && (
-                      <pre className="whitespace-pre-wrap text-gray-700 font-mono text-xs">{toolsReport.data.error || toolsReport.data.result || toolsReport.data.report}</pre>
-                    )}
-                    {toolsReport.type === 'files' && (
-                      <pre className="whitespace-pre-wrap text-gray-700 font-mono text-xs">{toolsReport.data.error || toolsReport.data.report || JSON.stringify(toolsReport.data)}</pre>
-                    )}
-                    {toolsReport.type === 'design' && (
-                      <pre className="whitespace-pre-wrap text-gray-700 font-mono text-xs">{toolsReport.data.error || (toolsReport.data.files ? 'Design applied to editor.' : toolsReport.data.report) || JSON.stringify(toolsReport.data)}</pre>
-                    )}
+
+            {/* Chat messages */}
+            {messages.map((msg, i) => (
+              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {msg.role === 'assistant' && (
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mr-2 mt-0.5" style={{ background: '#27272a' }}>
+                    <Sparkles className="w-3.5 h-3.5" style={{ color: '#a1a1aa' }} />
                   </div>
                 )}
-              </div>
-            )}
-            {devMode && activePanel === 'shell' && (
-              <div className="p-4 h-full overflow-auto">
-                <IDETerminal />
-              </div>
-            )}
-            {devMode && activePanel === 'git' && (
-              <div className="p-4 h-full overflow-auto">
-                <IDEGit />
-              </div>
-            )}
-            {devMode && activePanel === 'vibecode' && (
-              <div className="p-4 h-full overflow-auto">
-                <VibeCodePage />
-              </div>
-            )}
-          </div>
-        </div>
-        )}
-      </div>
-
-      {/* Bottom panel — Developer mode only: Problems, Output, Terminal. Max 200px. */}
-      {devMode && (
-      <div className="flex-shrink-0 border-t border-stone-200 bg-white flex flex-col max-h-[200px] min-h-0">
-        <div className="h-9 border-b border-stone-200 flex items-center px-2 gap-1 flex-shrink-0 bg-[#FAF9F7]">
-          {['problems', 'output', 'terminal'].map((id) => (
-            <button
-              key={id}
-              onClick={() => setActiveBottomPanel(id)}
-              className={`px-3 py-1.5 rounded text-xs font-medium capitalize transition ${
-                activeBottomPanel === id ? 'bg-white text-gray-900 border border-stone-200 border-b-white -mb-px' : 'text-stone-600 hover:text-gray-900'
-              }`}
-            >
-              {id}
-            </button>
-          ))}
-        </div>
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          {activeBottomPanel === 'problems' && (
-            <div className="p-3 text-xs font-mono text-gray-800">
-              {lastError ? <pre className="whitespace-pre-wrap text-red-600">{String(lastError)}</pre> : <span className="text-gray-500">No problems</span>}
-            </div>
-          )}
-          {activeBottomPanel === 'output' && (
-            <div className="p-3 text-xs font-mono text-gray-800">
-              {logs.length > 0 ? logs.map((log, i) => <div key={i} className="text-gray-700">[{log.time}] {log.message}</div>) : <span className="text-gray-500">No output</span>}
-            </div>
-          )}
-          {activeBottomPanel === 'terminal' && (
-            <ConsolePanel logs={logs} placeholder="Build and agent output appears here." />
-          )}
-        </div>
-      </div>
-      )}
-
-      {/* Status bar — PHASE 6: Dev only (no token counter / errors in Simple) */}
-      {devMode && (
-      <div className="h-6 border-t border-stone-200 flex items-center justify-between px-3 text-xs text-stone-600 flex-shrink-0 bg-[#FAF9F7]">
-        <div className="flex items-center gap-4">
-          <span>{versions.length > 0 ? `Project · v${versions.length}` : 'New Project'}</span>
-          <span>{currentVersion ? 'main' : '—'}</span>
-          {lastError && <span className="text-[#666666]">1 error</span>}
-          {!lastError && <span className="text-stone-500">0 errors</span>}
-          <span className="text-stone-500">0 warnings</span>
-        </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          {(tokensPerStep.plan > 0 || tokensPerStep.generate > 0) && (
-            <span className="text-stone-500" title="Per-step token usage">
-              {tokensPerStep.plan > 0 && <>Plan: ~{(tokensPerStep.plan / 1000).toFixed(1)}k</>}
-              {tokensPerStep.plan > 0 && tokensPerStep.generate > 0 && ' · '}
-              {tokensPerStep.generate > 0 && <>Generate: ~{(tokensPerStep.generate / 1000).toFixed(1)}k</>}
-            </span>
-          )}
-          {qualityGateResult != null && (
-            <span className={qualityGateResult.passed ? 'text-[#1A1A1A]' : 'text-[#666666]'} title="Quality gate">
-              Quality: {qualityGateResult.score}% {qualityGateResult.passed ? '✓' : '(review)'}
-            </span>
-          )}
-          <button onClick={() => setFileSearchOpen(true)} className="hover:text-gray-800">Ctrl+P</button>
-          <button onClick={() => setCommandPaletteOpen(true)} className="hover:text-gray-800">Ctrl+K</button>
-          {user && <span>Tokens: {user.token_balance?.toLocaleString() ?? 0}</span>}
-        </div>
-      </div>
-      )}
-
-      {/* Bottom Chat Panel – input + Send (messages shown in center panel only) */}
-      <div className="border-t border-stone-200 bg-[#FAF9F7] p-3 flex-shrink-0 relative z-[100] isolate min-h-0 overflow-visible">
-        {isBuilding && (
-          <div className="mb-3">
-            {currentPhase && (
-              <div className="text-xs text-gray-600 mb-1 flex items-center gap-2">
-                <span className="inline-block w-2 h-2 rounded-full animate-pulse" style={{ background: '#E05A25' }} />
-                {currentPhase}
-              </div>
-            )}
-            <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
-              <motion.div 
-                className="h-full rounded-full"
-                style={{ background: '#E05A25' }}
-                initial={{ width: 0 }}
-                animate={{ width: `${buildProgress}%` }}
-              />
-            </div>
-          </div>
-        )}
-
-
-
-        {showSavedPromptWelcome && (
-          <div className="mb-3 px-4 py-2.5 rounded-lg bg-[#F0FDF4] border border-[#86EFAC]/50 text-[#166534] text-sm">
-            Welcome back! Your idea is loaded.
-          </div>
-        )}
-
-        {/* Try these prompts when no messages yet — disappear the moment user hits Build */}
-        {messages.length === 0 && !isBuilding && (
-          <div className="mb-3">
-            <p className="text-xs text-gray-500 mb-2">First time? Start building with AI right away—no configuration needed!</p>
-            <span className="text-xs text-gray-500">Try these:</span>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {['Build a todo app', 'Create a landing page', 'Add a contact form', 'Make a counter component'].map((prompt) => (
-                <button key={prompt} type="button" onClick={() => setInput(prompt)} className="px-3 py-1.5 rounded-lg bg-white text-gray-700 hover:bg-gray-100 text-sm border border-gray-200">{prompt}</button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {attachedFiles.length > 0 && (
-          <div className="flex gap-2 mb-3 flex-wrap">
-            {attachedFiles.map((file, i) => (
-              <div key={i} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm">
-                {file.type.startsWith('image/') ? (
-                  <Image className="w-4 h-4 text-[#1A1A1A]" />
-                ) : (
-                  <FileText className="w-4 h-4 text-[#1A1A1A]" />
-                )}
-                <span className="text-gray-700 max-w-[150px] truncate">{file.name}</span>
-                <button onClick={() => removeFile(i)} className="text-gray-500 hover:text-gray-900">
-                  <X className="w-3 h-3" />
-                </button>
+                <div
+                  className="max-w-[75%] rounded-2xl px-4 py-2.5 text-sm"
+                  style={{
+                    background: msg.role === 'user' ? '#3f3f46' : '#1c1c1e',
+                    border: msg.role === 'user' ? 'none' : '1px solid rgba(255,255,255,0.07)',
+                    color: msg.error ? '#f87171' : '#e4e4e7',
+                  }}
+                >
+                  {msg.isBuilding ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-orange-400" />
+                      <span style={{ color: '#a1a1aa' }}>{formatMsgContent(msg.content)}</span>
+                    </div>
+                  ) : (
+                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">{formatMsgContent(msg.content)}</pre>
+                  )}
+                  {msg.hasCode && (
+                    <div className="mt-2.5 flex items-center gap-2">
+                      <button onClick={() => setActivePanel('preview')} className="flex items-center gap-1.5 text-xs px-3 py-1 rounded-lg transition hover:bg-white/10" style={{ background: 'rgba(255,255,255,0.08)', color: '#a1a1aa' }}>
+                        <Eye className="w-3 h-3" /> Preview
+                      </button>
+                      <button onClick={() => setActivePanel('code')} className="flex items-center gap-1.5 text-xs px-3 py-1 rounded-lg transition hover:bg-white/10" style={{ background: 'rgba(255,255,255,0.08)', color: '#a1a1aa' }}>
+                        <FileCode className="w-3 h-3" /> Code
+                      </button>
+                      <button onClick={downloadCode} className="flex items-center gap-1.5 text-xs px-3 py-1 rounded-lg transition hover:bg-white/10" style={{ background: 'rgba(255,255,255,0.08)', color: '#a1a1aa' }}>
+                        <Download className="w-3 h-3" /> Export
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
-          </div>
-        )}
 
-        {/* VibeCoding: optional voice-first input mode */}
-        {showVibeInput && (
-          <div className="mb-3 p-4 bg-white border border-gray-200 rounded-lg">
-            <VibeCodingInput
-              API={API}
-              isLoading={isBuilding}
-              onSubmit={({ prompt }) => {
-                if (prompt?.trim()) handleBuild(prompt.trim());
-                setShowVibeInput(false);
-              }}
-            />
-            <button type="button" onClick={() => { setShowVibeInput(false); setWorkspaceInputModeAndPersist('standard'); }} className="mt-2 text-xs text-gray-500 hover:text-gray-900">Close Vibe</button>
-          </div>
-        )}
+            {/* Next suggestions */}
+            {nextSuggestions.length > 0 && !isBuilding && (
+              <div className="flex flex-wrap gap-2 pl-9">
+                {nextSuggestions.slice(0, 4).map((s, i) => (
+                  <button key={i} onClick={() => setInput(s)} className="text-xs px-3 py-1.5 rounded-full border transition hover:bg-white/5" style={{ borderColor: 'rgba(255,255,255,0.1)', color: '#71717a' }}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
 
-        {devMode && (
-        <div className="text-xs text-gray-500 mb-1.5 flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-          <CommandPalette
-            commands={[
-              { id: 'focusChat', name: 'Focus chat', description: 'Focus the prompt input', shortcut: 'Ctrl+L' },
-              { id: 'preview', name: 'Switch to Preview', description: 'Show app preview', icon: 'Eye' },
-              { id: 'export', name: 'Export ZIP', description: 'Download project as ZIP', icon: 'Download' },
-              { id: 'deploy', name: 'Deploy', description: 'Open deploy options', icon: 'Rocket' },
-              { id: 'vibe', name: 'Vibe Coding', description: 'Open voice-first input', icon: 'Mic' },
-            ]}
-            onCommandSelect={(cmd) => {
-              if (cmd.id === 'focusChat') chatInputRef.current?.focus();
-              else if (cmd.id === 'preview') setActivePanel('preview');
-              else if (cmd.id === 'export') handleExportZip();
-              else if (cmd.id === 'deploy') setShowDeployModal(true);
-              else if (cmd.id === 'vibe') setShowVibeInput(true);
-            }}
-          />
+            <div ref={chatEndRef} />
           </div>
-          <select
-            value={buildMode}
-            onChange={(e) => setBuildMode(e.target.value)}
-            className="px-2 py-1 rounded border border-gray-200 bg-white text-gray-700 text-xs cursor-pointer outline-none"
-          >
-            <option value="agent">Auto</option>
-            <option value="quick">Quick</option>
-            <option value="plan">Plan</option>
-            <option value="thinking">Thinking</option>
-            <option value="swarm">Swarm</option>
-          </select>
-          <select
-            value={workspaceInputMode}
-            onChange={(e) => setWorkspaceInputModeAndPersist(e.target.value)}
-            className="px-2 py-1 rounded border border-gray-200 bg-white text-gray-700 text-xs cursor-pointer outline-none"
-            title="Input mode: Standard, Vibe (voice-first), or Advanced IDE (command palette)"
-          >
-            <option value="standard">Standard</option>
-            <option value="vibe">Vibe</option>
-            <option value="advanced">Advanced IDE</option>
-          </select>
-          <span><kbd className="px-1 py-0.5 rounded bg-gray-200 text-gray-600">Ctrl+K</kbd></span>
+
+          {/* ── Input bar ── */}
+          <div className="px-4 pb-4 shrink-0">
+            {/* Attached files preview */}
+            {attachedFiles.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {attachedFiles.map((f, i) => (
+                  <span key={i} className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full" style={{ background: '#3f3f46', color: '#d4d4d8' }}>
+                    {f.type?.startsWith('image/') ? <Image className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
+                    {f.name}
+                    <button onClick={() => setAttachedFiles(p => p.filter((_, j) => j !== i))} style={{ color: '#71717a' }}><X className="w-3 h-3" /></button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div className="rounded-2xl border" style={{ background: '#1C1C1E', borderColor: 'rgba(255,255,255,0.1)' }}>
+              <form onSubmit={handleSubmit}>
+                <textarea
+                  ref={chatInputRef}
+                  value={input}
+                  onChange={(e) => { setInput(e.target.value); resizeChatInput(); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(e); } }}
+                  placeholder={isBuilding ? 'Building your app...' : (versions.length > 0 ? 'Describe changes, fix bugs, add features...' : 'Describe what you want to build...')}
+                  rows={1}
+                  disabled={isBuilding}
+                  className="w-full bg-transparent outline-none text-sm resize-none px-4 pt-3.5 pb-1"
+                  style={{ minHeight: 52, maxHeight: 140, color: 'white', caretColor: 'white' }}
+                />
+                <div className="flex items-center gap-2 px-3 pb-3">
+                  <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.txt,.md" onChange={handleFileSelect} className="hidden" />
+                  <button type="button" onClick={() => fileInputRef.current?.click()} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: '#52525b' }} title="Attach file">
+                    <Paperclip className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={isRecording ? stopRecording : startRecording}
+                    className="p-1.5 rounded-lg transition hover:bg-white/10"
+                    style={{ color: isRecording ? '#f87171' : '#52525b' }}
+                    title={isRecording ? 'Stop voice' : 'Voice input (Chrome/Edge/Safari)'}
+                  >
+                    {isRecording ? <MicOff className="w-4 h-4 animate-pulse" /> : <Mic className="w-4 h-4" />}
+                  </button>
+                  <div className="ml-auto flex items-center gap-2">
+                    <select
+                      value={buildMode}
+                      onChange={(e) => setBuildMode(e.target.value)}
+                      className="text-xs rounded-lg px-2.5 py-1.5 outline-none cursor-pointer"
+                      style={{ background: '#3f3f46', color: '#d4d4d8', border: 'none' }}
+                    >
+                      <option value="agent">Auto</option>
+                      <option value="quick">Quick</option>
+                      <option value="plan">Plan</option>
+                      <option value="swarm">Swarm</option>
+                    </select>
+                    <button
+                      type="submit"
+                      disabled={(!input.trim() && attachedFiles.length === 0) || isBuilding}
+                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-sm font-semibold transition disabled:opacity-40"
+                      style={{ background: 'white', color: 'black' }}
+                    >
+                      {isBuilding
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <Send className="w-3.5 h-3.5" />}
+                      {isBuilding ? 'Building...' : versions.length > 0 ? 'Update' : 'Build'}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
-        )}
-        <form onSubmit={handleSubmit} className="flex gap-2 items-stretch min-w-0 flex-wrap">
-          <div className="flex shrink-0 gap-2">
-            <ModelSelector selectedModel={selectedModel} onSelectModel={setSelectedModel} variant="chat" />
-          </div>
-          <div className="flex-1 flex items-center gap-2 px-3 py-2.5 bg-white rounded-lg border border-gray-300 min-w-0 shadow-sm">
-            {isRecording ? (
-              <VoiceWaveform
-                stream={audioStream}
-                onStop={stopRecording}
-                onConfirm={confirmRecording}
-                isRecording={isRecording}
-              />
-            ) : (
+
+        {/* ── Right: Preview + Code Editor (collapsible) ── */}
+        {rightSidebarOpen ? (
+        <div className="workspace-right-panel flex flex-col shrink-0 border-l" style={{ width: '46%', background: '#18181B', borderColor: 'rgba(255,255,255,0.08)' }}>
+          {/* Tab bar */}
+          <div className="h-11 flex items-center px-3 border-b shrink-0 gap-1" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+            {[
+              { id: 'preview', label: 'Preview', icon: Eye },
+              { id: 'code', label: 'Code', icon: FileCode },
+              { id: 'console', label: 'Console', icon: Terminal },
+            ].map(tab => (
               <button
-                type="button"
-                onClick={isTranscribing ? undefined : startRecording}
-                disabled={isTranscribing}
-                data-testid="voice-input-button"
-                className={`p-2 rounded-md transition ${
-                  isTranscribing ? 'text-[#666666] cursor-wait' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-200'
-                }`}
-                title={isTranscribing ? 'Transcribing...' : 'Voice input'}
+                key={tab.id}
+                onClick={() => setActivePanel(tab.id)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition"
+                style={{
+                  background: activePanel === tab.id ? 'rgba(255,255,255,0.1)' : 'transparent',
+                  color: activePanel === tab.id ? '#e4e4e7' : '#52525b',
+                }}
               >
-                {isTranscribing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />}
+                <tab.icon className="w-3.5 h-3.5" />
+                {tab.label}
               </button>
-            )}
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              data-testid="file-attach-button"
-              className="p-2 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition"
-              title="Add file (image, PDF, text)"
-            >
-              <Paperclip className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowVibeInput(v => !v)}
-              title="Vibe Coding - voice-first input"
-              className={`p-2 rounded-md transition ${showVibeInput ? 'text-gray-600 bg-gray-100' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-200'}`}
-            >
-              <Sparkles className="w-4 h-4" />
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              accept="image/*,.pdf,.txt,.md"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            
-            <div className="h-4 w-px bg-gray-300" />
-            
-            <textarea
-              ref={chatInputRef}
-              value={input}
-              onChange={(e) => { setInput(e.target.value); resizeChatInput(); }}
-              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(e); } }}
-              data-testid="chat-input"
-              placeholder={devMode
-                ? (messages.length > 0 || versions.length > 0 || isBuilding ? "Describe changes... @ file or / fix" : "Describe what you want to build.")
-                : (messages.length > 0 || versions.length > 0 || isBuilding ? "Ask a question or request a change..." : "Build something or ask anything.")}
-              className="flex-1 bg-transparent text-gray-900 placeholder-gray-400 outline-none text-sm min-w-0 resize-none overflow-y-auto"
-              style={{ minHeight: 48, maxHeight: 120 }}
-              rows={1}
-              disabled={isBuilding}
-            />
+            ))}
+            <div className="ml-auto flex items-center gap-1">
+              {activePanel === 'preview' && (
+                <>
+                  <button onClick={() => setMobileView(v => !v)} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: '#52525b' }} title={mobileView ? 'Desktop view' : 'Mobile view'}>
+                    {mobileView ? <Monitor className="w-3.5 h-3.5" /> : <Smartphone className="w-3.5 h-3.5" />}
+                  </button>
+                  <button onClick={() => { const c = { ...files }; setFiles({}); setTimeout(() => setFiles(c), 50); }} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: '#52525b' }} title="Refresh preview">
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  </button>
+                </>
+              )}
+              {activePanel === 'code' && (
+                <button onClick={copyCode} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: copied ? '#86efac' : '#52525b' }} title="Copy">
+                  {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+              )}
+              <button onClick={downloadCode} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: '#52525b' }} title="Download">
+                <Download className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setShowDeployModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ml-1 transition"
+                style={{ background: 'rgba(255,255,255,0.1)', color: '#e4e4e7' }}
+              >
+                <Rocket className="w-3 h-3" />
+                Deploy
+              </button>
+              <button
+                onClick={() => setRightSidebarOpenPersisted(false)}
+                className="p-1.5 rounded-lg transition hover:bg-white/10"
+                style={{ color: '#52525b' }}
+                title="Hide panel (Preview / Code / Console)"
+                aria-label="Hide right panel"
+              >
+                <PanelRightOpen className="w-3.5 h-3.5 rotate-180" />
+              </button>
+            </div>
           </div>
-          
-          <button
-            type="submit"
-            disabled={!input.trim() || isBuilding}
-            data-testid="submit-button"
-            className="relative z-10 px-4 py-2.5 rounded-lg text-sm font-medium disabled:opacity-30 disabled:cursor-not-allowed transition flex items-center gap-2 shrink-0 flex-nowrap"
-            style={{ background: '#E05A25', color: '#FFFFFF' }}
-            onMouseEnter={e => { if (!e.target.disabled) e.target.style.background = '#c94d1e'; }}
-            onMouseLeave={e => { if (!e.target.disabled) e.target.style.background = '#E05A25'; }}
-            title={versions.length > 0 ? 'Send update' : 'Send & build'}
-          >
-            {isBuilding ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <>
-                <Send className="w-4 h-4" />
-                <span>{versions.length > 0 ? 'Update' : 'Build'}</span>
-              </>
+
+          {/* Panel content */}
+          <div className="flex-1 overflow-hidden">
+            {activePanel === 'preview' && (
+              <SandpackProvider
+                files={sandpackFiles}
+                theme="dark"
+                template="react"
+                customSetup={{ dependencies: sandpackDeps }}
+                options={{
+                  externalResources: [
+                    'https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css',
+                    'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
+                  ],
+                  autoReload: true,
+                  recompileMode: 'delayed',
+                  recompileDelay: 500,
+                }}
+              >
+                <SandpackErrorBoundary onError={(e) => { setLastError(e); addLog(`Preview error: ${e}`, 'error', 'preview'); }}>
+                  <SandpackPreview
+                    showOpenInCodeSandbox={false}
+                    style={{
+                      height: '100%',
+                      width: mobileView ? '390px' : '100%',
+                      margin: mobileView ? '0 auto' : '0',
+                    }}
+                  />
+                </SandpackErrorBoundary>
+              </SandpackProvider>
             )}
+
+            {activePanel === 'code' && (
+              <div className="flex flex-col h-full">
+                {/* File tabs */}
+                <div className="flex overflow-x-auto shrink-0 border-b" style={{ background: '#18181B', borderColor: 'rgba(255,255,255,0.07)' }}>
+                  {Object.keys(files).map(fp => (
+                    <button
+                      key={fp}
+                      onClick={() => setActiveFile(fp)}
+                      className="px-3 py-2 text-xs whitespace-nowrap shrink-0 border-r transition"
+                      style={{
+                        background: activeFile === fp ? '#111113' : 'transparent',
+                        color: activeFile === fp ? '#e4e4e7' : '#71717a',
+                        borderColor: 'rgba(255,255,255,0.06)',
+                      }}
+                    >
+                      {fp.replace(/^\//, '')}
+                    </button>
+                  ))}
+                </div>
+                {/* Monaco editor */}
+                <Editor
+                  height="100%"
+                  language={
+                    activeFile.endsWith('.css') ? 'css'
+                    : activeFile.endsWith('.html') ? 'html'
+                    : activeFile.endsWith('.json') ? 'json'
+                    : activeFile.endsWith('.py') ? 'python'
+                    : activeFile.endsWith('.c') || activeFile.endsWith('.h') ? 'c'
+                    : activeFile.endsWith('.cpp') ? 'cpp'
+                    : 'javascript'
+                  }
+                  value={files[activeFile]?.code || ''}
+                  onChange={handleCodeChange}
+                  theme="vs-dark"
+                  options={{
+                    minimap: { enabled: false },
+                    fontSize: 13,
+                    lineNumbers: 'on',
+                    scrollBeyondLastLine: false,
+                    wordWrap: 'on',
+                    tabSize: 2,
+                    padding: { top: 12 },
+                    fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
+                  }}
+                />
+              </div>
+            )}
+
+            {activePanel === 'console' && (
+              <ConsolePanel logs={logs} placeholder="Build logs appear here. Press Build to start." />
+            )}
+          </div>
+        </div>
+        ) : (
+          <button
+            onClick={() => setRightSidebarOpenPersisted(true)}
+            className="flex flex-col items-center justify-center shrink-0 w-10 border-l transition hover:bg-white/5 self-stretch"
+            style={{ background: '#18181B', borderColor: 'rgba(255,255,255,0.08)', color: '#52525b' }}
+            title="Show Preview / Code / Console"
+            aria-label="Show right panel"
+          >
+            <PanelRightOpen className="w-4 h-4" />
+            <span className="text-[10px] mt-1">Panel</span>
           </button>
-        </form>
+        )}
       </div>
 
-      {/* ManusComputer: floating widget when orchestration build is running */}
-      {projectIdFromUrl && (projectBuildProgress.status === 'running' || (isBuilding && projectIdFromUrl)) && (
-        <ManusComputer
-          currentStep={projectBuildProgress.phase + 1}
-          totalSteps={12}
-          thinking={projectBuildProgress.agent || 'Building...'}
-          tokensUsed={projectBuildProgress.tokens_used || lastTokensUsed}
-          tokensTotal={100000}
-          isActive
-        />
-      )}
-
-      {/* One-click deploy modal */}
+      {/* ── Deploy modal ── */}
       {showDeployModal && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-zinc-900/50 backdrop-blur-sm" onClick={() => setShowDeployModal(false)}>
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 p-6 border border-gray-200" onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Deploy your app</h3>
-            <p className="text-sm text-gray-600 mb-4">Your deploy ZIP has been downloaded (or use the download again from Ctrl+K → Deploy). Upload it to one of these platforms:</p>
+        <div className="fixed inset-0 z-[300] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.75)' }} onClick={() => setShowDeployModal(false)}>
+          <div className="rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 border" style={{ background: '#1C1C1E', borderColor: 'rgba(255,255,255,0.1)' }} onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-white mb-1">Deploy your app</h3>
+            <p className="text-sm mb-5" style={{ color: '#71717a' }}>Download your ZIP then upload to any platform below:</p>
             <div className="flex flex-col gap-2">
-              <a href="https://vercel.com/new" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-zinc-900 text-white text-sm font-medium hover:bg-gray-800">
-                Deploy with Vercel
+              <button onClick={downloadCode} className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition hover:bg-white/5 border" style={{ borderColor: 'rgba(255,255,255,0.1)', color: '#e4e4e7' }}>
+                <Download className="w-4 h-4" /> Download ZIP
+              </button>
+              <a href="https://vercel.com/new" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium text-white hover:opacity-90 transition" style={{ background: '#000' }}>
+                Deploy to Vercel
               </a>
-              <a href="https://app.netlify.com/drop" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium text-white" style={{ background: '#1A1A1A' }}>
-                Deploy with Netlify
+              <a href="https://app.netlify.com/drop" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium text-white hover:opacity-90 transition" style={{ background: '#00AD9F' }}>
+                Deploy to Netlify Drop
               </a>
-              <a href="https://railway.app/new" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-[#0B0D0E] text-white text-sm font-medium hover:bg-[#1a1d1f] border border-gray-600">
-                Deploy with Railway
+              <a href="https://railway.app/new" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium text-white hover:opacity-90 transition" style={{ background: '#0B0D0E', border: '1px solid rgba(255,255,255,0.15)' }}>
+                Deploy to Railway
               </a>
             </div>
-            <button type="button" onClick={() => setShowDeployModal(false)} className="mt-4 w-full py-2 text-sm text-gray-600 hover:text-gray-900 border border-gray-200 rounded-lg">Close</button>
+            <button onClick={() => setShowDeployModal(false)} className="mt-4 w-full py-2 text-sm rounded-xl border transition hover:bg-white/5" style={{ color: '#71717a', borderColor: 'rgba(255,255,255,0.1)' }}>Close</button>
           </div>
         </div>
       )}

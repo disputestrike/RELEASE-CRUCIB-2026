@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import Logo from './Logo';
 import './Layout3Column.css';
 
@@ -56,15 +56,26 @@ export const Layout3Column = ({
 
       {/* Main Layout Container */}
       <div className="layout-container">
-        {/* Left Sidebar (240px) */}
-        <aside
-          className={`layout-sidebar ${sidebarOpen ? 'open' : 'closed'}`}
-          role="navigation"
-        >
-          <div className="layout-sidebar-content">
-            {sidebar}
-          </div>
-        </aside>
+        {/* Left Sidebar — collapsible; toggle handle always visible */}
+        <div className="layout-sidebar-wrapper">
+          <aside
+            className={`layout-sidebar ${sidebarOpen ? 'open' : 'closed'}`}
+            role="navigation"
+          >
+            <div className="layout-sidebar-content">
+              {sidebar}
+            </div>
+          </aside>
+          <button
+            type="button"
+            className="layout-sidebar-toggle"
+            onClick={handleToggleSidebar}
+            aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+            title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+          >
+            {sidebarOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+          </button>
+        </div>
 
         {/* Main Content Area (Flexible) — full width when no right panel */}
         <main className={`layout-main ${!rightPanel ? 'layout-main--full' : ''}`}>

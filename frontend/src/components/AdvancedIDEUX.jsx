@@ -244,7 +244,7 @@ export const AIAutocomplete = ({ suggestions = [], onSelect, visible = false }) 
           onClick={() => onSelect(suggestion)}
           className={`w-full px-4 py-2 text-left text-sm transition-colors flex items-center gap-2 ${
             idx === selectedIdx
-              ? 'bg-gray-600 text-white'
+              ? 'bg-gray-600 text-[#1A1A1A]'
               : 'hover:bg-slate-700 text-slate-300'
           }`}
         >
@@ -287,13 +287,13 @@ export const AISuggestions = ({ suggestions = [] }) => {
   if (suggestions.length === 0) return null;
 
   return (
-    <div className="space-y-2 p-4 bg-gray-100 border border-gray-200 rounded-lg">
+    <div className="space-y-2 p-4 bg-gray-900/20 border border-gray-700/50 rounded-lg">
       {suggestions.map((suggestion, idx) => (
         <div key={idx} className="flex items-start gap-3 text-sm">
           <Zap size={16} className="text-[#1A1A1A] flex-shrink-0 mt-0.5" />
           <div>
-            <div className="font-medium text-gray-700">{suggestion.title}</div>
-            <div className="text-xs text-gray-600">{suggestion.description}</div>
+            <div className="font-medium text-gray-300">{suggestion.title}</div>
+            <div className="text-xs text-gray-300/70">{suggestion.description}</div>
           </div>
         </div>
       ))}

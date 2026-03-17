@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuth, API } from '../App';
 import axios from 'axios';
+import { logApiError } from '../utils/apiError';
 import DeployButton from '../components/DeployButton';
 
 const ExportCenter = () => {
@@ -28,7 +29,7 @@ const ExportCenter = () => {
         setExports(exportsRes.data.exports);
         setProjects(projectsRes.data.projects.filter(p => p.status === 'completed'));
       } catch (e) {
-        console.error(e);
+        logApiError('ExportCenter fetchData', e);
       } finally {
         setLoading(false);
       }

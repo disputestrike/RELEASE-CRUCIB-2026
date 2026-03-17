@@ -6,8 +6,8 @@
   flex: 1;
   min-height: 0;
   height: 100%;
-  background: #FAFAF8;
-  color: #1A1A1A;
+  background: #111113;
+  color: #e4e4e7;
   overflow: hidden;
 }
 
@@ -55,22 +55,64 @@
   gap: 0;
 }
 
-/* Left Sidebar — one solid gray, no internal borders */
+/* Wrapper for sidebar + collapse toggle so toggle is always visible */
+.layout-sidebar-wrapper {
+  display: flex;
+  flex-shrink: 0;
+  align-items: stretch;
+  position: relative;
+}
+
+/* Left Sidebar — dark, collapsible */
 .layout-sidebar {
   width: 300px;
-  background: #F0F0EE;
-  overflow-y: auto;
-  flex-shrink: 0;
+  min-width: 300px;
+  background: #18181B;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
+  transition: width 200ms ease, min-width 200ms ease;
+}
+
+.layout-sidebar.closed {
+  width: 56px;
+  min-width: 56px;
+}
+
+/* Collapse/expand toggle — always visible on right edge of sidebar column */
+.layout-sidebar-toggle {
+  width: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #27272a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: none;
+  border-radius: 0 8px 8px 0;
+  color: #a1a1aa;
+  cursor: pointer;
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.layout-sidebar-toggle:hover {
+  background: #3f3f46;
+  color: #e4e4e7;
+}
+
+.layout-sidebar.closed + .layout-sidebar-toggle {
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0 8px 8px 0;
 }
 
 .layout-sidebar-content {
   flex: 1;
   padding: 0;
   overflow-y: auto;
+  overflow-x: visible;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 /* Main Content Area (Flexible) */
@@ -80,7 +122,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #FAFAF8;
+  background: #111113;
 }
 
 /* Main content full width when right panel is hidden (e.g. Dashboard) */
@@ -104,11 +146,12 @@
 /* Right Panel — same tone as main canvas */
 .layout-right-panel {
   width: 420px;
-  background: #FAFAF8;
+  background: #18181B;
   overflow-y: auto;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .layout-panel-content {
@@ -131,30 +174,37 @@
   z-index: 40;
 }
 
-/* Scrollbar Styling */
+/* Scrollbar — dark gray/brown, theme-matched and visible */
 .layout-sidebar::-webkit-scrollbar,
 .layout-main-content::-webkit-scrollbar,
 .layout-right-panel::-webkit-scrollbar {
-  width: 8px;
+  width: 10px;
 }
 
 .layout-sidebar::-webkit-scrollbar-track,
 .layout-main-content::-webkit-scrollbar-track,
 .layout-right-panel::-webkit-scrollbar-track {
-  background: transparent;
+  background: #111113;
 }
 
 .layout-sidebar::-webkit-scrollbar-thumb,
 .layout-main-content::-webkit-scrollbar-thumb,
 .layout-right-panel::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 4px;
+  background: #3f3f46;
+  border-radius: 5px;
+  border: 2px solid #111113;
 }
 
 .layout-sidebar::-webkit-scrollbar-thumb:hover,
 .layout-main-content::-webkit-scrollbar-thumb:hover,
 .layout-right-panel::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.2);
+  background: #52525b;
+}
+
+.layout-sidebar::-webkit-scrollbar-corner,
+.layout-main-content::-webkit-scrollbar-corner,
+.layout-right-panel::-webkit-scrollbar-corner {
+  background: #111113;
 }
 
 /* ============================================
@@ -167,14 +217,26 @@
     display: flex;
   }
 
+  /* Sidebar wrapper: no width when closed so main is full width; toggle hidden (use mobile header) */
+  .layout-sidebar-wrapper {
+    width: 0;
+    overflow: visible;
+  }
+
+  .layout-sidebar-toggle {
+    display: none;
+  }
+
   /* Sidebar becomes overlay */
   .layout-sidebar {
     position: fixed;
     left: 0;
     top: 48px;
     height: calc(100vh - 48px);
+    width: 300px !important;
+    min-width: 300px !important;
     z-index: 50;
-    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 2px 0 24px rgba(0, 0, 0, 0.3);
     transform: translateX(-100%);
     transition: transform 200ms ease-in-out;
   }
@@ -284,11 +346,7 @@
   transition: transform 200ms ease-in-out, box-shadow 200ms ease-in-out;
 }
 
-/* Focus management */
-.layout-sidebar:focus-within,
-.layout-right-panel:focus-within {
-  box-shadow: inset 0 0 0 2px #1A1A1A;
-}
+/* Focus management — no visual border on the panel itself; individual elements manage their own focus rings */
 
 /* Print styles */
 @media print {
