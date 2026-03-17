@@ -44,13 +44,20 @@ const LandingPage = () => {
 
   const handleLandingFileSelect = (e) => {
     const selected = Array.from(e.target.files || []);
-    const valid = selected.filter(f => f.type.startsWith('image/') || f.type === 'application/pdf' || f.type.startsWith('text/'));
+    const valid = selected.filter(f =>
+      f.type.startsWith('image/') || f.type === 'application/pdf' || f.type.startsWith('text/') ||
+      f.type === 'application/zip' || f.name?.toLowerCase().endsWith('.zip') || f.type.startsWith('audio/')
+    );
     valid.forEach(file => {
+      const isZip = file.type === 'application/zip' || file.name?.toLowerCase().endsWith('.zip');
+      const isAudio = file.type.startsWith('audio/');
       const reader = new FileReader();
       reader.onload = (ev) => {
-        setAttachedFiles(prev => [...prev, { name: file.name, type: file.type, data: ev.target.result, size: file.size }]);
+        const data = isZip ? btoa(String.fromCharCode(...new Uint8Array(ev.target.result))) : ev.target.result;
+        setAttachedFiles(prev => [...prev, { name: file.name, type: file.type, data, size: file.size }]);
       };
-      if (file.type.startsWith('image/')) reader.readAsDataURL(file);
+      if (file.type.startsWith('image/') || file.type === 'application/pdf' || isAudio) reader.readAsDataURL(file);
+      else if (isZip) reader.readAsArrayBuffer(file);
       else reader.readAsText(file);
     });
     e.target.value = '';
@@ -125,12 +132,29 @@ const LandingPage = () => {
     mediaRecorderRef.current.stop();
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e?.preventDefault();
-    const hasInput = input.trim();
+    let hasInput = input.trim();
     const hasImageOnly = attachedFiles.length > 0 && attachedFiles.every(f => f.type?.startsWith('image/'));
+    let filesToSend = attachedFiles.length ? [...attachedFiles] : null;
+    // Transcribe attached audio (voice notes) and use as prompt if no text
+    const audioFiles = (filesToSend || []).filter(f => f.type?.startsWith?.('audio/'));
+    if (audioFiles.length > 0) {
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      for (const att of audioFiles) {
+        try {
+          const blob = await (await fetch(att.data)).blob();
+          const formData = new FormData();
+          formData.append('audio', blob, att.name || 'audio.webm');
+          const res = await axios.post(`${API}/voice/transcribe`, formData, { headers, timeout: 30000 });
+          const text = res.data?.text?.trim();
+          if (text) hasInput = (hasInput ? hasInput + ' ' : '') + text;
+        } catch (_) {}
+      }
+      if (filesToSend) filesToSend = filesToSend.filter(f => !f.type?.startsWith?.('audio/'));
+    }
     if (!hasInput && !hasImageOnly) return;
-    startBuild(hasInput || 'Convert image to code', attachedFiles.length ? attachedFiles : null);
+    startBuild(hasInput || 'Convert image to code', filesToSend?.length ? filesToSend : null);
   };
 
   return (
@@ -202,7 +226,7 @@ const LandingPage = () => {
               <div className="px-4 pb-2 flex flex-wrap gap-2">
                 {attachedFiles.map((file, i) => (
                   <div key={i} className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg text-sm">
-                    {file.type?.startsWith('image/') ? <Image className="w-4 h-4 text-kimi-accent shrink-0" /> : <FileText className="w-4 h-4 text-gray-400 shrink-0" />}
+                    {file.type?.startsWith('image/') ? <Image className="w-4 h-4 text-kimi-accent shrink-0" /> : file.type?.startsWith('audio/') ? <Mic className="w-4 h-4 text-gray-500 shrink-0" /> : <FileText className="w-4 h-4 text-gray-400 shrink-0" />}
                     <span className="text-gray-500 max-w-[160px] truncate">{file.name}</span>
                     <button type="button" onClick={() => removeLandingFile(i)} className="text-kimi-muted hover:text-kimi-text p-0.5"><X className="w-4 h-4" /></button>
                   </div>
@@ -228,12 +252,12 @@ const LandingPage = () => {
                       <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition shrink-0" title="Attach file">
                         <Paperclip className="w-5 h-5" />
                       </button>
-                      <button type="submit" disabled={(!input.trim() && !attachedFiles.some(f => f.type?.startsWith('image/'))) || isBuilding} className="p-2 rounded-lg bg-[#3b82f6] text-white hover:bg-[#2563eb] disabled:opacity-40 disabled:cursor-not-allowed transition shrink-0" title="Send">
+                      <button type="submit" disabled={(!input.trim() && !attachedFiles.some(f => f.type?.startsWith('image/') || f.type?.startsWith('audio/'))) || isBuilding} className="p-2 rounded-lg bg-[#3b82f6] text-white hover:bg-[#2563eb] disabled:opacity-40 disabled:cursor-not-allowed transition shrink-0" title="Send">
                         {isBuilding ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" />}
                       </button>
                     </div>
                   </div>
-                  <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.txt,.md" onChange={handleLandingFileSelect} className="hidden" />
+                  <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.txt,.md,.zip,audio/*,.js,.jsx,.ts,.tsx,.css,.html,.json,.py" onChange={handleLandingFileSelect} className="hidden" />
                 </div>
               </div>
               {(isRecording || isTranscribing || voiceError) && (

@@ -13,7 +13,7 @@ const faqsExtra = [
   { q: 'What is Swarm mode?', a: "Swarm (Beta) runs selected agents in parallel instead of sequentially, so multi-step builds can complete faster. It's available on paid plans." },
   { q: 'Can I collaborate with my team?', a: 'You can share exported code or push to a shared GitHub repo. Team and org features are on our roadmap.' },
   { q: 'Does CrucibAI support voice input?', a: 'Yes. Use the microphone button on the landing or in the workspace to record; we transcribe and insert your words into the prompt.' },
-  { q: 'What file types can I attach?', a: 'Images (screenshots, mockups), PDFs, and text files. Images are used for design-to-code; PDFs and text add context for the AI.' },
+  { q: 'What file types can I attach?', a: 'Images, PDFs, text/code files (.txt, .md, .js, .jsx, .ts, .tsx, .css, .html, .json, .py), ZIP (we parse and load code into the workspace), and audio/voice notes (we transcribe and add to your prompt). Use the paperclip on any input bar.' },
   { q: 'How do token bundles work?', a: 'You buy a bundle (e.g. Starter 100K tokens). Each AI request consumes tokens; when you run low you can buy more. Tokens do not expire.' },
   { q: 'Is there an API for developers?', a: 'We offer API access for prompt to plan and prompt to code. See our roadmap and documentation for availability.' },
   { q: 'How do I get help or report a bug?', a: 'Use the Documentation and Support links in the footer. For bugs, include steps to reproduce and your environment (browser, OS).' },

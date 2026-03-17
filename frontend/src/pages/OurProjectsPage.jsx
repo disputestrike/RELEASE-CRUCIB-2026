@@ -52,13 +52,20 @@ const OurProjectsPage = () => {
 
   const handleLandingFileSelect = (e) => {
     const selected = Array.from(e.target.files || []);
-    const valid = selected.filter(f => f.type.startsWith('image/') || f.type === 'application/pdf' || f.type.startsWith('text/'));
+    const valid = selected.filter(f =>
+      f.type.startsWith('image/') || f.type === 'application/pdf' || f.type.startsWith('text/') ||
+      f.type === 'application/zip' || f.name?.toLowerCase().endsWith('.zip') || f.type.startsWith('audio/')
+    );
     valid.forEach(file => {
+      const isZip = file.type === 'application/zip' || file.name?.toLowerCase().endsWith('.zip');
+      const isAudio = file.type.startsWith('audio/');
       const reader = new FileReader();
       reader.onload = (ev) => {
-        setAttachedFiles(prev => [...prev, { name: file.name, type: file.type, data: ev.target.result, size: file.size }]);
+        const data = isZip ? btoa(String.fromCharCode(...new Uint8Array(ev.target.result))) : ev.target.result;
+        setAttachedFiles(prev => [...prev, { name: file.name, type: file.type, data, size: file.size }]);
       };
-      if (file.type.startsWith('image/')) reader.readAsDataURL(file);
+      if (file.type.startsWith('image/') || file.type === 'application/pdf' || isAudio) reader.readAsDataURL(file);
+      else if (isZip) reader.readAsArrayBuffer(file);
       else reader.readAsText(file);
     });
     e.target.value = '';
@@ -133,15 +140,31 @@ const OurProjectsPage = () => {
     mediaRecorderRef.current.stop();
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e?.preventDefault();
-    const hasInput = input.trim();
+    let hasInput = input.trim();
     const hasImageOnly = attachedFiles.length > 0 && attachedFiles.every(f => f.type?.startsWith('image/'));
+    let filesToSend = attachedFiles.length ? [...attachedFiles] : null;
+    const audioFiles = (filesToSend || []).filter(f => f.type?.startsWith?.('audio/'));
+    if (audioFiles.length > 0) {
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      for (const att of audioFiles) {
+        try {
+          const blob = await (await fetch(att.data)).blob();
+          const formData = new FormData();
+          formData.append('audio', blob, att.name || 'audio.webm');
+          const res = await axios.post(`${API}/voice/transcribe`, formData, { headers, timeout: 30000 });
+          const text = res.data?.text?.trim();
+          if (text) hasInput = (hasInput ? hasInput + ' ' : '') + text;
+        } catch (_) {}
+      }
+      if (filesToSend) filesToSend = filesToSend.filter(f => !f.type?.startsWith?.('audio/'));
+    }
     if (!hasInput && !hasImageOnly) return;
     if (generatedCode) {
       modifyCode(hasInput || 'Convert image to code');
     } else {
-      startBuild(hasInput || 'Convert image to code', attachedFiles.length ? attachedFiles : null);
+      startBuild(hasInput || 'Convert image to code', filesToSend?.length ? filesToSend : null);
     }
   };
 
@@ -231,7 +254,7 @@ const OurProjectsPage = () => {
     { q: 'What is Swarm mode?', a: "Swarm (Beta) runs selected agents in parallel instead of sequentially, so multi-step builds can complete faster. It's available on paid plans." },
     { q: 'Can I collaborate with my team?', a: 'You can share exported code or push to a shared GitHub repo. Team and org features are on our roadmap.' },
     { q: 'Does CrucibAI support voice input?', a: 'Yes. Use the microphone button on the landing or in the workspace to record; we transcribe and insert your words into the prompt.' },
-    { q: 'What file types can I attach?', a: 'Images (screenshots, mockups), PDFs, and text files. Images are used for design-to-code; PDFs and text add context for the AI.' },
+    { q: 'What file types can I attach?', a: 'Images, PDFs, text/code files, ZIP (loaded into workspace), and audio/voice notes (transcribed into your prompt). Use the paperclip on the input bar.' },
     { q: 'How do token bundles work?', a: 'You buy a bundle (e.g. Starter 100K tokens). Each AI request consumes tokens; when you run low you can buy more. Tokens do not expire.' },
     { q: 'Is there an API for developers?', a: 'We offer API access for prompt to plan and prompt to code. See our roadmap and documentation for availability.' },
     { q: 'How do I get help or report a bug?', a: 'Use the Documentation and Support links in the footer. For bugs, include steps to reproduce and your environment (browser, OS).' },
@@ -418,6 +441,8 @@ const OurProjectsPage = () => {
                   <div key={i} className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg text-sm">
                     {file.type?.startsWith('image/') ? (
                       <Image className="w-4 h-4 text-kimi-accent shrink-0" />
+                    ) : file.type?.startsWith('audio/') ? (
+                      <Mic className="w-4 h-4 text-gray-500 shrink-0" />
                     ) : (
                       <FileText className="w-4 h-4 text-gray-400 shrink-0" />
                     )}
@@ -465,14 +490,14 @@ const OurProjectsPage = () => {
                     ref={fileInputRef}
                     type="file"
                     multiple
-                    accept="image/*,.pdf,.txt,.md"
+                    accept="image/*,.pdf,.txt,.md,.zip,audio/*,.js,.jsx,.ts,.tsx,.css,.html,.json,.py"
                     onChange={handleLandingFileSelect}
                     className="hidden"
                   />
                 </div>
                 <button
                   type="submit"
-                  disabled={(!input.trim() && !attachedFiles.some(f => f.type?.startsWith('image/'))) || isBuilding}
+                  disabled={(!input.trim() && !attachedFiles.some(f => f.type?.startsWith('image/') || f.type?.startsWith('audio/'))) || isBuilding}
                   className="px-6 py-4 bg-white text-gray-900 rounded-xl text-base font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 transition shrink-0"
                 >
                   {isBuilding ? (

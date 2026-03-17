@@ -134,3 +134,5 @@
 ---
 
 *This document is the post-merge rate, rank, and compare for the CrucibAI codebase. For the 32-item proof, see VERIFICATION_32_ITEMS.md. For launch strategy, see docs/LAUNCH_GTM.md.*
+
+**Update (second pass):** After the Engine Room (Model Manager, Fine-Tuning, Safety Dashboard) and system prompt guardrails, see **docs/RATE_RANK_COMPARE_CURRENT.md** for the current rate-rank-compare and **docs/PLAYGROUND_COMPARE.md** for the playground compare. Snapshot: **docs/WHERE_WE_ARE.md**.

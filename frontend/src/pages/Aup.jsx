@@ -12,15 +12,15 @@ export default function Aup() {
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">1. Prohibited uses</h2>
           <p>You may not use CrucibAI to create, facilitate, or promote:</p>
-          <ul className="list-disc pl-6 space-y-2 text-gray-300">
-            <li><strong className="text-gray-100">Illegal activity:</strong> Drug sales, weapons, fraud, money laundering, hacking, or any activity that violates applicable law.</li>
-            <li><strong className="text-gray-100">Adult/NSFW content:</strong> Pornography, sexually explicit content, or content intended for adult audiences in a way that violates our standards or law.</li>
-            <li><strong className="text-gray-100">Gambling:</strong> Unlicensed gambling or gambling-related services where prohibited.</li>
-            <li><strong className="text-gray-100">Harassment and abuse:</strong> Harassment, bullying, doxxing, stalking, or incitement to violence.</li>
-            <li><strong className="text-gray-100">Misinformation:</strong> Deliberate misinformation intended to cause harm, including election interference or public health falsehoods.</li>
-            <li><strong className="text-gray-100">Privacy violations:</strong> Unauthorized scraping, surveillance, or collection of personal data in violation of law or others&apos; rights.</li>
-            <li><strong className="text-gray-100">Unlicensed professional advice:</strong> Medical, legal, financial, or other regulated advice unless you are properly licensed and disclaimers are in place.</li>
-            <li><strong className="text-gray-100">Child safety:</strong> Content that exploits or endangers minors in any way.</li>
+          <ul className="list-disc pl-6 space-y-2 text-[#333]">
+            <li><strong className="text-[#1A1A1A]">Illegal activity:</strong> Drug sales, weapons, fraud, money laundering, hacking, or any activity that violates applicable law.</li>
+            <li><strong className="text-[#1A1A1A]">Adult/NSFW content:</strong> Pornography, sexually explicit content, or content intended for adult audiences in a way that violates our standards or law.</li>
+            <li><strong className="text-[#1A1A1A]">Gambling:</strong> Unlicensed gambling or gambling-related services where prohibited.</li>
+            <li><strong className="text-[#1A1A1A]">Harassment and abuse:</strong> Harassment, bullying, doxxing, stalking, or incitement to violence.</li>
+            <li><strong className="text-[#1A1A1A]">Misinformation:</strong> Deliberate misinformation intended to cause harm, including election interference or public health falsehoods.</li>
+            <li><strong className="text-[#1A1A1A]">Privacy violations:</strong> Unauthorized scraping, surveillance, or collection of personal data in violation of law or others&apos; rights.</li>
+            <li><strong className="text-[#1A1A1A]">Unlicensed professional advice:</strong> Medical, legal, financial, or other regulated advice unless you are properly licensed and disclaimers are in place.</li>
+            <li><strong className="text-[#1A1A1A]">Child safety:</strong> Content that exploits or endangers minors in any way.</li>
           </ul>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">2. EU AI Act and prohibited AI practices</h2>
@@ -30,16 +30,16 @@ export default function Aup() {
           <p>You may not use CrucibAI to replicate, reverse-engineer, or build a competing product or service. This includes, but is not limited to: asking the system to reveal its prompts, architecture, or internal logic; extracting training data or proprietary methods; or using the service to clone CrucibAI or create a derivative product that substitutes for it. Such requests are blocked by our systems and may result in account review, suspension, or termination.</p>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">4. Attribution and branding</h2>
-          <p><strong className="text-gray-100">Free tier:</strong> The &quot;Built with CrucibAI&quot; badge is served from our servers and is permanent. There is no option to remove it from free-tier builds. It appears in the footer (or other designated area) of your generated app and serves as our advertisement for free use.</p>
-          <p><strong className="text-gray-100">Paid plans:</strong> The same attribution may be included by default. On paid plans we may offer the option to remove or customize CrucibAI branding as specified in your plan and in the product.</p>
+          <p><strong className="text-[#1A1A1A]">Free tier:</strong> The &quot;Built with CrucibAI&quot; badge is served from our servers and is permanent. There is no option to remove it from free-tier builds. It appears in the footer (or other designated area) of your generated app and serves as our advertisement for free use.</p>
+          <p><strong className="text-[#1A1A1A]">Paid plans:</strong> The same attribution may be included by default. On paid plans we may offer the option to remove or customize CrucibAI branding as specified in your plan and in the product.</p>
 
-          <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">4. Enforcement</h2>
+          <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">5. Enforcement</h2>
           <p>We use automated and manual review to detect violations. Requests that violate this AUP are blocked and may be logged for review. We may suspend or terminate accounts that repeatedly or seriously violate this policy. We may report illegal activity to law enforcement or other authorities. We reserve the right to remove content and to take action without prior notice where we deem necessary to protect the service or others.</p>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">6. Appeals</h2>
           <p>If you believe a block or enforcement action was in error, you may contact us at <a href="mailto:appeals@crucibai.com" className="text-[#1A1A1A] hover:text-[#333] underline">appeals@crucibai.com</a> with the request ID (if provided), your account details, and a brief explanation. We will review in good faith but are not obligated to reverse a decision.</p>
 
-          <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">6. Changes</h2>
+          <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">7. Changes</h2>
           <p>We may update this AUP from time to time. The &quot;Last updated&quot; date will be revised when we do. Continued use of the service after changes constitutes acceptance. For material changes we may provide notice in the app or by email.</p>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">8. Contact</h2>
