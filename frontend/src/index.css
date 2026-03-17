@@ -418,3 +418,26 @@ code, pre, .mono {
 /* Workspace - keep dark always (IDE convention) */
 /* The workspace/code editor stays dark regardless of theme */
 /* This matches VS Code / Cursor behavior */
+
+/* ── Inverse text (dark text on light bg — stays dark in both themes) ─── */
+:root, [data-theme="dark"]  { --theme-text-inv: #e4e4e7; }
+[data-theme="light"] { --theme-text-inv: #1A1A1A; }
+
+/* ── Workspace / Builder light theme overrides ───────────────────────── */
+[data-theme="light"] .layout-3-column { background: #F5F5F4; color: #1A1A1A; }
+[data-theme="light"] .layout-3-column-header { background: #FFFFFF; border-color: rgba(0,0,0,0.1); }
+[data-theme="light"] .workspace-left-sidebar { background: #F5F5F4; border-color: rgba(0,0,0,0.1); }
+[data-theme="light"] .workspace-explorer-header { border-color: rgba(0,0,0,0.08); }
+[data-theme="light"] .workspace-file-item { color: #444444; }
+[data-theme="light"] .workspace-file-item:hover { background: rgba(0,0,0,0.05); }
+[data-theme="light"] .workspace-file-item.active { background: rgba(0,0,0,0.08); color: #1A1A1A; }
+
+/* Scrollbar light */
+[data-theme="light"] { scrollbar-color: #d4d4d4 #F5F5F4; }
+
+/* Workspace center panel light */
+[data-theme="light"] .workspace-center-panel { background: #FAFAF8; }
+
+/* Code editor — stays dark always (IDE convention, same as VS Code/Cursor) */
+[data-theme="light"] .monaco-editor,
+[data-theme="light"] .sandpack-wrapper { filter: none; }

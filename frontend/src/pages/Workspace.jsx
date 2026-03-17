@@ -2116,13 +2116,13 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
 
 
   return (
-    <div className="h-full min-h-0 flex flex-col overflow-hidden font-sans text-[13px] antialiased" style={{ background: '#111113', color: 'white' }}>
+    <div className="h-full min-h-0 flex flex-col overflow-hidden font-sans text-[13px] antialiased" style={{ background: 'var(--theme-bg, #111113)', color: 'white' }}>
 
       {/* ── Command Palette (Ctrl+K) ── */}
       {commandPaletteOpen && (
         <div className="fixed inset-0 z-[200] flex items-start justify-center pt-[15vh]" style={{ background: 'rgba(0,0,0,0.75)' }} onClick={() => setCommandPaletteOpen(false)}>
-          <div className="w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border" style={{ background: '#1C1C1E', borderColor: 'rgba(255,255,255,0.1)' }} onClick={e => e.stopPropagation()}>
-            <div className="px-4 py-2.5 border-b text-xs" style={{ borderColor: 'rgba(255,255,255,0.08)', color: '#71717a' }}>Command palette</div>
+          <div className="w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border" style={{ background: '#1C1C1E', borderColor: 'var(--theme-border, rgba(255,255,255,0.1))' }} onClick={e => e.stopPropagation()}>
+            <div className="px-4 py-2.5 border-b text-xs" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.08))', color: 'var(--theme-muted, #71717a)' }}>Command palette</div>
             <div className="max-h-80 overflow-y-auto py-1">
               {[
                 { id: 'newAgent', label: 'New chat (Ctrl+Shift+L)', icon: Plus },
@@ -2136,8 +2136,8 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
                 { id: 'settings', label: 'Settings', icon: Settings },
               ].map(({ id, label, icon: Icon }) => (
                 <button key={id} onClick={() => runCommand(id)} className="w-full flex items-center gap-3 px-4 py-3 text-left transition hover:bg-white/5">
-                  <Icon className="w-4 h-4" style={{ color: '#71717a' }} />
-                  <span style={{ color: '#e4e4e7' }}>{label}</span>
+                  <Icon className="w-4 h-4" style={{ color: 'var(--theme-muted, #71717a)' }} />
+                  <span style={{ color: 'var(--theme-text, #e4e4e7)' }}>{label}</span>
                 </button>
               ))}
             </div>
@@ -2148,8 +2148,8 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
       {/* ── File Search (Ctrl+P) ── */}
       {fileSearchOpen && (
         <div className="fixed inset-0 z-[200] flex items-start justify-center pt-[20vh]" style={{ background: 'rgba(0,0,0,0.75)' }} onClick={() => setFileSearchOpen(false)}>
-          <div className="w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border" style={{ background: '#1C1C1E', borderColor: 'rgba(255,255,255,0.1)' }} onClick={e => e.stopPropagation()}>
-            <div className="px-4 py-2.5 border-b text-xs" style={{ borderColor: 'rgba(255,255,255,0.08)', color: '#71717a' }}>Open file</div>
+          <div className="w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border" style={{ background: '#1C1C1E', borderColor: 'var(--theme-border, rgba(255,255,255,0.1))' }} onClick={e => e.stopPropagation()}>
+            <div className="px-4 py-2.5 border-b text-xs" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.08))', color: 'var(--theme-muted, #71717a)' }}>Open file</div>
             <div className="max-h-64 overflow-y-auto py-1">
               {Object.keys(files).sort().map((filename) => (
                 <button key={filename} onClick={() => { setActiveFile(filename); setActivePanel('code'); setFileSearchOpen(false); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left transition hover:bg-white/5">
@@ -2163,13 +2163,13 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
       )}
 
       {/* ── Header ── */}
-      <header className="h-12 flex items-center px-4 gap-3 shrink-0 border-b" style={{ background: '#18181B', borderColor: 'rgba(255,255,255,0.08)' }}>
-        <button onClick={() => navigate('/app')} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: '#71717a' }} title="Back">
+      <header className="h-12 flex items-center px-4 gap-3 shrink-0 border-b" style={{ background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
+        <button onClick={() => navigate('/app')} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #71717a)' }} title="Back">
           <ArrowLeft className="w-4 h-4" />
         </button>
         <Logo variant="mark" height={22} href="/app" className="shrink-0" />
         <div className="h-4 w-px shrink-0" style={{ background: 'rgba(255,255,255,0.1)' }} />
-        <span className="text-sm truncate max-w-xs" style={{ color: '#a1a1aa' }}>
+        <span className="text-sm truncate max-w-xs" style={{ color: 'var(--theme-muted, #a1a1aa)' }}>
           {messages.find(m => m.role === 'user')?.content?.toString().slice(0, 55) || 'New project'}
         </span>
         {isBuilding && (
@@ -2188,7 +2188,7 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
           <button
             onClick={resetLayout}
             className="p-1.5 rounded-lg transition hover:bg-white/10"
-            style={{ color: '#71717a' }}
+            style={{ color: 'var(--theme-muted, #71717a)' }}
             title="Reset layout (show Explorer, Preview panel, default view)"
             aria-label="Reset layout"
           >
@@ -2201,7 +2201,7 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
             style={{
               background: devMode ? 'rgba(255,255,255,0.1)' : 'transparent',
               color: devMode ? '#e4e4e7' : '#71717a',
-              borderColor: 'rgba(255,255,255,0.1)',
+              borderColor: 'var(--theme-border, rgba(255,255,255,0.1))',
             }}
             title={devMode ? 'Switch to Simple view' : 'Switch to Code view'}
           >
@@ -2211,7 +2211,7 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
           <button
             onClick={() => setCommandPaletteOpen(true)}
             className="p-1.5 rounded-lg transition hover:bg-white/10"
-            style={{ color: '#71717a' }}
+            style={{ color: 'var(--theme-muted, #71717a)' }}
             title="Command palette (Ctrl+K)"
           >
             <Settings className="w-4 h-4" />
@@ -2232,21 +2232,21 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
 
         {/* ── Left: File Explorer ── */}
         {leftSidebarOpen ? (
-          <div className="w-52 flex flex-col shrink-0 border-r" style={{ background: '#18181B', borderColor: 'rgba(255,255,255,0.07)' }}>
+          <div className="w-52 flex flex-col shrink-0 border-r" style={{ background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.07))' }}>
             <input ref={folderInputRef} type="file" webkitdirectory="" multiple onChange={handleFolderOpen} className="hidden" />
             <input ref={zipInputRef} type="file" accept=".zip" onChange={handleZipUpload} className="hidden" />
             {/* Explorer header */}
-            <div className="flex items-center justify-between px-3 py-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
-              <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#52525b' }}>Explorer</span>
+            <div className="flex items-center justify-between px-3 py-2 border-b" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.07))' }}>
+              <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--theme-muted, #52525b)' }}>Explorer</span>
               <div className="flex items-center gap-0.5">
-                <button onClick={() => zipInputRef.current?.click()} className="p-1 rounded transition hover:bg-white/10" style={{ color: '#52525b' }} title="Upload ZIP (bring your code)"><Upload className="w-3 h-3" /></button>
-                <button onClick={addNewFileToProject} className="p-1 rounded transition hover:bg-white/10" style={{ color: '#52525b' }} title="New file"><Plus className="w-3 h-3" /></button>
-                <button onClick={() => setLeftSidebarOpen(false)} className="p-1 rounded transition hover:bg-white/10" style={{ color: '#52525b' }} title="Collapse sidebar"><PanelLeftClose className="w-3 h-3" /></button>
+                <button onClick={() => zipInputRef.current?.click()} className="p-1 rounded transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title="Upload ZIP (bring your code)"><Upload className="w-3 h-3" /></button>
+                <button onClick={addNewFileToProject} className="p-1 rounded transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title="New file"><Plus className="w-3 h-3" /></button>
+                <button onClick={() => setLeftSidebarOpen(false)} className="p-1 rounded transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title="Collapse sidebar"><PanelLeftClose className="w-3 h-3" /></button>
               </div>
             </div>
             {/* Project name */}
             <div className="px-3 py-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-              <span className="text-xs truncate block" style={{ color: '#3f3f46' }}>
+              <span className="text-xs truncate block" style={{ color: 'var(--theme-muted, #3f3f46)' }}>
                 {messages.find(m => m.role === 'user')?.content?.toString().slice(0, 30) || 'project'}
               </span>
             </div>
@@ -2267,7 +2267,7 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
                       <FileCode className="w-3 h-3 shrink-0" style={{ color: iconColor }} />
                       <span className="truncate">{name}</span>
                     </button>
-                    <button onClick={() => deleteFileFromProject(fp)} className="opacity-0 group-hover:opacity-100 pr-2 transition" style={{ color: '#52525b' }} title="Delete">
+                    <button onClick={() => deleteFileFromProject(fp)} className="opacity-0 group-hover:opacity-100 pr-2 transition" style={{ color: 'var(--theme-muted, #52525b)' }} title="Delete">
                       <X className="w-3 h-3" />
                     </button>
                   </div>
@@ -2276,8 +2276,8 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
             </div>
             {/* Versions */}
             {versions.length > 0 && (
-              <div className="border-t px-3 py-2" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
-                <div className="text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#52525b' }}>History</div>
+              <div className="border-t px-3 py-2" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.07))' }}>
+                <div className="text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--theme-muted, #52525b)' }}>History</div>
                 {versions.slice(0, 4).map((v, i) => (
                   <button key={v.id} onClick={() => restoreVersion(v)} className="w-full flex items-center gap-2 py-1 text-left text-xs transition hover:bg-white/5 rounded px-1" style={{ color: currentVersion === v.id ? '#e4e4e7' : '#71717a' }}>
                     <History className="w-3 h-3 shrink-0" />
@@ -2288,32 +2288,37 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
             )}
           </div>
         ) : (
-          <button onClick={() => setLeftSidebarOpen(true)} className="w-8 flex items-center justify-center shrink-0 border-r transition hover:bg-white/5" style={{ background: '#18181B', borderColor: 'rgba(255,255,255,0.07)', color: '#52525b' }} title="Show files">
-            <PanelRightOpen className="w-4 h-4" />
-          </button>
+          <div
+            onClick={() => setLeftSidebarOpen(true)}
+            className="flex flex-col items-center pt-3 shrink-0 border-r cursor-pointer transition hover:bg-white/5"
+            style={{ width: 28, background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.07))', color: 'var(--theme-muted, #52525b)' }}
+            title="Open explorer"
+          >
+            <PanelRightOpen className="w-3.5 h-3.5" />
+          </div>
         )}
 
         {/* ── Center: Chat / Build Steps ── */}
-        <div className="flex-1 flex flex-col min-w-0" style={{ background: '#111113' }}>
+        <div className="flex-1 flex flex-col min-w-0" style={{ background: 'var(--theme-bg, #111113)' }}>
           {/* Messages area */}
           <div className="flex-1 overflow-y-auto px-5 py-6 space-y-4 min-h-0">
             {messages.length === 0 && !isBuilding && (
-              <div className="flex flex-col items-center justify-center h-full gap-4" style={{ color: '#3f3f46' }}>
-                <Sparkles className="w-10 h-10" style={{ color: '#27272a' }} />
+              <div className="flex flex-col items-center justify-center h-full gap-4" style={{ color: 'var(--theme-muted, #3f3f46)' }}>
+                <Sparkles className="w-10 h-10" style={{ color: 'var(--theme-input, #27272a)' }} />
                 <p className="text-sm">Describe what you want to build...</p>
               </div>
             )}
 
             {/* ── Agent steps card (Manus-style) ── */}
             {isBuilding && (
-              <div className="rounded-2xl p-4 border" style={{ background: '#1C1C1E', borderColor: 'rgba(255,255,255,0.08)' }}>
+              <div className="rounded-2xl p-4 border" style={{ background: '#1C1C1E', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
                   <span className="text-sm font-medium text-white">{currentPhase || 'Building your app...'}</span>
-                  <span className="ml-auto text-xs" style={{ color: '#52525b' }}>{Math.round(buildProgress)}%</span>
+                  <span className="ml-auto text-xs" style={{ color: 'var(--theme-muted, #52525b)' }}>{Math.round(buildProgress)}%</span>
                 </div>
                 {/* Progress bar */}
-                <div className="h-0.5 rounded-full mb-3 overflow-hidden" style={{ background: '#27272a' }}>
+                <div className="h-0.5 rounded-full mb-3 overflow-hidden" style={{ background: 'var(--theme-input, #27272a)' }}>
                   <div className="h-full rounded-full bg-orange-400 transition-all duration-500" style={{ width: `${buildProgress}%` }} />
                 </div>
                 {/* Agent steps */}
@@ -2334,7 +2339,7 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
                       <span className="font-medium" style={{ color: a.status === 'done' ? '#86efac' : a.status === 'running' ? '#fb923c' : '#52525b' }}>
                         {a.name}
                       </span>
-                      <span className="truncate" style={{ color: '#3f3f46' }}>{a.phase}</span>
+                      <span className="truncate" style={{ color: 'var(--theme-muted, #3f3f46)' }}>{a.phase}</span>
                     </div>
                   ))}
                 </div>
@@ -2345,8 +2350,8 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 {msg.role === 'assistant' && (
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mr-2 mt-0.5" style={{ background: '#27272a' }}>
-                    <Sparkles className="w-3.5 h-3.5" style={{ color: '#a1a1aa' }} />
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mr-2 mt-0.5" style={{ background: 'var(--theme-input, #27272a)' }}>
+                    <Sparkles className="w-3.5 h-3.5" style={{ color: 'var(--theme-muted, #a1a1aa)' }} />
                   </div>
                 )}
                 <div
@@ -2360,20 +2365,20 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
                   {msg.isBuilding ? (
                     <div className="flex items-center gap-2">
                       <Loader2 className="w-3.5 h-3.5 animate-spin text-orange-400" />
-                      <span style={{ color: '#a1a1aa' }}>{formatMsgContent(msg.content)}</span>
+                      <span style={{ color: 'var(--theme-muted, #a1a1aa)' }}>{formatMsgContent(msg.content)}</span>
                     </div>
                   ) : (
                     <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">{formatMsgContent(msg.content)}</pre>
                   )}
                   {msg.hasCode && (
                     <div className="mt-2.5 flex items-center gap-2">
-                      <button onClick={() => setActivePanel('preview')} className="flex items-center gap-1.5 text-xs px-3 py-1 rounded-lg transition hover:bg-white/10" style={{ background: 'rgba(255,255,255,0.08)', color: '#a1a1aa' }}>
+                      <button onClick={() => setActivePanel('preview')} className="flex items-center gap-1.5 text-xs px-3 py-1 rounded-lg transition hover:bg-white/10" style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--theme-muted, #a1a1aa)' }}>
                         <Eye className="w-3 h-3" /> Preview
                       </button>
-                      <button onClick={() => setActivePanel('code')} className="flex items-center gap-1.5 text-xs px-3 py-1 rounded-lg transition hover:bg-white/10" style={{ background: 'rgba(255,255,255,0.08)', color: '#a1a1aa' }}>
+                      <button onClick={() => setActivePanel('code')} className="flex items-center gap-1.5 text-xs px-3 py-1 rounded-lg transition hover:bg-white/10" style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--theme-muted, #a1a1aa)' }}>
                         <FileCode className="w-3 h-3" /> Code
                       </button>
-                      <button onClick={downloadCode} className="flex items-center gap-1.5 text-xs px-3 py-1 rounded-lg transition hover:bg-white/10" style={{ background: 'rgba(255,255,255,0.08)', color: '#a1a1aa' }}>
+                      <button onClick={downloadCode} className="flex items-center gap-1.5 text-xs px-3 py-1 rounded-lg transition hover:bg-white/10" style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--theme-muted, #a1a1aa)' }}>
                         <Download className="w-3 h-3" /> Export
                       </button>
                     </div>
@@ -2386,7 +2391,7 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
             {nextSuggestions.length > 0 && !isBuilding && (
               <div className="flex flex-wrap gap-2 pl-9">
                 {nextSuggestions.slice(0, 4).map((s, i) => (
-                  <button key={i} onClick={() => setInput(s)} className="text-xs px-3 py-1.5 rounded-full border transition hover:bg-white/5" style={{ borderColor: 'rgba(255,255,255,0.1)', color: '#71717a' }}>
+                  <button key={i} onClick={() => setInput(s)} className="text-xs px-3 py-1.5 rounded-full border transition hover:bg-white/5" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.1))', color: 'var(--theme-muted, #71717a)' }}>
                     {s}
                   </button>
                 ))}
@@ -2405,13 +2410,13 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
                   <span key={i} className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full" style={{ background: '#3f3f46', color: '#d4d4d8' }}>
                     {f.type?.startsWith('image/') ? <Image className="w-3 h-3" /> : f.type?.startsWith('audio/') ? <Mic className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
                     {f.name}
-                    <button onClick={() => setAttachedFiles(p => p.filter((_, j) => j !== i))} style={{ color: '#71717a' }}><X className="w-3 h-3" /></button>
+                    <button onClick={() => setAttachedFiles(p => p.filter((_, j) => j !== i))} style={{ color: 'var(--theme-muted, #71717a)' }}><X className="w-3 h-3" /></button>
                   </span>
                 ))}
               </div>
             )}
 
-            <div className="rounded-2xl border" style={{ background: '#1C1C1E', borderColor: 'rgba(255,255,255,0.1)' }}>
+            <div className="rounded-2xl border" style={{ background: '#1C1C1E', borderColor: 'var(--theme-border, rgba(255,255,255,0.1))' }}>
               <form onSubmit={handleSubmit}>
                 <textarea
                   ref={chatInputRef}
@@ -2426,7 +2431,7 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
                 />
                 <div className="flex items-center gap-2 px-3 pb-3">
                   <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.txt,.md,.zip,audio/*,.js,.jsx,.ts,.tsx,.css,.html,.json,.py" onChange={handleFileSelect} className="hidden" />
-                  <button type="button" onClick={() => fileInputRef.current?.click()} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: '#52525b' }} title="Attach file">
+                  <button type="button" onClick={() => fileInputRef.current?.click()} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title="Attach file">
                     <Paperclip className="w-4 h-4" />
                   </button>
                   <button
@@ -2470,9 +2475,9 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
 
         {/* ── Right: Preview + Code Editor (collapsible) ── */}
         {rightSidebarOpen ? (
-        <div className="workspace-right-panel flex flex-col shrink-0 border-l" style={{ width: '46%', background: '#18181B', borderColor: 'rgba(255,255,255,0.08)' }}>
+        <div className="workspace-right-panel flex flex-col shrink-0 border-l" style={{ width: '46%', background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
           {/* Tab bar */}
-          <div className="h-11 flex items-center px-3 border-b shrink-0 gap-1" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+          <div className="h-11 flex items-center px-3 border-b shrink-0 gap-1" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
             {[
               { id: 'preview', label: 'Preview', icon: Eye },
               { id: 'code', label: 'Code', icon: FileCode },
@@ -2495,10 +2500,10 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
             <div className="ml-auto flex items-center gap-1">
               {activePanel === 'preview' && (
                 <>
-                  <button onClick={() => setMobileView(v => !v)} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: '#52525b' }} title={mobileView ? 'Desktop view' : 'Mobile view'}>
+                  <button onClick={() => setMobileView(v => !v)} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title={mobileView ? 'Desktop view' : 'Mobile view'}>
                     {mobileView ? <Monitor className="w-3.5 h-3.5" /> : <Smartphone className="w-3.5 h-3.5" />}
                   </button>
-                  <button onClick={() => { const c = { ...files }; setFiles({}); setTimeout(() => setFiles(c), 50); }} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: '#52525b' }} title="Refresh preview">
+                  <button onClick={() => { const c = { ...files }; setFiles({}); setTimeout(() => setFiles(c), 50); }} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title="Refresh preview">
                     <RefreshCw className="w-3.5 h-3.5" />
                   </button>
                 </>
@@ -2508,7 +2513,7 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
                   {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 </button>
               )}
-              <button onClick={downloadCode} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: '#52525b' }} title="Download">
+              <button onClick={downloadCode} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title="Download">
                 <Download className="w-3.5 h-3.5" />
               </button>
               <button
@@ -2522,7 +2527,7 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
                   }
                 }}
                 className="p-1.5 rounded-lg transition hover:bg-white/10"
-                style={{ color: '#52525b' }}
+                style={{ color: 'var(--theme-muted, #52525b)' }}
                 title="Copy share link"
               >
                 <Share2 className="w-3.5 h-3.5" />
@@ -2530,7 +2535,7 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
               <button
                 onClick={() => setShowDeployModal(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ml-1 transition"
-                style={{ background: 'rgba(255,255,255,0.1)', color: '#e4e4e7' }}
+                style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--theme-text, #e4e4e7)' }}
               >
                 <Rocket className="w-3 h-3" />
                 Deploy
@@ -2538,7 +2543,7 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
               <button
                 onClick={() => setRightSidebarOpenPersisted(false)}
                 className="p-1.5 rounded-lg transition hover:bg-white/10"
-                style={{ color: '#52525b' }}
+                style={{ color: 'var(--theme-muted, #52525b)' }}
                 title="Hide panel (Preview / Code / Console)"
                 aria-label="Hide right panel"
               >
@@ -2582,16 +2587,16 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
             {activePanel === 'code' && (
               <div className="flex flex-col h-full">
                 {/* File tabs */}
-                <div className="flex overflow-x-auto shrink-0 border-b" style={{ background: '#18181B', borderColor: 'rgba(255,255,255,0.07)' }}>
+                <div className="flex overflow-x-auto shrink-0 border-b" style={{ background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.07))' }}>
                   {Object.keys(files).map(fp => (
                     <button
                       key={fp}
                       onClick={() => setActiveFile(fp)}
                       className="px-3 py-2 text-xs whitespace-nowrap shrink-0 border-r transition"
                       style={{
-                        background: activeFile === fp ? '#111113' : 'transparent',
+                        background: activeFile === fp ? 'var(--theme-bg, #111113)' : 'transparent',
                         color: activeFile === fp ? '#e4e4e7' : '#71717a',
-                        borderColor: 'rgba(255,255,255,0.06)',
+                        borderColor: 'var(--theme-border, rgba(255,255,255,0.06))',
                       }}
                     >
                       {fp.replace(/^\//, '')}
@@ -2639,7 +2644,7 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
           <button
             onClick={() => setRightSidebarOpenPersisted(true)}
             className="flex flex-col items-center justify-center shrink-0 w-10 border-l transition hover:bg-white/5 self-stretch"
-            style={{ background: '#18181B', borderColor: 'rgba(255,255,255,0.08)', color: '#52525b' }}
+            style={{ background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))', color: 'var(--theme-muted, #52525b)' }}
             title="Show Preview / Code / Console"
             aria-label="Show right panel"
           >
@@ -2652,11 +2657,11 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
       {/* ── Deploy modal ── */}
       {showDeployModal && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.75)' }} onClick={() => setShowDeployModal(false)}>
-          <div className="rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 border" style={{ background: '#1C1C1E', borderColor: 'rgba(255,255,255,0.1)' }} onClick={e => e.stopPropagation()}>
+          <div className="rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 border" style={{ background: '#1C1C1E', borderColor: 'var(--theme-border, rgba(255,255,255,0.1))' }} onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-semibold text-white mb-1">Deploy your app</h3>
-            <p className="text-sm mb-5" style={{ color: '#71717a' }}>Download your ZIP then upload to any platform below:</p>
+            <p className="text-sm mb-5" style={{ color: 'var(--theme-muted, #71717a)' }}>Download your ZIP then upload to any platform below:</p>
             <div className="flex flex-col gap-2">
-              <button onClick={downloadCode} className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition hover:bg-white/5 border" style={{ borderColor: 'rgba(255,255,255,0.1)', color: '#e4e4e7' }}>
+              <button onClick={downloadCode} className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition hover:bg-white/5 border" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.1))', color: 'var(--theme-text, #e4e4e7)' }}>
                 <Download className="w-4 h-4" /> Download ZIP
               </button>
               <a href="https://vercel.com/new" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium text-white hover:opacity-90 transition" style={{ background: '#000' }}>
@@ -2669,7 +2674,7 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
                 Deploy to Railway
               </a>
             </div>
-            <button onClick={() => setShowDeployModal(false)} className="mt-4 w-full py-2 text-sm rounded-xl border transition hover:bg-white/5" style={{ color: '#71717a', borderColor: 'rgba(255,255,255,0.1)' }}>Close</button>
+            <button onClick={() => setShowDeployModal(false)} className="mt-4 w-full py-2 text-sm rounded-xl border transition hover:bg-white/5" style={{ color: 'var(--theme-muted, #71717a)', borderColor: 'var(--theme-border, rgba(255,255,255,0.1))' }}>Close</button>
           </div>
         </div>
       )}

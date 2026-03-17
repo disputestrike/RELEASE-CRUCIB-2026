@@ -6,7 +6,7 @@
 .workspace-right-panel,
 .workspace-right-panel * {
   scrollbar-width: thin;
-  scrollbar-color: #3f3f46 #18181b;
+  scrollbar-color: var(--theme-muted, #3f3f46) var(--theme-surface, #18181b);
 }
 .workspace-right-panel::-webkit-scrollbar,
 .workspace-right-panel *::-webkit-scrollbar {
@@ -15,13 +15,13 @@
 }
 .workspace-right-panel::-webkit-scrollbar-track,
 .workspace-right-panel *::-webkit-scrollbar-track {
-  background: #18181b;
+  background: var(--theme-surface, #18181b);
 }
 .workspace-right-panel::-webkit-scrollbar-thumb,
 .workspace-right-panel *::-webkit-scrollbar-thumb {
   background: #3f3f46;
   border-radius: 5px;
-  border: 2px solid #18181b;
+  border: 2px solid var(--theme-surface, #18181b);
 }
 .workspace-right-panel::-webkit-scrollbar-thumb:hover,
 .workspace-right-panel *::-webkit-scrollbar-thumb:hover {
@@ -30,7 +30,7 @@
 /* Monaco editor scrollbars (class applied by @monaco-editor/react) */
 .workspace-right-panel .monaco-scrollable-element > .scrollbar,
 .workspace-right-panel .monaco-editor .scrollbar {
-  background: #18181b !important;
+  background: var(--theme-surface, #18181b) !important;
 }
 .workspace-right-panel .monaco-scrollable-element > .scrollbar .slider {
   background: #3f3f46 !important;
@@ -439,7 +439,7 @@
    ============================================================ */
 
 .workspace-console-panel {
-  background: #111113;
+  background: var(--theme-bg, #111113);
   color: #e4e4e7;
 }
 
