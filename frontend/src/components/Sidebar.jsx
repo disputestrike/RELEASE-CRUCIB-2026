@@ -8,7 +8,7 @@ import {
   FileOutput, FileText, LayoutGrid, BookOpen, Key, Keyboard,
   CreditCard, ScrollText, BarChart3, Wrench, HelpCircle, Coins,
   X, Bell, MoreHorizontal, ExternalLink, Pencil, Share2,
-  Trash2, FolderInput, Star, Settings
+  Trash2, FolderInput, Star, Settings, ShieldCheck
 } from 'lucide-react';
 import Logo from './Logo';
 import './Sidebar.css';
@@ -77,6 +77,10 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     { label: 'Benchmarks', icon: BarChart3, href: '/benchmarks' },
     { label: 'Add Payments', icon: CreditCard, href: '/app/payments-wizard' },
     { label: 'Audit Log', icon: ScrollText, href: '/app/audit-log' },
+    { label: 'Model Manager', icon: BarChart3, href: '/app/models' },
+    { label: 'Fine-Tuning', icon: Zap, href: '/app/fine-tuning' },
+    { label: 'Safety Dashboard', icon: ShieldCheck, href: '/app/safety' },
+    { label: 'Monitoring', icon: BarChart3, href: '/app/monitoring' },
   ];
 
   // Show BOTH projects and store tasks — chat tasks must always be visible; include createdAt for History grouping
