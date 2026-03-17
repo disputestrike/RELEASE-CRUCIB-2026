@@ -809,6 +809,7 @@ const Workspace = () => {
               setActivePanel('preview'); // Auto-switch to preview
               setBuildProgress(100);
               setIsBuilding(false);
+              if (refreshUser) refreshUser(); // refresh credit balance
             } else {
               // Fallback: fetch deploy_files from API
               const headers = token ? { Authorization: `Bearer ${token}` } : {};
@@ -1384,6 +1385,7 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
             setBuildProgress(100);
             if (response.data.tokens_used != null) { setLastTokensUsed(response.data.tokens_used); setTokensPerStep(prev => ({ ...prev, generate: response.data.tokens_used })); }
             addLog('Build completed successfully!', 'success', 'deploy');
+            if (refreshUser) refreshUser(); // refresh credit balance
             const parsedFiles = parseMultiFileOutput(response.data.response || response.data.message || '');
             const newFiles = { ...files, ...parsedFiles };
             setFiles(newFiles);
@@ -1448,6 +1450,7 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
                 setBuildProgress(100);
                 if (obj.tokens_used != null) { setLastTokensUsed(obj.tokens_used); setTokensPerStep(prev => ({ ...prev, generate: obj.tokens_used })); }
                 addLog('Build completed successfully!', 'success', 'deploy');
+                if (refreshUser) refreshUser(); // refresh credit balance in sidebar
                 const parsedFiles = parseMultiFileOutput(accumulated);
                 setFiles(prev => {
                   const next = { ...prev, ...parsedFiles };
