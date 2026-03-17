@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
+import JSZip from 'jszip';
 import { motion, AnimatePresence } from 'framer-motion';
 import Editor from '@monaco-editor/react';
 import {
@@ -419,7 +420,7 @@ const ModelSelector = ({ selectedModel, onSelectModel, variant = 'default' }) =>
   );
 };
 
-// Version History Panel
+// Version History Panel (local versions)
 const VersionHistory = ({ versions, onRestore, currentVersion }) => {
   return (
     <div className="p-3 space-y-2 overflow-y-auto h-full">
@@ -451,6 +452,51 @@ const VersionHistory = ({ versions, onRestore, currentVersion }) => {
           </div>
         ))
       )}
+    </div>
+  );
+};
+
+// Build History Panel (Item 17) — fetch prior builds from API, click to view in Agent Monitor
+const BuildHistoryPanel = ({ buildHistory, projectId, loading }) => {
+  if (loading) {
+    return (
+      <div className="p-4 flex items-center justify-center h-full">
+        <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
+      </div>
+    );
+  }
+  if (!buildHistory || buildHistory.length === 0) {
+    return (
+      <div className="p-4 text-sm text-zinc-500">
+        No prior builds yet. Run a build from the dashboard to see history here.
+      </div>
+    );
+  }
+  return (
+    <div className="p-3 space-y-2 overflow-y-auto h-full">
+      <div className="text-xs text-zinc-500 uppercase tracking-wider mb-3">Build history</div>
+      {buildHistory.map((entry, i) => (
+        <div key={i} className="p-3 rounded-lg border border-zinc-700/50 bg-zinc-800/30 hover:bg-zinc-800/50 transition">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs text-zinc-400">
+              {entry.completed_at ? new Date(entry.completed_at).toLocaleString() : '—'}
+            </span>
+            <span className={`text-xs font-medium ${entry.status === 'completed' ? 'text-green-400' : 'text-amber-500'}`}>
+              {entry.status === 'completed' ? 'Completed' : (entry.status || '—')}
+            </span>
+          </div>
+          {entry.quality_score != null && <p className="text-xs text-zinc-500">Quality: {Number(entry.quality_score).toFixed(0)}</p>}
+          {entry.tokens_used != null && <p className="text-xs text-zinc-500">{Number(entry.tokens_used).toLocaleString()} tokens</p>}
+          {projectId && (
+            <Link
+              to={`/app/projects/${projectId}`}
+              className="inline-flex items-center gap-1 mt-2 text-xs text-blue-400 hover:text-blue-300"
+            >
+              <ExternalLink className="w-3 h-3" /> View in Agent Monitor
+            </Link>
+          )}
+        </div>
+      ))}
     </div>
   );
 };
@@ -575,6 +621,8 @@ const Workspace = () => {
   const [menuAnchor, setMenuAnchor] = useState(null); // 'file' | 'edit' | 'view' | 'go' | 'run' | 'terminal' | 'help' | null
   const [toolsReport, setToolsReport] = useState(null); // { type: 'validate'|'security'|'a11y', data }
   const [toolsLoading, setToolsLoading] = useState(false);
+  const [buildHistoryList, setBuildHistoryList] = useState([]);
+  const [buildHistoryLoading, setBuildHistoryLoading] = useState(false);
   const [nextSuggestions, setNextSuggestions] = useState([]);
   const [buildMode, setBuildMode] = useState('agent'); // 'quick' | 'plan' | 'agent' | 'thinking' | 'swarm'
   const { user: authUser, refreshUser } = useAuth();
@@ -619,6 +667,7 @@ const Workspace = () => {
   const [projectBuildProgress, setProjectBuildProgress] = useState({ phase: 0, agent: '', progress: 0, status: '', tokens_used: 0 });
   const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
+  const zipInputRef = useRef(null);
   const chatInputRef = useRef(null);
   const chatEndRef = useRef(null);
 
@@ -652,6 +701,16 @@ const Workspace = () => {
       setFiles(stateFiles);
     }
   }, [location.state]);
+
+  // Item 17: Fetch build history when workspace is opened with a project
+  useEffect(() => {
+    if (!projectIdFromUrl || !token || !API) return;
+    setBuildHistoryLoading(true);
+    axios.get(`${API}/projects/${projectIdFromUrl}/build-history`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => setBuildHistoryList(r.data?.build_history || []))
+      .catch(() => setBuildHistoryList([]))
+      .finally(() => setBuildHistoryLoading(false));
+  }, [projectIdFromUrl, token, API]);
 
   // Load imported project files from workspace when opening with projectId (e.g. after Import)
   useEffect(() => {
@@ -1654,6 +1713,39 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
     e.target.value = '';
   };
 
+  // Item 31 — Bring your code: ZIP upload → parse and setFiles()
+  const handleZipUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.name.toLowerCase().endsWith('.zip')) {
+      addLog('Please select a .zip file', 'warning', 'files');
+      e.target.value = '';
+      return;
+    }
+    try {
+      const zip = await JSZip.loadAsync(file);
+      const CODE_EXTS = /\.(jsx?|tsx?|css|html|json|py|c|cpp|h|hpp|md|txt|env\.example|gitignore)$/i;
+      const newFiles = {};
+      const entries = Object.keys(zip.files).filter((name) => !zip.files[name].dir && CODE_EXTS.test(name));
+      for (const name of entries) {
+        const entry = zip.files[name];
+        const content = await entry.async('string');
+        const path = name.startsWith('/') ? name : `/${name}`;
+        newFiles[path] = { code: content };
+      }
+      if (Object.keys(newFiles).length === 0) {
+        addLog('No code files found in ZIP', 'warning', 'files');
+      } else {
+        setFiles(prev => ({ ...prev, ...newFiles }));
+        const first = Object.keys(newFiles).sort()[0];
+        if (first) setActiveFile(first);
+        addLog(`Loaded ${Object.keys(newFiles).length} files from ZIP`, 'success', 'files');
+      }
+    } catch (err) {
+      addLog(`ZIP error: ${err.message || 'Failed to read ZIP'}`, 'error', 'files');
+    }
+    e.target.value = '';
+  };
+
   const runCurrentCode = async () => {
     const code = files[activeFile]?.code ?? '';
     if (!code.trim()) { addLog('No code to run — open a file first', 'warning', 'system'); return; }
@@ -2094,10 +2186,12 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
         {leftSidebarOpen ? (
           <div className="w-52 flex flex-col shrink-0 border-r" style={{ background: '#18181B', borderColor: 'rgba(255,255,255,0.07)' }}>
             <input ref={folderInputRef} type="file" webkitdirectory="" multiple onChange={handleFolderOpen} className="hidden" />
+            <input ref={zipInputRef} type="file" accept=".zip" onChange={handleZipUpload} className="hidden" />
             {/* Explorer header */}
             <div className="flex items-center justify-between px-3 py-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
               <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#52525b' }}>Explorer</span>
               <div className="flex items-center gap-0.5">
+                <button onClick={() => zipInputRef.current?.click()} className="p-1 rounded transition hover:bg-white/10" style={{ color: '#52525b' }} title="Upload ZIP (bring your code)"><Upload className="w-3 h-3" /></button>
                 <button onClick={addNewFileToProject} className="p-1 rounded transition hover:bg-white/10" style={{ color: '#52525b' }} title="New file"><Plus className="w-3 h-3" /></button>
                 <button onClick={() => setLeftSidebarOpen(false)} className="p-1 rounded transition hover:bg-white/10" style={{ color: '#52525b' }} title="Collapse sidebar"><PanelLeftClose className="w-3 h-3" /></button>
               </div>
@@ -2335,6 +2429,7 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
               { id: 'preview', label: 'Preview', icon: Eye },
               { id: 'code', label: 'Code', icon: FileCode },
               { id: 'console', label: 'Console', icon: Terminal },
+              ...(projectIdFromUrl ? [{ id: 'history', label: 'History', icon: History }] : []),
             ].map(tab => (
               <button
                 key={tab.id}
@@ -2469,6 +2564,9 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
 
             {activePanel === 'console' && (
               <ConsolePanel logs={logs} placeholder="Build logs appear here. Press Build to start." />
+            )}
+            {activePanel === 'history' && projectIdFromUrl && (
+              <BuildHistoryPanel buildHistory={buildHistoryList} projectId={projectIdFromUrl} loading={buildHistoryLoading} />
             )}
           </div>
         </div>

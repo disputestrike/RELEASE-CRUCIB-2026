@@ -47,3 +47,9 @@
 - One codebase, one app: landing → auth → dashboard → workspace → export, with token/pricing from this repo.
 
 For the **rate/rank/compare** at 10/10, see `docs/POST_MERGE_RATE_RANK_COMPARE.md` in the crucib repo (or below).
+
+---
+
+## Launch GTM
+
+See **`docs/LAUNCH_GTM.md`** for the post-launch strategy (founder vs builder, execution as weapon, mobile app build as unique card) and what the app must support for launch.

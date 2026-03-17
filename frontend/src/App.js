@@ -285,12 +285,14 @@ const ProtectedRoute = ({ children }) => {
       <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center p-6">
         <div className="flex flex-col items-center gap-6 max-w-sm text-center">
           <p className="text-[#666666]">Could not start session.</p>
+          <a href="/auth" className="w-full py-3 px-6 bg-[#1A1A1A] text-white font-medium rounded-lg hover:bg-[#333] no-underline block text-center">Sign in</a>
+          <a href="/auth?mode=register" className="w-full py-3 px-6 bg-[#F3F1ED] text-[#1A1A1A] font-medium rounded-lg hover:bg-[#E0DCD5] border border-black/10 no-underline block text-center">Sign up</a>
           <button
             type="button"
             onClick={() => { setRetrying(true); ensureGuest().then(() => setRetrying(false)); }}
-            className="w-full py-3 px-6 bg-[#1A1A1A] text-white font-medium rounded-lg hover:bg-[#333]"
+            className="w-full py-2 text-sm text-[#666666] hover:text-[#1A1A1A]"
           >
-            Retry
+            Retry guest session
           </button>
           <a href="/" className="text-sm text-[#666666] hover:text-[#1A1A1A]">Go to home</a>
           <button type="button" onClick={enterDemoMode} className="mt-4 text-sm text-[#666666] hover:text-[#1A1A1A] underline">Continue to workspace (demo — won&apos;t save)</button>

@@ -144,9 +144,11 @@ const LandingPage = () => {
             <Link to="/pricing" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Pricing</Link>
             <Link to="/our-projects" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Our Project</Link>
             <Link to="/blog" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Blog</Link>
+            <Link to="/auth" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Log in</Link>
+            <Link to="/auth?mode=register" className="px-4 py-2 rounded-full bg-black text-white text-sm font-medium hover:bg-black/90 transition">Sign up</Link>
             <button
               onClick={() => navigate('/app')}
-              className="px-4 py-2 rounded-full bg-black text-white text-sm font-medium hover:bg-black/90 transition"
+              className="px-4 py-2 rounded-full bg-[#1A1A1A]/10 text-[#1A1A1A] text-sm font-medium hover:bg-[#1A1A1A]/20 transition"
             >
               Dashboard
             </button>
@@ -166,8 +168,10 @@ const LandingPage = () => {
               <Link to="/pricing" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Pricing</Link>
               <Link to="/our-projects" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Our Project</Link>
               <Link to="/blog" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Blog</Link>
-              <button onClick={() => { navigate('/app'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-gray-900 rounded-lg font-medium mt-4">Dashboard</button>
-              <button onClick={() => { navigate('/app/workspace'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-gray-900 rounded-lg font-medium mt-2">Get Started</button>
+              <Link to="/auth" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Log in</Link>
+              <Link to="/auth?mode=register" className="w-full py-3 bg-black text-white rounded-lg font-medium text-center mt-2" onClick={() => setMobileMenuOpen(false)}>Sign up</Link>
+              <button onClick={() => { navigate('/app'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-gray-900 rounded-lg font-medium">Dashboard</button>
+              <button onClick={() => { navigate('/app/workspace'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-gray-900 rounded-lg font-medium">Get Started</button>
             </div>
           </motion.div>
         )}

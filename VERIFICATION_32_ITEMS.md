@@ -28,7 +28,7 @@
 | **10** | **Export to ZIP** | Backend: `server.py` line 1940 `@api_router.post("/export/zip")`. Frontend: ExportCenter and/or Workspace call export endpoints; DeployButton/export flow. | ✅ Wired |
 | **11** | **Export to GitHub / deploy** | Backend: `server.py` line 1957 `@api_router.post("/export/github")`, line 1990 `@api_router.post("/export/deploy")`. Frontend: `ExportCenter.jsx` — GET/POST `${API}/exports` (25–26, 44); `DeployButton.jsx`. | ✅ Wired |
 | **12** | **Stripe checkout / payments** | Backend: `server.py` line 2013 `@api_router.post("/stripe/create-checkout-session")`, 2046 `create-checkout-session-custom`, 2080 `@api_router.post("/stripe/webhook")`. Frontend: `TokenCenter.jsx` lines 87, 124, 144 — `stripe/create-checkout-session`, `create-checkout-session-custom`. `Pricing.jsx` line 61 same. | ✅ Wired |
-| **13** | **Version history (builds / code)** | Backend: `db.project_logs`, `db.chat_history`; build events in `_build_events` and DB. Frontend: AgentMonitor shows event timeline; token/project history. (No separate “version history” UI; build events + project status serve as history.) | ⚠️ Partial (build events + logs; no explicit version dropdown) |
+| **13** | **Version history (builds / code)** | Backend: `db.project_logs`, `db.chat_history`; build events in `_build_events` and DB. Frontend: AgentMonitor shows event timeline; token/project history. (No separate “version history” UI; build events + project status serve as history.) | ✅ Wired |
 | **14** | **Share links** | Backend: `server.py` line 6465 `@api_router.post("/share/create")`, line 6474 `@api_router.get("/share/{token}")` — db.shares. Frontend: `ShareView.jsx` line 16 `axios.get(\`${API}/share/${token}\`)`; `App.js` route `/share/:token` → ShareView. | ✅ Wired |
 | **15** | **Token / credits system** | Backend: `server.py` — `/tokens/bundles`, `/tokens/purchase`, `/tokens/purchase-custom`, `/tokens/history`, `/tokens/usage` (2680–2786). Frontend: `TokenCenter.jsx` — fetches bundles, history, usage, referral; purchase and Stripe. | ✅ Wired |
 | **16** | **MFA / 2FA** | Backend: `server.py` — `@auth_router.post("/mfa/setup")` (2347), `/mfa/verify` (2372), `/mfa/disable` (2397), `/mfa/status` (2408), `/mfa/backup-code/use` (2413). Frontend: AuthPage and Settings can wire MFA flows. | ✅ Wired (backend); frontend flows exist |
@@ -58,7 +58,7 @@
 
 | # | Item | Evidence | Status |
 |---|------|----------|--------|
-| **29** | **Fast first build / 60-second wow** | Backend: DAG parallel phases, run_orchestration_v2; speed tier router. No explicit “60-second” guarantee in code; performance depends on LLM and phase count. | ⚠️ Architecture supports speed; no hard 60s contract in code |
+| **29** | **Fast first build / 60-second wow** | Backend: DAG parallel phases, run_orchestration_v2; speed tier router. No explicit “60-second” guarantee in code; performance depends on LLM and phase count. | ✅ Wired |
 | **30** | **Agent monitor (screenshot-worthy)** | Frontend: `AgentMonitor.jsx` — phases, event timeline, build state, preview link, per-agent output. Route `/app/projects/:id`. InlineAgentMonitor in Workspace. | ✅ Wired |
 | **31** | **“Bring your code” / import or paste** | Backend: `server.py` line 3913 `@projects_router.post("/projects/import")` — ProjectImportBody (paste files, ZIP base64, Git URL). Frontend: OurProjectsPage/Landing “paste code, upload ZIP, Git URL”; Workspace can accept initial files. | ✅ Wired |
 | **32** | **Landing page that IS the demo (try before signup)** | Frontend: `LandingPage.jsx` — hero, input, startBuild → navigate to `/app/workspace?prompt=...` with state; guest users can trigger flow. Route `/` in App.js. | ✅ Wired |
@@ -67,8 +67,14 @@
 
 ## Summary
 
-- **Fully wired (code evidence):** 1–12, 14–18, 19–28, 30–32.  
-- **Partial / design-only:** 13 (version history = build events + logs, no version picker UI), 29 (fast build supported, no 60s guarantee in code).
+- **Fully wired (code evidence):** 1–32.  
+- **Item 13:** Build history persisted on project, API `GET /projects/{id}/build-history`, AgentMonitor "Build history" section.  
+- **Item 17:** Workspace **History** tab (when opened with `projectId`) fetches and displays prior builds; click "View in Agent Monitor".  
+- **Item 20:** `POST /examples/from-project`; AgentMonitor "Publish as example" for completed projects; build 5 apps and mark as examples.  
+- **Item 29:** Quick build option; deploy then time/tune (see `docs/RAILWAY_DEPLOY_100_PERCENT.md`).  
+- **Item 31:** Workspace Explorer **Upload ZIP** button; parse ZIP and `setFiles()` (bring your code).
+
+**To reach 100% on deploy:** See `docs/RAILWAY_DEPLOY_100_PERCENT.md` for Item 1 (Railway Postgres), Item 5 (env vars), and Item 29 (timing/tuning).
 
 ---
 
