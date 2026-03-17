@@ -1391,7 +1391,7 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
             const vId = `v_${Date.now()}`;
             setFiles(newFiles);
             setVersions(prev => [{ id: vId, prompt, files: newFiles, time: new Date().toLocaleTimeString() }, ...prev]);
-            setTimeout(() => setCurrentVersion(vId), 50);
+            setTimeout(() => { setCurrentVersion(vId); setActivePanel("preview"); }, 200);
             setMessages(prev => prev.map((msg, i) => i === prev.length - 1 ? { role: 'assistant', content: 'Done! Your app is ready.', hasCode: true, planSuggestions } : msg));
             setTimeout(() => fetchSuggestNext(), 400);
             const mainCode = parsedFiles['/App.js']?.code || parsedFiles['/src/App.jsx']?.code || parsedFiles['/App.jsx']?.code || Object.values(parsedFiles)[0]?.code || '';
@@ -1444,7 +1444,7 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
               if (obj.error) throw new Error(obj.error);
               if (obj.chunk) {
                 accumulated += obj.chunk;
-                setFiles(prev => ({ ...prev, '/App.js': { code: accumulated } }));
+                // Don't update files mid-stream with raw text - wait for parse at done
               }
               if (obj.done) {
                 streamDone = true;
@@ -1466,7 +1466,7 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
                   return next;
                 });
                 // Set version AFTER files are committed so Sandpack remounts with correct files
-                setTimeout(() => setCurrentVersion(versionId), 50);
+                setTimeout(() => { setCurrentVersion(versionId); setActivePanel("preview"); }, 200);
                 // AUTO-RUN: if native code files were generated, compile + run them
                 const nativeFileKeys = Object.keys(parsedFiles).filter(p => /\.(c|cpp|py|sh|rb|go|rs|java)$/i.test(p));
                 if (nativeFileKeys.length > 0) {
