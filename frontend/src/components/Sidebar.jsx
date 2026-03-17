@@ -505,6 +505,21 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
             >
               <Settings size={16} /> Settings
             </Link>
+            <Link
+              to="/app/tokens"
+              role="menuitem"
+              onClick={() => setAccountMenuOpen(false)}
+            >
+              <Coins size={16} /> Credits & Billing
+            </Link>
+            <Link
+              to="/pricing"
+              role="menuitem"
+              onClick={() => setAccountMenuOpen(false)}
+            >
+              <Zap size={16} /> Upgrade plan
+            </Link>
+            <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '4px 0' }} />
             <button
               type="button"
               className="sidebar-account-menu-logout"
