@@ -16,7 +16,7 @@ import { logApiError } from '../utils/apiError';
 const T = {
   bg:      '#111113',
   surface: '#18181B',
-  border:  'rgba(255,255,255,0.08)',
+  border:  'rgba(255,255,255,0.15)',
   text:    '#e4e4e7',
   muted:   '#71717a',
   accent:  '#E05A25',
@@ -28,7 +28,7 @@ const T = {
 
 // ── Primitives ─────────────────────────────────────────────────────────────
 const Card = ({ children }) => (
-  <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: 24, marginBottom: 16 }}>
+  <div style={{ background: T.surface, border: `1.5px solid rgba(255,255,255,0.15)`, borderRadius: 14, padding: 24, marginBottom: 16 }}>
     {children}
   </div>
 );
@@ -54,7 +54,7 @@ const PwInput = ({ value, onChange, placeholder }) => {
     <div style={{ position: 'relative' }}>
       <Lock size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: T.muted, pointerEvents: 'none' }} />
       <input type={show ? 'text' : 'password'} value={value} onChange={onChange} placeholder={placeholder || '••••••••'}
-        style={{ width: '100%', boxSizing: 'border-box', padding: '10px 40px 10px 34px', background: T.input, border: `1px solid ${T.border}`, borderRadius: 8, color: T.text, fontSize: 13, outline: 'none' }} />
+        style={{ width: '100%', boxSizing: 'border-box', padding: '10px 40px 10px 34px', background: T.input, border: `1.5px solid rgba(255,255,255,0.15)`, borderRadius: 8, color: T.text, fontSize: 13, outline: 'none' }} />
       <button type="button" onClick={() => setShow(v => !v)}
         style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: T.muted }}>
         {show ? <EyeOff size={13} /> : <Eye size={13} />}
@@ -67,14 +67,14 @@ const TextInput = ({ icon: Icon, value, onChange, placeholder, type = 'text', di
   <div style={{ position: 'relative' }}>
     {Icon && <Icon size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: T.muted, pointerEvents: 'none' }} />}
     <input type={type} value={value} onChange={onChange} placeholder={placeholder} disabled={disabled}
-      style={{ width: '100%', boxSizing: 'border-box', padding: `10px 12px 10px ${Icon ? 34 : 12}px`, background: T.input, border: `1px solid ${T.border}`, borderRadius: 8, color: T.text, fontSize: 13, outline: 'none', opacity: disabled ? 0.5 : 1 }} />
+      style={{ width: '100%', boxSizing: 'border-box', padding: `10px 12px 10px ${Icon ? 34 : 12}px`, background: T.input, border: `1.5px solid rgba(255,255,255,0.15)`, borderRadius: 8, color: T.text, fontSize: 13, outline: 'none', opacity: disabled ? 0.5 : 1 }} />
   </div>
 );
 
 const Toggle = ({ checked, onChange }) => (
   <label style={{ position: 'relative', display: 'inline-flex', cursor: 'pointer' }}>
     <input type="checkbox" checked={checked} onChange={onChange} style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }} />
-    <div style={{ width: 44, height: 24, borderRadius: 12, background: checked ? T.accent : T.input, border: `1px solid ${T.border}`, position: 'relative', transition: 'background 0.2s' }}>
+    <div style={{ width: 44, height: 24, borderRadius: 12, background: checked ? T.accent : T.input, border: `1.5px solid rgba(255,255,255,0.15)`, position: 'relative', transition: 'background 0.2s' }}>
       <div style={{ position: 'absolute', top: 2, left: checked ? 22 : 2, width: 18, height: 18, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
     </div>
   </label>
@@ -132,6 +132,26 @@ const Settings = () => {
   const location = useLocation();
   const [tab, setTab] = useState(location.state?.openTab || 'account');
   const h = token ? { Authorization: `Bearer ${token}` } : {};
+
+  // Theme system — real working toggle
+  const [theme, setTheme] = useState(() => localStorage.getItem('crucibai-theme') || 'dark');
+  const toggleTheme = (newTheme) => {
+    setTheme(newTheme);
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('crucibai-theme', newTheme);
+  };
+
+  // Dynamic tokens that respond to current theme
+  const isDark = theme === 'dark';
+  const TH = {
+    bg:      isDark ? '#111113'               : '#FAFAF8',
+    surface: isDark ? '#18181B'               : '#FFFFFF',
+    border:  isDark ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.15)',
+    text:    isDark ? '#e4e4e7'               : '#1A1A1A',
+    muted:   isDark ? '#71717a'               : '#666666',
+    input:   isDark ? '#27272a'               : '#F5F5F4',
+    accent:  '#E05A25',
+  };
 
   // Account
   const [name, setName] = useState(user?.name || '');
@@ -391,9 +411,9 @@ const Settings = () => {
               {mfaStep === 'qr' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                   <p style={{ fontSize: 13, color: T.muted }}>Scan with your authenticator app, then enter the 6-digit code.</p>
-                  {mfaQr && <img src={mfaQr} alt="QR" style={{ width: 156, height: 156, borderRadius: 8, border: `1px solid ${T.border}`, padding: 8, background: '#fff' }} />}
-                  {mfaSec && <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: T.input, borderRadius: 6, border: `1px solid ${T.border}` }}><code style={{ fontSize: 12, color: T.muted, flex: 1, wordBreak: 'break-all' }}>{mfaSec}</code><button type="button" onClick={() => navigator.clipboard.writeText(mfaSec)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.muted }}><Copy size={12} /></button></div>}
-                  <input value={mfaCode} onChange={e => setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" style={{ padding: '10px', background: T.input, border: `1px solid ${T.border}`, borderRadius: 8, color: T.text, fontSize: 22, textAlign: 'center', letterSpacing: '0.3em', fontFamily: 'monospace', outline: 'none' }} />
+                  {mfaQr && <img src={mfaQr} alt="QR" style={{ width: 156, height: 156, borderRadius: 8, border: `1.5px solid rgba(255,255,255,0.15)`, padding: 8, background: '#fff' }} />}
+                  {mfaSec && <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: T.input, borderRadius: 6, border: `1.5px solid rgba(255,255,255,0.15)` }}><code style={{ fontSize: 12, color: T.muted, flex: 1, wordBreak: 'break-all' }}>{mfaSec}</code><button type="button" onClick={() => navigator.clipboard.writeText(mfaSec)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: T.muted }}><Copy size={12} /></button></div>}
+                  <input value={mfaCode} onChange={e => setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" style={{ padding: '10px', background: T.input, border: `1.5px solid rgba(255,255,255,0.15)`, borderRadius: 8, color: T.text, fontSize: 22, textAlign: 'center', letterSpacing: '0.3em', fontFamily: 'monospace', outline: 'none' }} />
                   <div style={{ display: 'flex', gap: 8 }}><Btn onClick={mfaVerify} disabled={mfaBusy || mfaCode.length !== 6}>{mfaBusy ? 'Verifying…' : 'Verify'}</Btn><Btn variant="ghost" onClick={() => { setMfaStep(null); setMfaQr(null); setMfaSec(null); setMfaCode(''); setMfaMsg(null); }}>Cancel</Btn></div>
                 </div>
               )}
@@ -429,7 +449,7 @@ const Settings = () => {
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
                 <Link to="/app/tokens" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 18px', borderRadius: 8, background: T.accent, color: '#fff', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}><Zap size={13} /> Buy credits</Link>
-                <Link to="/pricing" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 18px', borderRadius: 8, background: T.input, color: T.text, fontSize: 13, fontWeight: 600, textDecoration: 'none', border: `1px solid ${T.border}` }}><FileText size={13} /> View plans</Link>
+                <Link to="/pricing" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 18px', borderRadius: 8, background: T.input, color: T.text, fontSize: 13, fontWeight: 600, textDecoration: 'none', border: `1.5px solid rgba(255,255,255,0.15)` }}><FileText size={13} /> View plans</Link>
               </div>
             </Card>
             <Card>
@@ -496,8 +516,8 @@ const Settings = () => {
             <Card>
               <SectionTitle>Help</SectionTitle>
               <div style={{ display: 'flex', gap: 10 }}>
-                <a href="/learn" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 16px', borderRadius: 8, background: T.input, color: T.text, fontSize: 13, textDecoration: 'none', border: `1px solid ${T.border}` }}><FileText size={13} /> Docs</a>
-                <a href="mailto:support@crucibai.com" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 16px', borderRadius: 8, background: T.input, color: T.text, fontSize: 13, textDecoration: 'none', border: `1px solid ${T.border}` }}><HelpCircle size={13} /> Contact support</a>
+                <a href="/learn" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 16px', borderRadius: 8, background: T.input, color: T.text, fontSize: 13, textDecoration: 'none', border: `1.5px solid rgba(255,255,255,0.15)` }}><FileText size={13} /> Docs</a>
+                <a href="mailto:support@crucibai.com" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 16px', borderRadius: 8, background: T.input, color: T.text, fontSize: 13, textDecoration: 'none', border: `1.5px solid rgba(255,255,255,0.15)` }}><HelpCircle size={13} /> Contact support</a>
               </div>
             </Card>
           </motion.div>
@@ -508,16 +528,61 @@ const Settings = () => {
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <Card>
               <SectionTitle>Appearance</SectionTitle>
-              <p style={{ fontSize: 13, color: T.muted, marginBottom: 14 }}>CrucibAI uses a consistent dark theme across the workspace, dashboard, and settings.</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: T.input, borderRadius: 10, border: `1px solid ${T.border}` }}>
-                <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#18181B', border: '2px solid #52525b' }} />
-                <span style={{ fontSize: 14, fontWeight: 500, color: T.text }}>Dark theme</span>
-                <span style={{ marginLeft: 'auto', fontSize: 12, color: T.success, fontWeight: 600 }}>Active</span>
+              <p style={{ fontSize: 13, color: T.muted, marginBottom: 16 }}>Choose your preferred theme. Your selection is saved to your browser.</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {[
+                  { id: 'dark',  label: 'Dark theme',  desc: 'Easy on the eyes. Best for long sessions.', dot: '#18181B' },
+                  { id: 'light', label: 'Light theme',  desc: 'High contrast. Great in bright environments.', dot: '#F5F5F4' },
+                ].map(opt => {
+                  const active = theme === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => toggleTheme(opt.id)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 14,
+                        padding: '14px 16px', borderRadius: 10, cursor: 'pointer',
+                        background: active ? `${T.accent}18` : T.input,
+                        border: `2px solid ${active ? T.accent : 'rgba(255,255,255,0.14)'}`,
+                        textAlign: 'left', transition: 'all 0.15s',
+                      }}
+                    >
+                      {/* Theme preview swatch */}
+                      <div style={{ width: 36, height: 36, borderRadius: 8, background: opt.dot, border: '2px solid rgba(255,255,255,0.15)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: 16, height: 2, borderRadius: 1, background: opt.id === 'dark' ? '#71717a' : '#9ca3af' }} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <p style={{ fontSize: 14, fontWeight: 600, color: T.text, marginBottom: 2 }}>{opt.label}</p>
+                        <p style={{ fontSize: 12, color: T.muted }}>{opt.desc}</p>
+                      </div>
+                      {/* Selection indicator */}
+                      <div style={{
+                        width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+                        border: `2px solid ${active ? T.accent : 'rgba(255,255,255,0.2)'}`,
+                        background: active ? T.accent : 'transparent',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        {active && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff' }} />}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
+              <p style={{ fontSize: 12, color: T.muted, marginTop: 12 }}>
+                Currently active: <strong style={{ color: T.text }}>{theme === 'dark' ? 'Dark theme' : 'Light theme'}</strong>
+              </p>
             </Card>
             <Card>
               <SectionTitle>Language</SectionTitle>
-              <select style={{ padding: '10px 12px', background: T.input, border: `1px solid ${T.border}`, borderRadius: 8, color: T.text, fontSize: 13, width: 200, outline: 'none' }}>
+              <select
+                style={{
+                  padding: '10px 12px', borderRadius: 8, fontSize: 13,
+                  background: T.input, color: T.text, outline: 'none', width: 200,
+                  border: `1.5px solid rgba(255,255,255,0.2)`,
+                  cursor: 'pointer',
+                }}
+              >
                 <option value="en">English</option>
               </select>
               <p style={{ fontSize: 12, color: T.muted, marginTop: 8 }}>More languages coming soon.</p>
@@ -530,7 +595,7 @@ const Settings = () => {
       {/* DELETE MODAL */}
       {delModal && (
         <div onClick={() => !delBusy && setDelModal(false)} style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.75)' }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 14, padding: 28, maxWidth: 400, width: '90%' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: T.surface, border: `1.5px solid rgba(255,255,255,0.15)`, borderRadius: 14, padding: 28, maxWidth: 400, width: '90%' }}>
             <p style={{ fontSize: 16, fontWeight: 700, color: T.text, marginBottom: 8 }}>Delete account</p>
             <p style={{ fontSize: 13, color: T.muted, marginBottom: 16 }}>This permanently deletes your account and all projects. Enter your password to confirm.</p>
             <PwInput value={delPw} onChange={e => setDelPw(e.target.value)} placeholder="Your password" />

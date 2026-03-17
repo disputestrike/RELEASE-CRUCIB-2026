@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef, createContext, useContext, Component, useCallback } from "react";
 
-// Force light theme — no dark mode anywhere in the app
-const ForceLightTheme = () => {
-  useEffect(() => {
-    document.documentElement.classList.remove('dark');
-    localStorage.setItem('crucibai-theme', 'light');
-  }, []);
-  return null;
+// Theme system — respects user preference stored in localStorage
+const THEME_KEY = 'crucibai-theme';
+const getInitialTheme = () => localStorage.getItem(THEME_KEY) || 'dark';
+const applyTheme = (theme) => {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem(THEME_KEY, theme);
 };
+// Apply immediately on load (before React renders)
+applyTheme(getInitialTheme());
+
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 
@@ -365,7 +367,6 @@ function App() {
     <AppErrorBoundary>
       <AuthProvider>
         <BrowserRouter>
-        <ForceLightTheme />
         <ScrollToPlace />
         <Routes>
           <Route path="/" element={<LandingPage />} />

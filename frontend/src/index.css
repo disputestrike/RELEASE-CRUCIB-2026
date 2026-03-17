@@ -13,6 +13,45 @@
 @import '@fontsource/fira-code/400.css';
 @import '@fontsource/fira-code/500.css';
 
+/* ── Theme system: data-theme="dark" | "light" ──────────────────────────── */
+:root,
+[data-theme="dark"] {
+  --theme-bg:        #111113;
+  --theme-surface:   #18181B;
+  --theme-surface2:  #27272a;
+  --theme-border:    rgba(255,255,255,0.09);
+  --theme-border-vis: rgba(255,255,255,0.16);
+  --theme-text:      #e4e4e7;
+  --theme-muted:     #71717a;
+  --theme-accent:    #E05A25;
+  --theme-accent-h:  #c94d1e;
+  --theme-input:     #27272a;
+  --theme-select:    #27272a;
+  --theme-select-text: #e4e4e7;
+}
+
+[data-theme="light"] {
+  --theme-bg:        #FAFAF8;
+  --theme-surface:   #FFFFFF;
+  --theme-surface2:  #F3F1ED;
+  --theme-border:    rgba(0,0,0,0.09);
+  --theme-border-vis: rgba(0,0,0,0.18);
+  --theme-text:      #1A1A1A;
+  --theme-muted:     #666666;
+  --theme-accent:    #E05A25;
+  --theme-accent-h:  #c94d1e;
+  --theme-input:     #F5F5F4;
+  --theme-select:    #FFFFFF;
+  --theme-select-text: #1A1A1A;
+}
+
+/* Apply theme to body */
+body {
+  background: var(--theme-bg);
+  color: var(--theme-text);
+  transition: background 0.2s, color 0.2s;
+}
+
 /* Two colors only: background + text (no orange, no accent) */
 :root {
   --bg-primary: #FAFAF8;
@@ -23,6 +62,7 @@
   --accent: #1A1A1A;
   --accent-hover: #1A1A1A;
 }
+
 
 :root {
   --kimi-bg: #FAFAF8;
