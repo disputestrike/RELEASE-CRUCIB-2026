@@ -80,7 +80,7 @@ def validate_environment(strict: bool = False) -> dict:
             value = os.environ.get(var_name, "").strip()
             if not value:
                 missing_optional.append((var_name, category, description))
-                logger.warning(f"⚠️  OPTIONAL MISSING: {var_name} ({description})")
+                logger.debug(f"Optional not set: {var_name} ({description})")
             else:
                 set_vars.append(var_name)
 

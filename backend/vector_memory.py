@@ -30,7 +30,7 @@ try:
     _chroma_available = True
     logger.info("✅ ChromaDB available — vector memory enabled")
 except ImportError:
-    logger.warning("⚠️ ChromaDB not installed — vector memory disabled. Install with: pip install chromadb")
+    logger.debug("ChromaDB not installed — vector memory disabled (optional feature)")
 
 
 class VectorMemory:
