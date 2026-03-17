@@ -13,17 +13,18 @@ import axios from 'axios';
 import { logApiError } from '../utils/apiError';
 
 // Design tokens — matches dark sidebar/workspace exactly
+// T uses CSS variables so theme switching works automatically
 const T = {
-  bg:      '#111113',
-  surface: '#18181B',
-  border:  'rgba(255,255,255,0.15)',
-  text:    '#e4e4e7',
-  muted:   '#71717a',
+  bg:      'var(--theme-bg)',
+  surface: 'var(--theme-surface)',
+  border:  'var(--theme-border-vis)',
+  text:    'var(--theme-text)',
+  muted:   'var(--theme-muted)',
   accent:  '#E05A25',
   accentH: '#c94d1e',
   success: '#10b981',
   danger:  '#ef4444',
-  input:   '#27272a',
+  input:   'var(--theme-input)',
 };
 
 // ── Primitives ─────────────────────────────────────────────────────────────
@@ -141,15 +142,15 @@ const Settings = () => {
     localStorage.setItem('crucibai-theme', newTheme);
   };
 
-  // Dynamic tokens that respond to current theme
+  // Dynamic tokens - now both T and TH use CSS variables that auto-respond to data-theme
   const isDark = theme === 'dark';
   const TH = {
-    bg:      isDark ? '#111113'               : '#FAFAF8',
-    surface: isDark ? '#18181B'               : '#FFFFFF',
-    border:  isDark ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.15)',
-    text:    isDark ? '#e4e4e7'               : '#1A1A1A',
-    muted:   isDark ? '#71717a'               : '#666666',
-    input:   isDark ? '#27272a'               : '#F5F5F4',
+    bg:      'var(--theme-bg)',
+    surface: 'var(--theme-surface)',
+    border:  'var(--theme-border-vis)',
+    text:    'var(--theme-text)',
+    muted:   'var(--theme-muted)',
+    input:   'var(--theme-input)',
     accent:  '#E05A25',
   };
 

@@ -345,6 +345,7 @@ class ChatMessage(BaseModel):
     attachments: Optional[List[Dict[str, Any]]] = None  # [{ "type": "image"|"pdf"|"text", "data": base64 or data URL or text, "name": "file.pdf" }]
 
 class ChatResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}  # suppress model_used namespace warning
     response: str
     model_used: str
     tokens_used: int

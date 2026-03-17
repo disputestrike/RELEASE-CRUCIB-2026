@@ -341,3 +341,80 @@ code, pre, .mono {
 .trace-border:hover::before {
   opacity: 1;
 }
+
+/* ── Light theme overrides for all major UI areas ─────────────────── */
+[data-theme="light"] .sidebar {
+  background: #F5F5F4;
+  color: #1A1A1A;
+  border-right: 1px solid rgba(0,0,0,0.1);
+}
+
+[data-theme="light"] .sidebar-user-avatar {
+  background: linear-gradient(135deg, #d4d4d8, #a1a1aa);
+}
+
+[data-theme="light"] .sidebar-user-name { color: #1A1A1A; }
+[data-theme="light"] .sidebar-user-plan { color: #666666; }
+[data-theme="light"] .sidebar-token-balance { color: #1A1A1A; }
+[data-theme="light"] .sidebar-token-amount { color: #1A1A1A; }
+[data-theme="light"] .sidebar-token-label { color: #666666; }
+
+[data-theme="light"] .sidebar-nav-item {
+  color: #444444;
+}
+[data-theme="light"] .sidebar-nav-item:hover {
+  background: rgba(0,0,0,0.06);
+  color: #1A1A1A;
+}
+[data-theme="light"] .sidebar-nav-item.active {
+  background: rgba(0,0,0,0.08);
+  color: #1A1A1A;
+}
+
+[data-theme="light"] .sidebar-section-label { color: #888888; }
+
+[data-theme="light"] .sidebar-account-trigger { color: #1A1A1A; }
+[data-theme="light"] .sidebar-account-trigger:hover { background: rgba(0,0,0,0.06); }
+[data-theme="light"] .sidebar-account-menu {
+  background: #FFFFFF;
+  border: 1px solid rgba(0,0,0,0.1);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+}
+[data-theme="light"] .sidebar-account-menu a,
+[data-theme="light"] .sidebar-account-menu button {
+  color: #1A1A1A;
+}
+[data-theme="light"] .sidebar-account-menu a:hover,
+[data-theme="light"] .sidebar-account-menu button:hover {
+  background: rgba(0,0,0,0.06);
+}
+
+/* Dashboard light theme */
+[data-theme="light"] .dashboard-redesigned {
+  background: #FAFAF8;
+  color: #1A1A1A;
+}
+[data-theme="light"] .dashboard-greeting-name { color: #1A1A1A; }
+[data-theme="light"] .dashboard-greeting-sub { color: #666666; }
+[data-theme="light"] .dashboard-chip {
+  background: #FFFFFF;
+  border-color: rgba(0,0,0,0.1);
+  color: #1A1A1A;
+}
+[data-theme="light"] .dashboard-chip:hover { background: #F3F1ED; }
+
+/* Layout / app shell */
+[data-theme="light"] .home-screen { background: #FAFAF8; }
+[data-theme="light"] .app-layout { background: #FAFAF8; }
+
+/* Input areas */
+[data-theme="light"] .dashboard-prompt-textarea,
+[data-theme="light"] .dashboard-prompt-input {
+  background: #FFFFFF;
+  color: #1A1A1A;
+  border-color: rgba(0,0,0,0.15);
+}
+
+/* Workspace - keep dark always (IDE convention) */
+/* The workspace/code editor stays dark regardless of theme */
+/* This matches VS Code / Cursor behavior */
