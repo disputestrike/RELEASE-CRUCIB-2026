@@ -206,11 +206,10 @@ import hashlib
 # Environment validation
 from env_setup import validate_environment
 env_result = validate_environment(strict=False)
-# Clean startup summary
+# Startup summary — logger not yet initialized here, use print
 _missing_optional = [v[0] for v in env_result.get("missing_optional", [])]
 if _missing_optional:
-    logger.info(f"Optional features not configured: {', '.join(_missing_optional[:3])}{'...' if len(_missing_optional) > 3 else ''} — add to Railway vars when ready")
-logger.info("✅ CrucibAI backend starting up")
+    print(f"ℹ️  Optional features not configured: {', '.join(_missing_optional[:3])}{'...' if len(_missing_optional) > 3 else ''} — add to Railway vars when ready")
 
 import pyotp
 import qrcode
