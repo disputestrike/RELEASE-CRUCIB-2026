@@ -2549,7 +2549,8 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
 
           {/* Panel content */}
           <div className="flex-1 overflow-hidden">
-            {activePanel === 'preview' && (
+            {/* Preview — always mounted so Sandpack never loses files on tab switch */}
+            <div style={{ display: activePanel === 'preview' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
               <SandpackProvider
                 files={sandpackFiles}
                 theme="dark"
@@ -2576,7 +2577,7 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
                   />
                 </SandpackErrorBoundary>
               </SandpackProvider>
-            )}
+            </div>
 
             {activePanel === 'code' && (
               <div className="flex flex-col h-full">
