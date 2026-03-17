@@ -473,7 +473,9 @@ const Dashboard = () => {
     } catch (err) {
       setIsRecording(false);
       if (err?.name === 'NotAllowedError') {
-        setChatMessages(prev => [...prev, { role: 'assistant', content: 'Microphone access denied. Allow it in browser settings.' }]);
+        // Show as a UI error, not as a chat message from CrucibAI
+        setActionFeedback({ type: 'mic_error', message: 'Microphone blocked. Click the lock icon in your browser address bar → allow Microphone → refresh.' });
+        setTimeout(() => setActionFeedback(null), 6000);
       }
     }
   };
@@ -641,6 +643,11 @@ const Dashboard = () => {
             {chatLoading ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} />}
           </button>
         </div>
+        {actionFeedback?.type === 'mic_error' && (
+          <div style={{ marginTop: '8px', padding: '8px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', fontSize: '12px', color: '#b91c1c', lineHeight: '1.5' }}>
+            🎤 {actionFeedback.message}
+          </div>
+        )}
       </div>
       {hasChat && (
         <div className="dashboard-prompt-convert">
