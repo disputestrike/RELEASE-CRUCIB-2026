@@ -230,10 +230,27 @@ const Dashboard = () => {
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
-    const textParts = [prompt.trim(), ...attachedFiles.filter(f => f.type === 'text/plain').map(f => f.data || '')].filter(Boolean);
-    const userPrompt = textParts.join('\n\n');
-    const filesToSend = [...attachedFiles];
+    let textParts = [prompt.trim(), ...attachedFiles.filter(f => f.type === 'text/plain').map(f => f.data || '')].filter(Boolean);
+    let userPrompt = textParts.join('\n\n');
+    let filesToSend = [...attachedFiles];
     if (!userPrompt && filesToSend.length === 0) return;
+
+    // Transcribe attached audio (voice notes) and append to prompt
+    const audioFiles = filesToSend.filter(f => f.type?.startsWith?.('audio/'));
+    if (audioFiles.length > 0) {
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      for (const att of audioFiles) {
+        try {
+          const blob = await (await fetch(att.data)).blob();
+          const formData = new FormData();
+          formData.append('audio', blob, att.name || 'audio.webm');
+          const res = await axios.post(`${API}/voice/transcribe`, formData, { headers, timeout: 30000 });
+          const text = res.data?.text?.trim();
+          if (text) userPrompt = (userPrompt ? userPrompt + ' ' : '') + text;
+        } catch (_) {}
+      }
+      filesToSend = filesToSend.filter(f => !f.type?.startsWith?.('audio/'));
+    }
 
     const userMsg = { role: 'user', content: userPrompt || (filesToSend.length ? `[${filesToSend.length} attachment(s)]` : '') };
     setPrompt('');
@@ -361,19 +378,17 @@ const Dashboard = () => {
   const handleFileSelect = (e) => {
     const selectedFiles = Array.from(e.target.files);
     selectedFiles.forEach(file => {
+      const isZip = file.type === 'application/zip' || file.name.toLowerCase().endsWith('.zip');
+      const isAudio = file.type.startsWith('audio/');
       const reader = new FileReader();
       reader.onload = (ev) => {
-        setAttachedFiles(prev => [...prev, {
-          name: file.name,
-          type: file.type,
-          data: ev.target.result,
-          size: file.size
-        }]);
+        const data = isZip ? btoa(String.fromCharCode(...new Uint8Array(ev.target.result))) : ev.target.result;
+        setAttachedFiles(prev => [...prev, { name: file.name, type: file.type, data, size: file.size }]);
       };
-      if (file.type.startsWith('image/')) {
+      if (file.type.startsWith('image/') || file.type === 'application/pdf' || isAudio) {
         reader.readAsDataURL(file);
-      } else if (file.type === 'application/pdf') {
-        reader.readAsDataURL(file);
+      } else if (isZip) {
+        reader.readAsArrayBuffer(file);
       } else {
         reader.readAsText(file);
       }
@@ -576,7 +591,7 @@ const Dashboard = () => {
           <button type="button" onClick={() => fileInputRef.current?.click()} className="dashboard-prompt-btn" title="Attach file">
             <Paperclip size={18} />
           </button>
-          <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.txt,.js,.jsx,.ts,.tsx,.css,.html,.json,.py" onChange={handleFileSelect} className="hidden" />
+          <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.txt,.md,.zip,audio/*,.js,.jsx,.ts,.tsx,.css,.html,.json,.py" onChange={handleFileSelect} className="hidden" />
           {isRecording ? (
             <VoiceWaveform stream={audioStream} onStop={stopRecording} onConfirm={confirmRecording} isRecording={isRecording} />
           ) : (

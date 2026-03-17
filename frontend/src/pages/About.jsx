@@ -17,16 +17,16 @@ export default function About() {
           <p>CrucibAI is built for individuals, startups, and enterprises. Whether you&apos;re prototyping an idea, building a side project, or scaling a product team, our platform is designed to be flexible and compliant with modern security and legal standards—including GDPR, CCPA, and AI governance where applicable.</p>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">Legal and policies</h2>
-          <p>For how we collect and use your data, see our <Link to="/privacy" className="text-gray-500 hover:text-gray-500 underline">Privacy Policy</Link>. For content-safety and prohibited uses, see our <Link to="/aup" className="text-gray-500 hover:text-gray-500 underline">Acceptable Use Policy</Link>. For terms of use, see our <Link to="/terms" className="text-gray-500 hover:text-gray-500 underline">Terms of Use</Link>. For copyright and DMCA, see our <Link to="/dmca" className="text-gray-500 hover:text-gray-500 underline">DMCA & Copyright Policy</Link>. To manage cookies, see our <Link to="/cookies" className="text-gray-500 hover:text-gray-500 underline">Cookie Policy</Link>.</p>
+          <p>For how we collect and use your data, see our <Link to="/privacy" className="text-[#1A1A1A] hover:text-[#333] underline">Privacy Policy</Link>. For content-safety and prohibited uses, see our <Link to="/aup" className="text-[#1A1A1A] hover:text-[#333] underline">Acceptable Use Policy</Link>. For terms of use, see our <Link to="/terms" className="text-[#1A1A1A] hover:text-[#333] underline">Terms of Use</Link>. For copyright and DMCA, see our <Link to="/dmca" className="text-[#1A1A1A] hover:text-[#333] underline">DMCA & Copyright Policy</Link>. To manage cookies, see our <Link to="/cookies" className="text-[#1A1A1A] hover:text-[#333] underline">Cookie Policy</Link>.</p>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">Contact</h2>
           <p>For general inquiries, support, or enterprise sales, use the contact options provided in the app or on our website (e.g. support@crucibai.com, or the Enterprise contact form). For privacy or legal requests, see the contact section in our Privacy Policy or Terms.</p>
         </div>
 
         <div className="mt-10 flex flex-wrap gap-4">
-          <Link to="/" className="inline-flex items-center gap-1 text-gray-500 hover:text-gray-500 font-medium">← Back to home</Link>
-          <Link to="/pricing" className="inline-flex items-center gap-1 text-gray-500 hover:text-gray-500 font-medium">Pricing</Link>
-          <Link to="/enterprise" className="inline-flex items-center gap-1 text-gray-500 hover:text-gray-500 font-medium">Enterprise</Link>
+          <Link to="/" className="inline-flex items-center gap-1 text-[#1A1A1A] hover:text-[#333] font-medium">← Back to home</Link>
+          <Link to="/pricing" className="inline-flex items-center gap-1 text-[#1A1A1A] hover:text-[#333] font-medium">Pricing</Link>
+          <Link to="/enterprise" className="inline-flex items-center gap-1 text-[#1A1A1A] hover:text-[#333] font-medium">Enterprise</Link>
         </div>
       </div>
     </div>

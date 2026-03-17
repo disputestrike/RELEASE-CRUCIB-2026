@@ -12,7 +12,7 @@
 |---|--------|-------|
 | 1.1 | Every `<Route path="...">` in App.js resolves to a real component (no 404). | |
 | 1.2 | Public paths `/`, `/auth`, `/pricing`, `/templates`, `/patterns`, `/learn`, `/docs`, `/documentation`, `/tutorials`, `/shortcuts`, `/prompts`, `/features`, `/enterprise`, `/benchmarks`, `/blog`, `/privacy`, `/terms`, `/security`, `/aup`, `/dmca`, `/cookies`, `/about` all render. | |
-| 1.3 | Protected `/app` children (dashboard, tokens, workspace, projects/new, projects/:id, exports, patterns, templates, prompts, learn, env, shortcuts, payments-wizard, examples, generate, agents, settings, audit-log, admin/*) all resolve when authenticated. | |
+| 1.3 | Protected `/app` children (dashboard, tokens, workspace, projects/new, projects/:id, exports, patterns, templates, prompts, learn, env, shortcuts, payments-wizard, examples, generate, agents, settings, audit-log, models, fine-tuning, safety, monitoring, vibecode, ide, admin/*) all resolve when authenticated. | |
 | 1.4 | `/workspace` redirects to `/app/workspace`; `/share/:token` works. | |
 | 1.5 | All API calls use same base: `API` from App.js (env or `/api` same-origin). No hardcoded localhost in production paths. | |
 | 1.6 | Auth: POST /api/auth/register, POST /api/auth/login, GET /api/auth/me used by AuthPage / AuthProvider. | |

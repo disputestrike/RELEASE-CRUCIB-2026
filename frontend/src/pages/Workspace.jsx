@@ -1028,31 +1028,59 @@ const Workspace = () => {
     // No-op: replaced by Web Speech API
   };
 
-  const handleFileSelect = (e) => {
-    const selectedFiles = Array.from(e.target.files);
-    const validFiles = selectedFiles.filter(f => 
-      f.type.startsWith('image/') || 
-      f.type === 'application/pdf' ||
-      f.type.startsWith('text/')
-    );
-    
-    validFiles.forEach(file => {
+  const handleFileSelect = async (e) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    for (const file of selectedFiles) {
+      const isZip = file.type === 'application/zip' || file.name.toLowerCase().endsWith('.zip');
+      if (isZip) {
+        try {
+          const zip = await JSZip.loadAsync(file);
+          const CODE_EXTS = /\.(jsx?|tsx?|css|html|json|py|c|cpp|h|hpp|md|txt|env\.example|gitignore)$/i;
+          const newFiles = {};
+          const entries = Object.keys(zip.files).filter((name) => !zip.files[name].dir && CODE_EXTS.test(name));
+          for (const name of entries) {
+            const entry = zip.files[name];
+            const content = await entry.async('string');
+            const path = name.startsWith('/') ? name : `/${name}`;
+            newFiles[path] = { code: content };
+          }
+          if (Object.keys(newFiles).length > 0) {
+            setFiles(prev => ({ ...prev, ...newFiles }));
+            const first = Object.keys(newFiles).sort()[0];
+            if (first) setActiveFile(first);
+            addLog(`Loaded ${Object.keys(newFiles).length} files from ${file.name}`, 'success', 'files');
+          } else {
+            addLog('No code files in ZIP', 'warning', 'files');
+          }
+        } catch (err) {
+          addLog(`ZIP error: ${err.message || 'Failed to read'}`, 'error', 'files');
+        }
+        continue;
+      }
+      const valid =
+        file.type.startsWith('image/') ||
+        file.type === 'application/pdf' ||
+        file.type.startsWith('text/') ||
+        file.type.startsWith('audio/') ||
+        /\.(js|jsx|ts|tsx|css|html|json|py|md)$/i.test(file.name);
+      if (!valid) continue;
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = (ev) => {
         setAttachedFiles(prev => [...prev, {
           name: file.name,
           type: file.type,
-          data: e.target.result,
+          data: ev.target.result,
           size: file.size
         }]);
         addLog(`Attached: ${file.name}`, 'info', 'files');
       };
-      if (file.type.startsWith('image/')) {
+      if (file.type.startsWith('image/') || file.type === 'application/pdf' || file.type.startsWith('audio/')) {
         reader.readAsDataURL(file);
       } else {
         reader.readAsText(file);
       }
-    });
+    }
+    e.target.value = '';
   };
 
   const removeFile = (index) => {
@@ -1060,8 +1088,27 @@ const Workspace = () => {
   };
 
   const handleBuild = async (promptOverride = null, filesOverride = null) => {
-    const prompt = (promptOverride ?? input).trim();
-    const filesToUse = filesOverride && filesOverride.length > 0 ? filesOverride : attachedFiles;
+    let prompt = (promptOverride ?? input).trim();
+    let filesToUse = filesOverride && filesOverride.length > 0 ? filesOverride : [...attachedFiles];
+    // Transcribe attached audio and append to prompt (voice notes)
+    const audioAttachments = filesToUse.filter(f => f.type?.startsWith?.('audio/'));
+    if (audioAttachments.length > 0) {
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      for (const att of audioAttachments) {
+        try {
+          const blob = await (await fetch(att.data)).blob();
+          const formData = new FormData();
+          formData.append('audio', blob, att.name || 'audio.webm');
+          const res = await axios.post(`${API}/voice/transcribe`, formData, { headers, timeout: 30000 });
+          const text = res.data?.text?.trim();
+          if (text) {
+            prompt = (prompt ? prompt + ' ' : '') + text;
+            addLog(`Voice note: "${text.slice(0, 60)}..."`, 'info', 'voice');
+          }
+        } catch (_) {}
+      }
+      filesToUse = filesToUse.filter(f => !f.type?.startsWith?.('audio/'));
+    }
     const hasImageOnly = filesToUse.length >= 1 && filesToUse.every(f => f.type?.startsWith?.('image/'));
     const useImageToCode = hasImageOnly && (!prompt || /screenshot|image|convert|turn into code|build from/i.test(prompt));
 
@@ -2355,7 +2402,7 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {attachedFiles.map((f, i) => (
                   <span key={i} className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full" style={{ background: '#3f3f46', color: '#d4d4d8' }}>
-                    {f.type?.startsWith('image/') ? <Image className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
+                    {f.type?.startsWith('image/') ? <Image className="w-3 h-3" /> : f.type?.startsWith('audio/') ? <Mic className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
                     {f.name}
                     <button onClick={() => setAttachedFiles(p => p.filter((_, j) => j !== i))} style={{ color: '#71717a' }}><X className="w-3 h-3" /></button>
                   </span>
@@ -2377,7 +2424,7 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
                   style={{ minHeight: 52, maxHeight: 140, color: 'white', caretColor: 'white' }}
                 />
                 <div className="flex items-center gap-2 px-3 pb-3">
-                  <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.txt,.md" onChange={handleFileSelect} className="hidden" />
+                  <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.txt,.md,.zip,audio/*,.js,.jsx,.ts,.tsx,.css,.html,.json,.py" onChange={handleFileSelect} className="hidden" />
                   <button type="button" onClick={() => fileInputRef.current?.click()} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: '#52525b' }} title="Attach file">
                     <Paperclip className="w-4 h-4" />
                   </button>

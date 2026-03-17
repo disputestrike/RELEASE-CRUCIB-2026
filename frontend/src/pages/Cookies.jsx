@@ -14,10 +14,10 @@ export default function Cookies() {
           <p>Cookies are small text files stored on your device when you visit a website. They are widely used to make sites work, remember your preferences, and understand how the site is used. We also use similar technologies such as local storage and session storage where relevant.</p>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">2. How we use cookies</h2>
-          <p><strong className="text-gray-100">Strictly necessary (essential):</strong> These are required for the service to function. They include, for example, authentication and session cookies so you stay logged in, and security-related cookies. We do not need your consent for these under applicable law.</p>
-          <p><strong className="text-gray-100">Functional:</strong> These remember your preferences (e.g. theme, language) and improve your experience. They may be essential or subject to consent depending on jurisdiction.</p>
-          <p><strong className="text-gray-100">Analytics and performance:</strong> We may use first- or third-party analytics to understand how the service is used (e.g. page views, feature usage). Where required (e.g. GDPR), we only use these with your consent. You can control or opt out via cookie settings or your browser.</p>
-          <p><strong className="text-gray-100">Marketing (if any):</strong> If we use cookies for marketing or advertising, we will do so only with your consent where required by law.</p>
+          <p><strong className="text-[#1A1A1A]">Strictly necessary (essential):</strong> These are required for the service to function. They include, for example, authentication and session cookies so you stay logged in, and security-related cookies. We do not need your consent for these under applicable law.</p>
+          <p><strong className="text-[#1A1A1A]">Functional:</strong> These remember your preferences (e.g. theme, language) and improve your experience. They may be essential or subject to consent depending on jurisdiction.</p>
+          <p><strong className="text-[#1A1A1A]">Analytics and performance:</strong> We may use first- or third-party analytics to understand how the service is used (e.g. page views, feature usage). Where required (e.g. GDPR), we only use these with your consent. You can control or opt out via cookie settings or your browser.</p>
+          <p><strong className="text-[#1A1A1A]">Marketing (if any):</strong> If we use cookies for marketing or advertising, we will do so only with your consent where required by law.</p>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">3. Duration</h2>
           <p>Session cookies are deleted when you close your browser. Persistent cookies remain for a set period (e.g. until expiry or until you delete them). We will specify retention in our cookie list or in the cookie banner/settings.</p>
