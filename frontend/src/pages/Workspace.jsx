@@ -2559,9 +2559,17 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
           <div className="flex-1 overflow-hidden">
             {/* Preview — always mounted so Sandpack never loses files on tab switch */}
             <div style={{ display: activePanel === 'preview' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
+              {/* Show placeholder when no build yet */}
+              {currentVersion === null && !isBuilding ? (
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--theme-bg, #111113)', color: 'var(--theme-muted, #52525b)', flexDirection: 'column', gap: 12 }}>
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
+                  <p style={{ fontSize: 13 }}>Build something to see the preview</p>
+                </div>
+              ) : (
               <SandpackProvider
+                key={currentVersion || 'default'}
                 files={sandpackFiles}
-                theme="dark"
+                theme={localStorage.getItem('crucibai-theme') === 'light' ? 'light' : 'dark'}
                 template="react"
                 customSetup={{ dependencies: sandpackDeps }}
                 options={{
@@ -2585,6 +2593,7 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
                   />
                 </SandpackErrorBoundary>
               </SandpackProvider>
+              )}
             </div>
 
             {activePanel === 'code' && (
