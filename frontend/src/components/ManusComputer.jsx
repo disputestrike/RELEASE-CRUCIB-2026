@@ -56,7 +56,7 @@ const ManusComputer = ({
             {/* Header */}
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
               <div className="flex items-center gap-2">
-                <Cpu className="w-4 h-4 text-orange-500 animate-pulse" />
+                <Cpu className="w-4 h-4 text-gray-800 animate-pulse" />
                 <span className="text-gray-900 font-bold">Manus Computer</span>
               </div>
               <button
@@ -80,7 +80,7 @@ const ManusComputer = ({
                   initial={{ width: 0 }}
                   animate={{ width: `${stepPercentage}%` }}
                   transition={{ duration: 0.5 }}
-                  className="h-full bg-gradient-to-r from-orange-500 to-cyan-400"
+                  className="h-full bg-gradient-to-r from-gray-400 to-gray-600"
                 />
               </div>
             </div>
@@ -91,7 +91,7 @@ const ManusComputer = ({
                 <span className="text-gray-500 flex items-center gap-1">
                   <Zap className="w-3 h-3" /> Tokens
                 </span>
-                <span className="text-orange-500 font-bold">
+                <span className="text-gray-800 font-bold">
                   {tokensUsed.toLocaleString()} / {tokensTotal.toLocaleString()}
                 </span>
               </div>
@@ -100,7 +100,7 @@ const ManusComputer = ({
                   initial={{ width: 0 }}
                   animate={{ width: `${tokenPercentage}%` }}
                   transition={{ duration: 0.5 }}
-                  className="h-full bg-gradient-to-r from-yellow-500 to-orange-400"
+                  className="h-full bg-gradient-to-r from-gray-400 to-gray-600"
                 />
               </div>
             </div>
@@ -109,7 +109,7 @@ const ManusComputer = ({
             {thinking && (
               <div className="mb-3">
                 <div className="flex items-center gap-2 mb-2">
-                  <Eye className="w-3 h-3 text-orange-500 animate-pulse" />
+                  <Eye className="w-3 h-3 text-gray-800 animate-pulse" />
                   <span className="text-gray-500">Thinking</span>
                 </div>
                 <div className="bg-gray-50 border border-gray-200 rounded p-2 min-h-12 max-h-24 overflow-y-auto">
@@ -134,7 +134,7 @@ const ManusComputer = ({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
             onClick={() => setIsExpanded(true)}
-            className="bg-white border border-orange-400 text-orange-500 hover:bg-orange-50 rounded-full p-3 shadow-lg hover:shadow-xl transition-all flex items-center justify-center w-12 h-12"
+            className="bg-white border border-gray-400 text-gray-800 hover:bg-gray-50 rounded-full p-3 shadow-lg hover:shadow-xl transition-all flex items-center justify-center w-12 h-12"
           >
             <Cpu className="w-5 h-5 animate-pulse" />
           </motion.button>

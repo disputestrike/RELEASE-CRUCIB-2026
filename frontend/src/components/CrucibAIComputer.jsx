@@ -50,7 +50,7 @@ const CrucibAIComputer = ({
     <>
       {/* Inline thumbnail — 160x100, light theme, below progress bar */}
       <div
-        className="flex-shrink-0 w-[160px] h-[100px] rounded-lg border border-gray-200 bg-white overflow-hidden cursor-pointer hover:border-orange-400 transition-colors"
+        className="flex-shrink-0 w-[160px] h-[100px] rounded-lg border border-gray-200 bg-white overflow-hidden cursor-pointer hover:border-gray-400 transition-colors"
         onClick={() => setModalOpen(true)}
         role="button"
         tabIndex={0}
@@ -197,7 +197,7 @@ const CrucibAIComputer = ({
                 />
                 <div className="flex items-center gap-1.5 text-xs text-gray-500">
                   <span
-                    className={`w-2 h-2 rounded-full ${isActive ? 'animate-pulse bg-orange-500' : 'bg-gray-400'}`}
+                    className={`w-2 h-2 rounded-full ${isActive ? 'animate-pulse bg-gray-800' : 'bg-gray-400'}`}
                   />
                   <span>{isActive ? 'live' : 'paused'}</span>
                 </div>

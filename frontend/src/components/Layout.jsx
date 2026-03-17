@@ -83,27 +83,15 @@ const Layout = () => {
     navigate('/');
   };
 
-  const handleDeleteProject = useCallback(async (projectId) => {
-    if (!token) return;
-    try {
-      await axios.delete(`${API}/projects/${projectId}`, { headers: { Authorization: `Bearer ${token}` } });
-      await fetchSidebarData();
-      if (location.pathname === `/app/projects/${projectId}` || location.pathname.startsWith(`/app/projects/${projectId}/`)) {
-        navigate('/app');
-      }
-    } catch (err) {
-      alert(err.response?.data?.detail || err.message || 'Failed to delete project');
-    }
-  }, [token, fetchSidebarData, location.pathname, navigate]);
-
-  // Sidebar content
+  // Sidebar content (receives collapse state for collapsed strip + account menu)
   const sidebarContent = (
     <Sidebar
       user={user}
       onLogout={handleLogout}
       projects={projects}
       tasks={storeTasks}
-      onDeleteProject={handleDeleteProject}
+      sidebarOpen={sidebarOpen}
+      onToggleSidebar={toggleSidebar}
     />
   );
 
@@ -165,7 +153,6 @@ const Layout = () => {
           {backendOk === null && <span className="status-gray">● Checking…</span>}
         </span>
         <span className="layout-footer-links">
-          <Link to="/app/admin">Admin</Link>
           <Link to="/about">About</Link>
           <Link to="/privacy">Privacy</Link>
           <Link to="/terms">Terms</Link>

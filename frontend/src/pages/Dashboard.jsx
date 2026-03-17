@@ -72,7 +72,9 @@ async function inferBuildSpec(userPrompt, API, token) {
 async function detectIntent(prompt, API, token) {
   const p = prompt.trim();
   if (isDefinitelyChat(p)) return "chat";
-  if (!BUILD_KEYWORDS.test(p) && !AGENT_KEYWORDS.test(p)) return "chat";
+  const looksBuild = BUILD_KEYWORDS.test(p);
+  const looksAgent = AGENT_KEYWORDS.test(p);
+  if (!looksBuild && !looksAgent) return "chat";
 
   try {
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
@@ -86,6 +88,9 @@ async function detectIntent(prompt, API, token) {
     if (raw === "build" || raw === "agent") return raw;
     return "chat";
   } catch {
+    // When backend is down (e.g. no Ollama), use keyword fallback so build/agent prompts still work
+    if (looksBuild) return "build";
+    if (looksAgent) return "agent";
     return "chat";
   }
 }
@@ -102,12 +107,11 @@ function formatCronShort(cron) {
 }
 
 const QUICK_START_CHIPS = [
-  { label: 'Landing page', icon: Layout, prompt: 'Build me a modern landing page with hero section, features grid, pricing table, and footer' },
-  { label: 'Automation', icon: Zap, prompt: 'Create an automation workflow that monitors a webhook, processes data, and sends notifications' },
+  { label: 'Build website', icon: Layout, prompt: 'Build me a stunning multi-page website with hero, features grid, pricing, testimonials, and footer — beautiful modern design' },
+  { label: 'Develop app', icon: Code, prompt: 'Build a complete React web app with multiple pages, authentication UI, dashboard, and CRUD data management' },
+  { label: 'Design UI', icon: Globe, prompt: 'Design a beautiful modern SaaS product UI with clean design system, multiple pages, components, and responsive layout' },
+  { label: 'SaaS MVP', icon: Zap, prompt: 'Build a SaaS MVP with login/register pages, dashboard, subscription pricing table, settings, and admin panel' },
   { label: 'Import code', icon: Upload, prompt: null, action: 'import' },
-  { label: 'SaaS MVP', icon: Globe, prompt: 'Build a SaaS MVP with user authentication, dashboard, billing integration, and admin panel' },
-  { label: 'Mobile app', icon: Smartphone, prompt: 'Build a React Native mobile app with tab navigation, user profile, and push notifications' },
-  { label: 'API backend', icon: Code, prompt: 'Create a REST API backend with authentication, CRUD endpoints, database models, and documentation' },
 ];
 
 const Dashboard = () => {
@@ -244,9 +248,9 @@ const Dashboard = () => {
     const intent = (!userPrompt && filesToSend.length > 0) ? 'chat' : (isDefinitelyChat(userPrompt) ? 'chat' : await detectIntent(userPrompt, API, token));
 
     if (intent === 'build') {
-      // Auto-navigate directly to workspace — no offer card, no extra click needed
+      // Go straight to workspace (like CrucibAI): works with or without backend; spec from AI or fallback to prompt
       setChatLoading(false);
-      const spec = await inferBuildSpec(userPrompt, API, token).catch(() => userPrompt);
+      const spec = await inferBuildSpec(userPrompt, API, token).catch(() => userPrompt.trim());
       const taskName = (spec || userPrompt).slice(0, 60);
       const taskId = addTask({ name: taskName, prompt: spec || userPrompt, status: 'pending', type: 'build' });
       navigate({
@@ -316,9 +320,13 @@ const Dashboard = () => {
       const prevMsgs = (task?.messages && Array.isArray(task.messages)) ? task.messages : [];
       updateTask(taskId, { messages: [...prevMsgs, userMsg, assistantMsg], prompt: userPrompt });
     } catch (err) {
+      const is404 = err.response?.status === 404 || err.response?.status === 405;
+      const detail = err.response?.data?.detail;
+      const backendUnavailable = "Backend not available. Start the CrucibAI backend to use AI (see BACKEND_SETUP.md). You can still try \"Build me a landing page\" — it will open the Workspace; the build will need the backend running.";
+      const fallback = is404 ? backendUnavailable : "Chat failed. For AI replies, run the backend (e.g. from CrucibAI) with Ollama. See BACKEND_SETUP.md.";
       const assistantMsg = {
         role: 'assistant',
-        content: "I'm CrucibAI — I build apps and automations. Try \"Build me a landing page\" or \"Create an agent that emails me every morning.\""
+        content: (typeof detail === 'string' && detail && !is404) ? detail : (err.message?.includes('404') ? backendUnavailable : (err.message || fallback))
       };
       setChatMessages(prev => [...prev, assistantMsg]);
       const task = storeTasks?.find(t => t.id === taskId);
@@ -557,7 +565,7 @@ const Dashboard = () => {
               handleSubmit(e);
             }
           }}
-          placeholder={hasChat ? 'Build something or ask anything' : 'Describe your app, automation, or idea...'}
+          placeholder={hasChat ? 'Ask a follow-up or describe a new idea...' : (location.state?.newProject ? 'Describe your project (e.g. I need a flower website)...' : 'Describe what you want to build or ask anything...')}
           className="dashboard-prompt-input"
           rows={1}
         />
@@ -602,7 +610,7 @@ const Dashboard = () => {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="dashboard-greeting">
               <h1 className="dashboard-greeting-text">
                 <span className="dashboard-greeting-name">Hi {firstName}.</span>
-                <span className="dashboard-greeting-sub">What do you want to build?</span>
+                <span className="dashboard-greeting-sub">{location.state?.newProject ? 'What\'s your new project?' : 'What do you want to build?'}</span>
               </h1>
             </motion.div>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }} className="dashboard-prompt-inline">

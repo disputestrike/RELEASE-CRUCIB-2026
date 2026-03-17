@@ -3,12 +3,12 @@ import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTaskStore } from '../stores/useTaskStore';
 import {
-  Plus, Search, Library, FolderOpen, CheckCircle, Clock,
-  MessageCircle, Zap, AlertCircle, LogOut, ChevronRight,
+  Plus, Search, Library, FolderOpen, FolderPlus, CheckCircle, Clock,
+  MessageCircle, Zap, AlertCircle, LogOut, ChevronRight, ChevronLeft,
   FileOutput, FileText, LayoutGrid, BookOpen, Key, Keyboard,
-  CreditCard, ScrollText, BarChart3, Wrench, HelpCircle, Coins, Activity, Code, Terminal,
+  CreditCard, ScrollText, BarChart3, Wrench, HelpCircle, Coins,
   X, Bell, MoreHorizontal, ExternalLink, Pencil, Share2,
-  Trash2, FolderPlus, FolderInput, Star
+  Trash2, FolderInput, Star, Settings
 } from 'lucide-react';
 import Logo from './Logo';
 import './Sidebar.css';
@@ -27,7 +27,7 @@ import './Sidebar.css';
  * Footer: Token balance + user avatar + logout
  */
 
-export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], onDeleteProject }) => {
+export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], sidebarOpen = true, onToggleSidebar }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -38,18 +38,28 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
   const [renameTaskId, setRenameTaskId] = useState(null);
   const [renameValue, setRenameValue] = useState('');
   const [deleteConfirmTask, setDeleteConfirmTask] = useState(null);
-  const [deleteConfirmProject, setDeleteConfirmProject] = useState(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountMenuRef = React.useRef(null);
   const { tasks: storeTasks, removeTask, updateTask } = useTaskStore();
+
+  // Close account menu on outside click
+  useEffect(() => {
+    const close = (e) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target)) setAccountMenuOpen(false);
+    };
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, []);
 
   const isActive = (path) => location.pathname === path;
   const isActivePrefix = (path) => location.pathname.startsWith(path);
-  const isEngineItemActive = (href) => isActive(href) || isActivePrefix(href);
   const currentTaskId = location.pathname === '/app/workspace' ? searchParams.get('taskId') : null;
 
-  // 4 pinned navigation items — spec requirement
+  // Pinned navigation: New Task, New Project, Agents
   const pinnedNav = [
-    { label: 'New Task', icon: Plus, href: '/app', exact: true },
+    { label: 'New Task', icon: Plus, href: '/app', exact: true, state: { newAgent: Date.now() } },
+    { label: 'New Project', icon: FolderPlus, href: '/app', exact: true, state: { newProject: true } },
     { label: 'Agents', icon: FolderOpen, href: '/app/agents' },
   ];
 
@@ -67,12 +77,9 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     { label: 'Benchmarks', icon: BarChart3, href: '/benchmarks' },
     { label: 'Add Payments', icon: CreditCard, href: '/app/payments-wizard' },
     { label: 'Audit Log', icon: ScrollText, href: '/app/audit-log' },
-    { label: 'Monitoring', icon: Activity, href: '/app/monitoring' },
-    { label: 'Terminal & Git', icon: Terminal, href: '/app/workspace?panel=shell' },
-    { label: 'VibeCode', icon: Code, href: '/app/workspace?panel=vibecode' },
   ];
 
-  // Show BOTH projects and store tasks — chat tasks must always be visible
+  // Show BOTH projects and store tasks — chat tasks must always be visible; include createdAt for History grouping
   const listItems = useMemo(() => {
     const fromProjects = (projects || []).map(p => ({
       id: p.id,
@@ -81,6 +88,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
       prompt: null,
       type: 'build',
       isProject: true,
+      createdAt: p.createdAt ?? Date.now(),
     }));
     const fromStore = (storeTasks.length > 0 ? storeTasks : propTasks || []).slice(0, 200).map(t => ({
       id: t.id,
@@ -89,6 +97,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
       prompt: t.prompt || null,
       type: t.type || 'build',
       isProject: false,
+      createdAt: t.createdAt ?? Date.now(),
     }));
     return [...fromProjects, ...fromStore];
   }, [projects, storeTasks, propTasks]);
@@ -98,6 +107,22 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     const q = searchQuery.toLowerCase();
     return listItems.filter(item => item.name?.toLowerCase().includes(q)).slice(0, 50);
   }, [listItems, searchQuery]);
+
+  // Group history into Today vs Earlier (by task createdAt or id timestamp)
+  const historyGrouped = useMemo(() => {
+    const now = Date.now();
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const todayStart = startOfToday.getTime();
+    const today = [];
+    const earlier = [];
+    filteredListItems.forEach((item) => {
+      const ts = item.createdAt ?? ((typeof item.id === 'string' && item.id.startsWith('task_') ? parseInt(item.id.replace(/^task_(\d+).*/, '$1'), 10) : now) || now);
+      if (ts >= todayStart) today.push(item);
+      else earlier.push(item);
+    });
+    return { today, earlier };
+  }, [filteredListItems]);
 
   const openTask = (item) => {
     if (item.isProject) navigate(`/app/projects/${item.id}`);
@@ -195,11 +220,124 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     return <Clock size={14} className="sidebar-item-icon status-pending" />;
   };
 
+  const collapsed = sidebarOpen === false;
+
+  const renderHistoryRow = (item) => {
+    const isLocalTask = !item.isProject && item.id.startsWith('task_');
+    const isSelected = isLocalTask ? currentTaskId === item.id : isActive(`/app/projects/${item.id}`);
+    const isEditing = renameTaskId === item.id;
+    const showMenu = menuTaskId === item.id;
+    return (
+      <div
+        key={item.id}
+        className={`sidebar-task-row ${isSelected ? 'active' : ''}`}
+        onClick={(e) => { if (!isEditing && !e.target.closest('.sidebar-task-menu')) openTask(item); }}
+      >
+        {isEditing ? (
+          <div className="sidebar-task-rename" onClick={(e) => e.stopPropagation()}>
+            <input
+              type="text"
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleRename();
+                if (e.key === 'Escape') { setRenameTaskId(null); setRenameValue(''); }
+              }}
+              onBlur={handleRename}
+              autoFocus
+              className="sidebar-task-rename-input"
+            />
+          </div>
+        ) : (
+          <>
+            <TaskStatusIcon status={item.status} type={item.type} />
+            <span className="sidebar-task-label">{item.name}</span>
+            <button
+              type="button"
+              className="sidebar-task-menu-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (showMenu) {
+                  setMenuTaskId(null);
+                } else {
+                  setMenuTaskId(item.id);
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setMenuPosition({ top: rect.top, left: rect.right + 4 });
+                }
+              }}
+              title="Actions"
+            >
+              <MoreHorizontal size={14} />
+            </button>
+          </>
+        )}
+        {showMenu && createPortal(
+          <div
+            className="sidebar-task-dropdown sidebar-task-dropdown-fixed"
+            style={{ top: menuPosition.top, left: menuPosition.left }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button type="button" onClick={() => { handleShare(item); }}>
+              <Share2 size={14} /> Share
+            </button>
+            {isLocalTask && (
+              <button type="button" onClick={() => { setRenameTaskId(item.id); setRenameValue(item.name || ''); setMenuTaskId(null); }}>
+                <Pencil size={14} /> Rename
+              </button>
+            )}
+            <button type="button" disabled title="Coming soon">
+              <Star size={14} /> Add to favorites
+            </button>
+            <button type="button" onClick={() => { openInNewTab(item); setMenuTaskId(null); }}>
+              <ExternalLink size={14} /> Open in new tab
+            </button>
+            <button type="button" disabled title="Coming soon" className="has-submenu">
+              <FolderInput size={14} /> Move to project
+              <ChevronRight size={14} />
+            </button>
+            {isLocalTask && (
+              <button type="button" className="danger" onClick={() => handleDeleteClick(item)}>
+                <Trash2 size={14} /> Delete
+              </button>
+            )}
+          </div>,
+          document.body
+        )}
+      </div>
+    );
+  };
+
   return (
-    <div className="sidebar">
+    <div className={`sidebar ${collapsed ? 'sidebar--collapsed' : ''}`}>
+      {/* Collapse toggle — visible when expanded (desktop) */}
+      {!collapsed && onToggleSidebar && (
+        <button
+          type="button"
+          className="sidebar-collapse-btn"
+          onClick={onToggleSidebar}
+          aria-label="Collapse sidebar"
+          title="Collapse sidebar"
+        >
+          <ChevronLeft size={14} />
+        </button>
+      )}
+
+      {/* Collapsed strip — only when collapsed */}
+      <div className="sidebar-collapsed-strip">
+        <button
+          type="button"
+          className="sidebar-collapse-btn"
+          onClick={onToggleSidebar}
+          aria-label="Expand sidebar"
+          title="Expand sidebar"
+        >
+          <ChevronRight size={18} />
+        </button>
+      </div>
+
       {/* Header */}
       <div className="sidebar-header">
-        <Logo variant="full" height={32} href="/app" className="sidebar-logo" showTagline={false} />
+        <Logo variant="full" height={32} href="/app" className="sidebar-logo" showTagline={false} dark />
       </div>
 
       {/* Search Bar */}
@@ -225,17 +363,17 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
         </div>
       </div>
 
-      {/* 4 Pinned Navigation Items */}
+      {/* Pinned Navigation: New Task, New Project, Agents */}
       <nav className="sidebar-nav">
         <div className="sidebar-nav-section">
           {pinnedNav.map((item) => {
             const active = item.exact ? isActive(item.href) : isActivePrefix(item.href);
-            const isNewTask = item.href === '/app' && item.exact;
-            return isNewTask ? (
+            const isAppHome = item.href === '/app' && item.exact;
+            return isAppHome ? (
               <button
-                key={item.href}
+                key={item.label}
                 type="button"
-                onClick={() => navigate('/app', { state: { newAgent: Date.now() } })}
+                onClick={() => navigate('/app', { state: item.state || { newAgent: Date.now() } })}
                 className={`sidebar-nav-item ${active ? 'active' : ''}`}
               >
                 <item.icon size={18} className="sidebar-nav-icon" />
@@ -255,104 +393,29 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
         </div>
       </nav>
 
-      {/* All Tasks Section — scrollable, Engine Room font, context menu */}
+      {/* History Section — Today / Earlier, scrollable, context menu */}
       <div className="sidebar-section sidebar-section-tasks">
         <div className="sidebar-section-header">
-          <h3 className="sidebar-section-title">All tasks</h3>
+          <h3 className="sidebar-section-title">History</h3>
         </div>
         <div className="sidebar-section-items sidebar-section-items-scroll">
-          {filteredListItems.length > 0 ? (
-            filteredListItems.map((item) => {
-              const isLocalTask = !item.isProject && item.id.startsWith('task_');
-              const isSelected = isLocalTask ? currentTaskId === item.id : isActive(`/app/projects/${item.id}`);
-              const isEditing = renameTaskId === item.id;
-              const showMenu = menuTaskId === item.id;
-              return (
-                <div
-                  key={item.id}
-                  className={`sidebar-task-row ${isSelected ? 'active' : ''}`}
-                  onClick={(e) => { if (!isEditing && !e.target.closest('.sidebar-task-menu')) openTask(item); }}
-                >
-                  {isEditing ? (
-                    <div className="sidebar-task-rename" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="text"
-                        value={renameValue}
-                        onChange={(e) => setRenameValue(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleRename();
-                          if (e.key === 'Escape') { setRenameTaskId(null); setRenameValue(''); }
-                        }}
-                        onBlur={handleRename}
-                        autoFocus
-                        className="sidebar-task-rename-input"
-                      />
-                    </div>
-                  ) : (
-                      <>
-                        <TaskStatusIcon status={item.status} type={item.type} />
-                      <span className="sidebar-task-label">{item.name}</span>
-                      <button
-                        type="button"
-                        className="sidebar-task-menu-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (showMenu) {
-                            setMenuTaskId(null);
-                          } else {
-                            setMenuTaskId(item.id);
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            setMenuPosition({ top: rect.top, left: rect.right + 4 });
-                          }
-                        }}
-                        title="Actions"
-                      >
-                        <MoreHorizontal size={14} />
-                      </button>
-                    </>
-                  )}
-                  {showMenu && createPortal(
-                    <div
-                      className="sidebar-task-dropdown sidebar-task-dropdown-fixed"
-                      style={{ top: menuPosition.top, left: menuPosition.left }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button type="button" onClick={() => { handleShare(item); }}>
-                        <Share2 size={14} /> Share
-                      </button>
-                      {isLocalTask && (
-                        <button type="button" onClick={() => { setRenameTaskId(item.id); setRenameValue(item.name || ''); setMenuTaskId(null); }}>
-                          <Pencil size={14} /> Rename
-                        </button>
-                      )}
-                      <button type="button" disabled title="Coming soon">
-                        <Star size={14} /> Add to favorites
-                      </button>
-                      <button type="button" onClick={() => { openInNewTab(item); setMenuTaskId(null); }}>
-                        <ExternalLink size={14} /> Open in new tab
-                      </button>
-                      <button type="button" disabled title="Coming soon" className="has-submenu">
-                        <FolderInput size={14} /> Move to project
-                        <ChevronRight size={14} />
-                      </button>
-                      {isLocalTask && (
-                        <button type="button" className="danger" onClick={() => handleDeleteClick(item)}>
-                          <Trash2 size={14} /> Delete
-                        </button>
-                      )}
-                      {item.isProject && onDeleteProject && (
-                        <button type="button" className="danger" onClick={() => { setDeleteConfirmProject({ id: item.id, name: item.name }); setMenuTaskId(null); }}>
-                          <Trash2 size={14} /> Delete project
-                        </button>
-                      )}
-                    </div>,
-                    document.body
-                  )}
-                </div>
-              );
-            })
+          {(historyGrouped.today.length > 0 || historyGrouped.earlier.length > 0) ? (
+            <>
+              {historyGrouped.today.length > 0 && (
+                <>
+                  <div className="sidebar-history-group-label">Today</div>
+                  {historyGrouped.today.map((item) => renderHistoryRow(item))}
+                </>
+              )}
+              {historyGrouped.earlier.length > 0 && (
+                <>
+                  <div className="sidebar-history-group-label">Earlier</div>
+                  {historyGrouped.earlier.map((item) => renderHistoryRow(item))}
+                </>
+              )}
+            </>
           ) : (
-            <div className="sidebar-empty">{searchQuery ? 'No matches' : 'No tasks yet'}</div>
+            <div className="sidebar-empty">{searchQuery ? 'No matches' : 'No history yet'}</div>
           )}
         </div>
       </div>
@@ -376,7 +439,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
               <Link
                 key={item.href}
                 to={item.href}
-                className={`sidebar-engine-item ${isEngineItemActive(item.href) ? 'active' : ''}`}
+                className={`sidebar-engine-item ${isActive(item.href) ? 'active' : ''}`}
               >
                 <item.icon size={14} />
                 <span>{item.label}</span>
@@ -386,7 +449,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
         )}
       </div>
 
-      {/* Delete task confirmation */}
+      {/* Delete confirmation — over right pane */}
       {deleteConfirmTask && (
         <div className="sidebar-delete-overlay" onClick={() => setDeleteConfirmTask(null)}>
           <div className="sidebar-delete-modal" onClick={(e) => e.stopPropagation()}>
@@ -401,47 +464,51 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
         </div>
       )}
 
-      {/* Delete project confirmation */}
-      {deleteConfirmProject && onDeleteProject && (
-        <div className="sidebar-delete-overlay" onClick={() => setDeleteConfirmProject(null)}>
-          <div className="sidebar-delete-modal" onClick={(e) => e.stopPropagation()}>
-            <p className="sidebar-delete-title">Delete project &quot;{deleteConfirmProject.name}&quot;? This cannot be undone.</p>
-            <div className="sidebar-delete-actions">
-              <button type="button" onClick={() => setDeleteConfirmProject(null)}>Cancel</button>
-              <button type="button" className="danger" onClick={async () => { await onDeleteProject(deleteConfirmProject.id); setDeleteConfirmProject(null); }}>Delete project</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Credits (credit_balance preferred; fallback token_balance/1000) */}
+      {/* Token Balance */}
       <Link to="/app/tokens" className="sidebar-token-balance" title="Credit Center">
         <Coins size={16} className="sidebar-token-icon" />
-        <span className="sidebar-token-amount">
-          {(user?.credit_balance != null
-            ? user.credit_balance
-            : user?.token_balance != null
-              ? Math.floor(user.token_balance / 1000)
-              : 0
-          ).toLocaleString()}
-        </span>
+        <span className="sidebar-token-amount">{(user?.token_balance ?? 0).toLocaleString()}</span>
         <span className="sidebar-token-label">credits</span>
       </Link>
 
-      {/* Footer — user and sign out on one row */}
-      <div className="sidebar-footer">
-        <div className="sidebar-user">
+      {/* Footer — account trigger with dropdown (Settings, Logout) */}
+      <div className="sidebar-footer" ref={accountMenuRef}>
+        <button
+          type="button"
+          className="sidebar-account-trigger"
+          onClick={() => setAccountMenuOpen((o) => !o)}
+          aria-expanded={accountMenuOpen}
+          aria-haspopup="true"
+          aria-label="Account menu"
+        >
           <div className="sidebar-user-avatar">
-            {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+            {user?.name?.charAt(0)?.toUpperCase() || 'G'}
           </div>
           <div className="sidebar-user-info">
-            <div className="sidebar-user-name">{user?.name || 'User'}</div>
+            <div className="sidebar-user-name">{user?.name || 'Guest'}</div>
             <div className="sidebar-user-plan">{user?.plan ? String(user.plan).charAt(0).toUpperCase() + String(user.plan).slice(1) : 'Free'}</div>
           </div>
-        </div>
-        <button className="sidebar-logout" onClick={onLogout} title="Logout">
-          <LogOut size={18} />
+          <ChevronRight size={16} className="sidebar-account-chevron" />
         </button>
+        {accountMenuOpen && (
+          <div className="sidebar-account-menu" role="menu">
+            <Link
+              to="/app/settings"
+              role="menuitem"
+              onClick={() => setAccountMenuOpen(false)}
+            >
+              <Settings size={16} /> Settings
+            </Link>
+            <button
+              type="button"
+              className="sidebar-account-menu-logout"
+              role="menuitem"
+              onClick={() => { setAccountMenuOpen(false); onLogout?.(); }}
+            >
+              <LogOut size={16} /> Log out
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
