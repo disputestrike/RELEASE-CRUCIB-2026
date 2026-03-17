@@ -1388,9 +1388,10 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
             if (refreshUser) refreshUser(); // refresh credit balance
             const parsedFiles = parseMultiFileOutput(response.data.response || response.data.message || '');
             const newFiles = { ...files, ...parsedFiles };
+            const vId = `v_${Date.now()}`;
             setFiles(newFiles);
-            setVersions(prev => [{ id: `v_${Date.now()}`, prompt, files: newFiles, time: new Date().toLocaleTimeString() }, ...prev]);
-            setCurrentVersion(`v_${Date.now()}`);
+            setVersions(prev => [{ id: vId, prompt, files: newFiles, time: new Date().toLocaleTimeString() }, ...prev]);
+            setTimeout(() => setCurrentVersion(vId), 50);
             setMessages(prev => prev.map((msg, i) => i === prev.length - 1 ? { role: 'assistant', content: 'Done! Your app is ready.', hasCode: true, planSuggestions } : msg));
             setTimeout(() => fetchSuggestNext(), 400);
             const mainCode = parsedFiles['/App.js']?.code || parsedFiles['/src/App.jsx']?.code || parsedFiles['/App.jsx']?.code || Object.values(parsedFiles)[0]?.code || '';
@@ -1452,10 +1453,10 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
                 addLog('Build completed successfully!', 'success', 'deploy');
                 if (refreshUser) refreshUser(); // refresh credit balance in sidebar
                 const parsedFiles = parseMultiFileOutput(accumulated);
+                const versionId = `v_${Date.now()}`;
                 setFiles(prev => {
                   const next = { ...prev, ...parsedFiles };
-                  setVersions(v => [{ id: `v_${Date.now()}`, prompt, files: next, time: new Date().toLocaleTimeString() }, ...v]);
-                  setCurrentVersion(`v_${Date.now()}`);
+                  setVersions(v => [{ id: versionId, prompt, files: next, time: new Date().toLocaleTimeString() }, ...v]);
                   setMessages(m => m.map((msg, i) => i === m.length - 1 ? { role: 'assistant', content: 'Done! Your app is ready.', hasCode: true, planSuggestions: planSuggestions } : msg));
                   setTimeout(() => fetchSuggestNext(), 400);
                   const mainCode = parsedFiles['/App.js']?.code || parsedFiles['/src/App.jsx']?.code || parsedFiles['/App.jsx']?.code || Object.values(parsedFiles)[0]?.code || '';
@@ -1464,6 +1465,8 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
                   axios.post(`${API}/ai/quality-gate`, { code: mainCode, files: Object.keys(filesForQuality).length ? filesForQuality : undefined }, { headers: qgHeaders }).then(r => setQualityGateResult(r.data)).catch(() => setQualityGateResult(null));
                   return next;
                 });
+                // Set version AFTER files are committed so Sandpack remounts with correct files
+                setTimeout(() => setCurrentVersion(versionId), 50);
                 // AUTO-RUN: if native code files were generated, compile + run them
                 const nativeFileKeys = Object.keys(parsedFiles).filter(p => /\.(c|cpp|py|sh|rb|go|rs|java)$/i.test(p));
                 if (nativeFileKeys.length > 0) {
