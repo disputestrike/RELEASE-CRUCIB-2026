@@ -355,8 +355,8 @@ class TokenPurchase(BaseModel):
 
 
 class TokenPurchaseCustom(BaseModel):
-    """Custom credit purchase (slider): 100-5000 credits at $0.06/credit."""
-    credits: int = Field(ge=100, le=5000, description="Credits to purchase (100-5000)")
+    """Custom credit purchase (slider): 100-10000 credits at $0.06/credit."""
+    credits: int = Field(ge=100, le=10000, description="Credits to purchase (100-10000)")
 
 MAX_PROMPT_LENGTH = 50000
 MAX_PROJECT_DESCRIPTION_LENGTH = 10000
@@ -555,7 +555,7 @@ from pricing_plans import CREDIT_PLANS, TOKEN_BUNDLES, _speed_from_plan, CREDITS
 
 MIN_CREDITS_FOR_LLM = 5
 FREE_TIER_CREDITS = 100  # Free tier (email signup)
-GUEST_TIER_CREDITS = 1000  # Guest users get 1000 credits for testing
+GUEST_TIER_CREDITS = 200  # Guest/free users get 200 credits (matches free tier)
 
 AGENT_DEFINITIONS = [
     {"name": "Planner", "layer": "planning", "description": "Decomposes user requests into executable tasks", "avg_tokens": 50000},
@@ -2188,7 +2188,7 @@ async def register(data: UserRegister, request: Request):
         "password": hash_password(data.password),
         "name": data.name,
         "token_balance": 0,
-        "credit_balance": 0,
+        "credit_balance": 200,
         "plan": "free",
         "role": "owner",
         "mfa_enabled": False,
@@ -2685,7 +2685,7 @@ async def get_bundles():
     return {
         "bundles": TOKEN_BUNDLES,
         "annual_prices": ANNUAL_PRICES,
-        "custom_addon": {"min_credits": 100, "max_credits": 5000, "price_per_credit": 0.06},
+        "custom_addon": {"min_credits": 100, "max_credits": 10000, "price_per_credit": 0.06},
     }
 
 @api_router.post("/tokens/purchase")

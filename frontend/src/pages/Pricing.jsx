@@ -8,30 +8,62 @@ import PublicFooter from '../components/PublicFooter';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';
 
-// Linear pricing: Free (top block), paid tiers Builder / Pro / Scale / Teams. Custom credits via slider.
+// Linear pricing — doubled credits at every tier. Prices unchanged. $0.06/credit.
 const DEFAULT_BUNDLES = {
-  free: { credits: 100, price: 0, name: 'Free' },
-  builder: { credits: 250, price: 15, name: 'Builder' },
-  pro: { credits: 500, price: 30, name: 'Pro' },
-  scale: { credits: 1000, price: 60, name: 'Scale' },
-  teams: { credits: 2500, price: 150, name: 'Teams' },
+  free:    { credits: 200,  price: 0,   name: 'Free' },
+  builder: { credits: 500,  price: 15,  name: 'Builder' },
+  pro:     { credits: 1000, price: 30,  name: 'Pro' },
+  scale:   { credits: 2000, price: 60,  name: 'Scale' },
+  teams:   { credits: 5000, price: 150, name: 'Teams' },
 };
 const BUNDLE_ORDER = ['builder', 'pro', 'scale', 'teams'];
 
-// Outcome-only features (no speed wording)
+// Outcome language — what you actually build, not feature names
 const PLAN_FEATURES = {
-  free: ['Landing pages', 'Plan-first build', 'Export to ZIP'],
-  builder: ['Landing pages & full web apps', 'Live preview', 'Swarm enabled — parallel agents'],
-  pro: ['Everything in Builder', 'More credits & capacity', 'Priority support'],
-  scale: ['Everything in Pro', 'High-volume builds', 'More credits per month'],
-  teams: ['Everything in Scale', 'For teams & agencies', 'Priority support'],
+  free: [
+    '2 full apps — frontend + backend + database + auth',
+    'OR 4 landing pages — fully designed, SEO-ready',
+    'Live preview · export ZIP · push to GitHub',
+    '126-agent swarm · voice input · templates',
+    'No credit card required',
+  ],
+  builder: [
+    '5 complete production apps per month',
+    'OR 10 landing pages · OR 3 mobile apps',
+    'Every app: frontend · backend · DB · auth · Stripe payments',
+    'Mobile: Expo project + App Store & Play Store guide',
+    'Voice input · image-to-code · 126-agent swarm',
+    'Credits roll over — never lose unused credits',
+  ],
+  pro: [
+    '10 complete production apps per month',
+    'OR 20 landing pages · OR 6 mobile apps',
+    'Everything in Builder',
+    'Max speed (priority queue) · priority support',
+    'Credits roll over',
+  ],
+  scale: [
+    '20 complete production apps per month',
+    'OR 40 landing pages · OR 13 mobile apps',
+    'Everything in Pro',
+    'High-volume builds for agencies & studios',
+    'Credits roll over',
+  ],
+  teams: [
+    '50 complete production apps per month',
+    'OR 100 landing pages · OR 33 mobile apps',
+    'Everything in Scale',
+    'Teams, agencies, white-label studios',
+    'Priority support · team billing · credits roll over',
+  ],
 };
 
 const CREDITS_PER_LANDING = 50;
 const CREDITS_PER_APP = 100;
+const CREDITS_PER_MOBILE = 150;
 const RECOMMEND_ORDER = ['free', 'builder', 'pro', 'scale', 'teams'];
 const CUSTOM_CREDITS_MIN = 100;
-const CUSTOM_CREDITS_MAX = 5000;
+const CUSTOM_CREDITS_MAX = 10000;
 const CUSTOM_CREDITS_STEP = 100;
 const PRICE_PER_CREDIT = 0.06;
 
@@ -170,7 +202,7 @@ export default function Pricing() {
   const navigate = useNavigate();
   const { user, token } = useAuth();
   const [bundles, setBundles] = useState(DEFAULT_BUNDLES);
-  const [annualPrices, setAnnualPrices] = useState({ free: 0, builder: 150, pro: 300, scale: 600, teams: 1500 });
+  const [annualPrices, setAnnualPrices] = useState({ free: 0, builder: 149.99, pro: 299.99, scale: 599.99, teams: 1499.99 });
   const [billingPeriod, setBillingPeriod] = useState('monthly'); // 'monthly' | 'annual'
   const [customAddon, setCustomAddon] = useState({ min_credits: CUSTOM_CREDITS_MIN, max_credits: CUSTOM_CREDITS_MAX, price_per_credit: PRICE_PER_CREDIT });
 
@@ -205,16 +237,16 @@ export default function Pricing() {
         <div className="text-center mb-16">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Plans</span>
           <h1 className="text-kimi-section font-bold text-kimi-text mt-2 mb-4">Pricing</h1>
-          <p className="text-kimi-muted max-w-xl mx-auto">Inevitable outcomes: plan-first, 120-agent swarm, full transparency. Free tier includes 100 credits. No surprises, no hidden limitations.</p>
+          <p className="text-kimi-muted max-w-xl mx-auto">The only builder that gives you the complete stack — frontend, backend, database, auth, and payments — in every build. Plus mobile apps with App Store &amp; Play Store submission guide. Free tier: 200 credits. Credits roll over. No surprises.</p>
           <div className="mt-8 max-w-2xl mx-auto p-4 rounded-xl border border-stone-200 bg-white text-left">
-            <p className="text-sm font-medium text-[#1A1A1A] mb-2">Why CrucibAI — Inevitable AI</p>
+            <p className="text-sm font-medium text-[#1A1A1A] mb-2">Why CrucibAI beats the others at every price point</p>
             <ul className="text-sm text-[#1A1A1A] space-y-1">
-              <li>• 120-agent swarm, 99.2% success — measured, not promised.</li>
-              <li>• Plan-first, full transparency — know exactly what you&apos;re building.</li>
-              <li>• No surprises — credits, caps, and rollover are transparent.</li>
+              <li>• Every build includes frontend + backend + database + auth + Stripe payments — not just a frontend.</li>
+              <li>• Mobile apps with Apple App Store &amp; Google Play submission guide — no other builder does this.</li>
+              <li>• 126-agent swarm, fully linear pricing — same $0.06/credit whether you buy 100 or 10,000.</li>
             </ul>
           </div>
-          <p className="text-sm text-kimi-muted mt-4">Cost preview before running · Auto-refund on failures · Credits roll over on all plans.</p>
+          <p className="text-sm text-kimi-muted mt-4">50 credits ≈ 1 landing page · 100 credits ≈ 1 full app · 150 credits ≈ 1 mobile app · Credits roll over on all plans.</p>
         </div>
 
         {/* Free tier */}
@@ -226,12 +258,12 @@ export default function Pricing() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div>
               <h2 className="text-2xl font-semibold mb-2">Start for free</h2>
-              <p className="text-stone-500 mb-4">100 credits. Build landing pages, export, and deploy. No credit card.</p>
+              <p className="text-stone-500 mb-4">200 credits. Build 2 complete apps or 4 landing pages. No credit card.</p>
               <ul className="space-y-2 text-sm text-[#1A1A1A]">
-                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> 100 credits for landing pages</li>
-                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> Plan-first build & live preview</li>
-                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> Export to ZIP & push to GitHub</li>
-                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> 120-agent swarm, templates & prompt library</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> 2 full apps — frontend + backend + database + auth</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> OR 4 landing pages — designed, SEO-ready, exportable</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> Live preview · export to ZIP · push to GitHub</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> 126-agent swarm · voice input · templates &amp; prompts</li>
               </ul>
             </div>
             <div className="shrink-0">
@@ -328,7 +360,7 @@ export default function Pricing() {
 
         {/* Custom credits (slider) */}
         <h2 className="text-lg font-semibold text-center mt-14 mb-2">Need more credits?</h2>
-        <p className="text-zinc-500 text-center mb-6">Buy credits in bulk. ${(customAddon.price_per_credit || PRICE_PER_CREDIT).toFixed(2)}/credit, 100–{customAddon.max_credits || CUSTOM_CREDITS_MAX} credits. Credits roll over.</p>
+        <p className="text-zinc-500 text-center mb-6">Buy in bulk at the same rate — ${(customAddon.price_per_credit || PRICE_PER_CREDIT).toFixed(2)}/credit · 100–{(customAddon.max_credits || CUSTOM_CREDITS_MAX).toLocaleString()} credits · Credits roll over · No expiry.</p>
         <CustomCreditsSlider
           min={customAddon.min_credits ?? CUSTOM_CREDITS_MIN}
           max={customAddon.max_credits ?? CUSTOM_CREDITS_MAX}
@@ -349,7 +381,7 @@ export default function Pricing() {
         {/* Outcome calculator */}
         <div className="mt-16 max-w-2xl mx-auto p-6 rounded-2xl border border-stone-200 bg-white shadow-sm">
           <h3 className="text-lg font-semibold mb-2">How many credits do I need?</h3>
-          <p className="text-stone-500 text-sm mb-4">Rough guide: ~50 credits ≈ 1 landing page, ~100 credits ≈ 1 full app. Enter your goals for a recommendation.</p>
+          <p className="text-stone-500 text-sm mb-4">50 credits ≈ 1 landing page · 100 credits ≈ 1 full app (frontend + backend + DB + auth + payments) · 150 credits ≈ 1 mobile app with App Store guide. Enter your goals below.</p>
           <OutcomeCalculator bundles={bundles} onSelectPlan={(key) => {
             if (user) navigate('/app/tokens', { state: { addon: key } });
             else navigate('/app/tokens?addon=' + encodeURIComponent(key));

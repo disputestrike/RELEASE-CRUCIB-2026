@@ -62,6 +62,7 @@ import {
   Monitor,
   Rocket,
   RotateCcw,
+  Share2,
 } from 'lucide-react';
 import { useAuth, API } from '../App';
 import { useLayoutStore } from '../stores/useLayoutStore';
@@ -2509,6 +2510,22 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
               )}
               <button onClick={downloadCode} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: '#52525b' }} title="Download">
                 <Download className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    const shareUrl = `${window.location.origin}/share/${projectIdFromUrl || 'demo'}`;
+                    await navigator.clipboard.writeText(shareUrl);
+                    addLog('Share link copied to clipboard!', 'success', 'system');
+                  } catch {
+                    addLog('Could not copy share link', 'warning', 'system');
+                  }
+                }}
+                className="p-1.5 rounded-lg transition hover:bg-white/10"
+                style={{ color: '#52525b' }}
+                title="Copy share link"
+              >
+                <Share2 className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => setShowDeployModal(true)}
