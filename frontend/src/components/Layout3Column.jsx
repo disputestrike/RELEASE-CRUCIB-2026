@@ -25,6 +25,7 @@ export const Layout3Column = ({
   sidebarOpen: controlledSidebarOpen,
   onToggleSidebar,
   setSidebarOpen: setControlledSidebarOpen,
+  hideSidebarToggle = false,
 }) => {
   const [internalSidebarOpen, setInternalSidebarOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
@@ -72,6 +73,7 @@ export const Layout3Column = ({
             onClick={handleToggleSidebar}
             aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
             title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+            style={{ display: hideSidebarToggle ? 'none' : undefined }}
           >
             {sidebarOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
           </button>

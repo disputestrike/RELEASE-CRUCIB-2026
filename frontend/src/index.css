@@ -441,3 +441,17 @@ code, pre, .mono {
 /* Code editor — stays dark always (IDE convention, same as VS Code/Cursor) */
 [data-theme="light"] .monaco-editor,
 [data-theme="light"] .sandpack-wrapper { filter: none; }
+
+/* ── Chat bubble light theme ─────────────────────────────────────── */
+:root, [data-theme="dark"] {
+  --theme-surface2: #3f3f46;
+  --chat-user-bg:   #3f3f46;
+  --chat-ai-bg:     #1c1c1e;
+  --chat-text:      #e4e4e7;
+}
+[data-theme="light"] {
+  --theme-surface2: #E8E8E6;
+  --chat-user-bg:   #E05A25;
+  --chat-ai-bg:     #F3F1ED;
+  --chat-text:      #1A1A1A;
+}

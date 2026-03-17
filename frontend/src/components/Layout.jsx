@@ -193,6 +193,7 @@ const Layout = () => {
         sidebarOpen={sidebarOpen}
         onToggleSidebar={toggleSidebar}
         setSidebarOpen={setSidebarOpen}
+        hideSidebarToggle={isWorkspaceView}
       />
 
       {/* Onboarding Tour for first-time users */}

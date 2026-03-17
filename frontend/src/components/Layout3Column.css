@@ -370,3 +370,9 @@
     padding: 0;
   }
 }
+
+/* Hide layout nav sidebar toggle in fullbleed workspace — workspace has its own explorer toggle */
+.layout-page-content--fullbleed ~ * .layout-sidebar-toggle,
+.layout-page-content--fullbleed .layout-sidebar-toggle {
+  display: none !important;
+}
