@@ -8,7 +8,7 @@ import PublicFooter from '../components/PublicFooter';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';
 
-// Linear pricing — doubled credits at every tier. Prices unchanged. $0.06/credit.
+// Linear pricing — $0.03/credit (plans and bulk). No credit rollover.
 const DEFAULT_BUNDLES = {
   free:    { credits: 200,  price: 0,   name: 'Free' },
   builder: { credits: 500,  price: 15,  name: 'Builder' },
@@ -18,7 +18,6 @@ const DEFAULT_BUNDLES = {
 };
 const BUNDLE_ORDER = ['builder', 'pro', 'scale', 'teams'];
 
-// Outcome language — what you actually build, not feature names
 const PLAN_FEATURES = {
   free: [
     '2 full apps — frontend + backend + database + auth',
@@ -33,28 +32,25 @@ const PLAN_FEATURES = {
     'Every app: frontend · backend · DB · auth · Stripe payments',
     'Mobile: Expo project + App Store & Play Store guide',
     'Voice input · image-to-code · 126-agent swarm',
-    'Credits roll over — never lose unused credits',
   ],
   pro: [
     '10 complete production apps per month',
     'OR 20 landing pages · OR 6 mobile apps',
     'Everything in Builder',
     'Max speed (priority queue) · priority support',
-    'Credits roll over',
   ],
   scale: [
     '20 complete production apps per month',
     'OR 40 landing pages · OR 13 mobile apps',
     'Everything in Pro',
     'High-volume builds for agencies & studios',
-    'Credits roll over',
   ],
   teams: [
     '50 complete production apps per month',
     'OR 100 landing pages · OR 33 mobile apps',
     'Everything in Scale',
     'Teams, agencies, white-label studios',
-    'Priority support · team billing · credits roll over',
+    'Priority support · team billing',
   ],
 };
 
@@ -65,7 +61,7 @@ const RECOMMEND_ORDER = ['free', 'builder', 'pro', 'scale', 'teams'];
 const CUSTOM_CREDITS_MIN = 100;
 const CUSTOM_CREDITS_MAX = 10000;
 const CUSTOM_CREDITS_STEP = 100;
-const PRICE_PER_CREDIT = 0.06;
+const PRICE_PER_CREDIT = 0.03;
 
 function CustomCreditsSlider({ min, max, step, pricePerCredit, user, token, api, navigate, axios, logApiError }) {
   const [credits, setCredits] = useState(min);
@@ -237,16 +233,16 @@ export default function Pricing() {
         <div className="text-center mb-16">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Plans</span>
           <h1 className="text-kimi-section font-bold text-kimi-text mt-2 mb-4">Pricing</h1>
-          <p className="text-kimi-muted max-w-xl mx-auto">The only builder that gives you the complete stack — frontend, backend, database, auth, and payments — in every build. Plus mobile apps with App Store &amp; Play Store submission guide. Free tier: 200 credits. Credits roll over. No surprises.</p>
+          <p className="text-kimi-muted max-w-xl mx-auto">The only builder that gives you the complete stack — frontend, backend, database, auth, and payments — in every build. Plus mobile apps with App Store &amp; Play Store submission guide. Free tier: 200 credits. No surprises.</p>
           <div className="mt-8 max-w-2xl mx-auto p-4 rounded-xl border border-stone-200 bg-white text-left">
             <p className="text-sm font-medium text-[#1A1A1A] mb-2">Why CrucibAI beats the others at every price point</p>
             <ul className="text-sm text-[#1A1A1A] space-y-1">
               <li>• Every build includes frontend + backend + database + auth + Stripe payments — not just a frontend.</li>
               <li>• Mobile apps with Apple App Store &amp; Google Play submission guide — no other builder does this.</li>
-              <li>• 126-agent swarm, fully linear pricing — same $0.06/credit whether you buy 100 or 10,000.</li>
+              <li>• 126-agent swarm, fully linear pricing — same $0.03/credit whether you buy 100 or 10,000.</li>
             </ul>
           </div>
-          <p className="text-sm text-kimi-muted mt-4">50 credits ≈ 1 landing page · 100 credits ≈ 1 full app · 150 credits ≈ 1 mobile app · Credits roll over on all plans.</p>
+          <p className="text-sm text-kimi-muted mt-4">50 credits ≈ 1 landing page · 100 credits ≈ 1 full app · 150 credits ≈ 1 mobile app.</p>
         </div>
 
         {/* Free tier */}
@@ -281,7 +277,7 @@ export default function Pricing() {
 
         {/* Credit plans */}
         <h2 className="text-xl font-semibold text-center mb-2">Credit plans</h2>
-        <p className="text-stone-500 text-center mb-4">More credits, faster builds. Unused credits roll over.</p>
+        <p className="text-stone-500 text-center mb-4">More credits, faster builds. Plans are monthly; buy credits as you need them.</p>
         <div className="flex justify-center gap-2 mb-10">
           <button
             type="button"
@@ -299,7 +295,7 @@ export default function Pricing() {
           </button>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
           {BUNDLE_ORDER.filter((k) => bundles[k]).map((key, i) => {
             const b = bundles[key];
             const isBuilder = key === 'builder';
@@ -314,7 +310,7 @@ export default function Pricing() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className={`relative p-6 rounded-2xl border border-stone-200 bg-white shadow-sm hover:border-stone-300 transition ${
+                className={`relative p-6 rounded-2xl border border-stone-200 bg-white shadow-sm hover:border-stone-300 transition flex flex-col min-h-[320px] ${
                   isBuilder ? 'ring-2 ring-[#1A1A1A]/10' : ''
                 }`}
               >
@@ -333,21 +329,20 @@ export default function Pricing() {
                   {savePct > 0 && <span className="text-stone-500 text-xs font-medium">Save {savePct}%</span>}
                 </div>
                 <p className="text-stone-500 text-sm mb-4">{b.credits} credits per month</p>
-                <ul className="space-y-2 text-xs text-[#1A1A1A] mb-6">
+                <ul className="space-y-2 text-xs text-[#1A1A1A] mb-6 flex-1">
                   {features.map((f, j) => (
                     <li key={j} className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-[#1A1A1A] shrink-0" /> {f}</li>
                   ))}
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-[#1A1A1A] shrink-0" /> Unused credits roll over</li>
                 </ul>
-                <button
-                  onClick={() => navigate('/app/tokens')}
-                  className={`w-full py-2.5 rounded-lg font-medium transition flex items-center justify-center gap-2 text-white ${
-                    isBuilder ? 'bg-[#1A1A1A] hover:opacity-90' : 'bg-[#1A1A1A] hover:opacity-90'
-                  }`}
-                >
-                  {user ? 'Buy credits' : 'Get started'}
-                  <ArrowRight className="w-4 h-4" />
-                </button>
+                <div className="mt-auto pt-2">
+                  <button
+                    onClick={() => navigate('/app/tokens')}
+                    className="w-full py-2.5 rounded-lg font-medium transition flex items-center justify-center gap-2 text-white bg-[#1A1A1A] hover:opacity-90"
+                  >
+                    {user ? 'Buy credits' : 'Get started'}
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
               </motion.div>
             );
           })}
@@ -360,7 +355,7 @@ export default function Pricing() {
 
         {/* Custom credits (slider) */}
         <h2 className="text-lg font-semibold text-center mt-14 mb-2">Need more credits?</h2>
-        <p className="text-zinc-500 text-center mb-6">Buy in bulk at the same rate — ${(customAddon.price_per_credit || PRICE_PER_CREDIT).toFixed(2)}/credit · 100–{(customAddon.max_credits || CUSTOM_CREDITS_MAX).toLocaleString()} credits · Credits roll over · No expiry.</p>
+        <p className="text-zinc-500 text-center mb-6">Buy in bulk at the same rate — ${(customAddon.price_per_credit || PRICE_PER_CREDIT).toFixed(2)}/credit · 100–{(customAddon.max_credits || CUSTOM_CREDITS_MAX).toLocaleString()} credits.</p>
         <CustomCreditsSlider
           min={customAddon.min_credits ?? CUSTOM_CREDITS_MIN}
           max={customAddon.max_credits ?? CUSTOM_CREDITS_MAX}
@@ -375,7 +370,9 @@ export default function Pricing() {
         />
 
         <p className="text-center text-stone-500 text-sm mt-10">
-          Need a custom plan? <Link to="/enterprise" className="text-[#1A1A1A] hover:underline">Enterprise / Contact sales</Link>.
+          Need a custom plan? <Link to="/enterprise" className="text-[#1A1A1A] hover:underline">Enterprise</Link>
+          {' · '}
+          <Link to="/contact" className="text-[#1A1A1A] hover:underline">Contact us</Link>.
         </p>
 
         {/* Outcome calculator */}
@@ -391,7 +388,7 @@ export default function Pricing() {
         <div className="mt-20 max-w-2xl mx-auto border-t border-stone-200 pt-16">
           <h3 className="text-lg font-semibold mb-4">Clarity & how credits work</h3>
           <p className="text-stone-500 text-sm leading-relaxed">
-            Know exactly what you're building. No surprises, no hidden limitations. Plans are monthly (or annual for 17% off). Unused credits roll over. Buy more credits anytime—no limit.
+            Know exactly what you're building. No surprises, no hidden limitations. Plans are monthly (or annual for 17% off). Buy more credits anytime—no limit.
           </p>
         </div>
       </div>

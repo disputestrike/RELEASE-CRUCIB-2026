@@ -19,21 +19,21 @@
 }
 .workspace-right-panel::-webkit-scrollbar-thumb,
 .workspace-right-panel *::-webkit-scrollbar-thumb {
-  background: #3f3f46;
+  background: var(--theme-muted, #3f3f46);
   border-radius: 5px;
   border: 2px solid var(--theme-surface, #18181b);
 }
 .workspace-right-panel::-webkit-scrollbar-thumb:hover,
 .workspace-right-panel *::-webkit-scrollbar-thumb:hover {
-  background: #52525b;
+  background: var(--theme-text, #52525b);
 }
-/* Monaco editor scrollbars (class applied by @monaco-editor/react) */
+/* Monaco editor scrollbars — theme-aware (black in dark, white in light) */
 .workspace-right-panel .monaco-scrollable-element > .scrollbar,
 .workspace-right-panel .monaco-editor .scrollbar {
   background: var(--theme-surface, #18181b) !important;
 }
 .workspace-right-panel .monaco-scrollable-element > .scrollbar .slider {
-  background: #3f3f46 !important;
+  background: var(--theme-muted, #3f3f46) !important;
   border-radius: 5px;
 }
 

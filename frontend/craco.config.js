@@ -78,6 +78,15 @@ const webpackConfig = {
 };
 
 webpackConfig.devServer = (devServerConfig) => {
+  // Proxy /api to backend so local dev works: frontend :3000 → backend :8000
+  devServerConfig.proxy = {
+    '/api': {
+      target: 'http://localhost:8000',
+      changeOrigin: true,
+    },
+    '/health': { target: 'http://localhost:8000', changeOrigin: true },
+  };
+
   if (config.enableVisualEdits && setupDevServer) {
     devServerConfig = setupDevServer(devServerConfig);
   }

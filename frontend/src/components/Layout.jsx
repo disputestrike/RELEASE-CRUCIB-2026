@@ -27,7 +27,7 @@ import OnboardingTour from './OnboardingTour';
 const Layout = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, token } = useAuth();
+  const { user, logout, token, refreshUser } = useAuth();
   const { sidebarOpen, setSidebarOpen, toggleSidebar } = useLayoutStore();
   const { tasks: storeTasks } = useTaskStore();
   const [backendOk, setBackendOk] = useState(null);
@@ -54,10 +54,14 @@ const Layout = () => {
 
   const checkBackend = useCallback(() => {
     setBackendOk(null);
-    axios.get(`${API}/health`, { timeout: 5000 })
-      .then(() => setBackendOk(true))
+    const healthUrl = API ? `${API.replace(/\/$/, '')}/health` : '/api/health';
+    axios.get(healthUrl, { timeout: 5000 })
+      .then(() => {
+        setBackendOk(true);
+        if (token && refreshUser) refreshUser();
+      })
       .catch((e) => { logApiError('Layout health', e); setBackendOk(false); });
-  }, []);
+  }, [token, refreshUser]);
 
   // Fetch projects for sidebar. Do NOT overwrite task store — All Tasks list is from local store so clicks open workspace with correct task.
   const fetchSidebarData = useCallback(async () => {
@@ -154,6 +158,8 @@ const Layout = () => {
         </span>
         <span className="layout-footer-links">
           <Link to="/about">About</Link>
+          <Link to="/get-help">Get help</Link>
+          <Link to="/contact">Contact</Link>
           <Link to="/privacy">Privacy</Link>
           <Link to="/terms">Terms</Link>
         </span>

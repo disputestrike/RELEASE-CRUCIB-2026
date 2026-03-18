@@ -12,11 +12,10 @@
 2. Go to **Variables** (or **Settings → Variables**).
 3. Add these (click **+ New Variable** or **Raw Editor**):
 
-| Variable     | Required | Example / where to get it |
-|-------------|----------|---------------------------|
-| `MONGO_URL` | **Yes**  | MongoDB connection string. Get a free cluster at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) → Connect → Driver: Python → copy the URI. Use format: `mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net` |
-| `DB_NAME`   | **Yes**  | Any name, e.g. `crucibai` |
-| `JWT_SECRET`| **Yes** (prod) | Long random string (e.g. run `openssl rand -hex 32` and paste) |
+| Variable       | Required | Example / where to get it |
+|----------------|----------|---------------------------|
+| `DATABASE_URL` | **Yes**  | PostgreSQL connection string. In Railway: add the **Postgres** plugin to your project; Railway sets `DATABASE_URL` automatically. Or use an external Postgres URL, e.g. `postgresql://user:pass@host:5432/dbname`. |
+| `JWT_SECRET`   | **Yes** (prod) | Long random string (e.g. run `openssl rand -hex 32` and paste). |
 
 4. **Redeploy**: Deployments → trigger a new deploy, or push a commit.
 
@@ -37,7 +36,7 @@
 ## 3. Check deploy logs
 
 - Railway → your service → **Deployments** → click the latest deploy → **View Logs**.
-- If you see `FATAL: Missing required env: MONGO_URL, DB_NAME`, add those variables and redeploy.
+- If you see errors about missing `DATABASE_URL` or `JWT_SECRET`, add those variables and redeploy.
 - After a successful start you should see Uvicorn logs like `Uvicorn running on http://0.0.0.0:XXXX`.
 
 ---
@@ -48,4 +47,4 @@
 - **Start:** Runs `uvicorn server:app --host 0.0.0.0 --port $PORT`. Railway sets `PORT` automatically.
 - No need to set `PORT` yourself.
 
-Once `MONGO_URL`, `DB_NAME`, and `JWT_SECRET` are set and you redeploy, the 502 should be resolved and your API will respond at the Railway URL.
+Once `DATABASE_URL` (Postgres) and `JWT_SECRET` are set and you redeploy, the 502 should be resolved. The backend runs PostgreSQL migrations on startup automatically.

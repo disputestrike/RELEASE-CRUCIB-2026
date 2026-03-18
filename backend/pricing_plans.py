@@ -1,7 +1,7 @@
 """
 Single source of truth for pricing: plans, bundles, speed mapping.
 No heavy dependencies so scripts and tests can import without loading server.
-Linear pricing: Free + Builder, Pro, Scale, Teams. $0.06/credit. No starter.
+Linear pricing: Free + Builder, Pro, Scale, Teams. $0.03/credit (plans and bulk). No starter.
 
 PRICING UPDATE — March 2026 (approved):
 - Every tier doubled in credits. Prices unchanged. Fully linear.
@@ -10,7 +10,7 @@ PRICING UPDATE — March 2026 (approved):
 - Pro:    500 → 1000 credits  @ $30  (10 full apps — doubles Builder, clear linear step)
 - Scale: 1000 → 2000 credits  @ $60  (20 full apps — doubles Pro)
 - Teams: 2500 → 5000 credits  @ $150 (50 full apps — doubles Scale)
-- Custom slider: 100–10000 at $0.06/credit (raised max for agencies and power users)
+- Custom slider: 100–10000 at $0.03/credit (same rate as plans)
 - Referral reward: unchanged at 100 credits each (free tier only, 10/month cap)
 - Annual prices: unchanged (17% off monthly = same ratio)
 
@@ -30,7 +30,7 @@ CREDIT_PLANS = {
     "scale":   {"credits": 2000, "price": 60,  "name": "Scale",   "speed_tiers": ["lite", "pro", "max"], "models": {"lite": "cerebras", "pro": "haiku", "max": "haiku"}, "swarm": True, "max_swarm": True},
     "teams":   {"credits": 5000, "price": 150, "name": "Teams",   "speed_tiers": ["lite", "pro", "max"], "models": {"lite": "cerebras", "pro": "haiku", "max": "haiku"}, "swarm": True, "max_swarm": True},
 }
-ADDONS = {}  # Slider only (100–10000 at $0.06). No fixed add-ons.
+ADDONS = {}  # Slider only (100–10000 at $0.03). No fixed add-ons.
 ANNUAL_PRICES = {"builder": 149.99, "pro": 299.99, "scale": 599.99, "teams": 1499.99}
 
 TOKEN_BUNDLES = {}

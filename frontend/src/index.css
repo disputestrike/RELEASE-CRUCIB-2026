@@ -16,11 +16,11 @@
 /* ── Theme system: data-theme="dark" | "light" ──────────────────────────── */
 :root,
 [data-theme="dark"] {
-  --theme-bg:        #111113;
-  --theme-surface:   #18181B;
-  --theme-surface2:  #27272a;
-  --theme-border:    rgba(255,255,255,0.09);
-  --theme-border-vis: rgba(255,255,255,0.16);
+  --theme-bg:        #0a0a0a;
+  --theme-surface:   #111113;
+  --theme-surface2:  #18181B;
+  --theme-border:    rgba(255,255,255,0.12);
+  --theme-border-vis: rgba(255,255,255,0.2);
   --theme-text:      #e4e4e7;
   --theme-muted:     #71717a;
   --theme-accent:    #E05A25;
@@ -31,11 +31,11 @@
 }
 
 [data-theme="light"] {
-  --theme-bg:        #FAFAF8;
+  --theme-bg:        #FFFFFF;
   --theme-surface:   #FFFFFF;
-  --theme-surface2:  #F3F1ED;
-  --theme-border:    rgba(0,0,0,0.09);
-  --theme-border-vis: rgba(0,0,0,0.18);
+  --theme-surface2:  #F5F5F4;
+  --theme-border:    rgba(0,0,0,0.12);
+  --theme-border-vis: rgba(0,0,0,0.2);
   --theme-text:      #1A1A1A;
   --theme-muted:     #666666;
   --theme-accent:    #E05A25;
@@ -45,11 +45,48 @@
   --theme-select-text: #1A1A1A;
 }
 
-/* Apply theme to body */
+/* Apply theme to body — single source so dark = black, light = white everywhere */
 body {
   background: var(--theme-bg);
   color: var(--theme-text);
   transition: background 0.2s, color 0.2s;
+}
+
+/* Contact / form inputs: theme-aware so light page = light inputs, dark page = dark inputs */
+.form-input-theme {
+  background-color: var(--theme-input);
+  border: 1px solid var(--theme-border);
+  color: var(--theme-text);
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+.form-input-theme::placeholder {
+  color: var(--theme-muted);
+}
+.form-input-theme:focus {
+  outline: none;
+  border-color: var(--theme-accent);
+}
+.form-card-theme {
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-border);
+}
+
+/* Public pages (Enterprise, Contact): page is light (kimi) so form is always light — no black inputs on white page */
+.form-input-public {
+  background-color: #F5F5F4;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  color: #1A1A1A;
+}
+.form-input-public::placeholder {
+  color: #666666;
+}
+.form-input-public:focus {
+  outline: none;
+  border-color: rgba(0, 0, 0, 0.25);
+}
+.form-card-public {
+  background: #F9F8F6;
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 /* Two colors only: background + text (no orange, no accent) */
@@ -126,6 +163,23 @@ body {
 
 * {
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: var(--theme-muted) var(--theme-surface);
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: var(--theme-surface);
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--theme-muted);
+  border-radius: 5px;
+  border: 2px solid var(--theme-surface);
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--theme-text);
 }
 
 /* SCROLL FIX: one scroll container for the whole site. Nothing may block it. */
@@ -157,8 +211,8 @@ body {
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: var(--bg-primary, #FAFAF8);
-  color: var(--text-primary, #1A1A1A);
+  background: var(--theme-bg);
+  color: var(--theme-text);
 }
 
 /* App viewport — LOCK entire app to viewport. No browser scrollbar. */

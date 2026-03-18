@@ -61,9 +61,14 @@ const ProjectBuilder = () => {
         requirements: {
           ...formData.requirements,
           prompt: formData.description,
-          build_kind: ['mobile', 'saas', 'bot', 'ai_agent', 'game', 'trading', 'any'].includes(formData.project_type)
-            ? formData.project_type
-            : formData.project_type === 'fullstack' ? 'fullstack' : 'fullstack'
+          build_kind: (() => {
+            const t = formData.project_type;
+            if (['mobile', 'saas', 'bot', 'ai_agent', 'game', 'trading', 'any'].includes(t)) return t;
+            if (t === 'website') return 'landing';
+            if (t === 'automation') return 'ai_agent';
+            if (t === 'api') return 'fullstack';
+            return 'fullstack';
+          })()
         }
       };
       const res = await axios.post(`${API}/projects`, payload, {

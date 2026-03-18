@@ -468,6 +468,30 @@ class PGDatabase:
         return self._collections[name]
 
 
+async def run_migrations():
+    """Run 001_full_schema.sql so Railway/Docker get tables on first deploy. Safe to call every startup (CREATE TABLE IF NOT EXISTS)."""
+    pool = await get_pg_pool()
+    migrations_dir = os.path.join(os.path.dirname(__file__), "migrations")
+    for name in ("001_full_schema.sql",):
+        path = os.path.join(migrations_dir, name)
+        if not os.path.isfile(path):
+            continue
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                content = f.read()
+            statements = [
+                s.strip() for s in content.split(";")
+                if s.strip() and not s.strip().startswith("--")
+            ]
+            async with pool.acquire() as conn:
+                for stmt in statements:
+                    if stmt:
+                        await conn.execute(stmt)
+            logger.info("Migration applied: %s", name)
+        except Exception as e:
+            logger.warning("Migration %s: %s", name, e)
+
+
 async def get_db() -> PGDatabase:
     """Get Motor-like database instance."""
     global _db

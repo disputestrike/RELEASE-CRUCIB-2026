@@ -1,86 +1,92 @@
-# Run CrucibAI locally and test everything
+# Run CrucibAI on Local
 
-## Quick start (two terminals)
+Get the app running on your machine with **frontend + backend connected**.
 
-### 1. Backend (port 8000)
+## Why "Disconnected" or "Backend not available"?
 
-```bash
+The frontend at **http://localhost:3000** sends `/api` and `/health` requests to **http://localhost:8000** (via the dev-server proxy). If nothing is running on port 8000, you get "Disconnected". **Start the backend** using Option A (Docker) or Option B (Python) below.
+
+---
+
+## Option A — Backend with Docker
+
+1. **Start backend + Postgres:** `docker-compose up -d`
+2. **Start frontend on host:** `cd frontend && npm install && npm start`
+3. Open **http://localhost:3000** — proxy will connect to backend on 8000.
+
+Backend-only (you have your own Postgres): set `DATABASE_URL` in `.env`, then `docker-compose up -d backend`.
+
+---
+
+## Option B — Quick start (2 terminals)
+
+### Terminal 1 — Backend (port 8000)
+
+```powershell
 cd backend
-# Optional: set env if you don't have .env
-# set MONGO_URL=mongodb://localhost:27017
-# set JWT_SECRET=your-secret
-# set DB_NAME=crucibai
+# Optional: copy .env.example to .env and set JWT_SECRET + DATABASE_URL for full auth/builds.
+# To only get "Connected" and UI working, you can run without .env:
+$env:CRUCIBAI_DEV = "1"
 python run_local.py
 ```
 
-Backend will be at **http://localhost:8000**.  
-Health: **http://localhost:8000/api/health**
+- With **no `.env`**: backend starts with dev defaults. `/api/health` works (frontend shows ● Connected). Auth and AI builds will fail until you set `DATABASE_URL` and optionally `JWT_SECRET` in `.env`.
+- With **`.env`** (copy from `.env.example`): set `JWT_SECRET` and `DATABASE_URL` (e.g. local Postgres or Docker Postgres). Then auth, guest, and AI builds work.
 
-### 2. Frontend (port 3000)
+### Terminal 2 — Frontend (port 3000)
 
-```bash
+```powershell
 cd frontend
+npm install
 npm start
 ```
 
-Frontend will open at **http://localhost:3000**.  
-It talks to the API at `http://localhost:8000/api` by default.
+- The frontend **proxies `/api` to http://localhost:8000**, so you don’t set any backend URL. Open **http://localhost:3000**.
 
----
+## What runs where
 
-## URLs to test (local)
+| Service   | URL                | Command / note                    |
+|----------|--------------------|------------------------------------|
+| Frontend | http://localhost:3000 | `npm start` in `frontend/`        |
+| Backend  | http://localhost:8000 | `python run_local.py` in `backend/` |
 
-| What | URL |
-|------|-----|
-| **App home** | http://localhost:3000 |
-| **Login / Register** | http://localhost:3000/login |
-| **Dashboard** | http://localhost:3000/app |
-| **IDE (Unified – all 8 tabs)** | http://localhost:3000/app/ide |
-| **VibeCode** | http://localhost:3000/app/vibecode |
-| **Monitoring** | http://localhost:3000/app/monitoring |
-| **Settings** | http://localhost:3000/app/settings |
-| **Backend health** | http://localhost:8000/api/health |
+## Full local (auth + builds)
 
----
+1. **Backend `.env`** (in `backend/`):
+   - `JWT_SECRET` — any long random string for dev.
+   - `DATABASE_URL` — e.g. `postgresql://user:pass@localhost:5432/crucibai` (or Docker Postgres).
+   - Optional: `CEREBRAS_API_KEY` or `ANTHROPIC_API_KEY` for AI builds.
 
-## IDE tab checklist (http://localhost:3000/app/ide)
+2. **Start backend** (with `.env` in place):
+   ```powershell
+   cd backend
+   python run_local.py
+   ```
 
-1. **Terminal** – Create session (path or project ID), run command, see output.
-2. **Git** – Get status, list branches, merge, commit, resolve conflict.
-3. **VibeCode** – Analyze text, generate code.
-4. **Debug** – Start debug session, add/remove breakpoints.
-5. **Lint** – Run lint (project_id / code).
-6. **Profiler** – Start/stop profiler.
-7. **AI Features** – Generate tests, security scan, optimize, generate docs.
-8. **Ecosystem** – VS Code config, get extension code.
+3. **Start frontend** (same as above):
+   ```powershell
+   cd frontend
+   npm start
+   ```
 
----
+4. Open **http://localhost:3000** — you should see ● Connected and be able to sign in and run builds (if DB and LLM keys are set).
 
-## Backend API (examples)
+## Troubleshooting
 
-- `GET  /api/health`
-- `GET  /api/git/status?repo_path=.`
-- `GET  /api/git/branches?repo_path=.`
-- `POST /api/vibecoding/analyze` — body: `{"text": "Build a todo app"}`
-- `POST /api/vibecoding/generate` — body: `{"prompt": "hello component"}`
-- `POST /api/terminal/create` — params: `project_path=.`
-- `POST /api/ide/debug/start` — params: `project_id=test`
-- `POST /api/monitoring/events/track` — body: `{"event_type":"test","user_id":"u1","success":true}`
-- `GET  /api/monitoring/events?limit=5`
-- `POST /api/ai/docs/generate` — body: `{"project_name":"Test","description":"A test"}`
-- `POST /api/deploy/validate` — body: `{"platform":"vercel","files":{}}`
-- `POST /api/cache/invalidate`
+- **"Backend not available" / "Disconnected"**  
+  Backend must be running on port 8000 before or while you use the frontend. Start `python run_local.py` in `backend/` first.
 
----
+- **Backend won’t start: "FATAL: JWT_SECRET not set"**  
+  Either set `JWT_SECRET` in `backend/.env`, or run with `$env:CRUCIBAI_DEV = "1"` so the server uses a dev default.
 
-## Smoke tests (backend)
+- **Backend won’t start: "FATAL: DATABASE_URL not set"**  
+  Either set `DATABASE_URL` in `backend/.env`, or run with `$env:CRUCIBAI_DEV = "1"` so the server starts without a DB (only `/api/health` and UI connection work).
 
-```bash
-cd backend
-set MONGO_URL=mongodb://localhost:27017
-set JWT_SECRET=proof
-set DB_NAME=crucibai
-python -m pytest tests/test_smoke.py -v
-```
+- **Port 8000 or 3000 in use**  
+  Stop the other process using that port, or change the backend port in `run_local.py` and the proxy in `frontend/craco.config.js` to match.
 
-All 20 tests should pass.
+- **Docker: backend exits or unhealthy**  
+  Run `docker-compose logs backend`. Ensure Postgres is up if using compose DB: `docker-compose ps`. If using an external DB, set `DATABASE_URL` and run only `docker-compose up -d backend`.
+
+- **Docker: backend exits or unhealthy**  
+  Run `docker-compose logs backend`. Ensure Postgres is up if using compose DB: `docker-compose ps`. If using an external DB, set `DATABASE_URL` and run only `docker-compose up -d backend`.

@@ -97,7 +97,7 @@ This is the **execution and proof plan** for the approved linear pricing. It cov
 
 20. **Outcome calculator** — Use new tier list and credits (builder 250, etc.) for recommendation.
 
-21. **Trust line** — Add: “Cost preview before running · Auto-refund on failures · Credits roll over on all plans.”
+21. **Trust line** — Add: “Cost preview before running · Auto-refund on failures.”
 
 22. **Remove** — “1 credit ≈ 1,000 tokens”, “92% margin” from main copy. Remove or soften “vs Lovable” / “half the price” from hero.
 

@@ -4,11 +4,12 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { useTaskStore } from '../stores/useTaskStore';
 import {
   Plus, Search, Library, FolderOpen, FolderPlus, CheckCircle, Clock,
-  MessageCircle, Zap, AlertCircle, LogOut, ChevronRight, ChevronLeft,
+  MessageCircle, Zap, AlertCircle, LogOut, ChevronRight,
   FileOutput, FileText, LayoutGrid, BookOpen, Key, Keyboard,
   CreditCard, ScrollText, BarChart3, Wrench, HelpCircle, Coins,
   X, Bell, MoreHorizontal, ExternalLink, Pencil, Share2,
-  Trash2, FolderInput, Star, Settings, ShieldCheck, Code, Monitor
+  Trash2, FolderInput, Star, Settings, ShieldCheck, Code, Monitor,
+  PanelLeftClose, PanelLeftOpen, History
 } from 'lucide-react';
 import Logo from './Logo';
 import './Sidebar.css';
@@ -41,12 +42,14 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const accountMenuRef = React.useRef(null);
+  const collapsedAccountRef = React.useRef(null);
   const { tasks: storeTasks, removeTask, updateTask } = useTaskStore();
 
-  // Close account menu on outside click
+  // Close account menu on outside click (expanded footer or collapsed strip)
   useEffect(() => {
     const close = (e) => {
-      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target)) setAccountMenuOpen(false);
+      const inside = accountMenuRef.current?.contains(e.target) || collapsedAccountRef.current?.contains(e.target);
+      if (!inside) setAccountMenuOpen(false);
     };
     document.addEventListener('click', close);
     return () => document.removeEventListener('click', close);
@@ -227,6 +230,9 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
   };
 
   const collapsed = sidebarOpen === false;
+  const displayName = user?.name
+    || (user?.email && !String(user.email).toLowerCase().includes('guest') ? (user.email.split('@')[0] || 'User') : null)
+    || 'Guest';
 
   const renderHistoryRow = (item) => {
     const isLocalTask = !item.isProject && item.id.startsWith('task_');
@@ -315,35 +321,96 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
 
   return (
     <div className={`sidebar ${collapsed ? 'sidebar--collapsed' : ''}`}>
-      {/* Collapse toggle — visible when expanded (desktop) */}
-      {!collapsed && onToggleSidebar && (
-        <button
-          type="button"
-          className="sidebar-collapse-btn"
-          onClick={onToggleSidebar}
-          aria-label="Collapse sidebar"
-          title="Collapse sidebar"
-        >
-          <ChevronLeft size={14} />
-        </button>
-      )}
-
-      {/* Collapsed strip — only when collapsed */}
+      {/* Collapsed strip — Manus-like: top nav, then spacer, then bottom (Engine, Credit, Settings, Account) */}
       <div className="sidebar-collapsed-strip">
-        <button
-          type="button"
-          className="sidebar-collapse-btn"
-          onClick={onToggleSidebar}
-          aria-label="Expand sidebar"
-          title="Expand sidebar"
-        >
-          <ChevronRight size={18} />
-        </button>
+        <div className="sidebar-collapsed-top">
+          <button
+            type="button"
+            className="sidebar-collapse-btn sidebar-collapse-btn--expand"
+            onClick={onToggleSidebar}
+            aria-label="Expand sidebar"
+            title="Expand sidebar"
+          >
+            <PanelLeftOpen size={20} />
+          </button>
+          {pinnedNav.map((item) => {
+            const isAppHome = item.exact && item.href === '/app';
+            return isAppHome ? (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => navigate('/app', { state: item.state || { newAgent: Date.now() } })}
+                className="sidebar-collapsed-icon"
+                title={item.label}
+                aria-label={item.label}
+              >
+                <item.icon size={20} />
+              </button>
+            ) : (
+              <Link
+                key={item.href}
+                to={item.href}
+                className="sidebar-collapsed-icon"
+                title={item.label}
+                aria-label={item.label}
+              >
+                <item.icon size={20} />
+              </Link>
+            );
+          })}
+          <button type="button" className="sidebar-collapsed-icon" onClick={onToggleSidebar} title="Search" aria-label="Search">
+            <Search size={20} />
+          </button>
+          <button type="button" className="sidebar-collapsed-icon" onClick={onToggleSidebar} title="History" aria-label="History">
+            <History size={20} />
+          </button>
+        </div>
+        <div className="sidebar-collapsed-spacer" aria-hidden="true" />
+        <div className="sidebar-collapsed-bottom">
+          <button type="button" className="sidebar-collapsed-icon" onClick={onToggleSidebar} title="Engine Room" aria-label="Engine Room">
+            <Wrench size={20} />
+          </button>
+          <Link to="/app/tokens" className="sidebar-collapsed-icon" title="Credit Center" aria-label="Credit Center">
+            <Coins size={20} />
+          </Link>
+          <div className="sidebar-collapsed-account-wrap" ref={collapsedAccountRef}>
+            <button
+              type="button"
+              className={`sidebar-collapsed-icon sidebar-collapsed-account ${accountMenuOpen ? 'active' : ''}`}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setAccountMenuOpen((o) => !o); }}
+              title={`Account: ${displayName} — Settings, Credits, Log out`}
+              aria-label="Account menu (Settings, Credits, Log out)"
+              aria-expanded={accountMenuOpen}
+            >
+              <div className="sidebar-collapsed-avatar">{(displayName || 'G').charAt(0).toUpperCase()}</div>
+            </button>
+            {accountMenuOpen && (
+              <div className="sidebar-account-menu sidebar-account-menu--dropup" role="menu">
+                <Link to="/app/settings" role="menuitem" onClick={() => setAccountMenuOpen(false)}><Settings size={16} /> Settings</Link>
+                <Link to="/app/tokens" role="menuitem" onClick={() => setAccountMenuOpen(false)}><Coins size={16} /> Credits & Billing</Link>
+                <Link to="/pricing" role="menuitem" onClick={() => setAccountMenuOpen(false)}><Zap size={16} /> Upgrade plan</Link>
+                <div className="sidebar-account-menu-divider" />
+                <button type="button" className="sidebar-account-menu-logout" role="menuitem" onClick={() => { setAccountMenuOpen(false); onLogout?.(); }}><LogOut size={16} /> Log out</button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Header */}
+      {/* Header — collapse button at top inside pane one (Manus-like) */}
       <div className="sidebar-header">
         <Logo variant="full" height={32} href="/app" className="sidebar-logo" showTagline={false} dark />
+        {onToggleSidebar && (
+          <button
+            type="button"
+            className="sidebar-header-collapse"
+            onClick={onToggleSidebar}
+            aria-label="Collapse sidebar"
+            title="Collapse sidebar"
+          >
+            <PanelLeftClose size={18} />
+          </button>
+        )}
       </div>
 
       {/* Search Bar */}
@@ -426,34 +493,8 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
         </div>
       </div>
 
-      {/* Spacer */}
+      {/* Spacer — pushes History up, keeps Engine/Credits/Settings at bottom */}
       <div className="sidebar-spacer" />
-
-      {/* Engine Room Toggle */}
-      <div className="sidebar-engine-room">
-        <button
-          className={`sidebar-engine-toggle ${engineRoomOpen ? 'open' : ''}`}
-          onClick={() => setEngineRoomOpen(!engineRoomOpen)}
-        >
-          <Wrench size={16} />
-          <span>Engine Room</span>
-          <ChevronRight size={16} className={`sidebar-engine-chevron ${engineRoomOpen ? 'rotated' : ''}`} />
-        </button>
-        {engineRoomOpen && (
-          <div className="sidebar-engine-items">
-            {filteredEngineItems.map((item) => (
-              <Link
-                key={item.href}
-                to={item.href}
-                className={`sidebar-engine-item ${isActive(item.href) ? 'active' : ''}`}
-              >
-                <item.icon size={14} />
-                <span>{item.label}</span>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
 
       {/* Delete confirmation — over right pane */}
       {deleteConfirmTask && (
@@ -470,14 +511,44 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
         </div>
       )}
 
-      {/* Token Balance */}
-      <Link to="/app/tokens" className="sidebar-token-balance" title="Credit Center">
-        <Coins size={16} className="sidebar-token-icon" />
-        <span className="sidebar-token-amount">{(user?.token_balance ?? 0).toLocaleString()}</span>
-        <span className="sidebar-token-label">credits</span>
-      </Link>
+      {/* Bottom section: Engine Room + Credits only (Settings is in Guest dropdown) */}
+      <div className="sidebar-bottom">
+        <div className="sidebar-engine-room">
+          <button
+            className={`sidebar-engine-toggle ${engineRoomOpen ? 'open' : ''}`}
+            onClick={() => setEngineRoomOpen(!engineRoomOpen)}
+          >
+            <Wrench size={16} />
+            <span>Engine Room</span>
+            <ChevronRight size={16} className={`sidebar-engine-chevron ${engineRoomOpen ? 'rotated' : ''}`} />
+          </button>
+          {engineRoomOpen && (
+            <div className="sidebar-engine-items">
+              {filteredEngineItems.map((item) => (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  className={`sidebar-engine-item ${isActive(item.href) ? 'active' : ''}`}
+                >
+                  <item.icon size={14} />
+                  <span>{item.label}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+        <Link to="/app/tokens" className="sidebar-token-balance" title="Credit Center">
+          <Coins size={16} className="sidebar-token-icon" />
+          <span className="sidebar-token-amount">
+            {user != null
+              ? (user.credit_balance ?? Math.floor((user.token_balance ?? 0) / 1000) ?? 0).toLocaleString()
+              : '—'}
+          </span>
+          <span className="sidebar-token-label">credits</span>
+        </Link>
+      </div>
 
-      {/* Footer — account trigger with dropdown (Settings, Logout) */}
+      {/* Footer — account trigger with dropdown (Logout, etc.) */}
       <div className="sidebar-footer" ref={accountMenuRef}>
         <button
           type="button"
@@ -488,10 +559,10 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
           aria-label="Account menu"
         >
           <div className="sidebar-user-avatar">
-            {user?.name?.charAt(0)?.toUpperCase() || 'G'}
+            {(displayName || 'G').charAt(0).toUpperCase()}
           </div>
           <div className="sidebar-user-info">
-            <div className="sidebar-user-name">{user?.name || 'Guest'}</div>
+            <div className="sidebar-user-name">{displayName}</div>
             <div className="sidebar-user-plan">{user?.plan ? String(user.plan).charAt(0).toUpperCase() + String(user.plan).slice(1) : 'Free'}</div>
           </div>
           <ChevronRight size={16} className="sidebar-account-chevron" />
@@ -519,7 +590,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
             >
               <Zap size={16} /> Upgrade plan
             </Link>
-            <div style={{ height: '1px', background: 'rgba(255,255,255,0.08)', margin: '4px 0' }} />
+            <div className="sidebar-account-menu-divider" />
             <button
               type="button"
               className="sidebar-account-menu-logout"

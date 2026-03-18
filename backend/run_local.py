@@ -13,6 +13,11 @@ def main():
     from dotenv import load_dotenv
     load_dotenv(backend_dir / ".env", override=True)
 
+    # Allow running without .env so /api/health works and frontend shows Connected
+    if not os.environ.get("JWT_SECRET") or not os.environ.get("DATABASE_URL"):
+        os.environ["CRUCIBAI_DEV"] = "1"
+        print("Local dev mode (CRUCIBAI_DEV=1): /api/health will work; set JWT_SECRET and DATABASE_URL in .env for auth and builds.")
+
     print("Backend .env loaded from:", backend_dir / ".env")
     print("FRONTEND_URL:", os.environ.get("FRONTEND_URL", "(not set)"))
     print("CORS_ORIGINS:", os.environ.get("CORS_ORIGINS", "(not set)"))

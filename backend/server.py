@@ -79,6 +79,8 @@ class CSRFMiddleware:
         "/api/auth/google",
         "/api/auth/google/callback",
         "/api/health",
+        "/api/contact",
+        "/api/enterprise/contact",
     }
     
     def __init__(self, app):
@@ -149,7 +151,7 @@ try:
     _metrics_available = True
 except ImportError:
     _metrics_available = False
-    print("⚠️ prometheus_client not installed — /metrics endpoint disabled")
+    print("WARNING: prometheus_client not installed - /metrics endpoint disabled", file=sys.stderr)
 _critic_agent = CriticAgent()
 _truth_module = TruthModule()
 _agent_memory = None  # Initialized in startup after db is ready
@@ -217,15 +219,23 @@ import qrcode
 ROOT_DIR = Path(__file__).resolve().parent
 load_dotenv(ROOT_DIR / '.env', override=True)
 
-# Pre-flight: fail startup if required secrets missing (V4 protocol)
+# Pre-flight: require secrets in production; in dev (CRUCIBAI_DEV=1) allow running without DB for /api/health
+CRUCIBAI_DEV = os.environ.get("CRUCIBAI_DEV", "").strip().lower() in ("1", "true", "yes")
 if not os.environ.get('JWT_SECRET'):
-    print("FATAL: JWT_SECRET not set. Set JWT_SECRET in Railway/Production Variables.", file=sys.stderr)
-    sys.exit(1)
+    if CRUCIBAI_DEV:
+        os.environ.setdefault("JWT_SECRET", "dev-secret-do-not-use-in-production")
+        print("WARNING: JWT_SECRET not set; using dev default. Set JWT_SECRET for production.", file=sys.stderr)
+    else:
+        print("FATAL: JWT_SECRET not set. Set JWT_SECRET in Railway/Production Variables.", file=sys.stderr)
+        sys.exit(1)
 if not os.environ.get('DATABASE_URL'):
-    print("FATAL: DATABASE_URL not set. Set DATABASE_URL in Railway/Production Variables.", file=sys.stderr)
-    sys.exit(1)
+    if CRUCIBAI_DEV:
+        print("WARNING: DATABASE_URL not set. /api/health will work; auth and builds need a real DB. Set DATABASE_URL for full local dev.", file=sys.stderr)
+    else:
+        print("FATAL: DATABASE_URL not set. Set DATABASE_URL in Railway/Production Variables.", file=sys.stderr)
+        sys.exit(1)
 
-# PostgreSQL database will be initialized on startup
+# PostgreSQL database will be initialized on startup (or remain None in dev without DATABASE_URL)
 db = None
 audit_logger = None
 
@@ -379,6 +389,13 @@ class EnterpriseContact(BaseModel):
     use_case: Optional[str] = None  # e.g. "teams", "startup", "enterprise"
     budget: Optional[str] = None  # e.g. "10K", "50K", "100K+", "custom"
     message: Optional[str] = None
+
+class ContactSubmission(BaseModel):
+    """General contact form (footer, pricing, etc.)."""
+    email: EmailStr
+    message: str = Field(..., min_length=1, max_length=5000)
+    issue_type: Optional[str] = None  # e.g. "general", "support", "enterprise", "billing"
+    name: Optional[str] = Field(None, max_length=200)
 
 class ProjectCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=500)
@@ -2144,11 +2161,11 @@ async def stripe_create_checkout(data: TokenPurchase, user: dict = Depends(get_c
 
 @api_router.post("/stripe/create-checkout-session-custom")
 async def stripe_create_checkout_custom(data: TokenPurchaseCustom, user: dict = Depends(get_current_user)):
-    """Create Stripe Checkout session for custom credit purchase (slider). Amount = credits * $0.06."""
+    """Create Stripe Checkout session for custom credit purchase (slider). Amount = credits * $0.03."""
     if not STRIPE_SECRET:
         raise HTTPException(status_code=503, detail="Stripe not configured")
     credits = data.credits
-    price = round(credits * 0.06, 2)
+    price = round(credits * 0.03, 2)
     amount_cents = int(round(price * 100))
     tokens = credits * CREDITS_PER_TOKEN
     try:
@@ -2160,7 +2177,7 @@ async def stripe_create_checkout_custom(data: TokenPurchaseCustom, user: dict = 
             line_items=[{
                 "price_data": {
                     "currency": "usd",
-                    "product_data": {"name": f"CrucibAI - {credits} credits", "description": f"{credits} credits at $0.06/credit"},
+                    "product_data": {"name": f"CrucibAI - {credits} credits", "description": f"{credits} credits at $0.03/credit"},
                     "unit_amount": amount_cents,
                 },
                 "quantity": 1,
@@ -2203,7 +2220,7 @@ async def stripe_webhook(request: Request, background_tasks: BackgroundTasks):
         credits = int(credits_str) if credits_str else (int(tokens_str) // CREDITS_PER_TOKEN)
         tokens = int(tokens_str) if tokens_str else (credits * CREDITS_PER_TOKEN)
         if bundle_key == "custom":
-            price = round(credits * 0.06, 2)
+            price = round(credits * 0.03, 2)
         else:
             price = TOKEN_BUNDLES.get(bundle_key, {}).get("price", 0)
         await db.users.update_one({"id": user_id}, {"$inc": {"token_balance": tokens, "credit_balance": credits}})
@@ -2264,6 +2281,44 @@ async def enterprise_contact(data: EnterpriseContact):
         except Exception as e:
             logger.warning(f"Enterprise contact email failed: {e}")
     return {"status": "received", "message": "We'll be in touch soon.", "contact_email": contact_email or "sales@crucibai.com"}
+
+
+@api_router.post("/contact")
+async def contact_submit(data: ContactSubmission):
+    """General contact form. Stored in db.contact_submissions; optional email if CONTACT_EMAIL or ENTERPRISE_CONTACT_EMAIL set."""
+    submission = {
+        "id": str(uuid.uuid4()),
+        "email": data.email,
+        "message": (data.message or "").strip(),
+        "issue_type": (data.issue_type or "").strip() or None,
+        "name": (data.name or "").strip() or None,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    if db:
+        try:
+            await db.contact_submissions.insert_one(submission)
+        except Exception as e:
+            logger.warning(f"Contact submission db insert failed: {e}")
+    contact_email = os.environ.get("CONTACT_EMAIL") or os.environ.get("ENTERPRISE_CONTACT_EMAIL")
+    if contact_email and submission["message"]:
+        try:
+            import smtplib
+            from email.mime.text import MIMEText
+            subject = f"CrucibAI Contact: {submission.get('issue_type') or 'General'}"
+            body = f"From: {submission.get('name') or '—'}\nEmail: {submission['email']}\nType: {submission.get('issue_type') or 'general'}\n\nMessage:\n{submission['message']}"
+            msg = MIMEText(body)
+            msg["Subject"] = subject
+            msg["From"] = os.environ.get("SMTP_FROM", "noreply@crucibai.com")
+            msg["To"] = contact_email
+            if os.environ.get("SMTP_HOST"):
+                with smtplib.SMTP(os.environ.get("SMTP_HOST"), int(os.environ.get("SMTP_PORT", 587))) as s:
+                    if os.environ.get("SMTP_USER"):
+                        s.starttls()
+                        s.login(os.environ.get("SMTP_USER", ""), os.environ.get("SMTP_PASSWORD", ""))
+                    s.send_message(msg)
+        except Exception as e:
+            logger.warning(f"Contact form email failed: {e}")
+    return {"status": "received", "message": "Thanks for reaching out. We'll get back to you soon."}
 
 
 # ==================== AUTH ROUTES ====================
@@ -2781,7 +2836,7 @@ async def get_bundles():
     return {
         "bundles": TOKEN_BUNDLES,
         "annual_prices": ANNUAL_PRICES,
-        "custom_addon": {"min_credits": 100, "max_credits": 10000, "price_per_credit": 0.06},
+        "custom_addon": {"min_credits": 100, "max_credits": 10000, "price_per_credit": 0.03},
     }
 
 @api_router.post("/tokens/purchase")
@@ -2817,14 +2872,14 @@ async def purchase_tokens(data: TokenPurchase, user: dict = Depends(get_current_
 
 @api_router.post("/tokens/purchase-custom")
 async def purchase_tokens_custom(data: TokenPurchaseCustom, user: dict = Depends(get_current_user)):
-    """Custom credit purchase (slider): 100-5000 credits at $0.06/credit. When Stripe enabled, use Stripe instead."""
+    """Custom credit purchase (slider): 100-10000 credits at $0.03/credit. When Stripe enabled, use Stripe instead."""
     if STRIPE_SECRET:
         raise HTTPException(
             status_code=400,
             detail="Use Credit Center → Pay with Stripe to purchase credits. Direct purchase is disabled when payments are enabled.",
         )
     credits = data.credits
-    price = round(credits * 0.06, 2)
+    price = round(credits * 0.03, 2)
     tokens = credits * CREDITS_PER_TOKEN
     await _ensure_credit_balance(user["id"])
     await db.users.update_one({"id": user["id"]}, {"$inc": {"token_balance": tokens, "credit_balance": credits}})
@@ -5307,12 +5362,14 @@ def _inject_crucibai_branding(jsx: str, plan: str) -> str:
 
 
 def _infer_build_kind(prompt: str) -> str:
-    """Infer build_kind from prompt text so agents generate the right artifact (mobile, saas, bot, game, etc.)."""
+    """Infer build_kind from prompt so we build the right artifact: web, mobile, agent/automation, software, etc."""
     if not prompt:
         return "fullstack"
     p = prompt.lower()
-    if any(x in p for x in ("mobile app", "react native", "flutter", "ios app", "android app", "pwa ", "app store", "play store", "apple store", "google play")):
+    if any(x in p for x in ("mobile app", "react native", "flutter", "ios app", "android app", "pwa ", "app store", "play store", "apple store", "google play", "build me a mobile", "mobile application")):
         return "mobile"
+    if any(x in p for x in ("build me an agent", "automation agent", "automation", "scheduled task", "cron", "webhook agent", "run_agent", "build agent")):
+        return "ai_agent"
     if any(x in p for x in ("saas", "subscription", "multi-tenant", "billing", "stripe", "plans/tiers")):
         return "saas"
     if any(x in p for x in ("slack bot", "discord bot", "telegram bot", "chatbot", " webhook bot", "bot that")):
@@ -5323,6 +5380,10 @@ def _infer_build_kind(prompt: str) -> str:
         return "game"
     if any(x in p for x in ("trading software", "trading app", "stock trading", "crypto trading", "forex", "order book", "positions", "p&l", "trade execution", "portfolio tracker")):
         return "trading"
+    if any(x in p for x in ("landing page", "landing only", "one-page", "marketing page")):
+        return "landing"
+    if any(x in p for x in ("website", "build me a website", "build me a web")):
+        return "fullstack"
     if any(x in p for x in ("anything", "whatever", "no limit", "any idea", "any app")):
         return "any"
     return "fullstack"
@@ -5343,7 +5404,7 @@ async def run_orchestration_v2(project_id: str, user_id: str):
     if isinstance(prompt, dict):
         prompt = prompt.get("prompt") or str(prompt)
     build_kind = (req.get("build_kind") or "").strip().lower() or _infer_build_kind(prompt)
-    if build_kind not in ("fullstack", "mobile", "saas", "bot", "ai_agent", "game", "trading", "any"):
+    if build_kind not in ("fullstack", "landing", "mobile", "saas", "bot", "ai_agent", "game", "trading", "any"):
         build_kind = "fullstack"
     project_prompt_with_kind = f"[Build kind: {build_kind}]\n{prompt}"
     try:
@@ -5594,13 +5655,62 @@ async def run_orchestration_v2(project_id: str, user_id: str):
         if metadata_match:
             deploy_files["store-submission/metadata.json"] = metadata_match.group(0)
     else:
-        # Web project
+        # Web project — always emit a full preview bundle (like Manus): entry + App + styles so Sandpack preview works
         if fe:
             fe = _inject_media_into_jsx(fe, images, videos)
             user_doc = await db.users.find_one({"id": user_id}, {"plan": 1})
             user_plan = (user_doc or {}).get("plan") or "free"
             fe = _inject_crucibai_branding(fe, user_plan)
             deploy_files["src/App.jsx"] = fe
+            # Ensure Sandpack has an entry and styles so preview runs (Manus-like minimal runnable set)
+            if "src/index.js" not in deploy_files:
+                deploy_files["src/index.js"] = """import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './styles.css';
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+"""
+            if "src/styles.css" not in deploy_files:
+                deploy_files["src/styles.css"] = """@import url('https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css');
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: Inter, system-ui, sans-serif; }
+"""
+            # Full build (not minimal): package.json + index.html so export/deploy is a complete project
+            if "package.json" not in deploy_files:
+                deploy_files["package.json"] = """{
+  "name": "crucib-app",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test"
+  },
+  "browserslist": { "production": [">0.2%", "not dead"], "development": ["last 1 chrome version"] }
+}
+"""
+            if "public/index.html" not in deploy_files:
+                deploy_files["public/index.html"] = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#000000" />
+  <title>App</title>
+</head>
+<body>
+  <noscript>You need to enable JavaScript to run this app.</noscript>
+  <div id="root"></div>
+</body>
+</html>
+"""
         if be:
             deploy_files["server.py"] = be
         if db_schema:
@@ -7385,17 +7495,23 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def init_postgres_primary():
-    """Initialize PostgreSQL as primary database at startup."""
+    """Initialize PostgreSQL as primary database at startup. Run migrations so Railway/Docker get schema. In CRUCIBAI_DEV without DATABASE_URL, skip so /api/health still works."""
     global db, audit_logger
+    if not os.environ.get("DATABASE_URL"):
+        logger.warning("DATABASE_URL not set; DB not initialized. /api/health OK; auth/builds need DATABASE_URL.")
+        return
     try:
-        from db_pg import get_db
+        from db_pg import get_db, run_migrations
         from structured_logging import AuditLogger
+        await run_migrations()
         db = await get_db()
         audit_logger = AuditLogger() if AuditLogger else None
-        logger.info("✅ PostgreSQL initialized as primary database")
+        logger.info("PostgreSQL initialized as primary database")
     except Exception as e:
-        logger.error(f"❌ PostgreSQL initialization failed: {e}")
-        raise
+        logger.error("PostgreSQL initialization failed: %s", e)
+        if not os.environ.get("CRUCIBAI_DEV"):
+            raise
+        logger.warning("Continuing without DB (CRUCIBAI_DEV). /api/health OK; auth/builds will fail.")
 
 
 @app.on_event("startup")
@@ -7412,6 +7528,8 @@ async def init_observability():
 @app.on_event("startup")
 async def seed_examples_if_empty():
     """Seed 5 examples so /api/examples returns proof of generated apps (10/10 roadmap)."""
+    if db is None:
+        return
     try:
         n = await db.examples.count_documents({})
         if n == 0:

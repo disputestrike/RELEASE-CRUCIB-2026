@@ -513,8 +513,8 @@ const Workspace = () => {
   const [activeFile, setActiveFile] = useState('/App.js');
 
   // Files safe to pass to Sandpack — exclude backend/test/config files.
-  // Also post-process: BrowserRouter → MemoryRouter (BrowserRouter breaks in iframes),
-  // and inject Tailwind CDN into styles.css so classes render correctly.
+  // Sandpack React template expects /src/index.js and /src/App.js; map root-level App.js, index.js, styles.css into /src/ so preview runs.
+  // Also post-process: BrowserRouter → MemoryRouter, inject Tailwind CDN into styles.css.
   const sandpackFiles = useMemo(() => {
     const EXCLUDED = /\.(test|spec)\.[jt]sx?$|Dockerfile|docker-compose|\.md$|\.sh$|\.ya?ml$|\.env|\.gitignore|server\.(js|ts)$|express|mongoose/i;
     const ALLOWED  = /\.(jsx?|tsx?|css|html|json)$/i;
@@ -522,15 +522,17 @@ const Workspace = () => {
 
     const filtered = Object.entries(files).filter(([path, f]) => {
       if (!ALLOWED.test(path) || EXCLUDED.test(path)) return false;
-      // Drop files that are clearly Node/Express backend
       if (f?.code && BACKEND_CODE.test(f.code)) return false;
       return true;
     });
 
-    return Object.fromEntries(
+    const ROOT_TO_SRC = { '/App.js': '/src/App.js', '/App.jsx': '/src/App.jsx', '/index.js': '/src/index.js', '/index.jsx': '/src/index.jsx', '/styles.css': '/src/styles.css' };
+
+    const result = Object.fromEntries(
       filtered.map(([path, f]) => {
+        const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+        const sandpackPath = ROOT_TO_SRC[normalizedPath] || normalizedPath;
         let code = f?.code || '';
-        // Fix: BrowserRouter doesn't work in Sandpack iframes → use MemoryRouter
         code = code
           .replace(/import\s*\{\s*BrowserRouter(\s*,\s*|\s+as\s+\w+\s*,?\s*)/g, 'import { MemoryRouter$1')
           .replace(/import\s*\{\s*([^}]*),?\s*BrowserRouter\s*,?\s*([^}]*)\}/g, (_, a, b) =>
@@ -538,15 +540,30 @@ const Workspace = () => {
           .replace(/<BrowserRouter>/g, '<MemoryRouter>')
           .replace(/<\/BrowserRouter>/g, '</MemoryRouter>')
           .replace(/BrowserRouter\b/g, 'MemoryRouter');
-
-        // Inject Tailwind CDN into styles.css if not already present
-        if ((path === '/styles.css' || path === 'styles.css') && !code.includes('tailwindcss') && !code.includes('tailwind')) {
+        if (sandpackPath === '/src/index.js' || sandpackPath === '/src/index.jsx') {
+          code = code.replace(/from\s+['"]\.\/App['"]/g, "from './App'");
+        }
+        if ((sandpackPath === '/src/styles.css' || normalizedPath === '/styles.css' || normalizedPath === '/src/styles.css') && !code.includes('tailwindcss') && !code.includes('tailwind')) {
           code = `@import url('https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css');\n\n` + code;
         }
-
-        return [path, { ...f, code }];
+        return [sandpackPath, { ...f, code }];
       })
     );
+
+    if (Object.keys(result).length > 0 && !result['/src/index.js'] && !result['/src/index.jsx']) {
+      if (result['/src/App.js'] || result['/src/App.jsx']) {
+        result['/src/index.js'] = {
+          code: `import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+${result['/src/styles.css'] ? "import './styles.css';" : ''}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);`,
+        };
+      }
+    }
+    return result;
   }, [files]);
 
   // Parse dependencies from package.json if the AI generated one
@@ -1146,7 +1163,17 @@ const Workspace = () => {
       if (isBigBuild) {
         try {
           const useSwarm = buildMode === 'swarm' && !!token;
-          const planRes = await axios.post(`${API}/build/plan`, { prompt, swarm: useSwarm }, { headers, timeout: 45000 });
+          const p = (prompt || '').toLowerCase();
+          const buildKind = /mobile|react native|flutter|ios app|android app|build me a mobile/i.test(p) ? 'mobile'
+            : /build me an agent|automation|cron|webhook agent|build agent/i.test(p) ? 'ai_agent'
+            : /landing page|one-page|marketing page/i.test(p) ? 'landing'
+            : /website|build me a web/i.test(p) ? 'fullstack'
+            : /saas|subscription|stripe|billing/i.test(p) ? 'saas'
+            : /slack bot|discord bot|telegram bot|chatbot/i.test(p) ? 'bot'
+            : /game|2d game|3d game|browser game/i.test(p) ? 'game'
+            : /trading|stock|crypto|forex|order book/i.test(p) ? 'trading'
+            : 'fullstack';
+          const planRes = await axios.post(`${API}/build/plan`, { prompt, swarm: useSwarm, build_kind: buildKind }, { headers, timeout: 45000 });
           const planText = (planRes.data.plan_text || '').trim();
           planSuggestions = planRes.data.suggestions || [];
           const planTokens = planRes.data.plan_tokens ?? planRes.data.tokens_estimate ?? 0;
@@ -1610,7 +1637,15 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
       } else {
         friendlyMessage = `Build failed: ${detail || (isHtmlError ? "Backend returned an error. See BACKEND_SETUP.md." : rawMsg) || 'Unknown error. Please try again.'}`;
       }
-      setMessages(prev => prev.map((msg, i) => i === prev.length - 1 ? { role: 'assistant', content: friendlyMessage, error: true } : msg));
+      setMessages(prev => {
+        const next = prev.map((msg, i) => i === prev.length - 1 ? { role: 'assistant', content: friendlyMessage, error: true } : msg);
+        if (friendlyMessage === backendUnavailable || friendlyMessage.startsWith('Backend not available.')) {
+          const dupIndices = next.map((m, i) => i).filter(i => next[i].role === 'assistant' && next[i].content?.startsWith?.('Backend not available.'));
+          const keepLastOnly = dupIndices.length > 1 ? dupIndices[dupIndices.length - 1] : null;
+          if (keepLastOnly != null) return next.filter((m, i) => m.role !== 'assistant' || !m.content?.startsWith?.('Backend not available.') || i === keepLastOnly);
+        }
+        return next;
+      });
     } finally {
       setIsBuilding(false);
     }
@@ -1674,9 +1709,16 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
       const is404 = error.response?.status === 404 || error.response?.status === 405;
       const backendUnavailable = "Backend not available. Start the CrucibAI backend to use AI build (see BACKEND_SETUP.md).";
       addLog(`Modification failed: ${is404 ? 'Backend endpoint unavailable' : error.message}`, 'error', 'system');
-      setMessages(prev => prev.map((msg, i) => 
-        i === prev.length - 1 ? { role: 'assistant', content: is404 ? backendUnavailable : (error.response?.data?.detail || 'Error updating. Try again.'), error: true } : msg
-      ));
+      const friendlyMessage = is404 ? backendUnavailable : (error.response?.data?.detail || 'Error updating. Try again.');
+      setMessages(prev => {
+        const next = prev.map((msg, i) => i === prev.length - 1 ? { role: 'assistant', content: friendlyMessage, error: true } : msg);
+        if (friendlyMessage.startsWith('Backend not available.')) {
+          const dupIndices = next.map((m, i) => i).filter(i => next[i].role === 'assistant' && next[i].content?.startsWith?.('Backend not available.'));
+          const keepLastOnly = dupIndices.length > 1 ? dupIndices[dupIndices.length - 1] : null;
+          if (keepLastOnly != null) return next.filter((m, i) => m.role !== 'assistant' || !m.content?.startsWith?.('Backend not available.') || i === keepLastOnly);
+        }
+        return next;
+      });
     } finally {
       setIsBuilding(false);
     }

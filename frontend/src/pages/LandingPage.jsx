@@ -120,7 +120,10 @@ const LandingPage = () => {
         if (text) handleVoiceTranscribed(text);
         else setVoiceError('No text from transcription.');
       } catch (err) {
-        setVoiceError(err.response?.data?.detail || err.message || 'Transcription failed.');
+        const msg = err?.code === 'ERR_NETWORK' || err?.response?.status >= 500
+          ? 'Voice needs the backend. Start the CrucibAI backend to transcribe.'
+          : (err.response?.data?.detail || err.message || 'Transcription failed.');
+        setVoiceError(msg);
       } finally {
         setIsTranscribing(false);
         if (voiceStreamRef.current) {

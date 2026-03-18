@@ -22,7 +22,7 @@ This plan implements the final approved pricing: **linear $0.06/credit**, **Free
 
 - **Range:** 100 – 5,000 credits.
 - **Price:** `credits × $0.06` (e.g. 100 → $6, 250 → $15, 500 → $30, 1,000 → $60, 2,500 → $150, 5,000 → $300).
-- **Delivery:** One-time top-up; credits roll over. No fixed “Light”/“Dev” bundles.
+- **Delivery:** One-time top-up. No fixed “Light”/“Dev” bundles.
 
 ### Internal only (not on public pages)
 
@@ -36,11 +36,11 @@ This plan implements the final approved pricing: **linear $0.06/credit**, **Free
 
 ### By tier (no speed wording)
 
-- **Free:** “100 credits · Landing pages · Plan-first build & live preview · Export to ZIP & GitHub · 120-agent swarm, templates · Credits roll over”
-- **Builder:** “250 credits · Landing pages & full web apps · Swarm enabled · Plan-first build & preview · Export to ZIP & GitHub · Credits roll over”
-- **Pro:** “500 credits · Full web apps + automations · Up to 120 agents in parallel · Priority support · Export & deploy anywhere · Credits roll over”
-- **Scale:** “1,000 credits · Everything in Pro · High-volume builds · Credits roll over”
-- **Teams:** “2,500 credits · For teams & agencies · Priority support & deployment · Credits roll over”
+- **Free:** “100 credits · Landing pages · Plan-first build & live preview · Export to ZIP & GitHub · 120-agent swarm, templates”
+- **Builder:** “250 credits · Landing pages & full web apps · Swarm enabled · Plan-first build & preview · Export to ZIP & GitHub”
+- **Pro:** “500 credits · Full web apps + automations · Up to 120 agents in parallel · Priority support · Export & deploy anywhere”
+- **Scale:** “1,000 credits · Everything in Pro · High-volume builds”
+- **Teams:** “2,500 credits · For teams & agencies · Priority support & deployment”
 
 **Outcome anchors (keep):**
 
@@ -49,7 +49,7 @@ This plan implements the final approved pricing: **linear $0.06/credit**, **Free
 
 **Trust line (add):**
 
-- “Cost preview before running · Auto-refund on failures · Credits roll over on all plans.”
+- “Cost preview before running · Auto-refund on failures.”
 
 **Remove from public:**
 
@@ -111,7 +111,7 @@ This plan implements the final approved pricing: **linear $0.06/credit**, **Free
   - Slider: min 100, max 5000, step 100 (or 50). Display “Credits: X” and “Total: $Y” (Y = X × 0.06).
   - CTA: “Buy X credits” → if logged in, call new custom purchase or Stripe custom endpoint with chosen credits; if not, redirect to auth then back to Credit Center with slider state or to pricing.
 - **Outcome calculator:** Keep “How many credits do I need?” with landing page / full app inputs; recommendation logic uses new tier list (builder/pro/scale/teams) and new credit amounts.
-- **Trust:** Add one line: “Cost preview before running · Auto-refund on failures · Credits roll over on all plans.”
+- **Trust:** Add one line: “Cost preview before running · Auto-refund on failures.”
 - **Remove:** Token math (“1 credit ≈ 1,000 tokens”), “92% margin,” and “vs Lovable” or “half the price” from primary position (optional: move to footer or remove).
 
 ### 4.2 Token Center / Credit Center (`TokenCenter.jsx`)
@@ -169,7 +169,7 @@ This plan implements the final approved pricing: **linear $0.06/credit**, **Free
 ## 8. Summary
 
 - **Pricing:** Linear $0.06/credit; Free 100 (separate); Builder $15/250, Pro $30/500, Scale $60/1k, Teams $150/2.5k; add-ons 100–5,000 via slider at same rate.
-- **Communication:** Outcomes per tier; ~50 cr ≈ 1 landing, ~100 cr ≈ 1 app; cost preview, auto-refund, rollover; no speed wording, no token math, no margin on page.
+- **Communication:** Outcomes per tier; ~50 cr ≈ 1 landing, ~100 cr ≈ 1 app; cost preview, auto-refund; no speed wording, no token math, no margin on page.
 - **Speed:** Removed from UI and from client API; backend derives from plan only.
 - **Work:** Backend (plans, bundles, speed derivation, custom add-on + Stripe), Frontend (Pricing layout + slider, TokenCenter + slider, Workspace speed removal, delete SpeedSelector).
 

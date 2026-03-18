@@ -13,14 +13,6 @@ const USE_CASES = [
   { title: 'Startups', desc: 'Ship MVP in days, not weeks.' },
 ];
 
-const PLAN_TABLE = [
-  { plan: 'Free', credits: '100 credits', price: '$0', note: 'Landing pages, export & deploy' },
-  { plan: 'Starter', credits: '100K credits', price: '$9.99/mo', note: 'Landing & simple apps' },
-  { plan: 'Pro', credits: '500K credits', price: '$49.99/mo', note: 'Full apps & dashboards' },
-  { plan: 'Business', credits: '2M credits', price: '$199.99/mo', note: 'Team, high volume' },
-  { plan: 'Enterprise', credits: 'Unlimited', price: 'Custom', note: 'SLA, white-label, dedicated support' },
-];
-
 export default function Enterprise() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -77,35 +69,6 @@ export default function Enterprise() {
           </p>
         </motion.div>
 
-        {/* Plan comparison table */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-16 overflow-x-auto rounded-2xl border border-white/10 bg-kimi-bg-card"
-        >
-          <table className="w-full min-w-[500px] text-left">
-            <thead>
-              <tr className="border-b border-white/10">
-                <th className="p-4 text-sm font-semibold text-kimi-text">Plan</th>
-                <th className="p-4 text-sm font-semibold text-kimi-text">Credits</th>
-                <th className="p-4 text-sm font-semibold text-kimi-text">Price</th>
-                <th className="p-4 text-sm font-semibold text-kimi-text">Notes</th>
-              </tr>
-            </thead>
-            <tbody>
-              {PLAN_TABLE.map((row, i) => (
-                <tr key={row.plan} className="border-b border-white/5 last:border-0">
-                  <td className="p-4 font-medium text-kimi-text">{row.plan}</td>
-                  <td className="p-4 text-kimi-muted">{row.credits}</td>
-                  <td className="p-4 text-kimi-muted">{row.price}</td>
-                  <td className="p-4 text-kimi-muted text-sm">{row.note}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </motion.div>
-
         {/* Use cases */}
         <div className="grid sm:grid-cols-3 gap-6 mb-16">
           {USE_CASES.map((u, i) => (
@@ -131,7 +94,7 @@ export default function Enterprise() {
           className="max-w-lg mx-auto"
         >
           {submitted ? (
-            <div className="p-8 rounded-2xl border border-white/10 bg-kimi-bg-card text-center">
+            <div className="p-8 rounded-2xl form-card-public text-center">
               <h2 className="text-xl font-semibold text-kimi-text mb-2">Thank you</h2>
               <p className="text-kimi-muted mb-6">We&apos;ll be in touch within 24 hours.</p>
               <button
@@ -143,16 +106,16 @@ export default function Enterprise() {
               </button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4 p-6 rounded-2xl border border-white/10 bg-kimi-bg-card">
+            <form onSubmit={handleSubmit} className="space-y-4 p-6 rounded-2xl form-card-public">
               <h2 className="text-lg font-semibold text-kimi-text mb-4">Contact sales</h2>
-              {error && <p className="text-sm text-gray-400">{error}</p>}
+              {error && <p className="text-sm text-red-400">{error}</p>}
               <div>
                 <label className="block text-sm text-kimi-muted mb-1">Company *</label>
                 <input
                   type="text"
                   value={form.company}
                   onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-[#1A1A1A] placeholder-zinc-500 focus:border-kimi-accent outline-none"
+                  className="w-full px-4 py-2.5 rounded-lg form-input-public"
                   placeholder="Acme Inc."
                   required
                 />
@@ -163,7 +126,7 @@ export default function Enterprise() {
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-[#1A1A1A] placeholder-zinc-500 focus:border-kimi-accent outline-none"
+                  className="w-full px-4 py-2.5 rounded-lg form-input-public"
                   placeholder="you@company.com"
                   required
                 />
@@ -173,7 +136,7 @@ export default function Enterprise() {
                 <select
                   value={form.team_size}
                   onChange={(e) => setForm((f) => ({ ...f, team_size: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-[#1A1A1A] focus:border-kimi-accent outline-none"
+                  className="w-full px-4 py-2.5 rounded-lg form-input-public"
                 >
                   <option value="">Select</option>
                   <option value="1-10">1–10</option>
@@ -187,7 +150,7 @@ export default function Enterprise() {
                 <select
                   value={form.use_case}
                   onChange={(e) => setForm((f) => ({ ...f, use_case: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-[#1A1A1A] focus:border-kimi-accent outline-none"
+                  className="w-full px-4 py-2.5 rounded-lg form-input-public"
                 >
                   <option value="">Select</option>
                   <option value="teams">Teams</option>
@@ -201,7 +164,7 @@ export default function Enterprise() {
                 <select
                   value={form.budget}
                   onChange={(e) => setForm((f) => ({ ...f, budget: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-[#1A1A1A] focus:border-kimi-accent outline-none"
+                  className="w-full px-4 py-2.5 rounded-lg form-input-public"
                 >
                   <option value="">Select</option>
                   <option value="10K">$10K</option>
@@ -216,7 +179,7 @@ export default function Enterprise() {
                   value={form.message}
                   onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
                   rows={3}
-                  className="w-full px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-[#1A1A1A] placeholder-zinc-500 focus:border-kimi-accent outline-none resize-none"
+                  className="w-full px-4 py-2.5 rounded-lg form-input-public resize-none"
                   placeholder="Tell us about your goals and volume needs."
                 />
               </div>

@@ -64,6 +64,8 @@ import Cookies from "./pages/Cookies";
 import About from "./pages/About";
 import Pricing from "./pages/Pricing";
 import Enterprise from "./pages/Enterprise";
+import Contact from "./pages/Contact";
+import GetHelp from "./pages/GetHelp";
 import Features from "./pages/Features";
 import TemplatesPublic from "./pages/TemplatesPublic";
 import PatternsPublic from "./pages/PatternsPublic";
@@ -95,11 +97,11 @@ import UnifiedIDEPage from "./pages/UnifiedIDEPage";
 import { LayoutProvider } from "./stores/useLayoutStore";
 import { TaskProvider } from "./stores/useTaskStore";
 
-// Empty or unset REACT_APP_BACKEND_URL => same-origin /api (Railway single-URL deploy). Must treat '' explicitly so we don't fall back to localhost.
+// Empty or unset REACT_APP_BACKEND_URL => same-origin /api. In dev, frontend package.json "proxy" sends /api to http://localhost:8000 so backend and frontend connect.
 const _raw = process.env.REACT_APP_BACKEND_URL;
-const BACKEND_URL = (_raw === '' || _raw === undefined) ? '' : (_raw || process.env.REACT_APP_API_URL || 'http://localhost:3001');
+const BACKEND_URL = (_raw === '' || _raw === undefined) ? '' : (_raw || process.env.REACT_APP_API_URL || 'http://localhost:8000');
 export const API = BACKEND_URL ? `${BACKEND_URL.replace(/\/$/, '')}/api` : '/api';
-console.log('API configured as:', API, 'BACKEND_URL:', BACKEND_URL);
+console.log('API configured as:', API, 'BACKEND_URL:', BACKEND_URL || '(same-origin / proxy to :8000 in dev)');
 
 // Auth Context
 const AuthContext = createContext(null);
@@ -385,6 +387,8 @@ function App() {
           <Route path="/about" element={<About />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/enterprise" element={<Enterprise />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/get-help" element={<GetHelp />} />
           <Route path="/features" element={<Features />} />
           <Route path="/templates" element={<TemplatesPublic />} />
           <Route path="/patterns" element={<PatternsPublic />} />

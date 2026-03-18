@@ -6,16 +6,40 @@
   position: relative;
   width: 100%;
   height: 100%;
-  background: var(--theme-surface, #18181B);
+  background: var(--theme-surface);
   overflow: hidden;
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  color: var(--theme-text, #e4e4e7);
-  border-right: 1px solid var(--theme-border, var(--theme-border, rgba(255,255,255,0.07)));
+  color: var(--theme-text);
+  /* Single-line border is on .layout-sidebar (Manus-like); no double border here */
 }
 
 .sidebar-header {
-  padding: 16px 16px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 16px 12px 12px;
   flex-shrink: 0;
+}
+
+.sidebar-header-collapse {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--theme-border);
+  border-radius: 6px;
+  color: var(--theme-muted);
+  cursor: pointer;
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.sidebar-header-collapse:hover {
+  color: var(--theme-text);
+  background: var(--theme-border);
 }
 
 .sidebar-logo {
@@ -46,39 +70,19 @@
   letter-spacing: -0.02em;
 }
 
-/* Collapse toggle — right edge INSIDE sidebar so it's never clipped by layout overflow */
+/* Expand button (only visible in collapsed strip) */
 .sidebar-collapse-btn {
-  position: absolute;
-  top: 50%;
-  right: 0;
-  transform: translateY(-50%);
-  width: 24px;
-  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--theme-border, rgba(255,255,255,0.06));
-  border: 1px solid var(--theme-border, rgba(255,255,255,0.08));
-  border-right: none;
-  border-radius: 8px 0 0 8px;
-  color: var(--theme-muted, #71717a);
+  color: var(--theme-muted);
   cursor: pointer;
-  z-index: 20;
   transition: color 150ms ease, background 150ms ease;
 }
 
 .sidebar-collapse-btn:hover {
-  color: var(--theme-text, #e4e4e7);
-  background: var(--theme-border, rgba(255,255,255,0.1));
-}
-
-/* Collapsed state — narrow strip; expand button on left edge */
-.sidebar.sidebar--collapsed .sidebar-collapse-btn {
-  right: auto;
-  left: 0;
-  border-right: none;
-  border-left: 1px solid var(--theme-border, rgba(255,255,255,0.08));
-  border-radius: 0 8px 8px 0;
+  color: var(--theme-text);
+  background: var(--theme-border);
 }
 
 .sidebar.sidebar--collapsed .sidebar-header,
@@ -86,6 +90,7 @@
 .sidebar.sidebar--collapsed .sidebar-nav,
 .sidebar.sidebar--collapsed .sidebar-section,
 .sidebar.sidebar--collapsed .sidebar-spacer,
+.sidebar.sidebar--collapsed .sidebar-bottom,
 .sidebar.sidebar--collapsed .sidebar-engine-room,
 .sidebar.sidebar--collapsed .sidebar-token-balance,
 .sidebar.sidebar--collapsed .sidebar-footer {
@@ -100,8 +105,38 @@
   display: none;
   flex-direction: column;
   align-items: center;
-  padding: 16px 0;
-  gap: 12px;
+  padding: 12px 0;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Top nav group — stays at top */
+.sidebar-collapsed-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Spacer — pushes bottom group to the very bottom (Manus) */
+.sidebar-collapsed-spacer {
+  flex: 1;
+  min-height: 16px;
+}
+
+/* Bottom group — Engine, Credit, Settings, Account at very bottom (Manus) */
+.sidebar-collapsed-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--theme-border);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .sidebar-collapsed-strip .sidebar-collapse-btn {
@@ -109,8 +144,51 @@
   transform: none;
   width: 36px;
   height: 36px;
-  border: 1px solid var(--theme-border, rgba(255,255,255,0.07));
+  border: 1px solid var(--theme-border);
   border-radius: 8px;
+}
+
+.sidebar-collapse-btn--expand {
+  margin-bottom: 4px;
+}
+
+/* Collapsed strip: icon-only buttons (Manus-like); tooltip via title on hover */
+.sidebar-collapsed-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  color: var(--theme-muted);
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.sidebar-collapsed-icon:hover {
+  color: var(--theme-text);
+  background: var(--theme-border);
+}
+
+.sidebar-collapsed-icon.active {
+  color: var(--theme-text);
+  background: var(--theme-border);
+}
+
+.sidebar-collapsed-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--theme-input);
+  color: var(--theme-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 /* ============================================
@@ -533,6 +611,41 @@
    ============================================ */
 
 .sidebar-spacer { flex: 1; min-height: 8px; }
+
+/* ============================================
+   BOTTOM SECTION — Engine, Credit, Settings (Manus-like)
+   ============================================ */
+
+/* Manus-style: clearly separated footer — not “all together” with content above */
+.sidebar-bottom {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--theme-border);
+  padding-bottom: 8px;
+}
+
+.sidebar-collapsed-account-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.sidebar-account-menu--dropup {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 6px;
+  min-width: 200px;
+}
+.sidebar-account-menu-divider {
+  height: 1px;
+  background: var(--theme-border);
+  margin: 4px 0;
+}
 
 /* ============================================
    ENGINE ROOM

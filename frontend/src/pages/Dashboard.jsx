@@ -6,7 +6,7 @@ import {
   Mic, MicOff, Paperclip, Loader2,
   Sparkles, ArrowRight, Upload, X, Github,
   Layout, Smartphone, Code, Zap, Globe,
-  Copy, Pencil, Play, CheckCircle, Clock, AlertCircle,
+  Copy, Check, Pencil, Play, CheckCircle, Clock, AlertCircle,
   BarChart3, ExternalLink
 } from 'lucide-react';
 import Logo from '../components/Logo';
@@ -463,7 +463,15 @@ const Dashboard = () => {
           const headers = token ? { Authorization: `Bearer ${token}` } : {};
           const res = await axios.post(`${API}/voice/transcribe`, formData, { headers, timeout: 30000 });
           if (res.data?.text) setPrompt(res.data.text);
-        } catch (_) {}
+        } catch (err) {
+          setActionFeedback({
+            type: 'mic_error',
+            message: err?.response?.status === 404 || err?.code === 'ERR_NETWORK'
+              ? 'Voice needs the backend. Start the CrucibAI backend (see BACKEND_SETUP.md) and retry.'
+              : (err?.response?.data?.detail || err?.message) || 'Voice transcription failed. Retry or type instead.'
+          });
+          setTimeout(() => setActionFeedback(null), 6000);
+        }
         setIsTranscribing(false);
       };
       recorder.start(1000);
@@ -785,13 +793,18 @@ const Dashboard = () => {
                   </div>
                 )}
                 <div className={`dashboard-chat-actions ${msg.role}`}>
-                  <button type="button" onClick={() => handleCopyMessage(i)} className="dashboard-chat-action" title="Copy">
-                    <Copy size={14} />
-                    {actionFeedback?.type === 'copy' && actionFeedback?.index === i ? ' Copied!' : ' Copy'}
+                  <button
+                    type="button"
+                    onClick={() => handleCopyMessage(i)}
+                    className="dashboard-chat-action"
+                    title={actionFeedback?.type === 'copy' && actionFeedback?.index === i ? 'Copied!' : 'Copy'}
+                    aria-label={actionFeedback?.type === 'copy' && actionFeedback?.index === i ? 'Copied!' : 'Copy'}
+                  >
+                    {actionFeedback?.type === 'copy' && actionFeedback?.index === i ? <Check size={14} /> : <Copy size={14} />}
                   </button>
                   {msg.role === 'user' && (
-                    <button type="button" onClick={() => handleEditMessage(msg.content)} className="dashboard-chat-action" title="Edit">
-                      <Pencil size={14} /> Edit
+                    <button type="button" onClick={() => handleEditMessage(msg.content)} className="dashboard-chat-action" title="Edit" aria-label="Edit">
+                      <Pencil size={14} />
                     </button>
                   )}
                 </div>

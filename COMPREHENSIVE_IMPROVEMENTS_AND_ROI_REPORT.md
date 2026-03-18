@@ -62,7 +62,7 @@ CrucibAI has been updated end-to-end to align with a **Final Model**: credit-bas
 | **LLM names on landing/pricing** | Possible Haiku/Cerebras mentions | **Removed**: “Fast builds”, “Priority speed”, “Standard speed”; no Haiku/Cerebras in UI | Pricing.jsx, CREDIT_PLANS speed labels, Auth benefits |
 | **Capability bullets** | Generic “All features” | **Plan-specific**: landing pages & apps, plan-first build, export, 20 agents; Pro/Agency: dashboards, priority, team | PLAN_FEATURES in Pricing.jsx |
 | **Auth benefits** | “Multi-model AI (GPT-4o, Claude, Gemini)”, “50,000 free tokens” | **“Plan-first build with 20 AI agents”**, **“25 free credits to start”** | AuthPage.jsx |
-| **Landing FAQ** | “Token bundles (Starter, Pro, Professional…)” | **“Paid plans are monthly (Starter, Builder, Pro, Agency); add-ons one-time, no limit; credits roll over”** | LandingPage.jsx |
+| **Landing FAQ** | “Token bundles (Starter, Pro, Professional…)” | **“Paid plans are monthly (Starter, Builder, Pro, Agency); add-ons one-time, no limit; plans monthly”** | LandingPage.jsx |
 
 ### 2.5 Two-LLM Stack (Plan)
 
@@ -202,7 +202,7 @@ Prepay control is unchanged: we only call the LLM when balance ≥ 5 credits and
    - **Location**: Build/plan and project-creation paths; backend only.
 
 2. **Stripe subscriptions for monthly plans**  
-   - Replace one-time `mode="payment"` with **subscription** products (Starter, Builder, Pro, Agency) so users are charged every month and receive a fresh credit allowance (or rollover logic).  
+   - Replace one-time `mode="payment"` with **subscription** products (Starter, Builder, Pro, Agency) so users are charged every month and receive a fresh credit allowance (no rollover).  
    - Webhook: `invoice.paid` or `customer.subscription.updated` → grant that month’s credits.  
    - **Location**: `server.py` Stripe create-checkout (subscription mode), webhook, and optional “credits this month” logic.
 
