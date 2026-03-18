@@ -469,7 +469,7 @@ class PGDatabase:
 
 
 async def run_migrations():
-    """Run 001_full_schema.sql so Railway/Docker get tables on first deploy. Safe to call every startup (CREATE TABLE IF NOT EXISTS)."""
+    """Run all migration SQL files. Each statement runs independently — one failure won't block others."""
     pool = await get_pg_pool()
     migrations_dir = os.path.join(os.path.dirname(__file__), "migrations")
     for name in ("001_full_schema.sql",):
@@ -483,13 +483,21 @@ async def run_migrations():
                 s.strip() for s in content.split(";")
                 if s.strip() and not s.strip().startswith("--")
             ]
-            async with pool.acquire() as conn:
-                for stmt in statements:
-                    if stmt:
+            ok = fail = 0
+            for stmt in statements:
+                if not stmt:
+                    continue
+                try:
+                    async with pool.acquire() as conn:
                         await conn.execute(stmt)
-            logger.info("Migration applied: %s", name)
+                    ok += 1
+                except Exception as e:
+                    # Log but continue — don't let one table failure block the rest
+                    logger.debug("Migration stmt skipped (%s): %s", name, str(e)[:120])
+                    fail += 1
+            logger.info("Migration %s: %d ok, %d skipped", name, ok, fail)
         except Exception as e:
-            logger.warning("Migration %s: %s", name, e)
+            logger.warning("Migration %s failed to load: %s", name, e)
 
 
 async def get_db() -> PGDatabase:

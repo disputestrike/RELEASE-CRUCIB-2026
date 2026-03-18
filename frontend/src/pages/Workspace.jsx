@@ -63,6 +63,7 @@ import {
   Rocket,
   RotateCcw,
   Share2,
+  Folder,
 } from 'lucide-react';
 import { useAuth, API } from '../App';
 import { useLayoutStore } from '../stores/useLayoutStore';
