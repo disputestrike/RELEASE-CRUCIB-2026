@@ -1,201 +1,372 @@
 """
 CrucibAI Iterative Builder
-==========================
-Multi-turn file generation pipeline.
-Each step is one focused API call under 8192 tokens.
-Produces 15-30 complete files for any build type.
+===========================
+Generates the FULL file structure like Manus.
+Each pass is one focused AI call under 8192 tokens.
+Total: 25-35 files across 5-6 passes.
 """
 import asyncio
 import re
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Callable
 
 logger = logging.getLogger(__name__)
 
-# ── File structure per build type ─────────────────────────────────────────────
+# ── Full file structure per build type ────────────────────────────────────────
+
 BUILD_STRUCTURES = {
     "fullstack": {
         "passes": [
             {
-                "name": "scaffold",
-                "instruction": "Generate ONLY these 3 files — complete, no placeholders:\n1. /App.js (MemoryRouter, all routes, import Navbar+Footer)\n2. /styles.css (global styles, CSS variables, fonts)\n3. /components/Navbar.js (full responsive nav, logo, links, mobile menu)",
+                "name": "config",
+                "desc": "Project config & entry files",
+                "files": [
+                    "/package.json       — dependencies: react, react-dom, react-router-dom, lucide-react, framer-motion, recharts, clsx",
+                    "/index.html         — Vite HTML entry, <div id='root'>, loads Tailwind CDN",
+                    "/src/main.jsx       — ReactDOM.createRoot, renders <App/>",
+                    "/src/index.css      — CSS variables, global resets, fonts",
+                    "/src/const.js       — all hardcoded data arrays (products, team, pricing, testimonials, nav links)",
+                ],
             },
             {
-                "name": "components",
-                "instruction": "Generate ONLY these component files — complete, no placeholders:\n1. /components/Footer.js (links, socials, copyright)\n2. /components/Hero.js (bold hero section, CTA button, gradient bg)\n3. /components/Features.js (3-6 feature cards with icons)\n4. /components/Pricing.js (3 tier cards with CTA buttons)",
+                "name": "app_and_layout",
+                "desc": "App router + layout components",
+                "files": [
+                    "/src/App.jsx                    — MemoryRouter, all Routes, imports all pages",
+                    "/src/components/Navbar.jsx      — full responsive nav, logo, links, mobile hamburger menu",
+                    "/src/components/Footer.jsx      — links, social icons, newsletter, copyright",
+                    "/src/components/Layout.jsx      — wraps Navbar + {children} + Footer",
+                ],
+            },
+            {
+                "name": "ui_components",
+                "desc": "Reusable UI components",
+                "files": [
+                    "/src/components/Hero.jsx        — hero section: headline, subtext, CTA, gradient bg, framer-motion",
+                    "/src/components/Features.jsx    — 6-card features grid with lucide icons",
+                    "/src/components/Pricing.jsx     — 3-tier pricing cards with CTA buttons",
+                    "/src/components/Testimonials.jsx — testimonial carousel with avatars",
+                    "/src/components/CTA.jsx         — call-to-action banner section",
+                    "/src/lib/utils.js               — cn() helper, formatDate, formatCurrency, truncate",
+                ],
             },
             {
                 "name": "pages",
-                "instruction": "Generate ONLY these page files — complete, no placeholders:\n1. /pages/Home.js (uses Hero + Features components, full content)\n2. /pages/About.js (team, mission, story — real hardcoded content)\n3. /pages/Contact.js (contact form with validation, map placeholder)",
+                "desc": "All page components",
+                "files": [
+                    "/src/pages/Home.jsx     — imports Hero+Features+Testimonials+CTA, full home page",
+                    "/src/pages/About.jsx    — team grid, mission, story, values — real content",
+                    "/src/pages/Services.jsx — services cards with descriptions, icons, pricing",
+                    "/src/pages/Contact.jsx  — contact form (controlled), map placeholder, contact info",
+                ],
             },
             {
                 "name": "extra_pages",
-                "instruction": "Generate ONLY these page files — complete, no placeholders:\n1. /pages/Services.js (services grid with descriptions and icons)\n2. /pages/Pricing.js (uses Pricing component, FAQs section)\n3. /pages/Blog.js (article cards grid with categories)",
-            },
-        ]
-    },
-    "landing": {
-        "passes": [
-            {
-                "name": "scaffold",
-                "instruction": "Generate ONLY these files — complete, one-page landing:\n1. /App.js (single page, no routing needed, import all sections)\n2. /styles.css (global styles, animations)\n3. /components/Nav.js (sticky header, logo, CTA button)",
-            },
-            {
-                "name": "sections",
-                "instruction": "Generate ONLY these section files — complete:\n1. /components/Hero.js (hero with headline, subtext, CTA, mockup)\n2. /components/Features.js (feature grid with icons)\n3. /components/Social.js (testimonials carousel)\n4. /components/Pricing.js (3 tier cards)\n5. /components/Footer.js (links, newsletter signup)",
+                "desc": "Additional pages",
+                "files": [
+                    "/src/pages/Pricing.jsx  — full pricing page, uses Pricing component, FAQs accordion",
+                    "/src/pages/Blog.jsx     — blog listing with category filter, article cards",
+                    "/src/contexts/AppContext.jsx — React context: theme, user, cart or app state",
+                    "/src/hooks/useLocalStorage.js — custom hook for localStorage",
+                ],
             },
         ]
     },
     "saas": {
         "passes": [
             {
-                "name": "scaffold",
-                "instruction": "Generate ONLY these files:\n1. /App.js (MemoryRouter, public routes + /dashboard)\n2. /styles.css (SaaS design system, dark sidebar)\n3. /components/Sidebar.js (full sidebar nav with icons)\n4. /components/Header.js (top bar, user menu, notifications)",
+                "name": "config",
+                "desc": "Config + entry",
+                "files": [
+                    "/package.json        — react, react-router-dom, recharts, lucide-react, framer-motion",
+                    "/index.html          — Vite entry with Tailwind CDN",
+                    "/src/main.jsx        — ReactDOM.createRoot",
+                    "/src/index.css       — dark SaaS theme CSS vars",
+                    "/src/const.js        — mock data: metrics, users, plans, activity feed",
+                ],
+            },
+            {
+                "name": "layout",
+                "desc": "App shell",
+                "files": [
+                    "/src/App.jsx                    — MemoryRouter: / (Home), /login, /dashboard, /settings",
+                    "/src/components/Sidebar.jsx     — collapsible sidebar, nav items with icons, user avatar",
+                    "/src/components/Header.jsx      — top bar, search, notifications bell, user menu",
+                    "/src/components/Layout.jsx      — Sidebar + Header + {children} layout shell",
+                ],
             },
             {
                 "name": "dashboard",
-                "instruction": "Generate ONLY these files:\n1. /pages/Dashboard.js (metrics cards, charts with recharts, activity feed)\n2. /pages/Settings.js (profile form, billing section, API keys)\n3. /components/MetricCard.js (stat card with trend indicator)",
-            },
-            {
-                "name": "public_pages",
-                "instruction": "Generate ONLY these files:\n1. /pages/Home.js (marketing landing with hero, features, pricing)\n2. /pages/Login.js (login form with localStorage auth)\n3. /pages/Signup.js (signup form with validation)",
-            },
-        ]
-    },
-    "ai_agent": {
-        "passes": [
-            {
-                "name": "scaffold",
-                "instruction": "Generate ONLY these files:\n1. /App.js (chat interface layout)\n2. /styles.css (dark chat UI styles)\n3. /components/ChatInterface.js (message list, input, send button)\n4. /components/AgentCard.js (agent info card with status)",
+                "desc": "Dashboard components",
+                "files": [
+                    "/src/components/MetricCard.jsx  — stat card with trend up/down indicator",
+                    "/src/components/Chart.jsx       — recharts line/bar chart with real data",
+                    "/src/components/DataTable.jsx   — sortable table with pagination",
+                    "/src/pages/Dashboard.jsx        — metrics row, chart, activity feed, quick actions",
+                ],
             },
             {
                 "name": "pages",
-                "instruction": "Generate ONLY these files:\n1. /pages/Home.js (agent selection, available agents grid)\n2. /pages/Chat.js (full chat with agent, message history)\n3. /pages/AgentConfig.js (configure agent parameters)",
+                "desc": "All SaaS pages",
+                "files": [
+                    "/src/pages/Home.jsx     — marketing landing: hero, features, pricing, CTA",
+                    "/src/pages/Login.jsx    — login form, localStorage auth simulation",
+                    "/src/pages/Signup.jsx   — signup form with validation",
+                    "/src/pages/Settings.jsx — profile, billing, API keys, notifications tabs",
+                    "/src/contexts/AuthContext.jsx — auth state, login/logout, useAuth hook",
+                ],
+            },
+        ]
+    },
+    "landing": {
+        "passes": [
+            {
+                "name": "config",
+                "desc": "Config + entry",
+                "files": [
+                    "/package.json    — react, react-dom, framer-motion, lucide-react",
+                    "/index.html      — Vite entry with Tailwind CDN",
+                    "/src/main.jsx    — ReactDOM.createRoot",
+                    "/src/index.css   — global styles, animations",
+                    "/src/const.js    — all content: headlines, features, testimonials, pricing, team",
+                ],
+            },
+            {
+                "name": "sections",
+                "desc": "All landing sections",
+                "files": [
+                    "/src/App.jsx                    — single page, imports all sections in order",
+                    "/src/components/Nav.jsx         — sticky header, logo, CTA button, mobile menu",
+                    "/src/components/Hero.jsx        — bold hero: headline, subheadline, CTA, mockup image",
+                    "/src/components/Features.jsx    — features grid with icons and descriptions",
+                    "/src/components/HowItWorks.jsx  — numbered steps section",
+                    "/src/components/Testimonials.jsx — social proof with avatars and quotes",
+                    "/src/components/Pricing.jsx     — 3-tier pricing with toggle annual/monthly",
+                    "/src/components/FAQ.jsx         — accordion FAQ section",
+                    "/src/components/Footer.jsx      — links, socials, newsletter form",
+                ],
             },
         ]
     },
     "mobile": {
         "passes": [
             {
-                "name": "scaffold",
-                "instruction": "Generate ONLY these React Native / Expo files:\n1. /App.js (NavigationContainer, Stack navigator, all screens)\n2. /styles/theme.js (colors, typography, spacing constants)\n3. /components/Header.js (custom header with back button)\n4. /components/Card.js (reusable card component)",
+                "name": "config",
+                "desc": "Expo config + entry",
+                "files": [
+                    "/package.json        — expo, react-native, @react-navigation/native, lucide-react-native",
+                    "/app.json            — Expo app config: name, slug, version, icon",
+                    "/App.jsx             — NavigationContainer, Stack + Tab navigators",
+                    "/src/theme.js        — colors, typography, spacing, shadow constants",
+                    "/src/data.js         — all mock data arrays",
+                ],
+            },
+            {
+                "name": "components",
+                "desc": "Reusable components",
+                "files": [
+                    "/src/components/Card.jsx        — reusable card with shadow",
+                    "/src/components/Button.jsx      — primary/secondary/outline variants",
+                    "/src/components/Header.jsx      — screen header with back button",
+                    "/src/components/BottomTabs.jsx  — bottom tab bar navigator",
+                ],
             },
             {
                 "name": "screens",
-                "instruction": "Generate ONLY these screen files:\n1. /screens/HomeScreen.js (main screen with content)\n2. /screens/DetailScreen.js (detail view)\n3. /screens/ProfileScreen.js (user profile)\n4. /components/BottomTab.js (tab navigation)",
+                "desc": "All screens",
+                "files": [
+                    "/src/screens/HomeScreen.jsx     — main screen with content list",
+                    "/src/screens/DetailScreen.jsx   — detail view with full content",
+                    "/src/screens/ProfileScreen.jsx  — user profile with settings",
+                    "/src/screens/SearchScreen.jsx   — search with filter chips",
+                    "/src/screens/OnboardingScreen.jsx — 3-slide onboarding flow",
+                ],
+            },
+        ]
+    },
+    "ai_agent": {
+        "passes": [
+            {
+                "name": "config",
+                "desc": "Config + entry",
+                "files": [
+                    "/package.json    — react, react-dom, lucide-react, framer-motion",
+                    "/index.html      — Vite entry",
+                    "/src/main.jsx    — entry point",
+                    "/src/index.css   — dark chat UI styles",
+                    "/src/const.js    — agent configs, example prompts, conversation starters",
+                ],
+            },
+            {
+                "name": "app_and_components",
+                "desc": "Agent UI",
+                "files": [
+                    "/src/App.jsx                        — MemoryRouter: /, /chat/:agentId, /config",
+                    "/src/components/ChatMessage.jsx     — message bubble: user/agent, timestamp, copy button",
+                    "/src/components/ChatInput.jsx       — input with send, voice, attach buttons",
+                    "/src/components/AgentCard.jsx       — agent selection card with avatar, description",
+                    "/src/components/Sidebar.jsx         — conversation history list",
+                    "/src/hooks/useChat.js               — chat state, message history, simulated responses",
+                    "/src/contexts/ChatContext.jsx       — global chat state provider",
+                ],
+            },
+            {
+                "name": "pages",
+                "desc": "Agent pages",
+                "files": [
+                    "/src/pages/Home.jsx       — agent gallery grid with search and filter",
+                    "/src/pages/Chat.jsx       — full chat interface using ChatMessage + ChatInput",
+                    "/src/pages/AgentConfig.jsx — configure agent: name, model, system prompt, tools",
+                ],
             },
         ]
     },
     "game": {
         "passes": [
             {
-                "name": "scaffold",
-                "instruction": "Generate ONLY these files:\n1. /App.js (game container, game loop)\n2. /styles.css (game canvas styles, dark theme)\n3. /components/GameCanvas.js (canvas rendering logic)\n4. /components/HUD.js (score, lives, level display)",
+                "name": "config",
+                "desc": "Config + entry",
+                "files": [
+                    "/package.json    — react, react-dom, framer-motion",
+                    "/index.html      — Vite entry",
+                    "/src/main.jsx    — entry point",
+                    "/src/index.css   — dark game styles, canvas styles",
+                    "/src/const.js    — game config: levels, speeds, colors, scoring",
+                ],
             },
             {
-                "name": "game_logic",
-                "instruction": "Generate ONLY these files:\n1. /game/GameEngine.js (game loop, collision detection)\n2. /game/Player.js (player class, movement, actions)\n3. /game/Entities.js (enemies, items, obstacles)\n4. /pages/Menu.js (main menu, high scores, start button)",
+                "name": "game_engine",
+                "desc": "Game logic",
+                "files": [
+                    "/src/App.jsx                  — game state machine: menu → playing → paused → gameover",
+                    "/src/game/useGameLoop.js      — requestAnimationFrame game loop hook",
+                    "/src/game/collision.js        — collision detection utilities",
+                    "/src/game/entities.js         — player, enemies, items, bullets classes",
+                    "/src/components/GameCanvas.jsx — canvas rendering with useRef",
+                    "/src/components/HUD.jsx        — score, lives, level, power-ups display",
+                    "/src/pages/Menu.jsx            — main menu with high scores table",
+                    "/src/pages/Game.jsx            — game screen, uses GameCanvas + HUD",
+                ],
             },
         ]
     },
 }
+
 
 def get_build_structure(build_kind: str) -> dict:
     return BUILD_STRUCTURES.get(build_kind, BUILD_STRUCTURES["fullstack"])
 
 
 def parse_files_from_response(text: str) -> Dict[str, str]:
-    """Extract all ```lang:/path\ncode``` blocks from AI response."""
-    pattern = r'```(?:jsx?|tsx?|css|html|ts|js)?:(/[\w./\-]+)\n([\s\S]*?)```'
+    """Extract all fenced code blocks with file paths."""
+    pattern = r'```(?:jsx?|tsx?|css|html|json|ts|js)?:(/[\w./\-]+)\n([\s\S]*?)```'
     files = {}
     for match in re.finditer(pattern, text):
-        path = match.group(1)
+        path = match.group(1).strip()
         code = match.group(2).strip()
-        if code:
+        if code and len(code) > 20:  # skip empty/tiny files
             files[path] = code
-    # Fallback: plain ```jsx block → /App.js
     if not files:
+        # Fallback: plain code block → /src/App.jsx
         plain = re.findall(r'```(?:jsx?|tsx?)\n([\s\S]*?)```', text)
         if plain:
-            files['/App.js'] = plain[0].strip()
+            files['/src/App.jsx'] = plain[0].strip()
     return files
+
+
+def count_total_files(build_kind: str) -> int:
+    structure = get_build_structure(build_kind)
+    return sum(len(p["files"]) for p in structure["passes"])
 
 
 async def run_iterative_build(
     prompt: str,
     build_kind: str,
-    call_llm,  # async callable: (message, system) -> str
-    on_progress=None,  # optional async callback(step_name, files_so_far)
+    call_llm: Callable,
+    on_progress: Optional[Callable] = None,
 ) -> Dict[str, str]:
     """
-    Run multi-turn iterative build.
-    Returns dict of {filepath: code} for all generated files.
+    Multi-turn build: each pass generates one section of files.
+    Returns {filepath: code} for all files.
     """
     structure = get_build_structure(build_kind)
     passes = structure["passes"]
     all_files: Dict[str, str] = {}
-    
-    system = f"""You are CrucibAI, expert React developer building for Sandpack browser preview.
-RULES:
-- MemoryRouter ONLY (not BrowserRouter — breaks in iframes)
-- Tailwind CSS classes only (loaded via CDN)
-- lucide-react icons, framer-motion animations
-- Real hardcoded data — NO Lorem ipsum, NO placeholder text
-- NO fetch(), NO API calls, NO backend code
-- COMPLETE code — no TODO, no truncation, no "// rest of code here"
-- Every file must be fully implemented and ready to render
 
-OUTPUT FORMAT — each file in its own fenced block:
-```jsx:/path/to/File.js
-// complete code here
+    SYSTEM = f"""You are CrucibAI — expert React/frontend developer.
+You are building a COMPLETE, PRODUCTION-QUALITY application for Sandpack browser preview.
+
+ABSOLUTE RULES:
+- Use MemoryRouter (NEVER BrowserRouter — breaks in iframe)
+- Tailwind CSS only (loaded via CDN in index.html — no config needed)
+- lucide-react for icons, framer-motion for animations, recharts for charts
+- Real hardcoded content — NO Lorem ipsum, NO "placeholder text", NO "// add content here"
+- NO fetch(), NO axios, NO API calls, NO require(), NO Node.js imports
+- EVERY file must be 100% complete — no truncation, no "// rest here", no TODOs
+- Import paths must match exactly: './components/Navbar' not '../components/Navbar'
+
+OUTPUT FORMAT — one fenced block per file, path in the opening fence:
+```jsx:/src/components/Navbar.jsx
+// complete code
 ```
-```css:/styles.css
-/* complete css here */
+```css:/src/index.css
+/* complete styles */
+```
+```json:/package.json
+{{ "name": "app" }}
 ```"""
 
     for i, pass_info in enumerate(passes):
         step_name = pass_info["name"]
-        instruction = pass_info["instruction"]
-        
+        file_list = "\n".join(f"  {f}" for f in pass_info["files"])
+
         # Build context from already-generated files
-        context = ""
+        context_parts = []
         if all_files:
-            file_list = "\n".join(f"  - {p}" for p in sorted(all_files.keys()))
-            # Include key files as context (App.js shows structure)
-            key_files = ["/App.js", "/styles.css"]
-            context_code = ""
-            for kf in key_files:
-                if kf in all_files:
-                    context_code += f"\n\n// Already generated: {kf}\n{all_files[kf][:500]}...\n"
-            context = f"\n\nFILES ALREADY GENERATED:\n{file_list}{context_code}\n\nGenerate ONLY the new files listed below. Import from already-generated files as needed."
+            generated = sorted(all_files.keys())
+            context_parts.append(f"ALREADY GENERATED ({len(generated)} files):")
+            context_parts.extend(f"  {p}" for p in generated)
+            # Include App.jsx structure for reference if available
+            app_key = next((k for k in ['/src/App.jsx','/src/App.js','/App.jsx','/App.js'] if k in all_files), None)
+            if app_key:
+                snippet = all_files[app_key][:600]
+                context_parts.append(f"\nApp structure (for consistent imports):\n```\n{snippet}\n...\n```")
+        context = "\n".join(context_parts)
 
         message = f"""Project: {prompt}
 Build type: {build_kind}
-Step {i+1}/{len(passes)}: {step_name.upper()}
+Pass {i+1} of {len(passes)}: {step_name.upper()} — {pass_info['desc']}
+
 {context}
 
-{instruction}
+Generate THESE files now — every file COMPLETE with real content:
+{file_list}
 
-Generate each file COMPLETELY — no truncation, no placeholders:"""
+Rules for this pass:
+- Every file fully implemented, no placeholders
+- Use data from /src/const.js for all content (import it)
+- Import components using exact paths shown above
+- Real content specific to: {prompt}
+
+Output each file in its fenced block now:"""
 
         try:
-            logger.info(f"Iterative build step {i+1}/{len(passes)}: {step_name}")
-            response = await call_llm(message, system)
+            logger.info(f"Iterative build pass {i+1}/{len(passes)}: {step_name}")
+            response = await call_llm(message, SYSTEM)
             step_files = parse_files_from_response(response)
-            
+
             if step_files:
                 all_files.update(step_files)
-                logger.info(f"Step {step_name}: generated {len(step_files)} files → total {len(all_files)}")
+                logger.info(f"  Pass {step_name}: {len(step_files)} files → total {len(all_files)}")
             else:
-                logger.warning(f"Step {step_name}: no files parsed from response")
-            
+                logger.warning(f"  Pass {step_name}: no files parsed")
+
             if on_progress:
                 await on_progress(step_name, dict(all_files))
-                
+
         except Exception as e:
-            logger.error(f"Iterative build step {step_name} failed: {e}")
-            # Continue with next step even if one fails
+            logger.error(f"Pass {step_name} failed: {e}")
             continue
-    
-    logger.info(f"Iterative build complete: {len(all_files)} total files")
+
+    logger.info(f"Build complete: {len(all_files)} total files")
     return all_files
