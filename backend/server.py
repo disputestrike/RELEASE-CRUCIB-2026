@@ -1002,7 +1002,7 @@ async def _call_anthropic_direct(prompt: str, system: str, model: str = "claude-
     client = anthropic.AsyncAnthropic(api_key=key)
     msg = await client.messages.create(
         model=model,
-        max_tokens=4096,
+        max_tokens=8192,
         system=system,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -1021,7 +1021,7 @@ async def _call_cerebras_direct(prompt: str, system: str, model: str = "claude-3
     client = anthropic.AsyncAnthropic(api_key=key, base_url="https://api.cerebras.ai/v1")
     msg = await client.messages.create(
         model=model,
-        max_tokens=4096,
+        max_tokens=8192,
         system=system,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -1096,7 +1096,7 @@ async def _call_llama_direct(
                 json={
                     "model": model,
                     "prompt": f"{system_message}\n\nUser: {message}\n\nAssistant:",
-                    "max_tokens": 4096,
+                    "max_tokens": 8192,
                     "temperature": 0.7,
                     "top_p": 0.9,
                 },
@@ -1136,7 +1136,7 @@ async def _call_cerebras_direct(
                         {"role": "system", "content": system_message},
                         {"role": "user", "content": message},
                     ],
-                    "max_tokens": 4096,
+                    "max_tokens": 8192,
                     "temperature": 0.7,
                 },
                 timeout=120,

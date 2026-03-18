@@ -1332,54 +1332,60 @@ RULES:
 - Add comments explaining the algorithm
 - Handle edge cases`;
       } else {
-        messageContent = `You are CrucibAI. Build a COMPLETE, BEAUTIFUL, MULTI-PAGE React application for: "${prompt}"
+        messageContent = `You are CrucibAI. Build a COMPLETE, PRODUCTION-QUALITY, MULTI-FILE React application for: "${prompt}"
 
-⚠️ CRITICAL RULES — THIS IS A BROWSER-ONLY SANDPACK PREVIEW:
+OUTPUT ALL FILES IN THIS EXACT ORDER — do not skip any:
 
-❌ ABSOLUTELY FORBIDDEN (will break the preview):
-   - NO Node.js, Express, Koa, Fastify or any backend server
-   - NO MongoDB, Mongoose, PostgreSQL, MySQL or any database
-   - NO require('...') CommonJS imports — use ES module imports only
-   - NO server.js, api.js, app.listen(), mongoose.connect()
-   - NO Dockerfile, .env, .yml, CI/CD, deployment scripts
-   - NO next.js, remix, or any SSR framework
-   - NO BrowserRouter — use MemoryRouter (BrowserRouter breaks in iframes)
-
-✅ REQUIRED:
-1. ROUTING: Use react-router-dom with MemoryRouter (NOT BrowserRouter):
-   import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
-   <Router><Routes><Route path="/" element={<Home />} /></Routes></Router>
-   Build 3-5 meaningful pages. Example "flower website": Home, Shop, Gallery, About, Contact.
-
-2. COMPONENTS: Always create:
-   - /components/Navbar.js — navigation links using <Link to="...">
-   - /components/Footer.js — footer section
-
-3. PAGES: One file per page under /pages/:
-   /pages/Home.js, /pages/About.js, /pages/[relevant].js, etc.
-
-4. STYLING — all Tailwind classes (loaded via CDN, no config needed):
-   - Bold hero sections, gradient backgrounds, card grids
-   - lucide-react icons, framer-motion entrance animations
-   - Realistic hardcoded data (no "Lorem ipsum", real product names, prices, etc.)
-   - Use inline styles for dynamic values, Tailwind for everything else
-
-5. DATA: Use hardcoded JavaScript arrays/objects — no API calls, no fetch()
-
-6. OUTPUT FORMAT — every file on its own fenced block:
 \`\`\`jsx:/App.js
 import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
-// ... rest of App
-\`\`\`
-\`\`\`jsx:/components/Navbar.js
-// ...
-\`\`\`
-\`\`\`jsx:/pages/Home.js
-// ...
+import Navbar from './components/Navbar';
+import Footer from './components/Footer';
+import Home from './pages/Home';
+// import all pages...
+export default function App() {
+  return (
+    <Router>
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        {/* all routes */}
+      </Routes>
+      <Footer />
+    </Router>
+  );
+}
 \`\`\`
 
-Allowed imports ONLY: react, react-router-dom, lucide-react, framer-motion, recharts, date-fns, clsx
-Build it NOW — no placeholders, no TODOs, no backend code:`;
+\`\`\`css:/styles.css
+/* Global styles, fonts, CSS variables */
+\`\`\`
+
+\`\`\`jsx:/components/Navbar.js
+/* Full responsive navigation with logo, links, mobile menu */
+\`\`\`
+
+\`\`\`jsx:/components/Footer.js
+/* Full footer with links, socials, copyright */
+\`\`\`
+
+\`\`\`jsx:/pages/Home.js
+/* Hero section, features grid, CTA — full content, NO placeholders */
+\`\`\`
+
+Then add ALL other relevant pages (About, Services, Pricing, Contact, etc.) — one \`\`\`jsx:/pages/PageName.js\`\`\` block each.
+
+RULES:
+- MemoryRouter only (NOT BrowserRouter — breaks in preview iframe)
+- Tailwind CSS classes for ALL styling (loaded via CDN)
+- lucide-react for icons, framer-motion for animations
+- Real hardcoded data — NO "Lorem ipsum", NO placeholder text
+- NO backend code, NO fetch(), NO require(), NO Node.js
+- COMPLETE code in every file — no "// TODO", no "// add here", no truncation
+- Every component fully implemented with real content
+
+Allowed imports: react, react-router-dom, lucide-react, framer-motion, recharts, date-fns, clsx
+
+BUILD IT NOW — output every file completely:`;
       }
 
       if (imagesToSend.length > 0) {
