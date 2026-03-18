@@ -604,7 +604,8 @@ root.render(<App />);`,
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [versions, setVersions] = useState([]);
   const [currentVersion, setCurrentVersion] = useState(null);
-  const [filesReadyKey, setFilesReadyKey] = useState('default'); // triggers Sandpack remount only when files are truly committed
+  const [filesReadyKey, setFilesReadyKey] = useState('default');
+  const [expandedFolders, setExpandedFolders] = useState({}); // tracks open/closed folders in Explorer // triggers Sandpack remount only when files are truly committed
   
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -1402,6 +1403,74 @@ BUILD IT NOW — output every file completely:`;
       const wantsDB = /database|db|data|crud|list|todo|tasks?|store/i.test(prompt);
       if (wantsDB) {
         messageContent += `\n\n- Include localStorage-based data persistence with full CRUD operations.`;
+      }
+
+      // Clear stale default files before new build — Explorer should show ONLY built files
+      setFiles({});
+      setExpandedFolders({});
+
+      // ── ITERATIVE BUILD (multi-turn, 15-30 files) ──────────────────
+      // Always use iterative for web/saas/mobile builds — single call truncates at 8192 tokens
+      const iterativeBuildKinds = ['fullstack','saas','landing','ai_agent','game','mobile'];
+      const shouldUseIterative = !isNativeCode && !useImageToCode && !!token;
+
+      if (shouldUseIterative) {
+        addLog('Starting iterative multi-file build...', 'info', 'planner');
+        try {
+          const iterRes = await fetch(`${API}/ai/build/iterative`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...headers },
+            body: JSON.stringify({ message: messageContent, session_id: sessionId }),
+          });
+          if (!iterRes.ok) throw new Error(`Iterative build failed: ${iterRes.status}`);
+          const reader2 = iterRes.body.getReader();
+          const decoder2 = new TextDecoder();
+          let iterDone = false;
+          while (!iterDone) {
+            const { done, value } = await reader2.read();
+            if (done) break;
+            const lines = decoder2.decode(value, { stream: true }).split('\n').filter(Boolean);
+            for (const line of lines) {
+              try {
+                const ev = JSON.parse(line);
+                if (ev.type === 'start') {
+                  addLog(`Building ${ev.build_kind} app in ${ev.total_steps} passes...`, 'info', 'planner');
+                  setBuildProgress(10);
+                }
+                if (ev.type === 'step_complete') {
+                  const stepFiles = ev.files || {};
+                  const count = Object.keys(stepFiles).length;
+                  addLog(`✓ ${ev.step}: ${count} files generated`, 'success', ev.step);
+                  setFiles(prev => ({ ...prev, ...Object.fromEntries(Object.entries(stepFiles).map(([k, v]) => [k, { code: v }])) }));
+                  setBuildProgress(prev => Math.min(prev + 20, 90));
+                }
+                if (ev.type === 'done') {
+                  iterDone = true;
+                  const allFiles = ev.files || {};
+                  const fileEntries = Object.fromEntries(Object.entries(allFiles).map(([k, v]) => [k, { code: v }]));
+                  const totalCount = Object.keys(fileEntries).length;
+                  addLog(`Build complete: ${totalCount} files`, 'success', 'deploy');
+                  setBuildProgress(100);
+                  if (refreshUser) refreshUser();
+                  const vId = `v_${Date.now()}`;
+                  setFiles(prev => ({ ...prev, ...fileEntries }));
+                  setVersions(prev => [{ id: vId, prompt, files: { ...files, ...fileEntries }, time: new Date().toLocaleTimeString() }, ...prev]);
+                  setMessages(m => m.map((msg, i) => i === m.length - 1 ? { role: 'assistant', content: `Done! Built ${totalCount} files.`, hasCode: true, planSuggestions } : msg));
+                  setTimeout(() => { setCurrentVersion(vId); setFilesReadyKey(`fk_${vId}`); setActivePanel('preview'); }, 500);
+                  setIsBuilding(false);
+                  setAgentsActivity([]);
+                }
+                if (ev.type === 'error') {
+                  throw new Error(ev.error);
+                }
+              } catch (_) {}
+            }
+          }
+        } catch (iterErr) {
+          addLog(`Iterative build failed: ${iterErr.message} — falling back to single call`, 'warn', 'deploy');
+          // Fall through to single-call path below
+        }
+        if (!isBuilding) return; // iterative build finished
       }
 
       if (useStreaming) {
@@ -2326,29 +2395,68 @@ BUILD IT NOW — output every file completely:`;
                 {messages.find(m => m.role === 'user')?.content?.toString().slice(0, 30) || 'project'}
               </span>
             </div>
-            {/* File list */}
+            {/* File list — dynamic tree, grouped by folder */}
             <div className="flex-1 overflow-y-auto py-1">
-              {Object.keys(files).sort().map(fp => {
-                const name = fp.replace(/^\//, '');
-                const isActive = activeFile === fp;
-                const ext = name.split('.').pop();
-                const iconColor = ext === 'jsx' || ext === 'js' ? '#eab308' : ext === 'css' ? '#ec4899' : ext === 'html' ? 'var(--theme-accent)' : ext === 'json' ? '#a78bfa' : 'var(--theme-muted)';
-                return (
-                  <div key={fp} className="group flex items-center">
-                    <button
-                      onClick={() => { setActiveFile(fp); setActivePanel('code'); }}
-                      className="flex-1 flex items-center gap-2 px-3 py-1.5 text-left text-xs transition"
-                      style={{ background: isActive ? 'rgba(255,255,255,0.09)' : 'transparent', color: isActive ? 'var(--theme-text, #e4e4e7)' : 'var(--theme-muted, #a1a1aa)' }}
-                    >
-                      <FileCode className="w-3 h-3 shrink-0" style={{ color: iconColor }} />
-                      <span className="truncate">{name}</span>
-                    </button>
-                    <button onClick={() => deleteFileFromProject(fp)} className="opacity-0 group-hover:opacity-100 pr-2 transition" style={{ color: 'var(--theme-muted, #52525b)' }} title="Delete">
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                );
-              })}
+              {(() => {
+                // Build folder tree from file paths
+                const tree = {};
+                const rootFiles = [];
+                Object.keys(files).sort().forEach(fp => {
+                  const clean = fp.replace(/^\//, '');
+                  const parts = clean.split('/');
+                  if (parts.length === 1) {
+                    rootFiles.push(fp);
+                  } else {
+                    const folder = parts[0];
+                    if (!tree[folder]) tree[folder] = [];
+                    tree[folder].push(fp);
+                  }
+                });
+                const getIcon = (name) => {
+                  const ext = name.split('.').pop();
+                  const color = ext === 'jsx' || ext === 'js' || ext === 'tsx' || ext === 'ts' ? '#eab308'
+                    : ext === 'css' ? '#ec4899' : ext === 'html' ? 'var(--theme-accent)'
+                    : ext === 'json' ? '#a78bfa' : ext === 'py' ? '#60a5fa' : 'var(--theme-muted)';
+                  return <FileCode className="w-3 h-3 shrink-0" style={{ color }} />;
+                };
+                const FileRow = ({ fp, indent=0 }) => {
+                  const name = fp.replace(/.*\//, '');
+                  const isActive = activeFile === fp;
+                  return (
+                    <div key={fp} className="group flex items-center">
+                      <button onClick={() => { setActiveFile(fp); setActivePanel('code'); }}
+                        className="flex-1 flex items-center gap-1.5 py-1 text-left text-xs transition hover:bg-white/5"
+                        style={{ paddingLeft: `${12 + indent * 12}px`, background: isActive ? 'rgba(255,255,255,0.09)' : 'transparent', color: isActive ? 'var(--theme-text)' : 'var(--theme-muted)' }}>
+                        {getIcon(name)}
+                        <span className="truncate">{name}</span>
+                      </button>
+                      <button onClick={() => deleteFileFromProject(fp)} className="opacity-0 group-hover:opacity-100 pr-2" style={{ color: 'var(--theme-muted)' }}><X className="w-3 h-3" /></button>
+                    </div>
+                  );
+                };
+                const items = [];
+                // Root files first
+                rootFiles.forEach(fp => items.push(<FileRow key={fp} fp={fp} indent={0} />));
+                // Folders
+                Object.entries(tree).sort().forEach(([folder, folderFiles]) => {
+                  const folderKey = `folder_${folder}`;
+                  const isOpen = expandedFolders[folderKey] !== false;
+                  items.push(
+                    <div key={folderKey}>
+                      <button onClick={() => setExpandedFolders(prev => ({ ...prev, [folderKey]: !isOpen }))}
+                        className="w-full flex items-center gap-1.5 px-3 py-1 text-xs hover:bg-white/5 transition"
+                        style={{ color: 'var(--theme-muted)' }}>
+                        {isOpen ? <ChevronDown className="w-3 h-3 shrink-0" /> : <ChevronRight className="w-3 h-3 shrink-0" />}
+                        <Folder className="w-3 h-3 shrink-0" style={{ color: '#60a5fa' }} />
+                        <span className="font-medium">{folder}</span>
+                        <span className="ml-auto text-[10px] opacity-50">{folderFiles.length}</span>
+                      </button>
+                      {isOpen && folderFiles.sort().map(fp => <FileRow key={fp} fp={fp} indent={1} />)}
+                    </div>
+                  );
+                });
+                return items;
+              })()}
             </div>
             {/* Versions */}
             {versions.length > 0 && (

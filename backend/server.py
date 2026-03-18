@@ -1699,6 +1699,78 @@ async def ai_chat_stream(data: ChatMessage, user: dict = Depends(get_optional_us
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
+
+@api_router.post("/ai/build/iterative")
+async def ai_build_iterative(data: ChatMessage, user: dict = Depends(get_optional_user)):
+    """Multi-turn iterative build: 2-6 focused API calls → 15-30 complete files.
+    Each pass generates one section (scaffold, components, pages) under 8192 tokens.
+    Streams step_complete events so frontend can show files appearing in real time."""
+    if user and not user.get("public_api") and _user_credits(user) < MIN_CREDITS_FOR_LLM:
+        raise HTTPException(status_code=402, detail=f"Insufficient credits.")
+
+    async def generate():
+        try:
+            from iterative_builder import run_iterative_build, get_build_structure
+            user_keys = await get_workspace_api_keys(user)
+            effective = _effective_api_keys(user_keys)
+            session_id = data.session_id or str(uuid.uuid4())
+            prompt = data.message or ""
+            p = prompt.lower()
+            build_kind = (
+                "mobile"   if any(x in p for x in ["mobile","react native","expo","ios app","android"]) else
+                "saas"     if any(x in p for x in ["saas","dashboard","admin panel","subscription"]) else
+                "landing"  if any(x in p for x in ["landing page","one page","marketing page"]) else
+                "ai_agent" if any(x in p for x in ["agent","automation","chatbot"]) else
+                "game"     if any(x in p for x in ["game","2d game","browser game"]) else
+                "fullstack"
+            )
+            structure = get_build_structure(build_kind)
+            total_steps = len(structure["passes"])
+            tokens_used = 0
+            yield json.dumps({"type": "start", "build_kind": build_kind, "total_steps": total_steps}) + "\n"
+
+            async def call_llm(message: str, system: str) -> str:
+                nonlocal tokens_used
+                model_chain = _get_model_chain("auto", message, effective_keys=effective)
+                resp, _ = await _call_llm_with_fallback(
+                    message=message, system_message=system, session_id=session_id,
+                    model_chain=model_chain, api_keys=effective,
+                    user_id=user["id"] if user else None,
+                    user_tier=user.get("plan","free") if user else "free",
+                    speed_selector=_speed_from_plan(user.get("plan","free") if user else "free"),
+                    available_credits=_user_credits(user) if user else 0,
+                )
+                tokens_used += len(message.split()) + len(resp.split())
+                return resp
+
+            step_events = []
+            async def on_step(step_name, files_so_far):
+                step_events.append((step_name, dict(files_so_far)))
+
+            final_files = await run_iterative_build(
+                prompt=prompt, build_kind=build_kind,
+                call_llm=call_llm, on_progress=on_step,
+            )
+            for step_name, files in step_events:
+                yield json.dumps({"type": "step_complete", "step": step_name, "files": files}) + "\n"
+
+            if user and not user.get("public_api"):
+                cred = _user_credits(user)
+                deduct = min(_tokens_to_credits(tokens_used), cred)
+                if deduct > 0:
+                    await _ensure_credit_balance(user["id"])
+                    await db.users.update_one({"id": user["id"]}, {"$inc": {"credit_balance": -deduct}})
+
+            yield json.dumps({"type": "done", "files": final_files, "total_files": len(final_files),
+                              "build_kind": build_kind, "tokens_used": tokens_used}) + "\n"
+        except Exception as e:
+            logger.error(f"Iterative build error: {e}")
+            yield json.dumps({"type": "error", "error": str(e)}) + "\n"
+
+    return StreamingResponse(generate(), media_type="application/x-ndjson",
+                             headers={"Cache-Control": "no-cache"})
+
+
 @api_router.post("/ai/analyze")
 async def ai_analyze(data: DocumentProcess, user: dict = Depends(get_optional_user)):
     """Document analysis with AI (Anthropic/Cerebras only). Uses your Settings keys when set."""
