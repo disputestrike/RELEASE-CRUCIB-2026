@@ -1761,6 +1761,16 @@ async def ai_build_iterative(data: ChatMessage, user: dict = Depends(get_optiona
                     await _ensure_credit_balance(user["id"])
                     await db.users.update_one({"id": user["id"]}, {"$inc": {"credit_balance": -deduct}})
 
+            # Fire automation trigger: build complete
+            try:
+                from automation_engine import fire_trigger, TriggerType
+                asyncio.create_task(fire_trigger(TriggerType.BUILD_COMPLETE, {
+                    "user_id": user["id"] if user else None,
+                    "total_files": len(final_files),
+                    "build_kind": build_kind,
+                }))
+            except Exception:
+                pass
             yield json.dumps({"type": "done", "files": final_files, "total_files": len(final_files),
                               "build_kind": build_kind, "tokens_used": tokens_used}) + "\n"
         except Exception as e:
@@ -7067,6 +7077,59 @@ async def health(deps: bool = Query(False, description="Check dependencies (Mong
                 detail={"status": "degraded", "mongodb": "unavailable", "error": str(e)[:200]},
             )
     return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
+
+
+# ==================== AUTOMATION ENGINE ====================
+
+@api_router.get("/automation/workflows")
+async def get_workflows(user: dict = Depends(get_current_user)):
+    """List all automation workflows for this user."""
+    try:
+        from automation_engine import get_workflows
+        workflows = get_workflows()
+        return {"workflows": workflows}
+    except Exception as e:
+        return {"workflows": [], "error": str(e)}
+
+
+@api_router.post("/automation/workflows")
+async def create_automation_workflow(request: Request, user: dict = Depends(get_current_user)):
+    """Create a new automation workflow."""
+    try:
+        from automation_engine import create_workflow, TriggerType
+        body = await request.json()
+        wf_id = create_workflow(
+            name=body.get("name", "New Workflow"),
+            trigger=TriggerType(body.get("trigger", "manual")),
+            steps=body.get("steps", []),
+        )
+        return {"workflow_id": wf_id, "status": "created"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@api_router.post("/automation/trigger/{trigger_type}")
+async def fire_automation_trigger(trigger_type: str, request: Request, user: dict = Depends(get_current_user)):
+    """Manually fire a trigger (for testing)."""
+    try:
+        from automation_engine import fire_trigger, TriggerType
+        data = await request.json()
+        data["user"] = {"id": user["id"], "email": user.get("email", "")}
+        await fire_trigger(TriggerType(trigger_type), data)
+        return {"status": "fired", "trigger": trigger_type}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@api_router.get("/automation/runs/{run_id}")
+async def get_automation_run(run_id: str, user: dict = Depends(get_current_user)):
+    """Get status of an automation run."""
+    from automation_engine import get_run
+    run = get_run(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+    return run
+
 
 # ==================== CLIENT ERROR LOGGING ====================
 
