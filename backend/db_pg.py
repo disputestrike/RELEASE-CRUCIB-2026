@@ -505,6 +505,7 @@ REQUIRED_TABLES = [
     "users", "projects", "project_logs", "agent_status", "chat_history",
     "workspace_env", "token_ledger", "token_usage", "tasks", "user_agents",
     "agent_runs", "referral_codes", "referrals", "api_keys", "enterprise_inquiries",
+    "contact_submissions",
     "backup_codes", "mfa_setup_temp", "shares", "blocked_requests",
     "agent_memory", "automation_tasks", "audit_log", "examples", "monitoring_events",
 ]
@@ -525,6 +526,7 @@ CREATE TABLE IF NOT EXISTS referral_codes (code TEXT PRIMARY KEY, doc JSONB NOT 
 CREATE TABLE IF NOT EXISTS referrals (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS api_keys (key TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS enterprise_inquiries (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS contact_submissions (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS backup_codes (_id SERIAL PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS mfa_setup_temp (user_id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS shares (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');

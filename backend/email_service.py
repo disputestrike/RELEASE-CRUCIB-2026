@@ -96,7 +96,7 @@ class EmailService:
     def __init__(self):
         self.smtp_host = os.getenv("SMTP_HOST")
         self.smtp_port = int(os.getenv("SMTP_PORT", "587"))
-        self.smtp_username = os.getenv("SMTP_USERNAME")
+        self.smtp_username = os.getenv("SMTP_USERNAME") or os.getenv("SMTP_USER")
         self.smtp_password = os.getenv("SMTP_PASSWORD")
         self.from_email = os.getenv("SMTP_FROM_EMAIL", "noreply@crucibai.app")
         self.from_name = os.getenv("SMTP_FROM_NAME", "CrucibAI")

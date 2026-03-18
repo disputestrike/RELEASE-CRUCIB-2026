@@ -38,8 +38,19 @@ const LandingPage = () => {
     const prompt = (promptOverride ?? input).trim();
     if (!prompt || isBuilding) return;
     const state = (filesOverride?.length || attachedFiles?.length) ? { initialAttachedFiles: filesOverride || attachedFiles } : undefined;
-    const q = `prompt=${encodeURIComponent(prompt)}`;
-    navigate(`/app/workspace?${q}`, { state });
+    // If user is not signed in, save prompt so after auth we go straight to building (time-to-action)
+    if (!user && !token) {
+      try {
+        sessionStorage.setItem(PENDING_PROMPT_KEY, prompt);
+        if (state?.initialAttachedFiles?.length) {
+          sessionStorage.setItem(PENDING_PROMPT_KEY + '_hasFiles', '1');
+        }
+      } catch (_) {}
+      navigate(`/auth?redirect=${encodeURIComponent('/app/workspace')}`);
+      return;
+    }
+    const q = `prompt=${encodeURIComponent(prompt)}&autoStart=1`;
+    navigate(`/app/workspace?${q}`, { state: { ...state, initialPrompt: prompt, autoStart: true } });
   };
 
   const handleLandingFileSelect = (e) => {

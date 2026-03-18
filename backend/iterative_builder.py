@@ -162,6 +162,7 @@ BUILD_STRUCTURES = {
                     "/src/pages/Signup.tsx   — name + email + password + confirm, useAuth().signup(), validation",
                     "/src/pages/Settings.tsx — tabs: Profile (avatar, name, email form), Security (password change), Billing (plan cards), Notifications (toggles)",
                     "/server/index.ts        — Express: /api/health, /api/auth/login, /api/auth/signup, /api/metrics, /api/users",
+                    "/database/schema.sql   — CREATE TABLE users, sessions, metrics with indexes; ready for PostgreSQL",
                     "/ideas.md               — project notes and planned features",
                 ],
             },

@@ -189,14 +189,20 @@ def setup_default_workflows():
 
 # ── Action implementations ─────────────────────────────────────────────────────
 async def _action_send_email(config: dict, context: dict) -> dict:
-    """Send an email using the SMTP config."""
-    import os
-    smtp_host = os.environ.get("SMTP_HOST")
-    if not smtp_host:
+    """Send an email via integrations.email (SMTP when configured)."""
+    try:
+        from integrations.email import send_email_sync
+        to = (config.get("to") or "").strip()
+        if not to:
+            return {"status": "error", "error": "No recipient"}
+        subject = config.get("subject") or "Notification"
+        body = config.get("body") or f"Event: {context}"
+        if send_email_sync(to, subject, body):
+            return {"status": "success", "sent_to": to}
         return {"status": "skipped", "reason": "SMTP not configured"}
-    # In production: send via SMTP
-    logger.info(f"Email action: {config.get('subject')} → {config.get('to')}")
-    return {"status": "success", "sent_to": config.get("to")}
+    except Exception as e:
+        logger.exception("Email action failed: %s", e)
+        return {"status": "error", "error": str(e)}
 
 
 async def _action_deploy_vercel(config: dict, context: dict) -> dict:

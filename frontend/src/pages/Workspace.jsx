@@ -956,8 +956,23 @@ root.render(<App />);`,
     }
   }, [taskIdFromUrl, storeTasks]);
 
-  // Auto-start build ONLY when user explicitly clicks "Start Building" / "Go" (e.g. from Dashboard).
-  // Opening a task from the sidebar just loads the task; execution happens on Submit/Go/Update.
+  // Pending prompt from landing (user said "build me X" then signed up) — restore and start building
+  const PENDING_PROMPT_KEY = 'crucibai_pending_prompt';
+  const pendingPromptAppliedRef = useRef(false);
+  useEffect(() => {
+    if (pendingPromptAppliedRef.current) return;
+    const hasStatePrompt = location.state?.initialPrompt || searchParams.get('prompt');
+    if (hasStatePrompt) return; // URL/state already has a prompt; let the auto-start effect handle it
+    const fromStorage = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem(PENDING_PROMPT_KEY) : null;
+    if (!fromStorage?.trim()) return;
+    pendingPromptAppliedRef.current = true;
+    sessionStorage.removeItem(PENDING_PROMPT_KEY);
+    sessionStorage.removeItem(PENDING_PROMPT_KEY + '_hasFiles');
+    setInput(fromStorage);
+    handleBuild(fromStorage);
+  }, [location.state, searchParams]);
+
+  // Auto-start build when user explicitly clicks "Start Building" / "Go" (Dashboard or Landing with auth)
   const autoStartedRef = useRef(null);
   useEffect(() => {
     const statePrompt = location.state?.initialPrompt || searchParams.get('prompt');
@@ -967,6 +982,7 @@ root.render(<App />);`,
     if (autoStartedRef.current === `${location.key}-${taskIdFromUrl}`) return;
     autoStartedRef.current = `${location.key}-${taskIdFromUrl}`;
     if (initialFiles?.length) setAttachedFiles(initialFiles);
+    setInput(statePrompt);
     handleBuild(statePrompt, initialFiles || undefined);
   }, [location.key, location.state, taskIdFromUrl]);
 
@@ -980,55 +996,94 @@ root.render(<App />);`,
     setLogs(prev => [...prev, { message, type, time, agent }]);
   };
 
-  // ── Voice input via Web Speech API (browser-native, no API key needed) ──
+  // ── Voice: Web Speech API (Chrome/Edge/Safari) or fallback to record + backend /voice/transcribe ──
   const speechRecognitionRef = useRef(null);
+  const voiceChunksRef = useRef([]);
 
-  const startRecording = () => {
+  const startRecording = async () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      addLog('Voice input not supported. Please use Chrome, Edge, or Safari.', 'error', 'voice');
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Voice input requires Chrome, Edge, or Safari.', error: true }]);
+    if (SpeechRecognition) {
+      try {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'en-US';
+        recognition.maxAlternatives = 1;
+        recognition.onstart = () => { setIsRecording(true); addLog('Listening...', 'info', 'voice'); };
+        recognition.onresult = (e) => {
+          const transcript = e.results[0][0].transcript.trim();
+          setInput(prev => (prev ? prev + ' ' + transcript : transcript));
+          setIsRecording(false);
+          addLog(`Voice: "${transcript}"`, 'success', 'voice');
+        };
+        recognition.onerror = (e) => {
+          setIsRecording(false);
+          const msg = e.error === 'not-allowed'
+            ? 'Microphone access denied. Allow mic in your browser, then try again.'
+            : e.error === 'no-speech'
+            ? 'No speech detected. Try again.'
+            : `Voice error: ${e.error}`;
+          addLog(msg, 'error', 'voice');
+        };
+        recognition.onend = () => { setIsRecording(false); speechRecognitionRef.current = null; };
+        speechRecognitionRef.current = recognition;
+        recognition.start();
+        return;
+      } catch (err) {
+        addLog(`Voice failed: ${err.message}`, 'error', 'voice');
+      }
+    }
+    // Fallback: record with MediaRecorder, then send to backend /voice/transcribe (works in all browsers)
+    if (!navigator.mediaDevices?.getUserMedia) {
+      addLog('Microphone not supported in this browser.', 'error', 'voice');
       return;
     }
     try {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.lang = 'en-US';
-      recognition.maxAlternatives = 1;
-
-      recognition.onstart = () => {
-        setIsRecording(true);
-        addLog('Listening...', 'info', 'voice');
-      };
-
-      recognition.onresult = (e) => {
-        const transcript = e.results[0][0].transcript.trim();
-        setInput(prev => (prev ? prev + ' ' + transcript : transcript));
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find(m => MediaRecorder.isTypeSupported(m)) || 'audio/webm';
+      const recorder = new MediaRecorder(stream, { mimeType });
+      voiceChunksRef.current = [];
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) voiceChunksRef.current.push(e.data); };
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        setAudioStream(null);
+        mediaRecorderRef.current = null;
         setIsRecording(false);
-        addLog(`Voice: "${transcript}"`, 'success', 'voice');
+        const blob = new Blob(voiceChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+        if (blob.size < 100) { addLog('Recording too short. Speak longer.', 'error', 'voice'); return; }
+        setIsTranscribing(true);
+        addLog('Transcribing...', 'info', 'voice');
+        try {
+          const formData = new FormData();
+          formData.append('audio', blob, 'recording.webm');
+          const headers = token ? { Authorization: `Bearer ${token}` } : {};
+          const res = await axios.post(`${API}/voice/transcribe`, formData, { headers, timeout: 60000 });
+          const text = (res.data?.text || '').trim();
+          if (text) {
+            setInput(prev => (prev ? prev + ' ' + text : text));
+            addLog(`Voice: "${text.slice(0, 60)}${text.length > 60 ? '...' : ''}"`, 'success', 'voice');
+          } else addLog('No text from transcription.', 'error', 'voice');
+        } catch (err) {
+          const msg = err?.response?.status === 503
+            ? 'Voice needs OPENAI_API_KEY on the server. Add it in Railway or .env.'
+            : err?.code === 'ERR_NETWORK' || err?.response?.status >= 500
+            ? 'Backend not available. Start the CrucibAI backend for voice transcription.'
+            : (err?.response?.data?.detail || err?.message) || 'Transcription failed.';
+          addLog(msg, 'error', 'voice');
+        } finally {
+          setIsTranscribing(false);
+        }
       };
-
-      recognition.onerror = (e) => {
-        setIsRecording(false);
-        const msg = e.error === 'not-allowed'
-          ? 'Microphone access denied. Please allow mic in your browser settings.'
-          : e.error === 'no-speech'
-          ? 'No speech detected. Please try again.'
-          : `Voice error: ${e.error}`;
-        addLog(msg, 'error', 'voice');
-      };
-
-      recognition.onend = () => {
-        setIsRecording(false);
-        speechRecognitionRef.current = null;
-      };
-
-      speechRecognitionRef.current = recognition;
-      recognition.start();
+      recorder.start(500);
+      mediaRecorderRef.current = { recorder, stream };
+      setAudioStream(stream);
+      setIsRecording(true);
+      addLog('Recording... (stop to transcribe)', 'info', 'voice');
     } catch (err) {
-      setIsRecording(false);
-      addLog(`Voice failed: ${err.message}`, 'error', 'voice');
+      const msg = err?.name === 'NotAllowedError'
+        ? 'Microphone access denied. Allow mic in your browser settings and refresh.'
+        : err?.message || 'Could not start recording.';
+      addLog(msg, 'error', 'voice');
     }
   };
 
@@ -1037,22 +1092,22 @@ root.render(<App />);`,
       speechRecognitionRef.current.stop();
       speechRecognitionRef.current = null;
     }
-    // Also stop old MediaRecorder if any
     const ref = mediaRecorderRef.current;
-    if (ref?.recorder?.state !== 'inactive') ref?.recorder?.stop();
-    if (ref?.stream) ref.stream.getTracks().forEach(t => t.stop());
-    mediaRecorderRef.current = null;
-    setAudioStream(null);
+    if (ref?.recorder?.state === 'recording') ref.recorder.stop();
+    else if (ref?.stream) ref.stream.getTracks().forEach(t => t.stop());
+    if (ref && !ref.recorder?.state || ref?.recorder?.state === 'inactive') {
+      mediaRecorderRef.current = null;
+      setAudioStream(null);
+    }
     setIsRecording(false);
   };
 
   const confirmRecording = () => {
-    // Legacy — just stop
     stopRecording();
   };
 
   const transcribeAudio = async () => {
-    // No-op: replaced by Web Speech API
+    // Used for attached audio files; keep for compatibility
   };
 
   const handleFileSelect = async (e) => {
@@ -2404,67 +2459,90 @@ BUILD IT NOW — output every file completely:`;
                 {messages.find(m => m.role === 'user')?.content?.toString().slice(0, 30) || 'project'}
               </span>
             </div>
-            {/* File list — dynamic tree, grouped by folder */}
+            {/* File list — Manus-style nested tree (src/, public/, server/, shared/, etc.) */}
             <div className="flex-1 overflow-y-auto py-1">
               {(() => {
-                // Build folder tree from file paths
+                // Build nested tree from all file paths (any depth)
                 const tree = {};
-                const rootFiles = [];
-                Object.keys(files).sort().forEach(fp => {
-                  const clean = fp.replace(/^\//, '');
-                  const parts = clean.split('/');
-                  if (parts.length === 1) {
-                    rootFiles.push(fp);
-                  } else {
-                    const folder = parts[0];
-                    if (!tree[folder]) tree[folder] = [];
-                    tree[folder].push(fp);
+                const addPath = (path) => {
+                  const clean = path.replace(/^\//, '');
+                  const parts = clean.split('/').filter(Boolean);
+                  let current = tree;
+                  for (let i = 0; i < parts.length; i++) {
+                    const seg = parts[i];
+                    const isLast = i === parts.length - 1;
+                    if (isLast) {
+                      current[seg] = { type: 'file', path: path.startsWith('/') ? path : `/${path}` };
+                    } else {
+                      if (!current[seg] || current[seg].type !== 'folder') {
+                        current[seg] = { type: 'folder', pathPrefix: parts.slice(0, i + 1).join('/'), children: {} };
+                      }
+                      current = current[seg].children;
+                    }
                   }
-                });
+                };
+                Object.keys(files).sort().forEach(addPath);
+
                 const getIcon = (name) => {
-                  const ext = name.split('.').pop();
+                  const ext = (name || '').split('.').pop();
                   const color = ext === 'jsx' || ext === 'js' || ext === 'tsx' || ext === 'ts' ? '#eab308'
                     : ext === 'css' ? '#ec4899' : ext === 'html' ? 'var(--theme-accent)'
-                    : ext === 'json' ? '#a78bfa' : ext === 'py' ? '#60a5fa' : 'var(--theme-muted)';
+                    : ext === 'json' ? '#a78bfa' : ext === 'py' ? '#60a5fa' : ext === 'md' ? '#94a3b8' : ext === 'yml' || ext === 'yaml' ? '#64748b' : 'var(--theme-muted)';
                   return <FileCode className="w-3 h-3 shrink-0" style={{ color }} />;
                 };
-                const FileRow = ({ fp, indent=0 }) => {
-                  const name = fp.replace(/.*\//, '');
-                  const isActive = activeFile === fp;
+
+                const renderNode = (key, node, depth) => {
+                  const indent = 12 + depth * 14;
+                  if (node.type === 'file') {
+                    const path = node.path;
+                    const name = key;
+                    const isActive = activeFile === path;
+                    return (
+                      <div key={path} className="group flex items-center">
+                        <button
+                          onClick={() => { setActiveFile(path); setActivePanel('code'); }}
+                          className="flex-1 flex items-center gap-1.5 py-1 text-left text-xs transition hover:bg-white/5 min-w-0"
+                          style={{ paddingLeft: `${indent}px`, background: isActive ? 'rgba(255,255,255,0.09)' : 'transparent', color: isActive ? 'var(--theme-text)' : 'var(--theme-muted)' }}
+                        >
+                          {getIcon(name)}
+                          <span className="truncate">{name}</span>
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); deleteFileFromProject(path); }} className="opacity-0 group-hover:opacity-100 p-1 shrink-0" style={{ color: 'var(--theme-muted)' }} title="Delete"><X className="w-3 h-3" /></button>
+                      </div>
+                    );
+                  }
+                  // folder
+                  const pathPrefix = node.pathPrefix || key;
+                  const folderKey = `folder_${pathPrefix}`;
+                  const isOpen = expandedFolders[folderKey] !== false;
+                  const childKeys = Object.keys(node.children || {}).sort();
+                  const count = childKeys.length;
                   return (
-                    <div key={fp} className="group flex items-center">
-                      <button onClick={() => { setActiveFile(fp); setActivePanel('code'); }}
-                        className="flex-1 flex items-center gap-1.5 py-1 text-left text-xs transition hover:bg-white/5"
-                        style={{ paddingLeft: `${12 + indent * 12}px`, background: isActive ? 'rgba(255,255,255,0.09)' : 'transparent', color: isActive ? 'var(--theme-text)' : 'var(--theme-muted)' }}>
-                        {getIcon(name)}
-                        <span className="truncate">{name}</span>
+                    <div key={folderKey}>
+                      <button
+                        onClick={() => setExpandedFolders(prev => ({ ...prev, [folderKey]: !isOpen }))}
+                        className="w-full flex items-center gap-1.5 py-1 text-xs hover:bg-white/5 transition min-w-0"
+                        style={{ paddingLeft: `${indent}px`, color: 'var(--theme-muted)' }}
+                      >
+                        {isOpen ? <ChevronDown className="w-3 h-3 shrink-0" /> : <ChevronRight className="w-3 h-3 shrink-0" />}
+                        <Folder className="w-3 h-3 shrink-0" style={{ color: '#60a5fa' }} />
+                        <span className="font-medium truncate">{key}</span>
+                        {count > 0 && <span className="ml-auto text-[10px] opacity-50 shrink-0">{count}</span>}
                       </button>
-                      <button onClick={() => deleteFileFromProject(fp)} className="opacity-0 group-hover:opacity-100 pr-2" style={{ color: 'var(--theme-muted)' }}><X className="w-3 h-3" /></button>
+                      {isOpen && childKeys.map(childKey => renderNode(childKey, node.children[childKey], depth + 1))}
                     </div>
                   );
                 };
-                const items = [];
-                // Root files first
-                rootFiles.forEach(fp => items.push(<FileRow key={fp} fp={fp} indent={0} />));
-                // Folders
-                Object.entries(tree).sort().forEach(([folder, folderFiles]) => {
-                  const folderKey = `folder_${folder}`;
-                  const isOpen = expandedFolders[folderKey] !== false;
-                  items.push(
-                    <div key={folderKey}>
-                      <button onClick={() => setExpandedFolders(prev => ({ ...prev, [folderKey]: !isOpen }))}
-                        className="w-full flex items-center gap-1.5 px-3 py-1 text-xs hover:bg-white/5 transition"
-                        style={{ color: 'var(--theme-muted)' }}>
-                        {isOpen ? <ChevronDown className="w-3 h-3 shrink-0" /> : <ChevronRight className="w-3 h-3 shrink-0" />}
-                        <Folder className="w-3 h-3 shrink-0" style={{ color: '#60a5fa' }} />
-                        <span className="font-medium">{folder}</span>
-                        <span className="ml-auto text-[10px] opacity-50">{folderFiles.length}</span>
-                      </button>
-                      {isOpen && folderFiles.sort().map(fp => <FileRow key={fp} fp={fp} indent={1} />)}
+
+                const rootKeys = Object.keys(tree).sort();
+                if (rootKeys.length === 0) {
+                  return (
+                    <div className="px-3 py-4 text-center text-xs" style={{ color: 'var(--theme-muted)' }}>
+                      Build something to see files
                     </div>
                   );
-                });
-                return items;
+                }
+                return rootKeys.map(key => renderNode(key, tree[key], 0));
               })()}
             </div>
             {/* Versions */}
@@ -2629,12 +2707,13 @@ BUILD IT NOW — output every file completely:`;
                   </button>
                   <button
                     type="button"
-                    onClick={isRecording ? stopRecording : startRecording}
+                    onClick={isTranscribing ? undefined : (isRecording ? stopRecording : startRecording)}
+                    disabled={isTranscribing}
                     className="p-1.5 rounded-lg transition hover:bg-white/10"
                     style={{ color: isRecording ? '#f87171' : 'var(--theme-muted, #52525b)' }}
-                    title={isRecording ? 'Stop voice' : 'Voice input (Chrome/Edge/Safari)'}
+                    title={isTranscribing ? 'Transcribing...' : (isRecording ? 'Stop voice' : 'Voice input (dictate or record → transcribe)')}
                   >
-                    {isRecording ? <MicOff className="w-4 h-4 animate-pulse" /> : <Mic className="w-4 h-4" />}
+                    {isTranscribing ? <Loader2 className="w-4 h-4 animate-spin" /> : isRecording ? <MicOff className="w-4 h-4 animate-pulse" /> : <Mic className="w-4 h-4" />}
                   </button>
                   <div className="ml-auto flex items-center gap-2">
                     <select

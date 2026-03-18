@@ -1948,14 +1948,21 @@ async def transcribe_voice(
     audio: UploadFile = File(..., description="Audio file (webm, mp3, wav, etc.)"),
     user: dict = Depends(get_optional_user)
 ):
-    """Transcribe voice audio to text using Anthropic. Uses server-side API key."""
+    """Transcribe voice audio to text using OpenAI Whisper. Uses server-side OPENAI_API_KEY."""
     logger.info("Voice transcribe request received, filename=%s", getattr(audio, "filename", None))
-    # Always use server-side API key
-    api_key = ANTHROPIC_API_KEY
+    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
     if not api_key:
         raise HTTPException(
             status_code=503,
-            detail="Anthropic API key not configured on server. Contact support."
+            detail="Voice transcription needs OPENAI_API_KEY on the server. Add it in Railway Variables or .env to use the microphone."
+        )
+    try:
+        from openai import AsyncOpenAI
+        oai = AsyncOpenAI(api_key=api_key)
+    except ImportError:
+        raise HTTPException(
+            status_code=503,
+            detail="Voice transcription needs the openai package. Run: pip install openai"
         )
     try:
         audio_content = await audio.read()
@@ -1970,25 +1977,15 @@ async def transcribe_voice(
             tmp_file.write(audio_content)
             tmp_path = tmp_file.name
         try:
-            # Using Anthropic for transcription
-            # Transcription via Anthropic
             with open(tmp_path, "rb") as f:
-                transcript = await client.audio.transcriptions.create(
+                transcript = await oai.audio.transcriptions.create(
                     model="whisper-1",
                     file=f,
                     response_format="text",
                     language="en",
                 )
-            if isinstance(transcript, str):
-                text = transcript
-            elif hasattr(transcript, "text"):
-                text = transcript.text
-            elif isinstance(transcript, dict):
-                text = transcript.get("text", "")
-            else:
-                text = str(transcript or "")
-            text = (text or "").strip()
-            logger.info(f"Voice transcription ok: {text[:80]}...")
+            text = (transcript if isinstance(transcript, str) else getattr(transcript, "text", "") or "").strip()
+            logger.info("Voice transcription ok: %s...", (text or "")[:80])
             return {"text": text, "language": "en", "model": "whisper-1"}
         finally:
             if os.path.exists(tmp_path):
@@ -1998,12 +1995,6 @@ async def transcribe_voice(
                     pass
     except HTTPException:
         raise
-    except ImportError as e:
-        logger.exception("Voice transcription import error: %s", e)
-        raise HTTPException(
-            status_code=503,
-            detail="Transcription unavailable: Anthropic package missing or failed to load. In backend run: pip install anthropic then restart the server. Check backend logs for the exact error."
-        )
     except Exception as e:
         logger.exception("Voice transcription error: %s", e)
         err_msg = str(e).strip()
@@ -2376,21 +2367,9 @@ async def enterprise_contact(data: EnterpriseContact):
     contact_email = os.environ.get("ENTERPRISE_CONTACT_EMAIL")
     if contact_email:
         try:
-            import smtplib
-            from email.mime.text import MIMEText
-            msg = MIMEText(
-                f"Enterprise inquiry:\nCompany: {inquiry['company']}\nEmail: {inquiry['email']}\nTeam size: {inquiry.get('team_size') or '—'}\nUse case: {inquiry.get('use_case') or '—'}\nBudget: {inquiry.get('budget') or '—'}\nMessage: {inquiry.get('message') or '—'}"
-            )
-            msg["Subject"] = f"CrucibAI Enterprise: {inquiry['company']}"
-            msg["From"] = os.environ.get("SMTP_FROM", "noreply@crucibai.com")
-            msg["To"] = contact_email
-            # Only send if SMTP is configured; otherwise skip (no failure)
-            if os.environ.get("SMTP_HOST"):
-                with smtplib.SMTP(os.environ.get("SMTP_HOST"), int(os.environ.get("SMTP_PORT", 587))) as s:
-                    if os.environ.get("SMTP_USER"):
-                        s.starttls()
-                        s.login(os.environ.get("SMTP_USER", ""), os.environ.get("SMTP_PASSWORD", ""))
-                    s.send_message(msg)
+            from integrations.email import send_email_sync
+            body = f"Enterprise inquiry:\nCompany: {inquiry['company']}\nEmail: {inquiry['email']}\nTeam size: {inquiry.get('team_size') or '—'}\nUse case: {inquiry.get('use_case') or '—'}\nBudget: {inquiry.get('budget') or '—'}\nMessage: {inquiry.get('message') or '—'}"
+            send_email_sync(contact_email, f"CrucibAI Enterprise: {inquiry['company']}", body)
         except Exception as e:
             logger.warning(f"Enterprise contact email failed: {e}")
     return {"status": "received", "message": "We'll be in touch soon.", "contact_email": contact_email or "sales@crucibai.com"}
@@ -2415,20 +2394,10 @@ async def contact_submit(data: ContactSubmission):
     contact_email = os.environ.get("CONTACT_EMAIL") or os.environ.get("ENTERPRISE_CONTACT_EMAIL")
     if contact_email and submission["message"]:
         try:
-            import smtplib
-            from email.mime.text import MIMEText
+            from integrations.email import send_email_sync
             subject = f"CrucibAI Contact: {submission.get('issue_type') or 'General'}"
             body = f"From: {submission.get('name') or '—'}\nEmail: {submission['email']}\nType: {submission.get('issue_type') or 'general'}\n\nMessage:\n{submission['message']}"
-            msg = MIMEText(body)
-            msg["Subject"] = subject
-            msg["From"] = os.environ.get("SMTP_FROM", "noreply@crucibai.com")
-            msg["To"] = contact_email
-            if os.environ.get("SMTP_HOST"):
-                with smtplib.SMTP(os.environ.get("SMTP_HOST"), int(os.environ.get("SMTP_PORT", 587))) as s:
-                    if os.environ.get("SMTP_USER"):
-                        s.starttls()
-                        s.login(os.environ.get("SMTP_USER", ""), os.environ.get("SMTP_PASSWORD", ""))
-                    s.send_message(msg)
+            send_email_sync(contact_email, subject, body)
         except Exception as e:
             logger.warning(f"Contact form email failed: {e}")
     return {"status": "received", "message": "Thanks for reaching out. We'll get back to you soon."}
@@ -7060,23 +7029,39 @@ async def root():
     return {"message": "CrucibAI Platform API", "version": "1.0.0"}
 
 @api_router.get("/health")
-async def health(deps: bool = Query(False, description="Check dependencies (MongoDB); return 503 if unavailable")):
+async def health(deps: bool = Query(False, description="Check dependencies (DB); return 503 if unavailable")):
     check_deps = deps or os.environ.get("HEALTH_CHECK_DEPS", "").strip().lower() in ("1", "true", "yes")
-    if check_deps:
+    if check_deps and db:
         try:
-            await db.command("ping")
+            await db.users.find_one({})
             return {
                 "status": "healthy",
                 "timestamp": datetime.now(timezone.utc).isoformat(),
-                "mongodb": "ok",
+                "database": "ok",
             }
         except Exception as e:
-            logger.warning("Health check MongoDB ping failed: %s", e)
+            logger.warning("Health check DB failed: %s", e)
             raise HTTPException(
                 status_code=503,
-                detail={"status": "degraded", "mongodb": "unavailable", "error": str(e)[:200]},
+                detail={"status": "degraded", "database": "unavailable", "error": str(e)[:200]},
             )
     return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
+
+
+@api_router.get("/integrations/status")
+async def integrations_status():
+    """Report queue, storage, email — all green when env is set. No secrets."""
+    try:
+        from integrations.queue import get_queue
+        from integrations.storage import get_storage
+        from integrations.email import get_email
+        return {
+            "queue": get_queue(),
+            "storage": get_storage(),
+            "email": "configured" if get_email() else "not_configured",
+        }
+    except Exception as e:
+        return {"queue": "unknown", "storage": "unknown", "email": "unknown", "error": str(e)[:100]}
 
 
 # ==================== AUTOMATION ENGINE ====================
