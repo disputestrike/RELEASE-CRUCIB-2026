@@ -7683,9 +7683,10 @@ async def init_postgres_primary():
         logger.warning("DATABASE_URL not set; DB not initialized. /api/health OK; auth/builds need DATABASE_URL.")
         return
     try:
-        from db_pg import get_db, run_migrations
+        from db_pg import get_db, run_migrations, ensure_all_tables
         from structured_logging import AuditLogger
         await run_migrations()
+        await ensure_all_tables()  # safety net: creates any tables missed by migration
         db = await get_db()
         audit_logger = AuditLogger() if AuditLogger else None
         logger.info("PostgreSQL initialized as primary database")

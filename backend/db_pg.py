@@ -500,6 +500,58 @@ async def run_migrations():
             logger.warning("Migration %s failed to load: %s", name, e)
 
 
+# All tables that must exist — used as safety net after migrations
+REQUIRED_TABLES = [
+    "users", "projects", "project_logs", "agent_status", "chat_history",
+    "workspace_env", "token_ledger", "token_usage", "tasks", "user_agents",
+    "agent_runs", "referral_codes", "referrals", "api_keys", "enterprise_inquiries",
+    "backup_codes", "mfa_setup_temp", "shares", "blocked_requests",
+    "agent_memory", "automation_tasks", "audit_log", "examples", "monitoring_events",
+]
+
+ENSURE_TABLES_SQL = """
+CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS project_logs (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS agent_status (project_id TEXT NOT NULL, agent_name TEXT NOT NULL, doc JSONB NOT NULL DEFAULT '{}', PRIMARY KEY (project_id, agent_name));
+CREATE TABLE IF NOT EXISTS chat_history (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS workspace_env (user_id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS token_ledger (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS token_usage (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS tasks (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS user_agents (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS agent_runs (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS referral_codes (code TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS referrals (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS api_keys (key TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS enterprise_inquiries (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS backup_codes (_id SERIAL PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS mfa_setup_temp (user_id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS shares (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS blocked_requests (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS agent_memory (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS automation_tasks (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS audit_log (_id SERIAL PRIMARY KEY, user_id TEXT NOT NULL, timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(), doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS examples (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS monitoring_events (id SERIAL PRIMARY KEY, event_id TEXT NOT NULL, event_type TEXT NOT NULL, user_id TEXT NOT NULL, timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(), duration FLOAT, metadata JSONB, success BOOLEAN DEFAULT TRUE, error_message TEXT);
+"""
+
+async def ensure_all_tables():
+    """Emergency safety net: create any missing tables. Runs after migrations."""
+    pool = await get_pg_pool()
+    statements = [s.strip() for s in ENSURE_TABLES_SQL.strip().split(";") if s.strip()]
+    ok = fail = 0
+    for stmt in statements:
+        try:
+            async with pool.acquire() as conn:
+                await conn.execute(stmt)
+            ok += 1
+        except Exception as e:
+            logger.debug("ensure_tables stmt: %s", str(e)[:80])
+            fail += 1
+    logger.info("ensure_all_tables: %d created/verified, %d skipped", ok, fail)
+
+
 async def get_db() -> PGDatabase:
     """Get Motor-like database instance."""
     global _db
