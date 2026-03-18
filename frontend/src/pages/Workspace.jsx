@@ -205,7 +205,7 @@ const FileTree = ({ files, activeFile, onSelectFile, onAddFile, onAddFolder, onO
   const getFileIcon = (name) => {
     if (/\.(jsx?|tsx?)$/.test(name)) return <FileCode className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0" />;
     if (/\.css$/.test(name)) return <FileText className="w-3.5 h-3.5 text-pink-500 flex-shrink-0" />;
-    if (/\.html$/.test(name)) return <FileText className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" />;
+    if (/\.html$/.test(name)) return <FileText className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--theme-accent)' }} />;
     if (/\.json$/.test(name)) return <FileText className="w-3.5 h-3.5 text-yellow-600 flex-shrink-0" />;
     if (/\.(py|c|cpp|h)$/.test(name)) return <FileCode className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />;
     if (/\.(md|txt)$/.test(name)) return <FileText className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />;
@@ -550,18 +550,22 @@ const Workspace = () => {
       })
     );
 
-    if (Object.keys(result).length > 0 && !result['/src/index.js'] && !result['/src/index.jsx']) {
-      if (result['/src/App.js'] || result['/src/App.jsx']) {
-        result['/src/index.js'] = {
-          code: `import React from 'react';
+    const hasAppJsx = !!result['/src/App.jsx'];
+    const hasAppJs = !!result['/src/App.js'];
+    const hasApp = hasAppJsx || hasAppJs;
+    const existingIndex = result['/src/index.js']?.code || result['/src/index.jsx']?.code || '';
+    const indexValid = existingIndex.includes("getElementById('root')") && (existingIndex.includes('createRoot') || existingIndex.includes('render('));
+    if (Object.keys(result).length > 0 && hasApp && (!result['/src/index.js'] && !result['/src/index.jsx'] || !indexValid)) {
+      const appImport = hasAppJsx ? "import App from './App.jsx';" : "import App from './App.js';";
+      result['/src/index.js'] = {
+        code: `import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App';
+${appImport}
 ${result['/src/styles.css'] ? "import './styles.css';" : ''}
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App />);`,
-        };
-      }
+      };
     }
     return result;
   }, [files]);
@@ -2241,7 +2245,7 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
         {isBuilding && (
           <div className="flex items-center gap-2 ml-1">
             <div className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
-            <span className="text-xs text-orange-400">{currentPhase || 'Building'}... {Math.round(buildProgress)}%</span>
+            <span className="text-xs">{currentPhase || 'Building'}... {Math.round(buildProgress)}%</span>
           </div>
         )}
         {qualityGateResult && !isBuilding && (
@@ -2287,9 +2291,9 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
 
       {/* ── Token low banner ── */}
       {user && user.token_balance === 0 && (
-        <div className="shrink-0 px-4 py-2 flex items-center justify-between" style={{ background: '#292524', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-          <span className="text-sm text-orange-300">Out of tokens — get more to keep building.</span>
-          <button onClick={() => navigate('/app/tokens')} className="text-sm font-medium text-orange-300 underline">Buy tokens</button>
+        <div className="shrink-0 px-4 py-2 flex items-center justify-between" style={{ background: 'var(--theme-surface2)', borderBottom: '1px solid var(--theme-border)' }}>
+          <span className="text-sm" style={{ color: 'var(--theme-accent)' }}>Out of tokens — get more to keep building.</span>
+          <button onClick={() => navigate('/app/tokens')} className="text-sm font-medium underline" style={{ color: 'var(--theme-accent)' }}>Buy tokens</button>
         </div>
       )}
 
@@ -2322,7 +2326,7 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
                 const name = fp.replace(/^\//, '');
                 const isActive = activeFile === fp;
                 const ext = name.split('.').pop();
-                const iconColor = ext === 'jsx' || ext === 'js' ? '#eab308' : ext === 'css' ? '#ec4899' : ext === 'html' ? '#f97316' : ext === 'json' ? '#a78bfa' : '#71717a';
+                const iconColor = ext === 'jsx' || ext === 'js' ? '#eab308' : ext === 'css' ? '#ec4899' : ext === 'html' ? 'var(--theme-accent)' : ext === 'json' ? '#a78bfa' : 'var(--theme-muted)';
                 return (
                   <div key={fp} className="group flex items-center">
                     <button
@@ -2379,7 +2383,7 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
             {isBuilding && (
               <div className="rounded-2xl p-4 border" style={{ background: 'var(--theme-surface, #1C1C1E)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
+                  <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--theme-accent)' }} />
                   <span className="text-sm font-medium" style={{ color: 'var(--theme-text, #ffffff)' }}>{currentPhase || 'Building your app...'}</span>
                   <span className="ml-auto text-xs" style={{ color: 'var(--theme-muted, #52525b)' }}>{Math.round(buildProgress)}%</span>
                 </div>
@@ -2397,7 +2401,7 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
                         </div>
                       ) : a.status === 'running' ? (
                         <div className="w-4 h-4 flex items-center justify-center shrink-0">
-                          <Loader2 className="w-3.5 h-3.5 text-orange-400 animate-spin" />
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--theme-accent)' }} />
                         </div>
                       ) : (
                         <div className="w-4 h-4 rounded-full border shrink-0" style={{ borderColor: 'var(--theme-muted, #3f3f46)' }} />
@@ -2423,14 +2427,14 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
                 <div
                   className="max-w-[75%] rounded-2xl px-4 py-2.5 text-sm"
                   style={{
-                    background: msg.role === 'user' ? 'var(--chat-user-bg, #3f3f46)' : 'var(--chat-ai-bg, #1c1c1e)',
-                    border: msg.role === 'user' ? 'none' : '1px solid var(--theme-border, rgba(255,255,255,0.07))',
-                    color: msg.error ? '#f87171' : 'var(--chat-text, #e4e4e7)',
+                    background: msg.role === 'user' ? 'var(--chat-user-bg)' : 'var(--chat-ai-bg)',
+                    border: msg.role === 'user' ? 'none' : '1px solid var(--theme-border)',
+                    color: msg.error ? 'var(--chat-error)' : 'var(--chat-text)',
                   }}
                 >
                   {msg.isBuilding ? (
                     <div className="flex items-center gap-2">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-orange-400" />
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--theme-accent)' }} />
                       <span style={{ color: 'var(--theme-muted, #a1a1aa)' }}>{formatMsgContent(msg.content)}</span>
                     </div>
                   ) : (
@@ -2492,8 +2496,8 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
                   placeholder={isBuilding ? 'Building your app...' : (versions.length > 0 ? 'Describe changes, fix bugs, add features...' : 'Describe what you want to build...')}
                   rows={1}
                   disabled={isBuilding}
-                  className="w-full bg-transparent outline-none text-sm resize-none px-4 pt-3.5 pb-1"
-                  style={{ minHeight: 52, maxHeight: 140, color: 'white', caretColor: 'white' }}
+                  className="w-full bg-transparent outline-none text-sm resize-none px-4 pt-3.5 pb-1 workspace-chat-input"
+                  style={{ minHeight: 52, maxHeight: 140, color: 'var(--theme-text)', caretColor: 'var(--theme-text)' }}
                 />
                 <div className="flex items-center gap-2 px-3 pb-3">
                   <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.txt,.md,.zip,audio/*,.js,.jsx,.ts,.tsx,.css,.html,.json,.py" onChange={handleFileSelect} className="hidden" />
@@ -2624,15 +2628,15 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
             <div style={{ display: activePanel === 'preview' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
               {/* Show placeholder when no build yet */}
               {(currentVersion === null || filesReadyKey === 'default') && !isBuilding ? (
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--theme-bg, #111113)', color: 'var(--theme-muted, #52525b)', flexDirection: 'column', gap: 12 }}>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--theme-bg)', color: 'var(--theme-muted)', flexDirection: 'column', gap: 12 }}>
                   <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
-                  <p style={{ fontSize: 13 }}>Build something to see the preview</p>
+                  <p style={{ fontSize: 13 }}>{Object.keys(sandpackFiles).length === 0 && currentVersion ? 'No preview files yet. Run a build or open a project with code.' : 'Build something to see the preview'}</p>
                 </div>
               ) : (
               <SandpackProvider
                 key={filesReadyKey || 'default'}
                 files={sandpackFiles}
-                theme={localStorage.getItem('crucibai-theme') === 'light' ? 'light' : 'dark'}
+                theme={document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'}
                 template="react"
                 customSetup={{ dependencies: sandpackDeps }}
                 options={{
@@ -2646,14 +2650,17 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
                 }}
               >
                 <SandpackErrorBoundary onError={(e) => { setLastError(e); addLog(`Preview error: ${e}`, 'error', 'preview'); }}>
-                  <SandpackPreview
-                    showOpenInCodeSandbox={false}
-                    style={{
-                      height: '100%',
-                      width: mobileView ? '390px' : '100%',
-                      margin: mobileView ? '0 auto' : '0',
-                    }}
-                  />
+                  <div style={{ flex: 1, minHeight: 320, display: 'flex', flexDirection: 'column', background: 'var(--theme-surface2)' }}>
+                    <SandpackPreview
+                      showOpenInCodeSandbox={false}
+                      style={{
+                        flex: 1,
+                        minHeight: 300,
+                        width: mobileView ? '390px' : '100%',
+                        margin: mobileView ? '0 auto' : '0',
+                      }}
+                    />
+                  </div>
                 </SandpackErrorBoundary>
               </SandpackProvider>
               )}
@@ -2692,7 +2699,7 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
                   }
                   value={files[activeFile]?.code || ''}
                   onChange={handleCodeChange}
-                  theme="vs-dark"
+                  theme={document.documentElement.getAttribute('data-theme') === 'light' ? 'vs' : 'vs-dark'}
                   options={{
                     minimap: { enabled: false },
                     fontSize: 13,

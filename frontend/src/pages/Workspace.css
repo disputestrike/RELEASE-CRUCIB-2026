@@ -439,36 +439,43 @@
    ============================================================ */
 
 .workspace-console-panel {
-  background: var(--theme-bg, #111113);
-  color: #e4e4e7;
+  background: var(--theme-bg);
+  color: var(--theme-text);
 }
 
 .workspace-console-placeholder {
-  color: #71717a;
+  color: var(--theme-muted);
 }
 
 .workspace-console-line {
-  color: #a1a1aa;
+  color: var(--theme-text);
 }
 
 .workspace-console-time {
-  color: #52525b;
+  color: var(--theme-muted);
   flex-shrink: 0;
 }
 
 .workspace-console-agent {
-  color: #71717a;
+  color: var(--theme-muted);
   flex-shrink: 0;
 }
 
 .workspace-console-message {
-  color: #e4e4e7;
+  color: var(--theme-text);
 }
 
-.workspace-console-line--error .workspace-console-message { color: #f87171; }
-.workspace-console-line--success .workspace-console-message { color: #86efac; }
-.workspace-console-line--warning .workspace-console-message { color: #fbbf24; }
-.workspace-console-line--info .workspace-console-message { color: #e4e4e7; }
+.workspace-console-line--error .workspace-console-message { color: var(--chat-error, #dc2626); }
+.workspace-console-line--success .workspace-console-message { color: #16a34a; }
+[data-theme="dark"] .workspace-console-line--success .workspace-console-message { color: #86efac; }
+.workspace-console-line--warning .workspace-console-message { color: var(--theme-text); }
+[data-theme="dark"] .workspace-console-line--warning .workspace-console-message { color: #fbbf24; }
+.workspace-console-line--info .workspace-console-message { color: var(--theme-text); }
+
+/* Chat input: legible text and placeholder in both themes */
+.workspace-chat-input::placeholder {
+  color: var(--theme-muted);
+}
 
 /* ============================================================
    RESPONSIVE

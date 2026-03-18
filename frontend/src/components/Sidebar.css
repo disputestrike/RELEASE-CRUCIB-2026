@@ -502,20 +502,20 @@
 }
 
 .sidebar-delete-modal {
-  background: var(--theme-input, #27272a);
+  background: var(--theme-surface, #27272a);
   border-radius: 12px;
   padding: 24px;
   min-width: 320px;
   max-width: 400px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-  border: 1px solid var(--theme-border, rgba(255,255,255,0.1));
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--theme-border);
 }
 
 .sidebar-delete-title {
   margin: 0 0 20px;
   font-size: 15px;
   font-weight: 500;
-  color: var(--theme-text, #e4e4e7);
+  color: var(--theme-text);
   line-height: 1.4;
 }
 
@@ -532,11 +532,20 @@
   font-weight: 500;
   border: none;
   cursor: pointer;
-  background: #3f3f46;
+  background: var(--theme-input, #3f3f46);
   color: var(--theme-text, #e4e4e7);
 }
 
-.sidebar-delete-actions button:hover { background: #52525b; }
+.sidebar-delete-actions button:hover {
+  background: var(--theme-surface2, #52525b);
+}
+[data-theme="light"] .sidebar-delete-actions button:not(.danger) {
+  background: var(--theme-surface2, #e5e5e5);
+  color: var(--theme-text, #1a1a1a);
+}
+[data-theme="light"] .sidebar-delete-actions button:not(.danger):hover {
+  background: #d4d4d4;
+}
 .sidebar-delete-actions button.danger { background: #dc2626; color: #fff; }
 .sidebar-delete-actions button.danger:hover { background: #b91c1c; }
 
