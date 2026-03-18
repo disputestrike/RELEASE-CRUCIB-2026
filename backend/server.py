@@ -978,20 +978,18 @@ def _get_model_chain(model_key: str, message: str, effective_keys: Optional[Dict
 
 
 async def get_workspace_api_keys(user: Optional[dict]) -> Dict[str, Optional[str]]:
-    """Load Anthropic/Cerebras from server environment only. User-provided keys are no longer supported."""
-    # Always use server-side keys from environment variables
-    # User-provided keys are no longer stored or used
+    """Load Anthropic/Cerebras from server environment. Cerebras uses round-robin rotation."""
     return {
         "anthropic": ANTHROPIC_API_KEY or None,
-        "cerebras": os.environ.get("CEREBRAS_API_KEY") or None,
+        "cerebras": _get_cerebras_key() or os.environ.get("CEREBRAS_API_KEY") or None,
     }
 
 
 def _effective_api_keys(user_keys: Dict[str, Optional[str]]) -> Dict[str, Optional[str]]:
-    """Use server-side API keys only. User-provided keys are no longer supported."""
+    """Use server-side API keys. Cerebras uses round-robin rotation across key pool."""
     return {
         "anthropic": ANTHROPIC_API_KEY or None,
-        "cerebras": os.environ.get("CEREBRAS_API_KEY") or None,
+        "cerebras": _get_cerebras_key() or os.environ.get("CEREBRAS_API_KEY") or None,
     }
 
 
@@ -1144,6 +1142,20 @@ async def _call_cerebras_direct(
                 timeout=120,
             )
             if response.status_code == 429:
+                # Try next key in rotation before giving up
+                next_key = _get_cerebras_key()
+                if next_key and next_key != api_key:
+                    logger.warning("Cerebras key rate limited — rotating to next key")
+                    # Retry once with the next key
+                    response2 = await client.post(
+                        "https://api.cerebras.ai/v1/chat/completions",
+                        headers={"Authorization": f"Bearer {next_key}"},
+                        json={"model": model, "messages": [{"role": "system", "content": system_message}, {"role": "user", "content": message}], "max_tokens": 4096, "temperature": 0.7},
+                        timeout=120,
+                    )
+                    if response2.status_code == 200:
+                        data = response2.json()
+                        return data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
                 logger.warning(f"Cerebras rate limited — falling back to next model")
                 raise Exception(f"RATE_LIMITED: Cerebras API rate limit exceeded")
             if response.status_code != 200:
