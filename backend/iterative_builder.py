@@ -1,73 +1,90 @@
 """
 CrucibAI Iterative Builder
 ===========================
-Generates the FULL file structure like Manus.
-Each pass is one focused AI call under 8192 tokens.
-Total: 25-35 files across 5-6 passes.
+Full-stack, full-structure generation matching Manus quality.
+Generates: TypeScript frontend + Express/Python backend + config files.
 """
-import asyncio
-import re
-import logging
-from typing import Dict, List, Optional, Callable
-
+import asyncio, re, logging
+from typing import Dict, Optional, Callable
 logger = logging.getLogger(__name__)
 
-# ── Full file structure per build type ────────────────────────────────────────
+# ── Static config files injected on every build ───────────────────────────────
+STATIC_FILES = {
+    "fullstack": {
+        "/.prettierrc": '{\n  "semi": true,\n  "singleQuote": true,\n  "tabWidth": 2,\n  "trailingComma": "es5"\n}',
+        "/.prettierignore": "node_modules\ndist\nbuild\n.next",
+        "/tsconfig.json": '{\n  "compilerOptions": {\n    "target": "ES2020",\n    "useDefineForClassFields": true,\n    "lib": ["ES2020", "DOM", "DOM.Iterable"],\n    "module": "ESNext",\n    "skipLibCheck": true,\n    "moduleResolution": "bundler",\n    "allowImportingTsExtensions": true,\n    "resolveJsonModule": true,\n    "isolatedModules": true,\n    "noEmit": true,\n    "jsx": "react-jsx",\n    "strict": true,\n    "noUnusedLocals": true,\n    "noUnusedParameters": true,\n    "noFallthroughCasesInSwitch": true\n  },\n  "include": ["src"],\n  "references": [{ "path": "./tsconfig.node.json" }]\n}',
+        "/tsconfig.node.json": '{\n  "compilerOptions": {\n    "composite": true,\n    "skipLibCheck": true,\n    "module": "ESNext",\n    "moduleResolution": "bundler",\n    "allowSyntheticDefaultImports": true\n  },\n  "include": ["vite.config.ts"]\n}',
+        "/vite.config.ts": 'import { defineConfig } from \'vite\';\nimport react from \'@vitejs/plugin-react\';\n\nexport default defineConfig({\n  plugins: [react()],\n  server: { port: 3000 },\n});',
+        "/components.json": '{\n  "$schema": "https://ui.shadcn.com/schema.json",\n  "style": "default",\n  "rsc": false,\n  "tsx": true,\n  "tailwind": {\n    "config": "tailwind.config.js",\n    "css": "src/index.css",\n    "baseColor": "slate",\n    "cssVariables": true\n  },\n  "aliases": {\n    "components": "@/components",\n    "utils": "@/lib/utils"\n  }\n}',
+    },
+    "saas": {},
+    "landing": {},
+    "mobile": {
+        "/app.json": '{\n  "expo": {\n    "name": "MyApp",\n    "slug": "myapp",\n    "version": "1.0.0",\n    "orientation": "portrait",\n    "icon": "./assets/icon.png",\n    "splash": { "resizeMode": "contain", "backgroundColor": "#ffffff" },\n    "platforms": ["ios", "android", "web"]\n  }\n}',
+        "/.prettierrc": '{\n  "semi": true,\n  "singleQuote": true,\n  "tabWidth": 2\n}',
+    },
+    "ai_agent": {},
+    "game": {},
+}
 
+# ── Full structure matching Manus ──────────────────────────────────────────────
 BUILD_STRUCTURES = {
     "fullstack": {
         "passes": [
             {
                 "name": "config",
-                "desc": "Project config & entry files",
+                "desc": "package.json, index.html, entry point, styles, constants",
                 "files": [
-                    "/package.json       — dependencies: react, react-dom, react-router-dom, lucide-react, framer-motion, recharts, clsx",
-                    "/index.html         — Vite HTML entry, <div id='root'>, loads Tailwind CDN",
-                    "/src/main.jsx       — ReactDOM.createRoot, renders <App/>",
-                    "/src/index.css      — CSS variables, global resets, fonts",
-                    "/src/const.js       — all hardcoded data arrays (products, team, pricing, testimonials, nav links)",
+                    "/package.json       — name, version, scripts (dev/build), dependencies: react ^18, react-dom, react-router-dom ^6, lucide-react, framer-motion, recharts, clsx, date-fns",
+                    "/index.html         — <!DOCTYPE html>, <head> with Tailwind CDN + Google Fonts, <div id='root'>",
+                    "/src/main.tsx       — import React, ReactDOM, App, './index.css'; createRoot(document.getElementById('root')).render(<App/>)",
+                    "/src/index.css      — :root CSS variables (--primary, --secondary, colors), body reset, font-family, smooth scrolling",
+                    "/src/const.ts       — export all data arrays and constants: navLinks, features, testimonials, pricing plans, team members, FAQ items — all typed with TS interfaces, all real content specific to the project",
                 ],
             },
             {
-                "name": "app_and_layout",
-                "desc": "App router + layout components",
+                "name": "app_layout",
+                "desc": "App router + layout shell",
                 "files": [
-                    "/src/App.jsx                    — MemoryRouter, all Routes, imports all pages",
-                    "/src/components/Navbar.jsx      — full responsive nav, logo, links, mobile hamburger menu",
-                    "/src/components/Footer.jsx      — links, social icons, newsletter, copyright",
-                    "/src/components/Layout.jsx      — wraps Navbar + {children} + Footer",
+                    "/src/App.tsx                   — import MemoryRouter, Routes, Route; import all page components; define all routes; wrap in <Layout>",
+                    "/src/components/Layout.tsx     — accepts {children}: renders <Navbar/> + <main>{children}</main> + <Footer/>",
+                    "/src/components/Navbar.tsx     — sticky top nav: logo left, links center, CTA right; mobile hamburger menu with useState; uses navLinks from const.ts",
+                    "/src/components/Footer.tsx     — 4-column grid: brand+desc, links, contact, newsletter form; social icons; copyright row",
                 ],
             },
             {
                 "name": "ui_components",
                 "desc": "Reusable UI components",
                 "files": [
-                    "/src/components/Hero.jsx        — hero section: headline, subtext, CTA, gradient bg, framer-motion",
-                    "/src/components/Features.jsx    — 6-card features grid with lucide icons",
-                    "/src/components/Pricing.jsx     — 3-tier pricing cards with CTA buttons",
-                    "/src/components/Testimonials.jsx — testimonial carousel with avatars",
-                    "/src/components/CTA.jsx         — call-to-action banner section",
-                    "/src/lib/utils.js               — cn() helper, formatDate, formatCurrency, truncate",
+                    "/src/components/Hero.tsx        — large hero: animated headline with framer-motion, subtext, 2 CTA buttons, mockup/illustration; gradient background",
+                    "/src/components/Features.tsx    — 6-card grid: each card has lucide icon, title, description; hover animation; data from const.ts",
+                    "/src/components/Testimonials.tsx — carousel: 3 testimonial cards, avatar, name, role, quote; prev/next buttons; auto-advance",
+                    "/src/components/Pricing.tsx     — 3-tier pricing cards: Free/Pro/Enterprise; feature list with checkmarks; highlighted middle card; CTA buttons",
+                    "/src/components/CTA.tsx         — full-width CTA banner: headline, subtext, button; gradient background",
+                    "/src/lib/utils.ts               — export cn(...classes) for Tailwind merging, formatDate(d), formatCurrency(n), truncate(str, n)",
                 ],
             },
             {
                 "name": "pages",
-                "desc": "All page components",
+                "desc": "Main pages",
                 "files": [
-                    "/src/pages/Home.jsx     — imports Hero+Features+Testimonials+CTA, full home page",
-                    "/src/pages/About.jsx    — team grid, mission, story, values — real content",
-                    "/src/pages/Services.jsx — services cards with descriptions, icons, pricing",
-                    "/src/pages/Contact.jsx  — contact form (controlled), map placeholder, contact info",
+                    "/src/pages/Home.tsx     — import and compose Hero + Features + Testimonials + CTA sections; full home page",
+                    "/src/pages/About.tsx    — hero banner, company story paragraph, team grid (4 members with photo placeholder, name, role), values section",
+                    "/src/pages/Services.tsx — services grid: 6 cards each with icon, title, description, price; filter by category",
+                    "/src/pages/Contact.tsx  — 2-column: left info (address, phone, email, hours), right contact form (name/email/subject/message, submit button with loading state)",
                 ],
             },
             {
-                "name": "extra_pages",
-                "desc": "Additional pages",
+                "name": "more_pages_and_backend",
+                "desc": "More pages + backend server + shared types",
                 "files": [
-                    "/src/pages/Pricing.jsx  — full pricing page, uses Pricing component, FAQs accordion",
-                    "/src/pages/Blog.jsx     — blog listing with category filter, article cards",
-                    "/src/contexts/AppContext.jsx — React context: theme, user, cart or app state",
-                    "/src/hooks/useLocalStorage.js — custom hook for localStorage",
+                    "/src/pages/Pricing.tsx          — full pricing page: toggle annual/monthly, 3 tier cards, feature comparison table, FAQ accordion",
+                    "/src/contexts/AppContext.tsx    — createContext with theme (dark/light), user state, cart; useApp() hook export",
+                    "/src/hooks/useLocalStorage.ts   — generic hook: useLocalStorage<T>(key, initialValue) with get/set/remove",
+                    "/shared/types.ts                — TypeScript interfaces: User, Product, NavLink, Feature, Testimonial, PricingPlan, ContactForm — match const.ts",
+                    "/server/index.ts                — Express server: cors, json middleware; GET /api/health; GET /api/items; POST /api/contact; listen on port 5000",
+                    "/ideas.md                       — # Project Ideas\n## Built: [project name]\n## Architecture: React + Express\n## Key Features: [list from prompt]\n## Future Improvements: [3 ideas]",
                 ],
             },
         ]
@@ -76,44 +93,48 @@ BUILD_STRUCTURES = {
         "passes": [
             {
                 "name": "config",
-                "desc": "Config + entry",
+                "desc": "Config + entry files",
                 "files": [
-                    "/package.json        — react, react-router-dom, recharts, lucide-react, framer-motion",
-                    "/index.html          — Vite entry with Tailwind CDN",
-                    "/src/main.jsx        — ReactDOM.createRoot",
-                    "/src/index.css       — dark SaaS theme CSS vars",
-                    "/src/const.js        — mock data: metrics, users, plans, activity feed",
+                    "/package.json       — react, react-dom, react-router-dom, recharts, lucide-react, framer-motion, clsx",
+                    "/index.html         — Vite HTML entry with Tailwind CDN",
+                    "/src/main.tsx       — ReactDOM.createRoot entry",
+                    "/src/index.css      — dark SaaS theme CSS variables",
+                    "/src/const.ts       — mock data: metrics[], users[], plans[], activityFeed[], navItems[] — all typed",
+                    "/shared/types.ts    — interfaces: User, Metric, Plan, ActivityItem, NavItem",
                 ],
             },
             {
-                "name": "layout",
-                "desc": "App shell",
+                "name": "app_layout",
+                "desc": "Shell + auth",
                 "files": [
-                    "/src/App.jsx                    — MemoryRouter: / (Home), /login, /dashboard, /settings",
-                    "/src/components/Sidebar.jsx     — collapsible sidebar, nav items with icons, user avatar",
-                    "/src/components/Header.jsx      — top bar, search, notifications bell, user menu",
-                    "/src/components/Layout.jsx      — Sidebar + Header + {children} layout shell",
+                    "/src/App.tsx                    — MemoryRouter: public routes (/, /login, /signup) + protected routes (/dashboard, /settings, /users)",
+                    "/src/components/Sidebar.tsx     — collapsible sidebar: logo, nav items with icons, user avatar + name at bottom, logout button",
+                    "/src/components/Header.tsx      — top bar: breadcrumb, search input, notifications bell with badge, user dropdown menu",
+                    "/src/components/Layout.tsx      — AppLayout: Sidebar + Header + <main>{children}</main>",
+                    "/src/contexts/AuthContext.tsx   — AuthContext: { user, isAuthenticated, login(email,pass), logout, signup }; useAuth() hook",
                 ],
             },
             {
                 "name": "dashboard",
                 "desc": "Dashboard components",
                 "files": [
-                    "/src/components/MetricCard.jsx  — stat card with trend up/down indicator",
-                    "/src/components/Chart.jsx       — recharts line/bar chart with real data",
-                    "/src/components/DataTable.jsx   — sortable table with pagination",
-                    "/src/pages/Dashboard.jsx        — metrics row, chart, activity feed, quick actions",
+                    "/src/components/MetricCard.tsx  — card: title, value, trend (up/down %, colored), icon; animated count-up",
+                    "/src/components/LineChart.tsx   — recharts ResponsiveContainer LineChart with real data from props",
+                    "/src/components/BarChart.tsx    — recharts BarChart component",
+                    "/src/components/DataTable.tsx   — sortable table: columns prop, data prop, pagination, search filter",
+                    "/src/pages/Dashboard.tsx        — 4 MetricCards row, LineChart, BarChart, DataTable with recent activity",
                 ],
             },
             {
                 "name": "pages",
-                "desc": "All SaaS pages",
+                "desc": "All pages",
                 "files": [
-                    "/src/pages/Home.jsx     — marketing landing: hero, features, pricing, CTA",
-                    "/src/pages/Login.jsx    — login form, localStorage auth simulation",
-                    "/src/pages/Signup.jsx   — signup form with validation",
-                    "/src/pages/Settings.jsx — profile, billing, API keys, notifications tabs",
-                    "/src/contexts/AuthContext.jsx — auth state, login/logout, useAuth hook",
+                    "/src/pages/Home.tsx     — marketing landing: hero, 3 feature cards, pricing section, testimonials, CTA",
+                    "/src/pages/Login.tsx    — centered card: email + password inputs, submit button, useAuth().login(), error display, link to signup",
+                    "/src/pages/Signup.tsx   — name + email + password + confirm, useAuth().signup(), validation",
+                    "/src/pages/Settings.tsx — tabs: Profile (avatar, name, email form), Security (password change), Billing (plan cards), Notifications (toggles)",
+                    "/server/index.ts        — Express: /api/health, /api/auth/login, /api/auth/signup, /api/metrics, /api/users",
+                    "/ideas.md               — project notes and planned features",
                 ],
             },
         ]
@@ -122,28 +143,30 @@ BUILD_STRUCTURES = {
         "passes": [
             {
                 "name": "config",
-                "desc": "Config + entry",
+                "desc": "Config + all content data",
                 "files": [
                     "/package.json    — react, react-dom, framer-motion, lucide-react",
-                    "/index.html      — Vite entry with Tailwind CDN",
-                    "/src/main.jsx    — ReactDOM.createRoot",
-                    "/src/index.css   — global styles, animations",
-                    "/src/const.js    — all content: headlines, features, testimonials, pricing, team",
+                    "/index.html      — Vite entry with Tailwind CDN and Google Fonts",
+                    "/src/main.tsx    — entry point",
+                    "/src/index.css   — global styles, CSS vars, keyframe animations",
+                    "/src/const.ts    — ALL content: headline, features[], testimonials[], pricing[], faq[], footerLinks[], social[]",
+                    "/shared/types.ts — Feature, Testimonial, PricingPlan, FAQItem interfaces",
                 ],
             },
             {
                 "name": "sections",
-                "desc": "All landing sections",
+                "desc": "Full landing page",
                 "files": [
-                    "/src/App.jsx                    — single page, imports all sections in order",
-                    "/src/components/Nav.jsx         — sticky header, logo, CTA button, mobile menu",
-                    "/src/components/Hero.jsx        — bold hero: headline, subheadline, CTA, mockup image",
-                    "/src/components/Features.jsx    — features grid with icons and descriptions",
-                    "/src/components/HowItWorks.jsx  — numbered steps section",
-                    "/src/components/Testimonials.jsx — social proof with avatars and quotes",
-                    "/src/components/Pricing.jsx     — 3-tier pricing with toggle annual/monthly",
-                    "/src/components/FAQ.jsx         — accordion FAQ section",
-                    "/src/components/Footer.jsx      — links, socials, newsletter form",
+                    "/src/App.tsx                     — imports all section components in order, renders as single page",
+                    "/src/components/Nav.tsx          — sticky nav: logo, links, CTA button, mobile hamburger",
+                    "/src/components/Hero.tsx         — headline (framer-motion), subtext, 2 CTA buttons, hero image/mockup",
+                    "/src/components/Features.tsx     — 6-card features grid with icons from lucide-react",
+                    "/src/components/HowItWorks.tsx   — numbered steps: icon, number, title, description",
+                    "/src/components/Testimonials.tsx — 3 testimonial cards with avatar, stars, quote",
+                    "/src/components/Pricing.tsx      — toggle monthly/annual, 3 tier cards, feature list",
+                    "/src/components/FAQ.tsx          — accordion: question + answer, expand/collapse with animation",
+                    "/src/components/Footer.tsx       — links, social icons, newsletter input, copyright",
+                    "/ideas.md                        — project brief and key decisions",
                 ],
             },
         ]
@@ -152,34 +175,36 @@ BUILD_STRUCTURES = {
         "passes": [
             {
                 "name": "config",
-                "desc": "Expo config + entry",
+                "desc": "Expo config",
                 "files": [
-                    "/package.json        — expo, react-native, @react-navigation/native, lucide-react-native",
-                    "/app.json            — Expo app config: name, slug, version, icon",
-                    "/App.jsx             — NavigationContainer, Stack + Tab navigators",
-                    "/src/theme.js        — colors, typography, spacing, shadow constants",
-                    "/src/data.js         — all mock data arrays",
+                    "/package.json         — expo ~49, react-native, @react-navigation/native, @react-navigation/stack, @react-navigation/bottom-tabs",
+                    "/app.json             — Expo config: name, slug, version, icon, splash",
+                    "/App.tsx              — NavigationContainer, createBottomTabNavigator, all screens with icons",
+                    "/src/theme.ts         — colors object, typography scale, spacing scale, shadows",
+                    "/src/data.ts          — all mock data typed with TS interfaces",
+                    "/shared/types.ts      — all TypeScript interfaces for the app",
                 ],
             },
             {
                 "name": "components",
                 "desc": "Reusable components",
                 "files": [
-                    "/src/components/Card.jsx        — reusable card with shadow",
-                    "/src/components/Button.jsx      — primary/secondary/outline variants",
-                    "/src/components/Header.jsx      — screen header with back button",
-                    "/src/components/BottomTabs.jsx  — bottom tab bar navigator",
+                    "/src/components/Card.tsx         — shadow card: title, subtitle, children",
+                    "/src/components/Button.tsx       — variants: primary/secondary/outline/danger, loading state",
+                    "/src/components/ListItem.tsx     — list row with icon, title, subtitle, chevron",
+                    "/src/components/EmptyState.tsx   — centered empty state with icon and message",
                 ],
             },
             {
                 "name": "screens",
                 "desc": "All screens",
                 "files": [
-                    "/src/screens/HomeScreen.jsx     — main screen with content list",
-                    "/src/screens/DetailScreen.jsx   — detail view with full content",
-                    "/src/screens/ProfileScreen.jsx  — user profile with settings",
-                    "/src/screens/SearchScreen.jsx   — search with filter chips",
-                    "/src/screens/OnboardingScreen.jsx — 3-slide onboarding flow",
+                    "/src/screens/HomeScreen.tsx      — scrollable home with cards, featured section",
+                    "/src/screens/DetailScreen.tsx    — detail view with back navigation, full content",
+                    "/src/screens/ProfileScreen.tsx   — user profile, settings list, logout button",
+                    "/src/screens/SearchScreen.tsx    — search input, filter chips, results list",
+                    "/src/screens/OnboardingScreen.tsx — 3-slide swipeable onboarding with skip/next/done",
+                    "/ideas.md                        — app concept and future features",
                 ],
             },
         ]
@@ -188,35 +213,38 @@ BUILD_STRUCTURES = {
         "passes": [
             {
                 "name": "config",
-                "desc": "Config + entry",
+                "desc": "Config + agent data",
                 "files": [
-                    "/package.json    — react, react-dom, lucide-react, framer-motion",
-                    "/index.html      — Vite entry",
-                    "/src/main.jsx    — entry point",
-                    "/src/index.css   — dark chat UI styles",
-                    "/src/const.js    — agent configs, example prompts, conversation starters",
+                    "/package.json    — react, react-dom, react-router-dom, lucide-react, framer-motion",
+                    "/index.html      — entry with Tailwind CDN",
+                    "/src/main.tsx    — entry point",
+                    "/src/index.css   — dark chat theme styles",
+                    "/src/const.ts    — agents[], examplePrompts[], conversationStarters[] — typed",
+                    "/shared/types.ts — Agent, Message, Conversation, Tool interfaces",
                 ],
             },
             {
-                "name": "app_and_components",
-                "desc": "Agent UI",
+                "name": "app_components",
+                "desc": "Chat UI components",
                 "files": [
-                    "/src/App.jsx                        — MemoryRouter: /, /chat/:agentId, /config",
-                    "/src/components/ChatMessage.jsx     — message bubble: user/agent, timestamp, copy button",
-                    "/src/components/ChatInput.jsx       — input with send, voice, attach buttons",
-                    "/src/components/AgentCard.jsx       — agent selection card with avatar, description",
-                    "/src/components/Sidebar.jsx         — conversation history list",
-                    "/src/hooks/useChat.js               — chat state, message history, simulated responses",
-                    "/src/contexts/ChatContext.jsx       — global chat state provider",
+                    "/src/App.tsx                        — MemoryRouter: /, /chat/:agentId, /config",
+                    "/src/components/ChatMessage.tsx     — message bubble: role (user/agent), content, timestamp, copy button, code block rendering",
+                    "/src/components/ChatInput.tsx       — textarea (auto-resize), send button, attach button, character count",
+                    "/src/components/AgentCard.tsx       — agent card: avatar, name, description, capabilities chips, select button",
+                    "/src/components/ConversationList.tsx — sidebar list of past conversations",
+                    "/src/contexts/ChatContext.tsx        — messages state, sendMessage (simulated), clearChat, activeAgent",
+                    "/src/hooks/useChat.ts               — useChatSimulation: fake streaming response with typewriter effect",
                 ],
             },
             {
                 "name": "pages",
                 "desc": "Agent pages",
                 "files": [
-                    "/src/pages/Home.jsx       — agent gallery grid with search and filter",
-                    "/src/pages/Chat.jsx       — full chat interface using ChatMessage + ChatInput",
-                    "/src/pages/AgentConfig.jsx — configure agent: name, model, system prompt, tools",
+                    "/src/pages/Home.tsx        — agent gallery: search, filter by capability, AgentCard grid",
+                    "/src/pages/Chat.tsx        — full chat: ConversationList sidebar + ChatMessage list + ChatInput",
+                    "/src/pages/AgentConfig.tsx — configure: name, system prompt textarea, temperature slider, tools checkboxes",
+                    "/server/index.ts           — Express: POST /api/chat (simulated AI response), GET /api/agents",
+                    "/ideas.md                  — agent capabilities and roadmap",
                 ],
             },
         ]
@@ -225,27 +253,29 @@ BUILD_STRUCTURES = {
         "passes": [
             {
                 "name": "config",
-                "desc": "Config + entry",
+                "desc": "Config + game constants",
                 "files": [
                     "/package.json    — react, react-dom, framer-motion",
-                    "/index.html      — Vite entry",
-                    "/src/main.jsx    — entry point",
-                    "/src/index.css   — dark game styles, canvas styles",
-                    "/src/const.js    — game config: levels, speeds, colors, scoring",
+                    "/index.html      — entry with full-screen canvas styles",
+                    "/src/main.tsx    — entry point",
+                    "/src/index.css   — dark game theme, canvas styles, pixel font",
+                    "/src/const.ts    — GAME_CONFIG: width, height, speeds, colors; LEVELS[]; LEADERBOARD[]",
+                    "/shared/types.ts — GameState, Entity, Player, Enemy, Level interfaces",
                 ],
             },
             {
                 "name": "game_engine",
-                "desc": "Game logic",
+                "desc": "Full game",
                 "files": [
-                    "/src/App.jsx                  — game state machine: menu → playing → paused → gameover",
-                    "/src/game/useGameLoop.js      — requestAnimationFrame game loop hook",
-                    "/src/game/collision.js        — collision detection utilities",
-                    "/src/game/entities.js         — player, enemies, items, bullets classes",
-                    "/src/components/GameCanvas.jsx — canvas rendering with useRef",
-                    "/src/components/HUD.jsx        — score, lives, level, power-ups display",
-                    "/src/pages/Menu.jsx            — main menu with high scores table",
-                    "/src/pages/Game.jsx            — game screen, uses GameCanvas + HUD",
+                    "/src/App.tsx                   — game states: menu | playing | paused | gameover; useReducer for state",
+                    "/src/game/useGameLoop.ts       — useRef for animationFrame, useCallback for update, returns { start, stop, fps }",
+                    "/src/game/collision.ts         — isColliding(a,b), resolveCollision, pointInRect, circleRect",
+                    "/src/game/entities.ts          — createPlayer(), createEnemy(type), createBullet(), createPowerUp() factory functions",
+                    "/src/components/GameCanvas.tsx — useRef canvas, useEffect draws entities each frame, keyboard event listeners",
+                    "/src/components/HUD.tsx        — score, lives (heart icons), level, power-up indicators",
+                    "/src/components/Menu.tsx       — start screen: title, high scores table, difficulty select, start button",
+                    "/src/components/GameOver.tsx   — game over screen: final score, high score, play again button",
+                    "/ideas.md                      — game design notes and planned levels",
                 ],
             },
         ]
@@ -257,26 +287,24 @@ def get_build_structure(build_kind: str) -> dict:
     return BUILD_STRUCTURES.get(build_kind, BUILD_STRUCTURES["fullstack"])
 
 
+def get_static_files(build_kind: str) -> Dict[str, str]:
+    base = STATIC_FILES.get("fullstack", {})
+    specific = STATIC_FILES.get(build_kind, {})
+    return {**base, **specific}
+
+
 def parse_files_from_response(text: str) -> Dict[str, str]:
-    """Extract all fenced code blocks with file paths."""
-    pattern = r'```(?:jsx?|tsx?|css|html|json|ts|js)?:(/[\w./\-]+)\n([\s\S]*?)```'
+    pattern = r'```(?:tsx?|jsx?|css|html|json|md|ya?ml|sh)?:(/[\w./\-]+)\n([\s\S]*?)```'
     files = {}
-    for match in re.finditer(pattern, text):
-        path = match.group(1).strip()
-        code = match.group(2).strip()
-        if code and len(code) > 20:  # skip empty/tiny files
+    for m in re.finditer(pattern, text):
+        path, code = m.group(1).strip(), m.group(2).strip()
+        if code and len(code) > 10:
             files[path] = code
     if not files:
-        # Fallback: plain code block → /src/App.jsx
-        plain = re.findall(r'```(?:jsx?|tsx?)\n([\s\S]*?)```', text)
+        plain = re.findall(r'```(?:tsx?|jsx?)\n([\s\S]*?)```', text)
         if plain:
-            files['/src/App.jsx'] = plain[0].strip()
+            files['/src/App.tsx'] = plain[0].strip()
     return files
-
-
-def count_total_files(build_kind: str) -> int:
-    structure = get_build_structure(build_kind)
-    return sum(len(p["files"]) for p in structure["passes"])
 
 
 async def run_iterative_build(
@@ -285,88 +313,75 @@ async def run_iterative_build(
     call_llm: Callable,
     on_progress: Optional[Callable] = None,
 ) -> Dict[str, str]:
-    """
-    Multi-turn build: each pass generates one section of files.
-    Returns {filepath: code} for all files.
-    """
     structure = get_build_structure(build_kind)
     passes = structure["passes"]
-    all_files: Dict[str, str] = {}
+    # Inject static config files upfront
+    all_files: Dict[str, str] = get_static_files(build_kind)
 
-    SYSTEM = f"""You are CrucibAI — expert React/frontend developer.
-You are building a COMPLETE, PRODUCTION-QUALITY application for Sandpack browser preview.
+    SYSTEM = """You are CrucibAI — senior full-stack TypeScript developer.
+Generate COMPLETE, PRODUCTION-QUALITY code. No placeholders, no TODOs.
 
-ABSOLUTE RULES:
-- Use MemoryRouter (NEVER BrowserRouter — breaks in iframe)
-- Tailwind CSS only (loaded via CDN in index.html — no config needed)
-- lucide-react for icons, framer-motion for animations, recharts for charts
-- Real hardcoded content — NO Lorem ipsum, NO "placeholder text", NO "// add content here"
-- NO fetch(), NO axios, NO API calls, NO require(), NO Node.js imports
-- EVERY file must be 100% complete — no truncation, no "// rest here", no TODOs
-- Import paths must match exactly: './components/Navbar' not '../components/Navbar'
-
-OUTPUT FORMAT — one fenced block per file, path in the opening fence:
-```jsx:/src/components/Navbar.jsx
-// complete code
+FILE FORMAT — each file in its own fenced block with path:
+```tsx:/src/components/Navbar.tsx
+// complete TypeScript React code
 ```
-```css:/src/index.css
-/* complete styles */
+```ts:/shared/types.ts
+// complete TypeScript interfaces
 ```
 ```json:/package.json
-{{ "name": "app" }}
-```"""
+{ "complete": "json" }
+```
+```md:/ideas.md
+# complete markdown
+```
+
+RULES:
+- TypeScript (.ts/.tsx) for all React/logic files
+- MemoryRouter ONLY (never BrowserRouter — breaks in Sandpack iframe)
+- Tailwind CSS classes for styling (CDN loaded)
+- lucide-react icons, framer-motion animations, recharts charts
+- Real content specific to the project — NO Lorem ipsum
+- Complete imports — every imported symbol must be defined
+- Exact import paths — './components/Navbar' not '../components/Navbar'"""
 
     for i, pass_info in enumerate(passes):
-        step_name = pass_info["name"]
         file_list = "\n".join(f"  {f}" for f in pass_info["files"])
-
-        # Build context from already-generated files
-        context_parts = []
+        context = ""
         if all_files:
-            generated = sorted(all_files.keys())
-            context_parts.append(f"ALREADY GENERATED ({len(generated)} files):")
-            context_parts.extend(f"  {p}" for p in generated)
-            # Include App.jsx structure for reference if available
-            app_key = next((k for k in ['/src/App.jsx','/src/App.js','/App.jsx','/App.js'] if k in all_files), None)
-            if app_key:
-                snippet = all_files[app_key][:600]
-                context_parts.append(f"\nApp structure (for consistent imports):\n```\n{snippet}\n...\n```")
-        context = "\n".join(context_parts)
+            static_keys = set(get_static_files(build_kind).keys())
+            generated = sorted(k for k in all_files.keys() if k not in static_keys)
+            if generated:
+                context = f"\nALREADY GENERATED:\n" + "\n".join(f"  {p}" for p in generated)
+                app_key = next((k for k in ['/src/App.tsx','/src/App.jsx'] if k in all_files), None)
+                if app_key:
+                    context += f"\n\nApp.tsx (for consistent imports):\n```\n{all_files[app_key][:500]}\n...\n```"
+                const_key = next((k for k in ['/src/const.ts','/src/const.js'] if k in all_files), None)
+                if const_key:
+                    context += f"\n\nconst.ts (use this data):\n```\n{all_files[const_key][:400]}\n...\n```"
 
-        message = f"""Project: {prompt}
+        message = f"""Project: "{prompt}"
 Build type: {build_kind}
-Pass {i+1} of {len(passes)}: {step_name.upper()} — {pass_info['desc']}
-
+Pass {i+1}/{len(passes)}: {pass_info['name'].upper()} — {pass_info['desc']}
 {context}
 
-Generate THESE files now — every file COMPLETE with real content:
+Generate these files now — COMPLETE, no truncation:
 {file_list}
 
-Rules for this pass:
-- Every file fully implemented, no placeholders
-- Use data from /src/const.js for all content (import it)
-- Import components using exact paths shown above
-- Real content specific to: {prompt}
-
-Output each file in its fenced block now:"""
+Every file must be fully implemented with real content for: {prompt}"""
 
         try:
-            logger.info(f"Iterative build pass {i+1}/{len(passes)}: {step_name}")
+            logger.info(f"Pass {i+1}/{len(passes)}: {pass_info['name']}")
             response = await call_llm(message, SYSTEM)
-            step_files = parse_files_from_response(response)
-
-            if step_files:
-                all_files.update(step_files)
-                logger.info(f"  Pass {step_name}: {len(step_files)} files → total {len(all_files)}")
+            new_files = parse_files_from_response(response)
+            if new_files:
+                all_files.update(new_files)
+                logger.info(f"  → {len(new_files)} files, total {len(all_files)}")
             else:
-                logger.warning(f"  Pass {step_name}: no files parsed")
-
+                logger.warning(f"  → no files parsed from response")
             if on_progress:
-                await on_progress(step_name, dict(all_files))
-
+                await on_progress(pass_info['name'], dict(all_files))
         except Exception as e:
-            logger.error(f"Pass {step_name} failed: {e}")
-            continue
+            logger.error(f"Pass {pass_info['name']} failed: {e}")
 
-    logger.info(f"Build complete: {len(all_files)} total files")
+    logger.info(f"Build done: {len(all_files)} total files")
     return all_files
