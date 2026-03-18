@@ -7675,6 +7675,13 @@ async def init_postgres_primary():
         db = await get_db()
         audit_logger = AuditLogger() if AuditLogger else None
         logger.info("PostgreSQL initialized as primary database")
+        # Initialize automation engine defaults
+        try:
+            from automation_engine import setup_default_workflows
+            setup_default_workflows()
+            logger.info("✅ Automation engine initialized")
+        except Exception as _ae:
+            logger.debug(f"Automation engine init skipped: {_ae}")
     except Exception as e:
         logger.error("PostgreSQL initialization failed: %s", e)
         if not os.environ.get("CRUCIBAI_DEV"):
