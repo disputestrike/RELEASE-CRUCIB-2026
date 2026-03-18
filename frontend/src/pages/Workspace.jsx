@@ -1468,7 +1468,13 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
           for (const line of lines) {
             try {
               const obj = JSON.parse(line);
-              if (obj.error) throw new Error(obj.error);
+              if (obj.error) {
+                const errMsg = obj.error;
+                if (errMsg.includes('rate limit') || errMsg.includes('Rate limit') || errMsg.includes('RATE_LIMITED') || errMsg.includes('429')) {
+                  throw new Error('⏱ AI rate limit reached — wait 60 seconds and try again.');
+                }
+                throw new Error(errMsg);
+              }
               if (obj.chunk) {
                 accumulated += obj.chunk;
                 // Don't update files mid-stream with raw text - wait for parse at done
@@ -1624,9 +1630,12 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
       setLastError(is404 || isHtmlError ? 'Backend endpoint unavailable' : error.message);
       const detail = String(error.response?.data?.detail || '');
       const is402 = error.response?.status === 402;
+      const is429 = error.response?.status === 429 || rawMsg.includes('Rate limit') || rawMsg.includes('rate limit') || rawMsg.includes('RATE_LIMITED');
       const isKeyError = error.response?.status === 401 || detail.toLowerCase().includes('api key') || detail.toLowerCase().includes('no api key') || (error.message && error.message.toLowerCase().includes('key'));
       let friendlyMessage;
-      if (is402) {
+      if (is429) {
+        friendlyMessage = '⏱ AI rate limit reached — wait 60 seconds and try again. This happens when too many builds run at once.';
+      } else if (is402) {
         friendlyMessage = detail || 'Insufficient tokens. Buy more in Token Center to keep building.';
       } else if (is404 || isHtmlError || (error.message && (error.message.includes('Cannot POST') || error.message.includes('<!DOCTYPE') || error.message.includes('status code 404')))) {
         friendlyMessage = backendUnavailable;

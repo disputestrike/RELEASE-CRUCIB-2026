@@ -262,7 +262,8 @@ security = HTTPBearer(auto_error=False)
 
 # LLM Configuration: Only Anthropic (Haiku) and Cerebras (free tier)
 ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
-CEREBRAS_API_KEY = os.environ.get('CEREBRAS_API_KEY')
+# Cerebras key pool — import from llm_router for consistent round-robin
+from llm_router import get_cerebras_key as _get_cerebras_key, _CEREBRAS_KEYS as _CEREBRAS_KEY_POOL, CEREBRAS_API_KEY
 
 # Groq API configuration (third LLM fallback)
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "").strip()
@@ -1014,7 +1015,7 @@ async def _call_anthropic_direct(prompt: str, system: str, model: str = "claude-
 
 async def _call_cerebras_direct(prompt: str, system: str, model: str = "claude-3-5-haiku-20241022", api_key: Optional[str] = None) -> str:
     """Call Cerebras API directly (free tier fallback). Uses api_key or CEREBRAS_API_KEY."""
-    key = (api_key or "").strip() or os.environ.get("CEREBRAS_API_KEY")
+    key = (api_key or "").strip() or _get_cerebras_key() or os.environ.get("CEREBRAS_API_KEY")
     if not key:
         raise ValueError("CEREBRAS_API_KEY not set")
     import anthropic
@@ -1142,6 +1143,9 @@ async def _call_cerebras_direct(
                 },
                 timeout=120,
             )
+            if response.status_code == 429:
+                logger.warning(f"Cerebras rate limited — falling back to next model")
+                raise Exception(f"RATE_LIMITED: Cerebras API rate limit exceeded")
             if response.status_code != 200:
                 logger.warning(f"Cerebras API error: {response.text}")
                 raise Exception(f"Cerebras API returned {response.status_code}")
@@ -1262,7 +1266,7 @@ async def _call_llm_with_fallback(
                 response = await _call_cerebras_direct(
                     message, system_message,
                     model=model_id,
-                    api_key=os.environ.get("CEREBRAS_API_KEY")
+                    api_key=_get_cerebras_key() or os.environ.get("CEREBRAS_API_KEY")
                 )
                 
                 # Record usage
@@ -1295,7 +1299,12 @@ async def _call_llm_with_fallback(
         
         except Exception as e:
             last_error = e
-            logger.warning(f"LLM {provider}/{model_name} failed: {e}, trying next fallback")
+            err_str = str(e)
+            # If rate limited, skip this provider and try next immediately
+            if "RATE_LIMITED" in err_str or "rate limit" in err_str.lower() or "429" in err_str:
+                logger.warning(f"LLM {provider}/{model_name} rate limited — falling back to next model")
+            else:
+                logger.warning(f"LLM {provider}/{model_name} failed: {e}, trying next fallback")
             continue
     
     # All models failed
@@ -1659,8 +1668,18 @@ async def ai_chat_stream(data: ChatMessage, user: dict = Depends(get_optional_us
                 "tokens_used": tokens_used,
             }) + "\n"
         except Exception as e:
-            logger.error(f"AI Chat stream error: {str(e)}")
-            yield json.dumps({"error": str(e), "done": True}) + "\n"
+            err_str = str(e)
+            logger.error(f"AI Chat stream error: {err_str}")
+            # User-friendly error messages
+            if "RATE_LIMITED" in err_str or "rate limit" in err_str.lower() or "429" in err_str:
+                user_msg = "Build paused — AI rate limit reached. Retrying automatically in 60 seconds. Please try again shortly."
+            elif "ANTHROPIC_API_KEY" in err_str or "API key" in err_str:
+                user_msg = "AI service unavailable. Please check API keys in Railway variables."
+            elif "credit" in err_str.lower() or "402" in err_str:
+                user_msg = "Insufficient credits. Buy more credits to continue building."
+            else:
+                user_msg = f"Build failed: {err_str}"
+            yield json.dumps({"error": user_msg, "done": True}) + "\n"
 
     return StreamingResponse(
         generate(),

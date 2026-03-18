@@ -23,7 +23,33 @@ LLAMA_API_KEY = os.environ.get("LLAMA_API_KEY", "").strip()
 LLAMA_MODEL = "meta-llama/Llama-2-70b-chat-hf"
 LLAMA_PROVIDER = "together"  # Using Together AI for hosted Llama
 
-CEREBRAS_API_KEY = os.environ.get("CEREBRAS_API_KEY", "").strip()
+# Cerebras key pool — round-robin across up to 5 keys for 5x rate limit
+import itertools as _itertools
+
+def _load_cerebras_keys() -> list:
+    """Load all CEREBRAS_API_KEY_1..5 and CEREBRAS_API_KEY, return non-empty list."""
+    keys = []
+    # Primary env var
+    k = os.environ.get("CEREBRAS_API_KEY", "").strip()
+    if k: keys.append(k)
+    # Pool keys 1-5
+    for i in range(1, 6):
+        k = os.environ.get(f"CEREBRAS_API_KEY_{i}", "").strip()
+        if k and k not in keys:
+            keys.append(k)
+    return keys
+
+_CEREBRAS_KEYS = _load_cerebras_keys()
+_cerebras_key_cycle = _itertools.cycle(_CEREBRAS_KEYS) if _CEREBRAS_KEYS else None
+
+def get_cerebras_key() -> str:
+    """Return next Cerebras key in round-robin rotation."""
+    if not _cerebras_key_cycle:
+        return ""
+    return next(_cerebras_key_cycle)
+
+# Backwards compat — single key reference (first key or empty)
+CEREBRAS_API_KEY = _CEREBRAS_KEYS[0] if _CEREBRAS_KEYS else ""
 CEREBRAS_MODEL = "llama3.1-8b"
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
