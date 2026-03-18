@@ -6198,6 +6198,22 @@ async def admin_downgrade_user(user_id: str, admin: dict = Depends(get_current_a
         await audit_logger.log(admin["id"], "admin_downgrade_user", resource_type="user", resource_id=user_id, details={"plan": "free"})
     return {"ok": True, "plan": "free"}
 
+@api_router.post("/users/me/export")
+async def self_export_user_data(user: dict = Depends(get_current_user)):
+    """GDPR Article 20: user self-service data export (profile + ledger + project list)."""
+    user_id = user["id"]
+    safe_user = {k: v for k, v in user.items() if k not in ("password", "hashed_password", "_id")}
+    ledger = await db.token_ledger.find({"user_id": user_id}, {"_id": 0}).to_list(500)
+    projects = await db.projects.find({"user_id": user_id}, {"id": 1, "name": 1, "status": 1, "created_at": 1}).to_list(200)
+    return {
+        "user": safe_user,
+        "ledger_entries": ledger,
+        "projects": projects,
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "note": "This is all data CrucibAI holds about your account."
+    }
+
+
 @api_router.get("/admin/users/{user_id}/export")
 async def admin_export_user(user_id: str, admin: dict = Depends(get_current_admin(("owner", "operations")))):
     """GDPR: export user data (profile + ledger summary + project ids)."""
