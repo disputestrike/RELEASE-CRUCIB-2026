@@ -11,6 +11,11 @@ logger = logging.getLogger(__name__)
 # ── Static config files injected on every build ───────────────────────────────
 STATIC_FILES = {
     "fullstack": {
+        "/.gitignore": "node_modules\ndist\nbuild\n.env\n.env.local\n*.log\n.DS_Store\ncoverage\n.vite",
+        "/.gitkeep": "",
+        "/public/favicon.ico": "<!-- placeholder -->",
+        "/public/robots.txt": "User-agent: *\nAllow: /",
+        "/patches/.gitkeep": "",
         "/.prettierrc": '{\n  "semi": true,\n  "singleQuote": true,\n  "tabWidth": 2,\n  "trailingComma": "es5"\n}',
         "/.prettierignore": "node_modules\ndist\nbuild\n.next",
         "/tsconfig.json": '{\n  "compilerOptions": {\n    "target": "ES2020",\n    "useDefineForClassFields": true,\n    "lib": ["ES2020", "DOM", "DOM.Iterable"],\n    "module": "ESNext",\n    "skipLibCheck": true,\n    "moduleResolution": "bundler",\n    "allowImportingTsExtensions": true,\n    "resolveJsonModule": true,\n    "isolatedModules": true,\n    "noEmit": true,\n    "jsx": "react-jsx",\n    "strict": true,\n    "noUnusedLocals": true,\n    "noUnusedParameters": true,\n    "noFallthroughCasesInSwitch": true\n  },\n  "include": ["src"],\n  "references": [{ "path": "./tsconfig.node.json" }]\n}',
@@ -21,6 +26,8 @@ STATIC_FILES = {
     "saas": {},
     "landing": {},
     "mobile": {
+        "/.gitignore": "node_modules\ndist\n.expo\n*.log\n.DS_Store",
+        "/.gitkeep": "",
         "/app.json": '{\n  "expo": {\n    "name": "MyApp",\n    "slug": "myapp",\n    "version": "1.0.0",\n    "orientation": "portrait",\n    "icon": "./assets/icon.png",\n    "splash": { "resizeMode": "contain", "backgroundColor": "#ffffff" },\n    "platforms": ["ios", "android", "web"]\n  }\n}',
         "/.prettierrc": '{\n  "semi": true,\n  "singleQuote": true,\n  "tabWidth": 2\n}',
     },
