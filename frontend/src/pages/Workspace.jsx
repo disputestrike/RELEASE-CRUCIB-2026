@@ -600,6 +600,7 @@ root.render(<App />);`,
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [versions, setVersions] = useState([]);
   const [currentVersion, setCurrentVersion] = useState(null);
+  const [filesReadyKey, setFilesReadyKey] = useState('default'); // triggers Sandpack remount only when files are truly committed
   
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -1418,7 +1419,11 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
             const vId = `v_${Date.now()}`;
             setFiles(newFiles);
             setVersions(prev => [{ id: vId, prompt, files: newFiles, time: new Date().toLocaleTimeString() }, ...prev]);
-            setTimeout(() => { setCurrentVersion(vId); setActivePanel("preview"); }, 200);
+            setTimeout(() => {
+            setCurrentVersion(vId);
+            setFilesReadyKey(`fk_${vId}`);
+            setActivePanel("preview");
+          }, 500);
             setMessages(prev => prev.map((msg, i) => i === prev.length - 1 ? { role: 'assistant', content: 'Done! Your app is ready.', hasCode: true, planSuggestions } : msg));
             setTimeout(() => fetchSuggestNext(), 400);
             const mainCode = parsedFiles['/App.js']?.code || parsedFiles['/src/App.jsx']?.code || parsedFiles['/App.jsx']?.code || Object.values(parsedFiles)[0]?.code || '';
@@ -1499,7 +1504,11 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
                   return next;
                 });
                 // Set version AFTER files are committed so Sandpack remounts with correct files
-                setTimeout(() => { setCurrentVersion(versionId); setActivePanel("preview"); }, 200);
+                setTimeout(() => {
+                  setCurrentVersion(versionId);
+                  setFilesReadyKey(`fk_${versionId}`);
+                  setActivePanel("preview");
+                }, 500);
                 // AUTO-RUN: if native code files were generated, compile + run them
                 const nativeFileKeys = Object.keys(parsedFiles).filter(p => /\.(c|cpp|py|sh|rb|go|rs|java)$/i.test(p));
                 if (nativeFileKeys.length > 0) {
@@ -2614,14 +2623,14 @@ Build it NOW — no placeholders, no TODOs, no backend code:`;
             {/* Preview — always mounted so Sandpack never loses files on tab switch */}
             <div style={{ display: activePanel === 'preview' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
               {/* Show placeholder when no build yet */}
-              {currentVersion === null && !isBuilding ? (
+              {(currentVersion === null || filesReadyKey === 'default') && !isBuilding ? (
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--theme-bg, #111113)', color: 'var(--theme-muted, #52525b)', flexDirection: 'column', gap: 12 }}>
                   <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
                   <p style={{ fontSize: 13 }}>Build something to see the preview</p>
                 </div>
               ) : (
               <SandpackProvider
-                key={currentVersion || 'default'}
+                key={filesReadyKey || 'default'}
                 files={sandpackFiles}
                 theme={localStorage.getItem('crucibai-theme') === 'light' ? 'light' : 'dark'}
                 template="react"
