@@ -605,6 +605,7 @@ root.render(<App />);`,
   const [versions, setVersions] = useState([]);
   const [currentVersion, setCurrentVersion] = useState(null);
   const [filesReadyKey, setFilesReadyKey] = useState('default');
+  const [lastBuildKind, setLastBuildKind] = useState('fullstack'); // web=Sandpack preview, mobile=Expo Snack iframe
   const [expandedFolders, setExpandedFolders] = useState({}); // tracks open/closed folders in Explorer // triggers Sandpack remount only when files are truly committed
   
   const [isRecording, setIsRecording] = useState(false);
@@ -1410,9 +1411,16 @@ BUILD IT NOW — output every file completely:`;
       setExpandedFolders({});
 
       // ── ITERATIVE BUILD (multi-turn, 15-30 files) ──────────────────
-      // Always use iterative for web/saas/mobile builds — single call truncates at 8192 tokens
       const iterativeBuildKinds = ['fullstack','saas','landing','ai_agent','game','mobile'];
       const shouldUseIterative = !isNativeCode && !useImageToCode && !!token;
+      // Detect build kind for preview routing
+      const detectedBuildKind = /mobile|react native|expo|ios app|android/i.test(prompt) ? 'mobile'
+        : /saas|dashboard|admin/i.test(prompt) ? 'saas'
+        : /landing page|one.?page|marketing/i.test(prompt) ? 'landing'
+        : /agent|automation|chatbot/i.test(prompt) ? 'ai_agent'
+        : /game|2d game/i.test(prompt) ? 'game'
+        : 'fullstack';
+      setLastBuildKind(detectedBuildKind);
 
       if (shouldUseIterative) {
         addLog('Starting iterative multi-file build...', 'info', 'planner');
@@ -2744,7 +2752,29 @@ BUILD IT NOW — output every file completely:`;
               {(currentVersion === null || filesReadyKey === 'default') && !isBuilding ? (
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--theme-bg)', color: 'var(--theme-muted)', flexDirection: 'column', gap: 12 }}>
                   <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
-                  <p style={{ fontSize: 13 }}>{Object.keys(sandpackFiles).length === 0 && currentVersion ? 'No preview files yet. Run a build or open a project with code.' : 'Build something to see the preview'}</p>
+                  <p style={{ fontSize: 13 }}>Build something to see the preview</p>
+                </div>
+              ) : lastBuildKind === 'mobile' ? (
+                /* ── MOBILE PREVIEW: Expo Snack iframe ── */
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--theme-bg)' }}>
+                  <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--theme-border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e' }} />
+                    <span style={{ fontSize: 11, color: 'var(--theme-muted)' }}>Mobile Preview — Expo Snack</span>
+                    <a
+                      href={`https://snack.expo.dev/?code=${encodeURIComponent(files['/App.tsx']?.code || files['/App.jsx']?.code || files['/App.js']?.code || '')}&platform=ios&supportedPlatforms=ios,android,web&name=CrucibAI+Build&description=Built+with+CrucibAI`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--theme-accent)', textDecoration: 'underline' }}
+                    >
+                      Open in Expo Snack ↗
+                    </a>
+                  </div>
+                  <iframe
+                    src={`https://snack.expo.dev/embedded?code=${encodeURIComponent(files['/App.tsx']?.code || files['/App.jsx']?.code || files['/App.js']?.code || '')}&platform=ios&preview=true&theme=dark`}
+                    style={{ flex: 1, border: 'none', width: '100%' }}
+                    allow="accelerometer; camera; geolocation; gyroscope; microphone"
+                    title="Mobile Preview"
+                  />
                 </div>
               ) : (
               <SandpackProvider
