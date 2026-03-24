@@ -1026,6 +1026,54 @@ root.render(<App />);`,
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // ── Async job polling (Q121 fix — build survives browser close) ──────────
+  const pollJobStatus = async (jobId, sessionId) => {
+    const maxPolls = 180;
+    let polls = 0;
+    const interval = setInterval(async () => {
+      try {
+        polls++;
+        if (polls > maxPolls) { clearInterval(interval); return; }
+        const res = await axios.get(`${API}/jobs/${jobId}`,
+          token ? { headers: { Authorization: `Bearer ${token}` } } : {});
+        const job = res.data;
+        if (job.progress) setBuildProgress(job.progress);
+        if (job.message) addLog(job.message, 'info', 'build');
+        if (job.status === 'complete') {
+          clearInterval(interval);
+          if (sessionId && token) {
+            try {
+              const taskRes = await axios.get(`${API}/tasks/${sessionId}`,
+                { headers: { Authorization: `Bearer ${token}` } });
+              const taskFiles = taskRes.data?.task?.files || taskRes.data?.files || taskRes.data?.doc?.files;
+              if (taskFiles && Object.keys(taskFiles).length > 0) {
+                const fileEntries = Object.fromEntries(
+                  Object.entries(taskFiles).map(([k, v]) => [k, { code: typeof v === 'string' ? v : v?.code || '' }])
+                );
+                setFiles(prev => ({ ...prev, ...fileEntries }));
+                setTimeout(() => {
+                  const vId = `async_${Date.now()}`;
+                  setCurrentVersion(vId); setFilesReadyKey(`fk_${vId}`); setActivePanel('preview');
+                }, 500);
+                addLog(`Build complete: ${Object.keys(fileEntries).length} files`, 'success', 'deploy');
+                if (refreshUser) refreshUser();
+                const newUrl = new URL(window.location.href);
+                newUrl.searchParams.set('taskId', sessionId);
+                window.history.replaceState({}, '', newUrl.toString());
+              }
+            } catch (_) {}
+          }
+          setIsBuilding(false); setBuildProgress(100);
+        }
+        if (job.status === 'failed') {
+          clearInterval(interval);
+          addLog(`Build failed: ${job.error}`, 'error', 'deploy');
+          setIsBuilding(false);
+        }
+      } catch (_) { clearInterval(interval); setIsBuilding(false); }
+    }, 1000);
+  };
+
   const addLog = (message, type = 'info', agent = null) => {
     const now = new Date();
     const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;

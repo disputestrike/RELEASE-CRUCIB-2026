@@ -7114,6 +7114,62 @@ async def integrations_status():
         return {"queue": "unknown", "storage": "unknown", "email": "unknown", "error": str(e)[:100]}
 
 
+# ==================== JOB QUEUE ====================
+
+@api_router.get("/jobs/{job_id}")
+async def get_job(job_id: str, user: dict = Depends(get_optional_user)):
+    """Get status and progress of an async job (iterative build, etc.)"""
+    try:
+        from integrations.queue import get_job_status
+        job = await get_job_status(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+        return job
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/ai/build/async")
+async def ai_build_async(data: ChatMessage, user: dict = Depends(get_optional_user)):
+    """
+    Async iterative build — returns job_id immediately.
+    Poll GET /api/jobs/{job_id} for progress and results.
+    User can close browser and return — build continues server-side.
+    """
+    if user and not user.get("public_api") and _user_credits(user) < MIN_CREDITS_FOR_LLM:
+        raise HTTPException(status_code=402, detail="Insufficient credits.")
+
+    try:
+        from integrations.queue import enqueue_job
+        p = (data.message or "").lower()
+        build_kind = (
+            "mobile"   if any(x in p for x in ["mobile","react native","expo","ios app","android"]) else
+            "saas"     if any(x in p for x in ["saas","dashboard","admin panel"]) else
+            "landing"  if any(x in p for x in ["landing page","one page","marketing page"]) else
+            "ai_agent" if any(x in p for x in ["agent","automation","chatbot"]) else
+            "game"     if any(x in p for x in ["game","2d game","browser game"]) else
+            "fullstack"
+        )
+        session_id = data.session_id or str(__import__('uuid').uuid4())
+        job_id = await enqueue_job("iterative_build", {
+            "prompt": data.message or "",
+            "build_kind": build_kind,
+            "user_id": user["id"] if user else None,
+            "session_id": session_id,
+        })
+        return {
+            "job_id": job_id,
+            "session_id": session_id,
+            "build_kind": build_kind,
+            "status": "queued",
+            "poll_url": f"/api/jobs/{job_id}",
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ==================== AUTOMATION ENGINE ====================
 
 @api_router.get("/automation/workflows")
@@ -7732,6 +7788,65 @@ async def init_postgres_primary():
             logger.info("✅ Automation engine initialized")
         except Exception as _ae:
             logger.debug(f"Automation engine init skipped: {_ae}")
+
+        # Start background job worker
+        try:
+            from integrations.queue import run_worker, enqueue_job, get_job_status
+
+            async def _handle_iterative_build(job_id: str, payload: dict):
+                """Worker handler for async iterative builds."""
+                from integrations.queue import update_job_progress, complete_job, fail_job
+                try:
+                    # This mirrors the logic in ai_build_iterative but runs async
+                    from iterative_builder import run_iterative_build, get_build_structure
+                    prompt = payload.get("prompt", "")
+                    build_kind = payload.get("build_kind", "fullstack")
+                    user_id = payload.get("user_id")
+                    session_id = payload.get("session_id", job_id)
+                    total_steps = len(get_build_structure(build_kind)["passes"])
+                    step_num = 0
+
+                    async def on_step(step_name, files_so_far):
+                        nonlocal step_num
+                        step_num += 1
+                        pct = int(step_num / total_steps * 90)
+                        await update_job_progress(job_id, pct, "running", f"Pass {step_num}/{total_steps}: {step_name}")
+
+                    # Build with fallback model chain
+                    async def call_llm(message, system):
+                        effective = _effective_api_keys({})
+                        model_chain = _get_model_chain("auto", message, effective_keys=effective)
+                        resp, _ = await _call_llm_with_fallback(
+                            message=message, system_message=system,
+                            session_id=session_id, model_chain=model_chain,
+                            api_keys=effective, user_id=user_id,
+                        )
+                        return resp
+
+                    final_files = await run_iterative_build(
+                        prompt=prompt, build_kind=build_kind,
+                        call_llm=call_llm, on_progress=on_step,
+                    )
+
+                    # Save to tasks table
+                    if user_id:
+                        await db.tasks.update_one(
+                            {"id": session_id},
+                            {"$set": {"id": session_id, "user_id": user_id,
+                                      "files": final_files, "status": "complete",
+                                      "total_files": len(final_files)}},
+                            upsert=True,
+                        )
+                    await update_job_progress(job_id, 100, "complete", f"Done: {len(final_files)} files")
+                except Exception as e:
+                    raise
+
+            _worker_task = asyncio.create_task(run_worker({
+                "iterative_build": _handle_iterative_build,
+            }))
+            logger.info("✅ Job worker started")
+        except Exception as _wk:
+            logger.debug(f"Job worker init skipped: {_wk}")
     except Exception as e:
         logger.error("PostgreSQL initialization failed: %s", e)
         if not os.environ.get("CRUCIBAI_DEV"):
