@@ -738,6 +738,24 @@ root.render(<App />);`,
       .finally(() => setBuildHistoryLoading(false));
   }, [projectIdFromUrl, token, API]);
 
+  // Reconnect recovery — check for in-progress builds when workspace loads
+  useEffect(() => {
+    if (!token || !API) return;
+    axios.get(`${API}/jobs`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => {
+        const jobs = res.data?.jobs || [];
+        const running = jobs.find(j => j.status === 'running' || j.status === 'queued');
+        if (running) {
+          setIsBuilding(true);
+          setBuildProgress(running.progress || 0);
+          addLog(`Reconnected to in-progress build: ${running.message || running.name}`, 'info', 'build');
+          const sessionId = running.payload?.session_id;
+          pollJobStatus(running.id, sessionId);
+        }
+      })
+      .catch(() => {});
+  }, [token, API]);
+
   // Load task files when opening with taskId (returning users - Q122 FIX)
   useEffect(() => {
     if (!taskIdFromUrl || !token || !API) return;

@@ -7118,7 +7118,7 @@ async def integrations_status():
 
 @api_router.get("/jobs/{job_id}")
 async def get_job(job_id: str, user: dict = Depends(get_optional_user)):
-    """Get status and progress of an async job (iterative build, etc.)"""
+    """Get status and progress of an async job."""
     try:
         from integrations.queue import get_job_status
         job = await get_job_status(job_id)
@@ -7129,6 +7129,42 @@ async def get_job(job_id: str, user: dict = Depends(get_optional_user)):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/jobs")
+async def list_jobs(user: dict = Depends(get_optional_user)):
+    """List active/recent jobs for the current user.
+    Used by frontend on reconnect to resume monitoring in-progress builds."""
+    try:
+        if not user:
+            return {"jobs": []}
+        from integrations.queue import _memory_jobs, get_job_status
+        # From memory (works for current container)
+        user_jobs = [
+            j for j in _memory_jobs.values()
+            if j.get("payload", {}).get("user_id") == user.get("id")
+            and j.get("status") in ("queued", "running", "complete")
+        ]
+        # Also check PostgreSQL for jobs from previous containers
+        try:
+            cursor = db.automation_tasks.find({
+                "doc.payload.user_id": user["id"],
+                "doc.status": {"$in": ["queued", "running", "complete"]}
+            })
+            pg_jobs = []
+            async for row in cursor:
+                doc = row.get("doc", {})
+                jid = doc.get("id", "")
+                if jid not in {j["id"] for j in user_jobs}:
+                    pg_jobs.append(doc)
+            user_jobs = user_jobs + pg_jobs
+        except Exception:
+            pass
+        # Sort newest first
+        user_jobs.sort(key=lambda j: j.get("created_at", ""), reverse=True)
+        return {"jobs": user_jobs[:20]}
+    except Exception as e:
+        return {"jobs": [], "error": str(e)}
 
 
 @api_router.post("/ai/build/async")
@@ -7789,64 +7825,102 @@ async def init_postgres_primary():
         except Exception as _ae:
             logger.debug(f"Automation engine init skipped: {_ae}")
 
-        # Start background job worker
+        # Start production job worker with recovery
         try:
-            from integrations.queue import run_worker, enqueue_job, get_job_status
+            from integrations.queue import (
+                run_worker, enqueue_job, get_job_status,
+                recover_incomplete_jobs, init_queue_db, update_job_progress
+            )
+
+            # Give queue access to PostgreSQL for fallback persistence
+            init_queue_db(db)
+
+            # Recover any jobs that were in-flight when container last restarted
+            recovered = await recover_incomplete_jobs()
+            if recovered:
+                logger.info(f"Recovered {recovered} in-flight jobs from previous container")
 
             async def _handle_iterative_build(job_id: str, payload: dict):
-                """Worker handler for async iterative builds."""
-                from integrations.queue import update_job_progress, complete_job, fail_job
-                try:
-                    # This mirrors the logic in ai_build_iterative but runs async
-                    from iterative_builder import run_iterative_build, get_build_structure
-                    prompt = payload.get("prompt", "")
-                    build_kind = payload.get("build_kind", "fullstack")
-                    user_id = payload.get("user_id")
-                    session_id = payload.get("session_id", job_id)
-                    total_steps = len(get_build_structure(build_kind)["passes"])
-                    step_num = 0
+                """Worker handler — runs full iterative build async, survives disconnect."""
+                from iterative_builder import run_iterative_build, get_build_structure
+                prompt       = payload.get("prompt", "")
+                build_kind   = payload.get("build_kind", "fullstack")
+                user_id      = payload.get("user_id")
+                session_id   = payload.get("session_id", job_id)
+                total_steps  = len(get_build_structure(build_kind)["passes"])
+                step_num     = 0
 
-                    async def on_step(step_name, files_so_far):
-                        nonlocal step_num
-                        step_num += 1
-                        pct = int(step_num / total_steps * 90)
-                        await update_job_progress(job_id, pct, "running", f"Pass {step_num}/{total_steps}: {step_name}")
-
-                    # Build with fallback model chain
-                    async def call_llm(message, system):
-                        effective = _effective_api_keys({})
-                        model_chain = _get_model_chain("auto", message, effective_keys=effective)
-                        resp, _ = await _call_llm_with_fallback(
-                            message=message, system_message=system,
-                            session_id=session_id, model_chain=model_chain,
-                            api_keys=effective, user_id=user_id,
-                        )
-                        return resp
-
-                    final_files = await run_iterative_build(
-                        prompt=prompt, build_kind=build_kind,
-                        call_llm=call_llm, on_progress=on_step,
+                async def on_step(step_name, files_so_far):
+                    nonlocal step_num
+                    step_num += 1
+                    pct = int(step_num / total_steps * 90)
+                    await update_job_progress(
+                        job_id, pct, "running",
+                        f"Pass {step_num}/{total_steps}: {step_name} ({len(files_so_far)} files so far)"
                     )
 
-                    # Save to tasks table
-                    if user_id:
-                        await db.tasks.update_one(
-                            {"id": session_id},
-                            {"$set": {"id": session_id, "user_id": user_id,
-                                      "files": final_files, "status": "complete",
-                                      "total_files": len(final_files)}},
-                            upsert=True,
-                        )
-                    await update_job_progress(job_id, 100, "complete", f"Done: {len(final_files)} files")
-                except Exception as e:
-                    raise
+                async def call_llm(message, system):
+                    effective = _effective_api_keys({})
+                    model_chain = _get_model_chain("auto", message, effective_keys=effective)
+                    resp, _ = await _call_llm_with_fallback(
+                        message=message, system_message=system,
+                        session_id=session_id, model_chain=model_chain,
+                        api_keys=effective, user_id=user_id,
+                        user_tier="free", speed_selector="standard",
+                        available_credits=999,
+                    )
+                    return resp
 
-            _worker_task = asyncio.create_task(run_worker({
-                "iterative_build": _handle_iterative_build,
-            }))
-            logger.info("✅ Job worker started")
+                final_files = await run_iterative_build(
+                    prompt=prompt, build_kind=build_kind,
+                    call_llm=call_llm, on_progress=on_step,
+                )
+
+                # Save completed files to PostgreSQL tasks table (Q122 persistence)
+                task_doc = {
+                    "id": session_id,
+                    "user_id": user_id or "guest",
+                    "title": (prompt[:60] + "...") if len(prompt) > 60 else prompt,
+                    "prompt": prompt,
+                    "build_kind": build_kind,
+                    "files": final_files,
+                    "status": "complete",
+                    "total_files": len(final_files),
+                    "job_id": job_id,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }
+                try:
+                    await db.tasks.update_one(
+                        {"id": session_id}, {"$set": task_doc}, upsert=True
+                    )
+                    logger.info(f"Async build saved: {session_id} ({len(final_files)} files)")
+                except Exception as _pe:
+                    logger.error(f"Failed to save async build to PostgreSQL: {_pe}")
+
+                # Deduct credits
+                if user_id:
+                    try:
+                        await _ensure_credit_balance(user_id)
+                        await db.users.update_one(
+                            {"id": user_id},
+                            {"$inc": {"credit_balance": -MIN_CREDITS_FOR_LLM}}
+                        )
+                    except Exception:
+                        pass
+
+                await update_job_progress(
+                    job_id, 100, "complete",
+                    f"Done: {len(final_files)} files built. Task ID: {session_id}"
+                )
+
+            # Start worker — runs forever as background task
+            asyncio.create_task(run_worker(
+                handlers={"iterative_build": _handle_iterative_build},
+                poll_interval=1.0,
+            ))
+            logger.info("✅ Job worker started (Redis=%s)", bool(os.environ.get("REDIS_URL")))
         except Exception as _wk:
-            logger.debug(f"Job worker init skipped: {_wk}")
+            logger.warning(f"Job worker init failed: {_wk}")
     except Exception as e:
         logger.error("PostgreSQL initialization failed: %s", e)
         if not os.environ.get("CRUCIBAI_DEV"):
