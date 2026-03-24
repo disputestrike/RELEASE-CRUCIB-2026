@@ -738,6 +738,35 @@ root.render(<App />);`,
       .finally(() => setBuildHistoryLoading(false));
   }, [projectIdFromUrl, token, API]);
 
+  // Load task files when opening with taskId (returning users - Q122 FIX)
+  useEffect(() => {
+    if (!taskIdFromUrl || !token || !API) return;
+    axios.get(`${API}/tasks/${taskIdFromUrl}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => {
+        const task = r.data?.task || r.data;
+        const taskFiles = task?.files || task?.doc?.files;
+        if (!taskFiles || Object.keys(taskFiles).length === 0) return;
+        // Convert stored format to Sandpack format
+        const loaded = Object.entries(taskFiles).reduce((acc, [path, content]) => {
+          const key = path.startsWith('/') ? path : `/${path}`;
+          acc[key] = { code: typeof content === 'string' ? content : (content?.code || '') };
+          return acc;
+        }, {});
+        if (Object.keys(loaded).length > 0) {
+          setFiles(loaded);
+          setActiveFile(Object.keys(loaded).sort().find(k => k.includes('App')) || Object.keys(loaded).sort()[0]);
+          // Trigger Sandpack remount so preview loads — THE CRITICAL FIX for Q122
+          setTimeout(() => {
+            const vId = `task_${taskIdFromUrl}_${Date.now()}`;
+            setCurrentVersion(vId);
+            setFilesReadyKey(`fk_${vId}`);
+            setActivePanel('preview');
+          }, 500);
+        }
+      })
+      .catch(() => {});
+  }, [taskIdFromUrl, token, API]);
+
   // Load imported project files from workspace when opening with projectId (e.g. after Import)
   useEffect(() => {
     if (!projectIdFromUrl || !token || !API || workspaceFilesLoadedForProject.current === projectIdFromUrl) return;
@@ -762,6 +791,13 @@ root.render(<App />);`,
           if (Object.keys(loaded).length > 0) {
             setFiles(loaded);
             setActiveFile((current) => (current && loaded[current] ? current : Object.keys(loaded).sort()[0]));
+            // FIX Q122: trigger Sandpack remount after workspace reload so preview works on return
+            setTimeout(() => {
+              const vId = `reload_${projectIdFromUrl}_${Date.now()}`;
+              setCurrentVersion(vId);
+              setFilesReadyKey(`fk_${vId}`);
+              setActivePanel('preview');
+            }, 500);
           }
         });
       })
@@ -1523,6 +1559,13 @@ BUILD IT NOW — output every file completely:`;
                   setTimeout(() => { setCurrentVersion(vId); setFilesReadyKey(`fk_${vId}`); setActivePanel('preview'); }, 500);
                   setIsBuilding(false);
                   setAgentsActivity([]);
+                  // PERSISTENCE FIX (Q122): store taskId in URL so returning users reload their workspace
+                  const savedTaskId = ev.task_id || sessionId;
+                  if (savedTaskId && !window.location.search.includes('taskId=')) {
+                    const newUrl = new URL(window.location.href);
+                    newUrl.searchParams.set('taskId', savedTaskId);
+                    window.history.replaceState({}, '', newUrl.toString());
+                  }
                 }
                 if (ev.type === 'error') {
                   throw new Error(ev.error);

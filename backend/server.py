@@ -1761,6 +1761,29 @@ async def ai_build_iterative(data: ChatMessage, user: dict = Depends(get_optiona
                     await _ensure_credit_balance(user["id"])
                     await db.users.update_one({"id": user["id"]}, {"$inc": {"credit_balance": -deduct}})
 
+            # PERSISTENCE FIX (Q122): Save completed build files to tasks table
+            # So when user returns to /app/workspace?taskId=X files reload from DB
+            try:
+                task_id = data.session_id or str(uuid.uuid4())
+                await db.tasks.update_one(
+                    {"id": task_id},
+                    {"$set": {
+                        "id": task_id,
+                        "user_id": user["id"] if user else "guest",
+                        "title": (prompt[:60] + "...") if len(prompt) > 60 else prompt,
+                        "prompt": prompt,
+                        "build_kind": build_kind,
+                        "files": final_files,
+                        "status": "complete",
+                        "total_files": len(final_files),
+                        "updated_at": __import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat(),
+                    }},
+                    upsert=True,
+                )
+                logger.info(f"Build saved to tasks table: {task_id} ({len(final_files)} files)")
+            except Exception as _save_err:
+                logger.debug(f"Build save to tasks skipped: {_save_err}")
+
             # Fire automation trigger: build complete
             try:
                 from automation_engine import fire_trigger, TriggerType
@@ -1772,7 +1795,8 @@ async def ai_build_iterative(data: ChatMessage, user: dict = Depends(get_optiona
             except Exception:
                 pass
             yield json.dumps({"type": "done", "files": final_files, "total_files": len(final_files),
-                              "build_kind": build_kind, "tokens_used": tokens_used}) + "\n"
+                              "build_kind": build_kind, "tokens_used": tokens_used,
+                              "task_id": data.session_id or ""}) + "\n"
         except Exception as e:
             logger.error(f"Iterative build error: {e}")
             yield json.dumps({"type": "error", "error": str(e)}) + "\n"
@@ -5529,6 +5553,27 @@ async def run_orchestration_v2(project_id: str, user_id: str):
     total_used = 0
     suggest_retry_phase: Optional[int] = None
     suggest_retry_reason: Optional[str] = None
+
+    # ── GAP 2.5 FIX: Checkpoint recovery — skip completed agents on restart ──
+    # Reads agent_status table — if agent already has output, skip and reuse
+    try:
+        checkpoint_cursor = db.agent_status.find({"project_id": project_id})
+        checkpoint_count = 0
+        async for row in checkpoint_cursor:
+            doc = row.get("doc", {})
+            agent_nm = row.get("agent_name") or doc.get("agent_name", "")
+            status = doc.get("status", "")
+            output = doc.get("output", "")
+            if agent_nm and status in ("complete", "failed_with_fallback") and output:
+                results[agent_nm] = {"output": output, "result": output, "status": status, "from_checkpoint": True}
+                checkpoint_count += 1
+        if checkpoint_count > 0:
+            logger.info(f"Checkpoint recovery: {checkpoint_count} agents reloaded, skipping re-execution")
+            emit_build_event(project_id, "checkpoint_restored", count=checkpoint_count,
+                             message=f"Resuming from checkpoint: {checkpoint_count} agents already complete")
+    except Exception as _cp_err:
+        logger.debug(f"Checkpoint load skipped: {_cp_err}")
+
     for phase_idx, agent_names in enumerate(phases):
         emit_build_event(project_id, "phase_started", phase=phase_idx, agents=agent_names, message=f"Phase {phase_idx + 1}: {', '.join(agent_names)}")
         progress_pct = int((phase_idx + 1) / len(phases) * 100)
@@ -5537,6 +5582,11 @@ async def run_orchestration_v2(project_id: str, user_id: str):
             {"$set": {"current_phase": phase_idx, "current_agent": ",".join(agent_names), "progress_percent": progress_pct, "tokens_used": total_used}},
         )
         for agent_name in agent_names:
+            # Skip agents already completed in a previous run (checkpoint recovery)
+            if agent_name in results and results[agent_name].get("from_checkpoint"):
+                emit_build_event(project_id, "agent_skipped", agent=agent_name,
+                                 message=f"{agent_name} skipped (checkpoint)")
+                continue
             emit_build_event(project_id, "agent_started", agent=agent_name, message=f"{agent_name} started")
             await db.agent_status.update_one(
                 {"project_id": project_id, "agent_name": agent_name},
