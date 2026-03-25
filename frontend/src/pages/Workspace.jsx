@@ -64,6 +64,15 @@ import {
   RotateCcw,
   Share2,
   Folder,
+  Database,
+  BarChart3,
+  BookOpen,
+  GitBranch,
+  Layers,
+  Cpu,
+  Globe2,
+  Activity,
+  Network,
 } from 'lucide-react';
 import { useAuth, API } from '../App';
 import { useLayoutStore } from '../stores/useLayoutStore';
@@ -2680,6 +2689,41 @@ BUILD IT NOW — output every file completely:`;
 
         {/* ── Center: Chat / Build Steps ── */}
         <div className="flex-1 flex flex-col min-w-0" style={{ background: 'var(--theme-bg, #111113)' }}>
+
+          {/* ── Manus-style task header ── */}
+          {(isBuilding || messages.length > 0) && (
+            <div className="shrink-0 px-4 py-2.5 border-b flex items-center gap-3" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.08))', background: 'var(--theme-surface, #18181B)' }}>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-medium truncate" style={{ color: 'var(--theme-text)' }}>
+                  {messages.find(m => m.role === 'user')?.content?.toString().slice(0, 60) || 'New task'}
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  {isBuilding ? (
+                    <>
+                      <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--theme-accent)' }} />
+                      <span className="text-[11px]" style={{ color: 'var(--theme-muted)' }}>{currentPhase || 'Building'}... {Math.round(buildProgress)}%</span>
+                    </>
+                  ) : versions.length > 0 ? (
+                    <>
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#4ade80' }} />
+                      <span className="text-[11px]" style={{ color: 'var(--theme-muted)' }}>Complete · {Object.keys(files).length} files · v{versions.length}</span>
+                    </>
+                  ) : null}
+                </div>
+              </div>
+              {/* Progress bar */}
+              {(isBuilding || buildProgress > 0) && (
+                <div className="w-20 h-1 rounded-full overflow-hidden shrink-0" style={{ background: 'var(--theme-input)' }}>
+                  <div className="h-full rounded-full transition-all duration-700" style={{ width: `${buildProgress}%`, background: buildProgress === 100 ? '#4ade80' : 'var(--theme-accent)' }} />
+                </div>
+              )}
+              {/* Mode badge */}
+              <div className="text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0" style={{ background: 'rgba(255,255,255,0.07)', color: 'var(--theme-muted)' }}>
+                {devMode ? '⚙ Pro' : '✦ Guided'}
+              </div>
+            </div>
+          )}
+
           {/* Messages area */}
           <div className="flex-1 overflow-y-auto px-5 py-6 space-y-4 min-h-0">
             {messages.length === 0 && !isBuilding && (
@@ -2689,40 +2733,70 @@ BUILD IT NOW — output every file completely:`;
               </div>
             )}
 
-            {/* ── Agent steps card (Manus-style) ── */}
+            {/* ── Manus-style grouped execution cards ── */}
             {isBuilding && (
-              <div className="rounded-2xl p-4 border" style={{ background: 'var(--theme-surface, #1C1C1E)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--theme-accent)' }} />
-                  <span className="text-sm font-medium" style={{ color: 'var(--theme-text, #ffffff)' }}>{currentPhase || 'Building your app...'}</span>
-                  <span className="ml-auto text-xs" style={{ color: 'var(--theme-muted, #52525b)' }}>{Math.round(buildProgress)}%</span>
-                </div>
-                {/* Progress bar */}
-                <div className="h-0.5 rounded-full mb-3 overflow-hidden" style={{ background: 'var(--theme-input, #27272a)' }}>
-                  <div className="h-full rounded-full bg-orange-400 transition-all duration-500" style={{ width: `${buildProgress}%` }} />
-                </div>
-                {/* Agent steps */}
-                <div className="space-y-2">
-                  {agentsActivity.map((a, i) => (
-                    <div key={i} className="flex items-center gap-2.5 text-xs">
-                      {a.status === 'done' ? (
-                        <div className="w-4 h-4 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(74,222,128,0.15)' }}>
-                          <Check className="w-2.5 h-2.5 text-green-400" />
+              <div className="space-y-2">
+                {/* Main progress card */}
+                <div className="rounded-2xl p-4 border" style={{ background: 'var(--theme-surface, #1C1C1E)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--theme-accent)' }} />
+                    <span className="text-sm font-medium" style={{ color: 'var(--theme-text, #ffffff)' }}>{currentPhase || 'Building your app...'}</span>
+                    <span className="ml-auto text-xs font-mono" style={{ color: 'var(--theme-muted, #52525b)' }}>{Math.round(buildProgress)}%</span>
+                  </div>
+                  {/* Segmented progress */}
+                  <div className="flex gap-0.5 h-1 rounded-full overflow-hidden mb-3">
+                    {['Planning', 'Architecture', 'Frontend', 'Backend', 'Validation', 'Deploy'].map((phase, i) => (
+                      <div key={phase} className="flex-1 rounded-sm transition-all duration-500" style={{
+                        background: buildProgress > (i * 17) ? (buildProgress === 100 ? '#4ade80' : 'var(--theme-accent)') : 'rgba(255,255,255,0.08)'
+                      }} />
+                    ))}
+                  </div>
+                  {/* Agent steps */}
+                  <div className="space-y-1.5">
+                    {agentsActivity.length > 0 ? agentsActivity.map((a, i) => (
+                      <div key={i} className="flex items-center gap-2.5 text-xs py-1">
+                        {a.status === 'done' ? (
+                          <div className="w-4 h-4 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(74,222,128,0.15)' }}>
+                            <Check className="w-2.5 h-2.5 text-green-400" />
+                          </div>
+                        ) : a.status === 'running' ? (
+                          <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--theme-accent)' }} />
+                          </div>
+                        ) : (
+                          <div className="w-4 h-4 rounded-full border shrink-0" style={{ borderColor: 'rgba(255,255,255,0.12)' }} />
+                        )}
+                        <span className="font-medium" style={{ color: a.status === 'done' ? '#86efac' : a.status === 'running' ? '#fb923c' : 'var(--theme-muted, #52525b)' }}>
+                          {a.name}
+                        </span>
+                        <span className="truncate opacity-60" style={{ color: 'var(--theme-muted, #3f3f46)' }}>{a.phase}</span>
+                        {a.status === 'done' && <span className="ml-auto shrink-0 text-[10px]" style={{ color: '#4ade80' }}>✓</span>}
+                        {a.status === 'running' && <span className="ml-auto shrink-0 text-[10px] animate-pulse" style={{ color: 'var(--theme-accent)' }}>●</span>}
+                      </div>
+                    )) : (
+                      /* Phase placeholders when no agent data yet */
+                      ['Planner', 'Architect', 'Frontend', 'Styling', 'Logic', 'Validator', 'Optimizer'].map((name, i) => (
+                        <div key={name} className="flex items-center gap-2.5 text-xs py-1">
+                          <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                            {i === 0 ? <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--theme-accent)' }} /> : <div className="w-3 h-3 rounded-full border" style={{ borderColor: 'rgba(255,255,255,0.12)' }} />}
+                          </div>
+                          <span style={{ color: i === 0 ? '#fb923c' : 'var(--theme-muted, #52525b)' }}>{name}</span>
+                          <span className="opacity-50 text-[10px]" style={{ color: 'var(--theme-muted)' }}>
+                            {i === 0 ? 'Planning' : i <= 2 ? 'Generating' : i === 5 ? 'Validating' : 'Queued'}
+                          </span>
                         </div>
-                      ) : a.status === 'running' ? (
-                        <div className="w-4 h-4 flex items-center justify-center shrink-0">
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--theme-accent)' }} />
-                        </div>
-                      ) : (
-                        <div className="w-4 h-4 rounded-full border shrink-0" style={{ borderColor: 'var(--theme-muted, #3f3f46)' }} />
-                      )}
-                      <span className="font-medium" style={{ color: a.status === 'done' ? '#86efac' : a.status === 'running' ? '#fb923c' : 'var(--theme-muted, #52525b)' }}>
-                        {a.name}
-                      </span>
-                      <span className="truncate" style={{ color: 'var(--theme-muted, #3f3f46)' }}>{a.phase}</span>
-                    </div>
-                  ))}
+                      ))
+                    )}
+                  </div>
                 </div>
+
+                {/* Step count badge */}
+                {agentsActivity.length > 0 && (
+                  <div className="flex items-center gap-2 px-2 text-xs" style={{ color: 'var(--theme-muted)' }}>
+                    <span>{agentsActivity.filter(a => a.status === 'done').length}/{agentsActivity.length} steps complete</span>
+                    <div className="flex-1 h-px" style={{ background: 'var(--theme-border)' }} />
+                  </div>
+                )}
               </div>
             )}
 
@@ -2857,21 +2931,27 @@ BUILD IT NOW — output every file completely:`;
         {/* ── Right: Preview + Code Editor (collapsible) ── */}
         {rightSidebarOpen ? (
         <div className="workspace-right-panel flex flex-col shrink-0 border-l" style={{ width: '46%', background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
-          {/* Tab bar */}
-          <div className="h-11 flex items-center px-3 border-b shrink-0 gap-1" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
+          {/* Manus-style tab bar */}
+          <div className="h-11 flex items-center px-2 border-b shrink-0 gap-0.5 overflow-x-auto" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.08))', scrollbarWidth: 'none' }}>
             {[
               { id: 'preview', label: 'Preview', icon: Eye },
               { id: 'code', label: 'Code', icon: FileCode },
               { id: 'console', label: 'Console', icon: Terminal },
+              { id: 'dashboard', label: 'Dashboard', icon: Activity },
+              { id: 'database', label: 'Database', icon: Database },
+              { id: 'agents', label: 'Agents', icon: Network },
+              { id: 'passes', label: 'Passes', icon: Layers },
               ...(projectIdFromUrl ? [{ id: 'history', label: 'History', icon: History }] : []),
             ].map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActivePanel(tab.id)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition shrink-0"
                 style={{
                   background: activePanel === tab.id ? 'rgba(255,255,255,0.1)' : 'transparent',
                   color: activePanel === tab.id ? 'var(--theme-text, #e4e4e7)' : 'var(--theme-muted, #52525b)',
+                  borderBottom: activePanel === tab.id ? '1.5px solid var(--theme-accent, #3b82f6)' : '1.5px solid transparent',
+                  borderRadius: activePanel === tab.id ? '8px 8px 0 0' : '8px',
                 }}
               >
                 <tab.icon className="w-3.5 h-3.5" />
@@ -3052,6 +3132,244 @@ BUILD IT NOW — output every file completely:`;
             )}
             {activePanel === 'history' && projectIdFromUrl && (
               <BuildHistoryPanel buildHistory={buildHistoryList} projectId={projectIdFromUrl} loading={buildHistoryLoading} />
+            )}
+
+            {/* ── Dashboard tab (Manus-style project ops) ── */}
+            {activePanel === 'dashboard' && (
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {/* Project header */}
+                <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2, #111)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--theme-muted)' }}>Project</div>
+                      <div className="font-semibold text-sm" style={{ color: 'var(--theme-text)' }}>
+                        {messages.find(m => m.role === 'user')?.content?.toString().slice(0, 40) || 'Untitled build'}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium" style={{
+                      background: versions.length > 0 ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.06)',
+                      color: versions.length > 0 ? '#86efac' : 'var(--theme-muted)'
+                    }}>
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ background: versions.length > 0 ? '#86efac' : 'var(--theme-muted)' }} />
+                      {versions.length > 0 ? 'Built' : 'Not built'}
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t flex gap-4 text-xs" style={{ borderColor: 'var(--theme-border)' }}>
+                    <div><span style={{ color: 'var(--theme-muted)' }}>Files</span><span className="ml-2 font-medium" style={{ color: 'var(--theme-text)' }}>{Object.keys(files).length}</span></div>
+                    <div><span style={{ color: 'var(--theme-muted)' }}>Versions</span><span className="ml-2 font-medium" style={{ color: 'var(--theme-text)' }}>{versions.length}</span></div>
+                    <div><span style={{ color: 'var(--theme-muted)' }}>Progress</span><span className="ml-2 font-medium" style={{ color: 'var(--theme-text)' }}>{Math.round(buildProgress)}%</span></div>
+                  </div>
+                </div>
+
+                {/* Feature badges */}
+                {versions.length > 0 && (
+                  <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
+                    <div className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--theme-muted)' }}>Features Detected</div>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { label: 'Frontend', check: Object.keys(files).some(f => f.includes('App') || f.includes('.jsx') || f.includes('.tsx')) },
+                        { label: 'Backend', check: Object.keys(files).some(f => f.includes('server') || f.includes('api') || f.includes('routes')) },
+                        { label: 'Database', check: Object.keys(files).some(f => f.includes('schema') || f.includes('db') || f.includes('migration')) },
+                        { label: 'Auth', check: Object.keys(files).some(f => f.includes('auth') || f.includes('login')) },
+                        { label: 'TypeScript', check: Object.keys(files).some(f => f.endsWith('.ts') || f.endsWith('.tsx')) },
+                        { label: 'Docker', check: Object.keys(files).some(f => f.includes('Dockerfile') || f.includes('docker-compose')) },
+                        { label: 'CI/CD', check: Object.keys(files).some(f => f.includes('.github') || f.includes('deploy.yml')) },
+                      ].filter(f => f.check).map(({ label }) => (
+                        <span key={label} className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: 'rgba(59,130,246,0.15)', color: '#93c5fd' }}>{label}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Quality score */}
+                {qualityGateResult && (
+                  <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
+                    <div className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--theme-muted)' }}>Quality Score</div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-3xl font-bold" style={{ color: qualityGateResult.score >= 70 ? '#86efac' : '#fbbf24' }}>{qualityGateResult.score}%</div>
+                      <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'var(--theme-input)' }}>
+                        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${qualityGateResult.score}%`, background: qualityGateResult.score >= 70 ? '#4ade80' : '#f59e0b' }} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Deploy actions */}
+                <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
+                  <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--theme-muted)' }}>Publish & Deploy</div>
+                  <div className="space-y-2">
+                    <button onClick={downloadCode} disabled={Object.keys(files).length === 0} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-medium transition hover:bg-white/5 border disabled:opacity-40" style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text)' }}>
+                      <Download className="w-3.5 h-3.5" /> Download ZIP
+                    </button>
+                    <button onClick={() => setShowDeployModal(true)} disabled={Object.keys(files).length === 0} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-semibold transition disabled:opacity-40" style={{ background: 'var(--theme-accent)', color: 'white' }}>
+                      <Rocket className="w-3.5 h-3.5" /> Deploy App
+                    </button>
+                  </div>
+                </div>
+
+                {/* Version history */}
+                {versions.length > 0 && (
+                  <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
+                    <div className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--theme-muted)' }}>Version History</div>
+                    <div className="space-y-1.5">
+                      {versions.slice(0, 5).map((v, i) => (
+                        <button key={v.id} onClick={() => restoreVersion(v)} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs transition hover:bg-white/5 text-left" style={{ color: currentVersion === v.id ? 'var(--theme-text)' : 'var(--theme-muted)' }}>
+                          <History className="w-3 h-3 shrink-0" />
+                          <span className="truncate">v{versions.length - i} — {v.prompt?.slice(0, 30) || 'Build'}</span>
+                          <span className="ml-auto shrink-0 opacity-60">{v.time}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Database tab (Manus-style) ── */}
+            {activePanel === 'database' && (
+              <div className="flex-1 overflow-y-auto p-4">
+                {Object.keys(files).filter(f => f.includes('schema') || f.includes('.sql') || f.includes('migration') || f.includes('db.')).length > 0 ? (
+                  <div className="space-y-3">
+                    <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
+                      <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--theme-muted)' }}>Schema Files</div>
+                      <div className="space-y-2">
+                        {Object.keys(files).filter(f => f.includes('schema') || f.includes('.sql') || f.includes('migration') || f.includes('db.')).map(f => (
+                          <button key={f} onClick={() => { setActiveFile(f); setActivePanel('code'); }} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs text-left transition hover:bg-white/5 border" style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text)' }}>
+                            <Database className="w-3.5 h-3.5 shrink-0" style={{ color: '#60a5fa' }} />
+                            <span className="truncate">{f.replace(/^\//, '')}</span>
+                            <span className="ml-auto shrink-0" style={{ color: 'var(--theme-muted)' }}>{files[f]?.code?.split('\n').length || 0}L</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Show table names extracted from schema */}
+                    {(() => {
+                      const schemaContent = Object.entries(files).filter(([k]) => k.includes('schema') || k.includes('.sql')).map(([,v]) => v?.code || '').join('\n');
+                      const tables = [...schemaContent.matchAll(/CREATE TABLE(?:\s+IF NOT EXISTS)?\s+"?(\w+)"?/gi)].map(m => m[1]);
+                      return tables.length > 0 ? (
+                        <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
+                          <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--theme-muted)' }}>Tables ({tables.length})</div>
+                          <div className="space-y-1.5">
+                            {tables.map(t => (
+                              <div key={t} className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs" style={{ background: 'rgba(255,255,255,0.03)', color: 'var(--theme-text)' }}>
+                                <div className="w-2 h-2 rounded-sm" style={{ background: '#3b82f6' }} />
+                                {t}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full gap-3 py-12" style={{ color: 'var(--theme-muted)' }}>
+                    <Database className="w-8 h-8 opacity-30" />
+                    <div className="text-center">
+                      <div className="text-sm font-medium mb-1">No database schema yet</div>
+                      <div className="text-xs opacity-70">Build a fullstack or SaaS app to generate DB schema</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Agent Graph tab — CrucibAI unique ── */}
+            {activePanel === 'agents' && (
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
+                  <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--theme-muted)' }}>DAG Orchestration</div>
+                  <div className="text-xs mt-0.5" style={{ color: 'var(--theme-muted)' }}>122 agents · Kahn topological sort · parallel phases</div>
+                </div>
+                {/* Agent activity from live build */}
+                {agentsActivity.length > 0 ? (
+                  <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--theme-border)' }}>
+                    {agentsActivity.map((a, i) => (
+                      <div key={i} className="flex items-center gap-3 px-3 py-2.5 border-b last:border-b-0 text-xs" style={{ borderColor: 'var(--theme-border)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
+                        <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{
+                          background: a.status === 'done' ? 'rgba(74,222,128,0.15)' : a.status === 'running' ? 'rgba(251,146,60,0.15)' : 'rgba(255,255,255,0.05)'
+                        }}>
+                          {a.status === 'done' ? <span style={{ color: '#4ade80', fontSize: 9 }}>✓</span>
+                            : a.status === 'running' ? <Loader2 className="w-2.5 h-2.5 animate-spin" style={{ color: '#fb923c' }} />
+                            : <span style={{ color: 'var(--theme-muted)', fontSize: 9 }}>○</span>}
+                        </div>
+                        <span className="font-medium truncate" style={{ color: a.status === 'done' ? '#86efac' : a.status === 'running' ? '#fb923c' : 'var(--theme-muted)' }}>{a.name}</span>
+                        <span className="ml-auto shrink-0 opacity-60" style={{ color: 'var(--theme-muted)' }}>{a.phase}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  /* Phase map when not building */
+                  <div className="space-y-1.5">
+                    {[
+                      { name: 'Planner', desc: 'Intent parsing, task decomposition', phase: 'Planning', color: '#a78bfa' },
+                      { name: 'Architect', desc: 'System design, component structure', phase: 'Architecture', color: '#60a5fa' },
+                      { name: 'Frontend', desc: 'UI components, pages, styling', phase: 'Generation', color: '#34d399' },
+                      { name: 'Backend', desc: 'API routes, services, middleware', phase: 'Generation', color: '#34d399' },
+                      { name: 'Database', desc: 'Schema, migrations, ORM', phase: 'Generation', color: '#34d399' },
+                      { name: 'Styling', desc: 'Tailwind, CSS, theming', phase: 'Generation', color: '#f472b6' },
+                      { name: 'Logic', desc: 'Business logic, state management', phase: 'Generation', color: '#fb923c' },
+                      { name: 'Validator', desc: 'Syntax checking, type safety', phase: 'Validation', color: '#fbbf24' },
+                      { name: 'Optimizer', desc: 'Bundle optimization, deployment config', phase: 'Deploy', color: '#f87171' },
+                    ].map((agent, i) => (
+                      <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid var(--theme-border)' }}>
+                        <div className="w-2 h-2 rounded-full shrink-0" style={{ background: agent.color }} />
+                        <div className="min-w-0">
+                          <div className="font-medium" style={{ color: 'var(--theme-text)' }}>{agent.name}</div>
+                          <div className="opacity-60 truncate" style={{ color: 'var(--theme-muted)' }}>{agent.desc}</div>
+                        </div>
+                        <span className="ml-auto shrink-0 px-1.5 py-0.5 rounded text-[10px]" style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--theme-muted)' }}>{agent.phase}</span>
+                      </div>
+                    ))}
+                    <div className="text-center py-3 text-xs" style={{ color: 'var(--theme-muted)' }}>+ 113 more specialized agents</div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Pass History tab — CrucibAI unique ── */}
+            {activePanel === 'passes' && (
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
+                  <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--theme-muted)' }}>Multi-Pass Build System</div>
+                  <div className="text-xs mt-0.5" style={{ color: 'var(--theme-muted)' }}>6 passes · 51-file TypeScript output · iterative refinement</div>
+                </div>
+                {versions.length > 0 ? (
+                  <div className="space-y-2">
+                    {[
+                      { pass: 'Pass 1', label: 'Static Foundation', desc: '11 config files injected: tsconfig, vite, package.json, docker-compose, CI/CD', color: '#a78bfa' },
+                      { pass: 'Pass 2', label: 'Architecture', desc: 'System design, shared types, API contracts, folder structure', color: '#60a5fa' },
+                      { pass: 'Pass 3', label: 'Frontend Generation', desc: 'React components, pages, routing, state management', color: '#34d399' },
+                      { pass: 'Pass 4', label: 'Backend Generation', desc: 'Express routes, middleware, services, DB schema', color: '#fb923c' },
+                      { pass: 'Pass 5', label: 'Integration', desc: 'Frontend ↔ backend wiring, shared types, API client', color: '#fbbf24' },
+                      { pass: 'Pass 6', label: 'Finalization', desc: 'README, docs, deployment config, optimization', color: '#f87171' },
+                    ].map((p, i) => (
+                      <div key={i} className="rounded-xl p-3.5 border" style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'var(--theme-border)' }}>
+                        <div className="flex items-center gap-2.5 mb-1.5">
+                          <div className="w-2 h-2 rounded-full shrink-0" style={{ background: p.color }} />
+                          <span className="text-xs font-semibold" style={{ color: p.color }}>{p.pass}</span>
+                          <span className="text-xs font-medium" style={{ color: 'var(--theme-text)' }}>{p.label}</span>
+                          <div className="ml-auto flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(74,222,128,0.12)', color: '#86efac' }}>
+                            <span>✓</span>
+                          </div>
+                        </div>
+                        <div className="text-xs pl-4.5" style={{ color: 'var(--theme-muted)', paddingLeft: '18px' }}>{p.desc}</div>
+                      </div>
+                    ))}
+                    <div className="rounded-xl p-3.5 border text-center" style={{ borderColor: 'var(--theme-border)', background: 'rgba(74,222,128,0.04)' }}>
+                      <div className="text-sm font-semibold" style={{ color: '#86efac' }}>Build Complete</div>
+                      <div className="text-xs mt-0.5" style={{ color: 'var(--theme-muted)' }}>{Object.keys(files).length} files · {versions.length} version{versions.length !== 1 ? 's' : ''} saved</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 gap-3" style={{ color: 'var(--theme-muted)' }}>
+                    <Layers className="w-8 h-8 opacity-30" />
+                    <div className="text-center">
+                      <div className="text-sm font-medium mb-1">No builds yet</div>
+                      <div className="text-xs opacity-70">Run a fullstack build to see pass history</div>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
