@@ -500,3 +500,17 @@
     border-radius: 8px;
   }
 }
+
+/* ── Manus-style preview skeleton pulse ── */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ── Workbench tab bar no scrollbar ── */
+.workspace-right-panel .overflow-x-auto::-webkit-scrollbar { display: none; }
+
+/* ── Tab active underline ── */
+.workspace-right-panel button[style*="border-bottom"] {
+  transition: border-color 0.15s ease;
+}

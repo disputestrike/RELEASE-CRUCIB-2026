@@ -2654,7 +2654,23 @@ BUILD IT NOW — output every file completely:`;
 
                 const rootKeys = Object.keys(tree).sort();
                 if (rootKeys.length === 0) {
-                  return (
+                  return isBuilding ? (
+                    <div className="px-3 py-4 space-y-2">
+                      <div className="text-[10px] uppercase tracking-wider mb-2 font-semibold" style={{ color: 'var(--theme-muted)' }}>Generating files...</div>
+                      {['src/', 'components/', 'api/', 'styles/'].map((f, i) => (
+                        <div key={f} className="flex items-center gap-2 py-1 animate-pulse" style={{ animationDelay: `${i * 150}ms` }}>
+                          <Folder className="w-3 h-3 shrink-0" style={{ color: '#60a5fa', opacity: 0.5 }} />
+                          <span className="text-xs" style={{ color: 'var(--theme-muted)', opacity: 0.5 }}>{f}</span>
+                        </div>
+                      ))}
+                      {['App.tsx', 'server.ts', 'schema.sql'].map((f, i) => (
+                        <div key={f} className="flex items-center gap-2 py-1 pl-3 animate-pulse" style={{ animationDelay: `${(i + 4) * 150}ms` }}>
+                          <FileCode className="w-3 h-3 shrink-0" style={{ color: '#4ade80', opacity: 0.4 }} />
+                          <span className="text-xs" style={{ color: 'var(--theme-muted)', opacity: 0.4 }}>{f}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
                     <div className="px-3 py-4 text-center text-xs" style={{ color: 'var(--theme-muted)' }}>
                       Build something to see files
                     </div>
@@ -3022,6 +3038,25 @@ BUILD IT NOW — output every file completely:`;
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--theme-bg)', color: 'var(--theme-muted)', flexDirection: 'column', gap: 12 }}>
                   <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
                   <p style={{ fontSize: 13 }}>Build something to see the preview</p>
+                </div>
+              ) : (currentVersion === null || filesReadyKey === 'default') && isBuilding ? (
+                /* ── BUILDING SKELETON — Manus-style live preview placeholder ── */
+                <div style={{ flex: 1, background: 'var(--theme-bg)', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ height: 48, borderRadius: 8, background: 'rgba(255,255,255,0.04)', animation: 'pulse 1.5s ease-in-out infinite' }} />
+                  <div style={{ display: 'flex', gap: 12, flex: 1 }}>
+                    <div style={{ width: 180, borderRadius: 8, background: 'rgba(255,255,255,0.03)', animation: 'pulse 1.5s ease-in-out infinite', animationDelay: '0.2s' }} />
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div style={{ height: 120, borderRadius: 8, background: 'rgba(255,255,255,0.04)', animation: 'pulse 1.5s ease-in-out infinite', animationDelay: '0.1s' }} />
+                      <div style={{ height: 80, borderRadius: 8, background: 'rgba(255,255,255,0.03)', animation: 'pulse 1.5s ease-in-out infinite', animationDelay: '0.3s' }} />
+                      <div style={{ height: 60, borderRadius: 8, background: 'rgba(255,255,255,0.02)', animation: 'pulse 1.5s ease-in-out infinite', animationDelay: '0.5s' }} />
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--theme-muted)', paddingTop: 8 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--theme-accent)', display: 'inline-block', animation: 'pulse 1s ease-in-out infinite' }} />
+                      Building your app — preview loads when complete
+                    </span>
+                  </div>
                 </div>
               ) : lastBuildKind === 'mobile' ? (
                 /* ── MOBILE PREVIEW: Expo Snack iframe ── */
