@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import JSZip from 'jszip';
-import { motion, AnimatePresence } from 'framer-motion';
 import Editor from '@monaco-editor/react';
 import {
   SandpackProvider,
@@ -35,14 +34,11 @@ import {
   Sparkles,
   Image,
   FileText,
-  File,
-  Coffee,
   Zap,
   RefreshCw,
   ExternalLink,
   Github,
   History,
-  Undo2,
   Settings,
   Menu,
   Globe,
@@ -73,444 +69,30 @@ import {
   Globe2,
   Activity,
   Network,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { useAuth, API } from '../App';
 import { useLayoutStore } from '../stores/useLayoutStore';
 import { useTaskStore } from '../stores/useTaskStore';
 import axios from 'axios';
-import CrucibAIComputer from '../components/CrucibAIComputer';
 import InlineAgentMonitor from '../components/InlineAgentMonitor';
 import ManusComputer from '../components/ManusComputer';
 import { CommandPalette } from '../components/AdvancedIDEUX';
 import { VibeCodingInput } from '../components/VibeCoding';
-
-/** Format message content — avoid [object Object] */
-function formatMsgContent(c) {
-  if (c == null) return '';
-  if (typeof c === 'string') return c;
-  if (c?.text) return c.text;
-  if (c?.message) return c.message;
-  if (c?.content) return c.content;
-  return typeof c === 'object' ? JSON.stringify(c) : String(c);
-}
-
-/** Chat message — user on right, long messages with Show more */
-function ChatMessage({ msg }) {
-  const [expanded, setExpanded] = useState(false);
-  const content = formatMsgContent(msg.content);
-  const isLong = content.length > 300 || (content.match(/\n/g) || []).length > 4;
-  const showContent = expanded || !isLong ? content : content.slice(0, 300) + (content.length > 300 ? '...' : '');
-  return (
-    <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-      <div className={`max-w-[80%] rounded-xl px-4 py-3 text-sm ${
-        msg.role === 'user'
-          ? 'bg-gray-100 text-gray-900'
-          : 'bg-white border border-gray-200 text-gray-800'
-      }`}>
-        <pre className="whitespace-pre-wrap font-sans">{showContent}</pre>
-        {isLong && (
-          <button
-            type="button"
-            onClick={() => setExpanded(e => !e)}
-            className="mt-2 text-xs font-medium text-gray-600 hover:text-gray-900 underline"
-          >
-            {expanded ? 'Show less' : 'Show more'}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/** Compact collapsible build progress card — Manus-style step bar */
-function BuildProgressCard({ expanded, onToggle, buildProgress, currentPhase, lastTokensUsed, projectBuildProgress, qualityScore, agentsActivityLength, children }) {
-  const tokens = lastTokensUsed || projectBuildProgress?.tokens_used || 0;
-  return (
-    <div className="border-b border-stone-200 bg-white flex-shrink-0">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50 transition"
-      >
-        <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#1A1A1A' }} />
-        <span className="text-sm font-medium text-gray-900 flex-1 truncate">
-          {currentPhase || 'Building...'} — {Math.round(buildProgress)}%
-        </span>
-        <span className="text-xs text-gray-500 shrink-0">{agentsActivityLength || 0} agents · {(tokens / 1000).toFixed(0)}k tokens</span>
-        {qualityScore != null && <span className="text-xs text-gray-600 shrink-0">Quality: {qualityScore}%</span>}
-        {expanded ? <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" /> : <ChevronRight className="w-4 h-4 text-gray-500 shrink-0" />}
-      </button>
-      <div className="border-t border-stone-100 bg-gray-50/50">
-        <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
-          <motion.div
-            className="h-full rounded-full"
-            style={{ background: '#1A1A1A' }}
-            initial={{ width: 0 }}
-            animate={{ width: `${buildProgress}%` }}
-            transition={{ duration: 0.3 }}
-          />
-        </div>
-      </div>
-      {expanded && (
-        <div className="max-h-64 overflow-y-auto border-t border-stone-200">
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Default React app template
-const DEFAULT_FILES = {
-  '/App.js': {
-    code: `import React from 'react';
-
-export default function App() {
-  return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter, sans-serif' }}>
-      <div style={{ textAlign: 'center', padding: '2rem' }}>
-        <div style={{ width: 64, height: 64, background: '#3b82f6', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
-          <span style={{ fontSize: 28 }}>⚡</span>
-        </div>
-        <h1 style={{ fontSize: '2.25rem', fontWeight: 700, color: '#f8fafc', marginBottom: '0.75rem', letterSpacing: '-0.02em' }}>
-          Welcome to CrucibAI
-        </h1>
-        <p style={{ color: '#94a3b8', fontSize: '1.125rem', marginBottom: '2rem' }}>
-          Describe what you want to build in the chat
-        </p>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '0.5rem 1rem', color: '#64748b', fontSize: '0.875rem' }}>
-          <span>💬</span> Type a prompt to get started
-        </div>
-      </div>
-    </div>
-  );
-}`,
-  },
-  '/index.js': {
-    code: `import React from 'react';
-import ReactDOM from 'react-dom/client';
-import App from './App';
-import './styles.css';
-
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App />);`,
-  },
-  '/styles.css': {
-    code: `/* Tailwind CSS loaded via CDN (see externalResources in Sandpack config) */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-}`,
-  },
-};
-
-// File tree component
-const FileTree = ({ files, activeFile, onSelectFile, onAddFile, onAddFolder, onOpenFolder, onDeleteFile }) => {
-  const [expandedFolders, setExpandedFolders] = useState({});
-
-  const getFileIcon = (name) => {
-    if (/\.(jsx?|tsx?)$/.test(name)) return <FileCode className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0" />;
-    if (/\.css$/.test(name)) return <FileText className="w-3.5 h-3.5 text-pink-500 flex-shrink-0" />;
-    if (/\.html$/.test(name)) return <FileText className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--theme-accent)' }} />;
-    if (/\.json$/.test(name)) return <FileText className="w-3.5 h-3.5 text-yellow-600 flex-shrink-0" />;
-    if (/\.(py|c|cpp|h)$/.test(name)) return <FileCode className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />;
-    if (/\.(md|txt)$/.test(name)) return <FileText className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />;
-    return <File className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />;
-  };
-
-  // Group files into root-level files and folders
-  const tree = {};
-  Object.keys(files).sort().forEach(path => {
-    const clean = path.replace(/^\//, '');
-    const parts = clean.split('/');
-    if (parts.length === 1) {
-      tree[path] = null;
-    } else {
-      const folder = '/' + parts[0];
-      if (!tree[folder]) tree[folder] = [];
-      tree[folder].push(path);
-    }
-  });
-
-  const toggleFolder = (folder) => {
-    setExpandedFolders(prev => ({ ...prev, [folder]: prev[folder] === false ? true : false }));
-  };
-
-  const isExpanded = (folder) => expandedFolders[folder] !== false; // expanded by default
-
-  return (
-    <div className="text-sm flex flex-col h-full">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between px-2 py-1.5 border-b border-gray-200 bg-[#FAF9F7] flex-shrink-0">
-        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Explorer</span>
-        <div className="flex items-center gap-0.5">
-          {onAddFile && (
-            <button onClick={onAddFile} className="p-1 text-gray-400 hover:text-gray-700 rounded" title="New file">
-              <Plus className="w-3.5 h-3.5" />
-            </button>
-          )}
-          {onAddFolder && (
-            <button onClick={onAddFolder} className="p-1 text-gray-400 hover:text-gray-700 rounded" title="New folder">
-              <FolderOpen className="w-3.5 h-3.5" />
-            </button>
-          )}
-          {onOpenFolder && (
-            <button onClick={onOpenFolder} className="p-1 text-gray-400 hover:text-gray-700 rounded" title="Open local folder">
-              <Upload className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* File tree */}
-      <div className="overflow-y-auto flex-1 py-1">
-        {Object.entries(tree).map(([key, children]) => {
-          if (children === null) {
-            // Root-level file
-            const name = key.replace(/^\//, '');
-            return (
-              <div key={key} className="group flex items-center">
-                <button
-                  onClick={() => onSelectFile(key)}
-                  className={`flex-1 flex items-center gap-2 px-3 py-1 text-left text-xs transition truncate ${
-                    activeFile === key ? 'bg-blue-50 text-blue-800 font-medium' : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                >
-                  {getFileIcon(name)}
-                  <span className="truncate">{name}</span>
-                </button>
-                {onDeleteFile && (
-                  <button onClick={() => onDeleteFile(key)} className="opacity-0 group-hover:opacity-100 pr-2 text-gray-400 hover:text-red-500 transition" title="Delete file">
-                    <X className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-            );
-          } else {
-            // Folder
-            const folderName = key.replace(/^\//, '');
-            const expanded = isExpanded(key);
-            return (
-              <div key={key}>
-                <button
-                  onClick={() => toggleFolder(key)}
-                  className="w-full flex items-center gap-1.5 px-2 py-1 text-left text-xs text-gray-500 hover:bg-gray-100 font-medium"
-                >
-                  {expanded ? <ChevronDown className="w-3 h-3 flex-shrink-0" /> : <ChevronRight className="w-3 h-3 flex-shrink-0" />}
-                  <FolderOpen className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0" />
-                  <span>{folderName}</span>
-                </button>
-                {expanded && children.map(path => {
-                  const name = path.split('/').pop();
-                  return (
-                    <div key={path} className="group flex items-center">
-                      <button
-                        onClick={() => onSelectFile(path)}
-                        className={`flex-1 flex items-center gap-2 pl-7 pr-2 py-1 text-left text-xs transition truncate ${
-                          activeFile === path ? 'bg-blue-50 text-blue-800 font-medium' : 'text-gray-600 hover:bg-gray-100'
-                        }`}
-                      >
-                        {getFileIcon(name)}
-                        <span className="truncate">{name}</span>
-                      </button>
-                      {onDeleteFile && (
-                        <button onClick={() => onDeleteFile(path)} className="opacity-0 group-hover:opacity-100 pr-2 text-gray-400 hover:text-red-500 transition" title="Delete file">
-                          <X className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          }
-        })}
-      </div>
-    </div>
-  );
-};
-
-// Console/Logs component (Terminal) — dark theme to match app
-const ConsolePanel = ({ logs, placeholder = "Terminal output will appear here. Run a build to see logs." }) => {
-  const consoleRef = useRef(null);
-
-  useEffect(() => {
-    if (consoleRef.current) {
-      consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
-    }
-  }, [logs]);
-
-  return (
-    <div ref={consoleRef} className="workspace-console-panel h-full overflow-auto font-mono text-xs p-3 space-y-1">
-      {logs.length === 0 ? (
-        <div className="workspace-console-placeholder">{placeholder}</div>
-      ) : (
-        logs.map((log, i) => (
-          <div
-            key={i}
-            className={`workspace-console-line flex items-start gap-2 workspace-console-line--${log.type || 'info'}`}
-          >
-            <span className="workspace-console-time">[{log.time}]</span>
-            <span className="workspace-console-agent">{log.agent || 'system'}:</span>
-            <span className="flex-1 workspace-console-message">{log.message}</span>
-          </div>
-        ))
-      )}
-    </div>
-  );
-};
-
-// LLM Selector dropdown – Cursor-style: next to chat, opens upward
-const ModelSelector = ({ selectedModel, onSelectModel, variant = 'default' }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const isChat = variant === 'chat';
-
-  const models = [
-    { id: 'auto', name: 'Auto', icon: Sparkles, desc: 'Best model for the task' },
-    { id: 'gpt-4o', name: 'GPT-4o', icon: Zap, desc: 'OpenAI latest' },
-    { id: 'claude', name: 'Claude 3.5', icon: Coffee, desc: 'Anthropic Sonnet' },
-    { id: 'gemini', name: 'Gemini Flash', icon: RefreshCw, desc: 'Google fast model' },
-  ];
-
-  const selected = models.find(m => m.id === selectedModel) || models[0];
-
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        data-testid="model-selector"
-        className={`flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white text-gray-800 hover:bg-gray-50 transition ${
-          isChat ? 'h-[42px] px-3 py-2 text-sm' : 'px-3 py-1.5 text-sm'
-        }`}
-      >
-        <selected.icon className="w-4 h-4 shrink-0" />
-        <span className="truncate max-w-[100px]">{isChat ? selected.name : selected.name}</span>
-        <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition ${isOpen ? 'rotate-180' : ''}`} />
-      </button>
-
-      <AnimatePresence>
-        {isOpen && (
-          <>
-            <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} aria-hidden />
-            <motion.div
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 6 }}
-              className="absolute left-0 bottom-full mb-1.5 w-56 bg-white border border-gray-200 rounded-lg shadow-xl overflow-hidden z-50"
-            >
-              <div className="py-1">
-                {models.map((model) => (
-                  <button
-                    key={model.id}
-                    type="button"
-                    onClick={() => { onSelectModel(model.id); setIsOpen(false); }}
-                    data-testid={`model-option-${model.id}`}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm transition ${
-                      selectedModel === model.id ? 'bg-gray-100 text-gray-900' : 'text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    <model.icon className="w-4 h-4 shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium">{model.name}</div>
-                      <div className="text-xs text-gray-500 truncate">{model.desc}</div>
-                    </div>
-                    {selectedModel === model.id && <Check className="w-4 h-4 shrink-0 text-[#1A1A1A]" />}
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
-
-// Version History Panel (local versions)
-const VersionHistory = ({ versions, onRestore, currentVersion }) => {
-  return (
-    <div className="p-3 space-y-2 overflow-y-auto h-full">
-      <div className="text-xs text-gray-500 uppercase tracking-wider mb-3">Version History</div>
-      {versions.length === 0 ? (
-        <div className="text-sm text-gray-500">No versions yet</div>
-      ) : (
-        versions.map((version, i) => (
-          <div
-            key={version.id}
-            className={`p-3 rounded-lg cursor-pointer transition ${
-              currentVersion === version.id ? 'bg-gray-200 border border-gray-300' : 'bg-gray-50 hover:bg-gray-100 border border-transparent'
-            }`}
-          >
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-sm font-medium text-gray-800">v{versions.length - i}</span>
-              <span className="text-xs text-gray-500">{version.time}</span>
-            </div>
-            <p className="text-xs text-gray-600 mb-2 line-clamp-2">{version.prompt}</p>
-            {currentVersion !== version.id && (
-              <button
-                onClick={() => onRestore(version)}
-                className="flex items-center gap-1 text-xs text-gray-800 hover:text-gray-900"
-              >
-                <Undo2 className="w-3 h-3" />
-                Restore
-              </button>
-            )}
-          </div>
-        ))
-      )}
-    </div>
-  );
-};
-
-// Build History Panel (Item 17) — fetch prior builds from API, click to view in Agent Monitor
-const BuildHistoryPanel = ({ buildHistory, projectId, loading }) => {
-  if (loading) {
-    return (
-      <div className="p-4 flex items-center justify-center h-full">
-        <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
-      </div>
-    );
-  }
-  if (!buildHistory || buildHistory.length === 0) {
-    return (
-      <div className="p-4 text-sm text-zinc-500">
-        No prior builds yet. Run a build from the dashboard to see history here.
-      </div>
-    );
-  }
-  return (
-    <div className="p-3 space-y-2 overflow-y-auto h-full">
-      <div className="text-xs text-zinc-500 uppercase tracking-wider mb-3">Build history</div>
-      {buildHistory.map((entry, i) => (
-        <div key={i} className="p-3 rounded-lg border border-zinc-700/50 bg-zinc-800/30 hover:bg-zinc-800/50 transition">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs text-zinc-400">
-              {entry.completed_at ? new Date(entry.completed_at).toLocaleString() : '—'}
-            </span>
-            <span className={`text-xs font-medium ${entry.status === 'completed' ? 'text-green-400' : 'text-amber-500'}`}>
-              {entry.status === 'completed' ? 'Completed' : (entry.status || '—')}
-            </span>
-          </div>
-          {entry.quality_score != null && <p className="text-xs text-zinc-500">Quality: {Number(entry.quality_score).toFixed(0)}</p>}
-          {entry.tokens_used != null && <p className="text-xs text-zinc-500">{Number(entry.tokens_used).toLocaleString()} tokens</p>}
-          {projectId && (
-            <Link
-              to={`/app/projects/${projectId}`}
-              className="inline-flex items-center gap-1 mt-2 text-xs text-blue-400 hover:text-blue-300"
-            >
-              <ExternalLink className="w-3 h-3" /> View in Agent Monitor
-            </Link>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-};
+import {
+  DEFAULT_FILES,
+  ConsolePanel,
+  BuildHistoryPanel,
+  formatMsgContent,
+  getBuildEventPresentation,
+  normalizeWorkspacePath,
+  isWorkspaceDbPath,
+  isWorkspaceDocPath,
+  docSortKey,
+  extractSqlTableNames,
+  WorkspaceProPanels,
+} from '../components/workspace';
 
 // Main Workspace Component
 const Workspace = () => {
@@ -658,6 +240,41 @@ root.render(<App />);`,
   const [toolsLoading, setToolsLoading] = useState(false);
   const [buildHistoryList, setBuildHistoryList] = useState([]);
   const [buildHistoryLoading, setBuildHistoryLoading] = useState(false);
+  const [buildTimelineEvents, setBuildTimelineEvents] = useState([]);
+  const [buildEventsErr, setBuildEventsErr] = useState(null);
+  const [serverDbSnapshots, setServerDbSnapshots] = useState([]);
+  const [serverDbLoading, setServerDbLoading] = useState(false);
+  const [serverDbErr, setServerDbErr] = useState(null);
+  const [serverDocSnapshots, setServerDocSnapshots] = useState([]);
+  const [serverDocsLoading, setServerDocsLoading] = useState(false);
+  const [serverDocsErr, setServerDocsErr] = useState(null);
+  const [docsSelectedPath, setDocsSelectedPath] = useState(null);
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsErr, setAnalyticsErr] = useState(null);
+  const [agentApiStatuses, setAgentApiStatuses] = useState([]);
+  const [projectSandboxLogs, setProjectSandboxLogs] = useState([]);
+  const [projectSandboxLoading, setProjectSandboxLoading] = useState(false);
+  const [projectSandboxErr, setProjectSandboxErr] = useState(null);
+  const [apiHealth, setApiHealth] = useState('unknown');
+  const [jobsChip, setJobsChip] = useState({ total: 0, active: 0 });
+  const [consoleFilter, setConsoleFilter] = useState('all');
+  const [workspaceTheme, setWorkspaceTheme] = useState(() => {
+    try {
+      return document.documentElement.getAttribute('data-theme') || localStorage.getItem('crucibai-theme') || 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+  const toggleWorkspaceTheme = useCallback(() => {
+    try {
+      const cur = document.documentElement.getAttribute('data-theme') || localStorage.getItem('crucibai-theme') || 'dark';
+      const next = cur === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('crucibai-theme', next);
+      setWorkspaceTheme(next);
+    } catch (_) {}
+  }, []);
   const [nextSuggestions, setNextSuggestions] = useState([]);
   const [buildMode, setBuildMode] = useState('agent'); // 'quick' | 'plan' | 'agent' | 'thinking' | 'swarm'
   const { user: authUser, refreshUser } = useAuth();
@@ -695,11 +312,103 @@ root.render(<App />);`,
   const [qualityGateResult, setQualityGateResult] = useState(null); // { passed, score, verdict } after build
   const [tokensPerStep, setTokensPerStep] = useState({ plan: 0, generate: 0 });
   const [showDeployModal, setShowDeployModal] = useState(false);
+  const [projectLiveUrl, setProjectLiveUrl] = useState(null);
+  const [deployTokensHint, setDeployTokensHint] = useState({ has_vercel: false, has_netlify: false });
+  const [deployZipBusy, setDeployZipBusy] = useState(false);
+  const [deployOneClickBusy, setDeployOneClickBusy] = useState(null);
+  const [publishCustomDomain, setPublishCustomDomain] = useState('');
+  const [publishRailwayUrl, setPublishRailwayUrl] = useState('');
+  const [publishSaveBusy, setPublishSaveBusy] = useState(false);
+  const [deployRailwayBusy, setDeployRailwayBusy] = useState(false);
+  const [deployRailwaySteps, setDeployRailwaySteps] = useState(null);
+  const [deployRailwayDashboard, setDeployRailwayDashboard] = useState(null);
+  const [deployRailwayErr, setDeployRailwayErr] = useState(null);
   const [mobileView, setMobileView] = useState(false);
   const [showVibeInput, setShowVibeInput] = useState(false);
   const projectIdFromUrl = searchParams.get('projectId');
   const taskIdFromUrl = searchParams.get('taskId');
   const [projectBuildProgress, setProjectBuildProgress] = useState({ phase: 0, agent: '', progress: 0, status: '', tokens_used: 0 });
+
+  const localMdDocs = useMemo(
+    () =>
+      Object.entries(files)
+        .filter(([k]) => isWorkspaceDocPath(k))
+        .map(([path, f]) => ({
+          path: path.startsWith('/') ? path.slice(1) : path,
+          content: f?.code || '',
+          source: 'editor',
+        })),
+    [files],
+  );
+
+  const mergedDocFiles = useMemo(() => {
+    const sortFn = (a, b) => docSortKey(a.path) - docSortKey(b.path) || String(a.path).localeCompare(String(b.path));
+    const editor = localMdDocs.map((d) => ({ ...d, source: 'editor' })).sort(sortFn);
+    if (!projectIdFromUrl) return editor;
+    const serv = serverDocSnapshots.map((d) => ({ path: d.path, content: d.content || '', source: 'server' })).sort(sortFn);
+    const sn = new Set(serv.map((d) => normalizeWorkspacePath(d.path)));
+    const uniqEditor = editor.filter((d) => !sn.has(normalizeWorkspacePath(d.path)));
+    return [...serv, ...uniqEditor].sort(sortFn);
+  }, [projectIdFromUrl, serverDocSnapshots, localMdDocs]);
+
+  const localDbEntries = useMemo(
+    () =>
+      Object.entries(files)
+        .filter(([k]) => isWorkspaceDbPath(k))
+        .map(([k, f]) => ({
+          path: k.startsWith('/') ? k.slice(1) : k,
+          displayKey: k.startsWith('/') ? k : `/${k}`,
+          content: f?.code || '',
+          source: 'editor',
+        })),
+    [files],
+  );
+
+  const dbPanelMerge = useMemo(() => {
+    const serverNorm = new Set(serverDbSnapshots.map((s) => normalizeWorkspacePath(s.path)));
+    const editorOnly = localDbEntries.filter((e) => !serverNorm.has(normalizeWorkspacePath(e.path)));
+    const sqlBlob = [...serverDbSnapshots, ...editorOnly.map((e) => ({ content: e.content }))]
+      .map((x) => x.content)
+      .join('\n');
+    return {
+      editorOnly,
+      inferredTables: [...new Set(extractSqlTableNames(sqlBlob))],
+      hasRows: serverDbSnapshots.length > 0 || localDbEntries.length > 0,
+    };
+  }, [serverDbSnapshots, localDbEntries]);
+
+  /** Guided: core workbench only. Pro: database, docs, analytics, agents, passes. */
+  const workbenchTabs = useMemo(() => {
+    const base = [
+      { id: 'preview', label: 'Preview', icon: Eye },
+      { id: 'code', label: 'Code', icon: FileCode },
+      { id: 'console', label: 'Console', icon: Terminal },
+      { id: 'dashboard', label: 'Dashboard', icon: Activity },
+      { id: 'database', label: 'Database', icon: Database },
+      { id: 'docs', label: 'Docs', icon: BookOpen },
+      { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+      { id: 'agents', label: 'Agents', icon: Network },
+      { id: 'passes', label: 'Passes', icon: Layers },
+      { id: 'sandbox', label: 'Sandbox', icon: Globe2 },
+      ...(projectIdFromUrl ? [{ id: 'history', label: 'History', icon: History }] : []),
+    ];
+    const proOnly = new Set(['database', 'docs', 'analytics', 'agents', 'passes', 'sandbox']);
+    if (devMode) return base;
+    return base.filter((t) => !proOnly.has(t.id));
+  }, [projectIdFromUrl, devMode]);
+
+  const filteredConsoleLogs = useMemo(() => {
+    if (consoleFilter === 'all') return logs;
+    return logs.filter((log) => {
+      const t = log.type || 'info';
+      const a = (log.agent || '').toLowerCase();
+      if (consoleFilter === 'error') return t === 'error';
+      if (consoleFilter === 'build') return a === 'build';
+      if (consoleFilter === 'system') return a === 'system' || !log.agent;
+      return true;
+    });
+  }, [logs, consoleFilter]);
+
   const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
   const zipInputRef = useRef(null);
@@ -720,10 +429,47 @@ root.render(<App />);`,
     } else resizeChatInput();
   }, [input, resizeChatInput]);
   const workspaceFilesLoadedForProject = useRef(null);
+  const [workspacePullKey, setWorkspacePullKey] = useState(0);
+  const reloadWorkspaceFromServer = useCallback(() => {
+    workspaceFilesLoadedForProject.current = null;
+    setWorkspacePullKey((k) => k + 1);
+  }, []);
+  const prevIsBuildingRef = useRef(false);
 
   useEffect(() => {
     axios.get(`${API}/build/phases`).then(r => setBuildPhases(r.data.phases || [])).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!API) return undefined;
+    const ping = () => {
+      axios.get(`${API}/health`, { timeout: 8000 }).then(() => setApiHealth('ok')).catch(() => setApiHealth('down'));
+    };
+    ping();
+    const id = setInterval(ping, 25000);
+    return () => clearInterval(id);
+  }, [API]);
+
+  useEffect(() => {
+    if (!token || !API) {
+      setJobsChip({ total: 0, active: 0 });
+      return undefined;
+    }
+    const headers = { Authorization: `Bearer ${token}` };
+    const run = () => {
+      axios
+        .get(`${API}/jobs`, { headers, timeout: 12000 })
+        .then((r) => {
+          const jobs = r.data?.jobs || [];
+          const active = jobs.filter((j) => j.status === 'running' || j.status === 'queued').length;
+          setJobsChip({ total: jobs.length, active });
+        })
+        .catch(() => {});
+    };
+    run();
+    const id = setInterval(run, 12000);
+    return () => clearInterval(id);
+  }, [token, API]);
 
   // Initial terminal message so panel isn't empty
   useEffect(() => {
@@ -746,6 +492,343 @@ root.render(<App />);`,
       .catch(() => setBuildHistoryList([]))
       .finally(() => setBuildHistoryLoading(false));
   }, [projectIdFromUrl, token, API]);
+
+  useEffect(() => {
+    if (!projectIdFromUrl || !token || !API) {
+      setProjectLiveUrl(null);
+      setPublishCustomDomain('');
+      setPublishRailwayUrl('');
+      return;
+    }
+    axios
+      .get(`${API}/projects/${projectIdFromUrl}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => {
+        const p = r.data?.project;
+        setProjectLiveUrl(p?.live_url || null);
+        setPublishCustomDomain(typeof p?.custom_domain === 'string' ? p.custom_domain : '');
+        setPublishRailwayUrl(typeof p?.railway_project_url === 'string' ? p.railway_project_url : '');
+      })
+      .catch(() => {
+        setProjectLiveUrl(null);
+        setPublishCustomDomain('');
+        setPublishRailwayUrl('');
+      });
+  }, [projectIdFromUrl, token, API]);
+
+  useEffect(() => {
+    if (prevIsBuildingRef.current && !isBuilding && projectIdFromUrl && token && API) {
+      const headers = { Authorization: `Bearer ${token}` };
+      axios
+        .get(`${API}/projects/${projectIdFromUrl}`, { headers })
+        .then((r) => {
+          const p = r.data?.project;
+          setProjectLiveUrl(p?.live_url || null);
+          setPublishCustomDomain(typeof p?.custom_domain === 'string' ? p.custom_domain : '');
+          setPublishRailwayUrl(typeof p?.railway_project_url === 'string' ? p.railway_project_url : '');
+        })
+        .catch(() => {});
+      axios
+        .get(`${API}/projects/${projectIdFromUrl}/build-history`, { headers })
+        .then((r) => setBuildHistoryList(r.data?.build_history || []))
+        .catch(() => {});
+    }
+    prevIsBuildingRef.current = isBuilding;
+  }, [isBuilding, projectIdFromUrl, token, API]);
+
+  useEffect(() => {
+    if (!showDeployModal || !token || !API) return;
+    axios
+      .get(`${API}/users/me/deploy-tokens`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => setDeployTokensHint({ has_vercel: !!r.data?.has_vercel, has_netlify: !!r.data?.has_netlify }))
+      .catch(() => setDeployTokensHint({ has_vercel: false, has_netlify: false }));
+  }, [showDeployModal, token, API]);
+
+  useEffect(() => {
+    if (!showDeployModal) {
+      setDeployRailwaySteps(null);
+      setDeployRailwayDashboard(null);
+      setDeployRailwayErr(null);
+    }
+  }, [showDeployModal]);
+
+  // Orchestration timeline: snapshot + SSE (access_token query; EventSource has no Bearer). Poll fallback if SSE fails.
+  useEffect(() => {
+    if (!projectIdFromUrl || !token || !API) {
+      setBuildTimelineEvents([]);
+      setBuildEventsErr(null);
+      return undefined;
+    }
+    let cancelled = false;
+    let es = null;
+    let pollId = null;
+
+    const clearPoll = () => {
+      if (pollId != null) {
+        clearInterval(pollId);
+        pollId = null;
+      }
+    };
+
+    const fetchSnapshot = () => {
+      axios
+        .get(`${API}/projects/${projectIdFromUrl}/events/snapshot`, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 12000,
+        })
+        .then((r) => {
+          if (cancelled) return;
+          const list = r.data?.events;
+          setBuildTimelineEvents(Array.isArray(list) ? list : []);
+          setBuildEventsErr(null);
+        })
+        .catch((e) => {
+          if (cancelled) return;
+          const st = e?.response?.status;
+          setBuildEventsErr(st === 404 ? 'Project not found or no access.' : 'Could not load build events.');
+        });
+    };
+
+    const startPolling = (ms) => {
+      clearPoll();
+      fetchSnapshot();
+      pollId = setInterval(fetchSnapshot, ms);
+    };
+
+    axios
+      .get(`${API}/projects/${projectIdFromUrl}/events/snapshot`, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 12000,
+      })
+      .then((r) => {
+        if (cancelled) return;
+        const list = Array.isArray(r.data?.events) ? r.data.events : [];
+        setBuildTimelineEvents(list);
+        setBuildEventsErr(null);
+        const maxId = list.length ? Math.max(...list.map((e) => Number(e?.id) || 0)) : -1;
+        const lastId = maxId + 1;
+        const base = API.replace(/\/$/, '');
+        const url = `${base}/projects/${encodeURIComponent(projectIdFromUrl)}/events?last_id=${lastId}&access_token=${encodeURIComponent(token)}`;
+        try {
+          es = new EventSource(url);
+          es.onmessage = (event) => {
+            if (cancelled) return;
+            try {
+              const ev = JSON.parse(event.data);
+              if (ev?.type === 'stream_end') {
+                es?.close();
+                return;
+              }
+              if (ev == null || typeof ev.id !== 'number') return;
+              setBuildTimelineEvents((prev) => {
+                if (prev.some((x) => x.id === ev.id)) return prev;
+                return [...prev, ev];
+              });
+            } catch (_) {
+              /* ignore parse */
+            }
+          };
+          es.onerror = () => {
+            if (cancelled) return;
+            try {
+              es?.close();
+            } catch (_) {
+              /* ignore */
+            }
+            es = null;
+            startPolling(isBuilding ? 3000 : 8000);
+          };
+        } catch (_) {
+          startPolling(isBuilding ? 2000 : 5000);
+        }
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        const st = e?.response?.status;
+        setBuildEventsErr(st === 404 ? 'Project not found or no access.' : 'Could not load build events.');
+        startPolling(isBuilding ? 2000 : 5000);
+      });
+
+    return () => {
+      cancelled = true;
+      clearPoll();
+      try {
+        es?.close();
+      } catch (_) {
+        /* ignore */
+      }
+    };
+  }, [projectIdFromUrl, token, API, isBuilding]);
+
+  useEffect(() => {
+    setServerDbSnapshots([]);
+    setServerDbErr(null);
+    setServerDocSnapshots([]);
+    setServerDocsErr(null);
+    setDocsSelectedPath(null);
+    setAnalyticsData(null);
+    setAnalyticsErr(null);
+  }, [projectIdFromUrl]);
+
+  useEffect(() => {
+    if (activePanel !== 'database' || !projectIdFromUrl || !token || !API) return undefined;
+    let cancelled = false;
+    setServerDbLoading(true);
+    setServerDbErr(null);
+    const headers = { Authorization: `Bearer ${token}` };
+    axios
+      .get(`${API}/projects/${projectIdFromUrl}/workspace/files`, { headers, timeout: 15000 })
+      .then(async (r) => {
+        const paths = (r.data?.files || []).filter(isWorkspaceDbPath).slice(0, 30);
+        const chunks = await Promise.all(
+          paths.map((path) =>
+            axios
+              .get(`${API}/projects/${projectIdFromUrl}/workspace/file`, { params: { path }, headers, timeout: 12000 })
+              .then((res) => ({ path: res.data.path, content: res.data.content || '', source: 'server' }))
+              .catch(() => null),
+          ),
+        );
+        if (!cancelled) setServerDbSnapshots(chunks.filter(Boolean));
+      })
+      .catch((e) => {
+        if (!cancelled) setServerDbErr(typeof e?.response?.data?.detail === 'string' ? e.response.data.detail : e?.message || 'Load failed');
+      })
+      .finally(() => {
+        if (!cancelled) setServerDbLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activePanel, projectIdFromUrl, token, API]);
+
+  useEffect(() => {
+    if (activePanel !== 'docs' || !projectIdFromUrl || !token || !API) return undefined;
+    let cancelled = false;
+    setServerDocsLoading(true);
+    setServerDocsErr(null);
+    const headers = { Authorization: `Bearer ${token}` };
+    axios
+      .get(`${API}/projects/${projectIdFromUrl}/workspace/files`, { headers, timeout: 15000 })
+      .then(async (r) => {
+        const paths = (r.data?.files || []).filter(isWorkspaceDocPath).slice(0, 35);
+        const sorted = [...paths].sort((a, b) => docSortKey(a) - docSortKey(b) || a.localeCompare(b));
+        const chunks = await Promise.all(
+          sorted.map((path) =>
+            axios
+              .get(`${API}/projects/${projectIdFromUrl}/workspace/file`, { params: { path }, headers, timeout: 12000 })
+              .then((res) => ({ path: res.data.path, content: res.data.content || '', source: 'server' }))
+              .catch(() => null),
+          ),
+        );
+        if (!cancelled) setServerDocSnapshots(chunks.filter(Boolean));
+      })
+      .catch((e) => {
+        if (!cancelled) setServerDocsErr(typeof e?.response?.data?.detail === 'string' ? e.response.data.detail : e?.message || 'Load failed');
+      })
+      .finally(() => {
+        if (!cancelled) setServerDocsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activePanel, projectIdFromUrl, token, API]);
+
+  useEffect(() => {
+    if (activePanel !== 'analytics' || !token || !API) return undefined;
+    let cancelled = false;
+    setAnalyticsLoading(true);
+    setAnalyticsErr(null);
+    const headers = { Authorization: `Bearer ${token}` };
+    Promise.all([
+      axios.get(`${API}/jobs`, { headers, timeout: 12000 }),
+      axios.get(`${API}/tokens/usage`, { headers, timeout: 12000 }),
+    ])
+      .then(([jobsRes, tokRes]) => {
+        if (!cancelled) {
+          setAnalyticsData({
+            jobs: jobsRes.data?.jobs || [],
+            tokens: tokRes.data || null,
+          });
+        }
+      })
+      .catch((e) => {
+        if (!cancelled) setAnalyticsErr(e?.message || 'Failed to load analytics');
+      })
+      .finally(() => {
+        if (!cancelled) setAnalyticsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activePanel, token, API]);
+
+  useEffect(() => {
+    if (activePanel !== 'docs' || mergedDocFiles.length === 0) return;
+    setDocsSelectedPath((prev) => {
+      if (!prev) return mergedDocFiles[0].path;
+      const np = normalizeWorkspacePath(prev);
+      const hit = mergedDocFiles.find((d) => normalizeWorkspacePath(d.path) === np);
+      return hit ? hit.path : mergedDocFiles[0].path;
+    });
+  }, [activePanel, mergedDocFiles]);
+
+  useEffect(() => {
+    if (devMode) return;
+    const proOnly = new Set(['database', 'docs', 'analytics', 'agents', 'passes', 'sandbox']);
+    if (proOnly.has(activePanel)) setActivePanel('preview');
+  }, [devMode, activePanel]);
+
+  useEffect(() => {
+    const agentsPoll = activePanel === 'agents' || isBuilding;
+    if (!agentsPoll || !projectIdFromUrl || !token || !API) return undefined;
+    let cancelled = false;
+    const headers = { Authorization: `Bearer ${token}` };
+    const run = () => {
+      axios
+        .get(`${API}/agents/status/${projectIdFromUrl}`, { headers, timeout: 12000 })
+        .then((r) => {
+          if (!cancelled) setAgentApiStatuses(Array.isArray(r.data?.statuses) ? r.data.statuses : []);
+        })
+        .catch(() => {
+          if (!cancelled) setAgentApiStatuses([]);
+        });
+    };
+    run();
+    const id = setInterval(run, 4000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [activePanel, isBuilding, projectIdFromUrl, token, API]);
+
+  useEffect(() => {
+    if (activePanel !== 'sandbox' || !projectIdFromUrl || !token || !API) return undefined;
+    let cancelled = false;
+    setProjectSandboxLoading(true);
+    setProjectSandboxErr(null);
+    const headers = { Authorization: `Bearer ${token}` };
+    const run = () => {
+      axios
+        .get(`${API}/projects/${projectIdFromUrl}/logs`, { headers, timeout: 15000 })
+        .then((r) => {
+          if (!cancelled) setProjectSandboxLogs(Array.isArray(r.data?.logs) ? r.data.logs : []);
+        })
+        .catch((e) => {
+          if (!cancelled) {
+            setProjectSandboxLogs([]);
+            setProjectSandboxErr(typeof e?.response?.data?.detail === 'string' ? e.response.data.detail : e?.message || 'Failed to load logs');
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setProjectSandboxLoading(false);
+        });
+    };
+    run();
+    const id = setInterval(run, 8000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [activePanel, projectIdFromUrl, token, API]);
 
   // Reconnect recovery — check for in-progress builds when workspace loads
   useEffect(() => {
@@ -829,7 +912,7 @@ root.render(<App />);`,
         });
       })
       .catch(() => {});
-  }, [projectIdFromUrl, token, API]);
+  }, [projectIdFromUrl, token, API, workspacePullKey]);
 
   useEffect(() => {
     if (token) {
@@ -2280,6 +2363,111 @@ BUILD IT NOW — output every file completely:`;
     }
   };
 
+  const formatDeployErr = (e) => {
+    const d = e.response?.data?.detail;
+    if (typeof d === 'string') return d;
+    if (d && typeof d === 'object') return d.message || JSON.stringify(d);
+    return e.message;
+  };
+
+  const downloadServerDeployZip = async () => {
+    if (!projectIdFromUrl || !token) {
+      addLog('Open a saved project to download the server deploy package.', 'warning', 'export');
+      return;
+    }
+    setDeployZipBusy(true);
+    try {
+      const res = await axios.get(`${API}/projects/${projectIdFromUrl}/deploy/zip`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob',
+        timeout: 120000,
+      });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'crucibai-deploy.zip';
+      a.click();
+      URL.revokeObjectURL(url);
+      addLog('Deploy ZIP downloaded from project (orchestration snapshot).', 'success', 'export');
+    } catch (e) {
+      addLog(`Server deploy ZIP: ${formatDeployErr(e)}`, 'error', 'export');
+    } finally {
+      setDeployZipBusy(false);
+    }
+  };
+
+  const oneClickDeployPlatform = async (platform) => {
+    if (!projectIdFromUrl || !token) {
+      addLog('Save as a project first, then deploy.', 'warning', 'export');
+      return;
+    }
+    setDeployOneClickBusy(platform);
+    try {
+      const res = await axios.post(
+        `${API}/projects/${projectIdFromUrl}/deploy/${platform}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` }, timeout: 120000 },
+      );
+      const u = res.data?.url;
+      if (u) {
+        setProjectLiveUrl(u);
+        addLog(`Live: ${u}`, 'success', 'export');
+      } else {
+        addLog(`${platform} deploy finished — check your dashboard for the URL.`, 'info', 'export');
+      }
+    } catch (e) {
+      addLog(`${platform}: ${formatDeployErr(e)}`, 'error', 'export');
+    } finally {
+      setDeployOneClickBusy(null);
+    }
+  };
+
+  const savePublishSettings = async () => {
+    if (!projectIdFromUrl || !token) {
+      addLog('Open a saved project to save publish settings.', 'warning', 'export');
+      return;
+    }
+    setPublishSaveBusy(true);
+    try {
+      await axios.patch(
+        `${API}/projects/${projectIdFromUrl}/publish-settings`,
+        { custom_domain: publishCustomDomain.trim(), railway_project_url: publishRailwayUrl.trim() },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      addLog('Publish settings saved (custom domain + Railway link).', 'success', 'export');
+    } catch (e) {
+      addLog(`Publish settings: ${formatDeployErr(e)}`, 'error', 'export');
+    } finally {
+      setPublishSaveBusy(false);
+    }
+  };
+
+  const prepareRailwayDeploy = async () => {
+    if (!projectIdFromUrl || !token) {
+      addLog('Save as a project first.', 'warning', 'export');
+      return;
+    }
+    setDeployRailwayBusy(true);
+    setDeployRailwayErr(null);
+    setDeployRailwaySteps(null);
+    setDeployRailwayDashboard(null);
+    try {
+      const res = await axios.post(
+        `${API}/projects/${projectIdFromUrl}/deploy/railway`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` }, timeout: 120000 },
+      );
+      setDeployRailwaySteps(Array.isArray(res.data?.steps) ? res.data.steps : []);
+      setDeployRailwayDashboard(typeof res.data?.dashboard_url === 'string' ? res.data.dashboard_url : null);
+      addLog('Railway package validated. Follow the steps below.', 'success', 'export');
+    } catch (e) {
+      setDeployRailwayErr(formatDeployErr(e));
+      addLog(`Railway: ${formatDeployErr(e)}`, 'error', 'export');
+    } finally {
+      setDeployRailwayBusy(false);
+    }
+  };
+
   const runOptimize = async () => {
     const code = files[activeFile]?.code ?? '';
     if (!code.trim()) { addLog('No file selected or empty file', 'warning', 'system'); return; }
@@ -2505,13 +2693,37 @@ BUILD IT NOW — output every file completely:`;
             <span className="text-xs">{currentPhase || 'Building'}... {Math.round(buildProgress)}%</span>
           </div>
         )}
-        {qualityGateResult && !isBuilding && (
+        {devMode && qualityGateResult && !isBuilding && (
           <div className="flex items-center gap-1.5 ml-1 text-xs" style={{ color: qualityGateResult.score >= 70 ? '#86efac' : '#fbbf24' }}>
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>{qualityGateResult.score}%</span>
           </div>
         )}
-        <div className="ml-auto flex items-center gap-1.5">
+        <div className="ml-auto flex items-center gap-2">
+          <div className="flex items-center gap-1.5 text-[10px] shrink-0" style={{ color: 'var(--theme-muted)' }} title={apiHealth === 'ok' ? 'API reachable (GET /api/health)' : apiHealth === 'down' ? 'API unreachable' : 'Checking API…'}>
+            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: apiHealth === 'ok' ? '#4ade80' : apiHealth === 'down' ? '#f87171' : '#71717a' }} />
+            <span className="hidden sm:inline font-mono">API</span>
+          </div>
+          {token && jobsChip.active > 0 && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: 'rgba(251,146,60,0.15)', color: '#fb923c' }} title="Jobs running or queued (GET /api/jobs)">
+              {jobsChip.active} job{jobsChip.active !== 1 ? 's' : ''}
+            </span>
+          )}
+          {lastError && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full max-w-[140px] truncate shrink-0" style={{ background: 'rgba(248,113,113,0.15)', color: '#fca5a5' }} title={lastError}>
+              Error
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={toggleWorkspaceTheme}
+            className="p-1.5 rounded-lg transition hover:bg-white/10 shrink-0"
+            style={{ color: 'var(--theme-muted, #71717a)' }}
+            title={workspaceTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            aria-label={workspaceTheme === 'dark' ? 'Light theme' : 'Dark theme'}
+          >
+            {workspaceTheme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
           <button
             onClick={resetLayout}
             className="p-1.5 rounded-lg transition hover:bg-white/10"
@@ -2530,10 +2742,10 @@ BUILD IT NOW — output every file completely:`;
               color: devMode ? 'var(--theme-text, #e4e4e7)' : 'var(--theme-muted, #71717a)',
               borderColor: 'var(--theme-border, rgba(255,255,255,0.1))',
             }}
-            title={devMode ? 'Switch to Simple view' : 'Switch to Code view'}
+            title={devMode ? 'Switch to Guided — fewer technical panels' : 'Switch to Pro — database, docs, analytics, agents, passes, sandbox logs'}
           >
             <FileCode className="w-3.5 h-3.5" />
-            {devMode ? 'Code' : 'Simple'}
+            {devMode ? 'Pro' : 'Guided'}
           </button>
           <button
             onClick={() => setCommandPaletteOpen(true)}
@@ -2566,8 +2778,23 @@ BUILD IT NOW — output every file completely:`;
             <div className="flex items-center justify-between px-3 py-2 border-b" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.07))' }}>
               <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--theme-muted, #52525b)' }}>Explorer</span>
               <div className="flex items-center gap-0.5">
-                <button onClick={() => zipInputRef.current?.click()} className="p-1 rounded transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title="Upload ZIP (bring your code)"><Upload className="w-3 h-3" /></button>
-                <button onClick={addNewFileToProject} className="p-1 rounded transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title="New file"><Plus className="w-3 h-3" /></button>
+                {projectIdFromUrl && token && (
+                  <button
+                    type="button"
+                    onClick={reloadWorkspaceFromServer}
+                    className="p-1 rounded transition hover:bg-white/10"
+                    style={{ color: 'var(--theme-muted, #52525b)' }}
+                    title="Reload file tree from server workspace (GET /projects/{id}/workspace/files)"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                  </button>
+                )}
+                {devMode && (
+                  <>
+                    <button onClick={() => zipInputRef.current?.click()} className="p-1 rounded transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title="Upload ZIP (bring your code)"><Upload className="w-3 h-3" /></button>
+                    <button onClick={addNewFileToProject} className="p-1 rounded transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title="New file"><Plus className="w-3 h-3" /></button>
+                  </>
+                )}
                 <button onClick={() => setLeftSidebarOpen(false)} className="p-1 rounded transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title="Collapse sidebar"><PanelLeftClose className="w-3 h-3" /></button>
               </div>
             </div>
@@ -2625,7 +2852,9 @@ BUILD IT NOW — output every file completely:`;
                           {getIcon(name)}
                           <span className="truncate">{name}</span>
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); deleteFileFromProject(path); }} className="opacity-0 group-hover:opacity-100 p-1 shrink-0" style={{ color: 'var(--theme-muted)' }} title="Delete"><X className="w-3 h-3" /></button>
+                        {devMode && (
+                          <button onClick={(e) => { e.stopPropagation(); deleteFileFromProject(path); }} className="opacity-0 group-hover:opacity-100 p-1 shrink-0" style={{ color: 'var(--theme-muted)' }} title="Delete"><X className="w-3 h-3" /></button>
+                        )}
                       </div>
                     );
                   }
@@ -2743,9 +2972,94 @@ BUILD IT NOW — output every file completely:`;
           {/* Messages area */}
           <div className="flex-1 overflow-y-auto px-5 py-6 space-y-4 min-h-0">
             {messages.length === 0 && !isBuilding && (
-              <div className="flex flex-col items-center justify-center h-full gap-4" style={{ color: 'var(--theme-muted, #3f3f46)' }}>
+              <div
+                className={`flex flex-col items-center justify-center gap-4 ${projectIdFromUrl ? 'py-8' : 'h-full'}`}
+                style={{ color: 'var(--theme-muted, #3f3f46)' }}
+              >
                 <Sparkles className="w-10 h-10" style={{ color: 'var(--theme-input, #27272a)' }} />
                 <p className="text-sm">Describe what you want to build...</p>
+              </div>
+            )}
+
+            {/* Server-sourced build timeline (typed events from orchestration) */}
+            {projectIdFromUrl && token && (
+              <div
+                className="rounded-2xl border overflow-hidden"
+                style={{ background: 'var(--theme-surface, #1C1C1E)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}
+              >
+                <div className="flex items-center gap-2 px-3 py-2 border-b" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.06))', background: 'rgba(0,0,0,0.15)' }}>
+                  <Activity className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--theme-accent)' }} />
+                  <span className="text-xs font-semibold" style={{ color: 'var(--theme-text)' }}>{devMode ? 'Orchestration timeline' : 'Build activity'}</span>
+                  <span className="text-[10px] ml-auto font-mono" style={{ color: 'var(--theme-muted)' }}>{devMode ? 'live' : 'summary'}</span>
+                </div>
+                {devMode ? (
+                  <div className="max-h-56 overflow-y-auto px-2 py-2 space-y-1">
+                    {buildEventsErr && (
+                      <p className="text-xs px-2 py-1" style={{ color: '#f87171' }}>{buildEventsErr}</p>
+                    )}
+                    {!buildEventsErr && buildTimelineEvents.length === 0 && (
+                      <p className="text-xs px-2 py-2" style={{ color: 'var(--theme-muted)' }}>
+                        No server events yet. They appear here when this project runs a build.
+                      </p>
+                    )}
+                    {buildTimelineEvents.slice(-40).map((ev) => {
+                      const { Icon, color, title } = getBuildEventPresentation(ev);
+                      const sub =
+                        ev.message
+                        || (ev.agent ? `${ev.agent}` : '')
+                        || (ev.phase != null ? `Phase ${Number(ev.phase) + 1}` : '')
+                        || (ev.count != null ? `${ev.count} checkpoint(s)` : '');
+                      const timeStr = ev.ts
+                        ? new Date(ev.ts).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                        : '';
+                      return (
+                        <div
+                          key={`${ev.id}-${ev.ts}-${ev.type}`}
+                          className="workspace-orchestration-event-card flex items-start gap-2 rounded-xl px-2.5 py-2 text-xs border"
+                          style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'var(--theme-border, rgba(255,255,255,0.06))', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }}
+                        >
+                          <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 mt-0.5" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                            <Icon className="w-3.5 h-3.5" style={{ color }} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium" style={{ color: 'var(--theme-text)' }}>
+                              {title}
+                              {ev.type === 'phase_started' && ev.agents?.length ? ` · ${ev.agents.join(', ')}` : ''}
+                              {ev.type === 'agent_completed' && ev.tokens != null ? ` · ${Number(ev.tokens).toLocaleString()} tok` : ''}
+                            </div>
+                            {sub && <div className="truncate opacity-70" style={{ color: 'var(--theme-muted)' }}>{sub}</div>}
+                          </div>
+                          {timeStr && (
+                            <span className="shrink-0 text-[10px] font-mono mt-0.5" style={{ color: 'var(--theme-muted)' }}>{timeStr}</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="px-3 py-3">
+                    {buildEventsErr && (
+                      <p className="text-xs" style={{ color: '#f87171' }}>{buildEventsErr}</p>
+                    )}
+                    {!buildEventsErr && buildTimelineEvents.length === 0 && (
+                      <p className="text-xs" style={{ color: 'var(--theme-muted)' }}>Activity will show here when a build runs on this project.</p>
+                    )}
+                    {!buildEventsErr && buildTimelineEvents.length > 0 && (() => {
+                      const ev = buildTimelineEvents[buildTimelineEvents.length - 1];
+                      const { title } = getBuildEventPresentation(ev);
+                      const sub = ev.message || (ev.agent ? String(ev.agent) : '') || '';
+                      return (
+                        <div>
+                          <p className="text-sm font-medium" style={{ color: 'var(--theme-text)' }}>{title}</p>
+                          {sub && <p className="text-xs mt-1 line-clamp-2" style={{ color: 'var(--theme-muted)' }}>{sub}</p>}
+                          {buildTimelineEvents.length > 1 && (
+                            <p className="text-[10px] mt-2" style={{ color: 'var(--theme-muted)' }}>{buildTimelineEvents.length} updates · use Pro for the full timeline</p>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
             )}
 
@@ -2760,54 +3074,69 @@ BUILD IT NOW — output every file completely:`;
                     <span className="ml-auto text-xs font-mono" style={{ color: 'var(--theme-muted, #52525b)' }}>{Math.round(buildProgress)}%</span>
                   </div>
                   {/* Segmented progress */}
-                  <div className="flex gap-0.5 h-1 rounded-full overflow-hidden mb-3">
-                    {['Planning', 'Architecture', 'Frontend', 'Backend', 'Validation', 'Deploy'].map((phase, i) => (
-                      <div key={phase} className="flex-1 rounded-sm transition-all duration-500" style={{
-                        background: buildProgress > (i * 17) ? (buildProgress === 100 ? '#4ade80' : 'var(--theme-accent)') : 'rgba(255,255,255,0.08)'
-                      }} />
-                    ))}
-                  </div>
-                  {/* Agent steps */}
-                  <div className="space-y-1.5">
-                    {agentsActivity.length > 0 ? agentsActivity.map((a, i) => (
-                      <div key={i} className="flex items-center gap-2.5 text-xs py-1">
-                        {a.status === 'done' ? (
-                          <div className="w-4 h-4 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(74,222,128,0.15)' }}>
-                            <Check className="w-2.5 h-2.5 text-green-400" />
-                          </div>
-                        ) : a.status === 'running' ? (
-                          <div className="w-4 h-4 flex items-center justify-center shrink-0">
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--theme-accent)' }} />
-                          </div>
-                        ) : (
-                          <div className="w-4 h-4 rounded-full border shrink-0" style={{ borderColor: 'rgba(255,255,255,0.12)' }} />
-                        )}
-                        <span className="font-medium" style={{ color: a.status === 'done' ? '#86efac' : a.status === 'running' ? '#fb923c' : 'var(--theme-muted, #52525b)' }}>
-                          {a.name}
-                        </span>
-                        <span className="truncate opacity-60" style={{ color: 'var(--theme-muted, #3f3f46)' }}>{a.phase}</span>
-                        {a.status === 'done' && <span className="ml-auto shrink-0 text-[10px]" style={{ color: '#4ade80' }}>✓</span>}
-                        {a.status === 'running' && <span className="ml-auto shrink-0 text-[10px] animate-pulse" style={{ color: 'var(--theme-accent)' }}>●</span>}
-                      </div>
-                    )) : (
-                      /* Phase placeholders when no agent data yet */
-                      ['Planner', 'Architect', 'Frontend', 'Styling', 'Logic', 'Validator', 'Optimizer'].map((name, i) => (
-                        <div key={name} className="flex items-center gap-2.5 text-xs py-1">
-                          <div className="w-4 h-4 flex items-center justify-center shrink-0">
-                            {i === 0 ? <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--theme-accent)' }} /> : <div className="w-3 h-3 rounded-full border" style={{ borderColor: 'rgba(255,255,255,0.12)' }} />}
-                          </div>
-                          <span style={{ color: i === 0 ? '#fb923c' : 'var(--theme-muted, #52525b)' }}>{name}</span>
-                          <span className="opacity-50 text-[10px]" style={{ color: 'var(--theme-muted)' }}>
-                            {i === 0 ? 'Planning' : i <= 2 ? 'Generating' : i === 5 ? 'Validating' : 'Queued'}
+                  {devMode ? (
+                    <div className="flex gap-0.5 h-1 rounded-full overflow-hidden mb-3">
+                      {['Planning', 'Architecture', 'Frontend', 'Backend', 'Validation', 'Deploy'].map((phase, i) => (
+                        <div key={phase} className="flex-1 rounded-sm transition-all duration-500" style={{
+                          background: buildProgress > (i * 17) ? (buildProgress === 100 ? '#4ade80' : 'var(--theme-accent)') : 'rgba(255,255,255,0.08)'
+                        }} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex gap-1 h-1.5 rounded-full overflow-hidden mb-3">
+                      {['Plan', 'Build', 'Polish'].map((phase, i) => (
+                        <div key={phase} className="flex-1 rounded-sm transition-all duration-500" style={{
+                          background: buildProgress > (i * 34) ? (buildProgress === 100 ? '#4ade80' : 'var(--theme-accent)') : 'rgba(255,255,255,0.08)'
+                        }} />
+                      ))}
+                    </div>
+                  )}
+                  {/* Agent steps — Pro only */}
+                  {devMode ? (
+                    <div className="space-y-1.5">
+                      {agentsActivity.length > 0 ? agentsActivity.map((a, i) => (
+                        <div key={i} className="flex items-center gap-2.5 text-xs py-1">
+                          {a.status === 'done' ? (
+                            <div className="w-4 h-4 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(74,222,128,0.15)' }}>
+                              <Check className="w-2.5 h-2.5 text-green-400" />
+                            </div>
+                          ) : a.status === 'running' ? (
+                            <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--theme-accent)' }} />
+                            </div>
+                          ) : (
+                            <div className="w-4 h-4 rounded-full border shrink-0" style={{ borderColor: 'rgba(255,255,255,0.12)' }} />
+                          )}
+                          <span className="font-medium" style={{ color: a.status === 'done' ? '#86efac' : a.status === 'running' ? '#fb923c' : 'var(--theme-muted, #52525b)' }}>
+                            {a.name}
                           </span>
+                          <span className="truncate opacity-60" style={{ color: 'var(--theme-muted, #3f3f46)' }}>{a.phase}</span>
+                          {a.status === 'done' && <span className="ml-auto shrink-0 text-[10px]" style={{ color: '#4ade80' }}>✓</span>}
+                          {a.status === 'running' && <span className="ml-auto shrink-0 text-[10px] animate-pulse" style={{ color: 'var(--theme-accent)' }}>●</span>}
                         </div>
-                      ))
-                    )}
-                  </div>
+                      )) : (
+                        ['Planner', 'Architect', 'Frontend', 'Styling', 'Logic', 'Validator', 'Optimizer'].map((name, i) => (
+                          <div key={name} className="flex items-center gap-2.5 text-xs py-1">
+                            <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                              {i === 0 ? <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--theme-accent)' }} /> : <div className="w-3 h-3 rounded-full border" style={{ borderColor: 'rgba(255,255,255,0.12)' }} />}
+                            </div>
+                            <span style={{ color: i === 0 ? '#fb923c' : 'var(--theme-muted, #52525b)' }}>{name}</span>
+                            <span className="opacity-50 text-[10px]" style={{ color: 'var(--theme-muted)' }}>
+                              {i === 0 ? 'Planning' : i <= 2 ? 'Generating' : i === 5 ? 'Validating' : 'Queued'}
+                            </span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] leading-relaxed" style={{ color: 'var(--theme-muted)' }}>
+                      We&apos;re generating and checking your app. Turn on <span className="font-medium" style={{ color: 'var(--theme-text)' }}>Pro</span> in the header to see every agent step.
+                    </p>
+                  )}
                 </div>
 
                 {/* Step count badge */}
-                {agentsActivity.length > 0 && (
+                {devMode && agentsActivity.length > 0 && (
                   <div className="flex items-center gap-2 px-2 text-xs" style={{ color: 'var(--theme-muted)' }}>
                     <span>{agentsActivity.filter(a => a.status === 'done').length}/{agentsActivity.length} steps complete</span>
                     <div className="flex-1 h-px" style={{ background: 'var(--theme-border)' }} />
@@ -2949,16 +3278,7 @@ BUILD IT NOW — output every file completely:`;
         <div className="workspace-right-panel flex flex-col shrink-0 border-l" style={{ width: '46%', background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
           {/* Manus-style tab bar */}
           <div className="h-11 flex items-center px-2 border-b shrink-0 gap-0.5 overflow-x-auto" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.08))', scrollbarWidth: 'none' }}>
-            {[
-              { id: 'preview', label: 'Preview', icon: Eye },
-              { id: 'code', label: 'Code', icon: FileCode },
-              { id: 'console', label: 'Console', icon: Terminal },
-              { id: 'dashboard', label: 'Dashboard', icon: Activity },
-              { id: 'database', label: 'Database', icon: Database },
-              { id: 'agents', label: 'Agents', icon: Network },
-              { id: 'passes', label: 'Passes', icon: Layers },
-              ...(projectIdFromUrl ? [{ id: 'history', label: 'History', icon: History }] : []),
-            ].map(tab => (
+            {workbenchTabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActivePanel(tab.id)}
@@ -2977,9 +3297,11 @@ BUILD IT NOW — output every file completely:`;
             <div className="ml-auto flex items-center gap-1">
               {activePanel === 'preview' && (
                 <>
-                  <button onClick={() => setMobileView(v => !v)} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title={mobileView ? 'Desktop view' : 'Mobile view'}>
-                    {mobileView ? <Monitor className="w-3.5 h-3.5" /> : <Smartphone className="w-3.5 h-3.5" />}
-                  </button>
+                  {devMode && (
+                    <button onClick={() => setMobileView(v => !v)} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title={mobileView ? 'Desktop view' : 'Mobile view'}>
+                      {mobileView ? <Monitor className="w-3.5 h-3.5" /> : <Smartphone className="w-3.5 h-3.5" />}
+                    </button>
+                  )}
                   <button onClick={() => { const c = { ...files }; setFiles({}); setTimeout(() => setFiles(c), 50); }} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title="Refresh preview">
                     <RefreshCw className="w-3.5 h-3.5" />
                   </button>
@@ -3030,7 +3352,7 @@ BUILD IT NOW — output every file completely:`;
           </div>
 
           {/* Panel content */}
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
             {/* Preview — always mounted so Sandpack never loses files on tab switch */}
             <div style={{ display: activePanel === 'preview' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
               {/* Show placeholder when no build yet */}
@@ -3147,7 +3469,7 @@ BUILD IT NOW — output every file completely:`;
                   }
                   value={files[activeFile]?.code || ''}
                   onChange={handleCodeChange}
-                  theme={document.documentElement.getAttribute('data-theme') === 'light' ? 'vs' : 'vs-dark'}
+                  theme={workspaceTheme === 'light' ? 'vs' : 'vs-dark'}
                   options={{
                     minimap: { enabled: false },
                     fontSize: 13,
@@ -3163,7 +3485,34 @@ BUILD IT NOW — output every file completely:`;
             )}
 
             {activePanel === 'console' && (
-              <ConsolePanel logs={logs} placeholder="Build logs appear here. Press Build to start." />
+              <div className="flex flex-col h-full min-h-0">
+                <div className="shrink-0 flex flex-wrap items-center gap-1.5 px-3 py-2 border-b" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.07))' }}>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider mr-1" style={{ color: 'var(--theme-muted)' }}>Filter</span>
+                  {[
+                    { id: 'all', label: 'All' },
+                    { id: 'error', label: 'Errors' },
+                    { id: 'build', label: 'Build' },
+                    { id: 'system', label: 'System' },
+                  ].map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => setConsoleFilter(f.id)}
+                      className="text-[10px] px-2 py-0.5 rounded-md font-medium transition"
+                      style={{
+                        background: consoleFilter === f.id ? 'rgba(255,255,255,0.12)' : 'transparent',
+                        color: consoleFilter === f.id ? 'var(--theme-text)' : 'var(--theme-muted)',
+                        border: `1px solid ${consoleFilter === f.id ? 'var(--theme-border)' : 'transparent'}`,
+                      }}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex-1 min-h-0">
+                  <ConsolePanel logs={filteredConsoleLogs} placeholder="Build logs appear here. Press Build to start." />
+                </div>
+              </div>
             )}
             {activePanel === 'history' && projectIdFromUrl && (
               <BuildHistoryPanel buildHistory={buildHistoryList} projectId={projectIdFromUrl} loading={buildHistoryLoading} />
@@ -3196,8 +3545,8 @@ BUILD IT NOW — output every file completely:`;
                   </div>
                 </div>
 
-                {/* Feature badges */}
-                {versions.length > 0 && (
+                {/* Feature badges — Pro */}
+                {devMode && versions.length > 0 && (
                   <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
                     <div className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--theme-muted)' }}>Features Detected</div>
                     <div className="flex flex-wrap gap-2">
@@ -3216,8 +3565,8 @@ BUILD IT NOW — output every file completely:`;
                   </div>
                 )}
 
-                {/* Quality score */}
-                {qualityGateResult && (
+                {/* Quality score — Pro */}
+                {devMode && qualityGateResult && (
                   <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
                     <div className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--theme-muted)' }}>Quality Score</div>
                     <div className="flex items-center gap-3">
@@ -3232,6 +3581,17 @@ BUILD IT NOW — output every file completely:`;
                 {/* Deploy actions */}
                 <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
                   <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--theme-muted)' }}>Publish & Deploy</div>
+                  {projectLiveUrl && (
+                    <a
+                      href={projectLiveUrl.startsWith('http') ? projectLiveUrl : `https://${projectLiveUrl}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold mb-2 transition hover:bg-white/5 border"
+                      style={{ borderColor: 'rgba(74,222,128,0.35)', color: '#86efac' }}
+                    >
+                      <Globe className="w-3.5 h-3.5 shrink-0" /> Live site
+                    </a>
+                  )}
                   <div className="space-y-2">
                     <button onClick={downloadCode} disabled={Object.keys(files).length === 0} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-medium transition hover:bg-white/5 border disabled:opacity-40" style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text)' }}>
                       <Download className="w-3.5 h-3.5" /> Download ZIP
@@ -3260,152 +3620,40 @@ BUILD IT NOW — output every file completely:`;
               </div>
             )}
 
-            {/* ── Database tab (Manus-style) ── */}
-            {activePanel === 'database' && (
-              <div className="flex-1 overflow-y-auto p-4">
-                {Object.keys(files).filter(f => f.includes('schema') || f.includes('.sql') || f.includes('migration') || f.includes('db.')).length > 0 ? (
-                  <div className="space-y-3">
-                    <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
-                      <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--theme-muted)' }}>Schema Files</div>
-                      <div className="space-y-2">
-                        {Object.keys(files).filter(f => f.includes('schema') || f.includes('.sql') || f.includes('migration') || f.includes('db.')).map(f => (
-                          <button key={f} onClick={() => { setActiveFile(f); setActivePanel('code'); }} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs text-left transition hover:bg-white/5 border" style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text)' }}>
-                            <Database className="w-3.5 h-3.5 shrink-0" style={{ color: '#60a5fa' }} />
-                            <span className="truncate">{f.replace(/^\//, '')}</span>
-                            <span className="ml-auto shrink-0" style={{ color: 'var(--theme-muted)' }}>{files[f]?.code?.split('\n').length || 0}L</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    {/* Show table names extracted from schema */}
-                    {(() => {
-                      const schemaContent = Object.entries(files).filter(([k]) => k.includes('schema') || k.includes('.sql')).map(([,v]) => v?.code || '').join('\n');
-                      const tables = [...schemaContent.matchAll(/CREATE TABLE(?:\s+IF NOT EXISTS)?\s+"?(\w+)"?/gi)].map(m => m[1]);
-                      return tables.length > 0 ? (
-                        <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
-                          <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--theme-muted)' }}>Tables ({tables.length})</div>
-                          <div className="space-y-1.5">
-                            {tables.map(t => (
-                              <div key={t} className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs" style={{ background: 'rgba(255,255,255,0.03)', color: 'var(--theme-text)' }}>
-                                <div className="w-2 h-2 rounded-sm" style={{ background: '#3b82f6' }} />
-                                {t}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null;
-                    })()}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full gap-3 py-12" style={{ color: 'var(--theme-muted)' }}>
-                    <Database className="w-8 h-8 opacity-30" />
-                    <div className="text-center">
-                      <div className="text-sm font-medium mb-1">No database schema yet</div>
-                      <div className="text-xs opacity-70">Build a fullstack or SaaS app to generate DB schema</div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ── Agent Graph tab — CrucibAI unique ── */}
-            {activePanel === 'agents' && (
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
-                  <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--theme-muted)' }}>DAG Orchestration</div>
-                  <div className="text-xs mt-0.5" style={{ color: 'var(--theme-muted)' }}>122 agents · Kahn topological sort · parallel phases</div>
-                </div>
-                {/* Agent activity from live build */}
-                {agentsActivity.length > 0 ? (
-                  <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--theme-border)' }}>
-                    {agentsActivity.map((a, i) => (
-                      <div key={i} className="flex items-center gap-3 px-3 py-2.5 border-b last:border-b-0 text-xs" style={{ borderColor: 'var(--theme-border)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
-                        <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{
-                          background: a.status === 'done' ? 'rgba(74,222,128,0.15)' : a.status === 'running' ? 'rgba(251,146,60,0.15)' : 'rgba(255,255,255,0.05)'
-                        }}>
-                          {a.status === 'done' ? <span style={{ color: '#4ade80', fontSize: 9 }}>✓</span>
-                            : a.status === 'running' ? <Loader2 className="w-2.5 h-2.5 animate-spin" style={{ color: '#fb923c' }} />
-                            : <span style={{ color: 'var(--theme-muted)', fontSize: 9 }}>○</span>}
-                        </div>
-                        <span className="font-medium truncate" style={{ color: a.status === 'done' ? '#86efac' : a.status === 'running' ? '#fb923c' : 'var(--theme-muted)' }}>{a.name}</span>
-                        <span className="ml-auto shrink-0 opacity-60" style={{ color: 'var(--theme-muted)' }}>{a.phase}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  /* Phase map when not building */
-                  <div className="space-y-1.5">
-                    {[
-                      { name: 'Planner', desc: 'Intent parsing, task decomposition', phase: 'Planning', color: '#a78bfa' },
-                      { name: 'Architect', desc: 'System design, component structure', phase: 'Architecture', color: '#60a5fa' },
-                      { name: 'Frontend', desc: 'UI components, pages, styling', phase: 'Generation', color: '#34d399' },
-                      { name: 'Backend', desc: 'API routes, services, middleware', phase: 'Generation', color: '#34d399' },
-                      { name: 'Database', desc: 'Schema, migrations, ORM', phase: 'Generation', color: '#34d399' },
-                      { name: 'Styling', desc: 'Tailwind, CSS, theming', phase: 'Generation', color: '#f472b6' },
-                      { name: 'Logic', desc: 'Business logic, state management', phase: 'Generation', color: '#fb923c' },
-                      { name: 'Validator', desc: 'Syntax checking, type safety', phase: 'Validation', color: '#fbbf24' },
-                      { name: 'Optimizer', desc: 'Bundle optimization, deployment config', phase: 'Deploy', color: '#f87171' },
-                    ].map((agent, i) => (
-                      <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid var(--theme-border)' }}>
-                        <div className="w-2 h-2 rounded-full shrink-0" style={{ background: agent.color }} />
-                        <div className="min-w-0">
-                          <div className="font-medium" style={{ color: 'var(--theme-text)' }}>{agent.name}</div>
-                          <div className="opacity-60 truncate" style={{ color: 'var(--theme-muted)' }}>{agent.desc}</div>
-                        </div>
-                        <span className="ml-auto shrink-0 px-1.5 py-0.5 rounded text-[10px]" style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--theme-muted)' }}>{agent.phase}</span>
-                      </div>
-                    ))}
-                    <div className="text-center py-3 text-xs" style={{ color: 'var(--theme-muted)' }}>+ 113 more specialized agents</div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ── Pass History tab — CrucibAI unique ── */}
-            {activePanel === 'passes' && (
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
-                  <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--theme-muted)' }}>Multi-Pass Build System</div>
-                  <div className="text-xs mt-0.5" style={{ color: 'var(--theme-muted)' }}>6 passes · 51-file TypeScript output · iterative refinement</div>
-                </div>
-                {versions.length > 0 ? (
-                  <div className="space-y-2">
-                    {[
-                      { pass: 'Pass 1', label: 'Static Foundation', desc: '11 config files injected: tsconfig, vite, package.json, docker-compose, CI/CD', color: '#a78bfa' },
-                      { pass: 'Pass 2', label: 'Architecture', desc: 'System design, shared types, API contracts, folder structure', color: '#60a5fa' },
-                      { pass: 'Pass 3', label: 'Frontend Generation', desc: 'React components, pages, routing, state management', color: '#34d399' },
-                      { pass: 'Pass 4', label: 'Backend Generation', desc: 'Express routes, middleware, services, DB schema', color: '#fb923c' },
-                      { pass: 'Pass 5', label: 'Integration', desc: 'Frontend ↔ backend wiring, shared types, API client', color: '#fbbf24' },
-                      { pass: 'Pass 6', label: 'Finalization', desc: 'README, docs, deployment config, optimization', color: '#f87171' },
-                    ].map((p, i) => (
-                      <div key={i} className="rounded-xl p-3.5 border" style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'var(--theme-border)' }}>
-                        <div className="flex items-center gap-2.5 mb-1.5">
-                          <div className="w-2 h-2 rounded-full shrink-0" style={{ background: p.color }} />
-                          <span className="text-xs font-semibold" style={{ color: p.color }}>{p.pass}</span>
-                          <span className="text-xs font-medium" style={{ color: 'var(--theme-text)' }}>{p.label}</span>
-                          <div className="ml-auto flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(74,222,128,0.12)', color: '#86efac' }}>
-                            <span>✓</span>
-                          </div>
-                        </div>
-                        <div className="text-xs pl-4.5" style={{ color: 'var(--theme-muted)', paddingLeft: '18px' }}>{p.desc}</div>
-                      </div>
-                    ))}
-                    <div className="rounded-xl p-3.5 border text-center" style={{ borderColor: 'var(--theme-border)', background: 'rgba(74,222,128,0.04)' }}>
-                      <div className="text-sm font-semibold" style={{ color: '#86efac' }}>Build Complete</div>
-                      <div className="text-xs mt-0.5" style={{ color: 'var(--theme-muted)' }}>{Object.keys(files).length} files · {versions.length} version{versions.length !== 1 ? 's' : ''} saved</div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-12 gap-3" style={{ color: 'var(--theme-muted)' }}>
-                    <Layers className="w-8 h-8 opacity-30" />
-                    <div className="text-center">
-                      <div className="text-sm font-medium mb-1">No builds yet</div>
-                      <div className="text-xs opacity-70">Run a fullstack build to see pass history</div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+            <WorkspaceProPanels
+              activePanel={activePanel}
+              projectIdFromUrl={projectIdFromUrl}
+              token={token}
+              serverDbErr={serverDbErr}
+              serverDbLoading={serverDbLoading}
+              serverDbSnapshots={serverDbSnapshots}
+              dbPanelMerge={dbPanelMerge}
+              setFiles={setFiles}
+              setActiveFile={setActiveFile}
+              setActivePanel={setActivePanel}
+              serverDocsErr={serverDocsErr}
+              serverDocsLoading={serverDocsLoading}
+              mergedDocFiles={mergedDocFiles}
+              docsSelectedPath={docsSelectedPath}
+              setDocsSelectedPath={setDocsSelectedPath}
+              analyticsErr={analyticsErr}
+              analyticsLoading={analyticsLoading}
+              analyticsData={analyticsData}
+              buildHistoryList={buildHistoryList}
+              buildTimelineEvents={buildTimelineEvents}
+              agentsActivity={agentsActivity}
+              agentApiStatuses={agentApiStatuses}
+              projectSandboxErr={projectSandboxErr}
+              projectSandboxLoading={projectSandboxLoading}
+              projectSandboxLogs={projectSandboxLogs}
+              files={files}
+              versions={versions}
+              buildHistoryLoading={buildHistoryLoading}
+              isBuilding={isBuilding}
+              sandpackFiles={sandpackFiles}
+              projectBuildProgress={projectBuildProgress}
+              currentPhase={currentPhase}
+            />
           </div>
         </div>
         ) : (
@@ -3425,24 +3673,151 @@ BUILD IT NOW — output every file completely:`;
       {/* ── Deploy modal ── */}
       {showDeployModal && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.75)' }} onClick={() => setShowDeployModal(false)}>
-          <div className="rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 border" style={{ background: 'var(--theme-surface, #1C1C1E)', borderColor: 'var(--theme-border, rgba(255,255,255,0.1))' }} onClick={e => e.stopPropagation()}>
+          <div className="rounded-2xl shadow-2xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto p-6 border" style={{ background: 'var(--theme-surface, #1C1C1E)', borderColor: 'var(--theme-border, rgba(255,255,255,0.1))' }} onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-semibold text-white mb-1">Deploy your app</h3>
-            <p className="text-sm mb-5" style={{ color: 'var(--theme-muted, #71717a)' }}>Download your ZIP then upload to any platform below:</p>
+            <p className="text-sm mb-4" style={{ color: 'var(--theme-muted, #71717a)' }}>Use your saved project for server packages and one-click deploy, or export from the editor.</p>
+
+            {projectLiveUrl && (
+              <a
+                href={projectLiveUrl.startsWith('http') ? projectLiveUrl : `https://${projectLiveUrl}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold mb-4 transition hover:opacity-90"
+                style={{ background: 'rgba(74,222,128,0.15)', color: '#86efac', border: '1px solid rgba(74,222,128,0.35)' }}
+              >
+                <Globe className="w-4 h-4" /> Open live site
+              </a>
+            )}
+
+            {projectIdFromUrl && token && (
+              <div className="mb-4 space-y-2">
+                <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--theme-muted)' }}>This project (API)</div>
+                <button
+                  type="button"
+                  onClick={downloadServerDeployZip}
+                  disabled={deployZipBusy}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition hover:bg-white/5 border disabled:opacity-50"
+                  style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.1))', color: 'var(--theme-text, #e4e4e7)' }}
+                >
+                  {deployZipBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  Download deploy ZIP (server build)
+                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => oneClickDeployPlatform('vercel')}
+                    disabled={!!deployOneClickBusy}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-white hover:opacity-90 transition disabled:opacity-50"
+                    style={{ background: '#000' }}
+                  >
+                    {deployOneClickBusy === 'vercel' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                    Vercel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => oneClickDeployPlatform('netlify')}
+                    disabled={!!deployOneClickBusy}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-white hover:opacity-90 transition disabled:opacity-50"
+                    style={{ background: '#00AD9F' }}
+                  >
+                    {deployOneClickBusy === 'netlify' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                    Netlify
+                  </button>
+                </div>
+                <div className="pt-2 border-t space-y-2" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
+                  <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--theme-muted)' }}>Railway &amp; custom domain</div>
+                  <p className="text-[11px] leading-snug" style={{ color: 'var(--theme-muted)' }}>
+                    Save the hostname you will use with your host (DNS stays at your registrar). Optional: paste your Railway project URL for reference.
+                  </p>
+                  <input
+                    type="text"
+                    value={publishCustomDomain}
+                    onChange={(e) => setPublishCustomDomain(e.target.value)}
+                    placeholder="app.example.com"
+                    autoComplete="off"
+                    className="w-full px-3 py-2 rounded-lg text-sm border bg-transparent"
+                    style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.12))', color: 'var(--theme-text)' }}
+                  />
+                  <input
+                    type="url"
+                    value={publishRailwayUrl}
+                    onChange={(e) => setPublishRailwayUrl(e.target.value)}
+                    placeholder="https://railway.app/project/…"
+                    autoComplete="off"
+                    className="w-full px-3 py-2 rounded-lg text-sm border bg-transparent"
+                    style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.12))', color: 'var(--theme-text)' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={savePublishSettings}
+                    disabled={publishSaveBusy}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition hover:bg-white/5 border disabled:opacity-50"
+                    style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text)' }}
+                  >
+                    {publishSaveBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                    Save publish settings
+                  </button>
+                  <button
+                    type="button"
+                    onClick={prepareRailwayDeploy}
+                    disabled={deployRailwayBusy}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-white transition disabled:opacity-50"
+                    style={{ background: '#0B0D0E', border: '1px solid rgba(255,255,255,0.15)' }}
+                  >
+                    {deployRailwayBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Rocket className="w-3.5 h-3.5" />}
+                    Validate for Railway (ZIP + CLI steps)
+                  </button>
+                  {deployRailwayErr && (
+                    <div className="text-[11px] px-2 py-1.5 rounded-lg" style={{ background: 'rgba(248,113,113,0.12)', color: '#fca5a5' }}>{deployRailwayErr}</div>
+                  )}
+                  {deployRailwaySteps && deployRailwaySteps.length > 0 && (
+                    <div className="rounded-lg p-3 border text-[11px] space-y-2" style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-muted)' }}>
+                      <div className="font-semibold uppercase tracking-wider text-[10px]" style={{ color: 'var(--theme-muted)' }}>Next steps</div>
+                      <ol className="list-decimal pl-4 space-y-1">
+                        {deployRailwaySteps.map((s, i) => (
+                          <li key={i} style={{ color: 'var(--theme-text)' }}>{s}</li>
+                        ))}
+                      </ol>
+                      <button
+                        type="button"
+                        onClick={() => window.open(deployRailwayDashboard || 'https://railway.app/new', '_blank', 'noopener,noreferrer')}
+                        className="w-full mt-1 py-2 rounded-lg text-xs font-semibold text-white"
+                        style={{ background: '#0B0D0E', border: '1px solid rgba(255,255,255,0.15)' }}
+                      >
+                        Open Railway dashboard
+                      </button>
+                    </div>
+                  )}
+                </div>
+                {(!deployTokensHint.has_vercel || !deployTokensHint.has_netlify) && (
+                  <p className="text-[11px] leading-snug" style={{ color: 'var(--theme-muted)' }}>
+                    One-click needs tokens in{' '}
+                    <Link to="/app/settings" className="underline font-medium" style={{ color: 'var(--theme-accent)' }}>Settings → Deploy integrations</Link>
+                    {(!deployTokensHint.has_vercel && !deployTokensHint.has_netlify) ? ' (Vercel and/or Netlify).' : !deployTokensHint.has_vercel ? ' (add Vercel).' : ' (add Netlify).'}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="text-[10px] font-semibold uppercase tracking-wider mb-2 pt-1 border-t" style={{ color: 'var(--theme-muted)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>Editor export & hosts</div>
             <div className="flex flex-col gap-2">
-              <button onClick={downloadCode} className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition hover:bg-white/5 border" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.1))', color: 'var(--theme-text, #e4e4e7)' }}>
-                <Download className="w-4 h-4" /> Download ZIP
+              <button type="button" onClick={downloadCode} className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition hover:bg-white/5 border" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.1))', color: 'var(--theme-text, #e4e4e7)' }}>
+                <Download className="w-4 h-4" /> Download ZIP (current editor)
+              </button>
+              <button type="button" onClick={handleExportDeploy} className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition hover:bg-white/5 border" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.1))', color: 'var(--theme-text, #e4e4e7)' }}>
+                <Rocket className="w-4 h-4" /> Deploy-ready ZIP (API from editor)
               </button>
               <a href="https://vercel.com/new" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium text-white hover:opacity-90 transition" style={{ background: '#000' }}>
-                Deploy to Vercel
+                Vercel (upload)
               </a>
               <a href="https://app.netlify.com/drop" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium text-white hover:opacity-90 transition" style={{ background: '#00AD9F' }}>
-                Deploy to Netlify Drop
+                Netlify Drop
               </a>
               <a href="https://railway.app/new" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium text-white hover:opacity-90 transition" style={{ background: '#0B0D0E', border: '1px solid rgba(255,255,255,0.15)' }}>
-                Deploy to Railway
+                Railway
               </a>
             </div>
-            <button onClick={() => setShowDeployModal(false)} className="mt-4 w-full py-2 text-sm rounded-xl border transition hover:bg-white/5" style={{ color: 'var(--theme-muted, #71717a)', borderColor: 'var(--theme-border, rgba(255,255,255,0.1))' }}>Close</button>
+            <button type="button" onClick={() => setShowDeployModal(false)} className="mt-4 w-full py-2 text-sm rounded-xl border transition hover:bg-white/5" style={{ color: 'var(--theme-muted, #71717a)', borderColor: 'var(--theme-border, rgba(255,255,255,0.1))' }}>Close</button>
           </div>
         </div>
       )}

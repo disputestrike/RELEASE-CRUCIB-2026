@@ -261,6 +261,20 @@
   padding: 8px 0;
 }
 
+.sidebar-nav-group-label {
+  padding: 8px 12px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--theme-muted, #71717a);
+}
+
+.sidebar-star-pinned {
+  color: #fbbf24;
+  fill: currentColor;
+}
+
 .sidebar-nav-section {
   display: flex;
   flex-direction: column;

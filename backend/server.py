@@ -449,6 +449,12 @@ class DeployOneClickBody(BaseModel):
     token: Optional[str] = None
 
 
+class ProjectPublishSettingsBody(BaseModel):
+    """Custom domain + optional Railway dashboard link (stored on project for Workspace / deploy UX)."""
+    custom_domain: Optional[str] = None
+    railway_project_url: Optional[str] = None
+
+
 class ExportFilesBody(BaseModel):
     """Files to export as ZIP: filename -> code content"""
     files: Dict[str, str]
@@ -870,6 +876,31 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         raise HTTPException(status_code=401, detail="Not authenticated")
     try:
         payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        user = await db.users.find_one({"id": payload["user_id"]}, {"_id": 0})
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        if user.get("suspended"):
+            raise HTTPException(status_code=403, detail="Account suspended")
+        return user
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+async def get_current_user_sse(
+    access_token: Optional[str] = Query(None, description="JWT for EventSource clients (cannot set Authorization header). Prefer Bearer when possible."),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+):
+    """Same as get_current_user; accepts Bearer or access_token query for SSE."""
+    raw = None
+    if credentials and credentials.credentials:
+        raw = credentials.credentials
+    elif access_token and str(access_token).strip():
+        raw = str(access_token).strip()
+    if not raw:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        payload = jwt.decode(raw, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         user = await db.users.find_one({"id": payload["user_id"]}, {"_id": 0})
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
@@ -3086,6 +3117,9 @@ async def get_agents():
 
 @agents_router.get("/agents/status/{project_id}")
 async def get_agent_status(project_id: str, user: dict = Depends(get_current_user)):
+    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"id": 1})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
     statuses = await db.agent_status.find({"project_id": project_id}, {"_id": 0}).to_list(100)
     if not statuses:
         return {"statuses": [{"agent_name": a["name"], "status": "idle", "progress": 0, "tokens_used": 0} for a in AGENT_DEFINITIONS]}
@@ -4327,7 +4361,7 @@ async def get_project_state(project_id: str, user: dict = Depends(get_current_us
 async def stream_build_events(
     project_id: str,
     last_id: int = Query(0, description="Last event id received"),
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(get_current_user_sse),
 ):
     """SSE stream of build events (agent_started, agent_completed, phase_started, build_completed). Wired to orchestration."""
     project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
@@ -4794,6 +4828,69 @@ async def one_click_deploy_netlify(
     return {"url": url, "site_id": data.get("id")}
 
 
+@projects_router.patch("/projects/{project_id}/publish-settings")
+async def patch_project_publish_settings(
+    project_id: str,
+    body: ProjectPublishSettingsBody,
+    user: dict = Depends(require_permission(Permission.EDIT_PROJECT if Permission else None)),
+):
+    """Persist custom domain hint and optional Railway dashboard URL (DNS still at your registrar / host)."""
+    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    updates = {}
+    if body.custom_domain is not None:
+        d = (body.custom_domain or "").strip().lower()
+        if d and len(d) > 253:
+            raise HTTPException(status_code=400, detail="custom_domain too long")
+        if d and any(c in d for c in (" ", "/", "\\", ":", "?", "#", "<", ">", "@")):
+            raise HTTPException(status_code=400, detail="custom_domain has invalid characters")
+        updates["custom_domain"] = d or None
+    if body.railway_project_url is not None:
+        u = (body.railway_project_url or "").strip()
+        if u and len(u) > 500:
+            raise HTTPException(status_code=400, detail="railway_project_url too long")
+        updates["railway_project_url"] = u or None
+    if not updates:
+        return {"project": {k: v for k, v in project.items() if k != "_id"}}
+    updates["publish_settings_updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.projects.update_one({"id": project_id, "user_id": user["id"]}, {"$set": updates})
+    out = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"_id": 0})
+    return {"project": out}
+
+
+@projects_router.post("/projects/{project_id}/deploy/railway")
+async def deploy_railway_package(
+    project_id: str,
+    user: dict = Depends(require_permission(Permission.DEPLOY_PROJECT if Permission else None)),
+):
+    """Railway: validate deploy snapshot and return first-class CLI + dashboard flow (ZIP is same as Vercel path)."""
+    deploy_files, project_name = await _get_project_deploy_files(project_id, user["id"])
+    from validate_deployment import validate_deployment
+    validation = validate_deployment("railway", deploy_files, None)
+    if not validation.valid and validation.errors:
+        raise HTTPException(
+            status_code=400,
+            detail={"message": "Deploy validation failed for Railway package", "errors": validation.errors, "warnings": validation.warnings},
+        )
+    steps = [
+        "Download Deploy ZIP from this modal (server build snapshot).",
+        "Unzip into an empty folder.",
+        "npm i -g @railway/cli && railway login",
+        "railway init  (or railway link) in that folder.",
+        "railway up — set DATABASE_URL, JWT_SECRET, and API keys in Railway Variables.",
+        "Optional: connect GitHub repo to Railway for continuous deploy.",
+    ]
+    return {
+        "ok": True,
+        "platform": "railway",
+        "project_name": project_name,
+        "steps": steps,
+        "dashboard_url": "https://railway.app/new",
+        "zip_relative_path": f"/api/projects/{project_id}/deploy/zip",
+    }
+
+
 @projects_router.post("/projects/{project_id}/retry-phase")
 async def retry_project_phase(
     project_id: str,
@@ -4822,6 +4919,9 @@ async def retry_project_phase(
 
 @projects_router.get("/projects/{project_id}/logs")
 async def get_project_logs(project_id: str, user: dict = Depends(get_current_user)):
+    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"id": 1})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
     cursor = db.project_logs.find({"project_id": project_id}, {"_id": 0}).sort("created_at", 1)
     logs = await cursor.to_list(500)
     return {"logs": logs}

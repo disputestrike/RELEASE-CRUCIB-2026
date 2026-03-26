@@ -9,7 +9,7 @@ import {
   CreditCard, ScrollText, BarChart3, Wrench, HelpCircle, Coins,
   X, Bell, MoreHorizontal, ExternalLink, Pencil, Share2,
   Trash2, FolderInput, Star, Settings, ShieldCheck, Code, Monitor,
-  PanelLeftClose, PanelLeftOpen, History
+  PanelLeftClose, PanelLeftOpen, History, Home
 } from 'lucide-react';
 import Logo from './Logo';
 import './Sidebar.css';
@@ -41,6 +41,15 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
   const [deleteConfirmTask, setDeleteConfirmTask] = useState(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [pinnedIds, setPinnedIds] = useState(() => {
+    try {
+      const raw = localStorage.getItem('crucibai_sidebar_pinned_ids');
+      const a = raw ? JSON.parse(raw) : [];
+      return Array.isArray(a) ? a : [];
+    } catch {
+      return [];
+    }
+  });
   const accountMenuRef = React.useRef(null);
   const collapsedAccountRef = React.useRef(null);
   const { tasks: storeTasks, removeTask, updateTask } = useTaskStore();
@@ -59,11 +68,20 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
   const isActivePrefix = (path) => location.pathname.startsWith(path);
   const currentTaskId = location.pathname === '/app/workspace' ? searchParams.get('taskId') : null;
 
-  // Pinned navigation: New Task, New Project, Agents
-  const pinnedNav = [
+  const togglePin = React.useCallback((id) => {
+    setPinnedIds((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id].slice(0, 40);
+      try {
+        localStorage.setItem('crucibai_sidebar_pinned_ids', JSON.stringify(next));
+      } catch (_) {}
+      return next;
+    });
+  }, []);
+
+  /** Create — primary actions (compliance S-01: grouped IA) */
+  const createNav = [
     { label: 'New Task', icon: Plus, href: '/app', exact: true, state: { newAgent: Date.now() } },
     { label: 'New Project', icon: FolderPlus, href: '/app', exact: true, state: { newProject: true } },
-    { label: 'Agents', icon: FolderOpen, href: '/app/agents' },
   ];
 
   // Engine Room — collapsed by default, for power users
@@ -117,21 +135,47 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     return listItems.filter(item => item.name?.toLowerCase().includes(q)).slice(0, 50);
   }, [listItems, searchQuery]);
 
-  // Group history into Today vs Earlier (by task createdAt or id timestamp)
-  const historyGrouped = useMemo(() => {
+  /** Pinned → Active → Failed → Recent (Today / Earlier) — compliance: meaningful task history */
+  const historyBuckets = useMemo(() => {
+    const pinSet = new Set(pinnedIds);
+    const pinned = [];
+    const active = [];
+    const failed = [];
+    const pool = [];
     const now = Date.now();
+    for (const item of filteredListItems) {
+      if (pinSet.has(item.id)) {
+        pinned.push(item);
+        continue;
+      }
+      const st = String(item.status || '').toLowerCase();
+      if (st === 'running' || st === 'queued') {
+        active.push(item);
+        continue;
+      }
+      if (st === 'failed') {
+        failed.push(item);
+        continue;
+      }
+      pool.push(item);
+    }
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
     const todayStart = startOfToday.getTime();
     const today = [];
     const earlier = [];
-    filteredListItems.forEach((item) => {
-      const ts = item.createdAt ?? ((typeof item.id === 'string' && item.id.startsWith('task_') ? parseInt(item.id.replace(/^task_(\d+).*/, '$1'), 10) : now) || now);
+    pool.forEach((item) => {
+      let ts = item.createdAt;
+      if (ts == null && typeof item.id === 'string' && item.id.startsWith('task_')) {
+        const parsed = parseInt(item.id.replace(/^task_(\d+).*/, '$1'), 10);
+        ts = Number.isFinite(parsed) ? parsed : now;
+      }
+      if (ts == null) ts = now;
       if (ts >= todayStart) today.push(item);
       else earlier.push(item);
     });
-    return { today, earlier };
-  }, [filteredListItems]);
+    return { pinned, active, failed, today, earlier };
+  }, [filteredListItems, pinnedIds]);
 
   const openTask = (item) => {
     if (item.isProject) navigate(`/app/projects/${item.id}`);
@@ -297,8 +341,15 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
                 <Pencil size={14} /> Rename
               </button>
             )}
-            <button type="button" disabled title="Coming soon">
-              <Star size={14} /> Add to favorites
+            <button
+              type="button"
+              onClick={() => {
+                togglePin(item.id);
+                setMenuTaskId(null);
+              }}
+            >
+              <Star size={14} className={pinnedIds.includes(item.id) ? 'sidebar-star-pinned' : ''} />
+              {pinnedIds.includes(item.id) ? 'Unpin from sidebar' : 'Pin to sidebar'}
             </button>
             <button type="button" onClick={() => { openInNewTab(item); setMenuTaskId(null); }}>
               <ExternalLink size={14} /> Open in new tab
@@ -333,7 +384,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
           >
             <PanelLeftOpen size={20} />
           </button>
-          {pinnedNav.map((item) => {
+          {createNav.map((item) => {
             const isAppHome = item.exact && item.href === '/app';
             return isAppHome ? (
               <button
@@ -358,6 +409,12 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
               </Link>
             );
           })}
+          <Link to="/app" className="sidebar-collapsed-icon" title="Home" aria-label="Home">
+            <Home size={20} />
+          </Link>
+          <Link to="/app/agents" className="sidebar-collapsed-icon" title="Agents" aria-label="Agents">
+            <FolderOpen size={20} />
+          </Link>
           <button type="button" className="sidebar-collapsed-icon" onClick={onToggleSidebar} title="Search" aria-label="Search">
             <Search size={20} />
           </button>
@@ -436,10 +493,11 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
         </div>
       </div>
 
-      {/* Pinned Navigation: New Task, New Project, Agents */}
-      <nav className="sidebar-nav">
+      {/* Grouped navigation — Create / Work / Knowledge (Engine Room stays secondary, below) */}
+      <nav className="sidebar-nav" aria-label="Primary">
+        <div className="sidebar-nav-group-label">Create</div>
         <div className="sidebar-nav-section">
-          {pinnedNav.map((item) => {
+          {createNav.map((item) => {
             const active = item.exact ? isActive(item.href) : isActivePrefix(item.href);
             const isAppHome = item.href === '/app' && item.exact;
             return isAppHome ? (
@@ -464,6 +522,32 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
             );
           })}
         </div>
+        <div className="sidebar-nav-group-label">Work</div>
+        <div className="sidebar-nav-section">
+          <Link to="/app" className={`sidebar-nav-item ${isActive('/app') ? 'active' : ''}`}>
+            <Home size={18} className="sidebar-nav-icon" />
+            <span className="sidebar-nav-label">Home</span>
+          </Link>
+          <Link to="/app/agents" className={`sidebar-nav-item ${isActivePrefix('/app/agents') ? 'active' : ''}`}>
+            <FolderOpen size={18} className="sidebar-nav-icon" />
+            <span className="sidebar-nav-label">Agents</span>
+          </Link>
+        </div>
+        <div className="sidebar-nav-group-label">Knowledge</div>
+        <div className="sidebar-nav-section">
+          <Link to="/app/prompts" className={`sidebar-nav-item ${isActivePrefix('/app/prompts') ? 'active' : ''}`}>
+            <BookOpen size={18} className="sidebar-nav-icon" />
+            <span className="sidebar-nav-label">Prompts</span>
+          </Link>
+          <Link to="/app/learn" className={`sidebar-nav-item ${isActivePrefix('/app/learn') ? 'active' : ''}`}>
+            <HelpCircle size={18} className="sidebar-nav-icon" />
+            <span className="sidebar-nav-label">Learn</span>
+          </Link>
+          <Link to="/app/patterns" className={`sidebar-nav-item ${isActivePrefix('/app/patterns') ? 'active' : ''}`}>
+            <Library size={18} className="sidebar-nav-icon" />
+            <span className="sidebar-nav-label">Patterns</span>
+          </Link>
+        </div>
       </nav>
 
       {/* History Section — Today / Earlier, scrollable, context menu */}
@@ -472,18 +556,40 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
           <h3 className="sidebar-section-title">History</h3>
         </div>
         <div className="sidebar-section-items sidebar-section-items-scroll">
-          {(historyGrouped.today.length > 0 || historyGrouped.earlier.length > 0) ? (
+          {(historyBuckets.pinned.length > 0
+            || historyBuckets.active.length > 0
+            || historyBuckets.failed.length > 0
+            || historyBuckets.today.length > 0
+            || historyBuckets.earlier.length > 0) ? (
             <>
-              {historyGrouped.today.length > 0 && (
+              {historyBuckets.pinned.length > 0 && (
                 <>
-                  <div className="sidebar-history-group-label">Today</div>
-                  {historyGrouped.today.map((item) => renderHistoryRow(item))}
+                  <div className="sidebar-history-group-label">Pinned</div>
+                  {historyBuckets.pinned.map((item) => renderHistoryRow(item))}
                 </>
               )}
-              {historyGrouped.earlier.length > 0 && (
+              {historyBuckets.active.length > 0 && (
+                <>
+                  <div className="sidebar-history-group-label">Active</div>
+                  {historyBuckets.active.map((item) => renderHistoryRow(item))}
+                </>
+              )}
+              {historyBuckets.failed.length > 0 && (
+                <>
+                  <div className="sidebar-history-group-label">Failed</div>
+                  {historyBuckets.failed.map((item) => renderHistoryRow(item))}
+                </>
+              )}
+              {historyBuckets.today.length > 0 && (
+                <>
+                  <div className="sidebar-history-group-label">Today</div>
+                  {historyBuckets.today.map((item) => renderHistoryRow(item))}
+                </>
+              )}
+              {historyBuckets.earlier.length > 0 && (
                 <>
                   <div className="sidebar-history-group-label">Earlier</div>
-                  {historyGrouped.earlier.map((item) => renderHistoryRow(item))}
+                  {historyBuckets.earlier.map((item) => renderHistoryRow(item))}
                 </>
               )}
             </>
