@@ -159,9 +159,24 @@ class PGCollection:
             elif isinstance(value, dict):
                 for op, op_value in value.items():
                     if op == "$eq":
-                        conditions.append(f"doc->'{key}' = ${param_idx}::jsonb")
-                        params.append(json.dumps(op_value))
-                        param_idx += 1
+                        if op_value is None:
+                            conditions.append(f"(doc->'{key}') IS NULL")
+                        elif isinstance(op_value, str):
+                            conditions.append(f"(doc->>'{key}') = ${param_idx}")
+                            params.append(op_value)
+                            param_idx += 1
+                        elif isinstance(op_value, (int, float)):
+                            conditions.append(f"(doc->>'{key}')::numeric = ${param_idx}::numeric")
+                            params.append(op_value)
+                            param_idx += 1
+                        elif isinstance(op_value, bool):
+                            conditions.append(f"(doc->>'{key}')::boolean = ${param_idx}::boolean")
+                            params.append(op_value)
+                            param_idx += 1
+                        else:
+                            conditions.append(f"doc->'{key}' = ${param_idx}::jsonb")
+                            params.append(json.dumps(op_value))
+                            param_idx += 1
                     elif op == "$gte":
                         conditions.append(f"(doc->>'{key}')::numeric >= ${param_idx}::numeric")
                         params.append(op_value)
@@ -180,22 +195,37 @@ class PGCollection:
                         param_idx += 1
                     elif op == "$ne":
                         conditions.append(f"doc->'{key}' != ${param_idx}::jsonb")
-                        params.append(json.dumps(op_value))
+                        params.append(op_value)
                         param_idx += 1
                     elif op == "$in":
                         placeholders = ", ".join([f"${param_idx + i}::jsonb" for i in range(len(op_value))])
                         conditions.append(f"doc->'{key}' IN ({placeholders})")
-                        params.extend([json.dumps(v) for v in op_value])
+                        params.extend(op_value)
                         param_idx += len(op_value)
                     elif op == "$nin":
                         placeholders = ", ".join([f"${param_idx + i}::jsonb" for i in range(len(op_value))])
                         conditions.append(f"doc->'{key}' NOT IN ({placeholders})")
-                        params.extend([json.dumps(v) for v in op_value])
+                        params.extend(op_value)
                         param_idx += len(op_value)
             else:
-                conditions.append(f"doc->'{key}' = ${param_idx}::jsonb")
-                params.append(json.dumps(value))
-                param_idx += 1
+                if value is None:
+                    conditions.append(f"(doc->'{key}') IS NULL")
+                elif isinstance(value, str):
+                    conditions.append(f"(doc->>'{key}') = ${param_idx}")
+                    params.append(value)
+                    param_idx += 1
+                elif isinstance(value, (int, float)):
+                    conditions.append(f"(doc->>'{key}')::numeric = ${param_idx}::numeric")
+                    params.append(value)
+                    param_idx += 1
+                elif isinstance(value, bool):
+                    conditions.append(f"(doc->>'{key}')::boolean = ${param_idx}::boolean")
+                    params.append(value)
+                    param_idx += 1
+                else:
+                    conditions.append(f"doc->'{key}' = ${param_idx}::jsonb")
+                    params.append(value)
+                    param_idx += 1
 
         where_clause = " AND ".join(conditions) if conditions else "TRUE"
         return where_clause, params
@@ -242,12 +272,15 @@ class PGCollection:
         query = query or {}
         async with self.pool.acquire() as conn:
             where_clause, params = self._build_where(query)
-            sql = f"SELECT id, doc FROM {self.table_name} WHERE {where_clause} LIMIT 1"
+            select_cols = "doc"
+            if self.table_name not in COMPOSITE_PK_TABLES and self.table_name not in LEGACY_ID_TABLES:
+                select_cols = "id, doc"
+            sql = f"SELECT {select_cols} FROM {self.table_name} WHERE {where_clause} LIMIT 1"
             row = await conn.fetchrow(sql, *params)
             if row:
                 doc = self._parse_doc(row['doc'])
                 # Ensure 'id' is always in the returned doc
-                if 'id' not in doc:
+                if 'id' not in doc and 'id' in row:
                     doc['id'] = row['id']
                 if projection:
                     doc = self._apply_projection(doc, projection)
@@ -282,7 +315,10 @@ class PGCollection:
         """Execute query and return list of documents."""
         async with self.pool.acquire() as conn:
             where_clause, params = self._build_where(self._query)
-            sql = f"SELECT id, doc FROM {self.table_name} WHERE {where_clause}"
+            select_cols = "doc"
+            if self.table_name not in COMPOSITE_PK_TABLES and self.table_name not in LEGACY_ID_TABLES:
+                select_cols = "id, doc"
+            sql = f"SELECT {select_cols} FROM {self.table_name} WHERE {where_clause}"
 
             if self._sort_spec:
                 order_parts = []
@@ -305,7 +341,7 @@ class PGCollection:
             docs = []
             for row in rows:
                 doc = self._parse_doc(row['doc'])
-                if 'id' not in doc:
+                if 'id' not in doc and 'id' in row:
                     doc['id'] = row['id']
                 docs.append(doc)
 
@@ -325,13 +361,11 @@ class PGCollection:
         # Ensure doc has 'id' field
         document['id'] = doc_id
 
-        doc_json = json.dumps(document)
-
         async with self.pool.acquire() as conn:
             try:
                 await conn.execute(
                     f"INSERT INTO {self.table_name} (id, doc) VALUES ($1, $2::jsonb)",
-                    doc_id, doc_json
+                    doc_id, document
                 )
             except Exception as e:
                 err = str(e).lower()
@@ -348,11 +382,10 @@ class PGCollection:
             for doc in documents:
                 doc_id = doc.get('id') or doc.get('_id') or self._generate_id()
                 doc['id'] = doc_id
-                doc_json = json.dumps(doc)
                 try:
                     await conn.execute(
                         f"INSERT INTO {self.table_name} (id, doc) VALUES ($1, $2::jsonb)",
-                        doc_id, doc_json
+                        doc_id, doc
                     )
                     ids.append(doc_id)
                 except Exception as e:
@@ -370,12 +403,10 @@ class PGCollection:
         updated_doc['updated_at'] = datetime.utcnow().isoformat()
 
         doc_id = updated_doc.get('id') or updated_doc.get('_id')
-        doc_json = json.dumps(updated_doc)
-
         async with self.pool.acquire() as conn:
             await conn.execute(
                 f"UPDATE {self.table_name} SET doc = $1::jsonb WHERE id = $2",
-                doc_json, doc_id
+                updated_doc, doc_id
             )
 
         return {"matched_count": 1, "modified_count": 1}
@@ -392,10 +423,9 @@ class PGCollection:
                 updated_doc = self._apply_update_operators(doc, update)
                 updated_doc['updated_at'] = datetime.utcnow().isoformat()
                 doc_id = updated_doc.get('id') or updated_doc.get('_id')
-                doc_json = json.dumps(updated_doc)
                 await conn.execute(
                     f"UPDATE {self.table_name} SET doc = $1::jsonb WHERE id = $2",
-                    doc_json, doc_id
+                    updated_doc, doc_id
                 )
                 modified += 1
 
@@ -444,12 +474,10 @@ class PGCollection:
         doc_id = doc.get('id') or doc.get('_id')
         replacement['id'] = doc_id
         replacement['updated_at'] = datetime.utcnow().isoformat()
-        doc_json = json.dumps(replacement)
-
         async with self.pool.acquire() as conn:
             await conn.execute(
                 f"UPDATE {self.table_name} SET doc = $1::jsonb WHERE id = $2",
-                doc_json, doc_id
+                replacement, doc_id
             )
 
         return {"matched_count": 1, "modified_count": 1}

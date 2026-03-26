@@ -205,6 +205,8 @@ Phase 0 is **not** “the product is 100% done.” It is **the ruler and the led
 | 2026-03-26 | Continuation | Workspace **theme** toggle; agent status poll during **build**; Analytics job **duration**; `docs/PREVIEW_TRUST_PATH.md`; `scripts/workspace_compliance_smoke.ps1`; E-02/E-04/A-02 crosswalk bumps; `npm run build` OK. |
 | 2026-03-26 | Crosswalk close | Grouped sidebar (S-01); history buckets + pin; Explorer **sync server workspace**; timeline event cards; §4/§5 aligned; [`docs/GIT_TRUNK.md`](./GIT_TRUNK.md); smoke: `scripts/workspace_compliance_smoke.ps1` (`CRUCIB_SMOKE_TOKEN`, `CRUCIB_SMOKE_PROJECT_ID`, `CRUCIB_API_BASE` optional); `npm run build` OK. |
 | 2026-03-25 | T-04 / A-01 / R-01 | `WorkspaceProPanels.jsx` + deploy modal Railway + publish-settings; Sandbox tab Computer + logs; `python -m py_compile backend/server.py`; `npm run build` in `frontend/`. |
+| 2026-03-26 | Runtime close-out (auth/project) | Full authenticated smoke pass green: `/api/health`, `/api/jobs`, `/projects/{id}/build-history`, `/agents/status/{id}`, `/projects/{id}/logs`; local guest + project run against temporary Postgres. Backend fixes from proof run: `structured_logging.AuditLogger.log` compatibility shim, JSONB query/storage handling in `db_pg.py`, and `get_build_history` existence check (`project is None`). |
+| 2026-03-26 | Reliability sweep (10 passes) | Ran 10 consecutive authenticated runtime passes (fresh guest + fresh imported project each pass). All 10/10 passes returned 200 on health/jobs/build-history/agents-status/project-logs. Final smoke script rerun with fresh token/project also all green. |
 
 ---
 

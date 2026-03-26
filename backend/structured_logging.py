@@ -273,6 +273,33 @@ class AuditLogger:
         else:
             self.logger.warning(json.dumps(log_data))
 
+    async def log(
+        self,
+        user_id: str,
+        action: str,
+        resource_type: Optional[str] = None,
+        resource_id: Optional[str] = None,
+        old_value: Optional[Dict[str, Any]] = None,
+        new_value: Optional[Dict[str, Any]] = None,
+        ip_address: Optional[str] = None,
+        status: str = "success",
+        details: Optional[Dict[str, Any]] = None,
+    ):
+        """Compatibility shim for async audit logger API used by server routes."""
+        changes = None
+        if old_value is not None or new_value is not None:
+            changes = {"old_value": old_value, "new_value": new_value}
+        if details:
+            changes = {**(changes or {}), "details": details}
+        self.log_action(
+            user_id=user_id,
+            action=action,
+            resource=resource_type or "unknown",
+            resource_id=resource_id or "unknown",
+            changes=changes,
+            ip_address=ip_address,
+        )
+
 # ==================== DECORATORS ====================
 
 request_logger = RequestLogger()

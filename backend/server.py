@@ -4931,7 +4931,7 @@ async def get_project_logs(project_id: str, user: dict = Depends(get_current_use
 async def get_build_history(project_id: str, user: dict = Depends(get_current_user)):
     """Version history (item 13): list of past builds for this project (completed_at, status, quality_score, tokens_used)."""
     project = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"build_history": 1})
-    if not project:
+    if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
     history = project.get("build_history") or []
     return {"build_history": history}
