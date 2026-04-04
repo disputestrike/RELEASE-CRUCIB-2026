@@ -1349,9 +1349,10 @@ def _extract_pdf_text_from_b64(b64_data: str) -> str:
 
 from datetime import datetime as _dt, timezone as _tz
 
-def _build_chat_system_prompt() -> str:
+def _build_chat_system_prompt(skills_context: str = "") -> str:
     today = _dt.now(_tz.utc).strftime("%B %d, %Y")
-    return f"""You are CrucibAI — an AI platform that builds apps, automations, and digital products.
+    skills_section = f"\n\n{skills_context}" if skills_context else ""
+    return f"""{skills_section}You are CrucibAI — an AI platform that builds apps, automations, and digital products.
 
 TODAY'S DATE: {today}. Always use this exact date when asked what the date or year is. Never use a date from your training data.
 
@@ -1747,9 +1748,18 @@ async def ai_build_iterative(data: ChatMessage, user: dict = Depends(get_optiona
             async def on_step(step_name, files_so_far):
                 step_events.append((step_name, dict(files_so_far)))
 
+            # Inject active skills context into build prompt
+            _skills_ctx = ""
+            if user and user.get("id"):
+                try:
+                    _skills_ctx = await _get_active_skills_context(user["id"])
+                except Exception:
+                    _skills_ctx = ""
+
             final_files = await run_iterative_build(
                 prompt=prompt, build_kind=build_kind,
                 call_llm=call_llm, on_progress=on_step,
+                skills_context=_skills_ctx or None,
             )
             for step_name, files in step_events:
                 yield json.dumps({"type": "step_complete", "step": step_name, "files": files}) + "\n"
@@ -8028,9 +8038,18 @@ async def init_postgres_primary():
                     )
                     return resp
 
+                # Inject active skills context for queue-based builds
+                _queue_skills_ctx = ""
+                if user_id:
+                    try:
+                        _queue_skills_ctx = await _get_active_skills_context(user_id)
+                    except Exception:
+                        _queue_skills_ctx = ""
+
                 final_files = await run_iterative_build(
                     prompt=prompt, build_kind=build_kind,
                     call_llm=call_llm, on_progress=on_step,
+                    skills_context=_queue_skills_ctx or None,
                 )
 
                 # Save completed files to PostgreSQL tasks table (Q122 persistence)
@@ -8270,3 +8289,218 @@ if _static_dir.exists():
             return full_path, stat_result
 
     app.mount("/", SpaStaticFiles(directory=str(_static_dir), html=True), name="frontend")
+
+# ==================== SKILLS ROUTES ====================
+
+import os as _os
+
+SYSTEM_SKILLS = [
+    {"name": "web-app-builder", "icon": "🌐", "color": "#3b82f6", "category": "build", "display_name": "Web App", "short_desc": "Full-stack React + Node.js with auth, database, and API", "trigger_prompt": "Build a full-stack web app with user authentication, dashboard, and REST API"},
+    {"name": "mobile-app-builder", "icon": "📱", "color": "#8b5cf6", "category": "build", "display_name": "Mobile App", "short_desc": "React Native with Expo — iOS and Android ready", "trigger_prompt": "Build a mobile app with navigation, screens, and local storage"},
+    {"name": "saas-mvp-builder", "icon": "💳", "color": "#f59e0b", "category": "build", "display_name": "SaaS MVP", "short_desc": "Auth, Stripe billing, user dashboard, multi-tenant", "trigger_prompt": "Build a SaaS MVP with Stripe billing, user auth, and admin dashboard"},
+    {"name": "ecommerce-builder", "icon": "🛒", "color": "#10b981", "category": "build", "display_name": "E-Commerce", "short_desc": "Product catalog, cart, Stripe checkout, order management", "trigger_prompt": "Build an e-commerce store with product catalog, cart, and Stripe checkout"},
+    {"name": "ai-chatbot-builder", "icon": "🤖", "color": "#ec4899", "category": "build", "display_name": "AI Chatbot", "short_desc": "Multi-agent chat, knowledge base, streaming, embeddable widget", "trigger_prompt": "Build an AI chatbot with multi-agent support and document knowledge base"},
+    {"name": "landing-page-builder", "icon": "🏠", "color": "#06b6d4", "category": "build", "display_name": "Landing Page", "short_desc": "Hero, features, pricing, testimonials, FAQ, email waitlist", "trigger_prompt": "Build a landing page with hero, features grid, pricing table, and FAQ"},
+    {"name": "automation-builder", "icon": "⚡", "color": "#f97316", "category": "automate", "display_name": "Automation", "short_desc": "Scheduled agents, webhooks, AI-powered workflows", "trigger_prompt": "Build an automation that runs daily and sends results to Slack or email"},
+    {"name": "internal-tool-builder", "icon": "🛠️", "color": "#64748b", "category": "build", "display_name": "Internal Tool", "short_desc": "Admin tables, forms, CRUD, approval workflows", "trigger_prompt": "Build an internal admin tool with data tables, forms, and user roles"},
+    {"name": "data-dashboard-builder", "icon": "📊", "color": "#6366f1", "category": "build", "display_name": "Data Dashboard", "short_desc": "Interactive charts, KPI cards, filters, analytics", "trigger_prompt": "Build a data analytics dashboard with charts and KPI cards"},
+    {"name": "custom-user-skill", "icon": "✨", "color": "#a855f7", "category": "custom", "display_name": "Custom Skill", "short_desc": "Define your own building patterns and AI instructions", "trigger_prompt": ""},
+]
+
+SKILLS_DIR = _os.path.join(_os.path.dirname(__file__), "..", "skills")
+
+def _load_skill_md(skill_name: str) -> str:
+    """Load SKILL.md content for a system skill."""
+    skill_path = _os.path.join(SKILLS_DIR, skill_name, "SKILL.md")
+    try:
+        if _os.path.exists(skill_path):
+            with open(skill_path, "r", encoding="utf-8") as f:
+                return f.read()
+    except Exception:
+        pass
+    return ""
+
+async def _get_active_skills_context(user_id: str) -> str:
+    """Build skills context string for prompt injection."""
+    if db is None:
+        return ""
+    try:
+        user_doc = await db.users.find_one({"id": user_id})
+        if not user_doc:
+            return ""
+        active_ids = user_doc.get("active_skill_ids", [])
+        if not active_ids:
+            return ""
+        skill_sections = []
+        system_skill_map = {s["name"]: s for s in SYSTEM_SKILLS}
+        for skill_id in active_ids:
+            if skill_id in system_skill_map:
+                md = _load_skill_md(skill_id)
+                skill_meta = system_skill_map[skill_id]
+                if md:
+                    # Use first 1500 chars of SKILL.md to keep prompt manageable
+                    summary = md[:1500].strip()
+                    skill_sections.append(f"[{skill_meta['display_name']}]\n{summary}")
+                else:
+                    skill_sections.append(f"[{skill_meta['display_name']}]\n{skill_meta['short_desc']}")
+            else:
+                # User-defined skill
+                user_skill_doc = await db.user_skills.find_one({"id": skill_id})
+                if user_skill_doc:
+                    instructions = user_skill_doc.get("instructions", user_skill_doc.get("short_desc", ""))
+                    display_name = user_skill_doc.get("display_name", skill_id)
+                    skill_sections.append(f"[{display_name}]\n{instructions[:800]}")
+        if not skill_sections:
+            return ""
+        context = "ACTIVE SKILLS — apply these patterns:\n" + "\n\n".join(skill_sections)
+        return context
+    except Exception as e:
+        logger.warning(f"_get_active_skills_context error: {e}")
+        return ""
+
+
+class CreateUserSkillBody(BaseModel):
+    name: str = Field(..., min_length=1, max_length=80)
+    display_name: str = Field(..., min_length=1, max_length=80)
+    icon: Optional[str] = Field("✨", max_length=10)
+    color: Optional[str] = Field("#a855f7", max_length=20)
+    short_desc: Optional[str] = Field("", max_length=200)
+    instructions: Optional[str] = Field("", max_length=8000)
+    trigger_phrases: Optional[list] = Field(default_factory=list)
+
+class UpdateUserSkillBody(BaseModel):
+    display_name: Optional[str] = Field(None, min_length=1, max_length=80)
+    icon: Optional[str] = Field(None, max_length=10)
+    color: Optional[str] = Field(None, max_length=20)
+    short_desc: Optional[str] = Field(None, max_length=200)
+    instructions: Optional[str] = Field(None, max_length=8000)
+    trigger_phrases: Optional[list] = None
+
+
+@api_router.get("/skills/active")
+async def get_active_skills(user: dict = Depends(get_current_user)):
+    """Get all active skills for the current user."""
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not ready")
+    user_doc = await db.users.find_one({"id": user["id"]})
+    active_ids = (user_doc or {}).get("active_skill_ids", [])
+    return {"active_skill_ids": active_ids}
+
+
+@api_router.get("/skills")
+async def list_skills(user: dict = Depends(get_current_user)):
+    """List all skills: system skills + user's custom skills + active state."""
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not ready")
+    user_doc = await db.users.find_one({"id": user["id"]})
+    active_ids = (user_doc or {}).get("active_skill_ids", [])
+    # Fetch user's custom skills
+    user_skills_cursor = db.user_skills.find({"user_id": user["id"]})
+    user_skills = await user_skills_cursor.to_list(200)
+    return {
+        "system_skills": SYSTEM_SKILLS,
+        "user_skills": user_skills,
+        "active_skill_ids": active_ids,
+    }
+
+
+@api_router.get("/skills/{skill_id}")
+async def get_skill(skill_id: str, user: dict = Depends(get_current_user)):
+    """Get skill details including SKILL.md content."""
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not ready")
+    # Check system skills first
+    system_skill = next((s for s in SYSTEM_SKILLS if s["name"] == skill_id), None)
+    if system_skill:
+        md_content = _load_skill_md(skill_id)
+        return {**system_skill, "skill_md": md_content, "source": "system"}
+    # Check user skills
+    user_skill = await db.user_skills.find_one({"id": skill_id})
+    if user_skill:
+        if user_skill.get("user_id") != user["id"]:
+            raise HTTPException(status_code=403, detail="Access denied")
+        return {**user_skill, "source": "user"}
+    raise HTTPException(status_code=404, detail="Skill not found")
+
+
+@api_router.post("/skills")
+async def create_user_skill(body: CreateUserSkillBody, user: dict = Depends(get_current_user)):
+    """Create a user-defined skill."""
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not ready")
+    skill_id = f"user-{user['id'][:8]}-{body.name.lower().replace(' ', '-')}-{str(uuid.uuid4())[:6]}"
+    now = datetime.now(timezone.utc).isoformat()
+    doc = {
+        "id": skill_id,
+        "user_id": user["id"],
+        "name": body.name,
+        "display_name": body.display_name,
+        "icon": body.icon or "✨",
+        "color": body.color or "#a855f7",
+        "category": "custom",
+        "short_desc": body.short_desc or "",
+        "instructions": body.instructions or "",
+        "trigger_phrases": body.trigger_phrases or [],
+        "trigger_prompt": "",
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.user_skills.insert_one(doc)
+    return {"status": "created", "skill": doc}
+
+
+@api_router.put("/skills/{skill_id}")
+async def update_user_skill(skill_id: str, body: UpdateUserSkillBody, user: dict = Depends(get_current_user)):
+    """Update a user-defined skill."""
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not ready")
+    existing = await db.user_skills.find_one({"id": skill_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Skill not found")
+    if existing.get("user_id") != user["id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.user_skills.update_one({"id": skill_id}, {"$set": updates})
+    updated = await db.user_skills.find_one({"id": skill_id})
+    return {"status": "updated", "skill": updated}
+
+
+@api_router.delete("/skills/{skill_id}")
+async def delete_user_skill(skill_id: str, user: dict = Depends(get_current_user)):
+    """Delete a user-defined skill."""
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not ready")
+    existing = await db.user_skills.find_one({"id": skill_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Skill not found")
+    if existing.get("user_id") != user["id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+    await db.user_skills.delete_one({"id": skill_id})
+    # Also remove from active_skill_ids
+    await db.users.update_one({"id": user["id"]}, {"$pull": {"active_skill_ids": skill_id}})
+    return {"status": "deleted"}
+
+
+@api_router.post("/skills/{skill_id}/activate")
+async def toggle_skill_active(skill_id: str, user: dict = Depends(get_current_user)):
+    """Toggle a skill active/inactive for the current user."""
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not ready")
+    # Validate skill exists
+    is_system = any(s["name"] == skill_id for s in SYSTEM_SKILLS)
+    if not is_system:
+        user_skill = await db.user_skills.find_one({"id": skill_id})
+        if not user_skill or user_skill.get("user_id") != user["id"]:
+            raise HTTPException(status_code=404, detail="Skill not found")
+    user_doc = await db.users.find_one({"id": user["id"]})
+    active_ids = (user_doc or {}).get("active_skill_ids", [])
+    if skill_id in active_ids:
+        active_ids.remove(skill_id)
+        action = "deactivated"
+    else:
+        active_ids.append(skill_id)
+        action = "activated"
+    await db.users.update_one({"id": user["id"]}, {"$set": {"active_skill_ids": active_ids}})
+    return {"status": action, "skill_id": skill_id, "active_skill_ids": active_ids}
+

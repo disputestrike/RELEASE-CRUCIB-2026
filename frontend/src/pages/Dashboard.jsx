@@ -108,35 +108,58 @@ function formatCronShort(cron) {
 }
 
 const SKILLS = [
-  { icon: '🌐', name: 'Web App', desc: 'Full-stack React + Node.js with auth, database, and API', prompt: 'Build a web app with user authentication, dashboard, and REST API' },
-  { icon: '📱', name: 'Mobile App', desc: 'React Native with Expo — iOS and Android ready', prompt: 'Build a mobile app with navigation, screens, and local storage' },
-  { icon: '🛒', name: 'E-Commerce', desc: 'Product catalog, cart, checkout with Stripe payments', prompt: 'Build an e-commerce store with product catalog, cart, and Stripe checkout' },
-  { icon: '📊', name: 'SaaS Dashboard', desc: 'Auth, subscription billing, user management, metrics', prompt: 'Build a SaaS dashboard with Stripe billing, user auth, and analytics' },
-  { icon: '🤖', name: 'AI Chatbot', desc: 'Multi-agent chat interface with knowledge base integration', prompt: 'Build an AI chatbot with multi-agent support and document knowledge base' },
-  { icon: '🏠', name: 'Landing Page', desc: 'Hero, features, pricing, testimonials, CTA sections', prompt: 'Build a landing page with hero, features grid, pricing table, and FAQ' },
-  { icon: '⚡', name: 'Automation', desc: 'Scheduled agents, webhooks, workflow pipelines', prompt: 'Build an automation that runs daily and sends a digest to Slack' },
-  { icon: '🛠️', name: 'Internal Tool', desc: 'Admin tables, forms, CRUD, approval workflows', prompt: 'Build an internal admin tool with data tables, forms, and user roles' },
-  { icon: '🎮', name: 'Game', desc: 'Browser-based game with canvas, physics, leaderboard', prompt: 'Build a browser-based game with scoring and leaderboard' },
-  { icon: '📄', name: 'Blog / CMS', desc: 'Articles, categories, search, author dashboard', prompt: 'Build a blog with articles, categories, search, and an author dashboard' },
+  { icon: '🌐', name: 'Web App', skill_name: 'web-app-builder', desc: 'Full-stack React + Node.js with auth, database, and API', prompt: 'Build a full-stack web app with user authentication, dashboard, and REST API' },
+  { icon: '📱', name: 'Mobile App', skill_name: 'mobile-app-builder', desc: 'React Native with Expo — iOS and Android ready', prompt: 'Build a mobile app with navigation, screens, and local storage' },
+  { icon: '🛒', name: 'E-Commerce', skill_name: 'ecommerce-builder', desc: 'Product catalog, cart, checkout with Stripe payments', prompt: 'Build an e-commerce store with product catalog, cart, and Stripe checkout' },
+  { icon: '📊', name: 'SaaS Dashboard', skill_name: 'saas-mvp-builder', desc: 'Auth, subscription billing, user management, metrics', prompt: 'Build a SaaS MVP with Stripe billing, user auth, and admin dashboard' },
+  { icon: '🤖', name: 'AI Chatbot', skill_name: 'ai-chatbot-builder', desc: 'Multi-agent chat interface with knowledge base integration', prompt: 'Build an AI chatbot with multi-agent support and document knowledge base' },
+  { icon: '🏠', name: 'Landing Page', skill_name: 'landing-page-builder', desc: 'Hero, features, pricing, testimonials, CTA sections', prompt: 'Build a landing page with hero, features grid, pricing table, and FAQ' },
+  { icon: '⚡', name: 'Automation', skill_name: 'automation-builder', desc: 'Scheduled agents, webhooks, workflow pipelines', prompt: 'Build an automation that runs daily and sends results to Slack or email' },
+  { icon: '🛠️', name: 'Internal Tool', skill_name: 'internal-tool-builder', desc: 'Admin tables, forms, CRUD, approval workflows', prompt: 'Build an internal admin tool with data tables, forms, and user roles' },
+  { icon: '🎮', name: 'Game', skill_name: null, desc: 'Browser-based game with canvas, physics, leaderboard', prompt: 'Build a browser-based game with scoring and leaderboard' },
+  { icon: '📄', name: 'Blog / CMS', skill_name: null, desc: 'Articles, categories, search, author dashboard', prompt: 'Build a blog with articles, categories, search, and an author dashboard' },
 ];
 
-const SkillsPanel = ({ onSelect }) => {
+const SkillsPanel = ({ onSelect, token: skillToken, API: skillAPI }) => {
   const [showAll, setShowAll] = useState(false);
   const visibleSkills = showAll ? SKILLS : SKILLS.slice(0, 5);
+  const navigate = useNavigate();
+
+  const handleSkillClick = (skill) => {
+    onSelect(skill.prompt);
+    // Activate the skill when clicked (fire-and-forget)
+    if (skillToken && skill.skill_name) {
+      axios.post(
+        `${skillAPI}/skills/${skill.skill_name}/activate`,
+        {},
+        { headers: { Authorization: `Bearer ${skillToken}` } }
+      ).catch(() => {});
+    }
+  };
+
   return (
     <div style={{ maxWidth: '720px', width: '100%', margin: '20px auto 0' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
         <div>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: '#111827' }}>What can I build?</span>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--theme-text, #111827)' }}>What can I build?</span>
           <span style={{ fontSize: '12px', color: '#9ca3af', marginLeft: '8px' }}>Click any skill to start building</span>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowAll((v) => !v)}
-          style={{ fontSize: '12px', color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-        >
-          {showAll ? 'Show fewer' : 'Show all capabilities'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button
+            type="button"
+            onClick={() => setShowAll((v) => !v)}
+            style={{ fontSize: '12px', color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+          >
+            {showAll ? 'Show fewer' : 'Show all capabilities'}
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/app/skills')}
+            style={{ fontSize: '12px', color: '#6366f1', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '3px' }}
+          >
+            View in Skills <ArrowRight size={11} />
+          </button>
+        </div>
       </div>
       <div style={{
         display: 'grid',
@@ -147,19 +170,19 @@ const SkillsPanel = ({ onSelect }) => {
           <button
             key={skill.name}
             type="button"
-            onClick={() => onSelect(skill.prompt)}
+            onClick={() => handleSkillClick(skill)}
             style={{
               display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
-              padding: '12px', background: '#fff', border: '1px solid #e5e7eb',
+              padding: '12px', background: 'var(--theme-bg, #fff)', border: '1px solid var(--theme-border, #e5e7eb)',
               borderRadius: '12px', cursor: 'pointer', textAlign: 'left',
               transition: 'border-color 0.15s, box-shadow 0.15s',
               gap: '6px',
             }}
             onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.boxShadow = 'none'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--theme-border, #e5e7eb)'; e.currentTarget.style.boxShadow = 'none'; }}
           >
             <span style={{ fontSize: '20px', lineHeight: 1 }}>{skill.icon}</span>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: '#111827' }}>{skill.name}</span>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--theme-text, #111827)' }}>{skill.name}</span>
             <span style={{ fontSize: '11px', color: '#6b7280', lineHeight: 1.4 }}>{skill.desc}</span>
           </button>
         ))}
@@ -758,7 +781,7 @@ const Dashboard = () => {
             </motion.div>
 
             {/* Skills / Capabilities Panel */}
-            <SkillsPanel onSelect={(prompt) => setPrompt(prompt)} />
+            <SkillsPanel onSelect={(prompt) => setPrompt(prompt)} token={token} API={API} />
 
             {/* Live Builds Panel — real-time build progress, polled every 4s when builds are running */}
             {liveProjects.length > 0 && (

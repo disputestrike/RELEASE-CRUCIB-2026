@@ -10,7 +10,7 @@ import {
   X, Bell, MoreHorizontal, ExternalLink, Pencil, Share2,
   Trash2, FolderInput, Star, Settings, ShieldCheck, Code, Monitor,
   PanelLeftClose, PanelLeftOpen, History,
-  Bot, Radio, MessageSquare, ShoppingBag, Users
+  Bot, Radio, MessageSquare, ShoppingBag, Users, Sparkles
 } from 'lucide-react';
 import Logo from './Logo';
 import './Sidebar.css';
@@ -71,6 +71,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
   // Includes platform infrastructure items (Studio/Knowledge/Channels/Sessions/Commerce/Members)
   // which are internal config and not part of the main builder workflow
   const engineRoomItems = [
+    { label: 'Skills', icon: Sparkles, href: '/app/skills' },
     { label: 'Studio', icon: Bot, href: '/app/studio' },
     { label: 'Knowledge', icon: BookOpen, href: '/app/knowledge' },
     { label: 'Channels', icon: Radio, href: '/app/channels' },
