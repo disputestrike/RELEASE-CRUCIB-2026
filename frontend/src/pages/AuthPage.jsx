@@ -284,6 +284,22 @@ const AuthPage = () => {
                     <Github className="w-5 h-5" />
                     Continue with GitHub
                   </button>
+
+                  {isLogin && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const email = prompt('Enter your work email to continue with SSO:');
+                        if (email && email.includes('@')) {
+                          window.location.href = `${API}/sso/login?email=${encodeURIComponent(email)}`;
+                        }
+                      }}
+                      className="w-full py-3 bg-white hover:bg-gray-50 border border-dashed border-gray-300 rounded-lg font-medium transition flex items-center justify-center gap-3 text-gray-500 text-sm"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                      Continue with SSO (Enterprise)
+                    </button>
+                  )}
                 </div>
 
                 {/* Divider */}

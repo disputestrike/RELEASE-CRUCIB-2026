@@ -130,6 +130,22 @@ const AuthProvider = ({ children }) => {
     return u;
   };
 
+  // SSO callback — loginWithToken from URL param (?sso_token=...)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const ssoToken = urlParams.get('sso_token');
+    if (ssoToken) {
+      // Remove the param from URL without reload
+      const clean = new URL(window.location.href);
+      clean.searchParams.delete('sso_token');
+      clean.searchParams.delete('email');
+      window.history.replaceState({}, '', clean.pathname + (clean.search || '') + (clean.hash || ''));
+      // Log in with the SSO token
+      localStorage.setItem('token', ssoToken);
+      setToken(ssoToken);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     let cancelled = false;
     const ensureGuest = async () => {

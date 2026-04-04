@@ -442,6 +442,8 @@ class DeployTokensUpdate(BaseModel):
     """Optional deploy tokens for one-click deploy (stored per user, not returned in /auth/me)."""
     vercel: Optional[str] = None
     netlify: Optional[str] = None
+    github: Optional[str] = None
+    railway: Optional[str] = None
 
 
 class DeployOneClickBody(BaseModel):
@@ -4891,7 +4893,7 @@ async def get_deploy_tokens_status(user: dict = Depends(get_current_user)):
     """Return whether user has deploy tokens set (no values). For UI to show one-click availability."""
     u = await db.users.find_one({"id": user["id"]}, {"deploy_tokens": 1})
     dt = u.get("deploy_tokens") or {}
-    return {"has_vercel": bool(dt.get("vercel")), "has_netlify": bool(dt.get("netlify"))}
+    return {"has_vercel": bool(dt.get("vercel")), "has_netlify": bool(dt.get("netlify")), "has_github": bool(dt.get("github")), "has_railway": bool(dt.get("railway"))}
 
 
 @api_router.patch("/users/me/deploy-tokens")
@@ -4902,6 +4904,10 @@ async def update_deploy_tokens(data: DeployTokensUpdate, user: dict = Depends(ge
         update["deploy_tokens.vercel"] = data.vercel.strip() if data.vercel else None
     if data.netlify is not None:
         update["deploy_tokens.netlify"] = data.netlify.strip() if data.netlify else None
+    if data.github is not None:
+        update["deploy_tokens.github"] = data.github.strip() if data.github else None
+    if data.railway is not None:
+        update["deploy_tokens.railway"] = data.railway.strip() if data.railway else None
     if not update:
         return {"ok": True}
     await db.users.update_one({"id": user["id"]}, {"$set": update})
@@ -8789,4 +8795,412 @@ async def toggle_skill_active(skill_id: str, user: dict = Depends(get_current_us
         action = "activated"
     await db.users.update_one({"id": user["id"]}, {"$set": {"active_skill_ids": active_ids}})
     return {"status": action, "skill_id": skill_id, "active_skill_ids": active_ids}
+
+
+# ============================================================
+# GITHUB GIT SYNC — Auto-push generated code to GitHub repo
+# ============================================================
+
+class GitSyncBody(BaseModel):
+    project_id: Optional[str] = None
+    task_id: Optional[str] = None
+    repo_name: Optional[str] = None          # custom repo name (defaults to project name)
+    private: Optional[bool] = True
+
+@api_router.post("/git-sync/push")
+async def git_sync_push_to_github(body: GitSyncBody, user: dict = Depends(get_current_user)):
+    """
+    Auto-create a GitHub repo and push the build's generated files.
+    Requires GITHUB_TOKEN env var (server-level) or user's stored github_token.
+    Returns: { repo_url, clone_url, pushed_files }
+    """
+    import base64, httpx, re
+
+    # Resolve files from project or task
+    files: dict = {}
+    project_name = body.repo_name or "crucibai-app"
+
+    if db is not None:
+        if body.project_id:
+            proj = await db.projects.find_one({"id": body.project_id, "user_id": user["id"]})
+            if proj:
+                files = proj.get("deploy_files") or {}
+                project_name = body.repo_name or (proj.get("name") or "crucibai-app")
+        if not files and body.task_id:
+            task = await db.tasks.find_one({"id": body.task_id})
+            if task:
+                files = task.get("files") or {}
+                project_name = body.repo_name or (task.get("prompt") or "crucibai-app")[:40]
+
+    if not files:
+        raise HTTPException(status_code=400, detail="No generated files found. Run a build first.")
+
+    # Get GitHub token (user stored > env)
+    u = await db.users.find_one({"id": user["id"]}, {"deploy_tokens": 1}) if db else {}
+    github_token = (
+        (u.get("deploy_tokens") or {}).get("github")
+        or os.environ.get("GITHUB_TOKEN")
+    )
+    if not github_token:
+        raise HTTPException(
+            status_code=402,
+            detail="Add your GitHub token in Settings → Deploy integrations to enable Git sync.",
+        )
+
+    # Sanitize repo name
+    safe_name = re.sub(r"[^a-zA-Z0-9_\-]", "-", project_name.strip()).strip("-")[:100] or "crucibai-app"
+    is_private = body.private if body.private is not None else True
+
+    headers = {
+        "Authorization": f"Bearer {github_token}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        # 1. Get authenticated user's login
+        me_r = await client.get("https://api.github.com/user", headers=headers)
+        if me_r.status_code != 200:
+            raise HTTPException(status_code=502, detail="GitHub token invalid or expired.")
+        owner = me_r.json().get("login", "")
+
+        # 2. Create repo (or use existing)
+        create_r = await client.post(
+            "https://api.github.com/user/repos",
+            headers=headers,
+            json={"name": safe_name, "private": is_private, "auto_init": False, "description": "Generated by CrucibAI"},
+        )
+        if create_r.status_code not in (201, 422):  # 422 = already exists
+            raise HTTPException(status_code=502, detail=f"GitHub repo creation failed: {create_r.text[:200]}")
+
+        repo_url = f"https://github.com/{owner}/{safe_name}"
+        clone_url = f"https://github.com/{owner}/{safe_name}.git"
+
+        # 3. Push files via Contents API
+        pushed = []
+        skipped = []
+        for path, content in files.items():
+            safe_path = path.lstrip("/")
+            if not safe_path:
+                continue
+            try:
+                raw = content if isinstance(content, bytes) else content.encode("utf-8")
+                encoded = base64.b64encode(raw).decode("ascii")
+                # Check if file exists (get SHA for update)
+                sha = None
+                get_r = await client.get(
+                    f"https://api.github.com/repos/{owner}/{safe_name}/contents/{safe_path}",
+                    headers=headers,
+                )
+                if get_r.status_code == 200:
+                    sha = get_r.json().get("sha")
+                payload = {
+                    "message": f"feat: add {safe_path} — generated by CrucibAI",
+                    "content": encoded,
+                }
+                if sha:
+                    payload["sha"] = sha
+                put_r = await client.put(
+                    f"https://api.github.com/repos/{owner}/{safe_name}/contents/{safe_path}",
+                    headers=headers,
+                    json=payload,
+                )
+                if put_r.status_code in (200, 201):
+                    pushed.append(safe_path)
+                else:
+                    skipped.append({"path": safe_path, "reason": put_r.text[:100]})
+            except Exception as e:
+                skipped.append({"path": safe_path, "reason": str(e)[:80]})
+
+    # Save to project
+    if db and body.project_id:
+        await db.projects.update_one(
+            {"id": body.project_id, "user_id": user["id"]},
+            {"$set": {"github_repo_url": repo_url, "github_clone_url": clone_url}},
+        )
+
+    return {
+        "repo_url": repo_url,
+        "clone_url": clone_url,
+        "pushed_files": len(pushed),
+        "skipped_files": len(skipped),
+        "private": is_private,
+    }
+
+
+@api_router.get("/git-sync/status")
+async def git_sync_status(project_id: str = Query(...), user: dict = Depends(get_current_user)):
+    """Return GitHub sync status for a project."""
+    if db is None:
+        return {"synced": False}
+    proj = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"github_repo_url": 1, "github_clone_url": 1})
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return {
+        "synced": bool(proj.get("github_repo_url")),
+        "repo_url": proj.get("github_repo_url"),
+        "clone_url": proj.get("github_clone_url"),
+    }
+
+
+# ============================================================
+# WORKOS / SAML SSO
+# ============================================================
+
+@api_router.get("/sso/login")
+async def sso_login(organization_id: Optional[str] = Query(None), email: Optional[str] = Query(None)):
+    """
+    Initiate WorkOS/SAML SSO login. Redirects to IdP.
+    Set WORKOS_API_KEY and WORKOS_CLIENT_ID env vars to enable real SSO.
+    """
+    workos_api_key = os.environ.get("WORKOS_API_KEY", "")
+    workos_client_id = os.environ.get("WORKOS_CLIENT_ID", "")
+    if not workos_api_key or not workos_client_id:
+        # Return a helpful error — SSO not configured yet
+        raise HTTPException(
+            status_code=501,
+            detail={
+                "error": "SSO_NOT_CONFIGURED",
+                "message": "SAML SSO is available on the Enterprise plan. Contact support@crucibai.com to set up SSO for your organization.",
+                "setup_url": "/enterprise",
+            },
+        )
+    # Build WorkOS authorization URL
+    import httpx, urllib.parse
+    params = {
+        "client_id": workos_client_id,
+        "redirect_uri": f"{os.environ.get('BACKEND_PUBLIC_URL', 'https://crucibai-production.up.railway.app')}/api/sso/callback",
+        "response_type": "code",
+    }
+    if organization_id:
+        params["organization"] = organization_id
+    if email:
+        params["login_hint"] = email
+    auth_url = f"https://api.workos.com/sso/authorize?{urllib.parse.urlencode(params)}"
+    return {"auth_url": auth_url, "redirect": True}
+
+
+@api_router.get("/sso/callback")
+async def sso_callback(code: str = Query(...), state: Optional[str] = Query(None)):
+    """
+    WorkOS SSO callback. Exchanges code for profile, creates/upserts user, returns JWT.
+    """
+    workos_api_key = os.environ.get("WORKOS_API_KEY", "")
+    workos_client_id = os.environ.get("WORKOS_CLIENT_ID", "")
+    workos_client_secret = os.environ.get("WORKOS_CLIENT_SECRET", "")
+    if not workos_api_key:
+        raise HTTPException(status_code=501, detail="SSO not configured")
+
+    import httpx
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        r = await client.post(
+            "https://api.workos.com/sso/token",
+            headers={"Authorization": f"Bearer {workos_api_key}"},
+            json={
+                "client_id": workos_client_id,
+                "client_secret": workos_client_secret,
+                "code": code,
+                "grant_type": "authorization_code",
+            },
+        )
+        if r.status_code != 200:
+            raise HTTPException(status_code=502, detail=f"WorkOS SSO error: {r.text[:200]}")
+        token_data = r.json()
+        access_token = token_data.get("access_token")
+
+        # Get profile
+        profile_r = await client.get(
+            "https://api.workos.com/sso/profile",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        if profile_r.status_code != 200:
+            raise HTTPException(status_code=502, detail="Failed to fetch SSO profile")
+        profile = profile_r.json()
+
+    email = profile.get("email", "").lower().strip()
+    first = profile.get("first_name") or ""
+    last = profile.get("last_name") or ""
+    org_id = profile.get("organization_id", "")
+
+    if not email:
+        raise HTTPException(status_code=400, detail="SSO profile missing email")
+
+    # Upsert user in DB
+    user_doc = None
+    if db is not None:
+        user_doc = await db.users.find_one({"email": email})
+        now = datetime.now(timezone.utc).isoformat()
+        if not user_doc:
+            user_id = str(uuid.uuid4())
+            user_doc = {
+                "id": user_id,
+                "email": email,
+                "name": f"{first} {last}".strip() or email.split("@")[0],
+                "plan": "enterprise",
+                "sso_provider": "workos",
+                "sso_organization_id": org_id,
+                "created_at": now,
+                "last_login": now,
+            }
+            await db.users.insert_one(user_doc)
+        else:
+            await db.users.update_one(
+                {"email": email},
+                {"$set": {"last_login": now, "sso_provider": "workos", "sso_organization_id": org_id}},
+            )
+
+    if not user_doc:
+        raise HTTPException(status_code=500, detail="DB not available for SSO")
+
+    # Issue JWT
+    token_payload = {
+        "user_id": user_doc["id"],
+        "email": email,
+        "exp": datetime.now(timezone.utc) + timedelta(days=30),
+    }
+    token = jwt.encode(token_payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    # Redirect to frontend with token (or return JSON)
+    frontend_url = os.environ.get("FRONTEND_URL", "https://crucibai-production.up.railway.app")
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url=f"{frontend_url}/app?sso_token={token}&email={email}", status_code=302)
+
+
+@api_router.get("/sso/organizations")
+async def sso_list_organizations(user: dict = Depends(get_current_user)):
+    """List SSO organizations (enterprise admins only)."""
+    workos_api_key = os.environ.get("WORKOS_API_KEY", "")
+    if not workos_api_key:
+        return {"organizations": [], "sso_configured": False}
+    import httpx
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        r = await client.get(
+            "https://api.workos.com/organizations",
+            headers={"Authorization": f"Bearer {workos_api_key}"},
+        )
+        if r.status_code != 200:
+            return {"organizations": [], "error": r.text[:100]}
+        return {"organizations": r.json().get("data", []), "sso_configured": True}
+
+
+# ============================================================
+# RAILWAY NATIVE DEPLOY (server-side)
+# ============================================================
+
+class RailwayDeployBody(BaseModel):
+    project_id: Optional[str] = None
+    task_id: Optional[str] = None
+    service_name: Optional[str] = None
+    railway_token: Optional[str] = None  # user can pass their own token
+
+@api_router.post("/deploy/railway")
+async def deploy_to_railway(body: RailwayDeployBody, user: dict = Depends(get_current_user)):
+    """
+    Deploy generated app to Railway via Railway Deploy API.
+    Uses RAILWAY_DEPLOY_TOKEN env var (server-level) or user's stored token.
+    Returns: { deploy_url, service_id, status }
+    """
+    import httpx, base64
+
+    # Get files
+    files: dict = {}
+    project_name = body.service_name or "crucibai-app"
+
+    if db is not None:
+        if body.project_id:
+            proj = await db.projects.find_one({"id": body.project_id, "user_id": user["id"]})
+            if proj:
+                files = proj.get("deploy_files") or {}
+                project_name = body.service_name or (proj.get("name") or "crucibai-app")
+        if not files and body.task_id:
+            task = await db.tasks.find_one({"id": body.task_id})
+            if task:
+                files = task.get("files") or {}
+                project_name = body.service_name or (task.get("prompt") or "crucibai-app")[:40]
+
+    if not files:
+        raise HTTPException(status_code=400, detail="No generated files. Run a build first.")
+
+    # Get Railway token
+    u = await db.users.find_one({"id": user["id"]}, {"deploy_tokens": 1}) if db else {}
+    railway_token = (
+        body.railway_token
+        or (u.get("deploy_tokens") or {}).get("railway")
+        or os.environ.get("RAILWAY_DEPLOY_TOKEN")
+    )
+    if not railway_token:
+        raise HTTPException(
+            status_code=402,
+            detail="Add your Railway token in Settings → Deploy integrations, or set RAILWAY_DEPLOY_TOKEN on server.",
+        )
+
+    # Railway uses GraphQL API
+    gql_endpoint = "https://backboard.railway.app/graphql/v2"
+    headers = {
+        "Authorization": f"Bearer {railway_token}",
+        "Content-Type": "application/json",
+    }
+
+    import re as _re
+    safe_name = _re.sub(r"[^a-zA-Z0-9\-]", "-", project_name.strip()).strip("-")[:50] or "crucibai-app"
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        # Create project
+        create_proj = await client.post(gql_endpoint, headers=headers, json={
+            "query": """
+            mutation CreateProject($input: ProjectCreateInput!) {
+              projectCreate(input: $input) { id name }
+            }""",
+            "variables": {"input": {"name": safe_name}},
+        })
+        if create_proj.status_code != 200:
+            raise HTTPException(status_code=502, detail=f"Railway error: {create_proj.text[:200]}")
+        proj_data = create_proj.json()
+        gql_errors = proj_data.get("errors")
+        if gql_errors:
+            raise HTTPException(status_code=502, detail=f"Railway GQL error: {gql_errors[0].get('message', '')[:200]}")
+
+        project_id_railway = (proj_data.get("data") or {}).get("projectCreate", {}).get("id")
+        if not project_id_railway:
+            raise HTTPException(status_code=502, detail="Railway project creation returned no ID")
+
+        # Create service
+        create_svc = await client.post(gql_endpoint, headers=headers, json={
+            "query": """
+            mutation ServiceCreate($input: ServiceCreateInput!) {
+              serviceCreate(input: $input) { id name }
+            }""",
+            "variables": {"input": {"projectId": project_id_railway, "name": safe_name}},
+        })
+        svc_data = create_svc.json()
+        service_id = (svc_data.get("data") or {}).get("serviceCreate", {}).get("id")
+
+        # Get service domain
+        domain_url = f"https://{safe_name}.up.railway.app"
+        if service_id:
+            domain_r = await client.post(gql_endpoint, headers=headers, json={
+                "query": """
+                mutation ServiceDomainCreate($serviceId: String!, $environmentId: String) {
+                  serviceDomainCreate(serviceId: $serviceId, environmentId: $environmentId) { domain }
+                }""",
+                "variables": {"serviceId": service_id, "environmentId": None},
+            })
+            domain_data = domain_r.json()
+            auto_domain = (domain_data.get("data") or {}).get("serviceDomainCreate", {}).get("domain")
+            if auto_domain:
+                domain_url = f"https://{auto_domain}"
+
+    # Save to DB
+    if db and body.project_id:
+        await db.projects.update_one(
+            {"id": body.project_id, "user_id": user["id"]},
+            {"$set": {"live_url": domain_url, "railway_service_id": service_id, "railway_project_id": project_id_railway}},
+        )
+
+    return {
+        "deploy_url": domain_url,
+        "service_id": service_id,
+        "project_id": project_id_railway,
+        "status": "deploying",
+        "note": "Your app is being deployed. It will be live at the URL above in ~60 seconds.",
+    }
 

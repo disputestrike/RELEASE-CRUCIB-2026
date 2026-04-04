@@ -819,9 +819,15 @@ root.render(<App />);`,
   const [deployResult, setDeployResult] = useState(null); // { url, ... }
   const [deployError, setDeployError] = useState(null);
   const [deployHasToken, setDeployHasToken] = useState(null); // null=unknown, true/false
+  const [deployTokenStatus, setDeployTokenStatus] = useState({}); // { has_vercel, has_railway, has_github }
   const [customDomain, setCustomDomain] = useState('');
   const [customDomainResult, setCustomDomainResult] = useState(null);
   const [customDomainSaving, setCustomDomainSaving] = useState(false);
+  // Git sync state
+  const [gitSyncState, setGitSyncState] = useState('idle'); // idle | syncing | synced | error
+  const [gitSyncResult, setGitSyncResult] = useState(null);
+  const [showGitSyncModal, setShowGitSyncModal] = useState(false);
+  const [gitSyncPrivate, setGitSyncPrivate] = useState(true);
   const projectIdFromUrl = searchParams.get('projectId');
   const taskIdFromUrl = searchParams.get('taskId');
   const [projectBuildProgress, setProjectBuildProgress] = useState({ phase: 0, agent: '', progress: 0, status: '', tokens_used: 0 });
@@ -2722,7 +2728,7 @@ BUILD IT NOW — output every file completely:`;
               // Check token on open
               if (token) {
                 axios.get(`${API}/users/me/deploy-tokens`, { headers: { Authorization: `Bearer ${token}` } })
-                  .then(r => setDeployHasToken(r.data?.has_vercel || false))
+                  .then(r => { setDeployTokenStatus(r.data || {}); setDeployHasToken(r.data?.has_vercel || r.data?.has_railway || false); })
                   .catch(() => setDeployHasToken(false));
               } else {
                 setDeployHasToken(false);
@@ -2741,6 +2747,22 @@ BUILD IT NOW — output every file completely:`;
           >
             <Rocket size={14} /> Deploy
           </button>
+          {Object.keys(files).length > 0 && (
+            <button
+              onClick={() => setShowGitSyncModal(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '6px 12px', borderRadius: 8,
+                background: gitSyncState === 'synced' ? 'rgba(74,222,128,0.12)' : 'var(--theme-surface)',
+                color: gitSyncState === 'synced' ? '#4ade80' : 'var(--theme-muted)',
+                border: '1px solid var(--theme-border)', cursor: 'pointer',
+                fontSize: 13, fontWeight: 500,
+              }}
+              title="Push to GitHub"
+            >
+              <Github size={14} /> {gitSyncState === 'synced' ? 'Synced' : 'GitHub'}
+            </button>
+          )}
           <button
             onClick={() => setCommandPaletteOpen(true)}
             className="p-1.5 rounded-lg transition hover:bg-white/10"
@@ -3255,7 +3277,7 @@ BUILD IT NOW — output every file completely:`;
                   setCustomDomainResult(null);
                   if (token) {
                     axios.get(`${API}/users/me/deploy-tokens`, { headers: { Authorization: `Bearer ${token}` } })
-                      .then(r => setDeployHasToken(r.data?.has_vercel || false))
+                      .then(r => { setDeployTokenStatus(r.data || {}); setDeployHasToken(r.data?.has_vercel || r.data?.has_railway || false); })
                       .catch(() => setDeployHasToken(false));
                   } else {
                     setDeployHasToken(false);
@@ -3811,6 +3833,30 @@ BUILD IT NOW — output every file completely:`;
                 >
                   <Rocket style={{ width: 16, height: 16 }} /> Deploy to Vercel
                 </button>
+                {deployTokenStatus?.has_railway && (
+                  <button
+                    onClick={async () => {
+                      setDeployState('deploying');
+                      setDeployError(null);
+                      try {
+                        const res = await axios.post(
+                          `${API}/deploy/railway`,
+                          { project_id: projectIdFromUrl, task_id: taskIdFromUrl },
+                          { headers: { Authorization: `Bearer ${token}` } }
+                        );
+                        setDeployResult({ deploy_url: res.data?.deploy_url, url: res.data?.deploy_url });
+                        setDeployState('deployed');
+                        addLog('Deployed to Railway: ' + (res.data?.deploy_url || ''), 'success', 'deploy');
+                      } catch (err) {
+                        setDeployError(err.response?.data?.detail || err.message || 'Railway deploy failed');
+                        setDeployState('error');
+                      }
+                    }}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 20px', borderRadius: 10, background: '#0B0D0E', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer', fontSize: 14, fontWeight: 600, marginBottom: 8 }}
+                  >
+                    <Rocket style={{ width: 16, height: 16 }} /> Deploy to Railway
+                  </button>
+                )}
                 <button onClick={() => { downloadCode(); }} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 16px', borderRadius: 8, background: 'transparent', border: '1px solid var(--theme-border)', color: 'var(--theme-text)', cursor: 'pointer', fontSize: 13 }}>
                   <Download className="w-4 h-4" /> Download ZIP
                 </button>
@@ -3949,6 +3995,146 @@ BUILD IT NOW — output every file completely:`;
                 className="mt-4 w-full py-2 text-sm rounded-xl border transition hover:bg-white/5"
                 style={{ color: 'var(--theme-muted)', borderColor: 'var(--theme-border)' }}
               >
+                Close
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── GitHub Git Sync Modal ── */}
+      {showGitSyncModal && (
+        <div
+          className="fixed inset-0 z-[300] flex items-center justify-center"
+          style={{ background: 'rgba(0,0,0,0.75)' }}
+          onClick={() => { if (gitSyncState !== 'syncing') setShowGitSyncModal(false); }}
+        >
+          <div
+            className="rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 border"
+            style={{ background: 'var(--theme-surface, #1C1C1E)', borderColor: 'var(--theme-border, rgba(255,255,255,0.1))' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Github style={{ color: 'var(--theme-accent)', width: 18, height: 18 }} />
+                <h3 className="text-lg font-semibold" style={{ color: 'var(--theme-text)', margin: 0 }}>Push to GitHub</h3>
+              </div>
+              {gitSyncState !== 'syncing' && (
+                <button onClick={() => setShowGitSyncModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-muted)', fontSize: 18, lineHeight: 1, padding: 4 }}>×</button>
+              )}
+            </div>
+
+            {gitSyncState === 'idle' && (
+              <div>
+                <p style={{ fontSize: 13, color: 'var(--theme-muted)', marginBottom: 16 }}>
+                  Push your generated code to a new GitHub repository. Requires a GitHub personal access token with <code>repo</code> scope.
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '10px 12px', background: 'var(--theme-input, rgba(255,255,255,0.06))', borderRadius: 8 }}>
+                  <input
+                    type="checkbox"
+                    id="git-private"
+                    checked={gitSyncPrivate}
+                    onChange={e => setGitSyncPrivate(e.target.checked)}
+                    style={{ width: 14, height: 14, accentColor: 'var(--theme-accent)', flexShrink: 0 }}
+                  />
+                  <label htmlFor="git-private" style={{ fontSize: 13, color: 'var(--theme-text)', cursor: 'pointer' }}>
+                    Private repository
+                  </label>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <button
+                    onClick={async () => {
+                      setGitSyncState('syncing');
+                      try {
+                        const res = await axios.post(
+                          ,
+                          {
+                            project_id: projectIdFromUrl || undefined,
+                            task_id: taskIdFromUrl || undefined,
+                            private: gitSyncPrivate,
+                          },
+                          { headers: { Authorization:  } }
+                        );
+                        setGitSyncResult(res.data);
+                        setGitSyncState('synced');
+                        addLog(, 'success', 'git');
+                      } catch (err) {
+                        const msg = err.response?.data?.detail || err.message || 'Git sync failed';
+                        if (typeof msg === 'string' && msg.includes('Add your GitHub token')) {
+                          setGitSyncState('idle');
+                          setShowGitSyncModal(false);
+                          navigate('/app/settings', { state: { openTab: 'account' } });
+                        } else {
+                          setGitSyncResult({ error: typeof msg === 'string' ? msg : JSON.stringify(msg) });
+                          setGitSyncState('error');
+                        }
+                      }
+                    }}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 20px', borderRadius: 10, background: '#24292f', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}
+                  >
+                    <Github style={{ width: 15, height: 15 }} /> Push to GitHub
+                  </button>
+                  <p style={{ fontSize: 11, color: 'var(--theme-muted)', textAlign: 'center' }}>
+                    No token? Add it in{' '}
+                    <button onClick={() => { setShowGitSyncModal(false); navigate('/app/settings', { state: { openTab: 'account' } }); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-accent)', fontSize: 11, padding: 0, textDecoration: 'underline' }}>Settings → Deploy integrations</button>
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {gitSyncState === 'syncing' && (
+              <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                <Loader2 className="w-8 h-8 animate-spin" style={{ margin: '0 auto 12px', color: 'var(--theme-accent)' }} />
+                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--theme-text)', marginBottom: 4 }}>Pushing to GitHub...</p>
+                <p style={{ fontSize: 12, color: 'var(--theme-muted)' }}>Creating repo and uploading files</p>
+              </div>
+            )}
+
+            {gitSyncState === 'synced' && gitSyncResult && (
+              <div>
+                <div style={{ padding: '14px 16px', background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.3)', borderRadius: 10, marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <CheckCircle2 className="w-4 h-4" style={{ color: '#4ade80', flexShrink: 0 }} />
+                    <p style={{ fontSize: 14, fontWeight: 600, color: '#4ade80', margin: 0 }}>Pushed successfully!</p>
+                  </div>
+                  <p style={{ fontSize: 12, color: 'var(--theme-muted)', marginBottom: 8 }}>{gitSyncResult.pushed_files} files pushed · {gitSyncResult.private ? 'Private' : 'Public'} repo</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'rgba(0,0,0,0.3)', borderRadius: 6 }}>
+                    <code style={{ fontSize: 12, color: 'var(--theme-text)', flex: 1, wordBreak: 'break-all' }}>{gitSyncResult.repo_url}</code>
+                    <button onClick={() => navigator.clipboard.writeText(gitSyncResult.repo_url || '')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-muted)', padding: 4, flexShrink: 0 }} title="Copy URL">
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <a href={gitSyncResult.repo_url} target="_blank" rel="noopener noreferrer" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 14px', borderRadius: 8, background: '#24292f', color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 600 }}>
+                    View on GitHub <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                  <button onClick={() => { setGitSyncState('idle'); setGitSyncResult(null); }} style={{ padding: '9px 14px', borderRadius: 8, background: 'transparent', border: '1px solid var(--theme-border)', color: 'var(--theme-text)', cursor: 'pointer', fontSize: 13 }}>
+                    Push again
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {gitSyncState === 'error' && (
+              <div>
+                <div style={{ padding: '14px 16px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, marginBottom: 16 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: '#f87171', marginBottom: 4 }}>Push failed</p>
+                  <p style={{ fontSize: 13, color: 'var(--theme-muted)' }}>{gitSyncResult?.error || 'Unknown error'}</p>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => { setGitSyncState('idle'); setGitSyncResult(null); }} style={{ flex: 1, padding: '10px 16px', borderRadius: 8, background: 'var(--theme-accent)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+                    Retry
+                  </button>
+                  <button onClick={() => { setShowGitSyncModal(false); navigate('/app/settings', { state: { openTab: 'account' } }); }} style={{ padding: '10px 16px', borderRadius: 8, background: 'transparent', border: '1px solid var(--theme-border)', color: 'var(--theme-text)', cursor: 'pointer', fontSize: 13 }}>
+                    Add token
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {gitSyncState === 'idle' && (
+              <button onClick={() => setShowGitSyncModal(false)} className="mt-4 w-full py-2 text-sm rounded-xl border transition hover:bg-white/5" style={{ color: 'var(--theme-muted)', borderColor: 'var(--theme-border)' }}>
                 Close
               </button>
             )}
