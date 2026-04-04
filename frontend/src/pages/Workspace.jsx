@@ -4047,17 +4047,17 @@ BUILD IT NOW — output every file completely:`;
                       setGitSyncState('syncing');
                       try {
                         const res = await axios.post(
-                          ,
+                          `${API}/git-sync/push`,
                           {
                             project_id: projectIdFromUrl || undefined,
                             task_id: taskIdFromUrl || undefined,
                             private: gitSyncPrivate,
                           },
-                          { headers: { Authorization:  } }
+                          { headers: { Authorization: `Bearer ${token}` } }
                         );
                         setGitSyncResult(res.data);
                         setGitSyncState('synced');
-                        addLog(, 'success', 'git');
+                        addLog(`Pushed ${res.data.pushed_files} files to GitHub: ${res.data.repo_url}`, 'success', 'git');
                       } catch (err) {
                         const msg = err.response?.data?.detail || err.message || 'Git sync failed';
                         if (typeof msg === 'string' && msg.includes('Add your GitHub token')) {
