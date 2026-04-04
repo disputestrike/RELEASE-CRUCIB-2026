@@ -74,6 +74,7 @@ import {
   Activity,
   Network,
   CheckCircle2,
+  ArrowUp,
 } from 'lucide-react';
 import { useAuth, API } from '../App';
 import { useLayoutStore } from '../stores/useLayoutStore';
