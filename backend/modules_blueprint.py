@@ -1620,15 +1620,17 @@ def _generate_schema_from_description(description: str, project_name: str, featu
     # Heuristic feature detection
     has_users = True  # always
     has_auth = True
-    has_teams = any(w in desc_lower for w in ("team", "organization", "org", "workspace", "tenant", "company"))
-    has_posts = any(w in desc_lower for w in ("post", "article", "blog", "content", "publish"))
-    has_products = any(w in desc_lower for w in ("product", "item", "listing", "sku", "store", "shop", "e-commerce", "ecommerce"))
-    has_orders = any(w in desc_lower for w in ("order", "purchase", "checkout", "buy", "payment", "invoice"))
-    has_messages = any(w in desc_lower for w in ("message", "chat", "inbox", "conversation", "dm"))
+    has_teams = any(w in desc_lower for w in ("team", "organization", "org", "workspace", "tenant", "company", "member", "multi-tenant"))
+    # Posts / knowledge base / articles / FAQ
+    has_posts = any(w in desc_lower for w in ("post", "article", "blog", "content", "publish", "knowledge", "faq", "document", "wiki", "guide", "help"))
+    has_products = any(w in desc_lower for w in ("product", "item", "listing", "sku", "store", "shop", "e-commerce", "ecommerce", "catalog", "inventory"))
+    has_orders = any(w in desc_lower for w in ("order", "purchase", "checkout", "buy", "payment", "invoice", "cart"))
+    # Messages / chat / sessions — covers live chat + sessions
+    has_messages = any(w in desc_lower for w in ("message", "chat", "inbox", "conversation", "dm", "session", "transcript", "live chat", "support chat", "agent", "escalat"))
     has_tasks = any(w in desc_lower for w in ("task", "todo", "issue", "ticket", "kanban", "sprint", "project management"))
-    has_files = any(w in desc_lower for w in ("file", "upload", "attachment", "media", "image", "document"))
-    has_analytics = any(w in desc_lower for w in ("analytic", "metric", "dashboard", "report", "stat"))
-    has_subscriptions = any(w in desc_lower for w in ("subscription", "plan", "billing", "stripe", "saas", "pricing"))
+    has_files = any(w in desc_lower for w in ("file", "upload", "attachment", "media", "image", "video", "csv", "pdf", "storage"))
+    has_analytics = any(w in desc_lower for w in ("analytic", "metric", "dashboard", "report", "stat", "event tracking", "funnel", "insight"))
+    has_subscriptions = any(w in desc_lower for w in ("subscription", "plan", "billing", "stripe", "saas", "pricing", "tier", "upgrade"))
 
     # Feature flag overrides
     if "teams" in feature_set or "organizations" in feature_set:
