@@ -34,8 +34,7 @@ class FileAgent(BaseAgent):
     """File system operations agent"""
     
     def __init__(self, llm_client, config, db=None):
-        super().__init__(db=db)
-        super().__init__(llm_client, config)
+        super().__init__(llm_client=llm_client, config=config, db=db)
         self.name = "FileAgent"
         self.workspace = Path(config.get("workspace", "./workspace")).resolve()
         self.workspace.mkdir(parents=True, exist_ok=True)

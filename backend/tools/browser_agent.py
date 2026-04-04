@@ -26,8 +26,7 @@ class BrowserAgent(BaseAgent):
     """Browser automation agent using Playwright"""
     
     def __init__(self, llm_client, config, db=None):
-        super().__init__(db=db)
-        super().__init__(llm_client, config)
+        super().__init__(llm_client=llm_client, config=config, db=db)
         self.name = "BrowserAgent"
         self.browser: Browser = None
         self.page: Page = None

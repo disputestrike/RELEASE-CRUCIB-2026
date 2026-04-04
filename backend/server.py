@@ -328,7 +328,7 @@ MAX_ADMIN_USER_EXPORT_PROJECTS = 1000
 MAX_ADMIN_USER_LEDGER = 1000
 
 def emit_build_event(project_id: str, event_type: str, **kwargs: Any) -> None:
-    """Emit event for SSE stream. Called from orchestration so UI can show Manus-style timeline."""
+    """Emit event for SSE stream and persist to DB. Called from orchestration so UI can show Manus-style timeline."""
     if project_id not in _build_events:
         _build_events[project_id] = []
     lst = _build_events[project_id]
@@ -338,6 +338,24 @@ def emit_build_event(project_id: str, event_type: str, **kwargs: Any) -> None:
         _build_events[project_id] = lst[-_BUILD_EVENTS_MAX:]
         for i, e in enumerate(_build_events[project_id]):
             e["id"] = i
+    # Persist to DB asynchronously (fire-and-forget) so events survive restarts
+    if db is not None:
+        import asyncio
+        async def _persist():
+            try:
+                # Store last 200 events in project doc to avoid unbounded growth
+                events_to_store = lst[-200:]
+                await db.projects.update_one(
+                    {"id": project_id},
+                    {"$set": {"build_events": events_to_store, "build_events_updated_at": datetime.now(timezone.utc).isoformat()}}
+                )
+            except Exception:
+                pass
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(_persist())
+        except RuntimeError:
+            pass  # No event loop running (e.g. during import)
 
 # ==================== MODELS ====================
 
@@ -4677,7 +4695,11 @@ async def get_build_events_snapshot(project_id: str, user: dict = Depends(get_cu
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     events = _build_events.get(project_id, [])
-    return {"events": events}
+    # If in-memory is empty (e.g. after server restart), load persisted events from DB
+    if not events and project and project.get("build_events"):
+        events = project.get("build_events", [])
+        _build_events[project_id] = list(events)  # Restore to cache
+    return {"project_id": project_id, "events": events, "count": len(events)}
 
 
 def _project_workspace_path(project_id: str) -> Path:
@@ -7799,7 +7821,7 @@ class IDEBreakpointRequest(BaseModel):
 
 @api_router.post("/ide/debug/start")
 async def ide_debug_start(project_id: str = Query(...)):
-    """Start a debug session (stub)."""
+    """Start a debug session. Wired to DebuggerManager in ide_features.py."""
     from ide_features import debugger_manager
     session_id = str(uuid.uuid4())
     session = await debugger_manager.start_debug_session(session_id, project_id)
@@ -7822,7 +7844,7 @@ async def ide_debug_remove_breakpoint(session_id: str, breakpoint_id: str):
 
 @api_router.post("/ide/profiler/start")
 async def ide_profiler_start(project_id: str = Query(...)):
-    """Start profiler (stub)."""
+    """Start profiler session. Wired to ProfilerManager in ide_features.py."""
     from ide_features import profiler_manager
     session_id = str(uuid.uuid4())
     out = await profiler_manager.start_profiler(session_id, project_id)
@@ -7830,14 +7852,14 @@ async def ide_profiler_start(project_id: str = Query(...)):
 
 @api_router.post("/ide/profiler/stop")
 async def ide_profiler_stop(session_id: str = Query(...)):
-    """Stop profiler (stub)."""
+    """Stop profiler session."""
     from ide_features import profiler_manager
     out = await profiler_manager.stop_profiler(session_id)
     return out
 
 @api_router.post("/ide/lint")
 async def ide_lint(project_id: str = Query(...), file_path: Optional[str] = None, code: Optional[str] = None):
-    """Run linter (stub). Returns empty list until wired to real linter."""
+    """Run linter (pyflakes for Python, node --check for JS/TS). Wired to LinterManager."""
     from ide_features import linter_manager
     issues = await linter_manager.run_lint(project_id, file_path or "", code)
     return {"issues": [{"file_path": i.file_path, "line": i.line, "column": i.column, "message": i.message, "severity": i.severity} for i in issues]}

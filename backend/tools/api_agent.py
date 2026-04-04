@@ -22,8 +22,7 @@ class APIAgent(BaseAgent):
     """HTTP API interaction agent"""
     
     def __init__(self, llm_client, config, db=None):
-        super().__init__(db=db)
-        super().__init__(llm_client, config)
+        super().__init__(llm_client=llm_client, config=config, db=db)
         self.name = "APIAgent"
     
     async def execute(self, context: Dict[str, Any]) -> Dict[str, Any]:
