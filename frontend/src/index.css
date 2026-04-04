@@ -515,7 +515,7 @@ code, pre, .mono {
 }
 [data-theme="light"] {
   --theme-surface2: #E8E8E6;
-  --chat-user-bg:   #E05A25;
+  --chat-user-bg:   #1A1A1A;
   --chat-ai-bg:     #F3F1ED;
   --chat-text:      #1A1A1A;
 }

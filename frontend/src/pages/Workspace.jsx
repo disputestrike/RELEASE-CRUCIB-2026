@@ -632,13 +632,31 @@ const Workspace = () => {
       return true;
     });
 
-    const ROOT_TO_SRC = { '/App.js': '/src/App.js', '/App.jsx': '/src/App.jsx', '/index.js': '/src/index.js', '/index.jsx': '/src/index.jsx', '/styles.css': '/src/styles.css' };
+    // Normalize root-level files to /src/ for Sandpack; handle both JS and TS
+    const ROOT_TO_SRC = {
+      '/App.js': '/src/App.js', '/App.jsx': '/src/App.jsx',
+      '/App.ts': '/src/App.js', '/App.tsx': '/src/App.jsx',  // transpile TS→JS path for Sandpack
+      '/index.js': '/src/index.js', '/index.jsx': '/src/index.jsx',
+      '/index.ts': '/src/index.js', '/index.tsx': '/src/index.jsx',
+      '/styles.css': '/src/styles.css',
+    };
 
     const result = Object.fromEntries(
       filtered.map(([path, f]) => {
         const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-        const sandpackPath = ROOT_TO_SRC[normalizedPath] || normalizedPath;
+        // Map .tsx → .jsx, .ts → .js for Sandpack (it runs in JSX mode)
+        let sandpackPath = ROOT_TO_SRC[normalizedPath] || normalizedPath;
+        sandpackPath = sandpackPath.replace(/\.tsx$/, '.jsx').replace(/(?<!\.d)\.ts$/, '.js');
         let code = f?.code || '';
+        // Strip TypeScript type annotations that Sandpack can't handle
+        // Remove type imports: import type {...} from '...'
+        code = code.replace(/^import\s+type\s+.*?;?$/mg, '');
+        // Remove generic type params in JSX context <Component<T> -> <Component
+        // Remove React.FC<Props>, (): ReturnType annotations etc (light strip)
+        code = code.replace(/:\s*React\.FC<[^>]*>/g, '');
+        code = code.replace(/:\s*[A-Z][A-Za-z]*(<[^>]*>)?\s*=/g, ' =');
+        code = code.replace(/as\s+[A-Z][A-Za-z0-9_<>\[\]]*\b/g, '');
+        // BrowserRouter → MemoryRouter for Sandpack
         code = code
           .replace(/import\s*\{\s*BrowserRouter(\s*,\s*|\s+as\s+\w+\s*,?\s*)/g, 'import { MemoryRouter$1')
           .replace(/import\s*\{\s*([^}]*),?\s*BrowserRouter\s*,?\s*([^}]*)\}/g, (_, a, b) =>
@@ -649,15 +667,16 @@ const Workspace = () => {
         if (sandpackPath === '/src/index.js' || sandpackPath === '/src/index.jsx') {
           code = code.replace(/from\s+['"]\.\/App['"]/g, "from './App'");
         }
-        if ((sandpackPath === '/src/styles.css' || normalizedPath === '/styles.css' || normalizedPath === '/src/styles.css') && !code.includes('tailwindcss') && !code.includes('tailwind')) {
+        if ((sandpackPath.includes('styles.css') || sandpackPath.includes('index.css') || sandpackPath.includes('App.css')) && !code.includes('tailwindcss') && !code.includes('tailwind')) {
           code = `@import url('https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css');\n\n` + code;
         }
         return [sandpackPath, { ...f, code }];
       })
     );
 
-    const hasAppJsx = !!result['/src/App.jsx'];
-    const hasAppJs = !!result['/src/App.js'];
+    // Detect entry point (supports TSX builds mapped to JSX)
+    const hasAppJsx = !!(result['/src/App.jsx'] || result['/App.jsx']);
+    const hasAppJs = !!(result['/src/App.js'] || result['/App.js']);
     const hasApp = hasAppJsx || hasAppJs;
     const existingIndex = result['/src/index.js']?.code || result['/src/index.jsx']?.code || '';
     const indexValid = existingIndex.includes("getElementById('root')") && (existingIndex.includes('createRoot') || existingIndex.includes('render('));
@@ -667,11 +686,23 @@ const Workspace = () => {
         code: `import React from 'react';
 import ReactDOM from 'react-dom/client';
 ${appImport}
-${result['/src/styles.css'] ? "import './styles.css';" : ''}
+${result['/src/styles.css'] || result['/src/App.css'] ? "import './styles.css';" : ''}
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App />);`,
       };
+    }
+    // If no App entry but we have files, try to create a minimal preview
+    if (Object.keys(result).length > 0 && !hasApp && !result['/src/index.js']) {
+      const firstJsx = Object.keys(result).find(k => k.endsWith('.jsx') || k.endsWith('.js'));
+      if (firstJsx) {
+        const compName = firstJsx.split('/').pop().replace(/\.(jsx?|tsx?)$/, '');
+        result['/src/index.js'] = { code: `import React from 'react';
+import ReactDOM from 'react-dom/client';
+import ${compName} from '${firstJsx.replace('/src/', './')}';
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<${compName} />);` };
+      }
     }
     return result;
   }, [files]);
@@ -859,16 +890,35 @@ root.render(<App />);`,
   }, []);
 
   // Task 2A: Two-step Sandpack remount — trigger filesReadyKey only after files are confirmed updated
+  // Auto-correct activeFile when it doesn't exist in files (e.g., files are .tsx but activeFile is /App.js)
   useEffect(() => {
-    const hasApp = files['/src/App.jsx'] || files['/App.jsx'] || files['/src/App.js'] || files['/App.js'];
+    if (Object.keys(files).length > 0 && !files[activeFile]) {
+      // Prefer App.tsx > App.jsx > App.js > first key
+      const preferred = ['/src/App.tsx', '/App.tsx', '/src/App.jsx', '/App.jsx', '/src/App.js', '/App.js',
+                         '/src/main.tsx', '/src/index.tsx', '/Home.tsx'];
+      const found = preferred.find(k => files[k]) || Object.keys(files).sort()[0];
+      if (found) setActiveFile(found);
+    }
+  }, [files]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    // Check for ANY app entry point — jsx, tsx, js, ts
+    const APP_KEYS = ['/src/App.jsx', '/App.jsx', '/src/App.js', '/App.js',
+                      '/src/App.tsx', '/App.tsx', '/src/main.tsx', '/src/main.jsx',
+                      '/src/index.tsx', '/index.tsx', '/src/index.js', '/index.js',
+                      '/Home.tsx', '/src/screens/HomeScreen.tsx', '/screens/HomeScreen.tsx'];
+    const hasApp = APP_KEYS.some(k => files[k]) || Object.keys(files).some(k => k.match(/App\.(jsx?|tsx?)$/));
     const prevHasApp = prevFilesRef.current && (
-      prevFilesRef.current['/src/App.jsx'] || prevFilesRef.current['/App.jsx'] ||
-      prevFilesRef.current['/src/App.js'] || prevFilesRef.current['/App.js']
+      APP_KEYS.some(k => prevFilesRef.current[k]) ||
+      Object.keys(prevFilesRef.current || {}).some(k => k.match(/App\.(jsx?|tsx?)$/))
     );
-    // Only trigger when we get a new App file that wasn\'t there before
-    if (hasApp && !prevHasApp && isBuilding === false && currentVersion !== null) {
+    // Trigger on any new files arriving (not just App) when isBuilding just finished
+    const hasFiles = Object.keys(files).length > 1;
+    const prevHadFiles = Object.keys(prevFilesRef.current || {}).length > 1;
+    const shouldTrigger = (hasApp && !prevHasApp) || (hasFiles && !prevHadFiles && isBuilding === false);
+    if (shouldTrigger && isBuilding === false) {
       const newKey = `fk_ready_${Date.now()}`;
-      setTimeout(() => setFilesReadyKey(newKey), 200);
+      setTimeout(() => setFilesReadyKey(newKey), 300);
     }
     prevFilesRef.current = files;
   }, [files]);
@@ -2682,7 +2732,7 @@ BUILD IT NOW — output every file completely:`;
         </span>
         {isBuilding && (
           <div className="flex items-center gap-2 ml-1">
-            <div className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
+            <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--theme-accent)" }} />
             <span className="text-xs">{currentPhase || 'Building'}... {Math.round(buildProgress)}%</span>
           </div>
         )}
@@ -3055,9 +3105,9 @@ BUILD IT NOW — output every file completely:`;
                 <div
                   className="max-w-[75%] rounded-2xl px-4 py-2.5 text-sm"
                   style={{
-                    background: msg.role === 'user' ? 'var(--chat-user-bg)' : 'var(--chat-ai-bg)',
-                    border: msg.role === 'user' ? 'none' : '1px solid var(--theme-border)',
-                    color: msg.error ? 'var(--chat-error)' : 'var(--chat-text)',
+                    background: msg.role === 'user' ? '#1A1A1A' : 'var(--chat-ai-bg)',
+                    border: msg.role === 'user' ? '1px solid rgba(255,255,255,0.08)' : '1px solid var(--theme-border)',
+                    color: msg.role === 'user' ? '#e4e4e7' : (msg.error ? 'var(--chat-error)' : 'var(--chat-text)'),
                   }}
                 >
                   {msg.isBuilding ? (
@@ -3193,9 +3243,9 @@ BUILD IT NOW — output every file completely:`;
 
         {/* ── Right: Preview + Code Editor (collapsible) ── */}
         {rightSidebarOpen ? (
-        <div className="workspace-right-panel flex flex-col shrink-0 border-l" style={{ width: '46%', background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
+        <div className="workspace-right-panel flex flex-col shrink-0 border-l" style={{ width: '44%', minWidth: 320, maxWidth: 700, background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
           {/* Manus-style tab bar */}
-          <div className="h-11 flex items-center px-2 border-b shrink-0 gap-0.5 overflow-x-auto" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.08))', scrollbarWidth: 'none' }}>
+          <div className="h-10 flex items-center px-1 border-b shrink-0 gap-0.5 overflow-x-auto" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.08))', scrollbarWidth: 'none' }}>
             {(devMode
               ? [
                   { id: 'preview', label: 'Preview', icon: Eye },
@@ -3216,16 +3266,18 @@ BUILD IT NOW — output every file completely:`;
               <button
                 key={tab.id}
                 onClick={() => setActivePanel(tab.id)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition shrink-0"
+                title={tab.label}
+                className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition shrink-0"
                 style={{
                   background: activePanel === tab.id ? 'rgba(255,255,255,0.1)' : 'transparent',
                   color: activePanel === tab.id ? 'var(--theme-text, #e4e4e7)' : 'var(--theme-muted, #52525b)',
                   borderBottom: activePanel === tab.id ? '1.5px solid var(--theme-accent, #3b82f6)' : '1.5px solid transparent',
                   borderRadius: activePanel === tab.id ? '8px 8px 0 0' : '8px',
+                  whiteSpace: 'nowrap',
                 }}
               >
-                <tab.icon className="w-3.5 h-3.5" />
-                {tab.label}
+                <tab.icon className="w-3.5 h-3.5 shrink-0" />
+                <span style={{ fontSize: 10.5 }}>{tab.label}</span>
               </button>
             ))}
             <div className="ml-auto flex items-center gap-1">
@@ -3266,29 +3318,7 @@ BUILD IT NOW — output every file completely:`;
               >
                 <Share2 className="w-3.5 h-3.5" />
               </button>
-              <button
-                onClick={() => {
-                  setShowDeployModal(true);
-                  setDeployState('idle');
-                  setDeployResult(null);
-                  setDeployError(null);
-                  setDeployHasToken(null);
-                  setCustomDomain('');
-                  setCustomDomainResult(null);
-                  if (token) {
-                    axios.get(`${API}/users/me/deploy-tokens`, { headers: { Authorization: `Bearer ${token}` } })
-                      .then(r => { setDeployTokenStatus(r.data || {}); setDeployHasToken(r.data?.has_vercel || r.data?.has_railway || false); })
-                      .catch(() => setDeployHasToken(false));
-                  } else {
-                    setDeployHasToken(false);
-                  }
-                }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ml-1 transition"
-                style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--theme-text, #e4e4e7)' }}
-              >
-                <Rocket className="w-3 h-3" />
-                Deploy
-              </button>
+
               <button
                 onClick={() => setRightSidebarOpenPersisted(false)}
                 className="p-1.5 rounded-lg transition hover:bg-white/10"
@@ -3316,7 +3346,7 @@ BUILD IT NOW — output every file completely:`;
                   { step: 3, title: 'Download or Deploy', desc: 'When you\u2019re happy with the result, download the code or click Deploy to publish it live.', done: false },
                 ].map(({ step, title, desc, done }) => (
                   <div key={step} style={{ background: 'var(--theme-surface)', borderRadius: 12, padding: '16px 18px', border: '1.5px solid rgba(255,255,255,0.1)', display: 'flex', gap: 14 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: done ? '#10b981' : 'rgba(224,90,37,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: done ? '#fff' : '#E05A25', flexShrink: 0 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: done ? '#10b981' : 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: done ? '#fff' : 'var(--theme-muted)', flexShrink: 0 }}>
                       {step}
                     </div>
                     <div>
@@ -3331,12 +3361,12 @@ BUILD IT NOW — output every file completely:`;
             {/* Preview — always mounted so Sandpack never loses files on tab switch */}
             <div style={{ display: activePanel === 'preview' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
               {/* Show placeholder when no build yet */}
-              {(currentVersion === null || filesReadyKey === 'default') && !isBuilding ? (
+              {Object.keys(files).length <= 1 && !isBuilding ? (
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--theme-bg)', color: 'var(--theme-muted)', flexDirection: 'column', gap: 12 }}>
                   <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
                   <p style={{ fontSize: 13 }}>Build something to see the preview</p>
                 </div>
-              ) : (currentVersion === null || filesReadyKey === 'default') && isBuilding ? (
+              ) : Object.keys(files).length <= 1 && isBuilding ? (
                 /* ── BUILDING SKELETON — Manus-style live preview placeholder ── */
                 <div style={{ flex: 1, background: 'var(--theme-bg)', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div style={{ height: 48, borderRadius: 8, background: 'rgba(255,255,255,0.04)', animation: 'pulse 1.5s ease-in-out infinite' }} />
@@ -3409,7 +3439,7 @@ BUILD IT NOW — output every file completely:`;
                 })()
               ) : (
               <SandpackProvider
-                key={filesReadyKey || 'default'}
+                key={filesReadyKey !== 'default' ? filesReadyKey : (Object.keys(files).length > 1 ? `fk_auto_${Object.keys(files).length}_${Object.keys(files).join('').length}` : 'default')}
                 files={sandpackFiles}
                 theme={document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'}
                 template="react"
