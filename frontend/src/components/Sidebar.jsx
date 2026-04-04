@@ -9,7 +9,8 @@ import {
   CreditCard, ScrollText, BarChart3, Wrench, HelpCircle, Coins,
   X, Bell, MoreHorizontal, ExternalLink, Pencil, Share2,
   Trash2, FolderInput, Star, Settings, ShieldCheck, Code, Monitor,
-  PanelLeftClose, PanelLeftOpen, History, Home
+  PanelLeftClose, PanelLeftOpen, History, Home,
+  Bot, Radio, MessageSquare, ShoppingBag, Users, Sparkles, PlayCircle,
 } from 'lucide-react';
 import Logo from './Logo';
 import './Sidebar.css';
@@ -85,7 +86,17 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
   ];
 
   // Engine Room — collapsed by default, for power users
+  // Includes platform infrastructure items (Studio/Knowledge/Channels/Sessions/Commerce/Members)
+  // which are internal config and not part of the main builder workflow
   const engineRoomItems = [
+    { label: 'Skills', icon: Sparkles, href: '/app/skills' },
+    { label: 'Studio', icon: Bot, href: '/app/studio' },
+    { label: 'Knowledge', icon: BookOpen, href: '/app/knowledge' },
+    { label: 'Channels', icon: Radio, href: '/app/channels' },
+    { label: 'Sessions', icon: MessageSquare, href: '/app/sessions' },
+    { label: 'Commerce', icon: ShoppingBag, href: '/app/commerce' },
+    { label: 'Members', icon: Users, href: '/app/members' },
+    // original engine items below:
     { label: 'Credit Center', icon: Coins, href: '/app/tokens' },
     { label: 'Exports', icon: FileOutput, href: '/app/exports' },
     { label: 'Docs / Slides / Sheets', icon: FileText, href: '/app/generate' },
@@ -102,6 +113,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     { label: 'Fine-Tuning', icon: Zap, href: '/app/fine-tuning' },
     { label: 'Safety Dashboard', icon: ShieldCheck, href: '/app/safety' },
     { label: 'Monitoring', icon: BarChart3, href: '/app/monitoring' },
+    { label: 'Auto-Runner', icon: PlayCircle, href: '/app/auto-runner' },
     { label: 'VibeCode', icon: Code, href: '/app/vibecode' },
     { label: 'IDE', icon: Monitor, href: '/app/ide' },
   ];

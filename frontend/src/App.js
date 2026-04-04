@@ -94,6 +94,15 @@ import ModelManager from "./pages/ModelManager";
 import FineTuning from "./pages/FineTuning";
 import SafetyDashboard from "./pages/SafetyDashboard";
 import UnifiedIDEPage from "./pages/UnifiedIDEPage";
+import StudioPage from "./pages/StudioPage";
+import KnowledgePage from "./pages/KnowledgePage";
+import ChannelsPage from "./pages/ChannelsPage";
+import SessionsPage from "./pages/SessionsPage";
+import CommerceManagePage from "./pages/CommerceManagePage";
+import WorkspaceMembersPage from "./pages/WorkspaceMembersPage";
+import SkillsPage from "./pages/SkillsPage";
+import SkillsMarketplace from "./pages/SkillsMarketplace";
+import AutoRunnerPage from "./pages/AutoRunnerPage";
 import { LayoutProvider } from "./stores/useLayoutStore";
 import { TaskProvider } from "./stores/useTaskStore";
 
@@ -121,6 +130,22 @@ const AuthProvider = ({ children }) => {
     }
     return u;
   };
+
+  // SSO callback — loginWithToken from URL param (?sso_token=...)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const ssoToken = urlParams.get('sso_token');
+    if (ssoToken) {
+      // Remove the param from URL without reload
+      const clean = new URL(window.location.href);
+      clean.searchParams.delete('sso_token');
+      clean.searchParams.delete('email');
+      window.history.replaceState({}, '', clean.pathname + (clean.search || '') + (clean.hash || ''));
+      // Log in with the SSO token
+      localStorage.setItem('token', ssoToken);
+      setToken(ssoToken);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     let cancelled = false;
@@ -436,6 +461,15 @@ function App() {
             <Route path="admin/billing" element={<AdminRoute><AdminBilling /></AdminRoute>} />
             <Route path="admin/analytics" element={<AdminRoute><AdminAnalytics /></AdminRoute>} />
             <Route path="admin/legal" element={<AdminRoute><AdminLegal /></AdminRoute>} />
+            <Route path="studio" element={<StudioPage />} />
+            <Route path="knowledge" element={<KnowledgePage />} />
+            <Route path="channels" element={<ChannelsPage />} />
+            <Route path="sessions" element={<SessionsPage />} />
+            <Route path="commerce" element={<CommerceManagePage />} />
+            <Route path="members" element={<WorkspaceMembersPage />} />
+            <Route path="skills" element={<SkillsPage />} />
+            <Route path="skills/marketplace" element={<SkillsMarketplace />} />
+            <Route path="auto-runner" element={<AutoRunnerPage />} />
           </Route>
         </Routes>
         </BrowserRouter>

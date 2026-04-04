@@ -500,7 +500,8 @@ async def run_migrations():
     """Run all migration SQL files. Each statement runs independently — one failure won't block others."""
     pool = await get_pg_pool()
     migrations_dir = os.path.join(os.path.dirname(__file__), "migrations")
-    for name in ("001_full_schema.sql",):
+    all_files = sorted(f for f in os.listdir(migrations_dir) if f.endswith(".sql"))
+    for name in all_files:
         path = os.path.join(migrations_dir, name)
         if not os.path.isfile(path):
             continue
@@ -536,6 +537,11 @@ REQUIRED_TABLES = [
     "contact_submissions",
     "backup_codes", "mfa_setup_temp", "shares", "blocked_requests",
     "agent_memory", "automation_tasks", "audit_log", "examples", "monitoring_events",
+    # Blueprint modules
+    "personas", "knowledge_sources", "knowledge_documents", "channels",
+    "app_sessions", "session_messages", "claims_ledger", "safety_policies",
+    "safety_audit_log", "tenants", "tenant_members", "workspace_invitations",
+    "analytics_events", "session_metrics", "products", "orders", "app_db_schemas",
 ]
 
 ENSURE_TABLES_SQL = """
@@ -563,7 +569,26 @@ CREATE TABLE IF NOT EXISTS agent_memory (id TEXT PRIMARY KEY, doc JSONB NOT NULL
 CREATE TABLE IF NOT EXISTS automation_tasks (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS audit_log (_id SERIAL PRIMARY KEY, user_id TEXT NOT NULL, timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(), doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS examples (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS audit_events (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS monitoring_events (id SERIAL PRIMARY KEY, event_id TEXT NOT NULL, event_type TEXT NOT NULL, user_id TEXT NOT NULL, timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(), duration FLOAT, metadata JSONB, success BOOLEAN DEFAULT TRUE, error_message TEXT);
+CREATE TABLE IF NOT EXISTS personas (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS knowledge_sources (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS knowledge_documents (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS channels (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS app_sessions (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS session_messages (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS claims_ledger (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS safety_policies (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS safety_audit_log (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS tenants (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS tenant_members (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS workspace_invitations (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS analytics_events (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS session_metrics (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS products (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS orders (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS app_db_schemas (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS user_skills (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 """
 
 async def ensure_all_tables():

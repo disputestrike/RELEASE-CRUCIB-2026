@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -32,6 +32,7 @@ const AgentMonitor = () => {
   const [buildHistory, setBuildHistory] = useState([]);
   const [publishExampleLoading, setPublishExampleLoading] = useState(false);
   const [publishExampleError, setPublishExampleError] = useState(null);
+  const wsRef = useRef(null);
 
   const agentLayers = {
     planning: ['Planner', 'Requirements Clarifier', 'Stack Selector'],
@@ -107,6 +108,62 @@ const AgentMonitor = () => {
       .then((r) => setPreviewUrl(r.data?.url || null))
       .catch((e) => { logApiError('AgentMonitor preview-token', e); setPreviewUrl(null); });
   }, [id, project?.id, token]);
+
+
+  // WebSocket for real-time build events (replaces polling when running)
+  useEffect(() => {
+    if (!id || !token) return;
+    if (project?.status !== 'running') return;
+
+    const wsBase = (API || '').replace(/^https?:/, (m) => m === 'https:' ? 'wss:' : 'ws:').replace(/\/api\/?$/, '');
+    const wsUrl = `${wsBase}/ws/projects/${id}/progress?token=${token}`;
+    
+    let ws;
+    try {
+      ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+      
+      ws.onopen = () => {
+        // Stop polling once WS connects
+        setPolling(false);
+      };
+      
+      ws.onmessage = (e) => {
+        try {
+          const ev = JSON.parse(e.data);
+          setBuildEvents((prev) => {
+            const exists = prev.some((p) => p.id === ev.id && p.ts === ev.ts);
+            if (exists) return prev;
+            return [...prev, ev].slice(-500);
+          });
+          // If build completed/failed, update project status
+          if (ev.type === 'build_completed' || ev.type === 'job_completed') {
+            setPolling(false);
+          }
+        } catch (_) {}
+      };
+      
+      ws.onerror = () => {
+        // Fall back to polling silently
+        setPolling(true);
+        wsRef.current = null;
+      };
+      
+      ws.onclose = () => {
+        wsRef.current = null;
+        // Resume polling if project still running
+        setPolling((prev) => project?.status === 'running' ? true : prev);
+      };
+    } catch (_) {
+      // WS not supported, fall back to polling
+      setPolling(true);
+    }
+    
+    return () => {
+      if (ws && ws.readyState < 2) ws.close();
+      wsRef.current = null;
+    };
+  }, [id, token, project?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getAgentStatus = (agentName) => {
     return agents.find(a => a.agent_name === agentName) || { status: 'idle', progress: 0, tokens_used: 0 };

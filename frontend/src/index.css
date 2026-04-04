@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;550;600;650;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -12,6 +14,28 @@
 @import '@fontsource/dm-sans/700.css';
 @import '@fontsource/fira-code/400.css';
 @import '@fontsource/fira-code/500.css';
+
+/* ── CrucibAI Design Tokens ──────────────────────────────────────────────── */
+:root {
+  --bg-0: #0B0D10; --bg-1: #111418; --bg-2: #171B20; --bg-3: #1E242B;
+  --border-1: #242B33; --border-2: #313A45;
+  --text-strong: #F3F5F7; --text-primary: #D7DCE1; --text-secondary: #9AA3AD; --text-muted: #707984;
+  --state-success: #3FB950; --state-warning: #D29922; --state-error: #F85149; --state-info: #58A6FF;
+  --accent: #8B949E;
+  --transition-ui: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  --radius-sm: 8px; --radius-md: 10px; --radius-lg: 12px; --radius-xl: 16px;
+  --shadow-panel: 0 0 0 1px rgba(255,255,255,0.03), 0 8px 24px rgba(0,0,0,0.28);
+}
+
+/* ── CrucibAI Animation Keyframes ────────────────────────────────────────── */
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse-ring { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.15); } }
+@keyframes fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes status-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+.animate-spin { animation: spin 1s linear infinite; }
+.animate-pulse-ring { animation: pulse-ring 1.5s ease-in-out infinite; }
+.animate-fade-up { animation: fade-up 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.animate-status-pulse { animation: status-pulse 2s ease-in-out infinite; }
 
 /* ── Theme system: data-theme="dark" | "light" ──────────────────────────── */
 :root,
@@ -515,7 +539,7 @@ code, pre, .mono {
 }
 [data-theme="light"] {
   --theme-surface2: #E8E8E6;
-  --chat-user-bg:   #E05A25;
+  --chat-user-bg:   #1A1A1A;
   --chat-ai-bg:     #F3F1ED;
   --chat-text:      #1A1A1A;
 }

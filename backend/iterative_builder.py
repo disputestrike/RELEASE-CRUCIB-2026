@@ -348,6 +348,7 @@ async def run_iterative_build(
     build_kind: str,
     call_llm: Callable,
     on_progress: Optional[Callable] = None,
+    skills_context: Optional[str] = None,
 ) -> Dict[str, str]:
     structure = get_build_structure(build_kind)
     passes = structure["passes"]
@@ -379,6 +380,10 @@ RULES:
 - Real content specific to the project — NO Lorem ipsum
 - Complete imports — every imported symbol must be defined
 - Exact import paths — './components/Navbar' not '../components/Navbar'"""
+
+    # Prepend active skills context if provided
+    if skills_context:
+        SYSTEM = skills_context + "\n\n" + SYSTEM
 
     for i, pass_info in enumerate(passes):
         file_list = "\n".join(f"  {f}" for f in pass_info["files"])

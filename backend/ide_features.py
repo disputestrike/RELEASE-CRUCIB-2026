@@ -5,6 +5,7 @@ Enables IDE-style endpoints; real execution can be wired later.
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 import uuid
+import re
 import logging
 
 logger = logging.getLogger(__name__)
@@ -83,7 +84,96 @@ class ProfilerManager:
 
 class LinterManager:
     async def run_lint(self, project_id: str, file_path: str, code: Optional[str] = None) -> List[LintIssue]:
-        return []
+        """Run real linter: pyflakes for Python, node --check for JS/TS."""
+        import subprocess
+        import tempfile
+        import os
+        issues: List[LintIssue] = []
+        if not code:
+            return issues
+        ext = (file_path or "").rsplit(".", 1)[-1].lower()
+        try:
+            if ext == "py":
+                # pyflakes for Python
+                import ast
+                try:
+                    ast.parse(code)
+                except SyntaxError as e:
+                    issues.append(LintIssue(
+                        file_path=file_path or "file.py",
+                        line=e.lineno or 1,
+                        column=e.offset or 0,
+                        message=str(e.msg),
+                        severity="error",
+                        code="SyntaxError"
+                    ))
+                    return issues
+                # Run pyflakes
+                fd, tmp = tempfile.mkstemp(suffix=".py")
+                try:
+                    with os.fdopen(fd, "w") as f:
+                        f.write(code)
+                    result = subprocess.run(
+                        ["python3", "-m", "pyflakes", tmp],
+                        capture_output=True, text=True, timeout=10
+                    )
+                    output = result.stdout + result.stderr
+                    for line in output.splitlines():
+                        m = re.match(r".+:(\d+):\d*\s*(.*)", line)
+                        if m:
+                            issues.append(LintIssue(
+                                file_path=file_path or "file.py",
+                                line=int(m.group(1)),
+                                column=0,
+                                message=m.group(2).strip(),
+                                severity="warning"
+                            ))
+                finally:
+                    try:
+                        os.unlink(tmp)
+                    except Exception:
+                        pass
+            elif ext in ("js", "jsx", "ts", "tsx", "mjs"):
+                # node --check for basic JS/TS syntax
+                fd, tmp = tempfile.mkstemp(suffix=f".{ext}")
+                try:
+                    with os.fdopen(fd, "w") as f:
+                        f.write(code)
+                    result = subprocess.run(
+                        ["node", "--check", tmp],
+                        capture_output=True, text=True, timeout=10
+                    )
+                    output = result.stderr or result.stdout
+                    for line in output.splitlines():
+                        m = re.match(r".+:(\d+).*", line)
+                        if m:
+                            issues.append(LintIssue(
+                                file_path=file_path or f"file.{ext}",
+                                line=int(m.group(1)),
+                                column=0,
+                                message=m.group(2).strip() or line.strip(),
+                                severity="error"
+                            ))
+                        elif "SyntaxError" in line or "error" in line.lower():
+                            # Parse line:col from node error format
+                            nm = re.search(r":(\d+)", line)
+                            issues.append(LintIssue(
+                                file_path=file_path or f"file.{ext}",
+                                line=int(nm.group(1)) if nm else 1,
+                                column=0,
+                                message=line.strip(),
+                                severity="error"
+                            ))
+                finally:
+                    try:
+                        os.unlink(tmp)
+                    except Exception:
+                        pass
+        except subprocess.TimeoutExpired:
+            issues.append(LintIssue(file_path=file_path or "file", line=1, column=0, message="Lint timed out", severity="warning"))
+        except Exception as e:
+            logger.warning("Linter error: %s", e)
+        return issues
 
 
 class NavigationManager:

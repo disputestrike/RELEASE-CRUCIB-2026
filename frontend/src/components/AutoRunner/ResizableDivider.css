@@ -1,0 +1,11 @@
+.resizable-divider {
+  width: 4px;
+  background: var(--border-1);
+  cursor: col-resize;
+  flex-shrink: 0;
+  transition: background 150ms;
+}
+
+.resizable-divider:hover {
+  background: var(--accent);
+}

@@ -831,27 +831,6 @@ const OurProjectsPage = () => {
         </div>
       </section>
 
-      {/* How It Works — 4 steps */}
-      <section id="how" className="py-24 px-6 bg-kimi-bg-elevated/50">
-        <div className="max-w-4xl mx-auto">
-          <span className="text-xs uppercase tracking-wider text-kimi-muted">Under the hood</span>
-          <h2 className="text-kimi-section font-bold text-kimi-text mt-2 mb-6 text-center">Plan-first. Agent-powered. Fully transparent.</h2>
-          <div className="grid md:grid-cols-2 gap-8">
-            {[
-              { step: '1', title: 'Describe', desc: 'Tell us what you want in plain language. Attach a screenshot for design-to-code. Or import existing code — paste, ZIP, or Git URL. Voice input supported.' },
-              { step: '2', title: 'Plan & approve', desc: 'For every build, we generate a structured plan first — features, components, design decisions. You see the plan. You approve it. Then we build. No surprises.' },
-              { step: '3', title: '100+ agents build in parallel', desc: 'Planning, frontend, backend, database, styling, testing, security, deployment — each phase handled by dedicated agents running in parallel. Watch them work in AgentMonitor.' },
-              { step: '4', title: 'Ship what you own', desc: 'Export to ZIP or push to GitHub. Deploy to Vercel or Netlify in one click. You own all the code. Your automations are running. You\'re live.' }
-            ].map((item, i) => (
-              <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="p-6 rounded-xl border border-gray-200 bg-kimi-bg">
-                <div className="text-xl font-mono text-kimi-accent mb-2">{item.step}</div>
-                <h3 className="text-lg font-semibold text-kimi-text mb-2">{item.title}</h3>
-                <p className="text-sm text-kimi-muted leading-relaxed">{item.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* CrucibAI vs Others — checkmark comparison */}
       <section className="py-20 px-6 bg-kimi-bg-elevated/50">

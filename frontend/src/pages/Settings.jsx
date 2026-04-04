@@ -179,7 +179,7 @@ const Settings = () => {
   const [mfaMsg, setMfaMsg] = useState(null);
 
   // Deploy tokens
-  const [dTokens, setDTokens] = useState({ vercel: '', netlify: '' });
+  const [dTokens, setDTokens] = useState({ vercel: '', netlify: '', github: '', railway: '' });
   const [dStatus, setDStatus] = useState({ has_vercel: false, has_netlify: false });
   const [dSaving, setDSaving] = useState(false);
   const [dMsg, setDMsg] = useState(null);
@@ -209,6 +209,8 @@ const Settings = () => {
     if (!token) return;
     if (tab === 'security') {
       axios.get(`${API}/mfa/status`, { headers: h }).then(r => setMfaOn(r.data.mfa_enabled)).catch(() => {});
+    }
+    if (tab === 'account' || tab === 'security') {
       axios.get(`${API}/users/me/deploy-tokens`, { headers: h }).then(r => setDStatus(r.data)).catch(() => {});
     }
     if (tab === 'billing') {
@@ -356,7 +358,13 @@ const Settings = () => {
 
             <Card>
               <SectionTitle>Deploy integrations</SectionTitle>
-              <p style={{ fontSize: 13, color: T.muted, marginBottom: 16 }}>Connect Vercel or Netlify to deploy builds directly from the workspace without downloading a ZIP.</p>
+              <p style={{ fontSize: 13, color: T.muted, marginBottom: 8 }}>Connect Vercel or Netlify to deploy builds directly from the workspace without downloading a ZIP.</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 16, padding: '10px 12px', background: T.input, borderRadius: 8, border: `1px solid rgba(255,255,255,0.1)` }}>
+                <p style={{ fontSize: 12, color: T.muted, margin: 0 }}>Get your Vercel token at <a href="https://vercel.com/account/tokens" target="_blank" rel="noopener noreferrer" style={{ color: T.accent, textDecoration: 'underline' }}>vercel.com/account/tokens</a></p>
+                <p style={{ fontSize: 12, color: T.muted, margin: 0 }}>Get your Netlify token at <a href="https://app.netlify.com/user/applications#personal-access-tokens" target="_blank" rel="noopener noreferrer" style={{ color: T.accent, textDecoration: 'underline' }}>app.netlify.com/user/applications</a></p>
+                <p style={{ fontSize: 12, color: T.muted, margin: 0 }}>Get your GitHub token at <a href="https://github.com/settings/tokens/new?scopes=repo&description=CrucibAI+Git+Sync" target="_blank" rel="noopener noreferrer" style={{ color: T.accent, textDecoration: 'underline' }}>github.com/settings/tokens</a> (select <code>repo</code> scope)</p>
+                <p style={{ fontSize: 12, color: T.muted, margin: 0 }}>Get your Railway token at <a href="https://railway.app/account/tokens" target="_blank" rel="noopener noreferrer" style={{ color: T.accent, textDecoration: 'underline' }}>railway.app/account/tokens</a></p>
+              </div>
               <Msg type={dMsg?.type} text={dMsg?.text} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
                 <Field label={<>Vercel token {dStatus.has_vercel && <span style={{ color: T.success, fontWeight: 400 }}>✓ saved</span>}</>}>
@@ -365,8 +373,14 @@ const Settings = () => {
                 <Field label={<>Netlify token {dStatus.has_netlify && <span style={{ color: T.success, fontWeight: 400 }}>✓ saved</span>}</>}>
                   <TextInput icon={Key} type="password" value={dTokens.netlify} onChange={e => setDTokens(p => ({ ...p, netlify: e.target.value }))} placeholder={dStatus.has_netlify ? 'Leave blank to keep existing' : 'Paste Netlify token'} />
                 </Field>
+                <Field label={<>GitHub token {dStatus.has_github && <span style={{ color: T.success, fontWeight: 400 }}>✓ saved</span>}</>}>
+                  <TextInput icon={Key} type="password" value={dTokens.github} onChange={e => setDTokens(p => ({ ...p, github: e.target.value }))} placeholder={dStatus.has_github ? 'Leave blank to keep existing' : 'Paste GitHub personal access token'} />
+                </Field>
+                <Field label={<>Railway token {dStatus.has_railway && <span style={{ color: T.success, fontWeight: 400 }}>✓ saved</span>}</>}>
+                  <TextInput icon={Key} type="password" value={dTokens.railway} onChange={e => setDTokens(p => ({ ...p, railway: e.target.value }))} placeholder={dStatus.has_railway ? 'Leave blank to keep existing' : 'Paste Railway API token'} />
+                </Field>
               </div>
-              <Btn onClick={saveDeploy} disabled={dSaving || (!dTokens.vercel && !dTokens.netlify)}>{dSaving ? 'Saving…' : <><Save size={13} /> Save tokens</>}</Btn>
+              <Btn onClick={saveDeploy} disabled={dSaving || (!dTokens.vercel && !dTokens.netlify && !dTokens.github && !dTokens.railway)}>{dSaving ? 'Saving…' : <><Save size={13} /> Save tokens</>}</Btn>
             </Card>
 
             <Card>

@@ -1,47 +1,41 @@
-"""Authentication routes"""
-from fastapi import APIRouter, HTTPException, Request
-from datetime import datetime, timedelta
-import jwt
+"""Auth routes — stubs that redirect to server.py implementations.
+All real auth logic is in /api/auth/* endpoints registered directly in server.py.
+"""
+from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+_MSG = {"detail": "Use /api/auth endpoints. Real implementations are in server.py."}
+
 @router.post("/login")
-async def login(email: str, password: str):
-    """User login with email and password"""
-    # Implementation extracted from server.py
-    pass
+async def login():
+    return JSONResponse(status_code=200, content=_MSG)
 
 @router.post("/logout")
 async def logout():
-    """User logout"""
-    pass
+    return JSONResponse(status_code=200, content=_MSG)
 
 @router.get("/me")
 async def get_current_user():
-    """Get current authenticated user"""
-    pass
+    return JSONResponse(status_code=200, content=_MSG)
 
 @router.post("/refresh")
 async def refresh_token():
-    """Refresh JWT token"""
-    pass
+    return JSONResponse(status_code=200, content=_MSG)
 
 @router.post("/mfa/setup")
 async def setup_mfa():
-    """Setup multi-factor authentication"""
-    pass
+    return JSONResponse(status_code=200, content=_MSG)
 
 @router.post("/mfa/verify")
-async def verify_mfa(code: str):
-    """Verify MFA code"""
-    pass
+async def verify_mfa():
+    return JSONResponse(status_code=200, content=_MSG)
 
 @router.post("/forgot-password")
-async def forgot_password(email: str):
-    """Request password reset"""
-    pass
+async def forgot_password():
+    return JSONResponse(status_code=200, content=_MSG)
 
 @router.post("/reset-password")
-async def reset_password(token: str, new_password: str):
-    """Reset password with token"""
-    pass
+async def reset_password():
+    return JSONResponse(status_code=200, content=_MSG)

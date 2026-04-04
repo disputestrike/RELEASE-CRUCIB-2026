@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import JSZip from 'jszip';
+import { motion, AnimatePresence } from 'framer-motion';
 import Editor from '@monaco-editor/react';
 import {
   SandpackProvider,
@@ -34,11 +35,14 @@ import {
   Sparkles,
   Image,
   FileText,
+  File,
+  Coffee,
   Zap,
   RefreshCw,
   ExternalLink,
   Github,
   History,
+  Undo2,
   Settings,
   Menu,
   Globe,
@@ -69,30 +73,583 @@ import {
   Globe2,
   Activity,
   Network,
-  Sun,
-  Moon,
+  CheckCircle2,
+  ArrowUp,
 } from 'lucide-react';
 import { useAuth, API } from '../App';
 import { useLayoutStore } from '../stores/useLayoutStore';
 import { useTaskStore } from '../stores/useTaskStore';
 import axios from 'axios';
+import CrucibAIComputer from '../components/CrucibAIComputer';
 import InlineAgentMonitor from '../components/InlineAgentMonitor';
 import ManusComputer from '../components/ManusComputer';
 import { CommandPalette } from '../components/AdvancedIDEUX';
 import { VibeCodingInput } from '../components/VibeCoding';
-import {
-  DEFAULT_FILES,
-  ConsolePanel,
-  BuildHistoryPanel,
-  formatMsgContent,
-  getBuildEventPresentation,
-  normalizeWorkspacePath,
-  isWorkspaceDbPath,
-  isWorkspaceDocPath,
-  docSortKey,
-  extractSqlTableNames,
-  WorkspaceProPanels,
-} from '../components/workspace';
+
+/** Format message content — avoid [object Object] */
+function formatMsgContent(c) {
+  if (c == null) return '';
+  if (typeof c === 'string') return c;
+  if (c?.text) return c.text;
+  if (c?.message) return c.message;
+  if (c?.content) return c.content;
+  return typeof c === 'object' ? JSON.stringify(c) : String(c);
+}
+
+/** Chat message — user on right, long messages with Show more */
+function ChatMessage({ msg }) {
+  const [expanded, setExpanded] = useState(false);
+  const content = formatMsgContent(msg.content);
+  const isLong = content.length > 300 || (content.match(/\n/g) || []).length > 4;
+  const showContent = expanded || !isLong ? content : content.slice(0, 300) + (content.length > 300 ? '...' : '');
+  return (
+    <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+      <div className={`max-w-[80%] rounded-xl px-4 py-3 text-sm ${
+        msg.role === 'user'
+          ? 'bg-gray-100 text-gray-900'
+          : 'bg-white border border-gray-200 text-gray-800'
+      }`}>
+        <pre className="whitespace-pre-wrap font-sans">{showContent}</pre>
+        {isLong && (
+          <button
+            type="button"
+            onClick={() => setExpanded(e => !e)}
+            className="mt-2 text-xs font-medium text-gray-600 hover:text-gray-900 underline"
+          >
+            {expanded ? 'Show less' : 'Show more'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Compact collapsible build progress card — Manus-style step bar */
+function BuildProgressCard({ expanded, onToggle, buildProgress, currentPhase, lastTokensUsed, projectBuildProgress, qualityScore, agentsActivityLength, children }) {
+  const tokens = lastTokensUsed || projectBuildProgress?.tokens_used || 0;
+  return (
+    <div className="border-b flex-shrink-0" style={{borderColor:'var(--theme-border)',background:'var(--theme-surface)'}}>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition" style={{color:'var(--theme-text)'}}
+      >
+        <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--theme-text, #1A1A1A)' }} />
+        <span className="text-sm font-medium text-gray-900 flex-1 truncate">
+          {currentPhase || 'Building...'} — {Math.round(buildProgress)}%
+        </span>
+        <span className="text-xs text-gray-500 shrink-0">{agentsActivityLength || 0} agents · {(tokens / 1000).toFixed(0)}k tokens</span>
+        {qualityScore != null && <span className="text-xs text-gray-600 shrink-0">Quality: {qualityScore}%</span>}
+        {expanded ? <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" /> : <ChevronRight className="w-4 h-4 text-gray-500 shrink-0" />}
+      </button>
+      <div className="border-t border-stone-100 bg-gray-50/50">
+        <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
+          <motion.div
+            className="h-full rounded-full"
+            style={{ background: 'var(--theme-text, #1A1A1A)' }}
+            initial={{ width: 0 }}
+            animate={{ width: `${buildProgress}%` }}
+            transition={{ duration: 0.3 }}
+          />
+        </div>
+      </div>
+      {expanded && (
+        <div className="max-h-64 overflow-y-auto border-t border-stone-200">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Default React app template
+const DEFAULT_FILES = {
+  '/App.js': {
+    code: `import React from 'react';
+
+export default function App() {
+  return (
+    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter, sans-serif' }}>
+      <div style={{ textAlign: 'center', padding: '2rem' }}>
+        <div style={{ width: 64, height: 64, background: '#3b82f6', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+          <span style={{ fontSize: 28 }}>⚡</span>
+        </div>
+        <h1 style={{ fontSize: '2.25rem', fontWeight: 700, color: '#f8fafc', marginBottom: '0.75rem', letterSpacing: '-0.02em' }}>
+          Welcome to CrucibAI
+        </h1>
+        <p style={{ color: '#94a3b8', fontSize: '1.125rem', marginBottom: '2rem' }}>
+          Describe what you want to build in the chat
+        </p>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '0.5rem 1rem', color: '#64748b', fontSize: '0.875rem' }}>
+          <span>💬</span> Type a prompt to get started
+        </div>
+      </div>
+    </div>
+  );
+}`,
+  },
+  '/index.js': {
+    code: `import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './styles.css';
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);`,
+  },
+  '/styles.css': {
+    code: `/* Tailwind CSS loaded via CDN (see externalResources in Sandpack config) */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}`,
+  },
+};
+
+// File tree component
+const FileTree = ({ files, activeFile, onSelectFile, onAddFile, onAddFolder, onOpenFolder, onDeleteFile }) => {
+  const [expandedFolders, setExpandedFolders] = useState({});
+
+  const getFileIcon = (name) => {
+    if (/\.(jsx?|tsx?)$/.test(name)) return <FileCode className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0" />;
+    if (/\.css$/.test(name)) return <FileText className="w-3.5 h-3.5 text-pink-500 flex-shrink-0" />;
+    if (/\.html$/.test(name)) return <FileText className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--theme-accent)' }} />;
+    if (/\.json$/.test(name)) return <FileText className="w-3.5 h-3.5 text-yellow-600 flex-shrink-0" />;
+    if (/\.(py|c|cpp|h)$/.test(name)) return <FileCode className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />;
+    if (/\.(md|txt)$/.test(name)) return <FileText className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />;
+    return <File className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />;
+  };
+
+  // Group files into root-level files and folders
+  const tree = {};
+  Object.keys(files).sort().forEach(path => {
+    const clean = path.replace(/^\//, '');
+    const parts = clean.split('/');
+    if (parts.length === 1) {
+      tree[path] = null;
+    } else {
+      const folder = '/' + parts[0];
+      if (!tree[folder]) tree[folder] = [];
+      tree[folder].push(path);
+    }
+  });
+
+  const toggleFolder = (folder) => {
+    setExpandedFolders(prev => ({ ...prev, [folder]: prev[folder] === false ? true : false }));
+  };
+
+  const isExpanded = (folder) => expandedFolders[folder] !== false; // expanded by default
+
+  return (
+    <div className="text-sm flex flex-col h-full">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between px-2 py-1.5 border-b flex-shrink-0" style={{borderColor:'var(--theme-border)',background:'var(--theme-surface2)'}}>
+        <span className="text-xs font-semibold uppercase tracking-wider" style={{color:'var(--theme-muted)'}}>Explorer</span>
+        <div className="flex items-center gap-0.5">
+          {onAddFile && (
+            <button onClick={onAddFile} className="p-1 text-gray-400 hover:text-gray-700 rounded" title="New file">
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {onAddFolder && (
+            <button onClick={onAddFolder} className="p-1 text-gray-400 hover:text-gray-700 rounded" title="New folder">
+              <FolderOpen className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {onOpenFolder && (
+            <button onClick={onOpenFolder} className="p-1 text-gray-400 hover:text-gray-700 rounded" title="Open local folder">
+              <Upload className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* File tree */}
+      <div className="overflow-y-auto flex-1 py-1">
+        {Object.entries(tree).map(([key, children]) => {
+          if (children === null) {
+            // Root-level file
+            const name = key.replace(/^\//, '');
+            return (
+              <div key={key} className="group flex items-center">
+                <button
+                  onClick={() => onSelectFile(key)}
+                  className={`flex-1 flex items-center gap-2 px-3 py-1 text-left text-xs transition truncate ${
+                    activeFile === key ? 'bg-blue-50 text-blue-800 font-medium' : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  {getFileIcon(name)}
+                  <span className="truncate">{name}</span>
+                </button>
+                {onDeleteFile && (
+                  <button onClick={() => onDeleteFile(key)} className="opacity-0 group-hover:opacity-100 pr-2 text-gray-400 hover:text-red-500 transition" title="Delete file">
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            );
+          } else {
+            // Folder
+            const folderName = key.replace(/^\//, '');
+            const expanded = isExpanded(key);
+            return (
+              <div key={key}>
+                <button
+                  onClick={() => toggleFolder(key)}
+                  className="w-full flex items-center gap-1.5 px-2 py-1 text-left text-xs text-gray-500 hover:bg-gray-100 font-medium"
+                >
+                  {expanded ? <ChevronDown className="w-3 h-3 flex-shrink-0" /> : <ChevronRight className="w-3 h-3 flex-shrink-0" />}
+                  <FolderOpen className="w-3.5 h-3.5 text-yellow-500 flex-shrink-0" />
+                  <span>{folderName}</span>
+                </button>
+                {expanded && children.map(path => {
+                  const name = path.split('/').pop();
+                  return (
+                    <div key={path} className="group flex items-center">
+                      <button
+                        onClick={() => onSelectFile(path)}
+                        className={`flex-1 flex items-center gap-2 pl-7 pr-2 py-1 text-left text-xs transition truncate ${
+                          activeFile === path ? 'bg-blue-50 text-blue-800 font-medium' : 'text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        {getFileIcon(name)}
+                        <span className="truncate">{name}</span>
+                      </button>
+                      {onDeleteFile && (
+                        <button onClick={() => onDeleteFile(path)} className="opacity-0 group-hover:opacity-100 pr-2 text-gray-400 hover:text-red-500 transition" title="Delete file">
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          }
+        })}
+      </div>
+    </div>
+  );
+};
+
+// Console/Logs component (Terminal) — dark theme to match app
+const ConsolePanel = ({ logs, placeholder = "Terminal output will appear here. Run a build to see logs." }) => {
+  const consoleRef = useRef(null);
+
+  useEffect(() => {
+    if (consoleRef.current) {
+      consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
+    }
+  }, [logs]);
+
+  return (
+    <div ref={consoleRef} className="workspace-console-panel h-full overflow-auto font-mono text-xs p-3 space-y-1">
+      {logs.length === 0 ? (
+        <div className="workspace-console-placeholder">{placeholder}</div>
+      ) : (
+        logs.map((log, i) => (
+          <div
+            key={i}
+            className={`workspace-console-line flex items-start gap-2 workspace-console-line--${log.type || 'info'}`}
+          >
+            <span className="workspace-console-time">[{log.time}]</span>
+            <span className="workspace-console-agent">{log.agent || 'system'}:</span>
+            <span className="flex-1 workspace-console-message">{log.message}</span>
+          </div>
+        ))
+      )}
+    </div>
+  );
+};
+
+// LLM Selector dropdown – Cursor-style: next to chat, opens upward
+const ModelSelector = ({ selectedModel, onSelectModel, variant = 'default' }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const isChat = variant === 'chat';
+
+  const models = [
+    { id: 'auto', name: 'Auto', icon: Sparkles, desc: 'Best model for the task' },
+    { id: 'gpt-4o', name: 'GPT-4o', icon: Zap, desc: 'OpenAI latest' },
+    { id: 'claude', name: 'Claude 3.5', icon: Coffee, desc: 'Anthropic Sonnet' },
+    { id: 'gemini', name: 'Gemini Flash', icon: RefreshCw, desc: 'Google fast model' },
+  ];
+
+  const selected = models.find(m => m.id === selectedModel) || models[0];
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        data-testid="model-selector"
+        className={`flex items-center gap-1.5 rounded-lg border transition ${
+          isChat ? 'h-[42px] px-3 py-2 text-sm' : 'px-3 py-1.5 text-sm'
+        }`}
+        style={{borderColor:'var(--theme-border)',background:'var(--theme-surface2)',color:'var(--theme-text)'}}
+      >
+        <selected.icon className="w-4 h-4 shrink-0" />
+        <span className="truncate max-w-[100px]">{isChat ? selected.name : selected.name}</span>
+        <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} aria-hidden />
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 6 }}
+              className="absolute left-0 bottom-full mb-1.5 w-56 rounded-lg overflow-hidden z-50"
+              style={{background:'var(--theme-surface)',border:'1px solid var(--theme-border)',boxShadow:'0 8px 32px rgba(0,0,0,0.4)'}}
+            >
+              <div className="py-1">
+                {models.map((model) => (
+                  <button
+                    key={model.id}
+                    type="button"
+                    onClick={() => { onSelectModel(model.id); setIsOpen(false); }}
+                    data-testid={`model-option-${model.id}`}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm transition"
+                    style={{background: selectedModel === model.id ? 'var(--theme-surface2)' : 'transparent', color: selectedModel === model.id ? 'var(--theme-text)' : 'var(--theme-muted)'}}
+                  >
+                    <model.icon className="w-4 h-4 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium">{model.name}</div>
+                      <div className="text-xs text-gray-500 truncate">{model.desc}</div>
+                    </div>
+                    {selectedModel === model.id && <Check className="w-4 h-4 shrink-0 text-[#1A1A1A]" />}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// Version History Panel (local versions)
+const VersionHistory = ({ versions, onRestore, currentVersion }) => {
+  return (
+    <div className="p-3 space-y-2 overflow-y-auto h-full">
+      <div className="text-xs text-gray-500 uppercase tracking-wider mb-3">Version History</div>
+      {versions.length === 0 ? (
+        <div className="text-sm text-gray-500">No versions yet</div>
+      ) : (
+        versions.map((version, i) => (
+          <div
+            key={version.id}
+            className={`p-3 rounded-lg cursor-pointer transition ${
+              currentVersion === version.id ? 'bg-gray-200 border border-gray-300' : 'bg-gray-50 hover:bg-gray-100 border border-transparent'
+            }`}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm font-medium text-gray-800">v{versions.length - i}</span>
+              <span className="text-xs text-gray-500">{version.time}</span>
+            </div>
+            <p className="text-xs text-gray-600 mb-2 line-clamp-2">{version.prompt}</p>
+            {currentVersion !== version.id && (
+              <button
+                onClick={() => onRestore(version)}
+                className="flex items-center gap-1 text-xs text-gray-800 hover:text-gray-900"
+              >
+                <Undo2 className="w-3 h-3" />
+                Restore
+              </button>
+            )}
+          </div>
+        ))
+      )}
+    </div>
+  );
+};
+
+// Build History Panel (Item 17) — fetch prior builds from API, click to view in Agent Monitor
+const BuildHistoryPanel = ({ buildHistory, projectId, loading }) => {
+  if (loading) {
+    return (
+      <div className="p-4 flex items-center justify-center h-full">
+        <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
+      </div>
+    );
+  }
+  if (!buildHistory || buildHistory.length === 0) {
+    return (
+      <div className="p-4 text-sm text-zinc-500">
+        No prior builds yet. Run a build from the dashboard to see history here.
+      </div>
+    );
+  }
+  return (
+    <div className="p-3 space-y-2 overflow-y-auto h-full">
+      <div className="text-xs text-zinc-500 uppercase tracking-wider mb-3">Build history</div>
+      {buildHistory.map((entry, i) => (
+        <div key={i} className="p-3 rounded-lg border border-zinc-700/50 bg-zinc-800/30 hover:bg-zinc-800/50 transition">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs text-zinc-400">
+              {entry.completed_at ? new Date(entry.completed_at).toLocaleString() : '—'}
+            </span>
+            <span className={`text-xs font-medium ${entry.status === 'completed' ? 'text-green-400' : 'text-amber-500'}`}>
+              {entry.status === 'completed' ? 'Completed' : (entry.status || '—')}
+            </span>
+          </div>
+          {entry.quality_score != null && <p className="text-xs text-zinc-500">Quality: {Number(entry.quality_score).toFixed(0)}</p>}
+          {entry.tokens_used != null && <p className="text-xs text-zinc-500">{Number(entry.tokens_used).toLocaleString()} tokens</p>}
+          {projectId && (
+            <Link
+              to={`/app/projects/${projectId}`}
+              className="inline-flex items-center gap-1 mt-2 text-xs text-blue-400 hover:text-blue-300"
+            >
+              <ExternalLink className="w-3 h-3" /> View in Agent Monitor
+            </Link>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// ── PassesTab: loads real pass data from /api/passes/:taskId ────────────────
+const PASS_COLORS = ['#a78bfa','#60a5fa','#34d399','#fb923c','#fbbf24','#f87171'];
+
+const PassesTab = ({ taskId, files, versions, token, API, liveSteps, isBuilding }) => {
+  const [passData, setPassData] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!taskId || !token || !API) return;
+    setLoading(true);
+    axios.get(`${API}/passes/${taskId}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => setPassData(r.data))
+      .catch(() => setPassData(null))
+      .finally(() => setLoading(false));
+  }, [taskId, token, API]);
+
+  // Prefer live steps during/after build (they have real timing + file counts)
+  // Fall back to API data, then empty
+  const passes = liveSteps?.length > 0
+    ? liveSteps.map((s, i) => ({
+        pass: i + 1,
+        label: s.name,
+        desc: s.filesCount ? `${s.filesCount} files generated` : (s.desc || ''),
+        color: PASS_COLORS[i % PASS_COLORS.length],
+        status: s.status,
+        duration_ms: s.durationMs,
+        files_count: s.filesCount,
+      }))
+    : passData?.passes || [];
+
+  const totalFiles = passData?.total_files || liveSteps?.filter(s => s.filesCount)?.at(-1)?.filesCount || Object.keys(files).length;
+  const buildKind = passData?.build_kind || 'fullstack';
+  const completedCount = passes.filter(p => p.status === 'complete').length;
+  const pct = passes.length > 0 ? Math.round(completedCount / passes.length * 100) : 0;
+
+  return (
+    <div style={{ height: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+      {/* Header */}
+      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--theme-border)', background: 'var(--theme-surface2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--theme-muted)' }}>Multi-Pass Build</div>
+          <div style={{ fontSize: 11, color: 'var(--theme-muted)', marginTop: 2 }}>{passes.length} passes · {totalFiles} files · {buildKind}</div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {loading && <Loader2 style={{ width: 12, height: 12, color: 'var(--theme-muted)' }} className="animate-spin" />}
+          {passes.length > 0 && (
+            <div style={{ fontSize: 11, fontWeight: 600, color: pct === 100 ? '#4ade80' : 'var(--theme-muted)' }}>{pct}%</div>
+          )}
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      {passes.length > 0 && (
+        <div style={{ height: 2, background: 'rgba(255,255,255,0.06)', flexShrink: 0 }}>
+          <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? '#4ade80' : '#3b82f6', transition: 'width 0.6s ease' }} />
+        </div>
+      )}
+
+      {/* Pass list */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {passes.length > 0 ? passes.map((p, i) => (
+          <div key={i} style={{
+            padding: '11px 14px', borderRadius: 10, border: '1px solid var(--theme-border)',
+            background: p.status === 'running' ? 'rgba(59,130,246,0.05)'
+              : p.status === 'complete' ? 'rgba(74,222,128,0.03)'
+              : 'rgba(255,255,255,0.02)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 3 }}>
+              {/* Status icon */}
+              <div style={{ width: 20, height: 20, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                background: p.status === 'complete' ? 'rgba(74,222,128,0.15)' : p.status === 'running' ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.05)' }}>
+                {p.status === 'complete'
+                  ? <Check style={{ width: 10, height: 10, color: '#4ade80' }} />
+                  : p.status === 'running'
+                  ? <Loader2 style={{ width: 10, height: 10, color: '#60a5fa' }} className="animate-spin" />
+                  : <div style={{ width: 6, height: 6, borderRadius: '50%', border: '1.5px solid var(--theme-muted)', opacity: 0.4 }} />
+                }
+              </div>
+              {/* Pass label */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
+                <span style={{ fontSize: 10, fontWeight: 600, color: p.color, opacity: 0.8, flexShrink: 0 }}>P{p.pass || i+1}</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: p.status === 'complete' ? 'var(--theme-text)' : p.status === 'running' ? '#93c5fd' : 'var(--theme-muted)', truncate: true }}>{p.label}</span>
+              </div>
+              {/* Duration */}
+              {p.duration_ms > 0 && (
+                <span style={{ fontSize: 10, color: 'var(--theme-muted)', flexShrink: 0, opacity: 0.6 }}>{(p.duration_ms/1000).toFixed(1)}s</span>
+              )}
+            </div>
+            {p.desc && (
+              <div style={{ fontSize: 10, color: 'var(--theme-muted)', paddingLeft: 30, opacity: 0.7 }}>{p.desc}</div>
+            )}
+          </div>
+        )) : (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 10, color: 'var(--theme-muted)', paddingTop: 40 }}>
+            <Layers style={{ width: 32, height: 32, opacity: 0.25 }} />
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>No build yet</div>
+              <div style={{ fontSize: 11, opacity: 0.6 }}>Run a build to see real-time pass data</div>
+            </div>
+          </div>
+        )}
+
+        {/* Completed summary */}
+        {passes.length > 0 && !isBuilding && pct === 100 && (
+          <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid rgba(74,222,128,0.2)', background: 'rgba(74,222,128,0.05)', textAlign: 'center' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#4ade80', marginBottom: 3 }}>Build Complete</div>
+            <div style={{ fontSize: 11, color: 'var(--theme-muted)' }}>{totalFiles} files · {versions.length} version{versions.length !== 1 ? 's' : ''} saved</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── Skill auto-detection (mirrors backend SKILL_TRIGGERS) ───────────────────
+const SKILL_TRIGGERS_JS = {
+  'Web App Builder': ['web app', 'full-stack', 'webapp', 'react app', 'crud app', 'portal'],
+  'Mobile App': ['mobile app', 'ios app', 'android app', 'react native', 'expo', 'phone app'],
+  'SaaS MVP': ['saas', 'subscription', 'stripe billing', 'mvp with billing', 'paid app'],
+  'E-Commerce': ['e-commerce', 'ecommerce', 'online store', 'shop', 'sell products', 'product catalog'],
+  'AI Chatbot': ['chatbot', 'ai assistant', 'chat interface', 'knowledge base bot', 'streaming chat'],
+  'Landing Page': ['landing page', 'marketing page', 'product page', 'waitlist', 'hero section'],
+  'Automation': ['automate', 'automation', 'workflow', 'cron job', 'daily digest', 'pipeline'],
+  'Internal Tool': ['admin panel', 'internal tool', 'back office', 'crud interface', 'approval workflow'],
+  'Data Dashboard': ['dashboard', 'analytics', 'charts', 'kpi', 'metrics dashboard', 'recharts'],
+};
+
+function detectSkillFromPrompt(prompt) {
+  if (!prompt) return null;
+  const p = prompt.toLowerCase();
+  for (const [skillName, triggers] of Object.entries(SKILL_TRIGGERS_JS)) {
+    if (triggers.some(t => p.includes(t))) return skillName;
+  }
+  return null;
+}
 
 // Main Workspace Component
 const Workspace = () => {
@@ -118,13 +675,31 @@ const Workspace = () => {
       return true;
     });
 
-    const ROOT_TO_SRC = { '/App.js': '/src/App.js', '/App.jsx': '/src/App.jsx', '/index.js': '/src/index.js', '/index.jsx': '/src/index.jsx', '/styles.css': '/src/styles.css' };
+    // Normalize root-level files to /src/ for Sandpack; handle both JS and TS
+    const ROOT_TO_SRC = {
+      '/App.js': '/src/App.js', '/App.jsx': '/src/App.jsx',
+      '/App.ts': '/src/App.js', '/App.tsx': '/src/App.jsx',  // transpile TS→JS path for Sandpack
+      '/index.js': '/src/index.js', '/index.jsx': '/src/index.jsx',
+      '/index.ts': '/src/index.js', '/index.tsx': '/src/index.jsx',
+      '/styles.css': '/src/styles.css',
+    };
 
     const result = Object.fromEntries(
       filtered.map(([path, f]) => {
         const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-        const sandpackPath = ROOT_TO_SRC[normalizedPath] || normalizedPath;
+        // Map .tsx → .jsx, .ts → .js for Sandpack (it runs in JSX mode)
+        let sandpackPath = ROOT_TO_SRC[normalizedPath] || normalizedPath;
+        sandpackPath = sandpackPath.replace(/\.tsx$/, '.jsx').replace(/(?<!\.d)\.ts$/, '.js');
         let code = f?.code || '';
+        // Strip TypeScript type annotations that Sandpack can't handle
+        // Remove type imports: import type {...} from '...'
+        code = code.replace(/^import\s+type\s+.*?;?$/mg, '');
+        // Remove generic type params in JSX context <Component<T> -> <Component
+        // Remove React.FC<Props>, (): ReturnType annotations etc (light strip)
+        code = code.replace(/:\s*React\.FC<[^>]*>/g, '');
+        code = code.replace(/:\s*[A-Z][A-Za-z]*(<[^>]*>)?\s*=/g, ' =');
+        code = code.replace(/as\s+[A-Z][A-Za-z0-9_<>\[\]]*\b/g, '');
+        // BrowserRouter → MemoryRouter for Sandpack
         code = code
           .replace(/import\s*\{\s*BrowserRouter(\s*,\s*|\s+as\s+\w+\s*,?\s*)/g, 'import { MemoryRouter$1')
           .replace(/import\s*\{\s*([^}]*),?\s*BrowserRouter\s*,?\s*([^}]*)\}/g, (_, a, b) =>
@@ -135,15 +710,16 @@ const Workspace = () => {
         if (sandpackPath === '/src/index.js' || sandpackPath === '/src/index.jsx') {
           code = code.replace(/from\s+['"]\.\/App['"]/g, "from './App'");
         }
-        if ((sandpackPath === '/src/styles.css' || normalizedPath === '/styles.css' || normalizedPath === '/src/styles.css') && !code.includes('tailwindcss') && !code.includes('tailwind')) {
+        if ((sandpackPath.includes('styles.css') || sandpackPath.includes('index.css') || sandpackPath.includes('App.css')) && !code.includes('tailwindcss') && !code.includes('tailwind')) {
           code = `@import url('https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css');\n\n` + code;
         }
         return [sandpackPath, { ...f, code }];
       })
     );
 
-    const hasAppJsx = !!result['/src/App.jsx'];
-    const hasAppJs = !!result['/src/App.js'];
+    // Detect entry point (supports TSX builds mapped to JSX)
+    const hasAppJsx = !!(result['/src/App.jsx'] || result['/App.jsx']);
+    const hasAppJs = !!(result['/src/App.js'] || result['/App.js']);
     const hasApp = hasAppJsx || hasAppJs;
     const existingIndex = result['/src/index.js']?.code || result['/src/index.jsx']?.code || '';
     const indexValid = existingIndex.includes("getElementById('root')") && (existingIndex.includes('createRoot') || existingIndex.includes('render('));
@@ -153,11 +729,23 @@ const Workspace = () => {
         code: `import React from 'react';
 import ReactDOM from 'react-dom/client';
 ${appImport}
-${result['/src/styles.css'] ? "import './styles.css';" : ''}
+${result['/src/styles.css'] || result['/src/App.css'] ? "import './styles.css';" : ''}
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App />);`,
       };
+    }
+    // If no App entry but we have files, try to create a minimal preview
+    if (Object.keys(result).length > 0 && !hasApp && !result['/src/index.js']) {
+      const firstJsx = Object.keys(result).find(k => k.endsWith('.jsx') || k.endsWith('.js'));
+      if (firstJsx) {
+        const compName = firstJsx.split('/').pop().replace(/\.(jsx?|tsx?)$/, '');
+        result['/src/index.js'] = { code: `import React from 'react';
+import ReactDOM from 'react-dom/client';
+import ${compName} from '${firstJsx.replace('/src/', './')}';
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<${compName} />);` };
+      }
     }
     return result;
   }, [files]);
@@ -172,6 +760,16 @@ root.render(<App />);`,
       recharts: '^2.8.0',
       'framer-motion': '^10.16.4',
       clsx: '^2.0.0',
+      'class-variance-authority': '^0.7.0',
+      'tailwind-merge': '^2.0.0',
+      '@radix-ui/react-dialog': '^1.0.5',
+      '@radix-ui/react-dropdown-menu': '^2.0.6',
+      '@radix-ui/react-select': '^2.0.0',
+      '@radix-ui/react-tabs': '^1.0.4',
+      '@radix-ui/react-tooltip': '^1.0.7',
+      zustand: '^4.4.1',
+      'react-hook-form': '^7.47.0',
+      zod: '^3.22.4',
     };
     try {
       const pkgJson = files['/package.json']?.code || files['package.json']?.code;
@@ -185,6 +783,73 @@ root.render(<App />);`,
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
   const [isBuilding, setIsBuilding] = useState(false);
+  const buildAbortRef = useRef(null); // AbortController for cancelling active build
+
+  // Live build timeline — step_started + step_complete events
+  const [liveSteps, setLiveSteps] = useState([]); // [{name, status:'pending'|'running'|'complete', filesCount, duration}]
+
+  // Resizable panes — persisted to localStorage
+  const [leftPanelWidth, setLeftPanelWidth] = useState(() => {
+    const saved = localStorage.getItem('crucibai_left_panel_width');
+    return saved ? parseInt(saved, 10) : 208;
+  }); // 52 * 4 = 208px (w-52)
+  const [rightPanelWidth, setRightPanelWidth] = useState(() => {
+    const saved = localStorage.getItem('crucibai_right_panel_width');
+    return saved ? parseInt(saved, 10) : null;
+  }); // null = 44% default
+  const isDraggingLeft = useRef(false);
+  const isDraggingRight = useRef(false);
+  const dragStartX = useRef(0);
+  const dragStartWidth = useRef(0);
+
+  const handleLeftDragStart = (e) => {
+    isDraggingLeft.current = true;
+    dragStartX.current = e.clientX;
+    dragStartWidth.current = leftPanelWidth;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    const onMove = (ev) => {
+      if (!isDraggingLeft.current) return;
+      const delta = ev.clientX - dragStartX.current;
+      const newW = Math.max(140, Math.min(400, dragStartWidth.current + delta));
+      setLeftPanelWidth(newW);
+      localStorage.setItem('crucibai_left_panel_width', String(newW));
+    };
+    const onUp = () => {
+      isDraggingLeft.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
+  const handleRightDragStart = (e) => {
+    isDraggingRight.current = true;
+    dragStartX.current = e.clientX;
+    const containerWidth = e.currentTarget.closest('.flex-1')?.offsetWidth || window.innerWidth - leftPanelWidth - 60;
+    dragStartWidth.current = rightPanelWidth || containerWidth * 0.44;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    const onMove = (ev) => {
+      if (!isDraggingRight.current) return;
+      const delta = dragStartX.current - ev.clientX;
+      const newRW = Math.max(280, Math.min(900, dragStartWidth.current + delta));
+      setRightPanelWidth(newRW);
+      localStorage.setItem('crucibai_right_panel_width', String(newRW));
+    };
+    const onUp = () => {
+      isDraggingRight.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
   const [buildProgress, setBuildProgress] = useState(0);
   const [sessionId, setSessionId] = useState(() => `session_${Date.now()}`);
   const [selectedModel, setSelectedModel] = useState('auto');
@@ -240,41 +905,6 @@ root.render(<App />);`,
   const [toolsLoading, setToolsLoading] = useState(false);
   const [buildHistoryList, setBuildHistoryList] = useState([]);
   const [buildHistoryLoading, setBuildHistoryLoading] = useState(false);
-  const [buildTimelineEvents, setBuildTimelineEvents] = useState([]);
-  const [buildEventsErr, setBuildEventsErr] = useState(null);
-  const [serverDbSnapshots, setServerDbSnapshots] = useState([]);
-  const [serverDbLoading, setServerDbLoading] = useState(false);
-  const [serverDbErr, setServerDbErr] = useState(null);
-  const [serverDocSnapshots, setServerDocSnapshots] = useState([]);
-  const [serverDocsLoading, setServerDocsLoading] = useState(false);
-  const [serverDocsErr, setServerDocsErr] = useState(null);
-  const [docsSelectedPath, setDocsSelectedPath] = useState(null);
-  const [analyticsData, setAnalyticsData] = useState(null);
-  const [analyticsLoading, setAnalyticsLoading] = useState(false);
-  const [analyticsErr, setAnalyticsErr] = useState(null);
-  const [agentApiStatuses, setAgentApiStatuses] = useState([]);
-  const [projectSandboxLogs, setProjectSandboxLogs] = useState([]);
-  const [projectSandboxLoading, setProjectSandboxLoading] = useState(false);
-  const [projectSandboxErr, setProjectSandboxErr] = useState(null);
-  const [apiHealth, setApiHealth] = useState('unknown');
-  const [jobsChip, setJobsChip] = useState({ total: 0, active: 0 });
-  const [consoleFilter, setConsoleFilter] = useState('all');
-  const [workspaceTheme, setWorkspaceTheme] = useState(() => {
-    try {
-      return document.documentElement.getAttribute('data-theme') || localStorage.getItem('crucibai-theme') || 'dark';
-    } catch {
-      return 'dark';
-    }
-  });
-  const toggleWorkspaceTheme = useCallback(() => {
-    try {
-      const cur = document.documentElement.getAttribute('data-theme') || localStorage.getItem('crucibai-theme') || 'dark';
-      const next = cur === 'dark' ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', next);
-      localStorage.setItem('crucibai-theme', next);
-      setWorkspaceTheme(next);
-    } catch (_) {}
-  }, []);
   const [nextSuggestions, setNextSuggestions] = useState([]);
   const [buildMode, setBuildMode] = useState('agent'); // 'quick' | 'plan' | 'agent' | 'thinking' | 'swarm'
   const { user: authUser, refreshUser } = useAuth();
@@ -312,103 +942,36 @@ root.render(<App />);`,
   const [qualityGateResult, setQualityGateResult] = useState(null); // { passed, score, verdict } after build
   const [tokensPerStep, setTokensPerStep] = useState({ plan: 0, generate: 0 });
   const [showDeployModal, setShowDeployModal] = useState(false);
-  const [projectLiveUrl, setProjectLiveUrl] = useState(null);
-  const [deployTokensHint, setDeployTokensHint] = useState({ has_vercel: false, has_netlify: false });
-  const [deployZipBusy, setDeployZipBusy] = useState(false);
-  const [deployOneClickBusy, setDeployOneClickBusy] = useState(null);
-  const [publishCustomDomain, setPublishCustomDomain] = useState('');
-  const [publishRailwayUrl, setPublishRailwayUrl] = useState('');
-  const [publishSaveBusy, setPublishSaveBusy] = useState(false);
-  const [deployRailwayBusy, setDeployRailwayBusy] = useState(false);
-  const [deployRailwaySteps, setDeployRailwaySteps] = useState(null);
-  const [deployRailwayDashboard, setDeployRailwayDashboard] = useState(null);
-  const [deployRailwayErr, setDeployRailwayErr] = useState(null);
   const [mobileView, setMobileView] = useState(false);
   const [showVibeInput, setShowVibeInput] = useState(false);
+  // Issue #4: Dashboard live data
+  const [dashboardData, setDashboardData] = useState(null);
+  // Issue #5: Database live schema
+  const [appDbSchema, setAppDbSchema] = useState(null);
+  // Issue #6: Agents live history
+  const [agentHistory, setAgentHistory] = useState([]);
+  // Task 6: Active skill name for agent monitor display
+  const [activeSkillName, setActiveSkillName] = useState(null);
+  // Task 5: Deploy steps tracking
+  const [deployZipDone, setDeployZipDone] = useState(false);
+  const [deploySteps, setDeploySteps] = useState(null);
+  // Native deploy state machine: idle | checking | deploying | deployed | error
+  const [deployState, setDeployState] = useState('idle');
+  const [deployResult, setDeployResult] = useState(null); // { url, ... }
+  const [deployError, setDeployError] = useState(null);
+  const [deployHasToken, setDeployHasToken] = useState(null); // null=unknown, true/false
+  const [deployTokenStatus, setDeployTokenStatus] = useState({}); // { has_vercel, has_railway, has_github }
+  const [customDomain, setCustomDomain] = useState('');
+  const [customDomainResult, setCustomDomainResult] = useState(null);
+  const [customDomainSaving, setCustomDomainSaving] = useState(false);
+  // Git sync state
+  const [gitSyncState, setGitSyncState] = useState('idle'); // idle | syncing | synced | error
+  const [gitSyncResult, setGitSyncResult] = useState(null);
+  const [showGitSyncModal, setShowGitSyncModal] = useState(false);
+  const [gitSyncPrivate, setGitSyncPrivate] = useState(true);
   const projectIdFromUrl = searchParams.get('projectId');
   const taskIdFromUrl = searchParams.get('taskId');
   const [projectBuildProgress, setProjectBuildProgress] = useState({ phase: 0, agent: '', progress: 0, status: '', tokens_used: 0 });
-
-  const localMdDocs = useMemo(
-    () =>
-      Object.entries(files)
-        .filter(([k]) => isWorkspaceDocPath(k))
-        .map(([path, f]) => ({
-          path: path.startsWith('/') ? path.slice(1) : path,
-          content: f?.code || '',
-          source: 'editor',
-        })),
-    [files],
-  );
-
-  const mergedDocFiles = useMemo(() => {
-    const sortFn = (a, b) => docSortKey(a.path) - docSortKey(b.path) || String(a.path).localeCompare(String(b.path));
-    const editor = localMdDocs.map((d) => ({ ...d, source: 'editor' })).sort(sortFn);
-    if (!projectIdFromUrl) return editor;
-    const serv = serverDocSnapshots.map((d) => ({ path: d.path, content: d.content || '', source: 'server' })).sort(sortFn);
-    const sn = new Set(serv.map((d) => normalizeWorkspacePath(d.path)));
-    const uniqEditor = editor.filter((d) => !sn.has(normalizeWorkspacePath(d.path)));
-    return [...serv, ...uniqEditor].sort(sortFn);
-  }, [projectIdFromUrl, serverDocSnapshots, localMdDocs]);
-
-  const localDbEntries = useMemo(
-    () =>
-      Object.entries(files)
-        .filter(([k]) => isWorkspaceDbPath(k))
-        .map(([k, f]) => ({
-          path: k.startsWith('/') ? k.slice(1) : k,
-          displayKey: k.startsWith('/') ? k : `/${k}`,
-          content: f?.code || '',
-          source: 'editor',
-        })),
-    [files],
-  );
-
-  const dbPanelMerge = useMemo(() => {
-    const serverNorm = new Set(serverDbSnapshots.map((s) => normalizeWorkspacePath(s.path)));
-    const editorOnly = localDbEntries.filter((e) => !serverNorm.has(normalizeWorkspacePath(e.path)));
-    const sqlBlob = [...serverDbSnapshots, ...editorOnly.map((e) => ({ content: e.content }))]
-      .map((x) => x.content)
-      .join('\n');
-    return {
-      editorOnly,
-      inferredTables: [...new Set(extractSqlTableNames(sqlBlob))],
-      hasRows: serverDbSnapshots.length > 0 || localDbEntries.length > 0,
-    };
-  }, [serverDbSnapshots, localDbEntries]);
-
-  /** Guided: core workbench only. Pro: database, docs, analytics, agents, passes. */
-  const workbenchTabs = useMemo(() => {
-    const base = [
-      { id: 'preview', label: 'Preview', icon: Eye },
-      { id: 'code', label: 'Code', icon: FileCode },
-      { id: 'console', label: 'Console', icon: Terminal },
-      { id: 'dashboard', label: 'Dashboard', icon: Activity },
-      { id: 'database', label: 'Database', icon: Database },
-      { id: 'docs', label: 'Docs', icon: BookOpen },
-      { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-      { id: 'agents', label: 'Agents', icon: Network },
-      { id: 'passes', label: 'Passes', icon: Layers },
-      { id: 'sandbox', label: 'Sandbox', icon: Globe2 },
-      ...(projectIdFromUrl ? [{ id: 'history', label: 'History', icon: History }] : []),
-    ];
-    const proOnly = new Set(['database', 'docs', 'analytics', 'agents', 'passes', 'sandbox']);
-    if (devMode) return base;
-    return base.filter((t) => !proOnly.has(t.id));
-  }, [projectIdFromUrl, devMode]);
-
-  const filteredConsoleLogs = useMemo(() => {
-    if (consoleFilter === 'all') return logs;
-    return logs.filter((log) => {
-      const t = log.type || 'info';
-      const a = (log.agent || '').toLowerCase();
-      if (consoleFilter === 'error') return t === 'error';
-      if (consoleFilter === 'build') return a === 'build';
-      if (consoleFilter === 'system') return a === 'system' || !log.agent;
-      return true;
-    });
-  }, [logs, consoleFilter]);
-
   const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
   const zipInputRef = useRef(null);
@@ -429,47 +992,76 @@ root.render(<App />);`,
     } else resizeChatInput();
   }, [input, resizeChatInput]);
   const workspaceFilesLoadedForProject = useRef(null);
-  const [workspacePullKey, setWorkspacePullKey] = useState(0);
-  const reloadWorkspaceFromServer = useCallback(() => {
-    workspaceFilesLoadedForProject.current = null;
-    setWorkspacePullKey((k) => k + 1);
-  }, []);
-  const prevIsBuildingRef = useRef(false);
+  // Task 2A: track previous files snapshot for race-condition-safe preview trigger
+  const prevFilesRef = useRef(null);
 
   useEffect(() => {
     axios.get(`${API}/build/phases`).then(r => setBuildPhases(r.data.phases || [])).catch(() => {});
   }, []);
 
+  // Task 2A: Two-step Sandpack remount — trigger filesReadyKey only after files are confirmed updated
+  // Auto-correct activeFile when it doesn't exist in files (e.g., files are .tsx but activeFile is /App.js)
   useEffect(() => {
-    if (!API) return undefined;
-    const ping = () => {
-      axios.get(`${API}/health`, { timeout: 8000 }).then(() => setApiHealth('ok')).catch(() => setApiHealth('down'));
-    };
-    ping();
-    const id = setInterval(ping, 25000);
-    return () => clearInterval(id);
-  }, [API]);
+    if (Object.keys(files).length > 0 && !files[activeFile]) {
+      // Prefer App.tsx > App.jsx > App.js > first key
+      const preferred = ['/src/App.tsx', '/App.tsx', '/src/App.jsx', '/App.jsx', '/src/App.js', '/App.js',
+                         '/src/main.tsx', '/src/index.tsx', '/Home.tsx'];
+      const found = preferred.find(k => files[k]) || Object.keys(files).sort()[0];
+      if (found) setActiveFile(found);
+    }
+  }, [files]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!token || !API) {
-      setJobsChip({ total: 0, active: 0 });
-      return undefined;
+    // Check for ANY app entry point — jsx, tsx, js, ts
+    const APP_KEYS = ['/src/App.jsx', '/App.jsx', '/src/App.js', '/App.js',
+                      '/src/App.tsx', '/App.tsx', '/src/main.tsx', '/src/main.jsx',
+                      '/src/index.tsx', '/index.tsx', '/src/index.js', '/index.js',
+                      '/Home.tsx', '/src/screens/HomeScreen.tsx', '/screens/HomeScreen.tsx'];
+    const hasApp = APP_KEYS.some(k => files[k]) || Object.keys(files).some(k => k.match(/App\.(jsx?|tsx?)$/));
+    const prevHasApp = prevFilesRef.current && (
+      APP_KEYS.some(k => prevFilesRef.current[k]) ||
+      Object.keys(prevFilesRef.current || {}).some(k => k.match(/App\.(jsx?|tsx?)$/))
+    );
+    // Trigger on any new files arriving (not just App) when isBuilding just finished
+    const hasFiles = Object.keys(files).length > 1;
+    const prevHadFiles = Object.keys(prevFilesRef.current || {}).length > 1;
+    const shouldTrigger = (hasApp && !prevHasApp) || (hasFiles && !prevHadFiles && isBuilding === false);
+    if (shouldTrigger && isBuilding === false) {
+      const newKey = `fk_ready_${Date.now()}`;
+      setTimeout(() => setFilesReadyKey(newKey), 300);
     }
-    const headers = { Authorization: `Bearer ${token}` };
-    const run = () => {
-      axios
-        .get(`${API}/jobs`, { headers, timeout: 12000 })
-        .then((r) => {
-          const jobs = r.data?.jobs || [];
-          const active = jobs.filter((j) => j.status === 'running' || j.status === 'queued').length;
-          setJobsChip({ total: jobs.length, active });
-        })
-        .catch(() => {});
-    };
-    run();
-    const id = setInterval(run, 12000);
-    return () => clearInterval(id);
-  }, [token, API]);
+    prevFilesRef.current = files;
+  }, [files]);
+
+  // ── Issue #4: Dashboard — fetch live task data when tab opens ──────────────
+  useEffect(() => {
+    if (activePanel !== 'dashboard' || !taskIdFromUrl || !token) return;
+    axios.get(`${API}/tasks/${taskIdFromUrl}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => {
+        const doc = r.data?.doc || r.data || {};
+        setDashboardData(doc);
+      })
+      .catch(() => {});
+  }, [activePanel, taskIdFromUrl, token, API]);
+
+  // ── Issue #5: Database — fetch live schema when tab opens ─────────────────
+  useEffect(() => {
+    if (activePanel !== 'database' || !taskIdFromUrl || !token) return;
+    axios.get(`${API}/app-db/${taskIdFromUrl}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => setAppDbSchema(r.data?.schema || null))
+      .catch(() => setAppDbSchema(null));
+  }, [activePanel, taskIdFromUrl, token, API]);
+
+  // ── Issue #6: Agents — fetch live agent history when tab opens ───────────
+  useEffect(() => {
+    if (activePanel !== 'agents' || !taskIdFromUrl || !token) return;
+    axios.get(`${API}/agents/activity?session_id=${taskIdFromUrl}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => {
+        const acts = r.data?.agents || r.data?.activities || r.data?.activity || [];
+        if (acts.length > 0) setAgentHistory(acts);
+      })
+      .catch(() => {});
+  }, [activePanel, taskIdFromUrl, token, API]);
 
   // Initial terminal message so panel isn't empty
   useEffect(() => {
@@ -492,343 +1084,6 @@ root.render(<App />);`,
       .catch(() => setBuildHistoryList([]))
       .finally(() => setBuildHistoryLoading(false));
   }, [projectIdFromUrl, token, API]);
-
-  useEffect(() => {
-    if (!projectIdFromUrl || !token || !API) {
-      setProjectLiveUrl(null);
-      setPublishCustomDomain('');
-      setPublishRailwayUrl('');
-      return;
-    }
-    axios
-      .get(`${API}/projects/${projectIdFromUrl}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => {
-        const p = r.data?.project;
-        setProjectLiveUrl(p?.live_url || null);
-        setPublishCustomDomain(typeof p?.custom_domain === 'string' ? p.custom_domain : '');
-        setPublishRailwayUrl(typeof p?.railway_project_url === 'string' ? p.railway_project_url : '');
-      })
-      .catch(() => {
-        setProjectLiveUrl(null);
-        setPublishCustomDomain('');
-        setPublishRailwayUrl('');
-      });
-  }, [projectIdFromUrl, token, API]);
-
-  useEffect(() => {
-    if (prevIsBuildingRef.current && !isBuilding && projectIdFromUrl && token && API) {
-      const headers = { Authorization: `Bearer ${token}` };
-      axios
-        .get(`${API}/projects/${projectIdFromUrl}`, { headers })
-        .then((r) => {
-          const p = r.data?.project;
-          setProjectLiveUrl(p?.live_url || null);
-          setPublishCustomDomain(typeof p?.custom_domain === 'string' ? p.custom_domain : '');
-          setPublishRailwayUrl(typeof p?.railway_project_url === 'string' ? p.railway_project_url : '');
-        })
-        .catch(() => {});
-      axios
-        .get(`${API}/projects/${projectIdFromUrl}/build-history`, { headers })
-        .then((r) => setBuildHistoryList(r.data?.build_history || []))
-        .catch(() => {});
-    }
-    prevIsBuildingRef.current = isBuilding;
-  }, [isBuilding, projectIdFromUrl, token, API]);
-
-  useEffect(() => {
-    if (!showDeployModal || !token || !API) return;
-    axios
-      .get(`${API}/users/me/deploy-tokens`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => setDeployTokensHint({ has_vercel: !!r.data?.has_vercel, has_netlify: !!r.data?.has_netlify }))
-      .catch(() => setDeployTokensHint({ has_vercel: false, has_netlify: false }));
-  }, [showDeployModal, token, API]);
-
-  useEffect(() => {
-    if (!showDeployModal) {
-      setDeployRailwaySteps(null);
-      setDeployRailwayDashboard(null);
-      setDeployRailwayErr(null);
-    }
-  }, [showDeployModal]);
-
-  // Orchestration timeline: snapshot + SSE (access_token query; EventSource has no Bearer). Poll fallback if SSE fails.
-  useEffect(() => {
-    if (!projectIdFromUrl || !token || !API) {
-      setBuildTimelineEvents([]);
-      setBuildEventsErr(null);
-      return undefined;
-    }
-    let cancelled = false;
-    let es = null;
-    let pollId = null;
-
-    const clearPoll = () => {
-      if (pollId != null) {
-        clearInterval(pollId);
-        pollId = null;
-      }
-    };
-
-    const fetchSnapshot = () => {
-      axios
-        .get(`${API}/projects/${projectIdFromUrl}/events/snapshot`, {
-          headers: { Authorization: `Bearer ${token}` },
-          timeout: 12000,
-        })
-        .then((r) => {
-          if (cancelled) return;
-          const list = r.data?.events;
-          setBuildTimelineEvents(Array.isArray(list) ? list : []);
-          setBuildEventsErr(null);
-        })
-        .catch((e) => {
-          if (cancelled) return;
-          const st = e?.response?.status;
-          setBuildEventsErr(st === 404 ? 'Project not found or no access.' : 'Could not load build events.');
-        });
-    };
-
-    const startPolling = (ms) => {
-      clearPoll();
-      fetchSnapshot();
-      pollId = setInterval(fetchSnapshot, ms);
-    };
-
-    axios
-      .get(`${API}/projects/${projectIdFromUrl}/events/snapshot`, {
-        headers: { Authorization: `Bearer ${token}` },
-        timeout: 12000,
-      })
-      .then((r) => {
-        if (cancelled) return;
-        const list = Array.isArray(r.data?.events) ? r.data.events : [];
-        setBuildTimelineEvents(list);
-        setBuildEventsErr(null);
-        const maxId = list.length ? Math.max(...list.map((e) => Number(e?.id) || 0)) : -1;
-        const lastId = maxId + 1;
-        const base = API.replace(/\/$/, '');
-        const url = `${base}/projects/${encodeURIComponent(projectIdFromUrl)}/events?last_id=${lastId}&access_token=${encodeURIComponent(token)}`;
-        try {
-          es = new EventSource(url);
-          es.onmessage = (event) => {
-            if (cancelled) return;
-            try {
-              const ev = JSON.parse(event.data);
-              if (ev?.type === 'stream_end') {
-                es?.close();
-                return;
-              }
-              if (ev == null || typeof ev.id !== 'number') return;
-              setBuildTimelineEvents((prev) => {
-                if (prev.some((x) => x.id === ev.id)) return prev;
-                return [...prev, ev];
-              });
-            } catch (_) {
-              /* ignore parse */
-            }
-          };
-          es.onerror = () => {
-            if (cancelled) return;
-            try {
-              es?.close();
-            } catch (_) {
-              /* ignore */
-            }
-            es = null;
-            startPolling(isBuilding ? 3000 : 8000);
-          };
-        } catch (_) {
-          startPolling(isBuilding ? 2000 : 5000);
-        }
-      })
-      .catch((e) => {
-        if (cancelled) return;
-        const st = e?.response?.status;
-        setBuildEventsErr(st === 404 ? 'Project not found or no access.' : 'Could not load build events.');
-        startPolling(isBuilding ? 2000 : 5000);
-      });
-
-    return () => {
-      cancelled = true;
-      clearPoll();
-      try {
-        es?.close();
-      } catch (_) {
-        /* ignore */
-      }
-    };
-  }, [projectIdFromUrl, token, API, isBuilding]);
-
-  useEffect(() => {
-    setServerDbSnapshots([]);
-    setServerDbErr(null);
-    setServerDocSnapshots([]);
-    setServerDocsErr(null);
-    setDocsSelectedPath(null);
-    setAnalyticsData(null);
-    setAnalyticsErr(null);
-  }, [projectIdFromUrl]);
-
-  useEffect(() => {
-    if (activePanel !== 'database' || !projectIdFromUrl || !token || !API) return undefined;
-    let cancelled = false;
-    setServerDbLoading(true);
-    setServerDbErr(null);
-    const headers = { Authorization: `Bearer ${token}` };
-    axios
-      .get(`${API}/projects/${projectIdFromUrl}/workspace/files`, { headers, timeout: 15000 })
-      .then(async (r) => {
-        const paths = (r.data?.files || []).filter(isWorkspaceDbPath).slice(0, 30);
-        const chunks = await Promise.all(
-          paths.map((path) =>
-            axios
-              .get(`${API}/projects/${projectIdFromUrl}/workspace/file`, { params: { path }, headers, timeout: 12000 })
-              .then((res) => ({ path: res.data.path, content: res.data.content || '', source: 'server' }))
-              .catch(() => null),
-          ),
-        );
-        if (!cancelled) setServerDbSnapshots(chunks.filter(Boolean));
-      })
-      .catch((e) => {
-        if (!cancelled) setServerDbErr(typeof e?.response?.data?.detail === 'string' ? e.response.data.detail : e?.message || 'Load failed');
-      })
-      .finally(() => {
-        if (!cancelled) setServerDbLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [activePanel, projectIdFromUrl, token, API]);
-
-  useEffect(() => {
-    if (activePanel !== 'docs' || !projectIdFromUrl || !token || !API) return undefined;
-    let cancelled = false;
-    setServerDocsLoading(true);
-    setServerDocsErr(null);
-    const headers = { Authorization: `Bearer ${token}` };
-    axios
-      .get(`${API}/projects/${projectIdFromUrl}/workspace/files`, { headers, timeout: 15000 })
-      .then(async (r) => {
-        const paths = (r.data?.files || []).filter(isWorkspaceDocPath).slice(0, 35);
-        const sorted = [...paths].sort((a, b) => docSortKey(a) - docSortKey(b) || a.localeCompare(b));
-        const chunks = await Promise.all(
-          sorted.map((path) =>
-            axios
-              .get(`${API}/projects/${projectIdFromUrl}/workspace/file`, { params: { path }, headers, timeout: 12000 })
-              .then((res) => ({ path: res.data.path, content: res.data.content || '', source: 'server' }))
-              .catch(() => null),
-          ),
-        );
-        if (!cancelled) setServerDocSnapshots(chunks.filter(Boolean));
-      })
-      .catch((e) => {
-        if (!cancelled) setServerDocsErr(typeof e?.response?.data?.detail === 'string' ? e.response.data.detail : e?.message || 'Load failed');
-      })
-      .finally(() => {
-        if (!cancelled) setServerDocsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [activePanel, projectIdFromUrl, token, API]);
-
-  useEffect(() => {
-    if (activePanel !== 'analytics' || !token || !API) return undefined;
-    let cancelled = false;
-    setAnalyticsLoading(true);
-    setAnalyticsErr(null);
-    const headers = { Authorization: `Bearer ${token}` };
-    Promise.all([
-      axios.get(`${API}/jobs`, { headers, timeout: 12000 }),
-      axios.get(`${API}/tokens/usage`, { headers, timeout: 12000 }),
-    ])
-      .then(([jobsRes, tokRes]) => {
-        if (!cancelled) {
-          setAnalyticsData({
-            jobs: jobsRes.data?.jobs || [],
-            tokens: tokRes.data || null,
-          });
-        }
-      })
-      .catch((e) => {
-        if (!cancelled) setAnalyticsErr(e?.message || 'Failed to load analytics');
-      })
-      .finally(() => {
-        if (!cancelled) setAnalyticsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [activePanel, token, API]);
-
-  useEffect(() => {
-    if (activePanel !== 'docs' || mergedDocFiles.length === 0) return;
-    setDocsSelectedPath((prev) => {
-      if (!prev) return mergedDocFiles[0].path;
-      const np = normalizeWorkspacePath(prev);
-      const hit = mergedDocFiles.find((d) => normalizeWorkspacePath(d.path) === np);
-      return hit ? hit.path : mergedDocFiles[0].path;
-    });
-  }, [activePanel, mergedDocFiles]);
-
-  useEffect(() => {
-    if (devMode) return;
-    const proOnly = new Set(['database', 'docs', 'analytics', 'agents', 'passes', 'sandbox']);
-    if (proOnly.has(activePanel)) setActivePanel('preview');
-  }, [devMode, activePanel]);
-
-  useEffect(() => {
-    const agentsPoll = activePanel === 'agents' || isBuilding;
-    if (!agentsPoll || !projectIdFromUrl || !token || !API) return undefined;
-    let cancelled = false;
-    const headers = { Authorization: `Bearer ${token}` };
-    const run = () => {
-      axios
-        .get(`${API}/agents/status/${projectIdFromUrl}`, { headers, timeout: 12000 })
-        .then((r) => {
-          if (!cancelled) setAgentApiStatuses(Array.isArray(r.data?.statuses) ? r.data.statuses : []);
-        })
-        .catch(() => {
-          if (!cancelled) setAgentApiStatuses([]);
-        });
-    };
-    run();
-    const id = setInterval(run, 4000);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, [activePanel, isBuilding, projectIdFromUrl, token, API]);
-
-  useEffect(() => {
-    if (activePanel !== 'sandbox' || !projectIdFromUrl || !token || !API) return undefined;
-    let cancelled = false;
-    setProjectSandboxLoading(true);
-    setProjectSandboxErr(null);
-    const headers = { Authorization: `Bearer ${token}` };
-    const run = () => {
-      axios
-        .get(`${API}/projects/${projectIdFromUrl}/logs`, { headers, timeout: 15000 })
-        .then((r) => {
-          if (!cancelled) setProjectSandboxLogs(Array.isArray(r.data?.logs) ? r.data.logs : []);
-        })
-        .catch((e) => {
-          if (!cancelled) {
-            setProjectSandboxLogs([]);
-            setProjectSandboxErr(typeof e?.response?.data?.detail === 'string' ? e.response.data.detail : e?.message || 'Failed to load logs');
-          }
-        })
-        .finally(() => {
-          if (!cancelled) setProjectSandboxLoading(false);
-        });
-    };
-    run();
-    const id = setInterval(run, 8000);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, [activePanel, projectIdFromUrl, token, API]);
 
   // Reconnect recovery — check for in-progress builds when workspace loads
   useEffect(() => {
@@ -912,7 +1167,7 @@ root.render(<App />);`,
         });
       })
       .catch(() => {});
-  }, [projectIdFromUrl, token, API, workspacePullKey]);
+  }, [projectIdFromUrl, token, API]);
 
   useEffect(() => {
     if (token) {
@@ -1195,6 +1450,21 @@ root.render(<App />);`,
   const voiceChunksRef = useRef([]);
 
   const startRecording = async () => {
+    // First request mic permission explicitly so browser shows the permission prompt
+    if (navigator.mediaDevices?.getUserMedia) {
+      try {
+        const testStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        testStream.getTracks().forEach(t => t.stop()); // just checking permission, stop immediately
+      } catch (permErr) {
+        const msg = permErr?.name === 'NotAllowedError'
+          ? 'Microphone blocked. Click the 🔒 icon in your browser address bar and allow microphone access, then refresh.'
+          : permErr?.name === 'NotFoundError'
+          ? 'No microphone found. Plug in a microphone and try again.'
+          : `Microphone error: ${permErr?.message}`;
+        addLog(msg, 'error', 'voice');
+        return;
+      }
+    }
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
       try {
@@ -1393,6 +1663,9 @@ root.render(<App />);`,
     setInput('');
     setNextSuggestions([]);
     setIsBuilding(true);
+    setLiveSteps([]); // reset live timeline
+    // Task 6: detect and display active skill
+    setActiveSkillName(detectSkillFromPrompt(prompt));
     setBuildProgress(0);
     setLastError(null);
     setQualityGateResult(null);
@@ -1694,13 +1967,34 @@ BUILD IT NOW — output every file completely:`;
                 if (ev.type === 'start') {
                   addLog(`Building ${ev.build_kind} app in ${ev.total_steps} passes...`, 'info', 'planner');
                   setBuildProgress(10);
+                  setLiveSteps([]); // will be populated by step_started events
+                }
+                if (ev.type === 'step_started') {
+                  // Mark this step as running, all others remain pending/complete
+                  setLiveSteps(prev => {
+                    const exists = prev.find(s => s.name === ev.step);
+                    if (exists) {
+                      return prev.map(s => s.name === ev.step ? { ...s, status: 'running' } : s);
+                    }
+                    // First time seeing steps — build full list
+                    return prev.length === 0
+                      ? [{ name: ev.step, status: 'running', stepNum: ev.step_num, total: ev.total_steps, desc: ev.desc || '' }]
+                      : [...prev, { name: ev.step, status: 'running', stepNum: ev.step_num, total: ev.total_steps, desc: ev.desc || '' }];
+                  });
+                  setCurrentPhase(ev.step);
                 }
                 if (ev.type === 'step_complete') {
                   const stepFiles = ev.files || {};
                   const count = Object.keys(stepFiles).length;
                   addLog(`✓ ${ev.step}: ${count} files generated`, 'success', ev.step);
                   setFiles(prev => ({ ...prev, ...Object.fromEntries(Object.entries(stepFiles).map(([k, v]) => [k, { code: v }])) }));
-                  setBuildProgress(prev => Math.min(prev + 20, 90));
+                  setBuildProgress(prev => Math.min(prev + Math.floor(80 / (ev.total_steps || 6)), 90));
+                  // Mark step complete in live timeline
+                  setLiveSteps(prev => prev.map(s =>
+                    s.name === ev.step
+                      ? { ...s, status: 'complete', filesCount: ev.files_count || count, durationMs: ev.duration_ms }
+                      : s
+                  ));
                 }
                 if (ev.type === 'done') {
                   iterDone = true;
@@ -1716,6 +2010,7 @@ BUILD IT NOW — output every file completely:`;
                   setMessages(m => m.map((msg, i) => i === m.length - 1 ? { role: 'assistant', content: `Done! Built ${totalCount} files.`, hasCode: true, planSuggestions } : msg));
                   setTimeout(() => { setCurrentVersion(vId); setFilesReadyKey(`fk_${vId}`); setActivePanel('preview'); }, 500);
                   setIsBuilding(false);
+                  setActiveSkillName(null); // clear skill indicator when build ends
                   setAgentsActivity([]);
                   // PERSISTENCE FIX (Q122): store taskId in URL so returning users reload their workspace
                   const savedTaskId = ev.task_id || sessionId;
@@ -2363,111 +2658,6 @@ BUILD IT NOW — output every file completely:`;
     }
   };
 
-  const formatDeployErr = (e) => {
-    const d = e.response?.data?.detail;
-    if (typeof d === 'string') return d;
-    if (d && typeof d === 'object') return d.message || JSON.stringify(d);
-    return e.message;
-  };
-
-  const downloadServerDeployZip = async () => {
-    if (!projectIdFromUrl || !token) {
-      addLog('Open a saved project to download the server deploy package.', 'warning', 'export');
-      return;
-    }
-    setDeployZipBusy(true);
-    try {
-      const res = await axios.get(`${API}/projects/${projectIdFromUrl}/deploy/zip`, {
-        headers: { Authorization: `Bearer ${token}` },
-        responseType: 'blob',
-        timeout: 120000,
-      });
-      const url = URL.createObjectURL(res.data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'crucibai-deploy.zip';
-      a.click();
-      URL.revokeObjectURL(url);
-      addLog('Deploy ZIP downloaded from project (orchestration snapshot).', 'success', 'export');
-    } catch (e) {
-      addLog(`Server deploy ZIP: ${formatDeployErr(e)}`, 'error', 'export');
-    } finally {
-      setDeployZipBusy(false);
-    }
-  };
-
-  const oneClickDeployPlatform = async (platform) => {
-    if (!projectIdFromUrl || !token) {
-      addLog('Save as a project first, then deploy.', 'warning', 'export');
-      return;
-    }
-    setDeployOneClickBusy(platform);
-    try {
-      const res = await axios.post(
-        `${API}/projects/${projectIdFromUrl}/deploy/${platform}`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` }, timeout: 120000 },
-      );
-      const u = res.data?.url;
-      if (u) {
-        setProjectLiveUrl(u);
-        addLog(`Live: ${u}`, 'success', 'export');
-      } else {
-        addLog(`${platform} deploy finished — check your dashboard for the URL.`, 'info', 'export');
-      }
-    } catch (e) {
-      addLog(`${platform}: ${formatDeployErr(e)}`, 'error', 'export');
-    } finally {
-      setDeployOneClickBusy(null);
-    }
-  };
-
-  const savePublishSettings = async () => {
-    if (!projectIdFromUrl || !token) {
-      addLog('Open a saved project to save publish settings.', 'warning', 'export');
-      return;
-    }
-    setPublishSaveBusy(true);
-    try {
-      await axios.patch(
-        `${API}/projects/${projectIdFromUrl}/publish-settings`,
-        { custom_domain: publishCustomDomain.trim(), railway_project_url: publishRailwayUrl.trim() },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      addLog('Publish settings saved (custom domain + Railway link).', 'success', 'export');
-    } catch (e) {
-      addLog(`Publish settings: ${formatDeployErr(e)}`, 'error', 'export');
-    } finally {
-      setPublishSaveBusy(false);
-    }
-  };
-
-  const prepareRailwayDeploy = async () => {
-    if (!projectIdFromUrl || !token) {
-      addLog('Save as a project first.', 'warning', 'export');
-      return;
-    }
-    setDeployRailwayBusy(true);
-    setDeployRailwayErr(null);
-    setDeployRailwaySteps(null);
-    setDeployRailwayDashboard(null);
-    try {
-      const res = await axios.post(
-        `${API}/projects/${projectIdFromUrl}/deploy/railway`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` }, timeout: 120000 },
-      );
-      setDeployRailwaySteps(Array.isArray(res.data?.steps) ? res.data.steps : []);
-      setDeployRailwayDashboard(typeof res.data?.dashboard_url === 'string' ? res.data.dashboard_url : null);
-      addLog('Railway package validated. Follow the steps below.', 'success', 'export');
-    } catch (e) {
-      setDeployRailwayErr(formatDeployErr(e));
-      addLog(`Railway: ${formatDeployErr(e)}`, 'error', 'export');
-    } finally {
-      setDeployRailwayBusy(false);
-    }
-  };
-
   const runOptimize = async () => {
     const code = files[activeFile]?.code ?? '';
     if (!code.trim()) { addLog('No file selected or empty file', 'warning', 'system'); return; }
@@ -2631,7 +2821,7 @@ BUILD IT NOW — output every file completely:`;
 
 
   return (
-    <div className="h-full min-h-0 flex flex-col overflow-hidden font-sans text-[13px] antialiased" style={{ background: 'var(--theme-bg, #111113)', color: 'white' }}>
+    <div className="workspace-root h-full min-h-0 flex flex-col overflow-hidden font-sans text-[13px] antialiased" style={{ background: 'var(--theme-bg, #111113)', color: 'var(--theme-text, #e4e4e7)' }}>
 
       {/* ── Command Palette (Ctrl+K) ── */}
       {commandPaletteOpen && (
@@ -2689,41 +2879,17 @@ BUILD IT NOW — output every file completely:`;
         </span>
         {isBuilding && (
           <div className="flex items-center gap-2 ml-1">
-            <div className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
+            <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--theme-accent)" }} />
             <span className="text-xs">{currentPhase || 'Building'}... {Math.round(buildProgress)}%</span>
           </div>
         )}
-        {devMode && qualityGateResult && !isBuilding && (
+        {qualityGateResult && !isBuilding && (
           <div className="flex items-center gap-1.5 ml-1 text-xs" style={{ color: qualityGateResult.score >= 70 ? '#86efac' : '#fbbf24' }}>
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>{qualityGateResult.score}%</span>
           </div>
         )}
-        <div className="ml-auto flex items-center gap-2">
-          <div className="flex items-center gap-1.5 text-[10px] shrink-0" style={{ color: 'var(--theme-muted)' }} title={apiHealth === 'ok' ? 'API reachable (GET /api/health)' : apiHealth === 'down' ? 'API unreachable' : 'Checking API…'}>
-            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: apiHealth === 'ok' ? '#4ade80' : apiHealth === 'down' ? '#f87171' : '#71717a' }} />
-            <span className="hidden sm:inline font-mono">API</span>
-          </div>
-          {token && jobsChip.active > 0 && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0" style={{ background: 'rgba(251,146,60,0.15)', color: '#fb923c' }} title="Jobs running or queued (GET /api/jobs)">
-              {jobsChip.active} job{jobsChip.active !== 1 ? 's' : ''}
-            </span>
-          )}
-          {lastError && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full max-w-[140px] truncate shrink-0" style={{ background: 'rgba(248,113,113,0.15)', color: '#fca5a5' }} title={lastError}>
-              Error
-            </span>
-          )}
-          <button
-            type="button"
-            onClick={toggleWorkspaceTheme}
-            className="p-1.5 rounded-lg transition hover:bg-white/10 shrink-0"
-            style={{ color: 'var(--theme-muted, #71717a)' }}
-            title={workspaceTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-            aria-label={workspaceTheme === 'dark' ? 'Light theme' : 'Dark theme'}
-          >
-            {workspaceTheme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </button>
+        <div className="ml-auto flex items-center gap-1.5">
           <button
             onClick={resetLayout}
             className="p-1.5 rounded-lg transition hover:bg-white/10"
@@ -2742,11 +2908,58 @@ BUILD IT NOW — output every file completely:`;
               color: devMode ? 'var(--theme-text, #e4e4e7)' : 'var(--theme-muted, #71717a)',
               borderColor: 'var(--theme-border, rgba(255,255,255,0.1))',
             }}
-            title={devMode ? 'Switch to Guided — fewer technical panels' : 'Switch to Pro — database, docs, analytics, agents, passes, sandbox logs'}
+            title={devMode ? 'Switch to Simple view' : 'Switch to Code view'}
           >
             <FileCode className="w-3.5 h-3.5" />
-            {devMode ? 'Pro' : 'Guided'}
+            {devMode ? 'Code' : 'Simple'}
           </button>
+          <button
+            onClick={() => {
+              setShowDeployModal(true);
+              setDeployState('idle');
+              setDeployResult(null);
+              setDeployError(null);
+              setDeployHasToken(null);
+              setCustomDomain('');
+              setCustomDomainResult(null);
+              // Check token on open
+              if (token) {
+                axios.get(`${API}/users/me/deploy-tokens`, { headers: { Authorization: `Bearer ${token}` } })
+                  .then(r => { setDeployTokenStatus(r.data || {}); setDeployHasToken(r.data?.has_vercel || r.data?.has_railway || false); })
+                  .catch(() => setDeployHasToken(false));
+              } else {
+                setDeployHasToken(false);
+              }
+            }}
+            disabled={Object.keys(files).length === 0}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '6px 14px', borderRadius: 8,
+              background: Object.keys(files).length > 0 ? 'var(--theme-accent)' : 'var(--theme-surface)',
+              color: Object.keys(files).length > 0 ? 'white' : 'var(--theme-muted)',
+              border: 'none', cursor: Object.keys(files).length > 0 ? 'pointer' : 'not-allowed',
+              fontSize: 13, fontWeight: 600,
+            }}
+            title="Deploy your app"
+          >
+            <Rocket size={14} /> Deploy
+          </button>
+          {Object.keys(files).length > 0 && (
+            <button
+              onClick={() => setShowGitSyncModal(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '6px 12px', borderRadius: 8,
+                background: gitSyncState === 'synced' ? 'rgba(74,222,128,0.12)' : 'var(--theme-surface)',
+                color: gitSyncState === 'synced' ? '#4ade80' : 'var(--theme-muted)',
+                border: '1px solid var(--theme-border)', cursor: 'pointer',
+                fontSize: 13, fontWeight: 500,
+              }}
+              title="Push to GitHub"
+            >
+              <Github size={14} /> {gitSyncState === 'synced' ? 'Synced' : 'GitHub'}
+            </button>
+          )}
           <button
             onClick={() => setCommandPaletteOpen(true)}
             className="p-1.5 rounded-lg transition hover:bg-white/10"
@@ -2771,30 +2984,15 @@ BUILD IT NOW — output every file completely:`;
 
         {/* ── Left: File Explorer ── */}
         {leftSidebarOpen ? (
-          <div className="w-52 flex flex-col shrink-0 border-r" style={{ background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.07))' }}>
+          <div className="flex flex-col shrink-0 border-r" style={{ width: leftPanelWidth, minWidth: 140, background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.07))' }}>
             <input ref={folderInputRef} type="file" webkitdirectory="" multiple onChange={handleFolderOpen} className="hidden" />
             <input ref={zipInputRef} type="file" accept=".zip" onChange={handleZipUpload} className="hidden" />
             {/* Explorer header */}
             <div className="flex items-center justify-between px-3 py-2 border-b" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.07))' }}>
               <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--theme-muted, #52525b)' }}>Explorer</span>
               <div className="flex items-center gap-0.5">
-                {projectIdFromUrl && token && (
-                  <button
-                    type="button"
-                    onClick={reloadWorkspaceFromServer}
-                    className="p-1 rounded transition hover:bg-white/10"
-                    style={{ color: 'var(--theme-muted, #52525b)' }}
-                    title="Reload file tree from server workspace (GET /projects/{id}/workspace/files)"
-                  >
-                    <RefreshCw className="w-3 h-3" />
-                  </button>
-                )}
-                {devMode && (
-                  <>
-                    <button onClick={() => zipInputRef.current?.click()} className="p-1 rounded transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title="Upload ZIP (bring your code)"><Upload className="w-3 h-3" /></button>
-                    <button onClick={addNewFileToProject} className="p-1 rounded transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title="New file"><Plus className="w-3 h-3" /></button>
-                  </>
-                )}
+                <button onClick={() => zipInputRef.current?.click()} className="p-1 rounded transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title="Upload ZIP (bring your code)"><Upload className="w-3 h-3" /></button>
+                <button onClick={addNewFileToProject} className="p-1 rounded transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title="New file"><Plus className="w-3 h-3" /></button>
                 <button onClick={() => setLeftSidebarOpen(false)} className="p-1 rounded transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title="Collapse sidebar"><PanelLeftClose className="w-3 h-3" /></button>
               </div>
             </div>
@@ -2852,9 +3050,7 @@ BUILD IT NOW — output every file completely:`;
                           {getIcon(name)}
                           <span className="truncate">{name}</span>
                         </button>
-                        {devMode && (
-                          <button onClick={(e) => { e.stopPropagation(); deleteFileFromProject(path); }} className="opacity-0 group-hover:opacity-100 p-1 shrink-0" style={{ color: 'var(--theme-muted)' }} title="Delete"><X className="w-3 h-3" /></button>
-                        )}
+                        <button onClick={(e) => { e.stopPropagation(); deleteFileFromProject(path); }} className="opacity-0 group-hover:opacity-100 p-1 shrink-0" style={{ color: 'var(--theme-muted)' }} title="Delete"><X className="w-3 h-3" /></button>
                       </div>
                     );
                   }
@@ -2900,8 +3096,10 @@ BUILD IT NOW — output every file completely:`;
                       ))}
                     </div>
                   ) : (
-                    <div className="px-3 py-4 text-center text-xs" style={{ color: 'var(--theme-muted)' }}>
-                      Build something to see files
+                    <div className="px-3 py-4 text-center text-xs flex flex-col items-center gap-2" style={{ color: 'var(--theme-muted)' }}>
+                      {isBuilding
+                        ? <><Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--theme-accent)' }} /><span>Generating files...</span></>
+                        : <><FileCode className="w-5 h-5 opacity-40" /><span>Describe an app and press Build</span></>}
                     </div>
                   );
                 }
@@ -2930,6 +3128,18 @@ BUILD IT NOW — output every file completely:`;
           >
             <PanelRightOpen className="w-3.5 h-3.5" />
           </div>
+        )}
+
+        {/* ── Left/Center drag handle ── */}
+        {leftSidebarOpen && (
+          <div
+            onMouseDown={handleLeftDragStart}
+            onDoubleClick={() => { setLeftPanelWidth(208); localStorage.setItem('crucibai_left_panel_width', '208'); }}
+            style={{ width: 4, cursor: 'col-resize', background: 'transparent', flexShrink: 0, zIndex: 10, position: 'relative' }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.5)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            title="Drag to resize · Double-click to reset"
+          />
         )}
 
         {/* ── Center: Chat / Build Steps ── */}
@@ -2972,94 +3182,9 @@ BUILD IT NOW — output every file completely:`;
           {/* Messages area */}
           <div className="flex-1 overflow-y-auto px-5 py-6 space-y-4 min-h-0">
             {messages.length === 0 && !isBuilding && (
-              <div
-                className={`flex flex-col items-center justify-center gap-4 ${projectIdFromUrl ? 'py-8' : 'h-full'}`}
-                style={{ color: 'var(--theme-muted, #3f3f46)' }}
-              >
+              <div className="flex flex-col items-center justify-center h-full gap-4" style={{ color: 'var(--theme-muted, #3f3f46)' }}>
                 <Sparkles className="w-10 h-10" style={{ color: 'var(--theme-input, #27272a)' }} />
                 <p className="text-sm">Describe what you want to build...</p>
-              </div>
-            )}
-
-            {/* Server-sourced build timeline (typed events from orchestration) */}
-            {projectIdFromUrl && token && (
-              <div
-                className="rounded-2xl border overflow-hidden"
-                style={{ background: 'var(--theme-surface, #1C1C1E)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}
-              >
-                <div className="flex items-center gap-2 px-3 py-2 border-b" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.06))', background: 'rgba(0,0,0,0.15)' }}>
-                  <Activity className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--theme-accent)' }} />
-                  <span className="text-xs font-semibold" style={{ color: 'var(--theme-text)' }}>{devMode ? 'Orchestration timeline' : 'Build activity'}</span>
-                  <span className="text-[10px] ml-auto font-mono" style={{ color: 'var(--theme-muted)' }}>{devMode ? 'live' : 'summary'}</span>
-                </div>
-                {devMode ? (
-                  <div className="max-h-56 overflow-y-auto px-2 py-2 space-y-1">
-                    {buildEventsErr && (
-                      <p className="text-xs px-2 py-1" style={{ color: '#f87171' }}>{buildEventsErr}</p>
-                    )}
-                    {!buildEventsErr && buildTimelineEvents.length === 0 && (
-                      <p className="text-xs px-2 py-2" style={{ color: 'var(--theme-muted)' }}>
-                        No server events yet. They appear here when this project runs a build.
-                      </p>
-                    )}
-                    {buildTimelineEvents.slice(-40).map((ev) => {
-                      const { Icon, color, title } = getBuildEventPresentation(ev);
-                      const sub =
-                        ev.message
-                        || (ev.agent ? `${ev.agent}` : '')
-                        || (ev.phase != null ? `Phase ${Number(ev.phase) + 1}` : '')
-                        || (ev.count != null ? `${ev.count} checkpoint(s)` : '');
-                      const timeStr = ev.ts
-                        ? new Date(ev.ts).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-                        : '';
-                      return (
-                        <div
-                          key={`${ev.id}-${ev.ts}-${ev.type}`}
-                          className="workspace-orchestration-event-card flex items-start gap-2 rounded-xl px-2.5 py-2 text-xs border"
-                          style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'var(--theme-border, rgba(255,255,255,0.06))', boxShadow: '0 1px 2px rgba(0,0,0,0.2)' }}
-                        >
-                          <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0 mt-0.5" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                            <Icon className="w-3.5 h-3.5" style={{ color }} />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="font-medium" style={{ color: 'var(--theme-text)' }}>
-                              {title}
-                              {ev.type === 'phase_started' && ev.agents?.length ? ` · ${ev.agents.join(', ')}` : ''}
-                              {ev.type === 'agent_completed' && ev.tokens != null ? ` · ${Number(ev.tokens).toLocaleString()} tok` : ''}
-                            </div>
-                            {sub && <div className="truncate opacity-70" style={{ color: 'var(--theme-muted)' }}>{sub}</div>}
-                          </div>
-                          {timeStr && (
-                            <span className="shrink-0 text-[10px] font-mono mt-0.5" style={{ color: 'var(--theme-muted)' }}>{timeStr}</span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="px-3 py-3">
-                    {buildEventsErr && (
-                      <p className="text-xs" style={{ color: '#f87171' }}>{buildEventsErr}</p>
-                    )}
-                    {!buildEventsErr && buildTimelineEvents.length === 0 && (
-                      <p className="text-xs" style={{ color: 'var(--theme-muted)' }}>Activity will show here when a build runs on this project.</p>
-                    )}
-                    {!buildEventsErr && buildTimelineEvents.length > 0 && (() => {
-                      const ev = buildTimelineEvents[buildTimelineEvents.length - 1];
-                      const { title } = getBuildEventPresentation(ev);
-                      const sub = ev.message || (ev.agent ? String(ev.agent) : '') || '';
-                      return (
-                        <div>
-                          <p className="text-sm font-medium" style={{ color: 'var(--theme-text)' }}>{title}</p>
-                          {sub && <p className="text-xs mt-1 line-clamp-2" style={{ color: 'var(--theme-muted)' }}>{sub}</p>}
-                          {buildTimelineEvents.length > 1 && (
-                            <p className="text-[10px] mt-2" style={{ color: 'var(--theme-muted)' }}>{buildTimelineEvents.length} updates · use Pro for the full timeline</p>
-                          )}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
               </div>
             )}
 
@@ -3074,69 +3199,54 @@ BUILD IT NOW — output every file completely:`;
                     <span className="ml-auto text-xs font-mono" style={{ color: 'var(--theme-muted, #52525b)' }}>{Math.round(buildProgress)}%</span>
                   </div>
                   {/* Segmented progress */}
-                  {devMode ? (
-                    <div className="flex gap-0.5 h-1 rounded-full overflow-hidden mb-3">
-                      {['Planning', 'Architecture', 'Frontend', 'Backend', 'Validation', 'Deploy'].map((phase, i) => (
-                        <div key={phase} className="flex-1 rounded-sm transition-all duration-500" style={{
-                          background: buildProgress > (i * 17) ? (buildProgress === 100 ? '#4ade80' : 'var(--theme-accent)') : 'rgba(255,255,255,0.08)'
-                        }} />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex gap-1 h-1.5 rounded-full overflow-hidden mb-3">
-                      {['Plan', 'Build', 'Polish'].map((phase, i) => (
-                        <div key={phase} className="flex-1 rounded-sm transition-all duration-500" style={{
-                          background: buildProgress > (i * 34) ? (buildProgress === 100 ? '#4ade80' : 'var(--theme-accent)') : 'rgba(255,255,255,0.08)'
-                        }} />
-                      ))}
-                    </div>
-                  )}
-                  {/* Agent steps — Pro only */}
-                  {devMode ? (
-                    <div className="space-y-1.5">
-                      {agentsActivity.length > 0 ? agentsActivity.map((a, i) => (
-                        <div key={i} className="flex items-center gap-2.5 text-xs py-1">
-                          {a.status === 'done' ? (
-                            <div className="w-4 h-4 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(74,222,128,0.15)' }}>
-                              <Check className="w-2.5 h-2.5 text-green-400" />
-                            </div>
-                          ) : a.status === 'running' ? (
-                            <div className="w-4 h-4 flex items-center justify-center shrink-0">
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--theme-accent)' }} />
-                            </div>
-                          ) : (
-                            <div className="w-4 h-4 rounded-full border shrink-0" style={{ borderColor: 'rgba(255,255,255,0.12)' }} />
-                          )}
-                          <span className="font-medium" style={{ color: a.status === 'done' ? '#86efac' : a.status === 'running' ? '#fb923c' : 'var(--theme-muted, #52525b)' }}>
-                            {a.name}
-                          </span>
-                          <span className="truncate opacity-60" style={{ color: 'var(--theme-muted, #3f3f46)' }}>{a.phase}</span>
-                          {a.status === 'done' && <span className="ml-auto shrink-0 text-[10px]" style={{ color: '#4ade80' }}>✓</span>}
-                          {a.status === 'running' && <span className="ml-auto shrink-0 text-[10px] animate-pulse" style={{ color: 'var(--theme-accent)' }}>●</span>}
-                        </div>
-                      )) : (
-                        ['Planner', 'Architect', 'Frontend', 'Styling', 'Logic', 'Validator', 'Optimizer'].map((name, i) => (
-                          <div key={name} className="flex items-center gap-2.5 text-xs py-1">
-                            <div className="w-4 h-4 flex items-center justify-center shrink-0">
-                              {i === 0 ? <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--theme-accent)' }} /> : <div className="w-3 h-3 rounded-full border" style={{ borderColor: 'rgba(255,255,255,0.12)' }} />}
-                            </div>
-                            <span style={{ color: i === 0 ? '#fb923c' : 'var(--theme-muted, #52525b)' }}>{name}</span>
-                            <span className="opacity-50 text-[10px]" style={{ color: 'var(--theme-muted)' }}>
-                              {i === 0 ? 'Planning' : i <= 2 ? 'Generating' : i === 5 ? 'Validating' : 'Queued'}
-                            </span>
+                  <div className="flex gap-0.5 h-1 rounded-full overflow-hidden mb-3">
+                    {['Planning', 'Architecture', 'Frontend', 'Backend', 'Validation', 'Deploy'].map((phase, i) => (
+                      <div key={phase} className="flex-1 rounded-sm transition-all duration-500" style={{
+                        background: buildProgress > (i * 17) ? (buildProgress === 100 ? '#4ade80' : 'var(--theme-accent)') : 'rgba(255,255,255,0.08)'
+                      }} />
+                    ))}
+                  </div>
+                  {/* Agent steps */}
+                  <div className="space-y-1.5">
+                    {agentsActivity.length > 0 ? agentsActivity.map((a, i) => (
+                      <div key={i} className="flex items-center gap-2.5 text-xs py-1">
+                        {a.status === 'done' ? (
+                          <div className="w-4 h-4 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(74,222,128,0.15)' }}>
+                            <Check className="w-2.5 h-2.5 text-green-400" />
                           </div>
-                        ))
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-[11px] leading-relaxed" style={{ color: 'var(--theme-muted)' }}>
-                      We&apos;re generating and checking your app. Turn on <span className="font-medium" style={{ color: 'var(--theme-text)' }}>Pro</span> in the header to see every agent step.
-                    </p>
-                  )}
+                        ) : a.status === 'running' ? (
+                          <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--theme-accent)' }} />
+                          </div>
+                        ) : (
+                          <div className="w-4 h-4 rounded-full border shrink-0" style={{ borderColor: 'rgba(255,255,255,0.12)' }} />
+                        )}
+                        <span className="font-medium" style={{ color: a.status === 'done' ? '#86efac' : a.status === 'running' ? '#fb923c' : 'var(--theme-muted, #52525b)' }}>
+                          {a.name}
+                        </span>
+                        <span className="truncate opacity-60" style={{ color: 'var(--theme-muted, #3f3f46)' }}>{a.phase}</span>
+                        {a.status === 'done' && <span className="ml-auto shrink-0 text-[10px]" style={{ color: '#4ade80' }}>✓</span>}
+                        {a.status === 'running' && <span className="ml-auto shrink-0 text-[10px] animate-pulse" style={{ color: 'var(--theme-accent)' }}>●</span>}
+                      </div>
+                    )) : (
+                      /* Phase placeholders when no agent data yet */
+                      ['Planner', 'Architect', 'Frontend', 'Styling', 'Logic', 'Validator', 'Optimizer'].map((name, i) => (
+                        <div key={name} className="flex items-center gap-2.5 text-xs py-1">
+                          <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                            {i === 0 ? <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--theme-accent)' }} /> : <div className="w-3 h-3 rounded-full border" style={{ borderColor: 'rgba(255,255,255,0.12)' }} />}
+                          </div>
+                          <span style={{ color: i === 0 ? '#fb923c' : 'var(--theme-muted, #52525b)' }}>{name}</span>
+                          <span className="opacity-50 text-[10px]" style={{ color: 'var(--theme-muted)' }}>
+                            {i === 0 ? 'Planning' : i <= 2 ? 'Generating' : i === 5 ? 'Validating' : 'Queued'}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
 
                 {/* Step count badge */}
-                {devMode && agentsActivity.length > 0 && (
+                {agentsActivity.length > 0 && (
                   <div className="flex items-center gap-2 px-2 text-xs" style={{ color: 'var(--theme-muted)' }}>
                     <span>{agentsActivity.filter(a => a.status === 'done').length}/{agentsActivity.length} steps complete</span>
                     <div className="flex-1 h-px" style={{ background: 'var(--theme-border)' }} />
@@ -3156,9 +3266,9 @@ BUILD IT NOW — output every file completely:`;
                 <div
                   className="max-w-[75%] rounded-2xl px-4 py-2.5 text-sm"
                   style={{
-                    background: msg.role === 'user' ? 'var(--chat-user-bg)' : 'var(--chat-ai-bg)',
-                    border: msg.role === 'user' ? 'none' : '1px solid var(--theme-border)',
-                    color: msg.error ? 'var(--chat-error)' : 'var(--chat-text)',
+                    background: msg.role === 'user' ? '#1A1A1A' : 'var(--chat-ai-bg)',
+                    border: msg.role === 'user' ? '1px solid rgba(255,255,255,0.08)' : '1px solid var(--theme-border)',
+                    color: msg.role === 'user' ? '#e4e4e7' : (msg.error ? 'var(--chat-error)' : 'var(--chat-text)'),
                   }}
                 >
                   {msg.isBuilding ? (
@@ -3202,6 +3312,23 @@ BUILD IT NOW — output every file completely:`;
 
           {/* ── Input bar ── */}
           <div className="px-4 pb-4 shrink-0">
+            {/* Guided mode: Quick Build chips */}
+            {!devMode && !isBuilding && versions.length === 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                {['Landing page', 'Dashboard', 'Mobile app', 'E-commerce store', 'AI chatbot', 'Blog'].map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    onClick={() => { setInput(chip); setTimeout(() => chatInputRef.current?.focus(), 0); }}
+                    style={{ padding: '5px 13px', borderRadius: 20, background: 'rgba(255,255,255,0.07)', border: '1.5px solid rgba(255,255,255,0.12)', color: 'var(--theme-muted, #71717a)', fontSize: 12, fontWeight: 500, cursor: 'pointer', transition: 'background 0.15s', whiteSpace: 'nowrap' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+            )}
             {/* Attached files preview */}
             {attachedFiles.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-2">
@@ -3222,7 +3349,7 @@ BUILD IT NOW — output every file completely:`;
                   value={input}
                   onChange={(e) => { setInput(e.target.value); resizeChatInput(); }}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(e); } }}
-                  placeholder={isBuilding ? 'Building your app...' : (versions.length > 0 ? 'Describe changes, fix bugs, add features...' : 'Describe what you want to build...')}
+                  placeholder={isBuilding ? 'Building your app...' : (versions.length > 0 ? (devMode ? 'What would you like to modify or fix?' : 'Describe changes you want...') : (devMode ? 'What would you like to build or modify?' : 'Describe the app you want to build...'))}
                   rows={1}
                   disabled={isBuilding}
                   className="w-full bg-transparent outline-none text-sm resize-none px-4 pt-3.5 pb-1 workspace-chat-input"
@@ -3244,28 +3371,57 @@ BUILD IT NOW — output every file completely:`;
                     {isTranscribing ? <Loader2 className="w-4 h-4 animate-spin" /> : isRecording ? <MicOff className="w-4 h-4 animate-pulse" /> : <Mic className="w-4 h-4" />}
                   </button>
                   <div className="ml-auto flex items-center gap-2">
-                    <select
-                      value={buildMode}
-                      onChange={(e) => setBuildMode(e.target.value)}
-                      className="text-xs rounded-lg px-2.5 py-1.5 outline-none cursor-pointer"
-                      style={{ background: 'var(--theme-surface2, #3f3f46)', color: 'var(--theme-text, #d4d4d8)', border: 'none' }}
-                    >
-                      <option value="agent">Auto</option>
-                      <option value="quick">Quick</option>
-                      <option value="plan">Plan</option>
-                      <option value="swarm">Swarm</option>
-                    </select>
-                    <button
-                      type="submit"
-                      disabled={(!input.trim() && attachedFiles.length === 0) || isBuilding}
-                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-sm font-semibold transition disabled:opacity-40"
-                      style={{ background: 'white', color: 'black' }}
-                    >
-                      {isBuilding
-                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        : <Send className="w-3.5 h-3.5" />}
-                      {isBuilding ? 'Building...' : versions.length > 0 ? 'Update' : 'Build'}
-                    </button>
+                    {devMode && (
+                      <select
+                        value={buildMode}
+                        onChange={(e) => setBuildMode(e.target.value)}
+                        className="text-xs rounded-lg px-2.5 py-1.5 outline-none cursor-pointer"
+                        style={{ background: 'var(--theme-surface2, #3f3f46)', color: 'var(--theme-text, #d4d4d8)', border: 'none' }}
+                      >
+                        <option value="agent">Auto</option>
+                        <option value="quick">Quick</option>
+                        <option value="plan">Plan</option>
+                        <option value="swarm">Swarm</option>
+                      </select>
+                    )}
+                    {isBuilding ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // Cancel the in-flight build
+                          if (buildAbortRef.current) {
+                            buildAbortRef.current.abort();
+                            buildAbortRef.current = null;
+                          }
+                          setIsBuilding(false);
+                          setBuildProgress(0);
+                          setCurrentPhase('');
+                          addLog('Build cancelled by user.', 'warn', 'system');
+                          setMessages(prev => prev.map((m, i) =>
+                            i === prev.length - 1 && m.isBuilding
+                              ? { ...m, content: 'Build cancelled.', isBuilding: false }
+                              : m
+                          ));
+                        }}
+                        className="flex items-center gap-1.5 rounded-xl text-sm font-semibold transition"
+                        style={{ background: '#ef4444', color: 'white', padding: devMode ? '6px 16px' : '9px 22px', fontSize: devMode ? undefined : 14 }}
+                        title="Stop build"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        Stop
+                      </button>
+                    ) : (
+                      <button
+                        type="submit"
+                        disabled={!input.trim() && attachedFiles.length === 0}
+                        className="flex items-center gap-1.5 rounded-xl text-sm font-semibold transition disabled:opacity-40"
+                        style={{ background: 'white', color: 'black', padding: devMode ? '6px 14px' : '9px 20px', fontSize: devMode ? undefined : 14 }}
+                        title="Send (Enter)"
+                      >
+                        <ArrowUp className="w-4 h-4" />
+                        {versions.length > 0 ? (devMode ? 'Update' : 'Update') : (devMode ? 'Build' : 'Build')}
+                      </button>
+                    )}
                   </div>
                 </div>
               </form>
@@ -3273,36 +3429,70 @@ BUILD IT NOW — output every file completely:`;
           </div>
         </div>
 
+        {/* ── Center/Right drag handle ── */}
+        {rightSidebarOpen && (
+          <div
+            onMouseDown={handleRightDragStart}
+            onDoubleClick={() => { setRightPanelWidth(null); localStorage.removeItem('crucibai_right_panel_width'); }}
+            style={{ width: 4, cursor: 'col-resize', background: 'transparent', flexShrink: 0, zIndex: 10 }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.5)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            title="Drag to resize · Double-click to reset"
+          />
+        )}
         {/* ── Right: Preview + Code Editor (collapsible) ── */}
         {rightSidebarOpen ? (
-        <div className="workspace-right-panel flex flex-col shrink-0 border-l" style={{ width: '46%', background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
+        <div className="workspace-right-panel flex flex-col shrink-0 border-l" style={{ position: 'relative', width: rightPanelWidth ? rightPanelWidth : '44%', minWidth: 280, background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
+
           {/* Manus-style tab bar */}
-          <div className="h-11 flex items-center px-2 border-b shrink-0 gap-0.5 overflow-x-auto" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.08))', scrollbarWidth: 'none' }}>
-            {workbenchTabs.map((tab) => (
+          <div className="h-10 flex items-center px-1 border-b shrink-0 gap-0.5" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.08))', position: 'relative', overflow: 'hidden' }}>
+            {/* Scrollable tabs — constrained to leave room for action icons */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 2, overflowX: 'auto', scrollbarWidth: 'none', paddingRight: 120, flex: 1 }}>
+            {(devMode
+              ? [
+                  { id: 'preview', label: 'Preview', icon: Eye },
+                  { id: 'code', label: 'Code', icon: FileCode },
+                  { id: 'console', label: 'Console', icon: Terminal },
+                  { id: 'dashboard', label: 'Dashboard', icon: Activity },
+                  { id: 'database', label: 'Database', icon: Database },
+                  { id: 'agents', label: 'Agents', icon: Network },
+                  { id: 'passes', label: 'Passes', icon: Layers },
+                  ...(projectIdFromUrl ? [{ id: 'history', label: 'History', icon: History }] : []),
+                ]
+              : [
+                  { id: 'preview', label: 'Preview', icon: Eye },
+                  { id: 'dashboard', label: 'Dashboard', icon: Activity },
+                  { id: 'passes', label: 'Passes', icon: Layers },
+                ]
+            ).map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActivePanel(tab.id)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition shrink-0"
+                title={tab.label}
+                className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium transition shrink-0"
                 style={{
                   background: activePanel === tab.id ? 'rgba(255,255,255,0.1)' : 'transparent',
                   color: activePanel === tab.id ? 'var(--theme-text, #e4e4e7)' : 'var(--theme-muted, #52525b)',
                   borderBottom: activePanel === tab.id ? '1.5px solid var(--theme-accent, #3b82f6)' : '1.5px solid transparent',
                   borderRadius: activePanel === tab.id ? '8px 8px 0 0' : '8px',
+                  whiteSpace: 'nowrap',
                 }}
               >
-                <tab.icon className="w-3.5 h-3.5" />
-                {tab.label}
+                <tab.icon className="w-3.5 h-3.5 shrink-0" />
+                <span style={{ fontSize: 10.5 }}>{tab.label}</span>
               </button>
             ))}
-            <div className="ml-auto flex items-center gap-1">
+            </div>{/* end scrollable tabs */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 2, position: 'absolute', right: 4, top: 0, bottom: 0, background: 'var(--theme-surface, #18181B)', paddingLeft: 8, borderLeft: '1px solid var(--theme-border, rgba(255,255,255,0.06))' }}>
               {activePanel === 'preview' && (
                 <>
-                  {devMode && (
-                    <button onClick={() => setMobileView(v => !v)} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title={mobileView ? 'Desktop view' : 'Mobile view'}>
-                      {mobileView ? <Monitor className="w-3.5 h-3.5" /> : <Smartphone className="w-3.5 h-3.5" />}
-                    </button>
-                  )}
-                  <button onClick={() => { const c = { ...files }; setFiles({}); setTimeout(() => setFiles(c), 50); }} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title="Refresh preview">
+                  <button onClick={() => setMobileView(v => !v)} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title={mobileView ? 'Desktop view' : 'Mobile view'}>
+                    {mobileView ? <Monitor className="w-3.5 h-3.5" /> : <Smartphone className="w-3.5 h-3.5" />}
+                  </button>
+                  <button onClick={() => {
+                    const newKey = `fk_refresh_${Date.now()}`;
+                    setFilesReadyKey(newKey);
+                  }} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title="Refresh preview">
                     <RefreshCw className="w-3.5 h-3.5" />
                   </button>
                 </>
@@ -3331,14 +3521,7 @@ BUILD IT NOW — output every file completely:`;
               >
                 <Share2 className="w-3.5 h-3.5" />
               </button>
-              <button
-                onClick={() => setShowDeployModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ml-1 transition"
-                style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--theme-text, #e4e4e7)' }}
-              >
-                <Rocket className="w-3 h-3" />
-                Deploy
-              </button>
+
               <button
                 onClick={() => setRightSidebarOpenPersisted(false)}
                 className="p-1.5 rounded-lg transition hover:bg-white/10"
@@ -3352,16 +3535,41 @@ BUILD IT NOW — output every file completely:`;
           </div>
 
           {/* Panel content */}
-          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-hidden">
+            {/* Guided mode Build Guide panel */}
+            {!devMode && activePanel === 'guide' && (
+              <div style={{ height: '100%', overflowY: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ marginBottom: 4 }}>
+                  <p style={{ fontSize: 15, fontWeight: 700, margin: '0 0 4px', color: 'var(--theme-text)' }}>Build Guide</p>
+                  <p style={{ fontSize: 12, color: 'var(--theme-muted)', margin: 0 }}>Follow these steps to create your app</p>
+                </div>
+                {[
+                  { step: 1, title: 'Describe your app', desc: 'Type what you want to build in the chat. Be as specific as you like — mention features, colors, or styles.', done: false },
+                  { step: 2, title: 'Review the preview', desc: 'Your app will appear in the Preview tab as it builds. You can watch it come together in real time.', done: false },
+                  { step: 3, title: 'Download or Deploy', desc: 'When you\u2019re happy with the result, download the code or click Deploy to publish it live.', done: false },
+                ].map(({ step, title, desc, done }) => (
+                  <div key={step} style={{ background: 'var(--theme-surface)', borderRadius: 12, padding: '16px 18px', border: '1.5px solid rgba(255,255,255,0.1)', display: 'flex', gap: 14 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: done ? '#10b981' : 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: done ? '#fff' : 'var(--theme-muted)', flexShrink: 0 }}>
+                      {step}
+                    </div>
+                    <div>
+                      <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px', color: 'var(--theme-text)' }}>{title}</p>
+                      <p style={{ fontSize: 12, color: 'var(--theme-muted)', margin: 0, lineHeight: 1.5 }}>{desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Preview — always mounted so Sandpack never loses files on tab switch */}
             <div style={{ display: activePanel === 'preview' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
               {/* Show placeholder when no build yet */}
-              {(currentVersion === null || filesReadyKey === 'default') && !isBuilding ? (
+              {Object.keys(files).length <= 1 && !isBuilding ? (
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--theme-bg)', color: 'var(--theme-muted)', flexDirection: 'column', gap: 12 }}>
                   <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
                   <p style={{ fontSize: 13 }}>Build something to see the preview</p>
                 </div>
-              ) : (currentVersion === null || filesReadyKey === 'default') && isBuilding ? (
+              ) : Object.keys(files).length <= 1 && isBuilding ? (
                 /* ── BUILDING SKELETON — Manus-style live preview placeholder ── */
                 <div style={{ flex: 1, background: 'var(--theme-bg)', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div style={{ height: 48, borderRadius: 8, background: 'rgba(255,255,255,0.04)', animation: 'pulse 1.5s ease-in-out infinite' }} />
@@ -3382,29 +3590,59 @@ BUILD IT NOW — output every file completely:`;
                 </div>
               ) : lastBuildKind === 'mobile' ? (
                 /* ── MOBILE PREVIEW: Expo Snack iframe ── */
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--theme-bg)' }}>
-                  <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--theme-border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e' }} />
-                    <span style={{ fontSize: 11, color: 'var(--theme-muted)' }}>Mobile Preview — Expo Snack</span>
-                    <a
-                      href={`https://snack.expo.dev/?code=${encodeURIComponent(files['/App.tsx']?.code || files['/App.jsx']?.code || files['/App.js']?.code || '')}&platform=ios&supportedPlatforms=ios,android,web&name=CrucibAI+Build&description=Built+with+CrucibAI`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--theme-accent)', textDecoration: 'underline' }}
-                    >
-                      Open in Expo Snack ↗
-                    </a>
-                  </div>
-                  <iframe
-                    src={`https://snack.expo.dev/embedded?code=${encodeURIComponent(files['/App.tsx']?.code || files['/App.jsx']?.code || files['/App.js']?.code || '')}&platform=ios&preview=true&theme=dark`}
-                    style={{ flex: 1, border: 'none', width: '100%' }}
-                    allow="accelerometer; camera; geolocation; gyroscope; microphone"
-                    title="Mobile Preview"
-                  />
-                </div>
+                (() => {
+                  const mobileCode = files['/App.tsx']?.code || files['/App.jsx']?.code || files['/App.js']?.code || '';
+                  const snackUrl = mobileCode.length < 3000
+                    ? `https://snack.expo.dev/embedded?code=${encodeURIComponent(mobileCode)}&platform=ios&preview=true&theme=dark`
+                    : 'https://snack.expo.dev/embedded?platform=ios&preview=true&theme=dark';
+                  const snackOpenUrl = `https://snack.expo.dev/?code=${encodeURIComponent(mobileCode.slice(0, 3000))}&platform=ios&supportedPlatforms=ios,android,web&name=CrucibAI+Build&description=Built+with+CrucibAI`;
+                  return (
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--theme-bg)' }}>
+                      <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--theme-border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e' }} />
+                        <span style={{ fontSize: 11, color: 'var(--theme-muted)' }}>Mobile Preview — Expo Snack</span>
+                        {mobileCode.length >= 3000 && (
+                          <span style={{ fontSize: 10, color: '#fbbf24', background: 'rgba(251,191,36,0.1)', padding: '2px 6px', borderRadius: 4, marginLeft: 4 }}>App too large for inline preview</span>
+                        )}
+                        <a
+                          href={snackOpenUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--theme-accent)', textDecoration: 'underline' }}
+                        >
+                          Open in Expo Snack ↗
+                        </a>
+                      </div>
+                      {mobileCode.length >= 3000 ? (
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, color: 'var(--theme-muted)', padding: 24 }}>
+                          <Smartphone style={{ width: 40, height: 40, opacity: 0.3 }} />
+                          <div style={{ textAlign: 'center' }}>
+                            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--theme-text)', marginBottom: 6 }}>App code too large for inline preview</p>
+                            <p style={{ fontSize: 12, color: 'var(--theme-muted)', marginBottom: 16, maxWidth: 280 }}>Your app has {mobileCode.length.toLocaleString()} characters. Open in Expo Snack to preview on a simulated device.</p>
+                            <a
+                              href={snackOpenUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 8, background: 'var(--theme-accent)', color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 600 }}
+                            >
+                              Open in Expo Snack <ExternalLink style={{ width: 13, height: 13 }} />
+                            </a>
+                          </div>
+                        </div>
+                      ) : (
+                        <iframe
+                          src={snackUrl}
+                          style={{ flex: 1, border: 'none', width: '100%' }}
+                          allow="accelerometer; camera; geolocation; gyroscope; microphone"
+                          title="Mobile Preview"
+                        />
+                      )}
+                    </div>
+                  );
+                })()
               ) : (
               <SandpackProvider
-                key={filesReadyKey || 'default'}
+                key={filesReadyKey !== 'default' ? filesReadyKey : (Object.keys(files).length > 1 ? `fk_auto_${Object.keys(files).length}_${Object.keys(files).join('').length}` : 'default')}
                 files={sandpackFiles}
                 theme={document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'}
                 template="react"
@@ -3469,7 +3707,7 @@ BUILD IT NOW — output every file completely:`;
                   }
                   value={files[activeFile]?.code || ''}
                   onChange={handleCodeChange}
-                  theme={workspaceTheme === 'light' ? 'vs' : 'vs-dark'}
+                  theme={document.documentElement.getAttribute('data-theme') === 'light' ? 'vs' : 'vs-dark'}
                   options={{
                     minimap: { enabled: false },
                     fontSize: 13,
@@ -3485,34 +3723,7 @@ BUILD IT NOW — output every file completely:`;
             )}
 
             {activePanel === 'console' && (
-              <div className="flex flex-col h-full min-h-0">
-                <div className="shrink-0 flex flex-wrap items-center gap-1.5 px-3 py-2 border-b" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.07))' }}>
-                  <span className="text-[10px] font-semibold uppercase tracking-wider mr-1" style={{ color: 'var(--theme-muted)' }}>Filter</span>
-                  {[
-                    { id: 'all', label: 'All' },
-                    { id: 'error', label: 'Errors' },
-                    { id: 'build', label: 'Build' },
-                    { id: 'system', label: 'System' },
-                  ].map((f) => (
-                    <button
-                      key={f.id}
-                      type="button"
-                      onClick={() => setConsoleFilter(f.id)}
-                      className="text-[10px] px-2 py-0.5 rounded-md font-medium transition"
-                      style={{
-                        background: consoleFilter === f.id ? 'rgba(255,255,255,0.12)' : 'transparent',
-                        color: consoleFilter === f.id ? 'var(--theme-text)' : 'var(--theme-muted)',
-                        border: `1px solid ${consoleFilter === f.id ? 'var(--theme-border)' : 'transparent'}`,
-                      }}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex-1 min-h-0">
-                  <ConsolePanel logs={filteredConsoleLogs} placeholder="Build logs appear here. Press Build to start." />
-                </div>
-              </div>
+              <ConsolePanel logs={logs} placeholder="Build logs appear here. Press Build to start." />
             )}
             {activePanel === 'history' && projectIdFromUrl && (
               <BuildHistoryPanel buildHistory={buildHistoryList} projectId={projectIdFromUrl} loading={buildHistoryLoading} />
@@ -3521,32 +3732,32 @@ BUILD IT NOW — output every file completely:`;
             {/* ── Dashboard tab (Manus-style project ops) ── */}
             {activePanel === 'dashboard' && (
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                {/* Project header */}
+                {/* Project header — uses live dashboardData if available */}
                 <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2, #111)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--theme-muted)' }}>Project</div>
                       <div className="font-semibold text-sm" style={{ color: 'var(--theme-text)' }}>
-                        {messages.find(m => m.role === 'user')?.content?.toString().slice(0, 40) || 'Untitled build'}
+                        {dashboardData?.title || dashboardData?.prompt?.slice(0, 40) || messages.find(m => m.role === 'user')?.content?.toString().slice(0, 40) || 'Untitled build'}
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium" style={{
-                      background: versions.length > 0 ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.06)',
-                      color: versions.length > 0 ? '#86efac' : 'var(--theme-muted)'
+                      background: (dashboardData?.status === 'complete' || versions.length > 0) ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.06)',
+                      color: (dashboardData?.status === 'complete' || versions.length > 0) ? '#86efac' : 'var(--theme-muted)'
                     }}>
-                      <div className="w-1.5 h-1.5 rounded-full" style={{ background: versions.length > 0 ? '#86efac' : 'var(--theme-muted)' }} />
-                      {versions.length > 0 ? 'Built' : 'Not built'}
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ background: (dashboardData?.status === 'complete' || versions.length > 0) ? '#86efac' : 'var(--theme-muted)' }} />
+                      {dashboardData?.status || (versions.length > 0 ? 'Built' : 'Not built')}
                     </div>
                   </div>
                   <div className="mt-3 pt-3 border-t flex gap-4 text-xs" style={{ borderColor: 'var(--theme-border)' }}>
-                    <div><span style={{ color: 'var(--theme-muted)' }}>Files</span><span className="ml-2 font-medium" style={{ color: 'var(--theme-text)' }}>{Object.keys(files).length}</span></div>
+                    <div><span style={{ color: 'var(--theme-muted)' }}>Files</span><span className="ml-2 font-medium" style={{ color: 'var(--theme-text)' }}>{dashboardData?.total_files || Object.keys(files).length}</span></div>
                     <div><span style={{ color: 'var(--theme-muted)' }}>Versions</span><span className="ml-2 font-medium" style={{ color: 'var(--theme-text)' }}>{versions.length}</span></div>
                     <div><span style={{ color: 'var(--theme-muted)' }}>Progress</span><span className="ml-2 font-medium" style={{ color: 'var(--theme-text)' }}>{Math.round(buildProgress)}%</span></div>
                   </div>
                 </div>
 
-                {/* Feature badges — Pro */}
-                {devMode && versions.length > 0 && (
+                {/* Feature badges */}
+                {versions.length > 0 && (
                   <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
                     <div className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--theme-muted)' }}>Features Detected</div>
                     <div className="flex flex-wrap gap-2">
@@ -3565,8 +3776,8 @@ BUILD IT NOW — output every file completely:`;
                   </div>
                 )}
 
-                {/* Quality score — Pro */}
-                {devMode && qualityGateResult && (
+                {/* Quality score */}
+                {qualityGateResult && (
                   <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
                     <div className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--theme-muted)' }}>Quality Score</div>
                     <div className="flex items-center gap-3">
@@ -3581,17 +3792,6 @@ BUILD IT NOW — output every file completely:`;
                 {/* Deploy actions */}
                 <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
                   <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--theme-muted)' }}>Publish & Deploy</div>
-                  {projectLiveUrl && (
-                    <a
-                      href={projectLiveUrl.startsWith('http') ? projectLiveUrl : `https://${projectLiveUrl}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold mb-2 transition hover:bg-white/5 border"
-                      style={{ borderColor: 'rgba(74,222,128,0.35)', color: '#86efac' }}
-                    >
-                      <Globe className="w-3.5 h-3.5 shrink-0" /> Live site
-                    </a>
-                  )}
                   <div className="space-y-2">
                     <button onClick={downloadCode} disabled={Object.keys(files).length === 0} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-medium transition hover:bg-white/5 border disabled:opacity-40" style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text)' }}>
                       <Download className="w-3.5 h-3.5" /> Download ZIP
@@ -3620,40 +3820,218 @@ BUILD IT NOW — output every file completely:`;
               </div>
             )}
 
-            <WorkspaceProPanels
-              activePanel={activePanel}
-              projectIdFromUrl={projectIdFromUrl}
-              token={token}
-              serverDbErr={serverDbErr}
-              serverDbLoading={serverDbLoading}
-              serverDbSnapshots={serverDbSnapshots}
-              dbPanelMerge={dbPanelMerge}
-              setFiles={setFiles}
-              setActiveFile={setActiveFile}
-              setActivePanel={setActivePanel}
-              serverDocsErr={serverDocsErr}
-              serverDocsLoading={serverDocsLoading}
-              mergedDocFiles={mergedDocFiles}
-              docsSelectedPath={docsSelectedPath}
-              setDocsSelectedPath={setDocsSelectedPath}
-              analyticsErr={analyticsErr}
-              analyticsLoading={analyticsLoading}
-              analyticsData={analyticsData}
-              buildHistoryList={buildHistoryList}
-              buildTimelineEvents={buildTimelineEvents}
-              agentsActivity={agentsActivity}
-              agentApiStatuses={agentApiStatuses}
-              projectSandboxErr={projectSandboxErr}
-              projectSandboxLoading={projectSandboxLoading}
-              projectSandboxLogs={projectSandboxLogs}
-              files={files}
-              versions={versions}
-              buildHistoryLoading={buildHistoryLoading}
-              isBuilding={isBuilding}
-              sandpackFiles={sandpackFiles}
-              projectBuildProgress={projectBuildProgress}
-              currentPhase={currentPhase}
-            />
+            {/* ── Database tab (Manus-style) ── */}
+            {activePanel === 'database' && (
+              <div className="flex-1 overflow-y-auto p-4">
+                {/* Issue #5: Use live appDbSchema if available, fall back to local files */}
+                {(appDbSchema || Object.keys(files).filter(f => f.includes('schema') || f.includes('.sql') || f.includes('migration') || f.includes('db.')).length > 0) ? (
+                  <div className="space-y-3">
+                    {appDbSchema && (
+                      <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
+                        <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--theme-muted)' }}>Live Schema ({(appDbSchema.tables || []).length} tables)</div>
+                        {(appDbSchema.tables || []).map(t => (
+                          <div key={t} className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs mb-1" style={{ background: 'rgba(255,255,255,0.03)', color: 'var(--theme-text)' }}>
+                            <div className="w-2 h-2 rounded-sm" style={{ background: '#3b82f6' }} />
+                            {t}
+                          </div>
+                        ))}
+                        {appDbSchema.tables_sql && (
+                          <details className="mt-3">
+                            <summary className="text-xs cursor-pointer" style={{ color: 'var(--theme-muted)' }}>View Full Schema SQL</summary>
+                            <pre className="mt-2 p-3 rounded-lg text-[10px] overflow-x-auto" style={{ background: 'rgba(0,0,0,0.3)', color: 'var(--theme-text)', whiteSpace: 'pre-wrap' }}>{appDbSchema.tables_sql}</pre>
+                          </details>
+                        )}
+                      </div>
+                    )}
+                    {!appDbSchema && (
+                      <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
+                        <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--theme-muted)' }}>Schema Files</div>
+                        <div className="space-y-2">
+                          {Object.keys(files).filter(f => f.includes('schema') || f.includes('.sql') || f.includes('migration') || f.includes('db.')).map(f => (
+                            <button key={f} onClick={() => { setActiveFile(f); setActivePanel('code'); }} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs text-left transition hover:bg-white/5 border" style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text)' }}>
+                              <Database className="w-3.5 h-3.5 shrink-0" style={{ color: '#60a5fa' }} />
+                              <span className="truncate">{f.replace(/^\//, '')}</span>
+                              <span className="ml-auto shrink-0" style={{ color: 'var(--theme-muted)' }}>{files[f]?.code?.split('\n').length || 0}L</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* Show table names extracted from local schema if no live schema */}
+                    {!appDbSchema && (() => {
+                      const schemaContent = Object.entries(files).filter(([k]) => k.includes('schema') || k.includes('.sql')).map(([,v]) => v?.code || '').join('\n');
+                      const tables = [...schemaContent.matchAll(/CREATE TABLE(?:\s+IF NOT EXISTS)?\s+"?(\w+)"?/gi)].map(m => m[1]);
+                      return tables.length > 0 ? (
+                        <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
+                          <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--theme-muted)' }}>Tables ({tables.length})</div>
+                          <div className="space-y-1.5">
+                            {tables.map(t => (
+                              <div key={t} className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs" style={{ background: 'rgba(255,255,255,0.03)', color: 'var(--theme-text)' }}>
+                                <div className="w-2 h-2 rounded-sm" style={{ background: '#3b82f6' }} />
+                                {t}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full gap-3 py-12" style={{ color: 'var(--theme-muted)' }}>
+                    <Database className="w-8 h-8 opacity-30" />
+                    <div className="text-center">
+                      <div className="text-sm font-medium mb-1">No database schema yet</div>
+                      <div className="text-xs opacity-70">Build a fullstack or SaaS app to generate DB schema</div>
+                    </div>
+                    {taskIdFromUrl && token && (
+                      <button
+                        onClick={() => axios.post(`${API}/app-db/provision`, { task_id: taskIdFromUrl, prompt: messages.find(m => m.role === 'user')?.content || '' }, { headers: { Authorization: `Bearer ${token}` } }).then(() => {}).catch(() => {})}
+                        className="px-4 py-2 rounded-lg text-xs font-medium transition" style={{ background: 'var(--theme-accent)', color: 'white' }}
+                      >Generate Schema</button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Agent Graph tab — CrucibAI unique ── */}
+            {activePanel === 'agents' && (
+              <div className="flex-1 overflow-y-auto" style={{ padding: 0 }}>
+                {/* Header strip */}
+                <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--theme-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--theme-surface2)' }}>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--theme-text)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Live Execution</div>
+                    <div style={{ fontSize: 11, color: 'var(--theme-muted)', marginTop: 2 }}>122 agents · DAG · real-time</div>
+                  </div>
+                  {isBuilding && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', background: 'rgba(59,130,246,0.12)', borderRadius: 20, border: '1px solid rgba(59,130,246,0.25)' }}>
+                      <Loader2 style={{ width: 10, height: 10, color: '#60a5fa' }} className="animate-spin" />
+                      <span style={{ fontSize: 10, color: '#93c5fd', fontWeight: 600 }}>BUILDING</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Active skill banner */}
+                {isBuilding && activeSkillName && (
+                  <div style={{ padding: '8px 16px', background: 'rgba(59,130,246,0.08)', borderBottom: '1px solid rgba(59,130,246,0.15)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 12 }}>⚡</span>
+                    <span style={{ fontSize: 11, color: 'var(--theme-muted)' }}>Skill:</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: '#93c5fd' }}>{activeSkillName}</span>
+                  </div>
+                )}
+
+                {/* LIVE TIMELINE — shows step_started/step_complete events in real-time */}
+                {liveSteps.length > 0 ? (
+                  <div style={{ padding: '12px 16px' }}>
+                    <div style={{ marginBottom: 12, fontSize: 11, color: 'var(--theme-muted)', display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Phase execution</span>
+                      <span>{liveSteps.filter(s => s.status === 'complete').length}/{liveSteps.length} done</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {liveSteps.map((step, i) => (
+                        <div key={step.name || i} style={{
+                          display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
+                          borderRadius: 10, border: '1px solid var(--theme-border)',
+                          background: step.status === 'running'
+                            ? 'rgba(59,130,246,0.06)'
+                            : step.status === 'complete'
+                            ? 'rgba(74,222,128,0.04)'
+                            : 'rgba(255,255,255,0.02)',
+                          transition: 'all 0.3s ease',
+                        }}>
+                          {/* Status icon */}
+                          <div style={{ width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                            background: step.status === 'complete' ? 'rgba(74,222,128,0.15)'
+                              : step.status === 'running' ? 'rgba(59,130,246,0.15)'
+                              : 'rgba(255,255,255,0.05)'
+                          }}>
+                            {step.status === 'complete'
+                              ? <Check style={{ width: 12, height: 12, color: '#4ade80' }} />
+                              : step.status === 'running'
+                              ? <Loader2 style={{ width: 12, height: 12, color: '#60a5fa' }} className="animate-spin" />
+                              : <div style={{ width: 8, height: 8, borderRadius: '50%', border: '1.5px solid var(--theme-muted)', opacity: 0.4 }} />
+                            }
+                          </div>
+                          {/* Step info */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12, fontWeight: step.status === 'running' ? 700 : 500,
+                              color: step.status === 'complete' ? '#86efac'
+                                : step.status === 'running' ? '#93c5fd'
+                                : 'var(--theme-muted)',
+                              marginBottom: 1
+                            }}>
+                              {step.name}
+                            </div>
+                            {(step.desc || step.filesCount) && (
+                              <div style={{ fontSize: 10, color: 'var(--theme-muted)', opacity: 0.7 }}>
+                                {step.status === 'complete' && step.filesCount ? `${step.filesCount} files` : (step.desc || '')}
+                                {step.status === 'complete' && step.durationMs ? ` · ${(step.durationMs/1000).toFixed(1)}s` : ''}
+                              </div>
+                            )}
+                          </div>
+                          {/* Step number badge */}
+                          <div style={{ fontSize: 10, color: 'var(--theme-muted)', opacity: 0.5, flexShrink: 0 }}>
+                            {step.stepNum || i+1}/{step.total || liveSteps.length}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Progress bar */}
+                    <div style={{ marginTop: 16, height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%', borderRadius: 2, transition: 'width 0.5s ease',
+                        width: `${Math.round(liveSteps.filter(s => s.status === 'complete').length / Math.max(liveSteps.length, 1) * 100)}%`,
+                        background: 'linear-gradient(90deg, #3b82f6, #4ade80)'
+                      }} />
+                    </div>
+                  </div>
+                ) : (
+                  /* Pre-build: show static DAG phase map */
+                  <div style={{ padding: '12px 16px' }}>
+                    <div style={{ fontSize: 11, color: 'var(--theme-muted)', marginBottom: 10 }}>
+                      {isBuilding ? 'Initializing build phases...' : 'Run a build to see live execution'}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      {[
+                        { name: 'Planner', desc: 'Intent parsing, task decomposition', color: '#a78bfa' },
+                        { name: 'Architect', desc: 'System design, component structure', color: '#60a5fa' },
+                        { name: 'Frontend', desc: 'UI components, pages, styling', color: '#34d399' },
+                        { name: 'Backend', desc: 'API routes, services, middleware', color: '#34d399' },
+                        { name: 'Database', desc: 'Schema, migrations, ORM', color: '#60a5fa' },
+                        { name: 'Validator', desc: 'Syntax checking, type safety', color: '#fbbf24' },
+                      ].map((a, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 8,
+                          background: 'rgba(255,255,255,0.025)', border: '1px solid var(--theme-border)' }}>
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: a.color, flexShrink: 0 }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--theme-text)' }}>{a.name}</div>
+                            <div style={{ fontSize: 10, color: 'var(--theme-muted)', opacity: 0.7 }}>{a.desc}</div>
+                          </div>
+                          {isBuilding && <Loader2 style={{ width: 10, height: 10, color: 'var(--theme-muted)' }} className="animate-pulse" />}
+                        </div>
+                      ))}
+                      <div style={{ textAlign: 'center', padding: '8px 0', fontSize: 10, color: 'var(--theme-muted)', opacity: 0.5 }}>
+                        + 116 specialized agents in 8 phases
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Pass History tab — CrucibAI unique ── */}
+            {activePanel === 'passes' && (
+              <PassesTab
+                taskId={taskIdFromUrl}
+                files={files}
+                versions={versions}
+                token={token}
+                API={API}
+                liveSteps={liveSteps}
+                isBuilding={isBuilding}
+              />
+            )}
           </div>
         </div>
         ) : (
@@ -3670,154 +4048,396 @@ BUILD IT NOW — output every file completely:`;
         )}
       </div>
 
-      {/* ── Deploy modal ── */}
+      {/* ── Deploy modal — Native one-click deploy ── */}
       {showDeployModal && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.75)' }} onClick={() => setShowDeployModal(false)}>
-          <div className="rounded-2xl shadow-2xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto p-6 border" style={{ background: 'var(--theme-surface, #1C1C1E)', borderColor: 'var(--theme-border, rgba(255,255,255,0.1))' }} onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-white mb-1">Deploy your app</h3>
-            <p className="text-sm mb-4" style={{ color: 'var(--theme-muted, #71717a)' }}>Use your saved project for server packages and one-click deploy, or export from the editor.</p>
+        <div
+          className="fixed inset-0 z-[300] flex items-center justify-center"
+          style={{ background: 'rgba(0,0,0,0.75)' }}
+          onClick={() => { setShowDeployModal(false); setDeployZipDone(false); setDeploySteps(null); }}
+        >
+          <div
+            className="rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 border"
+            style={{ background: 'var(--theme-surface, #1C1C1E)', borderColor: 'var(--theme-border, rgba(255,255,255,0.1))' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Rocket style={{ color: 'var(--theme-accent)', width: 18, height: 18 }} />
+                <h3 className="text-lg font-semibold" style={{ color: 'var(--theme-text)', margin: 0 }}>Deploy your app</h3>
+              </div>
+              <button
+                onClick={() => { setShowDeployModal(false); }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-muted)', fontSize: 18, lineHeight: 1, padding: 4 }}
+              >×</button>
+            </div>
 
-            {projectLiveUrl && (
-              <a
-                href={projectLiveUrl.startsWith('http') ? projectLiveUrl : `https://${projectLiveUrl}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold mb-4 transition hover:opacity-90"
-                style={{ background: 'rgba(74,222,128,0.15)', color: '#86efac', border: '1px solid rgba(74,222,128,0.35)' }}
-              >
-                <Globe className="w-4 h-4" /> Open live site
-              </a>
+            {/* Checking state */}
+            {deployHasToken === null && (
+              <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--theme-muted)', fontSize: 13 }}>
+                <Loader2 className="w-5 h-5 animate-spin" style={{ margin: '0 auto 8px', color: 'var(--theme-accent)' }} />
+                Checking deploy configuration...
+              </div>
             )}
 
-            {projectIdFromUrl && token && (
-              <div className="mb-4 space-y-2">
-                <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--theme-muted)' }}>This project (API)</div>
-                <button
-                  type="button"
-                  onClick={downloadServerDeployZip}
-                  disabled={deployZipBusy}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition hover:bg-white/5 border disabled:opacity-50"
-                  style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.1))', color: 'var(--theme-text, #e4e4e7)' }}
-                >
-                  {deployZipBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                  Download deploy ZIP (server build)
-                </button>
-                <div className="grid grid-cols-2 gap-2">
+            {/* No Vercel token — show connect section */}
+            {deployHasToken === false && deployState === 'idle' && (
+              <div>
+                <div style={{ padding: '16px', background: 'rgba(224,90,37,0.08)', borderRadius: 12, border: '1px solid rgba(224,90,37,0.25)', marginBottom: 16 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--theme-text)', marginBottom: 6 }}>Connect Vercel to deploy</p>
+                  <p style={{ fontSize: 13, color: 'var(--theme-muted)', marginBottom: 12 }}>Add your Vercel API token in Settings to enable one-click deployment.</p>
                   <button
-                    type="button"
-                    onClick={() => oneClickDeployPlatform('vercel')}
-                    disabled={!!deployOneClickBusy}
-                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-white hover:opacity-90 transition disabled:opacity-50"
-                    style={{ background: '#000' }}
+                    onClick={() => { setShowDeployModal(false); navigate('/app/settings', { state: { openTab: 'account' } }); }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, background: 'var(--theme-accent)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
                   >
-                    {deployOneClickBusy === 'vercel' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                    Vercel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => oneClickDeployPlatform('netlify')}
-                    disabled={!!deployOneClickBusy}
-                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-white hover:opacity-90 transition disabled:opacity-50"
-                    style={{ background: '#00AD9F' }}
-                  >
-                    {deployOneClickBusy === 'netlify' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                    Netlify
+                    Settings → Deploy Integrations
                   </button>
                 </div>
-                <div className="pt-2 border-t space-y-2" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
-                  <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--theme-muted)' }}>Railway &amp; custom domain</div>
-                  <p className="text-[11px] leading-snug" style={{ color: 'var(--theme-muted)' }}>
-                    Save the hostname you will use with your host (DNS stays at your registrar). Optional: paste your Railway project URL for reference.
-                  </p>
-                  <input
-                    type="text"
-                    value={publishCustomDomain}
-                    onChange={(e) => setPublishCustomDomain(e.target.value)}
-                    placeholder="app.example.com"
-                    autoComplete="off"
-                    className="w-full px-3 py-2 rounded-lg text-sm border bg-transparent"
-                    style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.12))', color: 'var(--theme-text)' }}
-                  />
-                  <input
-                    type="url"
-                    value={publishRailwayUrl}
-                    onChange={(e) => setPublishRailwayUrl(e.target.value)}
-                    placeholder="https://railway.app/project/…"
-                    autoComplete="off"
-                    className="w-full px-3 py-2 rounded-lg text-sm border bg-transparent"
-                    style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.12))', color: 'var(--theme-text)' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={savePublishSettings}
-                    disabled={publishSaveBusy}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition hover:bg-white/5 border disabled:opacity-50"
-                    style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text)' }}
-                  >
-                    {publishSaveBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                    Save publish settings
+                <p style={{ fontSize: 12, color: 'var(--theme-muted)', marginBottom: 16 }}>Or download your code and deploy manually:</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <button onClick={() => { downloadCode(); setDeployZipDone(true); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 16px', borderRadius: 8, background: 'transparent', border: '1px solid var(--theme-border)', color: 'var(--theme-text)', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
+                    <Download className="w-4 h-4" /> {deployZipDone ? 'Downloaded ✓' : 'Download ZIP'}
                   </button>
+                  <a href="https://vercel.com/new" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 16px', borderRadius: 8, background: '#000', color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 500 }}>
+                    Open Vercel →
+                  </a>
+                  <a href="https://app.netlify.com/drop" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 16px', borderRadius: 8, background: '#00AD9F', color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 500 }}>
+                    Netlify Drop
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {/* Token exists — show one-click deploy button */}
+            {deployHasToken === true && deployState === 'idle' && (
+              <div>
+                <p style={{ fontSize: 13, color: 'var(--theme-muted)', marginBottom: 16 }}>Your Vercel token is connected. Deploy your app with one click.</p>
+                <button
+                  onClick={async () => {
+                    setDeployState('deploying');
+                    setDeployError(null);
+                    try {
+                      const res = await axios.post(
+                        `${API}/projects/${projectIdFromUrl}/deploy/vercel`,
+                        { task_id: taskIdFromUrl },
+                        { headers: { Authorization: `Bearer ${token}` } }
+                      );
+                      setDeployResult(res.data);
+                      setDeployState('deployed');
+                      addLog(`Deployed to Vercel: ${res.data?.deploy_url || res.data?.url || ''}`, 'success', 'deploy');
+                    } catch (err) {
+                      setDeployError(err.response?.data?.detail || err.message || 'Deploy failed');
+                      setDeployState('error');
+                    }
+                  }}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 20px', borderRadius: 10, background: '#000', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600, marginBottom: 8 }}
+                >
+                  <Rocket style={{ width: 16, height: 16 }} /> Deploy to Vercel
+                </button>
+                {deployTokenStatus?.has_railway && (
                   <button
-                    type="button"
-                    onClick={prepareRailwayDeploy}
-                    disabled={deployRailwayBusy}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold text-white transition disabled:opacity-50"
-                    style={{ background: '#0B0D0E', border: '1px solid rgba(255,255,255,0.15)' }}
+                    onClick={async () => {
+                      setDeployState('deploying');
+                      setDeployError(null);
+                      try {
+                        const res = await axios.post(
+                          `${API}/deploy/railway`,
+                          { project_id: projectIdFromUrl, task_id: taskIdFromUrl },
+                          { headers: { Authorization: `Bearer ${token}` } }
+                        );
+                        setDeployResult({ deploy_url: res.data?.deploy_url, url: res.data?.deploy_url });
+                        setDeployState('deployed');
+                        addLog('Deployed to Railway: ' + (res.data?.deploy_url || ''), 'success', 'deploy');
+                      } catch (err) {
+                        setDeployError(err.response?.data?.detail || err.message || 'Railway deploy failed');
+                        setDeployState('error');
+                      }
+                    }}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 20px', borderRadius: 10, background: '#0B0D0E', color: '#fff', border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer', fontSize: 14, fontWeight: 600, marginBottom: 8 }}
                   >
-                    {deployRailwayBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Rocket className="w-3.5 h-3.5" />}
-                    Validate for Railway (ZIP + CLI steps)
+                    <Rocket style={{ width: 16, height: 16 }} /> Deploy to Railway
                   </button>
-                  {deployRailwayErr && (
-                    <div className="text-[11px] px-2 py-1.5 rounded-lg" style={{ background: 'rgba(248,113,113,0.12)', color: '#fca5a5' }}>{deployRailwayErr}</div>
-                  )}
-                  {deployRailwaySteps && deployRailwaySteps.length > 0 && (
-                    <div className="rounded-lg p-3 border text-[11px] space-y-2" style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-muted)' }}>
-                      <div className="font-semibold uppercase tracking-wider text-[10px]" style={{ color: 'var(--theme-muted)' }}>Next steps</div>
-                      <ol className="list-decimal pl-4 space-y-1">
-                        {deployRailwaySteps.map((s, i) => (
-                          <li key={i} style={{ color: 'var(--theme-text)' }}>{s}</li>
-                        ))}
-                      </ol>
+                )}
+                <button onClick={() => { downloadCode(); }} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 16px', borderRadius: 8, background: 'transparent', border: '1px solid var(--theme-border)', color: 'var(--theme-text)', cursor: 'pointer', fontSize: 13 }}>
+                  <Download className="w-4 h-4" /> Download ZIP
+                </button>
+              </div>
+            )}
+
+            {/* Deploying state */}
+            {deployState === 'deploying' && (
+              <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                <Loader2 className="w-8 h-8 animate-spin" style={{ margin: '0 auto 12px', color: 'var(--theme-accent)' }} />
+                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--theme-text)', marginBottom: 4 }}>Deploying to Vercel...</p>
+                <p style={{ fontSize: 12, color: 'var(--theme-muted)' }}>This usually takes 30-60 seconds</p>
+              </div>
+            )}
+
+            {/* Deployed state */}
+            {deployState === 'deployed' && deployResult && (
+              <div>
+                <div style={{ padding: '14px 16px', background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.3)', borderRadius: 10, marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <CheckCircle2 className="w-4 h-4" style={{ color: '#4ade80', flexShrink: 0 }} />
+                    <p style={{ fontSize: 14, fontWeight: 600, color: '#4ade80', margin: 0 }}>Deployed successfully!</p>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'rgba(0,0,0,0.3)', borderRadius: 6 }}>
+                    <code style={{ fontSize: 12, color: 'var(--theme-text)', flex: 1, wordBreak: 'break-all' }}>
+                      {deployResult?.deploy_url || deployResult?.url || 'Deployment complete'}
+                    </code>
+                    {(deployResult?.deploy_url || deployResult?.url) && (
                       <button
-                        type="button"
-                        onClick={() => window.open(deployRailwayDashboard || 'https://railway.app/new', '_blank', 'noopener,noreferrer')}
-                        className="w-full mt-1 py-2 rounded-lg text-xs font-semibold text-white"
-                        style={{ background: '#0B0D0E', border: '1px solid rgba(255,255,255,0.15)' }}
+                        onClick={() => navigator.clipboard.writeText(deployResult?.deploy_url || deployResult?.url || '')}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-muted)', padding: 4, flexShrink: 0 }}
+                        title="Copy URL"
                       >
-                        Open Railway dashboard
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                  {(deployResult?.deploy_url || deployResult?.url) && (
+                    <a
+                      href={deployResult?.deploy_url || deployResult?.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 14px', borderRadius: 8, background: 'var(--theme-accent)', color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 600 }}
+                    >
+                      Visit site <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                  <button
+                    onClick={() => { setDeployState('idle'); setDeployResult(null); }}
+                    style={{ padding: '9px 14px', borderRadius: 8, background: 'transparent', border: '1px solid var(--theme-border)', color: 'var(--theme-text)', cursor: 'pointer', fontSize: 13 }}
+                  >
+                    Deploy again
+                  </button>
+                </div>
+
+                {/* Custom domain section */}
+                {!customDomainResult && (
+                  <div style={{ borderTop: '1px solid var(--theme-border)', paddingTop: 14 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--theme-text)', marginBottom: 8 }}>Custom domain (optional)</p>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input
+                        value={customDomain}
+                        onChange={e => setCustomDomain(e.target.value)}
+                        placeholder="yourdomain.com"
+                        style={{ flex: 1, padding: '8px 12px', background: 'var(--theme-input, rgba(255,255,255,0.06))', border: '1.5px solid rgba(255,255,255,0.15)', borderRadius: 8, color: 'var(--theme-text)', fontSize: 13, outline: 'none' }}
+                      />
+                      <button
+                        onClick={async () => {
+                          if (!customDomain.trim() || !customDomain.includes('.')) return;
+                          setCustomDomainSaving(true);
+                          try {
+                            const res = await axios.post(
+                              `${API}/deploy/custom-domain`,
+                              { domain: customDomain.trim(), project_id: projectIdFromUrl || '' },
+                              { headers: { Authorization: `Bearer ${token}` } }
+                            );
+                            setCustomDomainResult(res.data);
+                          } catch (e) {
+                            // Ignore errors, show fallback
+                            setCustomDomainResult({ domain: customDomain.trim(), cname_target: 'cname.vercel-dns.com', instructions: ['Go to your registrar and add a CNAME record pointing to cname.vercel-dns.com'] });
+                          } finally {
+                            setCustomDomainSaving(false);
+                          }
+                        }}
+                        disabled={customDomainSaving || !customDomain.trim()}
+                        style={{ padding: '8px 14px', borderRadius: 8, background: customDomain.trim() ? 'var(--theme-accent)' : 'rgba(255,255,255,0.08)', color: customDomain.trim() ? '#fff' : 'var(--theme-muted)', border: 'none', cursor: customDomain.trim() ? 'pointer' : 'not-allowed', fontSize: 13, fontWeight: 600, flexShrink: 0 }}
+                      >
+                        {customDomainSaving ? 'Saving...' : 'Set domain'}
                       </button>
                     </div>
-                  )}
-                </div>
-                {(!deployTokensHint.has_vercel || !deployTokensHint.has_netlify) && (
-                  <p className="text-[11px] leading-snug" style={{ color: 'var(--theme-muted)' }}>
-                    One-click needs tokens in{' '}
-                    <Link to="/app/settings" className="underline font-medium" style={{ color: 'var(--theme-accent)' }}>Settings → Deploy integrations</Link>
-                    {(!deployTokensHint.has_vercel && !deployTokensHint.has_netlify) ? ' (Vercel and/or Netlify).' : !deployTokensHint.has_vercel ? ' (add Vercel).' : ' (add Netlify).'}
-                  </p>
+                  </div>
+                )}
+                {customDomainResult && (
+                  <div style={{ borderTop: '1px solid var(--theme-border)', paddingTop: 14 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--theme-text)', marginBottom: 8 }}>DNS Setup for <code style={{ color: 'var(--theme-accent)' }}>{customDomainResult.domain}</code></p>
+                    <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: 8, fontSize: 12, color: 'var(--theme-muted)' }}>
+                      {(customDomainResult.instructions || []).map((line, i) => (
+                        <div key={i} style={{ marginBottom: i < (customDomainResult.instructions.length - 1) ? 4 : 0 }}>{line}</div>
+                      ))}
+                    </div>
+                    {customDomainResult.ssl && (
+                      <p style={{ fontSize: 11, color: 'var(--theme-muted)', marginTop: 6 }}>🔒 {customDomainResult.ssl}</p>
+                    )}
+                  </div>
                 )}
               </div>
             )}
 
-            <div className="text-[10px] font-semibold uppercase tracking-wider mb-2 pt-1 border-t" style={{ color: 'var(--theme-muted)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>Editor export & hosts</div>
-            <div className="flex flex-col gap-2">
-              <button type="button" onClick={downloadCode} className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition hover:bg-white/5 border" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.1))', color: 'var(--theme-text, #e4e4e7)' }}>
-                <Download className="w-4 h-4" /> Download ZIP (current editor)
+            {/* Error state */}
+            {deployState === 'error' && (
+              <div>
+                <div style={{ padding: '14px 16px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, marginBottom: 16 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: '#f87171', marginBottom: 4 }}>Deploy failed</p>
+                  <p style={{ fontSize: 13, color: 'var(--theme-muted)' }}>{deployError}</p>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => { setDeployState('idle'); setDeployError(null); }}
+                    style={{ flex: 1, padding: '10px 16px', borderRadius: 8, background: 'var(--theme-accent)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+                  >
+                    Retry
+                  </button>
+                  <button onClick={() => { downloadCode(); }} style={{ padding: '10px 16px', borderRadius: 8, background: 'transparent', border: '1px solid var(--theme-border)', color: 'var(--theme-text)', cursor: 'pointer', fontSize: 13 }}>
+                    Download ZIP
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Close button — only when not deploying */}
+            {deployState !== 'deploying' && (
+              <button
+                onClick={() => { setShowDeployModal(false); setDeployZipDone(false); setDeploySteps(null); }}
+                className="mt-4 w-full py-2 text-sm rounded-xl border transition hover:bg-white/5"
+                style={{ color: 'var(--theme-muted)', borderColor: 'var(--theme-border)' }}
+              >
+                Close
               </button>
-              <button type="button" onClick={handleExportDeploy} className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition hover:bg-white/5 border" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.1))', color: 'var(--theme-text, #e4e4e7)' }}>
-                <Rocket className="w-4 h-4" /> Deploy-ready ZIP (API from editor)
-              </button>
-              <a href="https://vercel.com/new" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium text-white hover:opacity-90 transition" style={{ background: '#000' }}>
-                Vercel (upload)
-              </a>
-              <a href="https://app.netlify.com/drop" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium text-white hover:opacity-90 transition" style={{ background: '#00AD9F' }}>
-                Netlify Drop
-              </a>
-              <a href="https://railway.app/new" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium text-white hover:opacity-90 transition" style={{ background: '#0B0D0E', border: '1px solid rgba(255,255,255,0.15)' }}>
-                Railway
-              </a>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── GitHub Git Sync Modal ── */}
+      {showGitSyncModal && (
+        <div
+          className="fixed inset-0 z-[300] flex items-center justify-center"
+          style={{ background: 'rgba(0,0,0,0.75)' }}
+          onClick={() => { if (gitSyncState !== 'syncing') setShowGitSyncModal(false); }}
+        >
+          <div
+            className="rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 border"
+            style={{ background: 'var(--theme-surface, #1C1C1E)', borderColor: 'var(--theme-border, rgba(255,255,255,0.1))' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Github style={{ color: 'var(--theme-accent)', width: 18, height: 18 }} />
+                <h3 className="text-lg font-semibold" style={{ color: 'var(--theme-text)', margin: 0 }}>Push to GitHub</h3>
+              </div>
+              {gitSyncState !== 'syncing' && (
+                <button onClick={() => setShowGitSyncModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-muted)', fontSize: 18, lineHeight: 1, padding: 4 }}>×</button>
+              )}
             </div>
-            <button type="button" onClick={() => setShowDeployModal(false)} className="mt-4 w-full py-2 text-sm rounded-xl border transition hover:bg-white/5" style={{ color: 'var(--theme-muted, #71717a)', borderColor: 'var(--theme-border, rgba(255,255,255,0.1))' }}>Close</button>
+
+            {gitSyncState === 'idle' && (
+              <div>
+                <p style={{ fontSize: 13, color: 'var(--theme-muted)', marginBottom: 16 }}>
+                  Push your generated code to a new GitHub repository. Requires a GitHub personal access token with <code>repo</code> scope.
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '10px 12px', background: 'var(--theme-input, rgba(255,255,255,0.06))', borderRadius: 8 }}>
+                  <input
+                    type="checkbox"
+                    id="git-private"
+                    checked={gitSyncPrivate}
+                    onChange={e => setGitSyncPrivate(e.target.checked)}
+                    style={{ width: 14, height: 14, accentColor: 'var(--theme-accent)', flexShrink: 0 }}
+                  />
+                  <label htmlFor="git-private" style={{ fontSize: 13, color: 'var(--theme-text)', cursor: 'pointer' }}>
+                    Private repository
+                  </label>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <button
+                    onClick={async () => {
+                      setGitSyncState('syncing');
+                      try {
+                        const res = await axios.post(
+                          `${API}/git-sync/push`,
+                          {
+                            project_id: projectIdFromUrl || undefined,
+                            task_id: taskIdFromUrl || undefined,
+                            private: gitSyncPrivate,
+                          },
+                          { headers: { Authorization: `Bearer ${token}` } }
+                        );
+                        setGitSyncResult(res.data);
+                        setGitSyncState('synced');
+                        addLog(`Pushed ${res.data.pushed_files} files to GitHub: ${res.data.repo_url}`, 'success', 'git');
+                      } catch (err) {
+                        const msg = err.response?.data?.detail || err.message || 'Git sync failed';
+                        if (typeof msg === 'string' && msg.includes('Add your GitHub token')) {
+                          setGitSyncState('idle');
+                          setShowGitSyncModal(false);
+                          navigate('/app/settings', { state: { openTab: 'account' } });
+                        } else {
+                          setGitSyncResult({ error: typeof msg === 'string' ? msg : JSON.stringify(msg) });
+                          setGitSyncState('error');
+                        }
+                      }
+                    }}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 20px', borderRadius: 10, background: '#24292f', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}
+                  >
+                    <Github style={{ width: 15, height: 15 }} /> Push to GitHub
+                  </button>
+                  <p style={{ fontSize: 11, color: 'var(--theme-muted)', textAlign: 'center' }}>
+                    No token? Add it in{' '}
+                    <button onClick={() => { setShowGitSyncModal(false); navigate('/app/settings', { state: { openTab: 'account' } }); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-accent)', fontSize: 11, padding: 0, textDecoration: 'underline' }}>Settings → Deploy integrations</button>
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {gitSyncState === 'syncing' && (
+              <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                <Loader2 className="w-8 h-8 animate-spin" style={{ margin: '0 auto 12px', color: 'var(--theme-accent)' }} />
+                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--theme-text)', marginBottom: 4 }}>Pushing to GitHub...</p>
+                <p style={{ fontSize: 12, color: 'var(--theme-muted)' }}>Creating repo and uploading files</p>
+              </div>
+            )}
+
+            {gitSyncState === 'synced' && gitSyncResult && (
+              <div>
+                <div style={{ padding: '14px 16px', background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.3)', borderRadius: 10, marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <CheckCircle2 className="w-4 h-4" style={{ color: '#4ade80', flexShrink: 0 }} />
+                    <p style={{ fontSize: 14, fontWeight: 600, color: '#4ade80', margin: 0 }}>Pushed successfully!</p>
+                  </div>
+                  <p style={{ fontSize: 12, color: 'var(--theme-muted)', marginBottom: 8 }}>{gitSyncResult.pushed_files} files pushed · {gitSyncResult.private ? 'Private' : 'Public'} repo</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'rgba(0,0,0,0.3)', borderRadius: 6 }}>
+                    <code style={{ fontSize: 12, color: 'var(--theme-text)', flex: 1, wordBreak: 'break-all' }}>{gitSyncResult.repo_url}</code>
+                    <button onClick={() => navigator.clipboard.writeText(gitSyncResult.repo_url || '')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-muted)', padding: 4, flexShrink: 0 }} title="Copy URL">
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <a href={gitSyncResult.repo_url} target="_blank" rel="noopener noreferrer" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 14px', borderRadius: 8, background: '#24292f', color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 600 }}>
+                    View on GitHub <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                  <button onClick={() => { setGitSyncState('idle'); setGitSyncResult(null); }} style={{ padding: '9px 14px', borderRadius: 8, background: 'transparent', border: '1px solid var(--theme-border)', color: 'var(--theme-text)', cursor: 'pointer', fontSize: 13 }}>
+                    Push again
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {gitSyncState === 'error' && (
+              <div>
+                <div style={{ padding: '14px 16px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, marginBottom: 16 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: '#f87171', marginBottom: 4 }}>Push failed</p>
+                  <p style={{ fontSize: 13, color: 'var(--theme-muted)' }}>{gitSyncResult?.error || 'Unknown error'}</p>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => { setGitSyncState('idle'); setGitSyncResult(null); }} style={{ flex: 1, padding: '10px 16px', borderRadius: 8, background: 'var(--theme-accent)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+                    Retry
+                  </button>
+                  <button onClick={() => { setShowGitSyncModal(false); navigate('/app/settings', { state: { openTab: 'account' } }); }} style={{ padding: '10px 16px', borderRadius: 8, background: 'transparent', border: '1px solid var(--theme-border)', color: 'var(--theme-text)', cursor: 'pointer', fontSize: 13 }}>
+                    Add token
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {gitSyncState === 'idle' && (
+              <button onClick={() => setShowGitSyncModal(false)} className="mt-4 w-full py-2 text-sm rounded-xl border transition hover:bg-white/5" style={{ color: 'var(--theme-muted)', borderColor: 'var(--theme-border)' }}>
+                Close
+              </button>
+            )}
           </div>
         </div>
       )}

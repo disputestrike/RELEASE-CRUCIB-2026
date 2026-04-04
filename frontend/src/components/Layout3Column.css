@@ -351,3 +351,11 @@
 .layout-page-content--fullbleed .layout-sidebar-toggle {
   display: none !important;
 }
+
+/* Auto-runner and workspace: hide the sidebar entirely so the page uses full width */
+.layout-3-column.sidebar-hidden .layout-sidebar-wrapper {
+  display: none !important;
+}
+.layout-3-column.sidebar-hidden .layout-main {
+  margin-left: 0 !important;
+}

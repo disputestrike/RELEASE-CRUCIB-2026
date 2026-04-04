@@ -1,0 +1,1380 @@
+{
+  "total": 123,
+  "phases": 8,
+  "agents": [
+    {
+      "name": "Planner",
+      "phase": 1,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": []
+    },
+    {
+      "name": "Requirements Clarifier",
+      "phase": 2,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Planner"
+      ]
+    },
+    {
+      "name": "Content Agent",
+      "phase": 2,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Planner"
+      ]
+    },
+    {
+      "name": "Legal Compliance Agent",
+      "phase": 2,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Planner"
+      ]
+    },
+    {
+      "name": "License Agent",
+      "phase": 2,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Planner"
+      ]
+    },
+    {
+      "name": "Team Preferences",
+      "phase": 2,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Planner"
+      ]
+    },
+    {
+      "name": "Mood Detection Agent",
+      "phase": 2,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Planner"
+      ]
+    },
+    {
+      "name": "Stack Selector",
+      "phase": 3,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Requirements Clarifier"
+      ]
+    },
+    {
+      "name": "Voice Context Agent",
+      "phase": 3,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Planner",
+        "Requirements Clarifier"
+      ]
+    },
+    {
+      "name": "Terms Agent",
+      "phase": 3,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Legal Compliance Agent"
+      ]
+    },
+    {
+      "name": "Privacy Policy Agent",
+      "phase": 3,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Legal Compliance Agent"
+      ]
+    },
+    {
+      "name": "Cookie Consent Agent",
+      "phase": 3,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Legal Compliance Agent"
+      ]
+    },
+    {
+      "name": "Data Residency Agent",
+      "phase": 3,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Legal Compliance Agent"
+      ]
+    },
+    {
+      "name": "HIPAA Agent",
+      "phase": 3,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Legal Compliance Agent"
+      ]
+    },
+    {
+      "name": "SOC2 Agent",
+      "phase": 3,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Legal Compliance Agent"
+      ]
+    },
+    {
+      "name": "Native Config Agent",
+      "phase": 4,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Stack Selector"
+      ]
+    },
+    {
+      "name": "Frontend Generation",
+      "phase": 4,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Stack Selector"
+      ]
+    },
+    {
+      "name": "Backend Generation",
+      "phase": 4,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Stack Selector"
+      ]
+    },
+    {
+      "name": "API Integration",
+      "phase": 4,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Stack Selector"
+      ]
+    },
+    {
+      "name": "Scraping Agent",
+      "phase": 4,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Stack Selector"
+      ]
+    },
+    {
+      "name": "Automation Agent",
+      "phase": 4,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Stack Selector"
+      ]
+    },
+    {
+      "name": "Design Agent",
+      "phase": 4,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Stack Selector"
+      ]
+    },
+    {
+      "name": "SEO Agent",
+      "phase": 4,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Stack Selector"
+      ]
+    },
+    {
+      "name": "Brand Agent",
+      "phase": 4,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Stack Selector"
+      ]
+    },
+    {
+      "name": "Auth Setup Agent",
+      "phase": 4,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Stack Selector"
+      ]
+    },
+    {
+      "name": "Payment Setup Agent",
+      "phase": 4,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Stack Selector"
+      ]
+    },
+    {
+      "name": "Email Agent",
+      "phase": 4,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Stack Selector"
+      ]
+    },
+    {
+      "name": "Caching Agent",
+      "phase": 4,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Stack Selector"
+      ]
+    },
+    {
+      "name": "Search Agent",
+      "phase": 4,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Stack Selector"
+      ]
+    },
+    {
+      "name": "Feature Flag Agent",
+      "phase": 4,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Stack Selector"
+      ]
+    },
+    {
+      "name": "Dependency Audit Agent",
+      "phase": 4,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Stack Selector"
+      ]
+    },
+    {
+      "name": "Multi-language Code Agent",
+      "phase": 4,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Stack Selector"
+      ]
+    },
+    {
+      "name": "Browser Tool Agent",
+      "phase": 4,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Stack Selector"
+      ]
+    },
+    {
+      "name": "Store Prep Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Frontend Generation",
+        "Native Config Agent"
+      ]
+    },
+    {
+      "name": "UX Auditor",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Frontend Generation"
+      ]
+    },
+    {
+      "name": "Accessibility Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Frontend Generation"
+      ]
+    },
+    {
+      "name": "i18n Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Frontend Generation"
+      ]
+    },
+    {
+      "name": "Mobile Responsive Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Frontend Generation"
+      ]
+    },
+    {
+      "name": "A/B Test Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Frontend Generation"
+      ]
+    },
+    {
+      "name": "Error Boundary Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Frontend Generation"
+      ]
+    },
+    {
+      "name": "SSR Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Frontend Generation"
+      ]
+    },
+    {
+      "name": "Bundle Analyzer Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Frontend Generation"
+      ]
+    },
+    {
+      "name": "RTL Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Frontend Generation"
+      ]
+    },
+    {
+      "name": "Dark Mode Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Frontend Generation"
+      ]
+    },
+    {
+      "name": "Keyboard Nav Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Frontend Generation"
+      ]
+    },
+    {
+      "name": "Component Library Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Frontend Generation"
+      ]
+    },
+    {
+      "name": "Animation Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Frontend Generation"
+      ]
+    },
+    {
+      "name": "Chart Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Frontend Generation"
+      ]
+    },
+    {
+      "name": "Table Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Frontend Generation"
+      ]
+    },
+    {
+      "name": "Form Builder Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Frontend Generation"
+      ]
+    },
+    {
+      "name": "Database Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Backend Generation"
+      ]
+    },
+    {
+      "name": "Test Generation",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Backend Generation"
+      ]
+    },
+    {
+      "name": "Security Checker",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Frontend Generation",
+        "Backend Generation"
+      ]
+    },
+    {
+      "name": "Performance Analyzer",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Frontend Generation",
+        "Backend Generation"
+      ]
+    },
+    {
+      "name": "Deployment Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Backend Generation"
+      ]
+    },
+    {
+      "name": "Error Recovery",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Backend Generation"
+      ]
+    },
+    {
+      "name": "Validation Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Frontend Generation",
+        "Backend Generation"
+      ]
+    },
+    {
+      "name": "Webhook Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Backend Generation"
+      ]
+    },
+    {
+      "name": "GraphQL Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Backend Generation"
+      ]
+    },
+    {
+      "name": "WebSocket Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Backend Generation"
+      ]
+    },
+    {
+      "name": "Rate Limit Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Backend Generation"
+      ]
+    },
+    {
+      "name": "API Documentation Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Backend Generation"
+      ]
+    },
+    {
+      "name": "Code Review Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Frontend Generation",
+        "Backend Generation"
+      ]
+    },
+    {
+      "name": "Logging Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Backend Generation"
+      ]
+    },
+    {
+      "name": "Audit Trail Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Backend Generation"
+      ]
+    },
+    {
+      "name": "Session Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Backend Generation"
+      ]
+    },
+    {
+      "name": "Schema Validation Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Backend Generation"
+      ]
+    },
+    {
+      "name": "Mock API Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Backend Generation"
+      ]
+    },
+    {
+      "name": "Load Test Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Backend Generation"
+      ]
+    },
+    {
+      "name": "Workflow Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Backend Generation"
+      ]
+    },
+    {
+      "name": "Queue Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Backend Generation"
+      ]
+    },
+    {
+      "name": "Real-time Feedback Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Frontend Generation",
+        "Backend Generation"
+      ]
+    },
+    {
+      "name": "IDE Integration Coordinator Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Frontend Generation",
+        "Backend Generation"
+      ]
+    },
+    {
+      "name": "File Tool Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Frontend Generation",
+        "Backend Generation"
+      ]
+    },
+    {
+      "name": "API Tool Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "API Integration"
+      ]
+    },
+    {
+      "name": "Image Generation",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Design Agent"
+      ]
+    },
+    {
+      "name": "Design Iteration Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Planner",
+        "Design Agent"
+      ]
+    },
+    {
+      "name": "Aesthetic Reasoner Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Design Agent",
+        "Frontend Generation"
+      ]
+    },
+    {
+      "name": "Creativity Catalyst Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Design Agent",
+        "Content Agent"
+      ]
+    },
+    {
+      "name": "Design System Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Brand Agent"
+      ]
+    },
+    {
+      "name": "Vibe Analyzer Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Design Agent",
+        "Brand Agent"
+      ]
+    },
+    {
+      "name": "OAuth Provider Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Auth Setup Agent"
+      ]
+    },
+    {
+      "name": "2FA Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Auth Setup Agent"
+      ]
+    },
+    {
+      "name": "RBAC Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Auth Setup Agent"
+      ]
+    },
+    {
+      "name": "SSO Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Auth Setup Agent"
+      ]
+    },
+    {
+      "name": "Stripe Subscription Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Payment Setup Agent"
+      ]
+    },
+    {
+      "name": "Invoice Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Payment Setup Agent"
+      ]
+    },
+    {
+      "name": "Notification Agent",
+      "phase": 5,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Email Agent"
+      ]
+    },
+    {
+      "name": "Accessibility WCAG Agent",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Accessibility Agent"
+      ]
+    },
+    {
+      "name": "Screen Reader Agent",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Accessibility Agent"
+      ]
+    },
+    {
+      "name": "Migration Agent",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Database Agent"
+      ]
+    },
+    {
+      "name": "Multi-tenant Agent",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Database Agent"
+      ]
+    },
+    {
+      "name": "Database Tool Agent",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Database Agent"
+      ]
+    },
+    {
+      "name": "Test Executor",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Test Generation"
+      ]
+    },
+    {
+      "name": "E2E Agent",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Test Generation"
+      ]
+    },
+    {
+      "name": "Penetration Test Agent",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Security Checker"
+      ]
+    },
+    {
+      "name": "Performance Vibe Agent",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Performance Analyzer",
+        "Frontend Generation"
+      ]
+    },
+    {
+      "name": "Memory Agent",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Deployment Agent"
+      ]
+    },
+    {
+      "name": "PDF Export",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Deployment Agent"
+      ]
+    },
+    {
+      "name": "Excel Export",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Deployment Agent"
+      ]
+    },
+    {
+      "name": "Markdown Export",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Deployment Agent"
+      ]
+    },
+    {
+      "name": "Documentation Agent",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Deployment Agent"
+      ]
+    },
+    {
+      "name": "Monitoring Agent",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Deployment Agent"
+      ]
+    },
+    {
+      "name": "DevOps Agent",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Deployment Agent"
+      ]
+    },
+    {
+      "name": "Analytics Agent",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Deployment Agent"
+      ]
+    },
+    {
+      "name": "Backup Agent",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Deployment Agent"
+      ]
+    },
+    {
+      "name": "Staging Agent",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Deployment Agent"
+      ]
+    },
+    {
+      "name": "Metrics Agent",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Deployment Agent"
+      ]
+    },
+    {
+      "name": "CDN Agent",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Deployment Agent"
+      ]
+    },
+    {
+      "name": "Lighthouse Agent",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Deployment Agent"
+      ]
+    },
+    {
+      "name": "Audit Export Agent",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Deployment Agent"
+      ]
+    },
+    {
+      "name": "Incident Response Agent",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Deployment Agent"
+      ]
+    },
+    {
+      "name": "SLA Agent",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Deployment Agent"
+      ]
+    },
+    {
+      "name": "Cost Optimizer Agent",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Deployment Agent"
+      ]
+    },
+    {
+      "name": "Deployment Tool Agent",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Deployment Agent",
+        "File Tool Agent"
+      ]
+    },
+    {
+      "name": "Video Generation",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Image Generation"
+      ]
+    },
+    {
+      "name": "Layout Agent",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Frontend Generation",
+        "Image Generation",
+        "Design Agent"
+      ]
+    },
+    {
+      "name": "Accessibility Vibe Agent",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Accessibility Agent",
+        "Vibe Analyzer Agent"
+      ]
+    },
+    {
+      "name": "Customization Engine Agent",
+      "phase": 6,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Brand Agent",
+        "Vibe Analyzer Agent"
+      ]
+    },
+    {
+      "name": "Collaborative Memory Agent",
+      "phase": 7,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Memory Agent",
+        "Team Preferences"
+      ]
+    },
+    {
+      "name": "Video Tutorial Agent",
+      "phase": 7,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Documentation Agent",
+        "Frontend Generation"
+      ]
+    },
+    {
+      "name": "Team Collaboration Agent",
+      "phase": 8,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Collaborative Memory Agent"
+      ]
+    },
+    {
+      "name": "User Onboarding Agent",
+      "phase": 8,
+      "has_dag_entry": true,
+      "has_system_prompt": true,
+      "has_layer": false,
+      "has_description": false,
+      "depends_on": [
+        "Documentation Agent",
+        "Video Tutorial Agent"
+      ]
+    }
+  ],
+  "issues": []
+}

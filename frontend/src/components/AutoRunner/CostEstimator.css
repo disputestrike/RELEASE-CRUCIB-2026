@@ -1,0 +1,45 @@
+/* ── CostEstimator ─────────────────────────────────────────────────── */
+.cost-estimator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-sm);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 11px;
+}
+
+.ce-icon { color: var(--text-muted); flex-shrink: 0; }
+.ce-loading { color: var(--text-muted); font-style: italic; }
+.ce-content { display: flex; align-items: center; gap: 5px; }
+.ce-label { color: var(--text-muted); }
+.ce-range {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+.ce-typical { color: var(--text-muted); }
+
+.ce-tooltip { position: relative; display: inline-flex; align-items: center; cursor: help; }
+.ce-tooltip svg { color: var(--text-muted); }
+.ce-tooltip-text {
+  display: none;
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-3);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 10px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  z-index: 100;
+  pointer-events: none;
+  box-shadow: var(--shadow-panel);
+}
+.ce-tooltip:hover .ce-tooltip-text { display: block; }
