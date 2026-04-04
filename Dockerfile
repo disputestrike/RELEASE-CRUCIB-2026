@@ -1,6 +1,6 @@
 # CrucibAI – production (Railway): backend + frontend in one image
 # Build: docker build -t crucibai .
-# Run:   docker run -p 8000:8000 -e MONGO_URL=... -e JWT_SECRET=... crucibai
+# Run:   docker run -p 8000:8000 -e DATABASE_URL=... -e JWT_SECRET=... crucibai
 
 # Stage 1: build frontend (same-origin API: REACT_APP_BACKEND_URL="" => /api)
 FROM node:20-alpine AS frontend

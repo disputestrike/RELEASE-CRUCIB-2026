@@ -352,7 +352,7 @@ class UserLogin(BaseModel):
     password: str
 
 class ChatMessage(BaseModel):
-    message: str
+    message: str = Field(..., min_length=1, max_length=50000)  # 50k chars max; empty message rejected
     session_id: Optional[str] = None
     model: Optional[str] = "auto"  # auto or haiku (Anthropic/Cerebras only)
     mode: Optional[str] = None  # thinking = step-by-step reasoning (no extra cost, same call)
@@ -2432,6 +2432,8 @@ async def contact_submit(data: ContactSubmission):
 @auth_router.post("/auth/register")
 @auth_router.post("/auth/signup")  # Alias for compatibility
 async def register(data: UserRegister, request: Request):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not ready. Set DATABASE_URL in environment.")
     if _is_disposable_email(data.email):
         raise HTTPException(status_code=400, detail="Disposable email addresses are not allowed.")
     existing = await db.users.find_one({"email": data.email})
@@ -2463,6 +2465,8 @@ async def register(data: UserRegister, request: Request):
 
 @auth_router.post("/auth/login")
 async def login(data: UserLogin, request: Request):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not ready. Set DATABASE_URL in environment.")
     user = await db.users.find_one({"email": data.email}, {"_id": 0})
     if not user or not verify_password(data.password, user["password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
