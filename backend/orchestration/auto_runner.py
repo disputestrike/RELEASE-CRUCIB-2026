@@ -18,7 +18,7 @@ from .verifier import verify_step
 from .fixer import classify_failure, build_retry_plan, apply_fix, MAX_RETRIES
 from .event_bus import publish
 from .planner import generate_plan
-from ..proof import proof_service
+from proof import proof_service
 
 logger = logging.getLogger(__name__)
 
