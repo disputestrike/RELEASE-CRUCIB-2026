@@ -2946,6 +2946,23 @@ BUILD IT NOW — output every file completely:`;
 
           {/* ── Input bar ── */}
           <div className="px-4 pb-4 shrink-0">
+            {/* Guided mode: Quick Build chips */}
+            {!devMode && !isBuilding && versions.length === 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                {['Landing page', 'Dashboard', 'Mobile app', 'E-commerce store', 'AI chatbot', 'Blog'].map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    onClick={() => { setInput(chip); setTimeout(() => chatInputRef.current?.focus(), 0); }}
+                    style={{ padding: '5px 13px', borderRadius: 20, background: 'rgba(255,255,255,0.07)', border: '1.5px solid rgba(255,255,255,0.12)', color: 'var(--theme-muted, #71717a)', fontSize: 12, fontWeight: 500, cursor: 'pointer', transition: 'background 0.15s', whiteSpace: 'nowrap' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.07)'}
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+            )}
             {/* Attached files preview */}
             {attachedFiles.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-2">
@@ -2966,7 +2983,7 @@ BUILD IT NOW — output every file completely:`;
                   value={input}
                   onChange={(e) => { setInput(e.target.value); resizeChatInput(); }}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(e); } }}
-                  placeholder={isBuilding ? 'Building your app...' : (versions.length > 0 ? 'Describe changes, fix bugs, add features...' : 'Describe what you want to build...')}
+                  placeholder={isBuilding ? 'Building your app...' : (versions.length > 0 ? (devMode ? 'What would you like to modify or fix?' : 'Describe changes you want...') : (devMode ? 'What would you like to build or modify?' : 'Describe the app you want to build...'))}
                   rows={1}
                   disabled={isBuilding}
                   className="w-full bg-transparent outline-none text-sm resize-none px-4 pt-3.5 pb-1 workspace-chat-input"
@@ -2988,27 +3005,29 @@ BUILD IT NOW — output every file completely:`;
                     {isTranscribing ? <Loader2 className="w-4 h-4 animate-spin" /> : isRecording ? <MicOff className="w-4 h-4 animate-pulse" /> : <Mic className="w-4 h-4" />}
                   </button>
                   <div className="ml-auto flex items-center gap-2">
-                    <select
-                      value={buildMode}
-                      onChange={(e) => setBuildMode(e.target.value)}
-                      className="text-xs rounded-lg px-2.5 py-1.5 outline-none cursor-pointer"
-                      style={{ background: 'var(--theme-surface2, #3f3f46)', color: 'var(--theme-text, #d4d4d8)', border: 'none' }}
-                    >
-                      <option value="agent">Auto</option>
-                      <option value="quick">Quick</option>
-                      <option value="plan">Plan</option>
-                      <option value="swarm">Swarm</option>
-                    </select>
+                    {devMode && (
+                      <select
+                        value={buildMode}
+                        onChange={(e) => setBuildMode(e.target.value)}
+                        className="text-xs rounded-lg px-2.5 py-1.5 outline-none cursor-pointer"
+                        style={{ background: 'var(--theme-surface2, #3f3f46)', color: 'var(--theme-text, #d4d4d8)', border: 'none' }}
+                      >
+                        <option value="agent">Auto</option>
+                        <option value="quick">Quick</option>
+                        <option value="plan">Plan</option>
+                        <option value="swarm">Swarm</option>
+                      </select>
+                    )}
                     <button
                       type="submit"
                       disabled={(!input.trim() && attachedFiles.length === 0) || isBuilding}
-                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-sm font-semibold transition disabled:opacity-40"
-                      style={{ background: 'white', color: 'black' }}
+                      className="flex items-center gap-1.5 rounded-xl text-sm font-semibold transition disabled:opacity-40"
+                      style={{ background: 'white', color: 'black', padding: devMode ? '6px 16px' : '9px 22px', fontSize: devMode ? undefined : 14 }}
                     >
                       {isBuilding
                         ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
                         : <Send className="w-3.5 h-3.5" />}
-                      {isBuilding ? 'Building...' : versions.length > 0 ? 'Update' : 'Build'}
+                      {isBuilding ? 'Building...' : versions.length > 0 ? (devMode ? 'Update' : 'Make changes') : (devMode ? 'Build' : 'Build my app')}
                     </button>
                   </div>
                 </div>
@@ -3022,16 +3041,23 @@ BUILD IT NOW — output every file completely:`;
         <div className="workspace-right-panel flex flex-col shrink-0 border-l" style={{ width: '46%', background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
           {/* Manus-style tab bar */}
           <div className="h-11 flex items-center px-2 border-b shrink-0 gap-0.5 overflow-x-auto" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.08))', scrollbarWidth: 'none' }}>
-            {[
-              { id: 'preview', label: 'Preview', icon: Eye },
-              { id: 'code', label: 'Code', icon: FileCode },
-              { id: 'console', label: 'Console', icon: Terminal },
-              { id: 'dashboard', label: 'Dashboard', icon: Activity },
-              { id: 'database', label: 'Database', icon: Database },
-              { id: 'agents', label: 'Agents', icon: Network },
-              { id: 'passes', label: 'Passes', icon: Layers },
-              ...(projectIdFromUrl ? [{ id: 'history', label: 'History', icon: History }] : []),
-            ].map(tab => (
+            {(devMode
+              ? [
+                  { id: 'preview', label: 'Preview', icon: Eye },
+                  { id: 'code', label: 'Code', icon: FileCode },
+                  { id: 'console', label: 'Console', icon: Terminal },
+                  { id: 'dashboard', label: 'Dashboard', icon: Activity },
+                  { id: 'database', label: 'Database', icon: Database },
+                  { id: 'agents', label: 'Agents', icon: Network },
+                  { id: 'passes', label: 'Passes', icon: Layers },
+                  ...(projectIdFromUrl ? [{ id: 'history', label: 'History', icon: History }] : []),
+                ]
+              : [
+                  { id: 'preview', label: 'Preview', icon: Eye },
+                  { id: 'dashboard', label: 'Dashboard', icon: Activity },
+                  { id: 'passes', label: 'Passes', icon: Layers },
+                ]
+            ).map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActivePanel(tab.id)}
@@ -3104,6 +3130,31 @@ BUILD IT NOW — output every file completely:`;
 
           {/* Panel content */}
           <div className="flex-1 overflow-hidden">
+            {/* Guided mode Build Guide panel */}
+            {!devMode && activePanel === 'guide' && (
+              <div style={{ height: '100%', overflowY: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ marginBottom: 4 }}>
+                  <p style={{ fontSize: 15, fontWeight: 700, margin: '0 0 4px', color: 'var(--theme-text)' }}>Build Guide</p>
+                  <p style={{ fontSize: 12, color: 'var(--theme-muted)', margin: 0 }}>Follow these steps to create your app</p>
+                </div>
+                {[
+                  { step: 1, title: 'Describe your app', desc: 'Type what you want to build in the chat. Be as specific as you like — mention features, colors, or styles.', done: false },
+                  { step: 2, title: 'Review the preview', desc: 'Your app will appear in the Preview tab as it builds. You can watch it come together in real time.', done: false },
+                  { step: 3, title: 'Download or Deploy', desc: 'When you\u2019re happy with the result, download the code or click Deploy to publish it live.', done: false },
+                ].map(({ step, title, desc, done }) => (
+                  <div key={step} style={{ background: 'var(--theme-surface)', borderRadius: 12, padding: '16px 18px', border: '1.5px solid rgba(255,255,255,0.1)', display: 'flex', gap: 14 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: done ? '#10b981' : 'rgba(224,90,37,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: done ? '#fff' : '#E05A25', flexShrink: 0 }}>
+                      {step}
+                    </div>
+                    <div>
+                      <p style={{ fontSize: 13, fontWeight: 700, margin: '0 0 4px', color: 'var(--theme-text)' }}>{title}</p>
+                      <p style={{ fontSize: 12, color: 'var(--theme-muted)', margin: 0, lineHeight: 1.5 }}>{desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Preview — always mounted so Sandpack never loses files on tab switch */}
             <div style={{ display: activePanel === 'preview' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
               {/* Show placeholder when no build yet */}

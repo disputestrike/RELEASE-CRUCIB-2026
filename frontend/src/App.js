@@ -94,6 +94,12 @@ import ModelManager from "./pages/ModelManager";
 import FineTuning from "./pages/FineTuning";
 import SafetyDashboard from "./pages/SafetyDashboard";
 import UnifiedIDEPage from "./pages/UnifiedIDEPage";
+import StudioPage from "./pages/StudioPage";
+import KnowledgePage from "./pages/KnowledgePage";
+import ChannelsPage from "./pages/ChannelsPage";
+import SessionsPage from "./pages/SessionsPage";
+import CommerceManagePage from "./pages/CommerceManagePage";
+import WorkspaceMembersPage from "./pages/WorkspaceMembersPage";
 import { LayoutProvider } from "./stores/useLayoutStore";
 import { TaskProvider } from "./stores/useTaskStore";
 
@@ -436,6 +442,12 @@ function App() {
             <Route path="admin/billing" element={<AdminRoute><AdminBilling /></AdminRoute>} />
             <Route path="admin/analytics" element={<AdminRoute><AdminAnalytics /></AdminRoute>} />
             <Route path="admin/legal" element={<AdminRoute><AdminLegal /></AdminRoute>} />
+            <Route path="studio" element={<StudioPage />} />
+            <Route path="knowledge" element={<KnowledgePage />} />
+            <Route path="channels" element={<ChannelsPage />} />
+            <Route path="sessions" element={<SessionsPage />} />
+            <Route path="commerce" element={<CommerceManagePage />} />
+            <Route path="members" element={<WorkspaceMembersPage />} />
           </Route>
         </Routes>
         </BrowserRouter>

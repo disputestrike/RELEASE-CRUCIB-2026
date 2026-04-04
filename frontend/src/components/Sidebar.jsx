@@ -9,7 +9,8 @@ import {
   CreditCard, ScrollText, BarChart3, Wrench, HelpCircle, Coins,
   X, Bell, MoreHorizontal, ExternalLink, Pencil, Share2,
   Trash2, FolderInput, Star, Settings, ShieldCheck, Code, Monitor,
-  PanelLeftClose, PanelLeftOpen, History
+  PanelLeftClose, PanelLeftOpen, History,
+  Bot, Radio, MessageSquare, ShoppingBag, Users
 } from 'lucide-react';
 import Logo from './Logo';
 import './Sidebar.css';
@@ -64,6 +65,16 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     { label: 'New Task', icon: Plus, href: '/app', exact: true, state: { newAgent: Date.now() } },
     { label: 'New Project', icon: FolderPlus, href: '/app', exact: true, state: { newProject: true } },
     { label: 'Agents', icon: FolderOpen, href: '/app/agents' },
+  ];
+
+  // Platform nav items
+  const platformNav = [
+    { label: 'Studio', icon: Bot, href: '/app/studio' },
+    { label: 'Knowledge', icon: BookOpen, href: '/app/knowledge' },
+    { label: 'Channels', icon: Radio, href: '/app/channels' },
+    { label: 'Sessions', icon: MessageSquare, href: '/app/sessions' },
+    { label: 'Commerce', icon: ShoppingBag, href: '/app/commerce' },
+    { label: 'Members', icon: Users, href: '/app/members' },
   ];
 
   // Engine Room — collapsed by default, for power users
@@ -465,6 +476,25 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
           })}
         </div>
       </nav>
+
+      {/* Platform Section */}
+      <div className="sidebar-section">
+        <div className="sidebar-section-header">
+          <h3 className="sidebar-section-title">Platform</h3>
+        </div>
+        <div className="sidebar-section-items">
+          {platformNav.map((item) => (
+            <Link
+              key={item.href}
+              to={item.href}
+              className={`sidebar-nav-item ${isActive(item.href) ? 'active' : ''}`}
+            >
+              <item.icon size={16} className="sidebar-nav-icon" />
+              <span className="sidebar-nav-label">{item.label}</span>
+            </Link>
+          ))}
+        </div>
+      </div>
 
       {/* History Section — Today / Earlier, scrollable, context menu */}
       <div className="sidebar-section sidebar-section-tasks">

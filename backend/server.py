@@ -7869,6 +7869,15 @@ app.include_router(tools_router)
 app.include_router(agents_router)
 app.include_router(api_router)
 
+# Blueprint modules: Personas, Knowledge/RAG, Channels, Sessions, Trust & Safety,
+# Workspace/RBAC, Analytics, Commerce, Auto-DB Schema
+try:
+    from modules_blueprint import register_blueprint_routes
+    register_blueprint_routes(app)
+    logger.info("✅ Blueprint modules registered (Personas, Knowledge, Channels, Sessions, Safety, Workspace, Analytics, Commerce, AppDB)")
+except Exception as _bp_err:
+    logger.warning(f"Blueprint modules import failed: {_bp_err}")
+
 # Free-tier branding: served from our server so it cannot be removed from user's source (they only have an iframe tag).
 BRANDING_HTML = """<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:0;font-family:system-ui,sans-serif;font-size:12px;display:flex;align-items:center;justify-content:center;min-height:28px;background:transparent;color:#808080;"><a href="https://crucibai.com" target="_blank" rel="noopener noreferrer" style="color:#808080;text-decoration:none;">Built with CrucibAI</a></body></html>"""
 
