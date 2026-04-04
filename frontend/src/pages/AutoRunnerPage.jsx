@@ -104,7 +104,7 @@ export default function AutoRunnerPage() {
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const res = await axios.post(`${API}/api/orchestrator/plan`,
-        { project_id: user?.id || 'demo', goal: goal.trim(), mode: autoMode },
+        { goal: goal.trim(), mode: autoMode },
         { headers }
       );
       setPlan(res.data.plan);

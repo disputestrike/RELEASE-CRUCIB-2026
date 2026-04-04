@@ -7681,7 +7681,7 @@ def _get_orchestration():
 
 
 class PlanRequest(BaseModel):
-    project_id: str
+    project_id: Optional[str] = None  # optional — auto-assigned from user.id if missing
     goal: str
     mode: Optional[str] = "guided"
 
@@ -7736,9 +7736,12 @@ async def create_plan(body: PlanRequest, user: dict = Depends(get_current_user))
         plan = await planner_mod.generate_plan(body.goal)
         estimate = planner_mod.estimate_tokens(plan)
 
+        # Resolve project_id — use provided, or fall back to user id, or generate one
+        effective_project_id = body.project_id or user.get("id") or str(uuid.uuid4())
+
         # Create job record
         job = await runtime_state.create_job(
-            project_id=body.project_id,
+            project_id=effective_project_id,
             mode=body.mode or "guided",
             goal=body.goal,
             user_id=user.get("id"),
@@ -7751,7 +7754,7 @@ async def create_plan(body: PlanRequest, user: dict = Depends(get_current_user))
             await conn.execute("""
                 INSERT INTO build_plans (id, job_id, project_id, goal, plan_json, status, created_at)
                 VALUES ($1,$2,$3,$4,$5,'draft',NOW())
-            """, plan_id, job["id"], body.project_id, body.goal, _json.dumps(plan))
+            """, plan_id, job["id"], effective_project_id, body.goal, _json.dumps(plan))
 
         # Persist plan steps as job_steps
         from orchestration.dag_engine import build_dag_from_plan
