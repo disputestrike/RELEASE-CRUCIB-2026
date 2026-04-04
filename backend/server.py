@@ -1836,8 +1836,37 @@ async def ai_build_iterative(data: ChatMessage, user: dict = Depends(get_optiona
                 return resp
 
             step_events = []
+            pass_records = []
+            step_start_times = {}
+            step_num_counter = [0]
+            # Use a queue to yield events from on_step callback to the generator
+            import asyncio as _asyncio
+            _step_queue = _asyncio.Queue()
+
             async def on_step(step_name, files_so_far):
+                step_num_counter[0] += 1
+                sn = step_num_counter[0]
+                elapsed = 0
+                started = step_start_times.get(step_name, 0)
+                if started:
+                    elapsed = int((__import__('time').time() - started) * 1000)
+                # Record for passes tab
+                pass_records.append({
+                    "pass": sn,
+                    "label": step_name,
+                    "desc": f"{len(files_so_far)} files generated",
+                    "files_count": len(files_so_far),
+                    "color": ["#a78bfa","#60a5fa","#34d399","#fb923c","#fbbf24","#f87171"][sn % 6],
+                    "status": "complete",
+                    "duration_ms": elapsed,
+                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                })
+                # Yield step_complete IMMEDIATELY so frontend gets real-time update
                 step_events.append((step_name, dict(files_so_far)))
+                await _step_queue.put({"type": "step_complete", "step": step_name,
+                                       "step_num": sn, "total_steps": total_steps,
+                                       "files_count": len(files_so_far),
+                                       "duration_ms": elapsed, "files": files_so_far})
 
             # Inject active skills context into build prompt (auto-detect + user-activated)
             _skills_ctx = ""
@@ -1858,13 +1887,38 @@ async def ai_build_iterative(data: ChatMessage, user: dict = Depends(get_optiona
                 except Exception:
                     pass
 
-            final_files = await run_iterative_build(
+            # Emit step_started for ALL passes upfront so UI shows pending phases immediately
+            import time as _time
+            _pass_structure = get_build_structure(build_kind)["passes"]
+            for _idx, _p in enumerate(_pass_structure):
+                step_start_times[_p["name"]] = _time.time()
+                yield json.dumps({"type": "step_started", "step": _p["name"], "step_num": _idx+1,
+                                   "total_steps": total_steps, "status": "pending",
+                                   "desc": _p.get("desc", "")}) + "\n"
+
+            # Run iterative build concurrently — on_step pushes to _step_queue after each pass
+            _build_task = asyncio.ensure_future(run_iterative_build(
                 prompt=prompt, build_kind=build_kind,
                 call_llm=call_llm, on_progress=on_step,
                 skills_context=_skills_ctx or None,
-            )
-            for step_name, files in step_events:
-                yield json.dumps({"type": "step_complete", "step": step_name, "files": files}) + "\n"
+            ))
+            # Drain _step_queue in real-time while build runs
+            while not _build_task.done():
+                try:
+                    _ev = _step_queue.get_nowait()
+                    yield json.dumps(_ev) + "\n"
+                except Exception:
+                    await asyncio.sleep(0.1)
+            # Drain remaining events
+            while not _step_queue.empty():
+                try:
+                    _ev = _step_queue.get_nowait()
+                    yield json.dumps(_ev) + "\n"
+                except Exception:
+                    break
+            if _build_task.exception():
+                raise _build_task.exception()
+            final_files = _build_task.result()
 
             if user and not user.get("public_api"):
                 cred = _user_credits(user)
@@ -1888,6 +1942,7 @@ async def ai_build_iterative(data: ChatMessage, user: dict = Depends(get_optiona
                         "files": final_files,
                         "status": "complete",
                         "total_files": len(final_files),
+                        "passes": pass_records,
                         "updated_at": __import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat(),
                     }},
                     upsert=True,

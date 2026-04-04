@@ -514,16 +514,9 @@ const BuildHistoryPanel = ({ buildHistory, projectId, loading }) => {
 };
 
 // ── PassesTab: loads real pass data from /api/passes/:taskId ────────────────
-const STATIC_PASSES = [
-  { pass: 'Pass 1', label: 'Static Foundation', desc: 'Config files injected: tsconfig, vite, package.json, docker-compose, CI/CD', color: '#a78bfa' },
-  { pass: 'Pass 2', label: 'Architecture', desc: 'App structure, shared types, routing, contexts', color: '#60a5fa' },
-  { pass: 'Pass 3', label: 'Frontend Generation', desc: 'React components, pages, routing, state management', color: '#34d399' },
-  { pass: 'Pass 4', label: 'Backend Generation', desc: 'Express routes, middleware, services, DB schema', color: '#fb923c' },
-  { pass: 'Pass 5', label: 'Integration', desc: 'Frontend ↔ backend wiring, API client, shared types', color: '#fbbf24' },
-  { pass: 'Pass 6', label: 'Finalization', desc: 'README, deployment config, optimization', color: '#f87171' },
-];
+const PASS_COLORS = ['#a78bfa','#60a5fa','#34d399','#fb923c','#fbbf24','#f87171'];
 
-const PassesTab = ({ taskId, files, versions, token, API }) => {
+const PassesTab = ({ taskId, files, versions, token, API, liveSteps, isBuilding }) => {
   const [passData, setPassData] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -536,52 +529,100 @@ const PassesTab = ({ taskId, files, versions, token, API }) => {
       .finally(() => setLoading(false));
   }, [taskId, token, API]);
 
-  const passes = passData?.passes || (versions.length > 0 ? STATIC_PASSES : []);
-  const totalFiles = passData?.total_files || Object.keys(files).length;
+  // Prefer live steps during/after build (they have real timing + file counts)
+  // Fall back to API data, then empty
+  const passes = liveSteps?.length > 0
+    ? liveSteps.map((s, i) => ({
+        pass: i + 1,
+        label: s.name,
+        desc: s.filesCount ? `${s.filesCount} files generated` : (s.desc || ''),
+        color: PASS_COLORS[i % PASS_COLORS.length],
+        status: s.status,
+        duration_ms: s.durationMs,
+        files_count: s.filesCount,
+      }))
+    : passData?.passes || [];
+
+  const totalFiles = passData?.total_files || liveSteps?.filter(s => s.filesCount)?.at(-1)?.filesCount || Object.keys(files).length;
   const buildKind = passData?.build_kind || 'fullstack';
+  const completedCount = passes.filter(p => p.status === 'complete').length;
+  const pct = passes.length > 0 ? Math.round(completedCount / passes.length * 100) : 0;
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-3">
-      <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--theme-muted)' }}>Multi-Pass Build System</div>
-            <div className="text-xs mt-0.5" style={{ color: 'var(--theme-muted)' }}>{passes.length} passes · {totalFiles} files · {buildKind}</div>
-          </div>
-          {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--theme-muted)' }} />}
+    <div style={{ height: '100%', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+      {/* Header */}
+      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--theme-border)', background: 'var(--theme-surface2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--theme-muted)' }}>Multi-Pass Build</div>
+          <div style={{ fontSize: 11, color: 'var(--theme-muted)', marginTop: 2 }}>{passes.length} passes · {totalFiles} files · {buildKind}</div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {loading && <Loader2 style={{ width: 12, height: 12, color: 'var(--theme-muted)' }} className="animate-spin" />}
+          {passes.length > 0 && (
+            <div style={{ fontSize: 11, fontWeight: 600, color: pct === 100 ? '#4ade80' : 'var(--theme-muted)' }}>{pct}%</div>
+          )}
         </div>
       </div>
-      {passes.length > 0 ? (
-        <div className="space-y-2">
-          {passes.map((p, i) => (
-            <div key={i} className="rounded-xl p-3.5 border" style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'var(--theme-border)' }}>
-              <div className="flex items-center gap-2.5 mb-1.5">
-                <div className="w-2 h-2 rounded-full shrink-0" style={{ background: p.color || '#60a5fa' }} />
-                <span className="text-xs font-semibold" style={{ color: p.color || '#60a5fa' }}>{p.pass || `Pass ${i+1}`}</span>
-                <span className="text-xs font-medium" style={{ color: 'var(--theme-text)' }}>{p.label}</span>
-                {(p.status === 'complete' || versions.length > 0) && (
-                  <div className="ml-auto flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(74,222,128,0.12)', color: '#86efac' }}>
-                    <span>✓</span>
-                  </div>
-                )}
-              </div>
-              <div className="text-xs" style={{ color: 'var(--theme-muted)', paddingLeft: '18px' }}>{p.desc}</div>
-            </div>
-          ))}
-          <div className="rounded-xl p-3.5 border text-center" style={{ borderColor: 'var(--theme-border)', background: 'rgba(74,222,128,0.04)' }}>
-            <div className="text-sm font-semibold" style={{ color: '#86efac' }}>Build Complete</div>
-            <div className="text-xs mt-0.5" style={{ color: 'var(--theme-muted)' }}>{totalFiles} files · {versions.length} version{versions.length !== 1 ? 's' : ''} saved</div>
-          </div>
-        </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center py-12 gap-3" style={{ color: 'var(--theme-muted)' }}>
-          <Layers className="w-8 h-8 opacity-30" />
-          <div className="text-center">
-            <div className="text-sm font-medium mb-1">No builds yet</div>
-            <div className="text-xs opacity-70">Run a fullstack build to see pass history</div>
-          </div>
+
+      {/* Progress bar */}
+      {passes.length > 0 && (
+        <div style={{ height: 2, background: 'rgba(255,255,255,0.06)', flexShrink: 0 }}>
+          <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? '#4ade80' : '#3b82f6', transition: 'width 0.6s ease' }} />
         </div>
       )}
+
+      {/* Pass list */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {passes.length > 0 ? passes.map((p, i) => (
+          <div key={i} style={{
+            padding: '11px 14px', borderRadius: 10, border: '1px solid var(--theme-border)',
+            background: p.status === 'running' ? 'rgba(59,130,246,0.05)'
+              : p.status === 'complete' ? 'rgba(74,222,128,0.03)'
+              : 'rgba(255,255,255,0.02)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 3 }}>
+              {/* Status icon */}
+              <div style={{ width: 20, height: 20, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                background: p.status === 'complete' ? 'rgba(74,222,128,0.15)' : p.status === 'running' ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.05)' }}>
+                {p.status === 'complete'
+                  ? <Check style={{ width: 10, height: 10, color: '#4ade80' }} />
+                  : p.status === 'running'
+                  ? <Loader2 style={{ width: 10, height: 10, color: '#60a5fa' }} className="animate-spin" />
+                  : <div style={{ width: 6, height: 6, borderRadius: '50%', border: '1.5px solid var(--theme-muted)', opacity: 0.4 }} />
+                }
+              </div>
+              {/* Pass label */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
+                <span style={{ fontSize: 10, fontWeight: 600, color: p.color, opacity: 0.8, flexShrink: 0 }}>P{p.pass || i+1}</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: p.status === 'complete' ? 'var(--theme-text)' : p.status === 'running' ? '#93c5fd' : 'var(--theme-muted)', truncate: true }}>{p.label}</span>
+              </div>
+              {/* Duration */}
+              {p.duration_ms > 0 && (
+                <span style={{ fontSize: 10, color: 'var(--theme-muted)', flexShrink: 0, opacity: 0.6 }}>{(p.duration_ms/1000).toFixed(1)}s</span>
+              )}
+            </div>
+            {p.desc && (
+              <div style={{ fontSize: 10, color: 'var(--theme-muted)', paddingLeft: 30, opacity: 0.7 }}>{p.desc}</div>
+            )}
+          </div>
+        )) : (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 10, color: 'var(--theme-muted)', paddingTop: 40 }}>
+            <Layers style={{ width: 32, height: 32, opacity: 0.25 }} />
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>No build yet</div>
+              <div style={{ fontSize: 11, opacity: 0.6 }}>Run a build to see real-time pass data</div>
+            </div>
+          </div>
+        )}
+
+        {/* Completed summary */}
+        {passes.length > 0 && !isBuilding && pct === 100 && (
+          <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid rgba(74,222,128,0.2)', background: 'rgba(74,222,128,0.05)', textAlign: 'center' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#4ade80', marginBottom: 3 }}>Build Complete</div>
+            <div style={{ fontSize: 11, color: 'var(--theme-muted)' }}>{totalFiles} files · {versions.length} version{versions.length !== 1 ? 's' : ''} saved</div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -741,9 +782,19 @@ root.render(<${compName} />);` };
   const [messages, setMessages] = useState([]);
   const [isBuilding, setIsBuilding] = useState(false);
   const buildAbortRef = useRef(null); // AbortController for cancelling active build
-  // Resizable panes
-  const [leftPanelWidth, setLeftPanelWidth] = useState(208); // 52 * 4 = 208px (w-52)
-  const [rightPanelWidth, setRightPanelWidth] = useState(null); // null = 44% default
+
+  // Live build timeline — step_started + step_complete events
+  const [liveSteps, setLiveSteps] = useState([]); // [{name, status:'pending'|'running'|'complete', filesCount, duration}]
+
+  // Resizable panes — persisted to localStorage
+  const [leftPanelWidth, setLeftPanelWidth] = useState(() => {
+    const saved = localStorage.getItem('crucibai_left_panel_width');
+    return saved ? parseInt(saved, 10) : 208;
+  }); // 52 * 4 = 208px (w-52)
+  const [rightPanelWidth, setRightPanelWidth] = useState(() => {
+    const saved = localStorage.getItem('crucibai_right_panel_width');
+    return saved ? parseInt(saved, 10) : null;
+  }); // null = 44% default
   const isDraggingLeft = useRef(false);
   const isDraggingRight = useRef(false);
   const dragStartX = useRef(0);
@@ -758,7 +809,9 @@ root.render(<${compName} />);` };
     const onMove = (ev) => {
       if (!isDraggingLeft.current) return;
       const delta = ev.clientX - dragStartX.current;
-      setLeftPanelWidth(Math.max(140, Math.min(400, dragStartWidth.current + delta)));
+      const newW = Math.max(140, Math.min(400, dragStartWidth.current + delta));
+      setLeftPanelWidth(newW);
+      localStorage.setItem('crucibai_left_panel_width', String(newW));
     };
     const onUp = () => {
       isDraggingLeft.current = false;
@@ -781,7 +834,9 @@ root.render(<${compName} />);` };
     const onMove = (ev) => {
       if (!isDraggingRight.current) return;
       const delta = dragStartX.current - ev.clientX;
-      setRightPanelWidth(Math.max(280, Math.min(900, dragStartWidth.current + delta)));
+      const newRW = Math.max(280, Math.min(900, dragStartWidth.current + delta));
+      setRightPanelWidth(newRW);
+      localStorage.setItem('crucibai_right_panel_width', String(newRW));
     };
     const onUp = () => {
       isDraggingRight.current = false;
@@ -1606,6 +1661,7 @@ root.render(<${compName} />);` };
     setInput('');
     setNextSuggestions([]);
     setIsBuilding(true);
+    setLiveSteps([]); // reset live timeline
     // Task 6: detect and display active skill
     setActiveSkillName(detectSkillFromPrompt(prompt));
     setBuildProgress(0);
@@ -1909,13 +1965,34 @@ BUILD IT NOW — output every file completely:`;
                 if (ev.type === 'start') {
                   addLog(`Building ${ev.build_kind} app in ${ev.total_steps} passes...`, 'info', 'planner');
                   setBuildProgress(10);
+                  setLiveSteps([]); // will be populated by step_started events
+                }
+                if (ev.type === 'step_started') {
+                  // Mark this step as running, all others remain pending/complete
+                  setLiveSteps(prev => {
+                    const exists = prev.find(s => s.name === ev.step);
+                    if (exists) {
+                      return prev.map(s => s.name === ev.step ? { ...s, status: 'running' } : s);
+                    }
+                    // First time seeing steps — build full list
+                    return prev.length === 0
+                      ? [{ name: ev.step, status: 'running', stepNum: ev.step_num, total: ev.total_steps, desc: ev.desc || '' }]
+                      : [...prev, { name: ev.step, status: 'running', stepNum: ev.step_num, total: ev.total_steps, desc: ev.desc || '' }];
+                  });
+                  setCurrentPhase(ev.step);
                 }
                 if (ev.type === 'step_complete') {
                   const stepFiles = ev.files || {};
                   const count = Object.keys(stepFiles).length;
                   addLog(`✓ ${ev.step}: ${count} files generated`, 'success', ev.step);
                   setFiles(prev => ({ ...prev, ...Object.fromEntries(Object.entries(stepFiles).map(([k, v]) => [k, { code: v }])) }));
-                  setBuildProgress(prev => Math.min(prev + 20, 90));
+                  setBuildProgress(prev => Math.min(prev + Math.floor(80 / (ev.total_steps || 6)), 90));
+                  // Mark step complete in live timeline
+                  setLiveSteps(prev => prev.map(s =>
+                    s.name === ev.step
+                      ? { ...s, status: 'complete', filesCount: ev.files_count || count, durationMs: ev.duration_ms }
+                      : s
+                  ));
                 }
                 if (ev.type === 'done') {
                   iterDone = true;
@@ -3055,10 +3132,11 @@ BUILD IT NOW — output every file completely:`;
         {leftSidebarOpen && (
           <div
             onMouseDown={handleLeftDragStart}
+            onDoubleClick={() => { setLeftPanelWidth(208); localStorage.setItem('crucibai_left_panel_width', '208'); }}
             style={{ width: 4, cursor: 'col-resize', background: 'transparent', flexShrink: 0, zIndex: 10, position: 'relative' }}
             onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.5)'}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            title="Drag to resize explorer"
+            title="Drag to resize · Double-click to reset"
           />
         )}
 
@@ -3353,10 +3431,11 @@ BUILD IT NOW — output every file completely:`;
         {rightSidebarOpen && (
           <div
             onMouseDown={handleRightDragStart}
+            onDoubleClick={() => { setRightPanelWidth(null); localStorage.removeItem('crucibai_right_panel_width'); }}
             style={{ width: 4, cursor: 'col-resize', background: 'transparent', flexShrink: 0, zIndex: 10 }}
             onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.5)'}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            title="Drag to resize preview panel"
+            title="Drag to resize · Double-click to reset"
           />
         )}
         {/* ── Right: Preview + Code Editor (collapsible) ── */}
@@ -3815,60 +3894,125 @@ BUILD IT NOW — output every file completely:`;
 
             {/* ── Agent Graph tab — CrucibAI unique ── */}
             {activePanel === 'agents' && (
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
-                  <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--theme-muted)' }}>DAG Orchestration</div>
-                  <div className="text-xs mt-0.5" style={{ color: 'var(--theme-muted)' }}>122 agents · Kahn topological sort · parallel phases</div>
+              <div className="flex-1 overflow-y-auto" style={{ padding: 0 }}>
+                {/* Header strip */}
+                <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--theme-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--theme-surface2)' }}>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--theme-text)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Live Execution</div>
+                    <div style={{ fontSize: 11, color: 'var(--theme-muted)', marginTop: 2 }}>122 agents · DAG · real-time</div>
+                  </div>
+                  {isBuilding && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', background: 'rgba(59,130,246,0.12)', borderRadius: 20, border: '1px solid rgba(59,130,246,0.25)' }}>
+                      <Loader2 style={{ width: 10, height: 10, color: '#60a5fa' }} className="animate-spin" />
+                      <span style={{ fontSize: 10, color: '#93c5fd', fontWeight: 600 }}>BUILDING</span>
+                    </div>
+                  )}
                 </div>
-                {/* Task 6: Active skill indicator */}
+
+                {/* Active skill banner */}
                 {isBuilding && activeSkillName && (
-                  <div style={{ padding: '8px 12px', background: 'rgba(59,130,246,0.1)', borderRadius: '8px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span>&#x26A1;</span>
-                    <span style={{ fontSize: '12px', color: 'var(--theme-muted)' }}>Active skill:</span>
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--theme-text)' }}>{activeSkillName}</span>
+                  <div style={{ padding: '8px 16px', background: 'rgba(59,130,246,0.08)', borderBottom: '1px solid rgba(59,130,246,0.15)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 12 }}>⚡</span>
+                    <span style={{ fontSize: 11, color: 'var(--theme-muted)' }}>Skill:</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: '#93c5fd' }}>{activeSkillName}</span>
                   </div>
                 )}
-                {/* Agent activity: prefer live agentHistory, then agentsActivity, then static */}
-                {(agentHistory.length > 0 || agentsActivity.length > 0) ? (
-                  <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--theme-border)' }}>
-                    {(agentHistory.length > 0 ? agentHistory : agentsActivity).map((a, i) => (
-                      <div key={i} className="flex items-center gap-3 px-3 py-2.5 border-b last:border-b-0 text-xs" style={{ borderColor: 'var(--theme-border)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
-                        <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{
-                          background: a.status === 'done' ? 'rgba(74,222,128,0.15)' : a.status === 'running' ? 'rgba(251,146,60,0.15)' : 'rgba(255,255,255,0.05)'
+
+                {/* LIVE TIMELINE — shows step_started/step_complete events in real-time */}
+                {liveSteps.length > 0 ? (
+                  <div style={{ padding: '12px 16px' }}>
+                    <div style={{ marginBottom: 12, fontSize: 11, color: 'var(--theme-muted)', display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Phase execution</span>
+                      <span>{liveSteps.filter(s => s.status === 'complete').length}/{liveSteps.length} done</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {liveSteps.map((step, i) => (
+                        <div key={step.name || i} style={{
+                          display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
+                          borderRadius: 10, border: '1px solid var(--theme-border)',
+                          background: step.status === 'running'
+                            ? 'rgba(59,130,246,0.06)'
+                            : step.status === 'complete'
+                            ? 'rgba(74,222,128,0.04)'
+                            : 'rgba(255,255,255,0.02)',
+                          transition: 'all 0.3s ease',
                         }}>
-                          {a.status === 'done' ? <span style={{ color: '#4ade80', fontSize: 9 }}>&#x2713;</span>
-                            : a.status === 'running' ? <Loader2 className="w-2.5 h-2.5 animate-spin" style={{ color: '#fb923c' }} />
-                            : <span style={{ color: 'var(--theme-muted)', fontSize: 9 }}>&#x25CB;</span>}
+                          {/* Status icon */}
+                          <div style={{ width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                            background: step.status === 'complete' ? 'rgba(74,222,128,0.15)'
+                              : step.status === 'running' ? 'rgba(59,130,246,0.15)'
+                              : 'rgba(255,255,255,0.05)'
+                          }}>
+                            {step.status === 'complete'
+                              ? <Check style={{ width: 12, height: 12, color: '#4ade80' }} />
+                              : step.status === 'running'
+                              ? <Loader2 style={{ width: 12, height: 12, color: '#60a5fa' }} className="animate-spin" />
+                              : <div style={{ width: 8, height: 8, borderRadius: '50%', border: '1.5px solid var(--theme-muted)', opacity: 0.4 }} />
+                            }
+                          </div>
+                          {/* Step info */}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12, fontWeight: step.status === 'running' ? 700 : 500,
+                              color: step.status === 'complete' ? '#86efac'
+                                : step.status === 'running' ? '#93c5fd'
+                                : 'var(--theme-muted)',
+                              marginBottom: 1
+                            }}>
+                              {step.name}
+                            </div>
+                            {(step.desc || step.filesCount) && (
+                              <div style={{ fontSize: 10, color: 'var(--theme-muted)', opacity: 0.7 }}>
+                                {step.status === 'complete' && step.filesCount ? `${step.filesCount} files` : (step.desc || '')}
+                                {step.status === 'complete' && step.durationMs ? ` · ${(step.durationMs/1000).toFixed(1)}s` : ''}
+                              </div>
+                            )}
+                          </div>
+                          {/* Step number badge */}
+                          <div style={{ fontSize: 10, color: 'var(--theme-muted)', opacity: 0.5, flexShrink: 0 }}>
+                            {step.stepNum || i+1}/{step.total || liveSteps.length}
+                          </div>
                         </div>
-                        <span className="font-medium truncate" style={{ color: a.status === 'done' ? '#86efac' : a.status === 'running' ? '#fb923c' : 'var(--theme-muted)' }}>{a.name || a.message?.slice(0, 40) || 'Agent'}</span>
-                        <span className="ml-auto shrink-0 opacity-60" style={{ color: 'var(--theme-muted)' }}>{a.phase || a.model || ''}</span>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+
+                    {/* Progress bar */}
+                    <div style={{ marginTop: 16, height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%', borderRadius: 2, transition: 'width 0.5s ease',
+                        width: `${Math.round(liveSteps.filter(s => s.status === 'complete').length / Math.max(liveSteps.length, 1) * 100)}%`,
+                        background: 'linear-gradient(90deg, #3b82f6, #4ade80)'
+                      }} />
+                    </div>
                   </div>
                 ) : (
-                  /* Phase map when not building */
-                  <div className="space-y-1.5">
-                    {[
-                      { name: 'Planner', desc: 'Intent parsing, task decomposition', phase: 'Planning', color: '#a78bfa' },
-                      { name: 'Architect', desc: 'System design, component structure', phase: 'Architecture', color: '#60a5fa' },
-                      { name: 'Frontend', desc: 'UI components, pages, styling', phase: 'Generation', color: '#34d399' },
-                      { name: 'Backend', desc: 'API routes, services, middleware', phase: 'Generation', color: '#34d399' },
-                      { name: 'Database', desc: 'Schema, migrations, ORM', phase: 'Generation', color: '#34d399' },
-                      { name: 'Styling', desc: 'Tailwind, CSS, theming', phase: 'Generation', color: '#f472b6' },
-                      { name: 'Logic', desc: 'Business logic, state management', phase: 'Generation', color: '#fb923c' },
-                      { name: 'Validator', desc: 'Syntax checking, type safety', phase: 'Validation', color: '#fbbf24' },
-                      { name: 'Optimizer', desc: 'Bundle optimization, deployment config', phase: 'Deploy', color: '#f87171' },
-                    ].map((agent, i) => (
-                      <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid var(--theme-border)' }}>
-                        <div className="w-2 h-2 rounded-full shrink-0" style={{ background: agent.color }} />
-                        <div className="min-w-0">
-                          <div className="font-medium" style={{ color: 'var(--theme-text)' }}>{agent.name}</div>
-                          <div className="opacity-60 truncate" style={{ color: 'var(--theme-muted)' }}>{agent.desc}</div>
+                  /* Pre-build: show static DAG phase map */
+                  <div style={{ padding: '12px 16px' }}>
+                    <div style={{ fontSize: 11, color: 'var(--theme-muted)', marginBottom: 10 }}>
+                      {isBuilding ? 'Initializing build phases...' : 'Run a build to see live execution'}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      {[
+                        { name: 'Planner', desc: 'Intent parsing, task decomposition', color: '#a78bfa' },
+                        { name: 'Architect', desc: 'System design, component structure', color: '#60a5fa' },
+                        { name: 'Frontend', desc: 'UI components, pages, styling', color: '#34d399' },
+                        { name: 'Backend', desc: 'API routes, services, middleware', color: '#34d399' },
+                        { name: 'Database', desc: 'Schema, migrations, ORM', color: '#60a5fa' },
+                        { name: 'Validator', desc: 'Syntax checking, type safety', color: '#fbbf24' },
+                      ].map((a, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 8,
+                          background: 'rgba(255,255,255,0.025)', border: '1px solid var(--theme-border)' }}>
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: a.color, flexShrink: 0 }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--theme-text)' }}>{a.name}</div>
+                            <div style={{ fontSize: 10, color: 'var(--theme-muted)', opacity: 0.7 }}>{a.desc}</div>
+                          </div>
+                          {isBuilding && <Loader2 style={{ width: 10, height: 10, color: 'var(--theme-muted)' }} className="animate-pulse" />}
                         </div>
-                        <span className="ml-auto shrink-0 px-1.5 py-0.5 rounded text-[10px]" style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--theme-muted)' }}>{agent.phase}</span>
+                      ))}
+                      <div style={{ textAlign: 'center', padding: '8px 0', fontSize: 10, color: 'var(--theme-muted)', opacity: 0.5 }}>
+                        + 116 specialized agents in 8 phases
                       </div>
-                    ))}
-                    <div className="text-center py-3 text-xs" style={{ color: 'var(--theme-muted)' }}>+ 113 more specialized agents</div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -3882,6 +4026,8 @@ BUILD IT NOW — output every file completely:`;
                 versions={versions}
                 token={token}
                 API={API}
+                liveSteps={liveSteps}
+                isBuilding={isBuilding}
               />
             )}
           </div>
