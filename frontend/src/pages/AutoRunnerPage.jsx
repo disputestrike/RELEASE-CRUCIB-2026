@@ -1,13 +1,19 @@
 /**
- * AutoRunnerPage — Main autonomous build workspace.
- * Combines: goal input → plan approval → execution timeline → proof → completion.
- * Also includes: mode switch (Beginner/Pro), system explorer, failure drawer, replay.
+ * AutoRunnerPage — CrucibAI autonomous build workspace.
+ * 3-pane layout: left rail | center pane | right pane.
+ * Stage machine: input → plan → running → completed.
  */
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../App';
 import axios from 'axios';
 import { useJobStream } from '../hooks/useJobStream';
+import {
+  Layers, FolderKanban, Briefcase, Bot, FileCode2, Rocket,
+  BarChart3, Store, Settings, ChevronLeft, ChevronRight,
+  Eye, ShieldCheck, Share2
+} from 'lucide-react';
 import AutoRunnerPanel from '../components/AutoRunner/AutoRunnerPanel';
+import GoalComposer from '../components/AutoRunner/GoalComposer';
 import PlanApproval from '../components/AutoRunner/PlanApproval';
 import ExecutionTimeline from '../components/AutoRunner/ExecutionTimeline';
 import ProofPanel from '../components/AutoRunner/ProofPanel';
@@ -15,19 +21,38 @@ import SystemExplorer from '../components/AutoRunner/SystemExplorer';
 import FailureDrawer from '../components/AutoRunner/FailureDrawer';
 import BuildReplay from '../components/AutoRunner/BuildReplay';
 import BuildCompletionCard from '../components/AutoRunner/BuildCompletionCard';
-import CostEstimator from '../components/AutoRunner/CostEstimator';
+import SystemStatusHUD from '../components/AutoRunner/SystemStatusHUD';
 import './AutoRunnerPage.css';
 
 const API = process.env.REACT_APP_BACKEND_URL || '';
 
-const PANES = ['timeline', 'proof', 'explorer', 'replay'];
+const NAV_ITEMS = [
+  { key: 'workspace', label: 'Workspace', Icon: Layers },
+  { key: 'projects',  label: 'Projects',  Icon: FolderKanban },
+  { key: 'jobs',      label: 'Jobs',       Icon: Briefcase },
+  { key: 'agents',    label: 'Agents',     Icon: Bot },
+  { key: 'files',     label: 'Files',      Icon: FileCode2 },
+  { key: 'deploys',   label: 'Deploys',    Icon: Rocket },
+  { key: 'metrics',   label: 'Metrics',    Icon: BarChart3 },
+  { key: 'marketplace', label: 'Marketplace', Icon: Store },
+  { key: 'settings',  label: 'Settings',   Icon: Settings },
+];
+
+const RIGHT_PANES = ['timeline', 'proof', 'explorer', 'replay'];
 
 export default function AutoRunnerPage() {
   const { token, user } = useAuth();
 
-  // User experience mode
+  // UX mode
   const [uxMode, setUxMode] = useState(() => localStorage.getItem('crucibai_ux_mode') || 'beginner');
   const toggleUxMode = (m) => { setUxMode(m); localStorage.setItem('crucibai_ux_mode', m); };
+
+  // Rail collapse state
+  const [leftCollapsed, setLeftCollapsed] = useState(() => localStorage.getItem('crucibai_left_collapsed') === 'true');
+  const [rightCollapsed, setRightCollapsed] = useState(() => localStorage.getItem('crucibai_right_collapsed') === 'true');
+
+  useEffect(() => { localStorage.setItem('crucibai_left_collapsed', leftCollapsed); }, [leftCollapsed]);
+  useEffect(() => { localStorage.setItem('crucibai_right_collapsed', rightCollapsed); }, [rightCollapsed]);
 
   // Build state
   const [goal, setGoal] = useState('');
@@ -35,24 +60,25 @@ export default function AutoRunnerPage() {
   const [plan, setPlan] = useState(null);
   const [estimate, setEstimate] = useState(null);
   const [jobId, setJobId] = useState(null);
-  const [stage, setStage] = useState('input');  // input | plan | running | completed
+  const [stage, setStage] = useState('input');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activePane, setActivePane] = useState('timeline');
+  const [activeNav, setActiveNav] = useState('workspace');
   const [failedStep, setFailedStep] = useState(null);
 
   // Job stream
   const { job, steps, events, proof, isConnected, refresh } = useJobStream(jobId, token);
 
-  // Detect completion
   const isCompleted = job?.status === 'completed';
-  const isFailed = job?.status === 'failed';
-
-  // If job has failed steps, show failure drawer
   const latestFailedStep = steps.find(s => s.status === 'failed' && !failedStep);
 
-  // ── Actions ──────────────────────────────────────────────────────────────
+  // Detect completion stage
+  useEffect(() => {
+    if (isCompleted && stage === 'running') setStage('completed');
+  }, [isCompleted, stage]);
 
+  // Actions
   const handleGeneratePlan = async () => {
     if (!goal.trim()) return;
     setLoading(true);
@@ -128,34 +154,47 @@ export default function AutoRunnerPage() {
     setFailedStep(null);
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // Compute active agents count
+  const activeAgentCount = [...new Set(steps.filter(s => s.status === 'running').map(s => s.agent_name))].length;
 
   return (
-    <div className={`auto-runner-page arp-ux-${uxMode}`}>
+    <div className={`arp-root arp-ux-${uxMode}`}>
       {/* Top bar */}
       <div className="arp-topbar">
         <div className="arp-topbar-left">
           <span className="arp-logo">CrucibAI</span>
-          <span className="arp-separator">›</span>
-          <span className="arp-page-name">Auto-Runner</span>
+          <span className="arp-project-name">{user?.name || 'Project'}</span>
+          <span className="arp-env-badge">dev</span>
         </div>
+
         <div className="arp-topbar-center">
-          {jobId && (
-            <AutoRunnerPanel
-              mode={autoMode}
-              onModeChange={setAutoMode}
-              jobId={jobId}
-              jobStatus={job?.status}
-              onRun={() => handleApprove(autoMode)}
-              onPause={handleCancel}
-              onResume={handleResume}
-              onCancel={handleCancel}
-              budget={estimate}
-            />
-          )}
+          <AutoRunnerPanel
+            mode={autoMode}
+            onModeChange={setAutoMode}
+            jobId={jobId}
+            jobStatus={job?.status}
+            onRun={() => handleApprove(autoMode)}
+            onPause={handleCancel}
+            onResume={handleResume}
+            onCancel={handleCancel}
+            budget={estimate}
+          />
         </div>
+
         <div className="arp-topbar-right">
-          {/* Beginner / Pro mode switch */}
+          <button className="arp-topbar-btn" title="Preview">
+            <Eye size={14} />
+            <span className="arp-topbar-btn-label">Preview</span>
+          </button>
+          <button className="arp-topbar-btn" title="Deploy">
+            <Rocket size={14} />
+            <span className="arp-topbar-btn-label">Deploy</span>
+          </button>
+          <button className="arp-topbar-btn" title="Proof" onClick={() => { setActivePane('proof'); setRightCollapsed(false); }}>
+            <ShieldCheck size={14} />
+            <span className="arp-topbar-btn-label">Proof</span>
+          </button>
+
           <div className="arp-mode-switch">
             <button
               className={`arp-ux-btn ${uxMode === 'beginner' ? 'active' : ''}`}
@@ -166,33 +205,49 @@ export default function AutoRunnerPage() {
               onClick={() => toggleUxMode('pro')}
             >Pro</button>
           </div>
+
+          <SystemStatusHUD
+            isConnected={isConnected}
+            activeAgentCount={activeAgentCount}
+            jobStatus={job?.status}
+          />
         </div>
       </div>
 
-      {/* Main layout */}
-      <div className="arp-main">
-        {/* Left rail — goal input / plan approval / completion */}
-        <div className="arp-left-pane">
-          {stage === 'input' && (
-            <div className="arp-goal-area">
-              <div className="arp-goal-label">What do you want to build?</div>
-              <textarea
-                className="arp-goal-input"
-                placeholder="e.g. Build a SaaS dashboard with auth, billing, and analytics"
-                value={goal}
-                onChange={e => setGoal(e.target.value)}
-                rows={4}
-              />
-              <CostEstimator goal={goal} token={token} onEstimateReady={setEstimate} />
-              {error && <div className="arp-error">{error}</div>}
+      {/* Main 3-pane layout */}
+      <div className="arp-layout">
+        {/* Left rail */}
+        <div className={`arp-left-rail ${leftCollapsed ? 'collapsed' : ''}`}>
+          <div className="arp-rail-toggle" onClick={() => setLeftCollapsed(!leftCollapsed)}>
+            {leftCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+          </div>
+          <nav className="arp-nav">
+            {NAV_ITEMS.map(({ key, label, Icon }) => (
               <button
-                className="arp-generate-btn"
-                onClick={handleGeneratePlan}
-                disabled={loading || !goal.trim()}
+                key={key}
+                className={`arp-nav-item ${activeNav === key ? 'active' : ''}`}
+                onClick={() => setActiveNav(key)}
+                title={leftCollapsed ? label : undefined}
               >
-                {loading ? 'Generating plan...' : 'Generate Plan →'}
+                <Icon size={16} />
+                {!leftCollapsed && <span className="arp-nav-label">{label}</span>}
               </button>
-            </div>
+            ))}
+          </nav>
+        </div>
+
+        {/* Center pane */}
+        <div className="arp-center-pane">
+          {stage === 'input' && (
+            <GoalComposer
+              goal={goal}
+              onGoalChange={setGoal}
+              onSubmit={handleGeneratePlan}
+              loading={loading}
+              error={error}
+              token={token}
+              onEstimateReady={setEstimate}
+            />
           )}
 
           {stage === 'plan' && plan && (
@@ -207,65 +262,18 @@ export default function AutoRunnerPage() {
           )}
 
           {(stage === 'running' || stage === 'completed') && (
-            <div className="arp-running-info">
+            <div className="arp-execution-area">
               {isCompleted && (
                 <BuildCompletionCard
                   job={job}
                   proof={proof}
                   onOpenPreview={() => setActivePane('preview')}
-                  onOpenProof={() => setActivePane('proof')}
+                  onOpenProof={() => { setActivePane('proof'); setRightCollapsed(false); }}
                   onOpenCode={() => {}}
                   onDeployAgain={handleReset}
                 />
               )}
-              {!isCompleted && (
-                <div className="arp-job-status-card">
-                  <div className="arp-job-goal">{job?.goal || goal}</div>
-                  <div className="arp-job-phase">Phase: <strong>{job?.current_phase || '—'}</strong></div>
-                  <div className="arp-job-score">Quality: <strong>{job?.quality_score || 0}</strong></div>
-                </div>
-              )}
-              {/* Failure drawer */}
-              {(failedStep || latestFailedStep) && (
-                <div style={{ marginTop: 12 }}>
-                  <FailureDrawer
-                    step={failedStep || latestFailedStep}
-                    onRetry={handleRetryStep}
-                    onOpenCode={() => {}}
-                    onPauseJob={handleCancel}
-                    onClose={() => setFailedStep(null)}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-        </div>
 
-        {/* Right pane — tabs */}
-        <div className="arp-right-pane">
-          {/* Tab bar */}
-          <div className="arp-pane-tabs">
-            {PANES.map(p => (
-              <button
-                key={p}
-                className={`arp-pane-tab ${activePane === p ? 'active' : ''}`}
-                onClick={() => setActivePane(p)}
-              >
-                {p.charAt(0).toUpperCase() + p.slice(1)}
-              </button>
-            ))}
-            {uxMode === 'pro' && (
-              <button
-                className={`arp-pane-tab ${activePane === 'system' ? 'active' : ''}`}
-                onClick={() => setActivePane('system')}
-              >
-                System X-Ray
-              </button>
-            )}
-          </div>
-
-          <div className="arp-pane-content">
-            {activePane === 'timeline' && (
               <ExecutionTimeline
                 steps={steps}
                 events={events}
@@ -274,27 +282,94 @@ export default function AutoRunnerPage() {
                 onJumpToCode={() => {}}
                 isConnected={isConnected}
               />
-            )}
-            {activePane === 'proof' && (
-              <ProofPanel
-                proof={proof}
-                jobId={jobId}
-                onExport={() => alert('Export proof bundle — coming soon!')}
-              />
-            )}
-            {activePane === 'system' && uxMode === 'pro' && (
-              <SystemExplorer
-                steps={steps}
-                proof={proof}
-                job={job}
-                projectId={user?.id}
-                token={token}
-              />
-            )}
-            {activePane === 'replay' && (
-              <BuildReplay events={events} steps={steps} />
-            )}
+
+              {(failedStep || latestFailedStep) && (
+                <FailureDrawer
+                  step={failedStep || latestFailedStep}
+                  onRetry={handleRetryStep}
+                  onOpenCode={() => {}}
+                  onPauseJob={handleCancel}
+                  onClose={() => setFailedStep(null)}
+                />
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Right pane */}
+        <div className={`arp-right-pane ${rightCollapsed ? 'collapsed' : ''}`}>
+          <div className="arp-right-toggle" onClick={() => setRightCollapsed(!rightCollapsed)}>
+            {rightCollapsed ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
           </div>
+
+          {!rightCollapsed && (
+            <>
+              <div className="arp-pane-tabs">
+                {RIGHT_PANES.map(p => {
+                  if (p === 'explorer' && uxMode === 'beginner') return null;
+                  if (p === 'replay' && uxMode === 'beginner') return null;
+                  return (
+                    <button
+                      key={p}
+                      className={`arp-pane-tab ${activePane === p ? 'active' : ''}`}
+                      onClick={() => setActivePane(p)}
+                    >
+                      {p.charAt(0).toUpperCase() + p.slice(1)}
+                    </button>
+                  );
+                })}
+                {uxMode === 'pro' && (
+                  <button
+                    className={`arp-pane-tab ${activePane === 'system' ? 'active' : ''}`}
+                    onClick={() => setActivePane('system')}
+                  >
+                    System
+                  </button>
+                )}
+              </div>
+
+              <div className="arp-pane-content">
+                {activePane === 'timeline' && (
+                  <ExecutionTimeline
+                    steps={steps}
+                    events={events}
+                    job={job}
+                    onRetryStep={handleRetryStep}
+                    onJumpToCode={() => {}}
+                    isConnected={isConnected}
+                  />
+                )}
+                {activePane === 'proof' && (
+                  <ProofPanel
+                    proof={proof}
+                    jobId={jobId}
+                    onExport={() => alert('Export proof bundle — coming soon.')}
+                  />
+                )}
+                {activePane === 'explorer' && uxMode === 'pro' && (
+                  <SystemExplorer
+                    steps={steps}
+                    proof={proof}
+                    job={job}
+                    projectId={user?.id}
+                    token={token}
+                  />
+                )}
+                {activePane === 'system' && uxMode === 'pro' && (
+                  <SystemExplorer
+                    steps={steps}
+                    proof={proof}
+                    job={job}
+                    projectId={user?.id}
+                    token={token}
+                  />
+                )}
+                {activePane === 'replay' && uxMode === 'pro' && (
+                  <BuildReplay events={events} steps={steps} />
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

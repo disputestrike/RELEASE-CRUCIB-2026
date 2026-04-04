@@ -1,24 +1,55 @@
 /**
  * ExecutionTimeline — real-time step-by-step build view.
- * Shows live events from SSE stream grouped by phase.
+ * SVG/CSS status icons, filter tabs, expandable inline logs.
  * Props: steps, events, job, onRetryStep, onJumpToCode, isConnected
  */
 import React, { useState, useEffect, useRef } from 'react';
-import { RefreshCw, Code2, Filter, CheckCircle2, XCircle, Clock, Loader2 } from 'lucide-react';
+import { RefreshCw, Code2 } from 'lucide-react';
 import './ExecutionTimeline.css';
 
-const STATUS_ICONS = {
-  pending:    <Clock size={13} className="et-icon et-icon-pending" />,
-  running:    <Loader2 size={13} className="et-icon et-icon-running et-spin" />,
-  verifying:  <Loader2 size={13} className="et-icon et-icon-verifying et-spin" />,
-  retrying:   <RefreshCw size={13} className="et-icon et-icon-retrying et-spin" />,
-  completed:  <CheckCircle2 size={13} className="et-icon et-icon-done" />,
-  failed:     <XCircle size={13} className="et-icon et-icon-fail" />,
-  blocked:    <XCircle size={13} className="et-icon et-icon-blocked" />,
-  skipped:    <Clock size={13} className="et-icon et-icon-skip" />,
-};
+const FILTERS = ['All', 'Active', 'Errors', 'Retries', 'By Agent'];
 
-const FILTERS = ['all', 'errors', 'current phase', 'agent only'];
+function StatusIcon({ status }) {
+  switch (status) {
+    case 'pending':
+      return <span className="et-icon et-icon-pending" />;
+    case 'running':
+      return <span className="et-icon et-icon-running animate-spin" />;
+    case 'verifying':
+      return <span className="et-icon et-icon-verifying animate-pulse-ring" />;
+    case 'retrying':
+      return <span className="et-icon et-icon-retrying animate-spin" />;
+    case 'completed':
+      return (
+        <span className="et-icon et-icon-completed">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <circle cx="6" cy="6" r="5.5" fill="var(--state-success)" />
+            <path d="M3.5 6L5.5 8L8.5 4" stroke="var(--bg-0)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+      );
+    case 'failed':
+      return (
+        <span className="et-icon et-icon-failed">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <circle cx="6" cy="6" r="5.5" fill="var(--state-error)" />
+            <path d="M4 4L8 8M8 4L4 8" stroke="var(--bg-0)" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+        </span>
+      );
+    case 'blocked':
+      return (
+        <span className="et-icon et-icon-blocked">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <rect x="3" y="3" width="2" height="6" rx="0.5" fill="var(--text-muted)" />
+            <rect x="7" y="3" width="2" height="6" rx="0.5" fill="var(--text-muted)" />
+          </svg>
+        </span>
+      );
+    default:
+      return <span className="et-icon et-icon-pending" />;
+  }
+}
 
 export default function ExecutionTimeline({
   steps = [],
@@ -28,28 +59,40 @@ export default function ExecutionTimeline({
   onJumpToCode,
   isConnected,
 }) {
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState('All');
   const [expandedStep, setExpandedStep] = useState(null);
+  const [userScrolled, setUserScrolled] = useState(false);
+  const scrollRef = useRef(null);
   const bottomRef = useRef(null);
 
-  // Auto-scroll to bottom on new events
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [events.length]);
+    if (!userScrolled) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [events.length, userScrolled]);
+
+  const handleScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+    setUserScrolled(!atBottom);
+  };
 
   const currentPhase = job?.current_phase || 'planning';
 
   const filteredSteps = steps.filter(s => {
-    if (filter === 'errors') return ['failed', 'blocked'].includes(s.status);
-    if (filter === 'current phase') return s.phase === currentPhase;
-    if (filter === 'agent only') return !['verification', 'deploy'].includes(s.phase);
-    return true;
+    switch (filter) {
+      case 'Active': return ['running', 'verifying'].includes(s.status);
+      case 'Errors': return ['failed', 'blocked'].includes(s.status);
+      case 'Retries': return (s.retry_count || 0) > 0;
+      case 'By Agent': return true;
+      default: return true;
+    }
   });
 
   const completedCount = steps.filter(s => s.status === 'completed').length;
   const totalCount = steps.length;
 
-  // Recent logs from events (step_log type)
   const getStepLogs = (stepId) =>
     events
       .filter(e => e.step_id === stepId || e.payload?.step_id === stepId)
@@ -61,8 +104,9 @@ export default function ExecutionTimeline({
       <div className="et-header">
         <div className="et-title-row">
           <span className="et-title">Execution Timeline</span>
-          <span className={`et-conn ${isConnected ? 'et-conn-live' : 'et-conn-offline'}`}>
-            {isConnected ? '● live' : '○ reconnecting'}
+          <span className={`et-conn ${isConnected ? 'live' : 'offline'}`}>
+            <span className="et-conn-dot" />
+            {isConnected ? 'Live' : 'Reconnecting'}
           </span>
         </div>
         <div className="et-progress-row">
@@ -91,16 +135,19 @@ export default function ExecutionTimeline({
       </div>
 
       {/* Steps */}
-      <div className="et-steps">
+      <div className="et-steps" ref={scrollRef} onScroll={handleScroll}>
         {filteredSteps.length === 0 ? (
           <div className="et-empty">
-            {steps.length === 0 ? 'Waiting for plan to start...' : 'No steps match filter'}
+            {steps.length === 0
+              ? 'Waiting for execution to begin. Steps will appear here in real-time.'
+              : 'No steps match the current filter.'}
           </div>
         ) : (
           filteredSteps.map(step => {
             const logs = getStepLogs(step.id);
             const isExpanded = expandedStep === step.id;
             const isFailed = ['failed', 'blocked'].includes(step.status);
+            const timestamp = step.started_at || step.created_at;
 
             return (
               <div
@@ -109,17 +156,24 @@ export default function ExecutionTimeline({
                 onClick={() => setExpandedStep(isExpanded ? null : step.id)}
               >
                 <div className="et-step-row">
-                  {STATUS_ICONS[step.status] || STATUS_ICONS.pending}
+                  <StatusIcon status={step.status} />
                   <div className="et-step-info">
-                    <span className="et-step-name">{step.agent_name}</span>
-                    <span className="et-step-key">{step.step_key}</span>
+                    <span className="et-step-name">{step.step_key}</span>
+                    {step.agent_name && (
+                      <span className="et-agent-badge">{step.agent_name}</span>
+                    )}
                   </div>
                   <div className="et-step-right">
-                    {step.verifier_score > 0 && (
-                      <span className="et-score">{step.verifier_score}</span>
+                    {step.narrative && (
+                      <span className="et-narrative">{step.narrative}</span>
                     )}
                     {step.retry_count > 0 && (
                       <span className="et-retry-badge">retry {step.retry_count}</span>
+                    )}
+                    {timestamp && (
+                      <span className="et-timestamp">
+                        {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -138,7 +192,7 @@ export default function ExecutionTimeline({
                   </div>
                 )}
 
-                {/* Action buttons for failed steps */}
+                {/* Actions for failed steps */}
                 {isFailed && (
                   <div className="et-step-actions">
                     <button

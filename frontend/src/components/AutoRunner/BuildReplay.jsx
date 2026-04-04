@@ -1,5 +1,5 @@
 /**
- * BuildReplay — time-travel debugging. Step through build events.
+ * BuildReplay — time-travel debugging. Three-column: Before | Change | After.
  * Props: events, steps
  */
 import React, { useState } from 'react';
@@ -9,7 +9,6 @@ import './BuildReplay.css';
 export default function BuildReplay({ events = [], steps = [] }) {
   const [cursor, setCursor] = useState(0);
 
-  // Only show step_started / step_completed / step_failed events
   const replayEvents = events.filter(e =>
     ['step_started', 'step_completed', 'step_failed', 'step_retrying'].includes(e.type || e.event_type)
   );
@@ -18,7 +17,8 @@ export default function BuildReplay({ events = [], steps = [] }) {
     return (
       <div className="build-replay build-replay-empty">
         <GitCompare size={22} />
-        <span>Replay available after steps complete.</span>
+        <span className="br-empty-title">No replay data available</span>
+        <span className="br-empty-desc">Replay available after steps complete.</span>
       </div>
     );
   }
@@ -30,16 +30,15 @@ export default function BuildReplay({ events = [], steps = [] }) {
   const isCompleted = eventType === 'step_completed';
   const isFailed = eventType === 'step_failed';
 
-  // Find step details
   const stepDetail = steps.find(s => s.step_key === stepKey);
 
   const prev = replayEvents[cursor - 1];
   const beforeState = prev ? (prev.payload?.step_key || '—') : 'Start of build';
   const change = current.payload?.output || current.payload?.error || JSON.stringify(current.payload || {}).slice(0, 200);
   const afterState = isCompleted
-    ? `✅ ${stepKey} passed (score: ${current.payload?.score || '—'})`
+    ? `${stepKey} completed (score: ${current.payload?.score || '—'})`
     : isFailed
-    ? `❌ ${stepKey} failed: ${(current.payload?.error || '').slice(0, 100)}`
+    ? `${stepKey} failed: ${(current.payload?.error || '').slice(0, 100)}`
     : `${eventType}: ${stepKey}`;
 
   return (
@@ -50,29 +49,29 @@ export default function BuildReplay({ events = [], steps = [] }) {
         <span className="br-counter">Step {cursor + 1} of {total}</span>
       </div>
 
-      <div className="br-body">
-        <div className="br-section">
-          <div className="br-section-label">Before</div>
-          <div className="br-section-content br-before">
+      <div className="br-columns">
+        <div className="br-column">
+          <div className="br-col-label">BEFORE</div>
+          <div className="br-col-content br-before">
             {cursor === 0 ? 'Beginning of build' : beforeState}
           </div>
         </div>
 
-        <div className="br-section">
-          <div className="br-section-label">Change</div>
-          <div className={`br-section-content br-change br-change-${isFailed ? 'fail' : isCompleted ? 'ok' : 'neutral'}`}>
+        <div className="br-column br-column-change">
+          <div className="br-col-label">CHANGE</div>
+          <div className={`br-col-content br-change br-change-${isFailed ? 'fail' : isCompleted ? 'ok' : 'neutral'}`}>
             <div className="br-event-type">{eventType}</div>
             <div className="br-step-key">{stepKey}</div>
             {stepDetail?.agent_name && (
-              <div className="br-agent">Agent: {stepDetail.agent_name}</div>
+              <div className="br-agent">{stepDetail.agent_name}</div>
             )}
-            {change && <pre className="br-change-detail">{change.slice(0, 300)}</pre>}
+            {change && <pre className="br-change-detail">{String(change).slice(0, 300)}</pre>}
           </div>
         </div>
 
-        <div className="br-section">
-          <div className="br-section-label">After</div>
-          <div className="br-section-content br-after">{afterState}</div>
+        <div className="br-column">
+          <div className="br-col-label">AFTER</div>
+          <div className="br-col-content br-after">{afterState}</div>
         </div>
       </div>
 
@@ -82,7 +81,7 @@ export default function BuildReplay({ events = [], steps = [] }) {
           onClick={() => setCursor(c => Math.max(0, c - 1))}
           disabled={cursor === 0}
         >
-          <ChevronLeft size={14} /> Prev
+          <ChevronLeft size={14} /> Previous
         </button>
         <div className="br-scrubber">
           <input
@@ -92,6 +91,11 @@ export default function BuildReplay({ events = [], steps = [] }) {
             value={cursor}
             onChange={e => setCursor(Number(e.target.value))}
           />
+          <div className="br-scrubber-labels">
+            {replayEvents.map((ev, i) => (
+              <span key={i} className="br-scrubber-tick" />
+            ))}
+          </div>
         </div>
         <button
           className="br-nav-btn"

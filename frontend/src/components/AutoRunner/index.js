@@ -7,3 +7,5 @@ export { default as BuildReplay } from './BuildReplay';
 export { default as SystemExplorer } from './SystemExplorer';
 export { default as BuildCompletionCard } from './BuildCompletionCard';
 export { default as CostEstimator } from './CostEstimator';
+export { default as GoalComposer } from './GoalComposer';
+export { default as SystemStatusHUD } from './SystemStatusHUD';

@@ -1,0 +1,33 @@
+/* ── SystemStatusHUD ───────────────────────────────────────────────── */
+.system-status-hud {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.ssh-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ssh-dot-active {
+  background: var(--state-success);
+  animation: status-pulse 2s ease-in-out infinite;
+}
+
+.ssh-dot-ok {
+  background: var(--state-success);
+}
+
+.ssh-dot-off {
+  background: var(--text-muted);
+}
+
+.ssh-text {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}

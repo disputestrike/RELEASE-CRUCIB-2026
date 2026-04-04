@@ -1,10 +1,10 @@
 /**
- * BuildCompletionCard — shown when job.status === 'completed'.
- * Beautiful conclusive summary with quality score, stats, and CTAs.
+ * BuildCompletionCard — most polished surface. Shown on successful completion.
+ * GATED by: job.status === 'completed' && proofCount > 0 && qualityScore > 0.8
  * Props: job, summary, proof, onOpenPreview, onOpenProof, onOpenCode, onDeployAgain
  */
 import React from 'react';
-import { CheckCircle2, Eye, ShieldCheck, Code2, Rocket } from 'lucide-react';
+import { Eye, ShieldCheck, Code2, Rocket } from 'lucide-react';
 import './BuildCompletionCard.css';
 
 export default function BuildCompletionCard({
@@ -17,80 +17,79 @@ export default function BuildCompletionCard({
   onDeployAgain,
 }) {
   const score = job?.quality_score || summary?.quality_score || proof?.quality_score || 0;
-  const scoreColor = score >= 80 ? '#6daa45' : score >= 60 ? '#f59e0b' : '#d163a7';
+  const normalizedScore = typeof score === 'number' && score <= 1 ? score * 100 : score;
 
   const stats = summary || {};
-  const pages = stats.pages_created || (proof?.bundle?.files?.length ?? 0);
-  const routes = stats.api_routes_added || (proof?.bundle?.routes?.length ?? 0);
-  const tables = stats.db_tables_created || (proof?.bundle?.database?.length ?? 0);
-  const deploys = stats.deploy_targets || (proof?.bundle?.deploy?.length ?? 0);
+  const bundle = proof?.bundle || {};
+  const pages = stats.pages_created || (bundle.files?.length ?? 0);
+  const routes = stats.api_routes_added || (bundle.routes?.length ?? 0);
+  const tables = stats.db_tables_created || (bundle.database?.length ?? 0);
+  const deploys = stats.deploy_targets || (bundle.deploy?.length ?? 0);
+  const proofCount = Object.values(bundle).reduce((sum, arr) => sum + (arr?.length || 0), 0);
+
+  // Hard gate: must have completed status, proof items, and quality above 0.8
+  if (job?.status !== 'completed' || proofCount <= 0 || normalizedScore <= 80) {
+    return null;
+  }
 
   return (
-    <div className="build-completion-card">
+    <div className="build-completion-card animate-fade-up">
+      {/* Success indicator */}
       <div className="bcc-top">
-        <CheckCircle2 size={32} className="bcc-check" />
-        <div>
-          <div className="bcc-title">Build Completed</div>
+        <div className="bcc-check">
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+            <circle cx="20" cy="20" r="19" fill="var(--bg-2)" stroke="var(--state-success)" strokeWidth="2" />
+            <path d="M12 20L18 26L28 14" stroke="var(--state-success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+        <div className="bcc-header">
+          <div className="bcc-title">Build Complete</div>
           <div className="bcc-subtitle">{job?.goal?.slice(0, 80) || 'Your project is ready.'}</div>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="bcc-stats">
-        {pages > 0 && (
-          <div className="bcc-stat">
-            <span className="bcc-stat-num">{pages}</span>
-            <span className="bcc-stat-label">{pages === 1 ? 'page' : 'pages'}</span>
-          </div>
-        )}
-        {routes > 0 && (
-          <div className="bcc-stat">
-            <span className="bcc-stat-num">{routes}</span>
-            <span className="bcc-stat-label">API {routes === 1 ? 'route' : 'routes'}</span>
-          </div>
-        )}
-        {tables > 0 && (
-          <div className="bcc-stat">
-            <span className="bcc-stat-num">{tables}</span>
-            <span className="bcc-stat-label">DB {tables === 1 ? 'table' : 'tables'}</span>
-          </div>
-        )}
-        {deploys > 0 && (
-          <div className="bcc-stat">
-            <span className="bcc-stat-num">{deploys}</span>
-            <span className="bcc-stat-label">{deploys === 1 ? 'deploy' : 'deploys'}</span>
-          </div>
-        )}
+      {/* What was created */}
+      <div className="bcc-created">
+        {pages > 0 && <span className="bcc-created-item">{pages} {pages === 1 ? 'file' : 'files'}</span>}
+        {routes > 0 && <span className="bcc-created-item">{routes} API {routes === 1 ? 'route' : 'routes'}</span>}
+        {tables > 0 && <span className="bcc-created-item">{tables} DB {tables === 1 ? 'table' : 'tables'}</span>}
+        {deploys > 0 && <span className="bcc-created-item">{deploys} {deploys === 1 ? 'deploy' : 'deploys'}</span>}
       </div>
 
-      {/* Indicators */}
-      <div className="bcc-indicators">
-        <div className="bcc-indicator">
-          <div className="bcc-indicator-label">Quality Score</div>
-          <div className="bcc-indicator-val" style={{ color: scoreColor }}>{score}</div>
+      {/* Quality score */}
+      <div className="bcc-score-section">
+        <span className="bcc-score-num">{normalizedScore.toFixed ? normalizedScore.toFixed(1) : normalizedScore}</span>
+        <span className="bcc-score-label">Verified</span>
+      </div>
+
+      {/* Status rows */}
+      <div className="bcc-status-rows">
+        <div className="bcc-status-row">
+          <span className="bcc-status-dot bcc-dot-success" />
+          <span>Preview ready</span>
         </div>
-        <div className="bcc-indicator">
-          <div className="bcc-indicator-label">Preview</div>
-          <div className="bcc-indicator-val bcc-val-ok">Ready</div>
+        <div className="bcc-status-row">
+          <span className="bcc-status-dot bcc-dot-success" />
+          <span>Deployment live</span>
         </div>
-        <div className="bcc-indicator">
-          <div className="bcc-indicator-label">Proof</div>
-          <div className="bcc-indicator-val bcc-val-ok">✓</div>
+        <div className="bcc-status-row">
+          <span className="bcc-status-dot bcc-dot-success" />
+          <span>Proof available</span>
         </div>
       </div>
 
       {/* CTAs */}
       <div className="bcc-actions">
-        <button className="bcc-btn bcc-btn-preview" onClick={onOpenPreview}>
+        <button className="bcc-btn" onClick={onOpenPreview}>
           <Eye size={13} /> Open Preview
         </button>
-        <button className="bcc-btn bcc-btn-proof" onClick={onOpenProof}>
+        <button className="bcc-btn" onClick={onOpenProof}>
           <ShieldCheck size={13} /> Open Proof
         </button>
-        <button className="bcc-btn bcc-btn-code" onClick={onOpenCode}>
+        <button className="bcc-btn" onClick={onOpenCode}>
           <Code2 size={13} /> Open Code
         </button>
-        <button className="bcc-btn bcc-btn-deploy" onClick={onDeployAgain}>
+        <button className="bcc-btn" onClick={onDeployAgain}>
           <Rocket size={13} /> Deploy Again
         </button>
       </div>
