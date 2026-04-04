@@ -740,6 +740,59 @@ root.render(<${compName} />);` };
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
   const [isBuilding, setIsBuilding] = useState(false);
+  const buildAbortRef = useRef(null); // AbortController for cancelling active build
+  // Resizable panes
+  const [leftPanelWidth, setLeftPanelWidth] = useState(208); // 52 * 4 = 208px (w-52)
+  const [rightPanelWidth, setRightPanelWidth] = useState(null); // null = 44% default
+  const isDraggingLeft = useRef(false);
+  const isDraggingRight = useRef(false);
+  const dragStartX = useRef(0);
+  const dragStartWidth = useRef(0);
+
+  const handleLeftDragStart = (e) => {
+    isDraggingLeft.current = true;
+    dragStartX.current = e.clientX;
+    dragStartWidth.current = leftPanelWidth;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    const onMove = (ev) => {
+      if (!isDraggingLeft.current) return;
+      const delta = ev.clientX - dragStartX.current;
+      setLeftPanelWidth(Math.max(140, Math.min(400, dragStartWidth.current + delta)));
+    };
+    const onUp = () => {
+      isDraggingLeft.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
+  const handleRightDragStart = (e) => {
+    isDraggingRight.current = true;
+    dragStartX.current = e.clientX;
+    const containerWidth = e.currentTarget.closest('.flex-1')?.offsetWidth || window.innerWidth - leftPanelWidth - 60;
+    dragStartWidth.current = rightPanelWidth || containerWidth * 0.44;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    const onMove = (ev) => {
+      if (!isDraggingRight.current) return;
+      const delta = dragStartX.current - ev.clientX;
+      setRightPanelWidth(Math.max(280, Math.min(900, dragStartWidth.current + delta)));
+    };
+    const onUp = () => {
+      isDraggingRight.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
   const [buildProgress, setBuildProgress] = useState(0);
   const [sessionId, setSessionId] = useState(() => `session_${Date.now()}`);
   const [selectedModel, setSelectedModel] = useState('auto');
@@ -1340,6 +1393,21 @@ root.render(<${compName} />);` };
   const voiceChunksRef = useRef([]);
 
   const startRecording = async () => {
+    // First request mic permission explicitly so browser shows the permission prompt
+    if (navigator.mediaDevices?.getUserMedia) {
+      try {
+        const testStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        testStream.getTracks().forEach(t => t.stop()); // just checking permission, stop immediately
+      } catch (permErr) {
+        const msg = permErr?.name === 'NotAllowedError'
+          ? 'Microphone blocked. Click the 🔒 icon in your browser address bar and allow microphone access, then refresh.'
+          : permErr?.name === 'NotFoundError'
+          ? 'No microphone found. Plug in a microphone and try again.'
+          : `Microphone error: ${permErr?.message}`;
+        addLog(msg, 'error', 'voice');
+        return;
+      }
+    }
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
       try {
@@ -2837,7 +2905,7 @@ BUILD IT NOW — output every file completely:`;
 
         {/* ── Left: File Explorer ── */}
         {leftSidebarOpen ? (
-          <div className="w-52 flex flex-col shrink-0 border-r" style={{ background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.07))' }}>
+          <div className="flex flex-col shrink-0 border-r" style={{ width: leftPanelWidth, minWidth: 140, background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.07))' }}>
             <input ref={folderInputRef} type="file" webkitdirectory="" multiple onChange={handleFolderOpen} className="hidden" />
             <input ref={zipInputRef} type="file" accept=".zip" onChange={handleZipUpload} className="hidden" />
             {/* Explorer header */}
@@ -2949,8 +3017,10 @@ BUILD IT NOW — output every file completely:`;
                       ))}
                     </div>
                   ) : (
-                    <div className="px-3 py-4 text-center text-xs" style={{ color: 'var(--theme-muted)' }}>
-                      Build something to see files
+                    <div className="px-3 py-4 text-center text-xs flex flex-col items-center gap-2" style={{ color: 'var(--theme-muted)' }}>
+                      {isBuilding
+                        ? <><Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--theme-accent)' }} /><span>Generating files...</span></>
+                        : <><FileCode className="w-5 h-5 opacity-40" /><span>Describe an app and press Build</span></>}
                     </div>
                   );
                 }
@@ -2979,6 +3049,17 @@ BUILD IT NOW — output every file completely:`;
           >
             <PanelRightOpen className="w-3.5 h-3.5" />
           </div>
+        )}
+
+        {/* ── Left/Center drag handle ── */}
+        {leftSidebarOpen && (
+          <div
+            onMouseDown={handleLeftDragStart}
+            style={{ width: 4, cursor: 'col-resize', background: 'transparent', flexShrink: 0, zIndex: 10, position: 'relative' }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.5)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            title="Drag to resize explorer"
+          />
         )}
 
         {/* ── Center: Chat / Build Steps ── */}
@@ -3223,17 +3304,44 @@ BUILD IT NOW — output every file completely:`;
                         <option value="swarm">Swarm</option>
                       </select>
                     )}
-                    <button
-                      type="submit"
-                      disabled={(!input.trim() && attachedFiles.length === 0) || isBuilding}
-                      className="flex items-center gap-1.5 rounded-xl text-sm font-semibold transition disabled:opacity-40"
-                      style={{ background: 'white', color: 'black', padding: devMode ? '6px 16px' : '9px 22px', fontSize: devMode ? undefined : 14 }}
-                    >
-                      {isBuilding
-                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        : <Send className="w-3.5 h-3.5" />}
-                      {isBuilding ? 'Building...' : versions.length > 0 ? (devMode ? 'Update' : 'Make changes') : (devMode ? 'Build' : 'Build my app')}
-                    </button>
+                    {isBuilding ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // Cancel the in-flight build
+                          if (buildAbortRef.current) {
+                            buildAbortRef.current.abort();
+                            buildAbortRef.current = null;
+                          }
+                          setIsBuilding(false);
+                          setBuildProgress(0);
+                          setCurrentPhase('');
+                          addLog('Build cancelled by user.', 'warn', 'system');
+                          setMessages(prev => prev.map((m, i) =>
+                            i === prev.length - 1 && m.isBuilding
+                              ? { ...m, content: 'Build cancelled.', isBuilding: false }
+                              : m
+                          ));
+                        }}
+                        className="flex items-center gap-1.5 rounded-xl text-sm font-semibold transition"
+                        style={{ background: '#ef4444', color: 'white', padding: devMode ? '6px 16px' : '9px 22px', fontSize: devMode ? undefined : 14 }}
+                        title="Stop build"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        Stop
+                      </button>
+                    ) : (
+                      <button
+                        type="submit"
+                        disabled={!input.trim() && attachedFiles.length === 0}
+                        className="flex items-center gap-1.5 rounded-xl text-sm font-semibold transition disabled:opacity-40"
+                        style={{ background: 'white', color: 'black', padding: devMode ? '6px 14px' : '9px 20px', fontSize: devMode ? undefined : 14 }}
+                        title="Send (Enter)"
+                      >
+                        <ArrowUp className="w-4 h-4" />
+                        {versions.length > 0 ? (devMode ? 'Update' : 'Update') : (devMode ? 'Build' : 'Build')}
+                      </button>
+                    )}
                   </div>
                 </div>
               </form>
@@ -3241,11 +3349,24 @@ BUILD IT NOW — output every file completely:`;
           </div>
         </div>
 
+        {/* ── Center/Right drag handle ── */}
+        {rightSidebarOpen && (
+          <div
+            onMouseDown={handleRightDragStart}
+            style={{ width: 4, cursor: 'col-resize', background: 'transparent', flexShrink: 0, zIndex: 10 }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.5)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            title="Drag to resize preview panel"
+          />
+        )}
         {/* ── Right: Preview + Code Editor (collapsible) ── */}
         {rightSidebarOpen ? (
-        <div className="workspace-right-panel flex flex-col shrink-0 border-l" style={{ width: '44%', minWidth: 320, maxWidth: 700, background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
+        <div className="workspace-right-panel flex flex-col shrink-0 border-l" style={{ position: 'relative', width: rightPanelWidth ? rightPanelWidth : '44%', minWidth: 280, background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
+
           {/* Manus-style tab bar */}
-          <div className="h-10 flex items-center px-1 border-b shrink-0 gap-0.5 overflow-x-auto" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.08))', scrollbarWidth: 'none' }}>
+          <div className="h-10 flex items-center px-1 border-b shrink-0 gap-0.5" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.08))', position: 'relative', overflow: 'hidden' }}>
+            {/* Scrollable tabs — constrained to leave room for action icons */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 2, overflowX: 'auto', scrollbarWidth: 'none', paddingRight: 120, flex: 1 }}>
             {(devMode
               ? [
                   { id: 'preview', label: 'Preview', icon: Eye },
@@ -3280,7 +3401,8 @@ BUILD IT NOW — output every file completely:`;
                 <span style={{ fontSize: 10.5 }}>{tab.label}</span>
               </button>
             ))}
-            <div className="ml-auto flex items-center gap-1">
+            </div>{/* end scrollable tabs */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 2, position: 'absolute', right: 4, top: 0, bottom: 0, background: 'var(--theme-surface, #18181B)', paddingLeft: 8, borderLeft: '1px solid var(--theme-border, rgba(255,255,255,0.06))' }}>
               {activePanel === 'preview' && (
                 <>
                   <button onClick={() => setMobileView(v => !v)} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title={mobileView ? 'Desktop view' : 'Mobile view'}>
