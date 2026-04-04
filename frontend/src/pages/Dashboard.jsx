@@ -107,6 +107,67 @@ function formatCronShort(cron) {
   return "on a schedule";
 }
 
+const SKILLS = [
+  { icon: '🌐', name: 'Web App', desc: 'Full-stack React + Node.js with auth, database, and API', prompt: 'Build a web app with user authentication, dashboard, and REST API' },
+  { icon: '📱', name: 'Mobile App', desc: 'React Native with Expo — iOS and Android ready', prompt: 'Build a mobile app with navigation, screens, and local storage' },
+  { icon: '🛒', name: 'E-Commerce', desc: 'Product catalog, cart, checkout with Stripe payments', prompt: 'Build an e-commerce store with product catalog, cart, and Stripe checkout' },
+  { icon: '📊', name: 'SaaS Dashboard', desc: 'Auth, subscription billing, user management, metrics', prompt: 'Build a SaaS dashboard with Stripe billing, user auth, and analytics' },
+  { icon: '🤖', name: 'AI Chatbot', desc: 'Multi-agent chat interface with knowledge base integration', prompt: 'Build an AI chatbot with multi-agent support and document knowledge base' },
+  { icon: '🏠', name: 'Landing Page', desc: 'Hero, features, pricing, testimonials, CTA sections', prompt: 'Build a landing page with hero, features grid, pricing table, and FAQ' },
+  { icon: '⚡', name: 'Automation', desc: 'Scheduled agents, webhooks, workflow pipelines', prompt: 'Build an automation that runs daily and sends a digest to Slack' },
+  { icon: '🛠️', name: 'Internal Tool', desc: 'Admin tables, forms, CRUD, approval workflows', prompt: 'Build an internal admin tool with data tables, forms, and user roles' },
+  { icon: '🎮', name: 'Game', desc: 'Browser-based game with canvas, physics, leaderboard', prompt: 'Build a browser-based game with scoring and leaderboard' },
+  { icon: '📄', name: 'Blog / CMS', desc: 'Articles, categories, search, author dashboard', prompt: 'Build a blog with articles, categories, search, and an author dashboard' },
+];
+
+const SkillsPanel = ({ onSelect }) => {
+  const [showAll, setShowAll] = useState(false);
+  const visibleSkills = showAll ? SKILLS : SKILLS.slice(0, 5);
+  return (
+    <div style={{ maxWidth: '720px', width: '100%', margin: '20px auto 0' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+        <div>
+          <span style={{ fontSize: '13px', fontWeight: 600, color: '#111827' }}>What can I build?</span>
+          <span style={{ fontSize: '12px', color: '#9ca3af', marginLeft: '8px' }}>Click any skill to start building</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowAll((v) => !v)}
+          style={{ fontSize: '12px', color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+        >
+          {showAll ? 'Show fewer' : 'Show all capabilities'}
+        </button>
+      </div>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(5, 1fr)',
+        gap: '8px',
+      }} className="skills-grid">
+        {visibleSkills.map((skill) => (
+          <button
+            key={skill.name}
+            type="button"
+            onClick={() => onSelect(skill.prompt)}
+            style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+              padding: '12px', background: '#fff', border: '1px solid #e5e7eb',
+              borderRadius: '12px', cursor: 'pointer', textAlign: 'left',
+              transition: 'border-color 0.15s, box-shadow 0.15s',
+              gap: '6px',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.boxShadow = 'none'; }}
+          >
+            <span style={{ fontSize: '20px', lineHeight: 1 }}>{skill.icon}</span>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: '#111827' }}>{skill.name}</span>
+            <span style={{ fontSize: '11px', color: '#6b7280', lineHeight: 1.4 }}>{skill.desc}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const QUICK_START_CHIPS = [
   { label: 'Build website', icon: Layout, prompt: 'Build me a stunning multi-page website with hero, features grid, pricing, testimonials, and footer — beautiful modern design' },
   { label: 'Develop app', icon: Code, prompt: 'Build a complete React web app with multiple pages, authentication UI, dashboard, and CRUD data management' },
@@ -695,6 +756,9 @@ const Dashboard = () => {
                 ))}
               </div>
             </motion.div>
+
+            {/* Skills / Capabilities Panel */}
+            <SkillsPanel onSelect={(prompt) => setPrompt(prompt)} />
 
             {/* Live Builds Panel — real-time build progress, polled every 4s when builds are running */}
             {liveProjects.length > 0 && (

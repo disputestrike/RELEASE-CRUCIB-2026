@@ -67,18 +67,17 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     { label: 'Agents', icon: FolderOpen, href: '/app/agents' },
   ];
 
-  // Platform nav items
-  const platformNav = [
+  // Engine Room — collapsed by default, for power users
+  // Includes platform infrastructure items (Studio/Knowledge/Channels/Sessions/Commerce/Members)
+  // which are internal config and not part of the main builder workflow
+  const engineRoomItems = [
     { label: 'Studio', icon: Bot, href: '/app/studio' },
     { label: 'Knowledge', icon: BookOpen, href: '/app/knowledge' },
     { label: 'Channels', icon: Radio, href: '/app/channels' },
     { label: 'Sessions', icon: MessageSquare, href: '/app/sessions' },
     { label: 'Commerce', icon: ShoppingBag, href: '/app/commerce' },
     { label: 'Members', icon: Users, href: '/app/members' },
-  ];
-
-  // Engine Room — collapsed by default, for power users
-  const engineRoomItems = [
+    // original engine items below:
     { label: 'Credit Center', icon: Coins, href: '/app/tokens' },
     { label: 'Exports', icon: FileOutput, href: '/app/exports' },
     { label: 'Docs / Slides / Sheets', icon: FileText, href: '/app/generate' },
@@ -476,25 +475,6 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
           })}
         </div>
       </nav>
-
-      {/* Platform Section */}
-      <div className="sidebar-section">
-        <div className="sidebar-section-header">
-          <h3 className="sidebar-section-title">Platform</h3>
-        </div>
-        <div className="sidebar-section-items">
-          {platformNav.map((item) => (
-            <Link
-              key={item.href}
-              to={item.href}
-              className={`sidebar-nav-item ${isActive(item.href) ? 'active' : ''}`}
-            >
-              <item.icon size={16} className="sidebar-nav-icon" />
-              <span className="sidebar-nav-label">{item.label}</span>
-            </Link>
-          ))}
-        </div>
-      </div>
 
       {/* History Section — Today / Earlier, scrollable, context menu */}
       <div className="sidebar-section sidebar-section-tasks">
