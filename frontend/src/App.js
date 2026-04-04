@@ -101,6 +101,7 @@ import SessionsPage from "./pages/SessionsPage";
 import CommerceManagePage from "./pages/CommerceManagePage";
 import WorkspaceMembersPage from "./pages/WorkspaceMembersPage";
 import SkillsPage from "./pages/SkillsPage";
+import SkillsMarketplace from "./pages/SkillsMarketplace";
 import { LayoutProvider } from "./stores/useLayoutStore";
 import { TaskProvider } from "./stores/useTaskStore";
 
@@ -450,6 +451,7 @@ function App() {
             <Route path="commerce" element={<CommerceManagePage />} />
             <Route path="members" element={<WorkspaceMembersPage />} />
             <Route path="skills" element={<SkillsPage />} />
+            <Route path="skills/marketplace" element={<SkillsMarketplace />} />
           </Route>
         </Routes>
         </BrowserRouter>

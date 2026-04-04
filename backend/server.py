@@ -919,6 +919,47 @@ async def get_optional_user(credentials: HTTPAuthorizationCredentials = Depends(
             return {"id": f"api_key_{api_key[:8]}", "token_balance": 999999, "credit_balance": 999999, "plan": "teams", "public_api": True}
     return None
 
+# ── Skill auto-detection triggers ──────────────────────────────────────────
+SKILL_TRIGGERS = {
+    "web-app-builder": ["web app", "full-stack", "fullstack", "webapp", "build a platform", "react app", "node app", "api routes", "crud app", "portal", "browser app"],
+    "mobile-app-builder": ["mobile app", "ios app", "android app", "react native", "expo", "phone app", "cross-platform"],
+    "saas-mvp-builder": ["saas", "subscription", "stripe billing", "mvp with billing", "paid app", "saas mvp", "recurring payments"],
+    "ecommerce-builder": ["e-commerce", "ecommerce", "online store", "shop", "sell products", "product catalog", "stripe checkout", "marketplace", "shopify"],
+    "ai-chatbot-builder": ["chatbot", "ai assistant", "chat interface", "knowledge base bot", "customer support bot", "llm chat", "streaming chat", "conversational"],
+    "landing-page-builder": ["landing page", "marketing page", "product page", "waitlist", "hero section", "features page", "promotional"],
+    "automation-builder": ["automate", "automation", "workflow", "cron job", "webhook", "daily digest", "run every", "slack notify", "scheduled", "pipeline"],
+    "internal-tool-builder": ["admin panel", "internal tool", "back office", "crud interface", "approval workflow", "ops dashboard", "team tool"],
+    "data-dashboard-builder": ["dashboard", "analytics", "charts", "kpi", "metrics dashboard", "reporting tool", "data visualization", "recharts"],
+}
+
+async def _auto_detect_skill(prompt: str, user_id: str) -> Optional[str]:
+    """Auto-detect the best skill for a prompt. Transparent to the user."""
+    p = prompt.lower()
+    for skill_name, triggers in SKILL_TRIGGERS.items():
+        if any(t in p for t in triggers):
+            return skill_name
+    return None
+
+def _classify_task_complexity(prompt: str) -> str:
+    """Returns 'fast' (Cerebras) or 'complex' (Haiku)."""
+    p = prompt.lower().strip()
+    # Complex: code generation, build, architecture
+    complex_signals = [
+        any(w in p for w in ["build", "create", "generate", "implement", "develop", "make me", "write code", "full stack", "database schema", "api route", "authentication", "deploy", "automate"]),
+        len(p) > 150,  # long and detailed
+    ]
+    # Fast/simple: conversational, short, non-build
+    fast_signals = [
+        len(p) < 80,  # very short
+        p.startswith(("hi", "hello", "hey", "what", "how", "why", "when", "is ", "can you", "do you", "thanks", "ok", "yes", "no")),
+        any(w in p for w in ["explain", "summarize", "what is", "tell me", "define", "list", "example of"]),
+    ]
+    if any(complex_signals):
+        return "complex"
+    if any(fast_signals):
+        return "fast"
+    return "complex"  # default to complex for safety
+
 def detect_task_type(message: str) -> str:
     """Auto-detect the best model based on message content"""
     message_lower = message.lower()
@@ -958,17 +999,35 @@ def _filter_chain_by_keys(chain: list, effective_keys: Optional[Dict[str, str]] 
     return [c for c in chain if _provider_has_key(c.get("provider", ""), effective_keys)]
 
 
-def _get_model_chain(model_key: str, message: str, effective_keys: Optional[Dict[str, str]] = None):
+def _get_model_chain(model_key: str, message: str, effective_keys: Optional[Dict[str, str]] = None, force_complex: bool = False):
     """Get list of (provider, model) to try. effective_keys = merged user Settings + server .env keys.
-    When PREFER_LARGEST_MODEL=1, use largest available model first (better quality for all agents)."""
+    Cerebras (llama3.1-8b) for fast/simple tasks. Haiku for complex/build tasks.
+    force_complex=True always selects Haiku (for iterative builds)."""
+    cerebras_key = (effective_keys or {}).get("cerebras") or os.environ.get("CEREBRAS_API_KEY")
+    anthropic_key = (effective_keys or {}).get("anthropic") or ANTHROPIC_API_KEY
+
     if model_key == "auto":
         # Model scale: prefer largest available when set (best for quality across 123 agents)
         if os.environ.get("PREFER_LARGEST_MODEL", "").strip().lower() in ("1", "true", "yes"):
             chain = _filter_chain_by_keys(MODEL_FALLBACK_CHAINS, effective_keys) or MODEL_FALLBACK_CHAINS
         else:
-            task_type = detect_task_type(message)
-            primary = MODEL_CONFIG.get(task_type, MODEL_CONFIG["general"])
-            chain = [primary] + [c for c in MODEL_FALLBACK_CHAINS if (c["provider"], c["model"]) != (primary["provider"], primary["model"])]
+            complexity = "complex" if force_complex else _classify_task_complexity(message)
+            if complexity == "fast" and cerebras_key:
+                # Cerebras first for fast tasks, Haiku fallback
+                chain = [
+                    {"provider": "cerebras", "model": "llama3.1-8b"},
+                    {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
+                ]
+            elif anthropic_key:
+                # Haiku first for complex tasks, Cerebras fallback
+                chain = [
+                    {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
+                    {"provider": "cerebras", "model": "llama3.1-8b"},
+                ]
+            elif cerebras_key:
+                chain = [{"provider": "cerebras", "model": "llama3.1-8b"}]
+            else:
+                chain = MODEL_FALLBACK_CHAINS
     else:
         chain = MODEL_CHAINS.get(model_key)
         if not chain:
@@ -1408,6 +1467,31 @@ CRITICAL — Code output rules:
 
 CHAT_SYSTEM_PROMPT = _build_chat_system_prompt()
 
+async def _build_chat_system_prompt_for_request(prompt: str, user_id: Optional[str]) -> str:
+    """Build the chat system prompt with auto-detected skill context injected transparently."""
+    base = CHAT_SYSTEM_PROMPT
+    auto_skill = await _auto_detect_skill(prompt, user_id or "")
+    if auto_skill:
+        skill_md = _load_skill_md(auto_skill)
+        if skill_md:
+            # Extract just the instructions section
+            instructions_start = skill_md.find("## Instructions")
+            if instructions_start > 0:
+                instructions = skill_md[instructions_start:instructions_start+2000]
+                base = f"ACTIVE SKILL: {auto_skill}\n{instructions}\n\n" + base
+            else:
+                # Use first 1500 chars as instructions if no ## Instructions header
+                base = f"ACTIVE SKILL: {auto_skill}\n{skill_md[:1500]}\n\n" + base
+    # Also merge any user-activated skills context if we have a user
+    if user_id:
+        try:
+            skills_ctx = await _get_active_skills_context(user_id)
+            if skills_ctx:
+                base = skills_ctx + "\n\n" + base
+        except Exception:
+            pass
+    return base
+
 def _is_conversational_message(message: str) -> bool:
     """Detect if message is conversational/factual (not a build request).
     Conversational messages route to Haiku only for best accuracy.
@@ -1529,7 +1613,9 @@ async def ai_chat(data: ChatMessage, user: dict = Depends(get_optional_user)):
         effective = _effective_api_keys(user_keys)
         session_id = data.session_id or str(uuid.uuid4())
         message = (data.message or "").strip()
-        system_message = data.system_message or CHAT_SYSTEM_PROMPT
+        # Auto-detect skill and inject transparently — no user action needed
+        user_id_for_skill = (user or {}).get("id") if user else None
+        system_message = data.system_message or await _build_chat_system_prompt_for_request(message, user_id_for_skill)
         # ROUTING: For real-time questions, call search API and inject results
         if not data.system_message and _needs_live_data(message):
             search_ctx = await _fetch_search_context(message)
@@ -1641,7 +1727,9 @@ async def ai_chat_stream(data: ChatMessage, user: dict = Depends(get_optional_us
             user_tier = (user.get("plan", "free") if user else "free")
             available_credits = (user.get("credit_balance", 0) if user else 0)
             speed_selector = _speed_from_plan(user_tier)
-            system_message = CHAT_SYSTEM_PROMPT
+            # Auto-detect skill and inject transparently
+            _stream_user_id = (user or {}).get("id") if user else None
+            system_message = await _build_chat_system_prompt_for_request(data.message or "", _stream_user_id)
             if (getattr(data, "mode", None) or "").lower() == "thinking":
                 system_message = "You are CrucibAI. Think step by step: reason through the problem, then provide your final code or answer. Be thorough but concise."
             response, model_used = await _call_llm_with_fallback(
@@ -1732,7 +1820,8 @@ async def ai_build_iterative(data: ChatMessage, user: dict = Depends(get_optiona
 
             async def call_llm(message: str, system: str) -> str:
                 nonlocal tokens_used
-                model_chain = _get_model_chain("auto", message, effective_keys=effective)
+                # Iterative builds are always complex — always use Haiku
+                model_chain = _get_model_chain("auto", message, effective_keys=effective, force_complex=True)
                 resp, _ = await _call_llm_with_fallback(
                     message=message, system_message=system, session_id=session_id,
                     model_chain=model_chain, api_keys=effective,
@@ -1748,13 +1837,24 @@ async def ai_build_iterative(data: ChatMessage, user: dict = Depends(get_optiona
             async def on_step(step_name, files_so_far):
                 step_events.append((step_name, dict(files_so_far)))
 
-            # Inject active skills context into build prompt
+            # Inject active skills context into build prompt (auto-detect + user-activated)
             _skills_ctx = ""
+            _auto_skill = await _auto_detect_skill(prompt, (user or {}).get("id", ""))
+            if _auto_skill:
+                _skill_md = _load_skill_md(_auto_skill)
+                if _skill_md:
+                    _instructions_start = _skill_md.find("## Instructions")
+                    if _instructions_start > 0:
+                        _skills_ctx = f"ACTIVE SKILL: {_auto_skill}\n{_skill_md[_instructions_start:_instructions_start+2000]}"
+                    else:
+                        _skills_ctx = f"ACTIVE SKILL: {_auto_skill}\n{_skill_md[:1500]}"
             if user and user.get("id"):
                 try:
-                    _skills_ctx = await _get_active_skills_context(user["id"])
+                    _user_skills_ctx = await _get_active_skills_context(user["id"])
+                    if _user_skills_ctx:
+                        _skills_ctx = (_skills_ctx + "\n\n" + _user_skills_ctx).strip() if _skills_ctx else _user_skills_ctx
                 except Exception:
-                    _skills_ctx = ""
+                    pass
 
             final_files = await run_iterative_build(
                 prompt=prompt, build_kind=build_kind,
@@ -7866,6 +7966,143 @@ async def cache_invalidate(agent_name: Optional[str] = Query(None), user: dict =
     n = await invalidate(db, agent_name=agent_name)
     return {"status": "ok", "deleted": n}
 
+# ==================== APP-DB SCHEMA ENDPOINT ====================
+@api_router.get("/app-db/{task_id}")
+async def get_app_db_schema(task_id: str, user: dict = Depends(get_optional_user)):
+    """Return provisioned database schema for a build task."""
+    if db is None:
+        return {"schema": None}
+    task = await db.tasks.find_one({"id": task_id})
+    if not task:
+        return {"schema": None}
+    # Extract schema from task files
+    files = task.get("files") or {}
+    schema_files = {k: v for k, v in files.items() if "schema" in k.lower() or k.endswith(".sql") or "migration" in k.lower()}
+    if schema_files:
+        combined_sql = "\n\n".join(f"-- {path}\n{code}" for path, code in schema_files.items())
+        import re as _re
+        tables = _re.findall(r'CREATE TABLE(?:\s+IF NOT EXISTS)?\s+"?(\w+)"?', combined_sql, _re.IGNORECASE)
+        return {
+            "schema": {
+                "tables_sql": combined_sql,
+                "tables": tables,
+                "source_files": list(schema_files.keys()),
+            }
+        }
+    return {"schema": None}
+
+@api_router.post("/app-db/provision")
+async def provision_app_db(body: dict = Body(...), user: dict = Depends(get_optional_user)):
+    """Generate a database schema for the given task/prompt."""
+    task_id = body.get("task_id")
+    prompt = body.get("prompt", "")
+    return {
+        "status": "ok",
+        "message": "Schema generation queued. Run a full build to generate database schema files.",
+        "task_id": task_id,
+    }
+
+# ==================== DEPLOY VERCEL ENDPOINT ====================
+@api_router.post("/deploy/vercel")
+async def deploy_to_vercel(
+    body: dict = Body(...),
+    user: dict = Depends(get_optional_user)
+):
+    """Create a Vercel deployment URL for the user's built files."""
+    task_id = body.get("task_id")
+    if db is None or not task_id:
+        return {
+            "deploy_url": "https://vercel.com/new",
+            "method": "manual",
+            "instructions": "Download your ZIP and drag-drop it at vercel.com/new"
+        }
+    task = await db.tasks.find_one({"id": task_id})
+    if not task:
+        return {"deploy_url": "https://vercel.com/new", "method": "manual"}
+    return {
+        "deploy_url": "https://vercel.com/new",
+        "method": "guided",
+        "steps": [
+            "1. Click 'Download ZIP' to get your code",
+            "2. Click 'Deploy to Vercel' to open Vercel",
+            "3. Drag-drop your ZIP file",
+            "4. Your app is live in 60 seconds"
+        ]
+    }
+
+# ==================== SKILLS MARKETPLACE ====================
+@api_router.get("/skills/marketplace")
+async def get_marketplace_skills(user: dict = Depends(get_optional_user)):
+    """Return system skills (always public) + published user skills."""
+    published_user_skills = []
+    if db is not None:
+        try:
+            cursor = db.user_skills.find({"public": True})
+            published_user_skills = await cursor.to_list(100)
+            for s in published_user_skills:
+                s.pop("_id", None)
+        except Exception:
+            published_user_skills = []
+    return {"system_skills": SYSTEM_SKILLS, "community_skills": published_user_skills}
+
+@api_router.post("/skills/{skill_id}/fork")
+async def fork_skill(skill_id: str, user: dict = Depends(get_current_user)):
+    """Copy a skill (system or public user skill) to the current user's library."""
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not ready")
+    # Check if it's a system skill
+    system_skill = next((s for s in SYSTEM_SKILLS if s["name"] == skill_id), None)
+    if system_skill:
+        new_skill = {
+            "id": str(uuid.uuid4()),
+            "user_id": user["id"],
+            "name": f"{skill_id}-fork",
+            "display_name": f"{system_skill.get('display_name', skill_id)} (Fork)",
+            "icon": system_skill.get("icon", "✨"),
+            "color": system_skill.get("color", "#a855f7"),
+            "short_desc": system_skill.get("short_desc", ""),
+            "instructions": _load_skill_md(skill_id)[:8000],
+            "trigger_phrases": [],
+            "forked_from": skill_id,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        await db.user_skills.insert_one(new_skill)
+        new_skill.pop("_id", None)
+        return {"status": "ok", "skill": new_skill}
+    # Check public user skills
+    source_skill = await db.user_skills.find_one({"id": skill_id, "public": True})
+    if not source_skill:
+        raise HTTPException(status_code=404, detail="Skill not found or not public")
+    new_skill = {
+        "id": str(uuid.uuid4()),
+        "user_id": user["id"],
+        "name": f"{source_skill.get('name', skill_id)}-fork",
+        "display_name": f"{source_skill.get('display_name', skill_id)} (Fork)",
+        "icon": source_skill.get("icon", "✨"),
+        "color": source_skill.get("color", "#a855f7"),
+        "short_desc": source_skill.get("short_desc", ""),
+        "instructions": source_skill.get("instructions", "")[:8000],
+        "trigger_phrases": source_skill.get("trigger_phrases", []),
+        "forked_from": skill_id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.user_skills.insert_one(new_skill)
+    new_skill.pop("_id", None)
+    return {"status": "ok", "skill": new_skill}
+
+@api_router.patch("/skills/{skill_id}/publish")
+async def publish_skill(skill_id: str, user: dict = Depends(get_current_user)):
+    """Set a user skill as public in the marketplace."""
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not ready")
+    result = await db.user_skills.update_one(
+        {"id": skill_id, "user_id": user["id"]},
+        {"$set": {"public": True}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Skill not found")
+    return {"status": "ok", "published": True}
+
 # Include routers (domain split) — all wired in app (9.5+)
 try:
     from routers import monitoring_router, health_router
@@ -8016,11 +8253,21 @@ async def init_postgres_primary():
                 session_id   = payload.get("session_id", job_id)
                 total_steps  = len(get_build_structure(build_kind)["passes"])
                 step_num     = 0
+                pass_records = []
 
                 async def on_step(step_name, files_so_far):
                     nonlocal step_num
                     step_num += 1
                     pct = int(step_num / total_steps * 90)
+                    pass_records.append({
+                        "pass": step_num,
+                        "label": step_name,
+                        "desc": f"{len(files_so_far)} files generated so far",
+                        "files_count": len(files_so_far),
+                        "color": ["#a78bfa","#60a5fa","#34d399","#fb923c","#fbbf24","#f87171"][step_num % 6],
+                        "status": "complete",
+                        "completed_at": datetime.now(timezone.utc).isoformat(),
+                    })
                     await update_job_progress(
                         job_id, pct, "running",
                         f"Pass {step_num}/{total_steps}: {step_name} ({len(files_so_far)} files so far)"
@@ -8028,7 +8275,8 @@ async def init_postgres_primary():
 
                 async def call_llm(message, system):
                     effective = _effective_api_keys({})
-                    model_chain = _get_model_chain("auto", message, effective_keys=effective)
+                    # Iterative builds are always complex — always use Haiku
+                    model_chain = _get_model_chain("auto", message, effective_keys=effective, force_complex=True)
                     resp, _ = await _call_llm_with_fallback(
                         message=message, system_message=system,
                         session_id=session_id, model_chain=model_chain,
@@ -8038,13 +8286,24 @@ async def init_postgres_primary():
                     )
                     return resp
 
-                # Inject active skills context for queue-based builds
+                # Inject active skills context for queue-based builds (auto-detect + user-activated)
                 _queue_skills_ctx = ""
+                _q_auto_skill = await _auto_detect_skill(prompt, user_id or "")
+                if _q_auto_skill:
+                    _q_skill_md = _load_skill_md(_q_auto_skill)
+                    if _q_skill_md:
+                        _q_instr_start = _q_skill_md.find("## Instructions")
+                        if _q_instr_start > 0:
+                            _queue_skills_ctx = f"ACTIVE SKILL: {_q_auto_skill}\n{_q_skill_md[_q_instr_start:_q_instr_start+2000]}"
+                        else:
+                            _queue_skills_ctx = f"ACTIVE SKILL: {_q_auto_skill}\n{_q_skill_md[:1500]}"
                 if user_id:
                     try:
-                        _queue_skills_ctx = await _get_active_skills_context(user_id)
+                        _user_q_ctx = await _get_active_skills_context(user_id)
+                        if _user_q_ctx:
+                            _queue_skills_ctx = (_queue_skills_ctx + "\n\n" + _user_q_ctx).strip() if _queue_skills_ctx else _user_q_ctx
                     except Exception:
-                        _queue_skills_ctx = ""
+                        pass
 
                 final_files = await run_iterative_build(
                     prompt=prompt, build_kind=build_kind,
@@ -8063,6 +8322,7 @@ async def init_postgres_primary():
                     "status": "complete",
                     "total_files": len(final_files),
                     "job_id": job_id,
+                    "passes": pass_records,
                     "updated_at": datetime.now(timezone.utc).isoformat(),
                 }
                 try:

@@ -59,14 +59,14 @@
 }
 
 .dev-toggle-btn:hover {
-  border-color: #1A1A1A;
-  color: #1A1A1A;
+  border-color: var(--theme-text, #1A1A1A);
+  color: var(--theme-text, #1A1A1A);
   background: rgba(0, 0, 0, 0.04);
 }
 
 .dev-toggle-btn.active {
-  border-color: #1A1A1A;
-  color: #1A1A1A;
+  border-color: var(--theme-text, #1A1A1A);
+  color: var(--theme-text, #1A1A1A);
   background: rgba(0, 0, 0, 0.06);
 }
 
@@ -172,7 +172,7 @@
   padding: 7px 14px;
   border-radius: 10px;
   border: none;
-  background: #1A1A1A;
+  background: var(--theme-text, #1A1A1A);
   color: #FFFFFF;
   font-size: 13px;
   font-weight: 600;
@@ -226,8 +226,8 @@
 
 .ws-api-warning-btn:hover {
   background: #F5F5F4;
-  border-color: #1A1A1A;
-  color: #1A1A1A;
+  border-color: var(--theme-text, #1A1A1A);
+  color: var(--theme-text, #1A1A1A);
 }
 
 /* ============================================================
@@ -308,7 +308,7 @@
 }
 
 .ws-panel-tab.active {
-  color: #1A1A1A;
+  color: var(--theme-text, #1A1A1A);
   background: rgba(0, 0, 0, 0.06);
 }
 
@@ -326,7 +326,7 @@
 
 .ws-progress-bar-fill {
   height: 100%;
-  background: #1A1A1A;
+  background: var(--theme-text, #1A1A1A);
   border-radius: 9999px;
   transition: width 400ms ease;
 }
@@ -345,7 +345,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #1A1A1A;
+  background: var(--theme-text, #1A1A1A);
   flex-shrink: 0;
   animation: ws-pulse 1.4s ease-in-out infinite;
 }
@@ -393,7 +393,7 @@
 
 .ws-first-run-dismiss:hover {
   background: rgba(0, 0, 0, 0.04);
-  color: #1A1A1A;
+  color: var(--theme-text, #1A1A1A);
 }
 
 /* ============================================================
@@ -430,8 +430,8 @@
 
 .ws-prompt-chip:hover {
   background: rgba(0, 0, 0, 0.04);
-  border-color: #1A1A1A;
-  color: #1A1A1A;
+  border-color: var(--theme-text, #1A1A1A);
+  color: var(--theme-text, #1A1A1A);
 }
 
 /* ============================================================

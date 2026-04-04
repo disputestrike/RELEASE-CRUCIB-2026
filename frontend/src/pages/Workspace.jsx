@@ -132,7 +132,7 @@ function BuildProgressCard({ expanded, onToggle, buildProgress, currentPhase, la
         onClick={onToggle}
         className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50 transition"
       >
-        <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#1A1A1A' }} />
+        <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--theme-text, #1A1A1A)' }} />
         <span className="text-sm font-medium text-gray-900 flex-1 truncate">
           {currentPhase || 'Building...'} — {Math.round(buildProgress)}%
         </span>
@@ -144,7 +144,7 @@ function BuildProgressCard({ expanded, onToggle, buildProgress, currentPhase, la
         <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
           <motion.div
             className="h-full rounded-full"
-            style={{ background: '#1A1A1A' }}
+            style={{ background: 'var(--theme-text, #1A1A1A)' }}
             initial={{ width: 0 }}
             animate={{ width: `${buildProgress}%` }}
             transition={{ duration: 0.3 }}
@@ -585,6 +585,28 @@ const PassesTab = ({ taskId, files, versions, token, API }) => {
   );
 };
 
+// ── Skill auto-detection (mirrors backend SKILL_TRIGGERS) ───────────────────
+const SKILL_TRIGGERS_JS = {
+  'Web App Builder': ['web app', 'full-stack', 'webapp', 'react app', 'crud app', 'portal'],
+  'Mobile App': ['mobile app', 'ios app', 'android app', 'react native', 'expo', 'phone app'],
+  'SaaS MVP': ['saas', 'subscription', 'stripe billing', 'mvp with billing', 'paid app'],
+  'E-Commerce': ['e-commerce', 'ecommerce', 'online store', 'shop', 'sell products', 'product catalog'],
+  'AI Chatbot': ['chatbot', 'ai assistant', 'chat interface', 'knowledge base bot', 'streaming chat'],
+  'Landing Page': ['landing page', 'marketing page', 'product page', 'waitlist', 'hero section'],
+  'Automation': ['automate', 'automation', 'workflow', 'cron job', 'daily digest', 'pipeline'],
+  'Internal Tool': ['admin panel', 'internal tool', 'back office', 'crud interface', 'approval workflow'],
+  'Data Dashboard': ['dashboard', 'analytics', 'charts', 'kpi', 'metrics dashboard', 'recharts'],
+};
+
+function detectSkillFromPrompt(prompt) {
+  if (!prompt) return null;
+  const p = prompt.toLowerCase();
+  for (const [skillName, triggers] of Object.entries(SKILL_TRIGGERS_JS)) {
+    if (triggers.some(t => p.includes(t))) return skillName;
+  }
+  return null;
+}
+
 // Main Workspace Component
 const Workspace = () => {
   const navigate = useNavigate();
@@ -770,6 +792,17 @@ root.render(<App />);`,
   const [showDeployModal, setShowDeployModal] = useState(false);
   const [mobileView, setMobileView] = useState(false);
   const [showVibeInput, setShowVibeInput] = useState(false);
+  // Issue #4: Dashboard live data
+  const [dashboardData, setDashboardData] = useState(null);
+  // Issue #5: Database live schema
+  const [appDbSchema, setAppDbSchema] = useState(null);
+  // Issue #6: Agents live history
+  const [agentHistory, setAgentHistory] = useState([]);
+  // Task 6: Active skill name for agent monitor display
+  const [activeSkillName, setActiveSkillName] = useState(null);
+  // Task 5: Deploy steps tracking
+  const [deployZipDone, setDeployZipDone] = useState(false);
+  const [deploySteps, setDeploySteps] = useState(null);
   const projectIdFromUrl = searchParams.get('projectId');
   const taskIdFromUrl = searchParams.get('taskId');
   const [projectBuildProgress, setProjectBuildProgress] = useState({ phase: 0, agent: '', progress: 0, status: '', tokens_used: 0 });
@@ -797,6 +830,36 @@ root.render(<App />);`,
   useEffect(() => {
     axios.get(`${API}/build/phases`).then(r => setBuildPhases(r.data.phases || [])).catch(() => {});
   }, []);
+
+  // ── Issue #4: Dashboard — fetch live task data when tab opens ──────────────
+  useEffect(() => {
+    if (activePanel !== 'dashboard' || !taskIdFromUrl || !token) return;
+    axios.get(`${API}/tasks/${taskIdFromUrl}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => {
+        const doc = r.data?.doc || r.data || {};
+        setDashboardData(doc);
+      })
+      .catch(() => {});
+  }, [activePanel, taskIdFromUrl, token, API]);
+
+  // ── Issue #5: Database — fetch live schema when tab opens ─────────────────
+  useEffect(() => {
+    if (activePanel !== 'database' || !taskIdFromUrl || !token) return;
+    axios.get(`${API}/app-db/${taskIdFromUrl}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => setAppDbSchema(r.data?.schema || null))
+      .catch(() => setAppDbSchema(null));
+  }, [activePanel, taskIdFromUrl, token, API]);
+
+  // ── Issue #6: Agents — fetch live agent history when tab opens ───────────
+  useEffect(() => {
+    if (activePanel !== 'agents' || !taskIdFromUrl || !token) return;
+    axios.get(`${API}/agents/activity?session_id=${taskIdFromUrl}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => {
+        const acts = r.data?.agents || r.data?.activities || r.data?.activity || [];
+        if (acts.length > 0) setAgentHistory(acts);
+      })
+      .catch(() => {});
+  }, [activePanel, taskIdFromUrl, token, API]);
 
   // Initial terminal message so panel isn't empty
   useEffect(() => {
@@ -1383,6 +1446,8 @@ root.render(<App />);`,
     setInput('');
     setNextSuggestions([]);
     setIsBuilding(true);
+    // Task 6: detect and display active skill
+    setActiveSkillName(detectSkillFromPrompt(prompt));
     setBuildProgress(0);
     setLastError(null);
     setQualityGateResult(null);
@@ -1706,6 +1771,7 @@ BUILD IT NOW — output every file completely:`;
                   setMessages(m => m.map((msg, i) => i === m.length - 1 ? { role: 'assistant', content: `Done! Built ${totalCount} files.`, hasCode: true, planSuggestions } : msg));
                   setTimeout(() => { setCurrentVersion(vId); setFilesReadyKey(`fk_${vId}`); setActivePanel('preview'); }, 500);
                   setIsBuilding(false);
+                  setActiveSkillName(null); // clear skill indicator when build ends
                   setAgentsActivity([]);
                   // PERSISTENCE FIX (Q122): store taskId in URL so returning users reload their workspace
                   const savedTaskId = ev.task_id || sessionId;
@@ -3296,25 +3362,25 @@ BUILD IT NOW — output every file completely:`;
             {/* ── Dashboard tab (Manus-style project ops) ── */}
             {activePanel === 'dashboard' && (
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                {/* Project header */}
+                {/* Project header — uses live dashboardData if available */}
                 <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2, #111)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--theme-muted)' }}>Project</div>
                       <div className="font-semibold text-sm" style={{ color: 'var(--theme-text)' }}>
-                        {messages.find(m => m.role === 'user')?.content?.toString().slice(0, 40) || 'Untitled build'}
+                        {dashboardData?.title || dashboardData?.prompt?.slice(0, 40) || messages.find(m => m.role === 'user')?.content?.toString().slice(0, 40) || 'Untitled build'}
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium" style={{
-                      background: versions.length > 0 ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.06)',
-                      color: versions.length > 0 ? '#86efac' : 'var(--theme-muted)'
+                      background: (dashboardData?.status === 'complete' || versions.length > 0) ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.06)',
+                      color: (dashboardData?.status === 'complete' || versions.length > 0) ? '#86efac' : 'var(--theme-muted)'
                     }}>
-                      <div className="w-1.5 h-1.5 rounded-full" style={{ background: versions.length > 0 ? '#86efac' : 'var(--theme-muted)' }} />
-                      {versions.length > 0 ? 'Built' : 'Not built'}
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ background: (dashboardData?.status === 'complete' || versions.length > 0) ? '#86efac' : 'var(--theme-muted)' }} />
+                      {dashboardData?.status || (versions.length > 0 ? 'Built' : 'Not built')}
                     </div>
                   </div>
                   <div className="mt-3 pt-3 border-t flex gap-4 text-xs" style={{ borderColor: 'var(--theme-border)' }}>
-                    <div><span style={{ color: 'var(--theme-muted)' }}>Files</span><span className="ml-2 font-medium" style={{ color: 'var(--theme-text)' }}>{Object.keys(files).length}</span></div>
+                    <div><span style={{ color: 'var(--theme-muted)' }}>Files</span><span className="ml-2 font-medium" style={{ color: 'var(--theme-text)' }}>{dashboardData?.total_files || Object.keys(files).length}</span></div>
                     <div><span style={{ color: 'var(--theme-muted)' }}>Versions</span><span className="ml-2 font-medium" style={{ color: 'var(--theme-text)' }}>{versions.length}</span></div>
                     <div><span style={{ color: 'var(--theme-muted)' }}>Progress</span><span className="ml-2 font-medium" style={{ color: 'var(--theme-text)' }}>{Math.round(buildProgress)}%</span></div>
                   </div>
@@ -3387,22 +3453,42 @@ BUILD IT NOW — output every file completely:`;
             {/* ── Database tab (Manus-style) ── */}
             {activePanel === 'database' && (
               <div className="flex-1 overflow-y-auto p-4">
-                {Object.keys(files).filter(f => f.includes('schema') || f.includes('.sql') || f.includes('migration') || f.includes('db.')).length > 0 ? (
+                {/* Issue #5: Use live appDbSchema if available, fall back to local files */}
+                {(appDbSchema || Object.keys(files).filter(f => f.includes('schema') || f.includes('.sql') || f.includes('migration') || f.includes('db.')).length > 0) ? (
                   <div className="space-y-3">
-                    <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
-                      <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--theme-muted)' }}>Schema Files</div>
-                      <div className="space-y-2">
-                        {Object.keys(files).filter(f => f.includes('schema') || f.includes('.sql') || f.includes('migration') || f.includes('db.')).map(f => (
-                          <button key={f} onClick={() => { setActiveFile(f); setActivePanel('code'); }} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs text-left transition hover:bg-white/5 border" style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text)' }}>
-                            <Database className="w-3.5 h-3.5 shrink-0" style={{ color: '#60a5fa' }} />
-                            <span className="truncate">{f.replace(/^\//, '')}</span>
-                            <span className="ml-auto shrink-0" style={{ color: 'var(--theme-muted)' }}>{files[f]?.code?.split('\n').length || 0}L</span>
-                          </button>
+                    {appDbSchema && (
+                      <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
+                        <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--theme-muted)' }}>Live Schema ({(appDbSchema.tables || []).length} tables)</div>
+                        {(appDbSchema.tables || []).map(t => (
+                          <div key={t} className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs mb-1" style={{ background: 'rgba(255,255,255,0.03)', color: 'var(--theme-text)' }}>
+                            <div className="w-2 h-2 rounded-sm" style={{ background: '#3b82f6' }} />
+                            {t}
+                          </div>
                         ))}
+                        {appDbSchema.tables_sql && (
+                          <details className="mt-3">
+                            <summary className="text-xs cursor-pointer" style={{ color: 'var(--theme-muted)' }}>View Full Schema SQL</summary>
+                            <pre className="mt-2 p-3 rounded-lg text-[10px] overflow-x-auto" style={{ background: 'rgba(0,0,0,0.3)', color: 'var(--theme-text)', whiteSpace: 'pre-wrap' }}>{appDbSchema.tables_sql}</pre>
+                          </details>
+                        )}
                       </div>
-                    </div>
-                    {/* Show table names extracted from schema */}
-                    {(() => {
+                    )}
+                    {!appDbSchema && (
+                      <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
+                        <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--theme-muted)' }}>Schema Files</div>
+                        <div className="space-y-2">
+                          {Object.keys(files).filter(f => f.includes('schema') || f.includes('.sql') || f.includes('migration') || f.includes('db.')).map(f => (
+                            <button key={f} onClick={() => { setActiveFile(f); setActivePanel('code'); }} className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs text-left transition hover:bg-white/5 border" style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text)' }}>
+                              <Database className="w-3.5 h-3.5 shrink-0" style={{ color: '#60a5fa' }} />
+                              <span className="truncate">{f.replace(/^\//, '')}</span>
+                              <span className="ml-auto shrink-0" style={{ color: 'var(--theme-muted)' }}>{files[f]?.code?.split('\n').length || 0}L</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* Show table names extracted from local schema if no live schema */}
+                    {!appDbSchema && (() => {
                       const schemaContent = Object.entries(files).filter(([k]) => k.includes('schema') || k.includes('.sql')).map(([,v]) => v?.code || '').join('\n');
                       const tables = [...schemaContent.matchAll(/CREATE TABLE(?:\s+IF NOT EXISTS)?\s+"?(\w+)"?/gi)].map(m => m[1]);
                       return tables.length > 0 ? (
@@ -3427,6 +3513,12 @@ BUILD IT NOW — output every file completely:`;
                       <div className="text-sm font-medium mb-1">No database schema yet</div>
                       <div className="text-xs opacity-70">Build a fullstack or SaaS app to generate DB schema</div>
                     </div>
+                    {taskIdFromUrl && token && (
+                      <button
+                        onClick={() => axios.post(`${API}/app-db/provision`, { task_id: taskIdFromUrl, prompt: messages.find(m => m.role === 'user')?.content || '' }, { headers: { Authorization: `Bearer ${token}` } }).then(() => {}).catch(() => {})}
+                        className="px-4 py-2 rounded-lg text-xs font-medium transition" style={{ background: 'var(--theme-accent)', color: 'white' }}
+                      >Generate Schema</button>
+                    )}
                   </div>
                 )}
               </div>
@@ -3439,20 +3531,28 @@ BUILD IT NOW — output every file completely:`;
                   <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--theme-muted)' }}>DAG Orchestration</div>
                   <div className="text-xs mt-0.5" style={{ color: 'var(--theme-muted)' }}>122 agents · Kahn topological sort · parallel phases</div>
                 </div>
-                {/* Agent activity from live build */}
-                {agentsActivity.length > 0 ? (
+                {/* Task 6: Active skill indicator */}
+                {isBuilding && activeSkillName && (
+                  <div style={{ padding: '8px 12px', background: 'rgba(59,130,246,0.1)', borderRadius: '8px', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>&#x26A1;</span>
+                    <span style={{ fontSize: '12px', color: 'var(--theme-muted)' }}>Active skill:</span>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--theme-text)' }}>{activeSkillName}</span>
+                  </div>
+                )}
+                {/* Agent activity: prefer live agentHistory, then agentsActivity, then static */}
+                {(agentHistory.length > 0 || agentsActivity.length > 0) ? (
                   <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--theme-border)' }}>
-                    {agentsActivity.map((a, i) => (
+                    {(agentHistory.length > 0 ? agentHistory : agentsActivity).map((a, i) => (
                       <div key={i} className="flex items-center gap-3 px-3 py-2.5 border-b last:border-b-0 text-xs" style={{ borderColor: 'var(--theme-border)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
                         <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{
                           background: a.status === 'done' ? 'rgba(74,222,128,0.15)' : a.status === 'running' ? 'rgba(251,146,60,0.15)' : 'rgba(255,255,255,0.05)'
                         }}>
-                          {a.status === 'done' ? <span style={{ color: '#4ade80', fontSize: 9 }}>✓</span>
+                          {a.status === 'done' ? <span style={{ color: '#4ade80', fontSize: 9 }}>&#x2713;</span>
                             : a.status === 'running' ? <Loader2 className="w-2.5 h-2.5 animate-spin" style={{ color: '#fb923c' }} />
-                            : <span style={{ color: 'var(--theme-muted)', fontSize: 9 }}>○</span>}
+                            : <span style={{ color: 'var(--theme-muted)', fontSize: 9 }}>&#x25CB;</span>}
                         </div>
-                        <span className="font-medium truncate" style={{ color: a.status === 'done' ? '#86efac' : a.status === 'running' ? '#fb923c' : 'var(--theme-muted)' }}>{a.name}</span>
-                        <span className="ml-auto shrink-0 opacity-60" style={{ color: 'var(--theme-muted)' }}>{a.phase}</span>
+                        <span className="font-medium truncate" style={{ color: a.status === 'done' ? '#86efac' : a.status === 'running' ? '#fb923c' : 'var(--theme-muted)' }}>{a.name || a.message?.slice(0, 40) || 'Agent'}</span>
+                        <span className="ml-auto shrink-0 opacity-60" style={{ color: 'var(--theme-muted)' }}>{a.phase || a.model || ''}</span>
                       </div>
                     ))}
                   </div>
@@ -3511,27 +3611,56 @@ BUILD IT NOW — output every file completely:`;
         )}
       </div>
 
-      {/* ── Deploy modal ── */}
+      {/* ── Deploy modal (Task 5: guided step-by-step flow) ── */}
       {showDeployModal && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.75)' }} onClick={() => setShowDeployModal(false)}>
+        <div className="fixed inset-0 z-[300] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.75)' }} onClick={() => { setShowDeployModal(false); setDeployZipDone(false); setDeploySteps(null); }}>
           <div className="rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 border" style={{ background: 'var(--theme-surface, #1C1C1E)', borderColor: 'var(--theme-border, rgba(255,255,255,0.1))' }} onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-white mb-1">Deploy your app</h3>
-            <p className="text-sm mb-5" style={{ color: 'var(--theme-muted, #71717a)' }}>Download your ZIP then upload to any platform below:</p>
-            <div className="flex flex-col gap-2">
-              <button onClick={downloadCode} className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition hover:bg-white/5 border" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.1))', color: 'var(--theme-text, #e4e4e7)' }}>
-                <Download className="w-4 h-4" /> Download ZIP
+            <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--theme-text)' }}>Deploy your app</h3>
+            <p className="text-sm mb-4" style={{ color: 'var(--theme-muted)' }}>Follow the 2-step guide to get your app live in under 60 seconds.</p>
+
+            {/* Step 1: Download */}
+            <div className="rounded-xl p-4 border mb-3" style={{ borderColor: deployZipDone ? 'rgba(74,222,128,0.4)' : 'var(--theme-border)', background: deployZipDone ? 'rgba(74,222,128,0.05)' : 'transparent' }}>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: deployZipDone ? '#4ade80' : 'rgba(255,255,255,0.1)', color: deployZipDone ? '#000' : 'var(--theme-text)' }}>{deployZipDone ? '\u2713' : '1'}</div>
+                <span className="text-sm font-medium" style={{ color: 'var(--theme-text)' }}>Download your code</span>
+              </div>
+              <button onClick={() => { downloadCode(); setDeployZipDone(true); }} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition border" style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text)', background: deployZipDone ? 'rgba(74,222,128,0.1)' : 'transparent' }}>
+                <Download className="w-4 h-4" /> {deployZipDone ? 'Downloaded ✓' : 'Download ZIP'}
               </button>
-              <a href="https://vercel.com/new" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium text-white hover:opacity-90 transition" style={{ background: '#000' }}>
-                Deploy to Vercel
-              </a>
-              <a href="https://app.netlify.com/drop" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium text-white hover:opacity-90 transition" style={{ background: '#00AD9F' }}>
-                Deploy to Netlify Drop
-              </a>
-              <a href="https://railway.app/new" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium text-white hover:opacity-90 transition" style={{ background: '#0B0D0E', border: '1px solid rgba(255,255,255,0.15)' }}>
-                Deploy to Railway
-              </a>
             </div>
-            <button onClick={() => setShowDeployModal(false)} className="mt-4 w-full py-2 text-sm rounded-xl border transition hover:bg-white/5" style={{ color: 'var(--theme-muted, #71717a)', borderColor: 'var(--theme-border, rgba(255,255,255,0.1))' }}>Close</button>
+
+            {/* Step 2: Deploy options */}
+            <div className="rounded-xl p-4 border mb-3" style={{ borderColor: 'var(--theme-border)', opacity: deployZipDone ? 1 : 0.5 }}>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--theme-text)' }}>2</div>
+                <span className="text-sm font-medium" style={{ color: 'var(--theme-text)' }}>Deploy to a platform</span>
+              </div>
+              <div className="flex flex-col gap-2">
+                <a
+                  href="https://vercel.com/new"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white hover:opacity-90 transition"
+                  style={{ background: '#000', pointerEvents: deployZipDone ? 'auto' : 'none' }}
+                  onClick={() => { if (taskIdFromUrl && token) { axios.post(`${API}/deploy/vercel`, { task_id: taskIdFromUrl }, { headers: { Authorization: `Bearer ${token}` } }).then(r => setDeploySteps(r.data?.steps || null)).catch(() => {}); } }}
+                >
+                  Deploy to Vercel
+                </a>
+                {deploySteps && (
+                  <div className="text-xs rounded-lg p-3 space-y-1" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--theme-muted)' }}>
+                    {deploySteps.map((s, i) => <div key={i}>{s}</div>)}
+                  </div>
+                )}
+                <a href="https://app.netlify.com/drop" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white hover:opacity-90 transition" style={{ background: '#00AD9F', pointerEvents: deployZipDone ? 'auto' : 'none' }}>
+                  Deploy to Netlify Drop
+                </a>
+                <a href="https://railway.app/new" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white hover:opacity-90 transition" style={{ background: '#0B0D0E', border: '1px solid rgba(255,255,255,0.15)', pointerEvents: deployZipDone ? 'auto' : 'none' }}>
+                  Deploy to Railway
+                </a>
+              </div>
+            </div>
+
+            <button onClick={() => { setShowDeployModal(false); setDeployZipDone(false); setDeploySteps(null); }} className="mt-1 w-full py-2 text-sm rounded-xl border transition hover:bg-white/5" style={{ color: 'var(--theme-muted)', borderColor: 'var(--theme-border)' }}>Close</button>
           </div>
         </div>
       )}
