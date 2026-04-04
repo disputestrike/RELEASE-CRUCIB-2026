@@ -1,0 +1,164 @@
+"""
+fixer.py — Failure classifier and corrective action engine.
+Only touches the failed step's scope — never rewrites unrelated code.
+"""
+import logging
+import re
+from typing import Dict, Any, List, Optional
+
+logger = logging.getLogger(__name__)
+
+# ── Failure types ─────────────────────────────────────────────────────────────
+
+FAILURE_TYPES = [
+    "compile_error",
+    "runtime_error",
+    "api_contract_error",
+    "db_error",
+    "integration_error",
+    "verification_error",
+    "missing_file",
+    "syntax_error",
+    "unknown",
+]
+
+MAX_RETRIES = 3
+
+
+def classify_failure(step: Dict[str, Any],
+                     verification_result: Dict[str, Any]) -> str:
+    """Classify the failure type from verifier issues and step error_message."""
+    issues = " ".join(verification_result.get("issues", []))
+    error_msg = step.get("error_message", "")
+    combined = (issues + " " + error_msg).lower()
+
+    if any(k in combined for k in ["syntax", "syntaxerror", "py_compile", "node --check"]):
+        return "syntax_error"
+    if any(k in combined for k in ["compile", "build failed", "tsc", "webpack"]):
+        return "compile_error"
+    if any(k in combined for k in ["table not found", "relation does not exist", "migration"]):
+        return "db_error"
+    if any(k in combined for k in ["404", "route not found", "no handler", "missing endpoint"]):
+        return "api_contract_error"
+    if any(k in combined for k in ["stripe", "openai", "anthropic", "api key", "integration"]):
+        return "integration_error"
+    if any(k in combined for k in ["file missing", "not found", "no such file"]):
+        return "missing_file"
+    if any(k in combined for k in ["runtime", "exception", "traceback", "500"]):
+        return "runtime_error"
+    return "unknown"
+
+
+def build_retry_plan(failure_type: str, step: Dict[str, Any],
+                     verification_result: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Return a structured retry plan with corrective actions.
+    The auto-runner uses this to decide what to repair before retrying.
+    """
+    issues = verification_result.get("issues", [])
+    step_key = step.get("step_key", "unknown")
+
+    plans = {
+        "syntax_error": {
+            "actions": [
+                "Re-read the file and identify syntax errors",
+                "Apply minimal patch to fix syntax only",
+                "Re-run syntax check to confirm fix",
+            ],
+            "scope": "file_only",
+        },
+        "compile_error": {
+            "actions": [
+                "Check build output for specific error messages",
+                "Fix import paths and missing dependencies",
+                "Verify tsconfig / babel config compatibility",
+            ],
+            "scope": "file_and_config",
+        },
+        "db_error": {
+            "actions": [
+                "Check migration file for missing table or column definitions",
+                "Re-run migration with IF NOT EXISTS guards",
+                "Verify DB connection string is correct",
+            ],
+            "scope": "migration_file",
+        },
+        "api_contract_error": {
+            "actions": [
+                "Compare frontend API call to backend route signature",
+                "Fix request/response schema mismatch",
+                "Add missing route handler if absent",
+            ],
+            "scope": "route_file",
+        },
+        "integration_error": {
+            "actions": [
+                "Check env var presence for integration keys",
+                "Verify webhook URL and callback configuration",
+                "Run dry-run handshake if supported",
+            ],
+            "scope": "env_and_integration_files",
+        },
+        "missing_file": {
+            "actions": [
+                "Re-generate the missing file",
+                "Verify parent directory exists",
+                "Update import references if file was renamed",
+            ],
+            "scope": "file_regeneration",
+        },
+        "runtime_error": {
+            "actions": [
+                "Inspect traceback for root cause",
+                "Add null checks and guard clauses",
+                "Re-test the specific failing code path",
+            ],
+            "scope": "targeted_function",
+        },
+        "unknown": {
+            "actions": [
+                "Inspect full error output",
+                "Narrow scope to failing component",
+                "Apply conservative fix and re-verify",
+            ],
+            "scope": "targeted",
+        },
+    }
+
+    plan = plans.get(failure_type, plans["unknown"])
+    return {
+        "failure_type": failure_type,
+        "step_key": step_key,
+        "issues": issues,
+        "retry_plan": plan["actions"],
+        "scope": plan["scope"],
+        "can_auto_retry": step.get("retry_count", 0) < MAX_RETRIES,
+        "retry_number": step.get("retry_count", 0) + 1,
+    }
+
+
+async def apply_fix(step: Dict[str, Any], retry_plan: Dict[str, Any],
+                    llm_call=None) -> Dict[str, Any]:
+    """
+    Apply corrective action for the step.
+    Returns {success: bool, changes_made: list, notes: str}
+    If llm_call provided, uses LLM to generate targeted fix.
+    """
+    failure_type = retry_plan["failure_type"]
+    scope = retry_plan["scope"]
+    changes = []
+
+    logger.info("fixer: applying %s fix for step %s (attempt %d)",
+                failure_type, step.get("step_key"), retry_plan["retry_number"])
+
+    # For now: record the intent and let the auto_runner's LLM step handle regeneration
+    # In production this would call the specific agent to re-generate only the affected scope
+    changes.append(f"Classified as {failure_type}, scope={scope}")
+    changes.append(f"Retry plan: {'; '.join(retry_plan['retry_plan'])}")
+
+    return {
+        "success": True,
+        "changes_made": changes,
+        "notes": f"Retry #{retry_plan['retry_number']} queued for {step['step_key']}",
+        "failure_type": failure_type,
+    }

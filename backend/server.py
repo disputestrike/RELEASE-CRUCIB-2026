@@ -7664,6 +7664,371 @@ async def use_deployment_tool(body: ToolDeployRequest, user: dict = Depends(get_
     ctx = body.model_dump(exclude_none=True)
     return await agent.run(ctx)
 
+
+# ==================== AUTO-RUNNER & ORCHESTRATOR ====================
+
+import sys as _sys
+import asyncio as _asyncio
+import json as _json
+
+_sys.path.insert(0, os.path.dirname(__file__))
+
+# Lazy-load orchestration modules to avoid circular imports
+def _get_orchestration():
+    from orchestration import runtime_state, dag_engine, planner as planner_mod, auto_runner as ar_mod
+    from proof import proof_service as ps_mod
+    return runtime_state, dag_engine, planner_mod, ar_mod, ps_mod
+
+
+class PlanRequest(BaseModel):
+    project_id: str
+    goal: str
+    mode: Optional[str] = "guided"
+
+
+class RunAutoRequest(BaseModel):
+    job_id: str
+    workspace_path: Optional[str] = ""
+
+
+class CreateJobRequest(BaseModel):
+    project_id: str
+    goal: str
+    mode: Optional[str] = "guided"
+
+
+class CostEstimateRequest(BaseModel):
+    project_id: Optional[str] = None
+    goal: str
+
+
+# ── Cost estimator (pre-execution, no auth required) ──────────────────────────
+
+@api_router.post("/orchestrator/estimate")
+async def estimate_cost(body: CostEstimateRequest):
+    """
+    Pre-execution cost estimate. Show before user approves plan.
+    Returns estimated_tokens, estimated_credits, cost_range.
+    """
+    try:
+        _, _, planner_mod, _, _ = _get_orchestration()
+        plan = await planner_mod.generate_plan(body.goal)
+        estimate = planner_mod.estimate_tokens(plan)
+        return {"success": True, "estimate": estimate, "plan_summary": plan.get("summary", "")}
+    except Exception as e:
+        return {"success": False, "error": str(e), "estimate": {
+            "estimated_credits": 5, "cost_range": {"min_credits": 3, "max_credits": 15, "typical_credits": 5}
+        }}
+
+
+# ── Plan generation ───────────────────────────────────────────────────────────
+
+@api_router.post("/orchestrator/plan")
+async def create_plan(body: PlanRequest, user: dict = Depends(get_current_user)):
+    """Generate a structured build plan before execution. Returns plan JSON + estimate."""
+    try:
+        runtime_state, dag_engine, planner_mod, _, _ = _get_orchestration()
+        from db_pg import get_pg_pool
+        pool = await get_pg_pool()
+        runtime_state.set_pool(pool)
+
+        # Generate plan
+        plan = await planner_mod.generate_plan(body.goal)
+        estimate = planner_mod.estimate_tokens(plan)
+
+        # Create job record
+        job = await runtime_state.create_job(
+            project_id=body.project_id,
+            mode=body.mode or "guided",
+            goal=body.goal,
+            user_id=user.get("id"),
+        )
+
+        # Store plan
+        import uuid as _uuid
+        plan_id = str(_uuid.uuid4())
+        async with pool.acquire() as conn:
+            await conn.execute("""
+                INSERT INTO build_plans (id, job_id, project_id, goal, plan_json, status, created_at)
+                VALUES ($1,$2,$3,$4,$5,'draft',NOW())
+            """, plan_id, job["id"], body.project_id, body.goal, _json.dumps(plan))
+
+        # Persist plan steps as job_steps
+        from orchestration.dag_engine import build_dag_from_plan
+        step_defs = build_dag_from_plan(plan)
+        for idx, sd in enumerate(step_defs):
+            await runtime_state.create_step(
+                job_id=job["id"],
+                step_key=sd["step_key"],
+                agent_name=sd["agent_name"],
+                phase=sd["phase"],
+                depends_on=sd["depends_on"],
+                order_index=idx,
+            )
+
+        return {
+            "success": True,
+            "job_id": job["id"],
+            "plan": plan,
+            "estimate": estimate,
+            "step_count": len(step_defs),
+            "missing_inputs": plan.get("missing_inputs", []),
+            "risk_flags": plan.get("risk_flags", []),
+        }
+    except Exception as e:
+        logger.exception("orchestrator/plan error")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Run auto ──────────────────────────────────────────────────────────────────
+
+@api_router.post("/orchestrator/run-auto")
+async def run_auto(body: RunAutoRequest, user: dict = Depends(get_current_user)):
+    """
+    Start auto-runner for an existing job.
+    Returns immediately with job_id; client streams progress via /api/jobs/{id}/stream.
+    """
+    try:
+        runtime_state, _, _, ar_mod, _ = _get_orchestration()
+        from db_pg import get_pg_pool
+        pool = await get_pg_pool()
+        runtime_state.set_pool(pool)
+
+        job = await runtime_state.get_job(body.job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+        if job.get("user_id") and job["user_id"] != user.get("id"):
+            raise HTTPException(status_code=403, detail="Not your job")
+
+        # Run in background
+        _asyncio.ensure_future(ar_mod.run_job_to_completion(
+            body.job_id,
+            workspace_path=body.workspace_path or "",
+            db_pool=pool,
+        ))
+
+        return {"success": True, "job_id": body.job_id,
+                "stream_url": f"/api/jobs/{body.job_id}/stream"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("orchestrator/run-auto error")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Job CRUD ──────────────────────────────────────────────────────────────────
+
+@api_router.post("/jobs")
+async def create_job_route(body: CreateJobRequest,
+                            user: dict = Depends(get_current_user)):
+    """Create a new job (plan + steps) for a project."""
+    try:
+        runtime_state, _, planner_mod, _, _ = _get_orchestration()
+        from db_pg import get_pg_pool
+        pool = await get_pg_pool()
+        runtime_state.set_pool(pool)
+
+        plan = await planner_mod.generate_plan(body.goal)
+        job = await runtime_state.create_job(
+            project_id=body.project_id, mode=body.mode or "guided",
+            goal=body.goal, user_id=user.get("id")
+        )
+        from orchestration.dag_engine import build_dag_from_plan
+        step_defs = build_dag_from_plan(plan)
+        for idx, sd in enumerate(step_defs):
+            await runtime_state.create_step(
+                job_id=job["id"], step_key=sd["step_key"],
+                agent_name=sd["agent_name"], phase=sd["phase"],
+                depends_on=sd["depends_on"], order_index=idx,
+            )
+        return {"success": True, "job": job, "plan": plan}
+    except Exception as e:
+        logger.exception("POST /jobs error")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/jobs/{job_id}")
+async def get_job_route(job_id: str, user: dict = Depends(get_optional_user)):
+    """Get job status and metadata."""
+    try:
+        runtime_state, _, _, _, _ = _get_orchestration()
+        from db_pg import get_pg_pool
+        pool = await get_pg_pool()
+        runtime_state.set_pool(pool)
+        job = await runtime_state.get_job(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+        return {"success": True, "job": job}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/jobs/{job_id}/steps")
+async def get_job_steps(job_id: str, user: dict = Depends(get_optional_user)):
+    """Get all steps for a job with their current status."""
+    try:
+        runtime_state, _, _, _, _ = _get_orchestration()
+        from db_pg import get_pg_pool
+        pool = await get_pg_pool()
+        runtime_state.set_pool(pool)
+        steps = await runtime_state.get_steps(job_id)
+        return {"success": True, "steps": steps, "count": len(steps)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/jobs/{job_id}/events")
+async def get_job_events(job_id: str, since_id: Optional[str] = None,
+                          user: dict = Depends(get_optional_user)):
+    """Get job event log (for replay/history view)."""
+    try:
+        runtime_state, _, _, _, _ = _get_orchestration()
+        from db_pg import get_pg_pool
+        pool = await get_pg_pool()
+        runtime_state.set_pool(pool)
+        events = await runtime_state.get_job_events(job_id, since_id=since_id)
+        # Parse payload_json
+        for e in events:
+            try:
+                e["payload"] = _json.loads(e.get("payload_json") or "{}")
+            except Exception:
+                e["payload"] = {}
+        return {"success": True, "events": events, "count": len(events)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/jobs/{job_id}/proof")
+async def get_job_proof(job_id: str, user: dict = Depends(get_optional_user)):
+    """Get proof bundle for job (files, routes, DB, verification, deploy)."""
+    try:
+        _, _, _, _, ps_mod = _get_orchestration()
+        from db_pg import get_pg_pool
+        pool = await get_pg_pool()
+        ps_mod.set_pool(pool)
+        proof = await ps_mod.get_proof(job_id)
+        return {"success": True, **proof}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/jobs/{job_id}/cancel")
+async def cancel_job(job_id: str, user: dict = Depends(get_current_user)):
+    """Cancel a running job."""
+    try:
+        runtime_state, _, _, _, _ = _get_orchestration()
+        from db_pg import get_pg_pool
+        pool = await get_pg_pool()
+        runtime_state.set_pool(pool)
+        await runtime_state.update_job_state(job_id, "cancelled")
+        from orchestration.event_bus import publish
+        await publish(job_id, "job_cancelled", {"job_id": job_id})
+        return {"success": True, "job_id": job_id, "status": "cancelled"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/jobs/{job_id}/resume")
+async def resume_job_route(job_id: str, user: dict = Depends(get_current_user)):
+    """Resume an interrupted job from its last checkpoint."""
+    try:
+        runtime_state, _, _, ar_mod, _ = _get_orchestration()
+        from db_pg import get_pg_pool
+        pool = await get_pg_pool()
+        runtime_state.set_pool(pool)
+        _asyncio.ensure_future(ar_mod.resume_job(job_id, db_pool=pool))
+        return {"success": True, "job_id": job_id,
+                "stream_url": f"/api/jobs/{job_id}/stream"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/jobs/{job_id}/retry-step/{step_id}")
+async def retry_step(job_id: str, step_id: str,
+                      user: dict = Depends(get_current_user)):
+    """Manually retry a specific failed step."""
+    try:
+        runtime_state, _, _, _, _ = _get_orchestration()
+        from db_pg import get_pg_pool
+        pool = await get_pg_pool()
+        runtime_state.set_pool(pool)
+        step = await runtime_state.get_step(step_id)
+        if not step or step["job_id"] != job_id:
+            raise HTTPException(status_code=404, detail="Step not found")
+        if step["status"] not in ("failed", "blocked"):
+            raise HTTPException(status_code=400,
+                detail=f"Step is {step['status']}, can only retry failed/blocked steps")
+        # Reset to pending with incremented retry count
+        await runtime_state.update_step_state(step_id, "pending", {
+            "retry_count": step.get("retry_count", 0) + 1,
+            "error_message": None,
+        })
+        return {"success": True, "step_id": step_id, "status": "pending",
+                "retry_number": step.get("retry_count", 0) + 1}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── SSE stream ────────────────────────────────────────────────────────────────
+
+from fastapi.responses import StreamingResponse as _StreamingResponse
+import asyncio as _ac
+
+@api_router.get("/jobs/{job_id}/stream")
+async def stream_job_events(job_id: str, user: dict = Depends(get_optional_user)):
+    """
+    Server-Sent Events stream for real-time job progress.
+    Streams: job_started, step_started, step_completed, step_failed, job_completed, etc.
+    """
+    from orchestration.event_bus import subscribe, unsubscribe
+    from orchestration.runtime_state import get_job_events as _get_stored
+    from db_pg import get_pg_pool
+
+    pool = await get_pg_pool()
+
+    async def event_generator():
+        queue = await subscribe(job_id)
+        try:
+            # Replay stored events first (for reconnects)
+            from orchestration import runtime_state as _rs
+            _rs.set_pool(pool)
+            stored = await _get_stored(job_id, limit=50)
+            for ev in stored:
+                payload_str = _json.dumps({
+                    "type": ev.get("event_type"),
+                    "job_id": ev.get("job_id"),
+                    "step_id": ev.get("step_id"),
+                    "payload": _json.loads(ev.get("payload_json") or "{}"),
+                    "ts": str(ev.get("created_at", "")),
+                })
+                yield f"data: {payload_str}\n\n"
+
+            yield f"data: {_json.dumps({'type': 'connected', 'job_id': job_id})}\n\n"
+
+            while True:
+                try:
+                    event = await _ac.wait_for(queue.get(), timeout=30.0)
+                    yield f"data: {_json.dumps(event)}\n\n"
+                    if event.get("type") in ("job_completed", "job_failed", "job_cancelled"):
+                        break
+                except _ac.TimeoutError:
+                    yield f"data: {_json.dumps({'type': 'heartbeat', 'job_id': job_id})}\n\n"
+        finally:
+            await unsubscribe(job_id, queue)
+
+    return _StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        }
+    )
+
 # ==================== MONITORING (PostgreSQL proof) ====================
 class TrackEventRequest(BaseModel):
     event_type: str
@@ -8664,16 +9029,20 @@ if _static_dir.exists():
 import os as _os
 
 SYSTEM_SKILLS = [
-    {"name": "web-app-builder", "icon": "🌐", "color": "#3b82f6", "category": "build", "display_name": "Web App", "short_desc": "Full-stack React + Node.js with auth, database, and API", "trigger_prompt": "Build a full-stack web app with user authentication, dashboard, and REST API"},
-    {"name": "mobile-app-builder", "icon": "📱", "color": "#8b5cf6", "category": "build", "display_name": "Mobile App", "short_desc": "React Native with Expo — iOS and Android ready", "trigger_prompt": "Build a mobile app with navigation, screens, and local storage"},
-    {"name": "saas-mvp-builder", "icon": "💳", "color": "#f59e0b", "category": "build", "display_name": "SaaS MVP", "short_desc": "Auth, Stripe billing, user dashboard, multi-tenant", "trigger_prompt": "Build a SaaS MVP with Stripe billing, user auth, and admin dashboard"},
-    {"name": "ecommerce-builder", "icon": "🛒", "color": "#10b981", "category": "build", "display_name": "E-Commerce", "short_desc": "Product catalog, cart, Stripe checkout, order management", "trigger_prompt": "Build an e-commerce store with product catalog, cart, and Stripe checkout"},
-    {"name": "ai-chatbot-builder", "icon": "🤖", "color": "#ec4899", "category": "build", "display_name": "AI Chatbot", "short_desc": "Multi-agent chat, knowledge base, streaming, embeddable widget", "trigger_prompt": "Build an AI chatbot with multi-agent support and document knowledge base"},
-    {"name": "landing-page-builder", "icon": "🏠", "color": "#06b6d4", "category": "build", "display_name": "Landing Page", "short_desc": "Hero, features, pricing, testimonials, FAQ, email waitlist", "trigger_prompt": "Build a landing page with hero, features grid, pricing table, and FAQ"},
-    {"name": "automation-builder", "icon": "⚡", "color": "#f97316", "category": "automate", "display_name": "Automation", "short_desc": "Scheduled agents, webhooks, AI-powered workflows", "trigger_prompt": "Build an automation that runs daily and sends results to Slack or email"},
-    {"name": "internal-tool-builder", "icon": "🛠️", "color": "#64748b", "category": "build", "display_name": "Internal Tool", "short_desc": "Admin tables, forms, CRUD, approval workflows", "trigger_prompt": "Build an internal admin tool with data tables, forms, and user roles"},
-    {"name": "data-dashboard-builder", "icon": "📊", "color": "#6366f1", "category": "build", "display_name": "Data Dashboard", "short_desc": "Interactive charts, KPI cards, filters, analytics", "trigger_prompt": "Build a data analytics dashboard with charts and KPI cards"},
-    {"name": "custom-user-skill", "icon": "✨", "color": "#a855f7", "category": "custom", "display_name": "Custom Skill", "short_desc": "Define your own building patterns and AI instructions", "trigger_prompt": ""},
+    {"name": "web-app-builder", "icon": "🌐", "color": "#3b82f6", "category": "build", "display_name": "Web App Builder", "short_desc": "Full-stack React + FastAPI with auth, PostgreSQL, and REST API", "trigger_prompt": "Build a full-stack web app with user authentication, dashboard, and REST API", "is_featured": True, "install_count": 1284, "rating_avg": 4.8, "tags": ["react","fastapi","postgres","auth"], "preview_url": None},
+    {"name": "mobile-app-builder", "icon": "📱", "color": "#8b5cf6", "category": "build", "display_name": "Mobile App Builder", "short_desc": "React Native with Expo — iOS and Android with App Store submission guide", "trigger_prompt": "Build a mobile app with navigation, screens, and local storage", "is_featured": True, "install_count": 847, "rating_avg": 4.7, "tags": ["react-native","expo","ios","android"], "preview_url": None},
+    {"name": "saas-mvp-builder", "icon": "💳", "color": "#f59e0b", "category": "build", "display_name": "SaaS MVP", "short_desc": "Auth, Stripe billing, user dashboard, multi-tenant — launch-ready in hours", "trigger_prompt": "Build a SaaS MVP with Stripe billing, user auth, and admin dashboard", "is_featured": True, "install_count": 2100, "rating_avg": 4.9, "tags": ["saas","stripe","auth","billing"], "preview_url": None},
+    {"name": "ecommerce-builder", "icon": "🛒", "color": "#10b981", "category": "build", "display_name": "E-Commerce Store", "short_desc": "Product catalog, cart, Stripe checkout, inventory, order management", "trigger_prompt": "Build an e-commerce store with product catalog, cart, and Stripe checkout", "is_featured": False, "install_count": 633, "rating_avg": 4.6, "tags": ["ecommerce","stripe","inventory"], "preview_url": None},
+    {"name": "ai-chatbot-builder", "icon": "🤖", "color": "#ec4899", "category": "build", "display_name": "AI Chatbot", "short_desc": "Multi-agent chat, knowledge base RAG, streaming, embeddable widget", "trigger_prompt": "Build an AI chatbot with multi-agent support and document knowledge base", "is_featured": True, "install_count": 1520, "rating_avg": 4.8, "tags": ["ai","chatbot","rag","streaming"], "preview_url": None},
+    {"name": "landing-page-builder", "icon": "🏠", "color": "#06b6d4", "category": "build", "display_name": "Landing Page", "short_desc": "Hero, features, pricing, testimonials, FAQ, waitlist — pixel perfect", "trigger_prompt": "Build a landing page with hero, features grid, pricing table, and FAQ", "is_featured": False, "install_count": 980, "rating_avg": 4.7, "tags": ["landing","marketing","waitlist"], "preview_url": None},
+    {"name": "automation-builder", "icon": "⚡", "color": "#f97316", "category": "automate", "display_name": "Automation Engine", "short_desc": "Scheduled agents, webhooks, cron jobs, AI-powered workflow automation", "trigger_prompt": "Build an automation that runs daily and sends results to Slack or email", "is_featured": False, "install_count": 412, "rating_avg": 4.5, "tags": ["automation","cron","webhook","workflow"], "preview_url": None},
+    {"name": "internal-tool-builder", "icon": "🛠️", "color": "#64748b", "category": "build", "display_name": "Internal Tool", "short_desc": "Admin tables, CRUD forms, approval workflows, RBAC — enterprise-ready", "trigger_prompt": "Build an internal admin tool with data tables, forms, and user roles", "is_featured": False, "install_count": 756, "rating_avg": 4.6, "tags": ["admin","crud","rbac","internal"], "preview_url": None},
+    {"name": "data-dashboard-builder", "icon": "📊", "color": "#6366f1", "category": "build", "display_name": "Data Dashboard", "short_desc": "Interactive Recharts/D3 charts, KPI cards, date filters, CSV export", "trigger_prompt": "Build a data analytics dashboard with charts and KPI cards", "is_featured": False, "install_count": 891, "rating_avg": 4.7, "tags": ["charts","analytics","kpi","data-viz"], "preview_url": None},
+    {"name": "crm-builder", "icon": "👥", "color": "#0ea5e9", "category": "build", "display_name": "CRM Builder", "short_desc": "Contacts, pipeline, deals, tasks, email sequences, activity log", "trigger_prompt": "Build a CRM with contacts, deal pipeline, and email sequences", "is_featured": False, "install_count": 344, "rating_avg": 4.5, "tags": ["crm","pipeline","contacts"], "preview_url": None},
+    {"name": "booking-builder", "icon": "📅", "color": "#84cc16", "category": "build", "display_name": "Booking System", "short_desc": "Calendar scheduling, availability, reminders, Stripe deposits", "trigger_prompt": "Build a booking system with calendar, availability management, and payments", "is_featured": False, "install_count": 298, "rating_avg": 4.4, "tags": ["booking","calendar","scheduling"], "preview_url": None},
+    {"name": "api-builder", "icon": "🔌", "color": "#ef4444", "category": "build", "display_name": "REST API Builder", "short_desc": "FastAPI with JWT auth, OpenAPI docs, Pydantic validation, rate limiting", "trigger_prompt": "Build a REST API with JWT auth, CRUD endpoints, and auto-generated docs", "is_featured": False, "install_count": 567, "rating_avg": 4.6, "tags": ["api","fastapi","openapi","jwt"], "preview_url": None},
+    {"name": "forum-builder", "icon": "💬", "color": "#a78bfa", "category": "build", "display_name": "Forum / Community", "short_desc": "Posts, threads, upvotes, user profiles, moderation panel", "trigger_prompt": "Build a forum with posts, comments, voting, and moderation", "is_featured": False, "install_count": 189, "rating_avg": 4.3, "tags": ["forum","community","social"], "preview_url": None},
+    {"name": "custom-user-skill", "icon": "✨", "color": "#a855f7", "category": "custom", "display_name": "Custom Skill", "short_desc": "Define your own building patterns and AI instructions — full control", "trigger_prompt": "", "is_featured": False, "install_count": 0, "rating_avg": 0, "tags": ["custom"], "preview_url": None},
 ]
 
 SKILLS_DIR = _os.path.join(_os.path.dirname(__file__), "..", "skills")

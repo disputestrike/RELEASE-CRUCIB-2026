@@ -1,0 +1,38 @@
+.cost-estimator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: rgba(79,152,163,0.06);
+  border: 1px solid rgba(79,152,163,0.2);
+  border-radius: 20px;
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+}
+
+.ce-icon { color: #4f98a3; flex-shrink: 0; }
+.ce-loading { color: #797876; font-style: italic; }
+.ce-content { display: flex; align-items: center; gap: 5px; }
+.ce-label { color: #797876; }
+.ce-range { font-weight: 600; color: #4f98a3; }
+.ce-typical { color: #5a5957; }
+
+.ce-tooltip { position: relative; display: inline-flex; align-items: center; cursor: help; }
+.ce-tooltip svg { color: #5a5957; }
+.ce-tooltip-text {
+  display: none;
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #201f1d;
+  border: 1px solid #393836;
+  border-radius: 5px;
+  padding: 6px 10px;
+  font-size: 10px;
+  color: #797876;
+  white-space: nowrap;
+  z-index: 100;
+  pointer-events: none;
+}
+.ce-tooltip:hover .ce-tooltip-text { display: block; }

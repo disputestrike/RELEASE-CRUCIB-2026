@@ -10,7 +10,7 @@ import {
   X, Bell, MoreHorizontal, ExternalLink, Pencil, Share2,
   Trash2, FolderInput, Star, Settings, ShieldCheck, Code, Monitor,
   PanelLeftClose, PanelLeftOpen, History,
-  Bot, Radio, MessageSquare, ShoppingBag, Users, Sparkles
+  Bot, Radio, MessageSquare, ShoppingBag, Users, Sparkles, PlayCircle
 } from 'lucide-react';
 import Logo from './Logo';
 import './Sidebar.css';
@@ -95,6 +95,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     { label: 'Fine-Tuning', icon: Zap, href: '/app/fine-tuning' },
     { label: 'Safety Dashboard', icon: ShieldCheck, href: '/app/safety' },
     { label: 'Monitoring', icon: BarChart3, href: '/app/monitoring' },
+    { label: 'Auto-Runner', icon: PlayCircle, href: '/app/auto-runner' },
     { label: 'VibeCode', icon: Code, href: '/app/vibecode' },
     { label: 'IDE', icon: Monitor, href: '/app/ide' },
   ];

@@ -1,0 +1,99 @@
+.auto-runner-panel {
+  background: #1c1b19;
+  border: 1px solid #393836;
+  border-radius: 8px;
+  padding: 12px 14px;
+  min-width: 220px;
+  font-family: 'Inter', sans-serif;
+}
+
+.arp-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.arp-icon { color: #4f98a3; }
+
+.arp-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #cdccca;
+  flex: 1;
+}
+
+.arp-status {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.arp-modes {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.arp-mode-btn {
+  flex: 1;
+  padding: 5px 0;
+  font-size: 11px;
+  font-weight: 500;
+  background: #201f1d;
+  border: 1px solid #393836;
+  border-radius: 5px;
+  color: #797876;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.arp-mode-btn:hover { border-color: #4f98a3; color: #cdccca; }
+.arp-mode-btn.active {
+  background: #0c4e54;
+  border-color: #4f98a3;
+  color: #fff;
+}
+
+.arp-budget {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #797876;
+  margin-bottom: 6px;
+}
+
+.arp-budget-val { color: #cdccca; font-weight: 500; }
+
+.arp-checkpoint {
+  font-size: 10px;
+  color: #5a5957;
+  margin-bottom: 10px;
+}
+
+.arp-checkpoint span { color: #797876; }
+
+.arp-controls {
+  display: flex;
+  gap: 6px;
+}
+
+.arp-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.arp-btn:hover { opacity: 0.85; }
+
+.arp-btn-run    { background: #4f98a3; color: #fff; }
+.arp-btn-pause  { background: #f59e0b; color: #000; }
+.arp-btn-resume { background: #6366f1; color: #fff; }
+.arp-btn-cancel { background: transparent; border: 1px solid #393836; color: #797876; }

@@ -102,6 +102,7 @@ import CommerceManagePage from "./pages/CommerceManagePage";
 import WorkspaceMembersPage from "./pages/WorkspaceMembersPage";
 import SkillsPage from "./pages/SkillsPage";
 import SkillsMarketplace from "./pages/SkillsMarketplace";
+import AutoRunnerPage from "./pages/AutoRunnerPage";
 import { LayoutProvider } from "./stores/useLayoutStore";
 import { TaskProvider } from "./stores/useTaskStore";
 
@@ -468,6 +469,7 @@ function App() {
             <Route path="members" element={<WorkspaceMembersPage />} />
             <Route path="skills" element={<SkillsPage />} />
             <Route path="skills/marketplace" element={<SkillsMarketplace />} />
+            <Route path="auto-runner" element={<AutoRunnerPage />} />
           </Route>
         </Routes>
         </BrowserRouter>

@@ -1,0 +1,103 @@
+.build-replay {
+  background: #1c1b19;
+  border: 1px solid #393836;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Inter', sans-serif;
+}
+
+.build-replay-empty {
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #5a5957;
+  font-size: 12px;
+  padding: 30px;
+  text-align: center;
+}
+.build-replay-empty svg { color: #393836; }
+
+.br-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #393836;
+}
+.br-header svg { color: #4f98a3; }
+.br-title { flex: 1; font-size: 13px; font-weight: 600; color: #cdccca; }
+.br-counter { font-size: 11px; color: #797876; }
+
+.br-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+
+.br-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #797876;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.br-section-content {
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  border: 1px solid #393836;
+}
+
+.br-before  { background: #201f1d; color: #797876; }
+.br-after   { background: #201f1d; color: #6daa45; }
+
+.br-change { background: #201f1d; }
+.br-change-ok      { border-color: rgba(109,170,69,0.3); }
+.br-change-fail    { border-color: rgba(209,99,167,0.3); }
+.br-change-neutral { border-color: #393836; }
+
+.br-event-type { font-size: 10px; color: #5a5957; font-family: monospace; margin-bottom: 3px; }
+.br-step-key   { font-size: 12px; font-weight: 600; color: #cdccca; font-family: monospace; }
+.br-agent      { font-size: 11px; color: #797876; margin-top: 2px; }
+
+.br-change-detail {
+  margin: 6px 0 0;
+  font-size: 10px;
+  color: #797876;
+  font-family: monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 60px;
+  overflow-y: auto;
+}
+
+.br-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-top: 1px solid #393836;
+}
+
+.br-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 5px;
+  border: 1px solid #393836;
+  background: transparent;
+  color: #797876;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.br-nav-btn:hover:not(:disabled) { border-color: #4f98a3; color: #4f98a3; }
+.br-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.br-scrubber { flex: 1; }
+.br-scrubber input[type="range"] {
+  width: 100%;
+  accent-color: #4f98a3;
+  cursor: pointer;
+}

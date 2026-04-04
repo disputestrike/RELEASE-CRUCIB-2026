@@ -472,7 +472,8 @@ async def run_migrations():
     """Run all migration SQL files. Each statement runs independently — one failure won't block others."""
     pool = await get_pg_pool()
     migrations_dir = os.path.join(os.path.dirname(__file__), "migrations")
-    for name in ("001_full_schema.sql",):
+    all_files = sorted(f for f in os.listdir(migrations_dir) if f.endswith(".sql"))
+    for name in all_files:
         path = os.path.join(migrations_dir, name)
         if not os.path.isfile(path):
             continue
