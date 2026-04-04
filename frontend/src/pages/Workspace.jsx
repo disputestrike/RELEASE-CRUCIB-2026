@@ -512,6 +512,79 @@ const BuildHistoryPanel = ({ buildHistory, projectId, loading }) => {
   );
 };
 
+// ── PassesTab: loads real pass data from /api/passes/:taskId ────────────────
+const STATIC_PASSES = [
+  { pass: 'Pass 1', label: 'Static Foundation', desc: 'Config files injected: tsconfig, vite, package.json, docker-compose, CI/CD', color: '#a78bfa' },
+  { pass: 'Pass 2', label: 'Architecture', desc: 'App structure, shared types, routing, contexts', color: '#60a5fa' },
+  { pass: 'Pass 3', label: 'Frontend Generation', desc: 'React components, pages, routing, state management', color: '#34d399' },
+  { pass: 'Pass 4', label: 'Backend Generation', desc: 'Express routes, middleware, services, DB schema', color: '#fb923c' },
+  { pass: 'Pass 5', label: 'Integration', desc: 'Frontend ↔ backend wiring, API client, shared types', color: '#fbbf24' },
+  { pass: 'Pass 6', label: 'Finalization', desc: 'README, deployment config, optimization', color: '#f87171' },
+];
+
+const PassesTab = ({ taskId, files, versions, token, API }) => {
+  const [passData, setPassData] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!taskId || !token || !API) return;
+    setLoading(true);
+    axios.get(`${API}/passes/${taskId}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => setPassData(r.data))
+      .catch(() => setPassData(null))
+      .finally(() => setLoading(false));
+  }, [taskId, token, API]);
+
+  const passes = passData?.passes || (versions.length > 0 ? STATIC_PASSES : []);
+  const totalFiles = passData?.total_files || Object.keys(files).length;
+  const buildKind = passData?.build_kind || 'fullstack';
+
+  return (
+    <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--theme-muted)' }}>Multi-Pass Build System</div>
+            <div className="text-xs mt-0.5" style={{ color: 'var(--theme-muted)' }}>{passes.length} passes · {totalFiles} files · {buildKind}</div>
+          </div>
+          {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--theme-muted)' }} />}
+        </div>
+      </div>
+      {passes.length > 0 ? (
+        <div className="space-y-2">
+          {passes.map((p, i) => (
+            <div key={i} className="rounded-xl p-3.5 border" style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'var(--theme-border)' }}>
+              <div className="flex items-center gap-2.5 mb-1.5">
+                <div className="w-2 h-2 rounded-full shrink-0" style={{ background: p.color || '#60a5fa' }} />
+                <span className="text-xs font-semibold" style={{ color: p.color || '#60a5fa' }}>{p.pass || `Pass ${i+1}`}</span>
+                <span className="text-xs font-medium" style={{ color: 'var(--theme-text)' }}>{p.label}</span>
+                {(p.status === 'complete' || versions.length > 0) && (
+                  <div className="ml-auto flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(74,222,128,0.12)', color: '#86efac' }}>
+                    <span>✓</span>
+                  </div>
+                )}
+              </div>
+              <div className="text-xs" style={{ color: 'var(--theme-muted)', paddingLeft: '18px' }}>{p.desc}</div>
+            </div>
+          ))}
+          <div className="rounded-xl p-3.5 border text-center" style={{ borderColor: 'var(--theme-border)', background: 'rgba(74,222,128,0.04)' }}>
+            <div className="text-sm font-semibold" style={{ color: '#86efac' }}>Build Complete</div>
+            <div className="text-xs mt-0.5" style={{ color: 'var(--theme-muted)' }}>{totalFiles} files · {versions.length} version{versions.length !== 1 ? 's' : ''} saved</div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-12 gap-3" style={{ color: 'var(--theme-muted)' }}>
+          <Layers className="w-8 h-8 opacity-30" />
+          <div className="text-center">
+            <div className="text-sm font-medium mb-1">No builds yet</div>
+            <div className="text-xs opacity-70">Run a fullstack build to see pass history</div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Main Workspace Component
 const Workspace = () => {
   const navigate = useNavigate();
@@ -3363,48 +3436,13 @@ BUILD IT NOW — output every file completely:`;
 
             {/* ── Pass History tab — CrucibAI unique ── */}
             {activePanel === 'passes' && (
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
-                  <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--theme-muted)' }}>Multi-Pass Build System</div>
-                  <div className="text-xs mt-0.5" style={{ color: 'var(--theme-muted)' }}>6 passes · 51-file TypeScript output · iterative refinement</div>
-                </div>
-                {versions.length > 0 ? (
-                  <div className="space-y-2">
-                    {[
-                      { pass: 'Pass 1', label: 'Static Foundation', desc: '11 config files injected: tsconfig, vite, package.json, docker-compose, CI/CD', color: '#a78bfa' },
-                      { pass: 'Pass 2', label: 'Architecture', desc: 'System design, shared types, API contracts, folder structure', color: '#60a5fa' },
-                      { pass: 'Pass 3', label: 'Frontend Generation', desc: 'React components, pages, routing, state management', color: '#34d399' },
-                      { pass: 'Pass 4', label: 'Backend Generation', desc: 'Express routes, middleware, services, DB schema', color: '#fb923c' },
-                      { pass: 'Pass 5', label: 'Integration', desc: 'Frontend ↔ backend wiring, shared types, API client', color: '#fbbf24' },
-                      { pass: 'Pass 6', label: 'Finalization', desc: 'README, docs, deployment config, optimization', color: '#f87171' },
-                    ].map((p, i) => (
-                      <div key={i} className="rounded-xl p-3.5 border" style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'var(--theme-border)' }}>
-                        <div className="flex items-center gap-2.5 mb-1.5">
-                          <div className="w-2 h-2 rounded-full shrink-0" style={{ background: p.color }} />
-                          <span className="text-xs font-semibold" style={{ color: p.color }}>{p.pass}</span>
-                          <span className="text-xs font-medium" style={{ color: 'var(--theme-text)' }}>{p.label}</span>
-                          <div className="ml-auto flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(74,222,128,0.12)', color: '#86efac' }}>
-                            <span>✓</span>
-                          </div>
-                        </div>
-                        <div className="text-xs pl-4.5" style={{ color: 'var(--theme-muted)', paddingLeft: '18px' }}>{p.desc}</div>
-                      </div>
-                    ))}
-                    <div className="rounded-xl p-3.5 border text-center" style={{ borderColor: 'var(--theme-border)', background: 'rgba(74,222,128,0.04)' }}>
-                      <div className="text-sm font-semibold" style={{ color: '#86efac' }}>Build Complete</div>
-                      <div className="text-xs mt-0.5" style={{ color: 'var(--theme-muted)' }}>{Object.keys(files).length} files · {versions.length} version{versions.length !== 1 ? 's' : ''} saved</div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-12 gap-3" style={{ color: 'var(--theme-muted)' }}>
-                    <Layers className="w-8 h-8 opacity-30" />
-                    <div className="text-center">
-                      <div className="text-sm font-medium mb-1">No builds yet</div>
-                      <div className="text-xs opacity-70">Run a fullstack build to see pass history</div>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <PassesTab
+                taskId={taskIdFromUrl}
+                files={files}
+                versions={versions}
+                token={token}
+                API={API}
+              />
             )}
           </div>
         </div>
