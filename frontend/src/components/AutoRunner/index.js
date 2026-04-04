@@ -9,3 +9,6 @@ export { default as BuildCompletionCard } from './BuildCompletionCard';
 export { default as CostEstimator } from './CostEstimator';
 export { default as GoalComposer } from './GoalComposer';
 export { default as SystemStatusHUD } from './SystemStatusHUD';
+export { default as PreviewPanel } from './PreviewPanel';
+export { default as ResizableDivider } from './ResizableDivider';
+export { default as AgentActivityPanel } from './AgentActivityPanel';

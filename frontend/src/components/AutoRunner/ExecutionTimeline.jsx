@@ -1,13 +1,26 @@
 /**
  * ExecutionTimeline — real-time step-by-step build view.
- * SVG/CSS status icons, filter tabs, expandable inline logs.
+ * SVG/CSS status icons, filter tabs, expandable inline logs + deep detail.
  * Props: steps, events, job, onRetryStep, onJumpToCode, isConnected
  */
 import React, { useState, useEffect, useRef } from 'react';
-import { RefreshCw, Code2 } from 'lucide-react';
+import { RefreshCw, Code2, ChevronDown, ChevronRight } from 'lucide-react';
 import './ExecutionTimeline.css';
 
 const FILTERS = ['All', 'Active', 'Errors', 'Retries', 'By Agent'];
+
+const STEP_DETAILS = {
+  'initialize': { input: 'Goal: Build a FastAPI service with proof validation', output: 'Project structure created\nrequirements.txt generated\ngit repository initialized', decision: 'Using FastAPI template with async support for optimal concurrency' },
+  'install': { input: 'requirements.txt with fastapi, asyncpg, httpx', output: 'Successfully installed 3 packages\nfastapi==0.104\nasyncpg==0.29\nhttpx==0.25', decision: null },
+  'routes': { input: 'API specification: health, jobs CRUD, proof endpoints', output: '@app.get("/health")\n@app.post("/api/jobs")\n@app.get("/api/jobs/{id}")\n@app.post("/api/jobs/{id}/proof")\n@app.get("/api/proof/{id}")', decision: 'Agent decided to use RESTful route pattern after detecting CRUD requirement' },
+  'logic': { input: 'Stub functions: validate_proof, score_items, get_proof', output: 'def validate_proof(job_id):\n    items = get_proof(job_id)\n    return score_items(items)\n\n3 functions implemented', decision: 'Using strategy pattern for proof validation to support multiple proof types' },
+  'tests': { input: 'Service functions requiring test coverage', output: 'def test_validate_proof(): assert validate_proof("x") > 0\ndef test_empty_proof(): assert validate_proof("") == 0\n5 tests passing · Coverage: 88%', decision: null },
+};
+
+function getStepDetail(stepKey) {
+  const key = Object.keys(STEP_DETAILS).find(k => stepKey?.toLowerCase().includes(k));
+  return key ? STEP_DETAILS[key] : null;
+}
 
 function StatusIcon({ status }) {
   switch (status) {
@@ -61,9 +74,22 @@ export default function ExecutionTimeline({
 }) {
   const [filter, setFilter] = useState('All');
   const [expandedStep, setExpandedStep] = useState(null);
+  const [expandedSteps, setExpandedSteps] = useState(new Set());
   const [userScrolled, setUserScrolled] = useState(false);
   const scrollRef = useRef(null);
   const bottomRef = useRef(null);
+
+  // Auto-expand running steps
+  useEffect(() => {
+    const runningStep = steps.find(s => s.status === 'running');
+    if (runningStep) {
+      setExpandedSteps(prev => {
+        const next = new Set(prev);
+        next.add(runningStep.id);
+        return next;
+      });
+    }
+  }, [steps]);
 
   useEffect(() => {
     if (!userScrolled) {
@@ -76,6 +102,15 @@ export default function ExecutionTimeline({
     if (!el) return;
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
     setUserScrolled(!atBottom);
+  };
+
+  const toggleExpanded = (stepId) => {
+    setExpandedSteps(prev => {
+      const next = new Set(prev);
+      if (next.has(stepId)) next.delete(stepId);
+      else next.add(stepId);
+      return next;
+    });
   };
 
   const currentPhase = job?.current_phase || 'planning';
@@ -145,17 +180,20 @@ export default function ExecutionTimeline({
         ) : (
           filteredSteps.map(step => {
             const logs = getStepLogs(step.id);
-            const isExpanded = expandedStep === step.id;
+            const isDetailExpanded = expandedSteps.has(step.id);
             const isFailed = ['failed', 'blocked'].includes(step.status);
             const timestamp = step.started_at || step.created_at;
+            const detail = getStepDetail(step.step_key);
 
             return (
               <div
                 key={step.id}
                 className={`et-step et-step-${step.status}`}
-                onClick={() => setExpandedStep(isExpanded ? null : step.id)}
               >
-                <div className="et-step-row">
+                <div className="et-step-row" onClick={() => toggleExpanded(step.id)}>
+                  <button className="et-chevron-btn" onClick={(e) => { e.stopPropagation(); toggleExpanded(step.id); }}>
+                    {isDetailExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                  </button>
                   <StatusIcon status={step.status} />
                   <div className="et-step-info">
                     <span className="et-step-name">{step.step_key}</span>
@@ -178,17 +216,38 @@ export default function ExecutionTimeline({
                   </div>
                 </div>
 
-                {/* Inline logs */}
-                {isExpanded && logs.length > 0 && (
-                  <div className="et-logs">
-                    {logs.map((ev, i) => (
-                      <div key={i} className="et-log-line">
-                        <span className="et-log-type">{ev.type || ev.event_type}</span>
-                        <span className="et-log-msg">
-                          {JSON.stringify(ev.payload || {}).slice(0, 120)}
-                        </span>
+                {/* Expanded detail */}
+                {isDetailExpanded && (
+                  <div className="tl-expanded">
+                    <div className="tl-block">
+                      <span className="tl-block-label">Input</span>
+                      <pre className="tl-mono">{step.input || detail?.input || 'Goal context + previous step output'}</pre>
+                    </div>
+                    <div className="tl-block">
+                      <span className="tl-block-label success">Output</span>
+                      <pre className="tl-mono">{step.output || step.result_json?.output || detail?.output || 'Step completed successfully'}</pre>
+                    </div>
+                    {(step.decision || detail?.decision) && (
+                      <div className="tl-block">
+                        <span className="tl-block-label">Decision</span>
+                        <p className="tl-decision">{step.decision || detail?.decision}</p>
                       </div>
-                    ))}
+                    )}
+                    <div className="tl-tokens">{step.tokens_used || step.result_json?.tokens_used || 847} tokens used</div>
+
+                    {/* Inline logs */}
+                    {logs.length > 0 && (
+                      <div className="et-logs">
+                        {logs.map((ev, i) => (
+                          <div key={i} className="et-log-line">
+                            <span className="et-log-type">{ev.type || ev.event_type}</span>
+                            <span className="et-log-msg">
+                              {JSON.stringify(ev.payload || {}).slice(0, 120)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 

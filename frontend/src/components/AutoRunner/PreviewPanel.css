@@ -1,0 +1,129 @@
+.preview-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-0);
+  border-radius: var(--radius-md);
+}
+
+.pp-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-1);
+  flex-shrink: 0;
+}
+
+.pp-preview-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pp-preview-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.pp-preview-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.pp-preview-status {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.pp-preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pp-preview-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 150ms, color 150ms;
+  text-decoration: none;
+}
+
+.pp-preview-btn:hover {
+  background: var(--bg-2);
+  color: var(--text-primary);
+}
+
+.pp-preview-body {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.pp-preview-idle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background:
+    radial-gradient(circle, var(--border-2) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.pp-preview-idle-text {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 12px 20px;
+  background: var(--bg-1);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-1);
+}
+
+.pp-preview-building {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 12px;
+  background:
+    radial-gradient(circle, var(--border-2) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.pp-preview-shimmer {
+  width: 120px;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--border-1) 0%,
+    var(--accent) 50%,
+    var(--border-1) 100%
+  );
+  background-size: 200% 100%;
+  animation: pp-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes pp-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.pp-preview-building-text {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+}

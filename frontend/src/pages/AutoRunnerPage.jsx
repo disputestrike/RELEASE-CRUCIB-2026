@@ -22,6 +22,8 @@ import FailureDrawer from '../components/AutoRunner/FailureDrawer';
 import BuildReplay from '../components/AutoRunner/BuildReplay';
 import BuildCompletionCard from '../components/AutoRunner/BuildCompletionCard';
 import SystemStatusHUD from '../components/AutoRunner/SystemStatusHUD';
+import PreviewPanel from '../components/AutoRunner/PreviewPanel';
+import ResizableDivider from '../components/AutoRunner/ResizableDivider';
 import './AutoRunnerPage.css';
 
 const API = process.env.REACT_APP_BACKEND_URL || '';
@@ -38,7 +40,7 @@ const NAV_ITEMS = [
   { key: 'settings',  label: 'Settings',   Icon: Settings },
 ];
 
-const RIGHT_PANES = ['timeline', 'proof', 'explorer', 'replay'];
+const RIGHT_PANES = ['preview', 'timeline', 'proof', 'explorer', 'replay'];
 
 export default function AutoRunnerPage() {
   const { token, user } = useAuth();
@@ -54,6 +56,18 @@ export default function AutoRunnerPage() {
   useEffect(() => { localStorage.setItem('crucibai_left_collapsed', leftCollapsed); }, [leftCollapsed]);
   useEffect(() => { localStorage.setItem('crucibai_right_collapsed', rightCollapsed); }, [rightCollapsed]);
 
+  // Resizable right pane
+  const [rightWidth, setRightWidth] = useState(() => parseInt(localStorage.getItem('crucibai_right_width') || '440'));
+  useEffect(() => { localStorage.setItem('crucibai_right_width', rightWidth); }, [rightWidth]);
+
+  const handleResize = useCallback((delta) => {
+    setRightWidth(w => Math.min(640, Math.max(280, w + delta)));
+  }, []);
+
+  const handleResetWidth = useCallback(() => {
+    setRightWidth(440);
+  }, []);
+
   // Build state
   const [goal, setGoal] = useState('');
   const [autoMode, setAutoMode] = useState('guided');
@@ -63,7 +77,7 @@ export default function AutoRunnerPage() {
   const [stage, setStage] = useState('input');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [activePane, setActivePane] = useState('timeline');
+  const [activePane, setActivePane] = useState('preview');
   const [activeNav, setActiveNav] = useState('workspace');
   const [failedStep, setFailedStep] = useState(null);
 
@@ -77,6 +91,10 @@ export default function AutoRunnerPage() {
   useEffect(() => {
     if (isCompleted && stage === 'running') setStage('completed');
   }, [isCompleted, stage]);
+
+  // Preview status derived from job state
+  const previewStatus = isCompleted ? 'ready' : stage === 'running' ? 'building' : 'idle';
+  const previewUrl = job?.preview_url || null;
 
   // Actions
   const handleGeneratePlan = async () => {
@@ -182,7 +200,7 @@ export default function AutoRunnerPage() {
         </div>
 
         <div className="arp-topbar-right">
-          <button className="arp-topbar-btn" title="Preview">
+          <button className="arp-topbar-btn" title="Preview" onClick={() => { setActivePane('preview'); setRightCollapsed(false); }}>
             <Eye size={14} />
             <span className="arp-topbar-btn-label">Preview</span>
           </button>
@@ -210,6 +228,7 @@ export default function AutoRunnerPage() {
             isConnected={isConnected}
             activeAgentCount={activeAgentCount}
             jobStatus={job?.status}
+            steps={steps}
           />
         </div>
       </div>
@@ -267,7 +286,7 @@ export default function AutoRunnerPage() {
                 <BuildCompletionCard
                   job={job}
                   proof={proof}
-                  onOpenPreview={() => setActivePane('preview')}
+                  onOpenPreview={() => { setActivePane('preview'); setRightCollapsed(false); }}
                   onOpenProof={() => { setActivePane('proof'); setRightCollapsed(false); }}
                   onOpenCode={() => {}}
                   onDeployAgain={handleReset}
@@ -296,8 +315,16 @@ export default function AutoRunnerPage() {
           )}
         </div>
 
+        {/* Resizable divider */}
+        {!rightCollapsed && (
+          <ResizableDivider
+            onResize={handleResize}
+            onDoubleClick={handleResetWidth}
+          />
+        )}
+
         {/* Right pane */}
-        <div className={`arp-right-pane ${rightCollapsed ? 'collapsed' : ''}`}>
+        <div className={`arp-right-pane ${rightCollapsed ? 'collapsed' : ''}`} style={!rightCollapsed ? { width: rightWidth + 'px' } : undefined}>
           <div className="arp-right-toggle" onClick={() => setRightCollapsed(!rightCollapsed)}>
             {rightCollapsed ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
           </div>
@@ -329,6 +356,12 @@ export default function AutoRunnerPage() {
               </div>
 
               <div className="arp-pane-content">
+                {activePane === 'preview' && (
+                  <PreviewPanel
+                    previewUrl={previewUrl}
+                    status={previewStatus}
+                  />
+                )}
                 {activePane === 'timeline' && (
                   <ExecutionTimeline
                     steps={steps}
@@ -343,7 +376,7 @@ export default function AutoRunnerPage() {
                   <ProofPanel
                     proof={proof}
                     jobId={jobId}
-                    onExport={() => alert('Export proof bundle — coming soon.')}
+                    onExport={() => {}}
                   />
                 )}
                 {activePane === 'explorer' && uxMode === 'pro' && (

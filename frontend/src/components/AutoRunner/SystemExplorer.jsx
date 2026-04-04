@@ -29,7 +29,13 @@ const BUILT_IN_AGENTS = [
   { name: 'TestAgent',        role: 'Generates and executes test suites' },
 ];
 
-const DAG_PHASES = ['planning', 'frontend', 'backend', 'database', 'verification', 'deploy'];
+const DAG_NODES = [
+  { id: 'n0', name: 'Initialize',     agent: 'planner',  status: 'completed', x: 40,  y: 80,  deps: [] },
+  { id: 'n1', name: 'Install Deps',   agent: 'executor', status: 'completed', x: 40,  y: 160, deps: [] },
+  { id: 'n2', name: 'Create Routes',  agent: 'executor', status: 'running',   x: 240, y: 60,  deps: ['n0'] },
+  { id: 'n3', name: 'Business Logic', agent: 'executor', status: 'running',   x: 240, y: 160, deps: ['n1'] },
+  { id: 'n4', name: 'Add Tests',      agent: 'verifier', status: 'pending',   x: 440, y: 110, deps: ['n2', 'n3'] },
+];
 
 const METHOD_COLORS = {
   GET: 'var(--state-info)',
@@ -39,10 +45,42 @@ const METHOD_COLORS = {
   DELETE: 'var(--state-error)',
 };
 
+function getNodeFill(status) {
+  switch (status) {
+    case 'completed': return 'rgba(63,185,80,0.12)';
+    case 'running':   return 'rgba(88,166,255,0.12)';
+    case 'failed':    return 'rgba(248,81,73,0.12)';
+    default:          return 'transparent';
+  }
+}
+
+function getNodeStroke(status) {
+  switch (status) {
+    case 'completed': return 'var(--state-success)';
+    case 'running':   return 'var(--state-info)';
+    case 'failed':    return 'var(--state-error)';
+    default:          return 'var(--border-2)';
+  }
+}
+
+function getStatusDotFill(status) {
+  switch (status) {
+    case 'completed': return 'var(--state-success)';
+    case 'running':   return 'var(--state-info)';
+    case 'failed':    return 'var(--state-error)';
+    default:          return 'var(--text-muted)';
+  }
+}
+
+function getNodeById(id) {
+  return DAG_NODES.find(n => n.id === id);
+}
+
 export default function SystemExplorer({ steps = [], proof, job, projectId, token }) {
   const [activeTab, setActiveTab] = useState('agents');
   const [routeFilter, setRouteFilter] = useState('');
   const [expandedTable, setExpandedTable] = useState(null);
+  const [selectedNode, setSelectedNode] = useState(null);
 
   const bundle = proof?.bundle || {};
   const routeItems = bundle.routes || [];
@@ -97,43 +135,90 @@ export default function SystemExplorer({ steps = [], proof, job, projectId, toke
           </div>
         )}
 
-        {/* DAG */}
+        {/* DAG — SVG renderer */}
         {activeTab === 'dag' && (
           <div className="se-dag">
-            <svg className="se-dag-svg" viewBox="0 0 600 100">
-              {DAG_PHASES.map((phase, i) => {
-                const phaseSteps = steps.filter(s => s.phase === phase);
-                const allDone = phaseSteps.length > 0 && phaseSteps.every(s => s.status === 'completed');
-                const anyFailed = phaseSteps.some(s => ['failed', 'blocked'].includes(s.status));
-                const anyRunning = phaseSteps.some(s => ['running', 'verifying'].includes(s.status));
-                const fill = anyFailed ? 'var(--state-error)' : allDone ? 'var(--state-success)' : anyRunning ? 'var(--state-info)' : 'var(--border-1)';
-                const cx = 50 + i * 100;
-                return (
-                  <React.Fragment key={phase}>
-                    {i > 0 && (
-                      <line x1={cx - 70} y1={50} x2={cx - 30} y2={50} stroke="var(--border-2)" strokeWidth="1.5" />
-                    )}
-                    <circle cx={cx} cy={50} r={18} fill="var(--bg-2)" stroke={fill} strokeWidth="2" />
-                    <text x={cx} y={53} textAnchor="middle" fill="var(--text-secondary)" fontSize="8" fontFamily="Inter">
-                      {phase.slice(0, 4)}
-                    </text>
-                    {phaseSteps.length > 0 && (
-                      <text x={cx} y={80} textAnchor="middle" fill="var(--text-muted)" fontSize="9" fontFamily="JetBrains Mono">
-                        {phaseSteps.filter(s => s.status === 'completed').length}/{phaseSteps.length}
-                      </text>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </svg>
-            <div className="se-dag-steps">
-              {steps.map(s => (
-                <div key={s.id} className={`se-dag-step se-dag-step-${s.status}`}>
-                  <span className="se-dag-step-key">{s.step_key}</span>
-                  <span className="se-dag-step-status">{s.status}</span>
-                </div>
+            <svg width="580" height="240" style={{ background: 'var(--bg-0)', borderRadius: 'var(--radius-md)' }}>
+              {/* Edges */}
+              {DAG_NODES.map(node =>
+                node.deps.map(depId => {
+                  const src = getNodeById(depId);
+                  if (!src) return null;
+                  const x1 = src.x + 110;
+                  const y1 = src.y + 18;
+                  const x2 = node.x;
+                  const y2 = node.y + 18;
+                  const cpx1 = x1 + (x2 - x1) * 0.4;
+                  const cpx2 = x2 - (x2 - x1) * 0.4;
+                  return (
+                    <path
+                      key={`${depId}-${node.id}`}
+                      d={`M ${x1} ${y1} C ${cpx1} ${y1}, ${cpx2} ${y2}, ${x2} ${y2}`}
+                      fill="none"
+                      stroke={getNodeStroke(src.status)}
+                      strokeWidth="1.5"
+                      strokeDasharray={src.status === 'pending' ? '4 2' : 'none'}
+                      opacity={0.6}
+                    />
+                  );
+                })
+              )}
+              {/* Nodes */}
+              {DAG_NODES.map(n => (
+                <g key={n.id} onClick={() => setSelectedNode(n.id === selectedNode ? null : n.id)} style={{ cursor: 'pointer' }}>
+                  <rect
+                    x={n.x}
+                    y={n.y}
+                    width={110}
+                    height={36}
+                    rx={6}
+                    fill={getNodeFill(n.status)}
+                    stroke={getNodeStroke(n.status)}
+                    strokeWidth={selectedNode === n.id ? 2 : 1.5}
+                  />
+                  {n.status === 'running' && (
+                    <rect
+                      x={n.x}
+                      y={n.y}
+                      width={110}
+                      height={36}
+                      rx={6}
+                      fill="none"
+                      stroke={getNodeStroke(n.status)}
+                      strokeWidth={2}
+                      opacity={0.5}
+                      className="se-dag-pulse"
+                    />
+                  )}
+                  <text x={n.x + 55} y={n.y + 14} textAnchor="middle" fontSize="11" fill="var(--text-primary)" fontFamily="Inter, sans-serif">
+                    {n.name}
+                  </text>
+                  <text x={n.x + 55} y={n.y + 27} textAnchor="middle" fontSize="9" fill="var(--text-muted)" fontFamily="JetBrains Mono, monospace">
+                    {n.agent}
+                  </text>
+                  {/* Status dot */}
+                  <circle cx={n.x + 104} cy={n.y + 6} r={4} fill={getStatusDotFill(n.status)} />
+                </g>
               ))}
-            </div>
+            </svg>
+
+            {/* Selected node details */}
+            {selectedNode && (() => {
+              const node = getNodeById(selectedNode);
+              if (!node) return null;
+              return (
+                <div className="se-dag-detail">
+                  <span className="se-dag-detail-name">{node.name}</span>
+                  <span className="se-dag-detail-agent">{node.agent}</span>
+                  <span className={`se-dag-detail-status se-dag-status-${node.status}`}>{node.status}</span>
+                  {node.deps.length > 0 && (
+                    <span className="se-dag-detail-deps">
+                      Depends on: {node.deps.map(d => getNodeById(d)?.name).join(', ')}
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
 

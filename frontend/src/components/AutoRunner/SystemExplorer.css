@@ -309,3 +309,56 @@
   color: var(--text-muted);
   margin-top: 2px;
 }
+
+/* DAG pulse animation for running nodes */
+@keyframes se-dag-pulse-anim {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0; }
+}
+.se-dag-pulse {
+  animation: se-dag-pulse-anim 2s ease-in-out infinite;
+}
+
+/* DAG detail panel */
+.se-dag-detail {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  margin-top: 8px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-sm);
+}
+
+.se-dag-detail-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.se-dag-detail-agent {
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-muted);
+}
+
+.se-dag-detail-status {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.se-dag-status-completed { color: var(--state-success); background: rgba(63,185,80,0.1); }
+.se-dag-status-running { color: var(--state-info); background: rgba(88,166,255,0.1); }
+.se-dag-status-pending { color: var(--text-muted); background: var(--bg-3); }
+.se-dag-status-failed { color: var(--state-error); background: rgba(248,81,73,0.1); }
+
+.se-dag-detail-deps {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-style: italic;
+}
