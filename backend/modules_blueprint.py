@@ -1607,11 +1607,11 @@ class AppDBRegenerate(BaseModel):
     features: Optional[List[str]] = None
 
 
-def _generate_schema_from_description(description: str, project_name: str, features: List[str]) -> Dict[str, Any]:
+def _generate_schema_heuristic(description: str, project_name: str, features: List[str]) -> Dict[str, Any]:
     """
     Generate a complete PostgreSQL schema + Supabase-compatible setup from a
-    project description. This is the core competitive advantage vs Lovable:
-    full production-ready schema with RLS, seed data, and typed API routes.
+    project description using keyword heuristics. Used as fallback when LLM
+    is unavailable or returns invalid JSON.
     """
     name_slug = re.sub(r'[^a-z0-9_]', '_', (project_name or "app").lower())[:30]
     desc_lower = description.lower()
@@ -2070,6 +2070,395 @@ def _generate_schema_from_description(description: str, project_name: str, featu
     }
 
 
+# ---------------------------------------------------------------------------
+# LLM-powered schema generation (Tier 1)
+# ---------------------------------------------------------------------------
+
+async def _call_llm_for_schema(prompt: str, system: str) -> str:
+    """Minimal LLM caller for schema generation. Tries Anthropic then Cerebras."""
+    import httpx
+    import os
+
+    # Try Anthropic first
+    anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if anthropic_key:
+        async with httpx.AsyncClient(timeout=60) as client:
+            r = await client.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={"x-api-key": anthropic_key, "anthropic-version": "2023-06-01"},
+                json={
+                    "model": "claude-3-5-haiku-20241022",
+                    "max_tokens": 4096,
+                    "system": system,
+                    "messages": [{"role": "user", "content": prompt}],
+                },
+            )
+            if r.status_code == 200:
+                return r.json()["content"][0]["text"]
+
+    # Try Cerebras
+    cerebras_key = os.environ.get("CEREBRAS_API_KEY", "").strip()
+    if cerebras_key:
+        async with httpx.AsyncClient(timeout=60) as client:
+            r = await client.post(
+                "https://api.cerebras.ai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {cerebras_key}"},
+                json={
+                    "model": "llama3.1-8b",
+                    "max_tokens": 4096,
+                    "temperature": 0.1,
+                    "messages": [
+                        {"role": "system", "content": system},
+                        {"role": "user", "content": prompt},
+                    ],
+                },
+            )
+            if r.status_code == 200:
+                return r.json()["choices"][0]["message"]["content"]
+
+    raise ValueError("No LLM API key available (ANTHROPIC_API_KEY or CEREBRAS_API_KEY)")
+
+
+# Type map for converting LLM-provided type names to canonical PostgreSQL types
+_TYPE_MAP: Dict[str, str] = {
+    "uuid": "UUID",
+    "text": "TEXT",
+    "string": "TEXT",
+    "varchar": "TEXT",
+    "int": "INTEGER",
+    "integer": "INTEGER",
+    "float": "NUMERIC(12,4)",
+    "decimal": "NUMERIC(12,2)",
+    "numeric": "NUMERIC(12,2)",
+    "bool": "BOOLEAN",
+    "boolean": "BOOLEAN",
+    "timestamp": "TIMESTAMPTZ",
+    "timestamptz": "TIMESTAMPTZ",
+    "datetime": "TIMESTAMPTZ",
+    "json": "JSONB",
+    "jsonb": "JSONB",
+    "array": "TEXT[]",
+    "serial": "SERIAL",
+    "bigint": "BIGINT",
+}
+
+
+def _normalise_pg_type(raw: str) -> str:
+    """Map a raw type string from LLM JSON to a canonical PostgreSQL type."""
+    if not raw:
+        return "TEXT"
+    key = raw.strip().lower()
+    # Direct lookup first
+    if key in _TYPE_MAP:
+        return _TYPE_MAP[key]
+    # Preserve numeric with precision/scale as-is (e.g. NUMERIC(12,2))
+    if key.startswith("numeric(") or key.startswith("decimal("):
+        return raw.upper()
+    # Pass through anything else uppercase so Postgres can handle it
+    return raw.upper()
+
+
+def _llm_json_to_sql(schema_json: dict) -> dict:
+    """
+    Convert parsed LLM JSON (tables/relationships/api_routes/env_vars/seed_data)
+    into the same string-based output format as _generate_schema_heuristic.
+    """
+    tables = schema_json.get("tables", [])
+    relationships = schema_json.get("relationships", [])
+    api_routes_raw = schema_json.get("api_routes", [])
+    env_vars_raw = schema_json.get("env_vars", [])
+    seed_raw = schema_json.get("seed_data", [])
+
+    # Build foreign-key lookup keyed by "table.column"
+    fk_map: Dict[str, str] = {}  # "table.col" -> "ref_table(ref_col) ON DELETE ..."
+    for rel in relationships:
+        frm = rel.get("from", "")  # e.g. "posts.author_id"
+        to = rel.get("to", "")    # e.g. "users.id"
+        on_delete = rel.get("on_delete", "SET NULL").upper()
+        if frm and to and "." in frm and "." in to:
+            ref_table, ref_col = to.split(".", 1)
+            fk_map[frm.lower()] = f"REFERENCES {ref_table}({ref_col}) ON DELETE {on_delete}"
+
+    tables_sql_parts = [
+        "-- ============================================================",
+        "-- AUTO-GENERATED SCHEMA (LLM-powered by CrucibAI)",
+        "-- ============================================================",
+        "",
+        '-- Enable UUID extension',
+        'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";',
+        "",
+    ]
+    rls_parts = [
+        "-- ============================================================",
+        "-- ROW-LEVEL SECURITY POLICIES",
+        "-- ============================================================",
+        "",
+    ]
+    seed_parts = [
+        "-- ============================================================",
+        "-- SEED DATA",
+        "-- ============================================================",
+        "",
+    ]
+
+    tables_with_updated_at: List[str] = []
+    table_info_list: List[Dict[str, Any]] = []
+
+    for table in tables:
+        tname = table.get("name", "unnamed")
+        columns = table.get("columns", [])
+        indexes = table.get("indexes", [])
+        rls_desc = table.get("rls", "")
+
+        col_lines: List[str] = []
+        col_info: List[Dict[str, str]] = []
+        has_updated_at = False
+
+        for col in columns:
+            col_name = col.get("name", "col")
+            col_type = _normalise_pg_type(col.get("type", "TEXT"))
+            is_primary = col.get("primary", False)
+            is_unique = col.get("unique", False)
+            is_nullable = col.get("nullable", True)
+            default_val = col.get("default", None)
+
+            parts_col: List[str] = [f"  {col_name} {col_type}"]
+            if is_primary:
+                parts_col.append("PRIMARY KEY")
+            if is_unique and not is_primary:
+                parts_col.append("UNIQUE")
+            if not is_nullable and not is_primary:
+                parts_col.append("NOT NULL")
+            # Foreign key?
+            fk_key = f"{tname}.{col_name}".lower()
+            if fk_key in fk_map:
+                parts_col.append(fk_map[fk_key])
+            if default_val is not None:
+                parts_col.append(f"DEFAULT {default_val}")
+
+            col_lines.append(" ".join(parts_col))
+            col_info.append({"name": col_name, "type": col_type})
+
+            if col_name == "updated_at":
+                has_updated_at = True
+
+        if has_updated_at:
+            tables_with_updated_at.append(tname)
+
+        table_ddl = [
+            f"-- =========== {tname.upper()} ===========",
+            f"CREATE TABLE IF NOT EXISTS {tname} (",
+        ]
+        for i, line in enumerate(col_lines):
+            sep = "," if i < len(col_lines) - 1 else ""
+            table_ddl.append(f"{line}{sep}")
+        table_ddl.append(");")  # end table
+        # Explicit indexes from the schema JSON
+        for idx_col in indexes:
+            table_ddl.append(
+                f"CREATE INDEX IF NOT EXISTS idx_{tname}_{idx_col} ON {tname}({idx_col});"
+            )
+        table_ddl.append("")
+        tables_sql_parts.extend(table_ddl)
+
+        # RLS policy (one per table, using the description text)
+        if rls_desc:
+            safe_policy_name = re.sub(r"[^a-z0-9_]", "_", f"{tname}_rls_policy")
+            rls_parts += [
+                f"ALTER TABLE {tname} ENABLE ROW LEVEL SECURITY;",
+                f"-- Policy: {rls_desc}",
+                f"CREATE POLICY {safe_policy_name} ON {tname}",
+                f"  USING (TRUE);  -- TODO: refine per: {rls_desc[:120]}",
+                "",
+            ]
+        else:
+            rls_parts += [
+                f"ALTER TABLE {tname} ENABLE ROW LEVEL SECURITY;",
+                f"CREATE POLICY {tname}_default_policy ON {tname} USING (TRUE);",
+                "",
+            ]
+
+        table_info_list.append({"name": tname, "columns": col_info})
+
+    # updated_at trigger
+    if tables_with_updated_at:
+        arr_literal = "ARRAY[" + ", ".join(f"'{t}'" for t in tables_with_updated_at) + "]"
+        tables_sql_parts += [
+            "-- =========== UPDATED_AT TRIGGER ===========",
+            "CREATE OR REPLACE FUNCTION update_updated_at_column()",
+            "RETURNS TRIGGER AS $$",
+            "BEGIN",
+            "  NEW.updated_at = NOW();",
+            "  RETURN NEW;",
+            "END;",
+            "$$ language 'plpgsql';",
+            "",
+            "DO $$ DECLARE t TEXT;",
+            "BEGIN",
+            f"  FOREACH t IN ARRAY {arr_literal}",
+            "  LOOP",
+            "    EXECUTE format(",
+            "      'CREATE TRIGGER set_updated_at BEFORE UPDATE ON %I FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()',",
+            "      t",
+            "    );",
+            "  END LOOP;",
+            "EXCEPTION WHEN duplicate_object THEN NULL;",
+            "END $$;",
+        ]
+
+    # Seed data
+    for seed_item in seed_raw:
+        tbl = seed_item.get("table", "")
+        vals_dict = seed_item.get("values", {})
+        if tbl and vals_dict:
+            cols_str = ", ".join(vals_dict.keys())
+            vals_str = ", ".join(
+                f"'{v}'" if isinstance(v, str) else str(v)
+                for v in vals_dict.values()
+            )
+            seed_parts.append(
+                f"INSERT INTO {tbl} ({cols_str}) VALUES ({vals_str}) ON CONFLICT DO NOTHING;"
+            )
+    seed_parts.append("")
+
+    # API routes — normalise to {method, path, description}
+    api_routes_spec: List[Dict[str, str]] = []
+    for route in api_routes_raw:
+        api_routes_spec.append({
+            "method": route.get("method", "GET"),
+            "path": route.get("path", "/"),
+            "description": route.get("description", ""),
+        })
+
+    # Env vars
+    env_vars_needed: List[str] = list(env_vars_raw) if env_vars_raw else [
+        "SUPABASE_URL=https://<project-ref>.supabase.co",
+        "SUPABASE_ANON_KEY=<your-anon-key>",
+        "DATABASE_URL=postgresql://postgres:<password>@db.<project-ref>.supabase.co:5432/postgres",
+        "JWT_SECRET=<your-jwt-secret>",
+    ]
+
+    # Feature flags — infer from table names
+    table_names = {t["name"].lower() for t in table_info_list}
+    feature_flags = {
+        "teams": bool(table_names & {"teams", "team_members", "organizations"}),
+        "posts": bool(table_names & {"posts", "articles", "blogs"}),
+        "products": bool(table_names & {"products", "items", "listings"}),
+        "orders": bool(table_names & {"orders", "purchases"}),
+        "messages": bool(table_names & {"messages", "conversations", "chats"}),
+        "tasks": bool(table_names & {"tasks", "todos", "issues"}),
+        "files": bool(table_names & {"files", "attachments", "uploads"}),
+        "analytics": bool(table_names & {"analytics_events", "events", "metrics"}),
+        "subscriptions": bool(table_names & {"subscriptions", "plans"}),
+    }
+
+    return {
+        "tables_sql": "\n".join(tables_sql_parts),
+        "rls_policies": "\n".join(rls_parts),
+        "seed_data": "\n".join(seed_parts),
+        "api_routes_spec": api_routes_spec,
+        "env_vars_needed": env_vars_needed,
+        "feature_flags": feature_flags,
+        "tables": table_info_list,
+    }
+
+
+async def _generate_schema_llm(
+    description: str,
+    project_name: str,
+    features: List[str],
+    call_llm_fn=None,
+) -> Dict[str, Any]:
+    """
+    Tier-1: LLM-powered schema generation.
+    Builds system + user prompts, calls the LLM, parses the JSON response,
+    and converts it to SQL via _llm_json_to_sql.  Falls back to
+    _generate_schema_heuristic if the LLM is unavailable or returns bad JSON.
+    """
+    if call_llm_fn is None:
+        call_llm_fn = _call_llm_for_schema
+
+    system_prompt = (
+        "You are an expert PostgreSQL / Supabase schema architect. "
+        "You MUST respond with ONLY valid JSON — no markdown, no explanation, no code fences. "
+        "The JSON must conform EXACTLY to this structure:\n"
+        "{\n"
+        '  \"tables\": [\n'
+        "    {\n"
+        '      \"name\": \"users\",\n'
+        '      \"columns\": [\n'
+        "        {\"name\": \"id\", \"type\": \"UUID\", \"primary\": true, \"default\": \"uuid_generate_v4()\"},\n"
+        "        {\"name\": \"email\", \"type\": \"TEXT\", \"unique\": true, \"nullable\": false},\n"
+        "        {\"name\": \"name\", \"type\": \"TEXT\"},\n"
+        "        {\"name\": \"created_at\", \"type\": \"TIMESTAMPTZ\", \"default\": \"NOW()\"}\n"
+        "      ],\n"
+        '      \"indexes\": [\"email\"],\n'
+        '      \"rls\": \"users can only read/write their own row\"\n'
+        "    }\n"
+        "  ],\n"
+        '  \"relationships\": [\n'
+        "    {\"from\": \"posts.author_id\", \"to\": \"users.id\", \"on_delete\": \"CASCADE\"}\n"
+        "  ],\n"
+        '  \"api_routes\": [\n'
+        "    {\"method\": \"POST\", \"path\": \"/auth/register\", \"description\": \"Register user\", \"auth\": false},\n"
+        "    {\"method\": \"GET\", \"path\": \"/users/me\", \"description\": \"Get profile\", \"auth\": true}\n"
+        "  ],\n"
+        '  \"env_vars\": [\"SUPABASE_URL\", \"SUPABASE_ANON_KEY\", \"DATABASE_URL\", \"JWT_SECRET\"],\n'
+        '  \"seed_data\": [\n'
+        "    {\"table\": \"users\", \"values\": {\"email\": \"admin@example.com\", \"name\": \"Admin\", \"role\": \"admin\"}}\n"
+        "  ]\n"
+        "}"
+    )
+
+    features_str = ", ".join(features) if features else "auto-detect"
+    user_prompt = (
+        f"Project: {project_name}\n"
+        f"Description: {description}\n"
+        f"Requested features: {features_str}\n\n"
+        "Generate the complete PostgreSQL schema for this app. Be precise:\n"
+        "- Use correct PostgreSQL types (UUID, TEXT, BOOLEAN, INTEGER, NUMERIC(12,2), TIMESTAMPTZ, JSONB, TEXT[], SERIAL)\n"
+        "- Include all necessary columns based on the description (don't add unnecessary ones)\n"
+        "- Identify all foreign key relationships\n"
+        "- Write specific RLS policies (not generic — based on actual app logic)\n"
+        "- Generate realistic seed data for testing\n"
+        "- Include only the API routes this specific app needs"
+    )
+
+    last_exc: Exception = ValueError("LLM not attempted")
+    for attempt in range(2):
+        try:
+            raw_text = await call_llm_fn(user_prompt, system_prompt)
+
+            # Strip possible markdown code fences if the LLM added them
+            stripped = raw_text.strip()
+            if stripped.startswith("```"):
+                # Remove opening fence (```json or ```)
+                stripped = re.sub(r"^```[a-zA-Z]*\n?", "", stripped)
+                stripped = re.sub(r"```\s*$", "", stripped).strip()
+
+            schema_json = json.loads(stripped)
+            result = _llm_json_to_sql(schema_json)
+            result["generation_method"] = "llm"
+            return result
+
+        except json.JSONDecodeError as exc:
+            last_exc = exc
+            # Retry once more
+            continue
+        except Exception as exc:
+            last_exc = exc
+            break  # Non-JSON errors: skip retry, go straight to fallback
+
+    # Fallback to heuristic
+    import logging
+    logging.getLogger(__name__).warning(
+        "_generate_schema_llm falling back to heuristic: %s", last_exc
+    )
+    result = _generate_schema_heuristic(description, project_name, features)
+    result["generation_method"] = "heuristic"
+    return result
+
+
 @appdb_router.post("/app-db/provision", status_code=201)
 async def provision_app_db(body: AppDBProvision, user: dict = Depends(_resolve_current_user)):
     """
@@ -2083,7 +2472,7 @@ async def provision_app_db(body: AppDBProvision, user: dict = Depends(_resolve_c
     project_name = body.project_name or f"Project {project_id[:8]}"
     features = body.features or []
     now = datetime.now(timezone.utc).isoformat()
-    schema = _generate_schema_from_description(body.description, project_name, features)
+    schema = await _generate_schema_llm(body.description, project_name, features)
     doc = {
         "id": str(uuid.uuid4()),
         "project_id": project_id,
@@ -2097,6 +2486,7 @@ async def provision_app_db(body: AppDBProvision, user: dict = Depends(_resolve_c
         "api_routes_spec": schema["api_routes_spec"],
         "env_vars_needed": schema["env_vars_needed"],
         "feature_flags": schema["feature_flags"],
+        "generation_method": schema.get("generation_method", "heuristic"),
         "version": 1,
         "created_at": now,
         "updated_at": now,
@@ -2144,7 +2534,7 @@ async def regenerate_app_db_schema(
     features = body.features or latest.get("features") or []
     project_name = latest.get("project_name", "Project")
     now = datetime.now(timezone.utc).isoformat()
-    schema = _generate_schema_from_description(description, project_name, features)
+    schema = await _generate_schema_llm(description, project_name, features)
     new_version = latest.get("version", 1) + 1
     doc = {
         "id": str(uuid.uuid4()),
@@ -2159,6 +2549,7 @@ async def regenerate_app_db_schema(
         "api_routes_spec": schema["api_routes_spec"],
         "env_vars_needed": schema["env_vars_needed"],
         "feature_flags": schema["feature_flags"],
+        "generation_method": schema.get("generation_method", "heuristic"),
         "version": new_version,
         "created_at": now,
         "updated_at": now,
