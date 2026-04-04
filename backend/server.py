@@ -8030,6 +8030,32 @@ async def deploy_to_vercel(
         ]
     }
 
+# ==================== CUSTOM DOMAIN ENDPOINT ====================
+@api_router.post("/deploy/custom-domain")
+async def set_custom_domain(body: dict = Body(...), user: dict = Depends(get_current_user)):
+    """Record custom domain intent. Returns CNAME instructions."""
+    domain = body.get("domain", "").strip().lower()
+    project_id = body.get("project_id", "")
+    if not domain or "." not in domain:
+        raise HTTPException(400, "Invalid domain")
+    if db:
+        await db.projects.update_one(
+            {"id": project_id, "user_id": user["id"]},
+            {"$set": {"custom_domain": domain, "domain_status": "pending_dns"}}
+        )
+    return {
+        "domain": domain,
+        "cname_target": "cname.vercel-dns.com",
+        "instructions": [
+            f"1. Go to your domain registrar (GoDaddy, Namecheap, Cloudflare, etc.)",
+            f"2. Add a CNAME record: {domain} → cname.vercel-dns.com",
+            f"3. Return here and click 'Verify DNS' (DNS changes take 2-24 hours)",
+            f"4. CrucibAI will confirm SSL is active automatically"
+        ],
+        "ssl": "Automatic via Let's Encrypt once DNS propagates",
+        "status": "pending_dns"
+    }
+
 # ==================== SKILLS MARKETPLACE ====================
 @api_router.get("/skills/marketplace")
 async def get_marketplace_skills(user: dict = Depends(get_optional_user)):

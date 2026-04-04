@@ -73,6 +73,7 @@ import {
   Globe2,
   Activity,
   Network,
+  CheckCircle2,
 } from 'lucide-react';
 import { useAuth, API } from '../App';
 import { useLayoutStore } from '../stores/useLayoutStore';
@@ -685,6 +686,16 @@ root.render(<App />);`,
       recharts: '^2.8.0',
       'framer-motion': '^10.16.4',
       clsx: '^2.0.0',
+      'class-variance-authority': '^0.7.0',
+      'tailwind-merge': '^2.0.0',
+      '@radix-ui/react-dialog': '^1.0.5',
+      '@radix-ui/react-dropdown-menu': '^2.0.6',
+      '@radix-ui/react-select': '^2.0.0',
+      '@radix-ui/react-tabs': '^1.0.4',
+      '@radix-ui/react-tooltip': '^1.0.7',
+      zustand: '^4.4.1',
+      'react-hook-form': '^7.47.0',
+      zod: '^3.22.4',
     };
     try {
       const pkgJson = files['/package.json']?.code || files['package.json']?.code;
@@ -803,6 +814,14 @@ root.render(<App />);`,
   // Task 5: Deploy steps tracking
   const [deployZipDone, setDeployZipDone] = useState(false);
   const [deploySteps, setDeploySteps] = useState(null);
+  // Native deploy state machine: idle | checking | deploying | deployed | error
+  const [deployState, setDeployState] = useState('idle');
+  const [deployResult, setDeployResult] = useState(null); // { url, ... }
+  const [deployError, setDeployError] = useState(null);
+  const [deployHasToken, setDeployHasToken] = useState(null); // null=unknown, true/false
+  const [customDomain, setCustomDomain] = useState('');
+  const [customDomainResult, setCustomDomainResult] = useState(null);
+  const [customDomainSaving, setCustomDomainSaving] = useState(false);
   const projectIdFromUrl = searchParams.get('projectId');
   const taskIdFromUrl = searchParams.get('taskId');
   const [projectBuildProgress, setProjectBuildProgress] = useState({ phase: 0, agent: '', progress: 0, status: '', tokens_used: 0 });
@@ -826,10 +845,27 @@ root.render(<App />);`,
     } else resizeChatInput();
   }, [input, resizeChatInput]);
   const workspaceFilesLoadedForProject = useRef(null);
+  // Task 2A: track previous files snapshot for race-condition-safe preview trigger
+  const prevFilesRef = useRef(null);
 
   useEffect(() => {
     axios.get(`${API}/build/phases`).then(r => setBuildPhases(r.data.phases || [])).catch(() => {});
   }, []);
+
+  // Task 2A: Two-step Sandpack remount — trigger filesReadyKey only after files are confirmed updated
+  useEffect(() => {
+    const hasApp = files['/src/App.jsx'] || files['/App.jsx'] || files['/src/App.js'] || files['/App.js'];
+    const prevHasApp = prevFilesRef.current && (
+      prevFilesRef.current['/src/App.jsx'] || prevFilesRef.current['/App.jsx'] ||
+      prevFilesRef.current['/src/App.js'] || prevFilesRef.current['/App.js']
+    );
+    // Only trigger when we get a new App file that wasn\'t there before
+    if (hasApp && !prevHasApp && isBuilding === false && currentVersion !== null) {
+      const newKey = `fk_ready_${Date.now()}`;
+      setTimeout(() => setFilesReadyKey(newKey), 200);
+    }
+    prevFilesRef.current = files;
+  }, [files]);
 
   // ── Issue #4: Dashboard — fetch live task data when tab opens ──────────────
   useEffect(() => {
@@ -2675,6 +2711,37 @@ BUILD IT NOW — output every file completely:`;
             {devMode ? 'Code' : 'Simple'}
           </button>
           <button
+            onClick={() => {
+              setShowDeployModal(true);
+              setDeployState('idle');
+              setDeployResult(null);
+              setDeployError(null);
+              setDeployHasToken(null);
+              setCustomDomain('');
+              setCustomDomainResult(null);
+              // Check token on open
+              if (token) {
+                axios.get(`${API}/users/me/deploy-tokens`, { headers: { Authorization: `Bearer ${token}` } })
+                  .then(r => setDeployHasToken(r.data?.has_vercel || false))
+                  .catch(() => setDeployHasToken(false));
+              } else {
+                setDeployHasToken(false);
+              }
+            }}
+            disabled={Object.keys(files).length === 0}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '6px 14px', borderRadius: 8,
+              background: Object.keys(files).length > 0 ? 'var(--theme-accent)' : 'var(--theme-surface)',
+              color: Object.keys(files).length > 0 ? 'white' : 'var(--theme-muted)',
+              border: 'none', cursor: Object.keys(files).length > 0 ? 'pointer' : 'not-allowed',
+              fontSize: 13, fontWeight: 600,
+            }}
+            title="Deploy your app"
+          >
+            <Rocket size={14} /> Deploy
+          </button>
+          <button
             onClick={() => setCommandPaletteOpen(true)}
             className="p-1.5 rounded-lg transition hover:bg-white/10"
             style={{ color: 'var(--theme-muted, #71717a)' }}
@@ -3145,7 +3212,10 @@ BUILD IT NOW — output every file completely:`;
                   <button onClick={() => setMobileView(v => !v)} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title={mobileView ? 'Desktop view' : 'Mobile view'}>
                     {mobileView ? <Monitor className="w-3.5 h-3.5" /> : <Smartphone className="w-3.5 h-3.5" />}
                   </button>
-                  <button onClick={() => { const c = { ...files }; setFiles({}); setTimeout(() => setFiles(c), 50); }} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title="Refresh preview">
+                  <button onClick={() => {
+                    const newKey = `fk_refresh_${Date.now()}`;
+                    setFilesReadyKey(newKey);
+                  }} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #52525b)' }} title="Refresh preview">
                     <RefreshCw className="w-3.5 h-3.5" />
                   </button>
                 </>
@@ -3175,7 +3245,22 @@ BUILD IT NOW — output every file completely:`;
                 <Share2 className="w-3.5 h-3.5" />
               </button>
               <button
-                onClick={() => setShowDeployModal(true)}
+                onClick={() => {
+                  setShowDeployModal(true);
+                  setDeployState('idle');
+                  setDeployResult(null);
+                  setDeployError(null);
+                  setDeployHasToken(null);
+                  setCustomDomain('');
+                  setCustomDomainResult(null);
+                  if (token) {
+                    axios.get(`${API}/users/me/deploy-tokens`, { headers: { Authorization: `Bearer ${token}` } })
+                      .then(r => setDeployHasToken(r.data?.has_vercel || false))
+                      .catch(() => setDeployHasToken(false));
+                  } else {
+                    setDeployHasToken(false);
+                  }
+                }}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ml-1 transition"
                 style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--theme-text, #e4e4e7)' }}
               >
@@ -3250,26 +3335,56 @@ BUILD IT NOW — output every file completely:`;
                 </div>
               ) : lastBuildKind === 'mobile' ? (
                 /* ── MOBILE PREVIEW: Expo Snack iframe ── */
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--theme-bg)' }}>
-                  <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--theme-border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e' }} />
-                    <span style={{ fontSize: 11, color: 'var(--theme-muted)' }}>Mobile Preview — Expo Snack</span>
-                    <a
-                      href={`https://snack.expo.dev/?code=${encodeURIComponent(files['/App.tsx']?.code || files['/App.jsx']?.code || files['/App.js']?.code || '')}&platform=ios&supportedPlatforms=ios,android,web&name=CrucibAI+Build&description=Built+with+CrucibAI`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--theme-accent)', textDecoration: 'underline' }}
-                    >
-                      Open in Expo Snack ↗
-                    </a>
-                  </div>
-                  <iframe
-                    src={`https://snack.expo.dev/embedded?code=${encodeURIComponent(files['/App.tsx']?.code || files['/App.jsx']?.code || files['/App.js']?.code || '')}&platform=ios&preview=true&theme=dark`}
-                    style={{ flex: 1, border: 'none', width: '100%' }}
-                    allow="accelerometer; camera; geolocation; gyroscope; microphone"
-                    title="Mobile Preview"
-                  />
-                </div>
+                (() => {
+                  const mobileCode = files['/App.tsx']?.code || files['/App.jsx']?.code || files['/App.js']?.code || '';
+                  const snackUrl = mobileCode.length < 3000
+                    ? `https://snack.expo.dev/embedded?code=${encodeURIComponent(mobileCode)}&platform=ios&preview=true&theme=dark`
+                    : 'https://snack.expo.dev/embedded?platform=ios&preview=true&theme=dark';
+                  const snackOpenUrl = `https://snack.expo.dev/?code=${encodeURIComponent(mobileCode.slice(0, 3000))}&platform=ios&supportedPlatforms=ios,android,web&name=CrucibAI+Build&description=Built+with+CrucibAI`;
+                  return (
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--theme-bg)' }}>
+                      <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--theme-border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e' }} />
+                        <span style={{ fontSize: 11, color: 'var(--theme-muted)' }}>Mobile Preview — Expo Snack</span>
+                        {mobileCode.length >= 3000 && (
+                          <span style={{ fontSize: 10, color: '#fbbf24', background: 'rgba(251,191,36,0.1)', padding: '2px 6px', borderRadius: 4, marginLeft: 4 }}>App too large for inline preview</span>
+                        )}
+                        <a
+                          href={snackOpenUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--theme-accent)', textDecoration: 'underline' }}
+                        >
+                          Open in Expo Snack ↗
+                        </a>
+                      </div>
+                      {mobileCode.length >= 3000 ? (
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, color: 'var(--theme-muted)', padding: 24 }}>
+                          <Smartphone style={{ width: 40, height: 40, opacity: 0.3 }} />
+                          <div style={{ textAlign: 'center' }}>
+                            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--theme-text)', marginBottom: 6 }}>App code too large for inline preview</p>
+                            <p style={{ fontSize: 12, color: 'var(--theme-muted)', marginBottom: 16, maxWidth: 280 }}>Your app has {mobileCode.length.toLocaleString()} characters. Open in Expo Snack to preview on a simulated device.</p>
+                            <a
+                              href={snackOpenUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 8, background: 'var(--theme-accent)', color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 600 }}
+                            >
+                              Open in Expo Snack <ExternalLink style={{ width: 13, height: 13 }} />
+                            </a>
+                          </div>
+                        </div>
+                      ) : (
+                        <iframe
+                          src={snackUrl}
+                          style={{ flex: 1, border: 'none', width: '100%' }}
+                          allow="accelerometer; camera; geolocation; gyroscope; microphone"
+                          title="Mobile Preview"
+                        />
+                      )}
+                    </div>
+                  );
+                })()
               ) : (
               <SandpackProvider
                 key={filesReadyKey || 'default'}
@@ -3611,56 +3726,232 @@ BUILD IT NOW — output every file completely:`;
         )}
       </div>
 
-      {/* ── Deploy modal (Task 5: guided step-by-step flow) ── */}
+      {/* ── Deploy modal — Native one-click deploy ── */}
       {showDeployModal && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.75)' }} onClick={() => { setShowDeployModal(false); setDeployZipDone(false); setDeploySteps(null); }}>
-          <div className="rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 border" style={{ background: 'var(--theme-surface, #1C1C1E)', borderColor: 'var(--theme-border, rgba(255,255,255,0.1))' }} onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--theme-text)' }}>Deploy your app</h3>
-            <p className="text-sm mb-4" style={{ color: 'var(--theme-muted)' }}>Follow the 2-step guide to get your app live in under 60 seconds.</p>
-
-            {/* Step 1: Download */}
-            <div className="rounded-xl p-4 border mb-3" style={{ borderColor: deployZipDone ? 'rgba(74,222,128,0.4)' : 'var(--theme-border)', background: deployZipDone ? 'rgba(74,222,128,0.05)' : 'transparent' }}>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: deployZipDone ? '#4ade80' : 'rgba(255,255,255,0.1)', color: deployZipDone ? '#000' : 'var(--theme-text)' }}>{deployZipDone ? '\u2713' : '1'}</div>
-                <span className="text-sm font-medium" style={{ color: 'var(--theme-text)' }}>Download your code</span>
+        <div
+          className="fixed inset-0 z-[300] flex items-center justify-center"
+          style={{ background: 'rgba(0,0,0,0.75)' }}
+          onClick={() => { setShowDeployModal(false); setDeployZipDone(false); setDeploySteps(null); }}
+        >
+          <div
+            className="rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 border"
+            style={{ background: 'var(--theme-surface, #1C1C1E)', borderColor: 'var(--theme-border, rgba(255,255,255,0.1))' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Rocket style={{ color: 'var(--theme-accent)', width: 18, height: 18 }} />
+                <h3 className="text-lg font-semibold" style={{ color: 'var(--theme-text)', margin: 0 }}>Deploy your app</h3>
               </div>
-              <button onClick={() => { downloadCode(); setDeployZipDone(true); }} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition border" style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text)', background: deployZipDone ? 'rgba(74,222,128,0.1)' : 'transparent' }}>
-                <Download className="w-4 h-4" /> {deployZipDone ? 'Downloaded ✓' : 'Download ZIP'}
-              </button>
+              <button
+                onClick={() => { setShowDeployModal(false); }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-muted)', fontSize: 18, lineHeight: 1, padding: 4 }}
+              >×</button>
             </div>
 
-            {/* Step 2: Deploy options */}
-            <div className="rounded-xl p-4 border mb-3" style={{ borderColor: 'var(--theme-border)', opacity: deployZipDone ? 1 : 0.5 }}>
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--theme-text)' }}>2</div>
-                <span className="text-sm font-medium" style={{ color: 'var(--theme-text)' }}>Deploy to a platform</span>
+            {/* Checking state */}
+            {deployHasToken === null && (
+              <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--theme-muted)', fontSize: 13 }}>
+                <Loader2 className="w-5 h-5 animate-spin" style={{ margin: '0 auto 8px', color: 'var(--theme-accent)' }} />
+                Checking deploy configuration...
               </div>
-              <div className="flex flex-col gap-2">
-                <a
-                  href="https://vercel.com/new"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white hover:opacity-90 transition"
-                  style={{ background: '#000', pointerEvents: deployZipDone ? 'auto' : 'none' }}
-                  onClick={() => { if (taskIdFromUrl && token) { axios.post(`${API}/deploy/vercel`, { task_id: taskIdFromUrl }, { headers: { Authorization: `Bearer ${token}` } }).then(r => setDeploySteps(r.data?.steps || null)).catch(() => {}); } }}
+            )}
+
+            {/* No Vercel token — show connect section */}
+            {deployHasToken === false && deployState === 'idle' && (
+              <div>
+                <div style={{ padding: '16px', background: 'rgba(224,90,37,0.08)', borderRadius: 12, border: '1px solid rgba(224,90,37,0.25)', marginBottom: 16 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--theme-text)', marginBottom: 6 }}>Connect Vercel to deploy</p>
+                  <p style={{ fontSize: 13, color: 'var(--theme-muted)', marginBottom: 12 }}>Add your Vercel API token in Settings to enable one-click deployment.</p>
+                  <button
+                    onClick={() => { setShowDeployModal(false); navigate('/app/settings', { state: { openTab: 'account' } }); }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, background: 'var(--theme-accent)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+                  >
+                    Settings → Deploy Integrations
+                  </button>
+                </div>
+                <p style={{ fontSize: 12, color: 'var(--theme-muted)', marginBottom: 16 }}>Or download your code and deploy manually:</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <button onClick={() => { downloadCode(); setDeployZipDone(true); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 16px', borderRadius: 8, background: 'transparent', border: '1px solid var(--theme-border)', color: 'var(--theme-text)', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
+                    <Download className="w-4 h-4" /> {deployZipDone ? 'Downloaded ✓' : 'Download ZIP'}
+                  </button>
+                  <a href="https://vercel.com/new" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 16px', borderRadius: 8, background: '#000', color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 500 }}>
+                    Open Vercel →
+                  </a>
+                  <a href="https://app.netlify.com/drop" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 16px', borderRadius: 8, background: '#00AD9F', color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 500 }}>
+                    Netlify Drop
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {/* Token exists — show one-click deploy button */}
+            {deployHasToken === true && deployState === 'idle' && (
+              <div>
+                <p style={{ fontSize: 13, color: 'var(--theme-muted)', marginBottom: 16 }}>Your Vercel token is connected. Deploy your app with one click.</p>
+                <button
+                  onClick={async () => {
+                    setDeployState('deploying');
+                    setDeployError(null);
+                    try {
+                      const res = await axios.post(
+                        `${API}/projects/${projectIdFromUrl}/deploy/vercel`,
+                        { task_id: taskIdFromUrl },
+                        { headers: { Authorization: `Bearer ${token}` } }
+                      );
+                      setDeployResult(res.data);
+                      setDeployState('deployed');
+                      addLog(`Deployed to Vercel: ${res.data?.deploy_url || res.data?.url || ''}`, 'success', 'deploy');
+                    } catch (err) {
+                      setDeployError(err.response?.data?.detail || err.message || 'Deploy failed');
+                      setDeployState('error');
+                    }
+                  }}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px 20px', borderRadius: 10, background: '#000', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600, marginBottom: 8 }}
                 >
-                  Deploy to Vercel
-                </a>
-                {deploySteps && (
-                  <div className="text-xs rounded-lg p-3 space-y-1" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--theme-muted)' }}>
-                    {deploySteps.map((s, i) => <div key={i}>{s}</div>)}
+                  <Rocket style={{ width: 16, height: 16 }} /> Deploy to Vercel
+                </button>
+                <button onClick={() => { downloadCode(); }} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 16px', borderRadius: 8, background: 'transparent', border: '1px solid var(--theme-border)', color: 'var(--theme-text)', cursor: 'pointer', fontSize: 13 }}>
+                  <Download className="w-4 h-4" /> Download ZIP
+                </button>
+              </div>
+            )}
+
+            {/* Deploying state */}
+            {deployState === 'deploying' && (
+              <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                <Loader2 className="w-8 h-8 animate-spin" style={{ margin: '0 auto 12px', color: 'var(--theme-accent)' }} />
+                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--theme-text)', marginBottom: 4 }}>Deploying to Vercel...</p>
+                <p style={{ fontSize: 12, color: 'var(--theme-muted)' }}>This usually takes 30-60 seconds</p>
+              </div>
+            )}
+
+            {/* Deployed state */}
+            {deployState === 'deployed' && deployResult && (
+              <div>
+                <div style={{ padding: '14px 16px', background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.3)', borderRadius: 10, marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <CheckCircle2 className="w-4 h-4" style={{ color: '#4ade80', flexShrink: 0 }} />
+                    <p style={{ fontSize: 14, fontWeight: 600, color: '#4ade80', margin: 0 }}>Deployed successfully!</p>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'rgba(0,0,0,0.3)', borderRadius: 6 }}>
+                    <code style={{ fontSize: 12, color: 'var(--theme-text)', flex: 1, wordBreak: 'break-all' }}>
+                      {deployResult?.deploy_url || deployResult?.url || 'Deployment complete'}
+                    </code>
+                    {(deployResult?.deploy_url || deployResult?.url) && (
+                      <button
+                        onClick={() => navigator.clipboard.writeText(deployResult?.deploy_url || deployResult?.url || '')}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-muted)', padding: 4, flexShrink: 0 }}
+                        title="Copy URL"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                  {(deployResult?.deploy_url || deployResult?.url) && (
+                    <a
+                      href={deployResult?.deploy_url || deployResult?.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 14px', borderRadius: 8, background: 'var(--theme-accent)', color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 600 }}
+                    >
+                      Visit site <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                  <button
+                    onClick={() => { setDeployState('idle'); setDeployResult(null); }}
+                    style={{ padding: '9px 14px', borderRadius: 8, background: 'transparent', border: '1px solid var(--theme-border)', color: 'var(--theme-text)', cursor: 'pointer', fontSize: 13 }}
+                  >
+                    Deploy again
+                  </button>
+                </div>
+
+                {/* Custom domain section */}
+                {!customDomainResult && (
+                  <div style={{ borderTop: '1px solid var(--theme-border)', paddingTop: 14 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--theme-text)', marginBottom: 8 }}>Custom domain (optional)</p>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input
+                        value={customDomain}
+                        onChange={e => setCustomDomain(e.target.value)}
+                        placeholder="yourdomain.com"
+                        style={{ flex: 1, padding: '8px 12px', background: 'var(--theme-input, rgba(255,255,255,0.06))', border: '1.5px solid rgba(255,255,255,0.15)', borderRadius: 8, color: 'var(--theme-text)', fontSize: 13, outline: 'none' }}
+                      />
+                      <button
+                        onClick={async () => {
+                          if (!customDomain.trim() || !customDomain.includes('.')) return;
+                          setCustomDomainSaving(true);
+                          try {
+                            const res = await axios.post(
+                              `${API}/deploy/custom-domain`,
+                              { domain: customDomain.trim(), project_id: projectIdFromUrl || '' },
+                              { headers: { Authorization: `Bearer ${token}` } }
+                            );
+                            setCustomDomainResult(res.data);
+                          } catch (e) {
+                            // Ignore errors, show fallback
+                            setCustomDomainResult({ domain: customDomain.trim(), cname_target: 'cname.vercel-dns.com', instructions: ['Go to your registrar and add a CNAME record pointing to cname.vercel-dns.com'] });
+                          } finally {
+                            setCustomDomainSaving(false);
+                          }
+                        }}
+                        disabled={customDomainSaving || !customDomain.trim()}
+                        style={{ padding: '8px 14px', borderRadius: 8, background: customDomain.trim() ? 'var(--theme-accent)' : 'rgba(255,255,255,0.08)', color: customDomain.trim() ? '#fff' : 'var(--theme-muted)', border: 'none', cursor: customDomain.trim() ? 'pointer' : 'not-allowed', fontSize: 13, fontWeight: 600, flexShrink: 0 }}
+                      >
+                        {customDomainSaving ? 'Saving...' : 'Set domain'}
+                      </button>
+                    </div>
                   </div>
                 )}
-                <a href="https://app.netlify.com/drop" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white hover:opacity-90 transition" style={{ background: '#00AD9F', pointerEvents: deployZipDone ? 'auto' : 'none' }}>
-                  Deploy to Netlify Drop
-                </a>
-                <a href="https://railway.app/new" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white hover:opacity-90 transition" style={{ background: '#0B0D0E', border: '1px solid rgba(255,255,255,0.15)', pointerEvents: deployZipDone ? 'auto' : 'none' }}>
-                  Deploy to Railway
-                </a>
+                {customDomainResult && (
+                  <div style={{ borderTop: '1px solid var(--theme-border)', paddingTop: 14 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--theme-text)', marginBottom: 8 }}>DNS Setup for <code style={{ color: 'var(--theme-accent)' }}>{customDomainResult.domain}</code></p>
+                    <div style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: 8, fontSize: 12, color: 'var(--theme-muted)' }}>
+                      {(customDomainResult.instructions || []).map((line, i) => (
+                        <div key={i} style={{ marginBottom: i < (customDomainResult.instructions.length - 1) ? 4 : 0 }}>{line}</div>
+                      ))}
+                    </div>
+                    {customDomainResult.ssl && (
+                      <p style={{ fontSize: 11, color: 'var(--theme-muted)', marginTop: 6 }}>🔒 {customDomainResult.ssl}</p>
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
+            )}
 
-            <button onClick={() => { setShowDeployModal(false); setDeployZipDone(false); setDeploySteps(null); }} className="mt-1 w-full py-2 text-sm rounded-xl border transition hover:bg-white/5" style={{ color: 'var(--theme-muted)', borderColor: 'var(--theme-border)' }}>Close</button>
+            {/* Error state */}
+            {deployState === 'error' && (
+              <div>
+                <div style={{ padding: '14px 16px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, marginBottom: 16 }}>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: '#f87171', marginBottom: 4 }}>Deploy failed</p>
+                  <p style={{ fontSize: 13, color: 'var(--theme-muted)' }}>{deployError}</p>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => { setDeployState('idle'); setDeployError(null); }}
+                    style={{ flex: 1, padding: '10px 16px', borderRadius: 8, background: 'var(--theme-accent)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+                  >
+                    Retry
+                  </button>
+                  <button onClick={() => { downloadCode(); }} style={{ padding: '10px 16px', borderRadius: 8, background: 'transparent', border: '1px solid var(--theme-border)', color: 'var(--theme-text)', cursor: 'pointer', fontSize: 13 }}>
+                    Download ZIP
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Close button — only when not deploying */}
+            {deployState !== 'deploying' && (
+              <button
+                onClick={() => { setShowDeployModal(false); setDeployZipDone(false); setDeploySteps(null); }}
+                className="mt-4 w-full py-2 text-sm rounded-xl border transition hover:bg-white/5"
+                style={{ color: 'var(--theme-muted)', borderColor: 'var(--theme-border)' }}
+              >
+                Close
+              </button>
+            )}
           </div>
         </div>
       )}
