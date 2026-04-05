@@ -1,10 +1,11 @@
 """
-PostgreSQL connection layer for CrucibAI - Motor-compatible wrapper.
-Provides Motor-like API (db.users.find_one(), db.projects.find(), etc.)
-backed by PostgreSQL with JSONB document storage.
+PostgreSQL connection layer for CrucibAI.
 
-Schema: all tables use (id TEXT PRIMARY KEY, doc JSONB NOT NULL)
-matching the migrations in 001_full_schema.sql.
+Exposes a small document-style API on top of JSONB (e.g. db.users.find_one,
+db.projects.insert_one) implemented with asyncpg. All application data lives
+in PostgreSQL only — there is no MongoDB in this stack.
+
+Schema: tables use (id TEXT PRIMARY KEY, doc JSONB NOT NULL) per 001_full_schema.sql.
 """
 import os
 import json
@@ -25,7 +26,7 @@ COMPOSITE_PK_TABLES = {
 }
 
 # Tables that use _id (legacy / JSONB-only)
-LEGACY_ID_TABLES = {"backup_codes", "audit_log"}
+LEGACY_ID_TABLES = {"backup_codes"}
 
 
 async def get_pg_pool():
@@ -89,9 +90,74 @@ async def close_pool():
     await close_pg_pool()
 
 
+class PGFindCursor:
+    """Per-query find chain so concurrent handlers do not mutate shared PGCollection state."""
+
+    __slots__ = ("_col", "_query", "_projection", "_sort_spec", "_skip_count", "_limit_count")
+
+    def __init__(self, col: "PGCollection", query: Dict[str, Any], projection: Optional[Dict[str, Any]]):
+        self._col = col
+        self._query = dict(query or {})
+        self._projection = projection
+        self._sort_spec = None
+        self._skip_count = 0
+        self._limit_count = None
+
+    def sort(self, key_or_list, direction=1):
+        if isinstance(key_or_list, list):
+            self._sort_spec = key_or_list
+        else:
+            self._sort_spec = [(key_or_list, direction)]
+        return self
+
+    def skip(self, count: int):
+        self._skip_count = count
+        return self
+
+    def limit(self, count: int):
+        self._limit_count = count
+        return self
+
+    async def to_list(self, length: int = None) -> List[Dict]:
+        col = self._col
+        async with col.pool.acquire() as conn:
+            where_clause, params = col._build_where(self._query)
+            select_cols = col._select_sql_columns()
+            sql = f"SELECT {select_cols} FROM {col.table_name} WHERE {where_clause}"
+
+            if self._sort_spec:
+                order_parts = []
+                for key, direction in self._sort_spec:
+                    dir_str = "DESC" if direction == -1 else "ASC"
+                    if key in ("created_at", "updated_at"):
+                        order_parts.append(f"(doc->>'{key}') {dir_str}")
+                    else:
+                        order_parts.append(f"doc->'{key}' {dir_str}")
+                sql += " ORDER BY " + ", ".join(order_parts)
+
+            if self._skip_count:
+                sql += f" OFFSET {self._skip_count}"
+            if self._limit_count:
+                sql += f" LIMIT {self._limit_count}"
+            elif length:
+                sql += f" LIMIT {length}"
+
+            rows = await conn.fetch(sql, *params)
+            docs = []
+            for row in rows:
+                doc = col._parse_doc(row["doc"])
+                doc = col._attach_row_pk_to_doc(row, doc)
+                docs.append(doc)
+
+            if self._projection:
+                docs = [col._apply_projection(doc, self._projection) for doc in docs]
+
+            return docs
+
+
 class PGCollection:
-    """Motor-like collection wrapper for a PostgreSQL table.
-    
+    """JSONB-backed collection for one PostgreSQL table (document-style access).
+
     All tables follow the schema:
         id TEXT PRIMARY KEY,
         doc JSONB NOT NULL DEFAULT '{}'
@@ -102,11 +168,26 @@ class PGCollection:
     def __init__(self, pool, table_name: str):
         self.pool = pool
         self.table_name = table_name
-        self._sort_spec = None
-        self._skip_count = 0
-        self._limit_count = None
-        self._query = {}
-        self._projection = None
+
+    def _select_sql_columns(self) -> str:
+        if self.table_name in COMPOSITE_PK_TABLES or self.table_name in LEGACY_ID_TABLES:
+            return "doc"
+        if self.table_name == "referral_codes":
+            return "code, doc"
+        if self.table_name == "api_keys":
+            return "key, doc"
+        return "id, doc"
+
+    def _attach_row_pk_to_doc(self, row, doc: Dict) -> Dict:
+        if self.table_name == "referral_codes" and "code" in row:
+            doc.setdefault("code", row["code"])
+            doc.setdefault("id", row["code"])
+        elif self.table_name == "api_keys" and "key" in row:
+            doc.setdefault("key", row["key"])
+            doc.setdefault("id", row["key"])
+        elif "id" not in doc and "id" in row:
+            doc["id"] = row["id"]
+        return doc
 
     def _get_id_from_doc(self, doc: Dict) -> Optional[str]:
         """Extract the document ID - check 'id' first, then '_id'."""
@@ -133,6 +214,17 @@ class PGCollection:
         """Build WHERE clause from query dict. All fields are in doc JSONB."""
         if not query:
             return "TRUE", []
+
+        def _is_numeric_scalar(v) -> bool:
+            if isinstance(v, (int, float)):
+                return True
+            if isinstance(v, str):
+                try:
+                    float(v)
+                    return True
+                except ValueError:
+                    return False
+            return False
 
         conditions = []
         params = []
@@ -178,19 +270,31 @@ class PGCollection:
                             params.append(json.dumps(op_value))
                             param_idx += 1
                     elif op == "$gte":
-                        conditions.append(f"(doc->>'{key}')::numeric >= ${param_idx}::numeric")
+                        if _is_numeric_scalar(op_value):
+                            conditions.append(f"(doc->>'{key}')::numeric >= ${param_idx}::numeric")
+                        else:
+                            conditions.append(f"(doc->>'{key}') >= ${param_idx}")
                         params.append(op_value)
                         param_idx += 1
                     elif op == "$lte":
-                        conditions.append(f"(doc->>'{key}')::numeric <= ${param_idx}::numeric")
+                        if _is_numeric_scalar(op_value):
+                            conditions.append(f"(doc->>'{key}')::numeric <= ${param_idx}::numeric")
+                        else:
+                            conditions.append(f"(doc->>'{key}') <= ${param_idx}")
                         params.append(op_value)
                         param_idx += 1
                     elif op == "$gt":
-                        conditions.append(f"(doc->>'{key}')::numeric > ${param_idx}::numeric")
+                        if _is_numeric_scalar(op_value):
+                            conditions.append(f"(doc->>'{key}')::numeric > ${param_idx}::numeric")
+                        else:
+                            conditions.append(f"(doc->>'{key}') > ${param_idx}")
                         params.append(op_value)
                         param_idx += 1
                     elif op == "$lt":
-                        conditions.append(f"(doc->>'{key}')::numeric < ${param_idx}::numeric")
+                        if _is_numeric_scalar(op_value):
+                            conditions.append(f"(doc->>'{key}')::numeric < ${param_idx}::numeric")
+                        else:
+                            conditions.append(f"(doc->>'{key}') < ${param_idx}")
                         params.append(op_value)
                         param_idx += 1
                     elif op == "$ne":
@@ -231,7 +335,7 @@ class PGCollection:
         return where_clause, params
 
     def _apply_update_operators(self, doc: Dict, update: Dict) -> Dict:
-        """Apply MongoDB-style update operators ($set, $inc, etc.)."""
+        """Apply document update operators ($set, $inc, etc.) on JSONB docs."""
         result = doc.copy()
         for op, changes in update.items():
             if op == "$set":
@@ -267,91 +371,82 @@ class PGCollection:
     def _generate_id(self) -> str:
         return str(uuid.uuid4())
 
-    async def find_one(self, query: Dict[str, Any] = None, projection: Dict = None) -> Optional[Dict]:
-        """Find one document matching query."""
+    async def find_one(
+        self,
+        query: Dict[str, Any] = None,
+        projection: Dict = None,
+        sort: Any = None,
+    ) -> Optional[Dict]:
+        """Find one document matching query. Optional sort: [(field, direction), ...] or (field, direction)."""
         query = query or {}
         async with self.pool.acquire() as conn:
             where_clause, params = self._build_where(query)
-            select_cols = "doc"
-            if self.table_name not in COMPOSITE_PK_TABLES and self.table_name not in LEGACY_ID_TABLES:
-                select_cols = "id, doc"
-            sql = f"SELECT {select_cols} FROM {self.table_name} WHERE {where_clause} LIMIT 1"
+            select_cols = self._select_sql_columns()
+            sql = f"SELECT {select_cols} FROM {self.table_name} WHERE {where_clause}"
+            if sort:
+                spec = sort if isinstance(sort, list) else [sort]
+                order_parts = []
+                for item in spec:
+                    if isinstance(item, (list, tuple)) and len(item) >= 2:
+                        key, direction = item[0], item[1]
+                    else:
+                        key, direction = item, -1
+                    dir_str = "DESC" if direction == -1 else "ASC"
+                    if key in ("created_at", "updated_at", "timestamp", "triggered_at"):
+                        order_parts.append(f"(doc->>'{key}') {dir_str}")
+                    else:
+                        order_parts.append(f"doc->'{key}' {dir_str}")
+                sql += " ORDER BY " + ", ".join(order_parts)
+            sql += " LIMIT 1"
             row = await conn.fetchrow(sql, *params)
             if row:
-                doc = self._parse_doc(row['doc'])
-                # Ensure 'id' is always in the returned doc
-                if 'id' not in doc and 'id' in row:
-                    doc['id'] = row['id']
+                doc = self._parse_doc(row["doc"])
+                doc = self._attach_row_pk_to_doc(row, doc)
                 if projection:
                     doc = self._apply_projection(doc, projection)
                 return doc
             return None
 
-    def find(self, query: Dict[str, Any] = None, projection: Dict = None):
-        """Return self for chaining (sort, skip, limit, to_list)."""
-        self._query = query or {}
-        self._projection = projection
-        self._sort_spec = None
-        self._skip_count = 0
-        self._limit_count = None
-        return self
-
-    def sort(self, key_or_list, direction=1):
-        if isinstance(key_or_list, list):
-            self._sort_spec = key_or_list
-        else:
-            self._sort_spec = [(key_or_list, direction)]
-        return self
-
-    def skip(self, count: int):
-        self._skip_count = count
-        return self
-
-    def limit(self, count: int):
-        self._limit_count = count
-        return self
-
-    async def to_list(self, length: int = None) -> List[Dict]:
-        """Execute query and return list of documents."""
-        async with self.pool.acquire() as conn:
-            where_clause, params = self._build_where(self._query)
-            select_cols = "doc"
-            if self.table_name not in COMPOSITE_PK_TABLES and self.table_name not in LEGACY_ID_TABLES:
-                select_cols = "id, doc"
-            sql = f"SELECT {select_cols} FROM {self.table_name} WHERE {where_clause}"
-
-            if self._sort_spec:
-                order_parts = []
-                for key, direction in self._sort_spec:
-                    dir_str = "DESC" if direction == -1 else "ASC"
-                    if key in ('created_at', 'updated_at'):
-                        order_parts.append(f"(doc->>'{key}') {dir_str}")
-                    else:
-                        order_parts.append(f"doc->'{key}' {dir_str}")
-                sql += " ORDER BY " + ", ".join(order_parts)
-
-            if self._skip_count:
-                sql += f" OFFSET {self._skip_count}"
-            if self._limit_count:
-                sql += f" LIMIT {self._limit_count}"
-            elif length:
-                sql += f" LIMIT {length}"
-
-            rows = await conn.fetch(sql, *params)
-            docs = []
-            for row in rows:
-                doc = self._parse_doc(row['doc'])
-                if 'id' not in doc and 'id' in row:
-                    doc['id'] = row['id']
-                docs.append(doc)
-
-            if self._projection:
-                docs = [self._apply_projection(doc, self._projection) for doc in docs]
-
-            return docs
+    def find(self, query: Dict[str, Any] = None, projection: Dict = None) -> PGFindCursor:
+        """Return an isolated cursor (safe under concurrent requests)."""
+        return PGFindCursor(self, query or {}, projection)
 
     async def insert_one(self, document: Dict[str, Any]) -> Dict:
         """Insert a document into the table."""
+        async with self.pool.acquire() as conn:
+            if self.table_name == "referral_codes":
+                pk = document.get("code") or self._generate_id()
+                document["code"] = pk
+                document.setdefault("id", pk)
+                try:
+                    await conn.execute(
+                        "INSERT INTO referral_codes (code, doc) VALUES ($1, $2::jsonb)",
+                        pk,
+                        document,
+                    )
+                except Exception as e:
+                    err = str(e).lower()
+                    if "duplicate" in err or "unique" in err:
+                        raise ValueError(f"Duplicate code: {pk}")
+                    raise
+                return {"_id": pk, "id": pk, "inserted_id": pk}
+            if self.table_name == "api_keys":
+                pk = document.get("key") or document.get("id") or self._generate_id()
+                document["key"] = pk
+                document.setdefault("id", pk)
+                try:
+                    await conn.execute(
+                        "INSERT INTO api_keys (key, doc) VALUES ($1, $2::jsonb)",
+                        pk,
+                        document,
+                    )
+                except Exception as e:
+                    err = str(e).lower()
+                    if "duplicate" in err or "unique" in err:
+                        raise ValueError(f"Duplicate key: {pk}")
+                    raise
+                return {"_id": pk, "id": pk, "inserted_id": pk}
+
         # Get or generate the id
         doc_id = document.get('id') or document.get('_id')
         if not doc_id:
@@ -484,7 +579,7 @@ class PGCollection:
 
 
 class PGDatabase:
-    """Motor-like database wrapper for PostgreSQL."""
+    """Database facade over PostgreSQL JSONB tables."""
 
     def __init__(self, pool):
         self.pool = pool
@@ -494,6 +589,20 @@ class PGDatabase:
         if name not in self._collections:
             self._collections[name] = PGCollection(self.pool, name)
         return self._collections[name]
+
+
+def _strip_leading_sql_comments(fragment: str) -> str:
+    """Remove blank lines and full-line -- comments so CREATE statements are not skipped."""
+    if not fragment:
+        return ""
+    lines = fragment.splitlines()
+    while lines:
+        stripped = lines[0].strip()
+        if not stripped or stripped.startswith("--"):
+            lines.pop(0)
+            continue
+        break
+    return "\n".join(lines).strip()
 
 
 async def run_migrations():
@@ -508,10 +617,7 @@ async def run_migrations():
         try:
             with open(path, "r", encoding="utf-8") as f:
                 content = f.read()
-            statements = [
-                s.strip() for s in content.split(";")
-                if s.strip() and not s.strip().startswith("--")
-            ]
+            statements = [_strip_leading_sql_comments(s) for s in content.split(";")]
             ok = fail = 0
             for stmt in statements:
                 if not stmt:
@@ -532,16 +638,18 @@ async def run_migrations():
 # All tables that must exist — used as safety net after migrations
 REQUIRED_TABLES = [
     "users", "projects", "project_logs", "agent_status", "chat_history",
-    "workspace_env", "token_ledger", "token_usage", "tasks", "user_agents",
+    "workspace_env", "token_ledger", "token_usage", "tasks", "saved_prompts", "user_agents",
     "agent_runs", "referral_codes", "referrals", "api_keys", "enterprise_inquiries",
     "contact_submissions",
     "backup_codes", "mfa_setup_temp", "shares", "blocked_requests",
-    "agent_memory", "automation_tasks", "audit_log", "examples", "monitoring_events",
+    "agent_memory", "automation_tasks", "audit_log", "examples", "exports", "monitoring_events",
     # Blueprint modules
     "personas", "knowledge_sources", "knowledge_documents", "channels",
     "app_sessions", "session_messages", "claims_ledger", "safety_policies",
     "safety_audit_log", "tenants", "tenant_members", "workspace_invitations",
     "analytics_events", "session_metrics", "products", "orders", "app_db_schemas",
+    # Auto-Runner / orchestration (relational, not JSONB doc store)
+    "jobs", "job_steps", "job_events", "job_checkpoints", "proof_items", "build_plans",
 ]
 
 ENSURE_TABLES_SQL = """
@@ -550,6 +658,7 @@ CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEF
 CREATE TABLE IF NOT EXISTS project_logs (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS agent_status (project_id TEXT NOT NULL, agent_name TEXT NOT NULL, doc JSONB NOT NULL DEFAULT '{}', PRIMARY KEY (project_id, agent_name));
 CREATE TABLE IF NOT EXISTS chat_history (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS saved_prompts (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS workspace_env (user_id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS token_ledger (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS token_usage (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
@@ -567,8 +676,9 @@ CREATE TABLE IF NOT EXISTS shares (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAU
 CREATE TABLE IF NOT EXISTS blocked_requests (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS agent_memory (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS automation_tasks (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
-CREATE TABLE IF NOT EXISTS audit_log (_id SERIAL PRIMARY KEY, user_id TEXT NOT NULL, timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(), doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS audit_log (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS examples (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS exports (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS audit_events (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS monitoring_events (id SERIAL PRIMARY KEY, event_id TEXT NOT NULL, event_type TEXT NOT NULL, user_id TEXT NOT NULL, timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(), duration FLOAT, metadata JSONB, success BOOLEAN DEFAULT TRUE, error_message TEXT);
 CREATE TABLE IF NOT EXISTS personas (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
@@ -591,10 +701,96 @@ CREATE TABLE IF NOT EXISTS app_db_schemas (id TEXT PRIMARY KEY, doc JSONB NOT NU
 CREATE TABLE IF NOT EXISTS user_skills (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 """
 
+# Relational orchestration tables (no FK to JSONB projects/users — avoids bootstrap ordering issues)
+ORCHESTRATION_ENSURE_SQL = """
+CREATE TABLE IF NOT EXISTS jobs (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL DEFAULT '',
+    user_id TEXT,
+    status TEXT NOT NULL DEFAULT 'planned',
+    mode TEXT NOT NULL DEFAULT 'guided',
+    goal TEXT NOT NULL DEFAULT '',
+    current_phase TEXT DEFAULT 'planning',
+    retry_count INTEGER DEFAULT 0,
+    quality_score INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    started_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_jobs_project ON jobs(project_id);
+CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
+CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs(user_id);
+CREATE TABLE IF NOT EXISTS job_steps (
+    id TEXT PRIMARY KEY,
+    job_id TEXT NOT NULL,
+    step_key TEXT NOT NULL,
+    agent_name TEXT NOT NULL DEFAULT '',
+    phase TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'pending',
+    depends_on_json TEXT DEFAULT '[]',
+    order_index INTEGER DEFAULT 0,
+    retry_count INTEGER DEFAULT 0,
+    output_ref TEXT,
+    verifier_status TEXT,
+    verifier_score INTEGER DEFAULT 0,
+    error_message TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    started_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_job_steps_job ON job_steps(job_id);
+CREATE INDEX IF NOT EXISTS idx_job_steps_status ON job_steps(status);
+CREATE INDEX IF NOT EXISTS idx_job_steps_key ON job_steps(job_id, step_key);
+CREATE TABLE IF NOT EXISTS job_events (
+    id TEXT PRIMARY KEY,
+    job_id TEXT NOT NULL,
+    step_id TEXT,
+    event_type TEXT NOT NULL,
+    payload_json TEXT DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_job_events_job ON job_events(job_id);
+CREATE INDEX IF NOT EXISTS idx_job_events_type ON job_events(event_type);
+CREATE TABLE IF NOT EXISTS job_checkpoints (
+    id TEXT PRIMARY KEY,
+    job_id TEXT NOT NULL,
+    checkpoint_key TEXT NOT NULL,
+    snapshot_json TEXT NOT NULL DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (job_id, checkpoint_key)
+);
+CREATE INDEX IF NOT EXISTS idx_job_checkpoints_job ON job_checkpoints(job_id);
+CREATE TABLE IF NOT EXISTS proof_items (
+    id TEXT PRIMARY KEY,
+    job_id TEXT NOT NULL,
+    step_id TEXT,
+    proof_type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    payload_json TEXT DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_proof_items_job ON proof_items(job_id);
+CREATE INDEX IF NOT EXISTS idx_proof_items_type ON proof_items(proof_type);
+CREATE TABLE IF NOT EXISTS build_plans (
+    id TEXT PRIMARY KEY,
+    job_id TEXT NOT NULL,
+    project_id TEXT NOT NULL DEFAULT '',
+    goal TEXT NOT NULL DEFAULT '',
+    plan_json TEXT NOT NULL DEFAULT '{}',
+    status TEXT NOT NULL DEFAULT 'draft',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_build_plans_job ON build_plans(job_id);
+"""
+
+
 async def ensure_all_tables():
     """Emergency safety net: create any missing tables. Runs after migrations."""
     pool = await get_pg_pool()
-    statements = [s.strip() for s in ENSURE_TABLES_SQL.strip().split(";") if s.strip()]
+    combined = ENSURE_TABLES_SQL.strip() + "\n" + ORCHESTRATION_ENSURE_SQL.strip()
+    statements = [s.strip() for s in combined.split(";") if s.strip()]
     ok = fail = 0
     for stmt in statements:
         try:
@@ -608,7 +804,7 @@ async def ensure_all_tables():
 
 
 async def get_db() -> PGDatabase:
-    """Get Motor-like database instance."""
+    """Return the shared PostgreSQL-backed database instance."""
     global _db
     if _db is None:
         pool = await get_pg_pool()

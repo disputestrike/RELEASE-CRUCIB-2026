@@ -100,6 +100,12 @@
   flex-shrink: 0;
 }
 .bcc-dot-success { background: var(--state-success); }
+.bcc-dot-warn { background: var(--state-warning); }
+.bcc-mono {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  word-break: break-all;
+}
 
 /* CTAs */
 .bcc-actions {

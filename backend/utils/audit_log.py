@@ -24,6 +24,7 @@ class AuditLogger:
         details: Optional[Dict[str, Any]] = None,
     ) -> Any:
         """Append one audit entry (immutable)."""
+        now = datetime.now(timezone.utc)
         entry = {
             "user_id": user_id,
             "action": action,
@@ -34,11 +35,13 @@ class AuditLogger:
             "ip_address": ip_address,
             "status": status,
             "details": details,
-            "timestamp": datetime.now(timezone.utc),
-            "date": datetime.now(timezone.utc).date().isoformat(),
+            "timestamp": now.isoformat(),
+            "date": now.date().isoformat(),
         }
         result = await self.db.audit_log.insert_one(entry)
-        return result.inserted_id
+        if isinstance(result, dict):
+            return result.get("inserted_id") or result.get("id")
+        return getattr(result, "inserted_id", None)
 
     async def get_user_logs(
         self,
@@ -55,9 +58,10 @@ class AuditLogger:
         logs = await cursor.to_list(length=limit)
         total = await self.db.audit_log.count_documents(query)
         for log in logs:
-            log["id"] = str(log.pop("_id"))
+            if "_id" in log:
+                log["id"] = str(log.pop("_id"))
             ts = log.get("timestamp")
-            if ts:
+            if ts and hasattr(ts, "isoformat"):
                 log["timestamp"] = ts.isoformat()
         return {"logs": logs, "total": total, "limit": limit, "skip": skip}
 

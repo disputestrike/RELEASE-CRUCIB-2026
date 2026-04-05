@@ -50,7 +50,7 @@ class SSRFValidator:
         3306,  # MySQL
         5432,  # PostgreSQL
         6379,  # Redis
-        27017,  # MongoDB
+        27017,  # Common non-HTTP DB port (block SSRF to raw sockets)
     }
 
     def __init__(

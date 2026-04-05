@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth, API } from '../App';
 import { useLayoutStore } from '../stores/useLayoutStore';
@@ -34,7 +34,7 @@ const Layout = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Right panel: HIDDEN on workspace (workspace has its own Sandpack panel)
-  const isWorkspaceView = ['/app/workspace', '/app/builder', '/app/auto-runner'].some(p => location.pathname.startsWith(p))
+  const isWorkspaceView = ['/app/workspace', '/app/workspace-manus', '/app/builder', '/app/auto-runner'].some(p => location.pathname.startsWith(p))
     || location.pathname.match(/\/app\/projects\/[^/]+$/);
   const [rightPanelVisible, setRightPanelVisible] = useState(false);
 
@@ -51,6 +51,8 @@ const Layout = () => {
   const [codeFiles, setCodeFiles] = useState({});
   const [terminalOutput, setTerminalOutput] = useState([]);
   const [buildHistory, setBuildHistory] = useState([]);
+  /** Throttle refreshUser after health: every ping was hitting /auth/me and burning the API rate limit. */
+  const lastUserRefreshRef = useRef(0);
 
   const checkBackend = useCallback(() => {
     setBackendOk(null);
@@ -58,7 +60,11 @@ const Layout = () => {
     axios.get(healthUrl, { timeout: 5000 })
       .then(() => {
         setBackendOk(true);
-        if (token && refreshUser) refreshUser();
+        const now = Date.now();
+        if (token && refreshUser && now - lastUserRefreshRef.current > 60_000) {
+          lastUserRefreshRef.current = now;
+          refreshUser().catch(() => {});
+        }
       })
       .catch((e) => { logApiError('Layout health', e); setBackendOk(false); });
   }, [token, refreshUser]);

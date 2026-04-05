@@ -46,6 +46,7 @@ import PatternLibrary from "./pages/PatternLibrary";
 import Settings from "./pages/Settings";
 import Builder from "./pages/Builder";
 import Workspace from "./pages/Workspace";
+import WorkspaceManus from "./pages/WorkspaceManus";
 import Layout from "./components/Layout";
 import ShareView from "./pages/ShareView";
 import ExamplesGallery from "./pages/ExamplesGallery";
@@ -102,15 +103,16 @@ import CommerceManagePage from "./pages/CommerceManagePage";
 import WorkspaceMembersPage from "./pages/WorkspaceMembersPage";
 import SkillsPage from "./pages/SkillsPage";
 import SkillsMarketplace from "./pages/SkillsMarketplace";
-import AutoRunnerPage from "./pages/AutoRunnerPage";
+import UnifiedWorkspace from "./pages/UnifiedWorkspace";
 import { LayoutProvider } from "./stores/useLayoutStore";
 import { TaskProvider } from "./stores/useTaskStore";
 
-// Empty or unset REACT_APP_BACKEND_URL => same-origin /api. In dev, frontend package.json "proxy" sends /api to http://localhost:8000 so backend and frontend connect.
-const _raw = process.env.REACT_APP_BACKEND_URL;
-const BACKEND_URL = (_raw === '' || _raw === undefined) ? '' : (_raw || process.env.REACT_APP_API_URL || 'http://localhost:8000');
-export const API = BACKEND_URL ? `${BACKEND_URL.replace(/\/$/, '')}/api` : '/api';
-console.log('API configured as:', API, 'BACKEND_URL:', BACKEND_URL || '(same-origin / proxy to :8000 in dev)');
+import { API_BASE } from "./apiBase";
+
+// Same-origin /api when unset (CRA dev proxy to backend).
+export const API = API_BASE;
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
+console.log("API configured as:", API, "BACKEND_URL:", BACKEND_URL || "(same-origin / proxy to :8000 in dev)");
 
 // Auth Context
 const AuthContext = createContext(null);
@@ -233,11 +235,21 @@ const AuthProvider = ({ children }) => {
   };
 
   const refreshUser = async () => {
-    if (token) {
+    if (!token) return;
+    try {
       const res = await axios.get(`${API}/auth/me`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setUser(mergeWorkspaceMode(res.data));
+    } catch (e) {
+      // 429: global API rate limit — do not surface as uncaught runtime error (Layout/Workspace call this often)
+      if (e.response?.status === 429) {
+        if (process.env.NODE_ENV === "development") {
+          console.warn("[auth/me] rate limited (429). Set CRUCIBAI_DEV=1 on backend for local dev, or raise RATE_LIMIT_PER_MINUTE).");
+        }
+        return;
+      }
+      throw e;
     }
   };
 
@@ -366,6 +378,12 @@ function RedirectWorkspaceToApp() {
   return <Navigate to={`/app/workspace${search}`} replace />;
 }
 
+/** Deep links to /app/auto-runner land on the unified workspace (same shell, query preserved). */
+function AutoRunnerRedirect() {
+  const { search } = useLocation();
+  return <Navigate to={`/app/workspace${search}`} replace />;
+}
+
 // On route change: scroll to top so new page starts at top. When URL has a hash, scroll to that section so "go to" links land in the right place.
 function ScrollToPlace() {
   const { pathname, hash } = useLocation();
@@ -431,7 +449,9 @@ function App() {
           <Route path="/app" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route index element={<Dashboard />} />
             <Route path="builder" element={<Builder />} />
-            <Route path="workspace" element={<Workspace />} />
+            <Route path="workspace" element={<UnifiedWorkspace />} />
+            <Route path="workspace-manus" element={<WorkspaceManus />} />
+            <Route path="workspace-classic" element={<Workspace />} />
             <Route path="projects/new" element={<ProjectBuilder />} />
             <Route path="projects/:id" element={<AgentMonitor />} />
             <Route path="tokens" element={<TokenCenter />} />
@@ -469,7 +489,7 @@ function App() {
             <Route path="members" element={<WorkspaceMembersPage />} />
             <Route path="skills" element={<SkillsPage />} />
             <Route path="skills/marketplace" element={<SkillsMarketplace />} />
-            <Route path="auto-runner" element={<AutoRunnerPage />} />
+            <Route path="auto-runner" element={<AutoRunnerRedirect />} />
           </Route>
         </Routes>
         </BrowserRouter>

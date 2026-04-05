@@ -15,6 +15,7 @@ from unittest.mock import patch, AsyncMock
 import subprocess
 import time
 import sqlite3
+import tempfile
 
 # ============================================================================
 # PHASE 1: TEST DATABASE SETUP
@@ -23,7 +24,7 @@ import sqlite3
 @pytest.fixture(scope="session")
 def test_db():
     """Start a real PostgreSQL test database"""
-    db_path = "/tmp/crucibai_test.db"
+    db_path = os.path.join(tempfile.gettempdir(), "crucibai_test.db")
     
     # Clean up old database
     if os.path.exists(db_path):

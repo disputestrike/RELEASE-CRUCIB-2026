@@ -141,3 +141,21 @@
   color: var(--text-muted);
   font-family: 'JetBrains Mono', monospace;
 }
+
+.aap-empty {
+  margin: 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.aap-card-failed {
+  border-color: rgba(248, 113, 113, 0.35);
+}
+.aap-dot-failed {
+  background: var(--state-error);
+}
+.aap-badge-failed {
+  background: rgba(248, 113, 113, 0.15);
+  color: var(--state-error);
+}

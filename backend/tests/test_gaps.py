@@ -4,6 +4,7 @@ Gap tests: multi-tenancy isolation, credit concurrency, no cross-user data leak.
 import asyncio
 import uuid
 import pytest
+from conftest import register_and_get_headers
 
 
 class TestMultiTenancyDataIsolation:
@@ -12,37 +13,17 @@ class TestMultiTenancyDataIsolation:
     @pytest.mark.asyncio
     async def test_user_cannot_get_another_users_project(self, app_client):
         """GET /api/projects/{project_id} with A's token for B's project returns 404."""
-        # Create user A and get token
-        email_a = f"user-a-{uuid.uuid4().hex[:12]}@example.com"
-        r_a = await app_client.post(
-            "/api/auth/register",
-            json={"email": email_a, "password": "TestPass123!", "name": "User A"},
-            timeout=10,
-        )
-        assert r_a.status_code in (200, 201), f"Register A failed: {r_a.status_code} {r_a.text}"
-        token_a = r_a.json().get("token")
-        headers_a = {"Authorization": f"Bearer {token_a}"}
-        # Create user B and project for B
-        email_b = f"user-b-{uuid.uuid4().hex[:12]}@example.com"
-        r_b = await app_client.post(
-            "/api/auth/register",
-            json={"email": email_b, "password": "TestPass123!", "name": "User B"},
-            timeout=10,
-        )
-        assert r_b.status_code in (200, 201), f"Register B failed: {r_b.status_code}"
-        headers_b = {"Authorization": f"Bearer {r_b.json()['token']}"}
-        # B creates a project
+        headers_a = await register_and_get_headers(app_client)
+        headers_b = await register_and_get_headers(app_client)
         r_proj = await app_client.post(
             "/api/projects",
             json={"name": "B Project", "description": "B only", "project_type": "web", "requirements": {"prompt": "x"}},
             headers=headers_b,
             timeout=10,
         )
-        if r_proj.status_code not in (200, 201):
-            pytest.skip(f"Project create failed (e.g. credits): {r_proj.status_code}")
+        assert r_proj.status_code in (200, 201), r_proj.text
         project_id = (r_proj.json().get("project") or r_proj.json()).get("id")
-        if not project_id:
-            pytest.skip("No project id in response")
+        assert project_id, r_proj.json()
         # A tries to get B's project
         r_get = await app_client.get(f"/api/projects/{project_id}", headers=headers_a, timeout=10)
         assert r_get.status_code in (403, 404), f"Expected 403/404, got {r_get.status_code} (data leak risk)"
@@ -60,15 +41,8 @@ class TestMultiTenancyDataIsolation:
 
 
 async def _register_and_headers(app_client):
-    """Register and return auth headers."""
-    email = f"gap-{uuid.uuid4().hex[:12]}@example.com"
-    r = await app_client.post(
-        "/api/auth/register",
-        json={"email": email, "password": "TestPass123!", "name": "Gap Test"},
-        timeout=10,
-    )
-    assert r.status_code in (200, 201), f"Register failed: {r.status_code}"
-    return {"Authorization": f"Bearer {r.json()['token']}"}
+    """Register and return auth headers (with test credits)."""
+    return await register_and_get_headers(app_client)
 
 
 class TestCreditConcurrency:

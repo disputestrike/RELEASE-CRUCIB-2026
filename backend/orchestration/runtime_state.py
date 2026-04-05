@@ -35,22 +35,87 @@ def set_pool(pool):
     _pool = pool
 
 
-def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+def _now() -> datetime:
+    """UTC now as timezone-aware datetime (asyncpg requires this for TIMESTAMPTZ, not ISO strings)."""
+    return datetime.now(timezone.utc)
+
+
+# Columns that must be datetime objects for asyncpg (never ISO strings from JSON round-trips)
+_TS_KEYS = frozenset({"created_at", "updated_at", "started_at", "completed_at"})
+
+
+def _as_timestamptz(val: Any) -> Any:
+    if val is None:
+        return None
+    if isinstance(val, datetime):
+        return val.replace(tzinfo=timezone.utc) if val.tzinfo is None else val
+    if isinstance(val, str):
+        try:
+            s = val.replace("Z", "+00:00")
+            d = datetime.fromisoformat(s)
+            return d.replace(tzinfo=timezone.utc) if d.tzinfo is None else d
+        except ValueError:
+            return val
+    return val
+
+
+def _coerce_ts_updates(updates: Dict[str, Any]) -> None:
+    for k in list(updates.keys()):
+        if k in _TS_KEYS:
+            updates[k] = _as_timestamptz(updates[k])
+
+
+async def ensure_job_fk_prerequisites(project_id: str, user_id: Optional[str] = None) -> None:
+    """
+    jobs.project_id and jobs.user_id may reference projects(id) / users(id) (from migration 003).
+    Auto-Runner often uses user.id or a synthetic id as project_id with no prior project row — insert stubs.
+    """
+    if not _pool or not (project_id or "").strip():
+        return
+    pid = project_id.strip()
+    async with _pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO projects (id, doc) VALUES ($1, $2::jsonb)
+            ON CONFLICT (id) DO NOTHING
+            """,
+            pid,
+            json.dumps({
+                "scope": "auto_runner",
+                "title": "Auto-Runner workspace",
+                "status": "active",
+            }),
+        )
+        if user_id and str(user_id).strip():
+            uid = str(user_id).strip()
+            await conn.execute(
+                """
+                INSERT INTO users (id, doc) VALUES ($1, $2::jsonb)
+                ON CONFLICT (id) DO NOTHING
+                """,
+                uid,
+                json.dumps({
+                    "scope": "session",
+                    "email": f"{uid[:12]}@placeholder.local",
+                    "name": "User",
+                }),
+            )
 
 
 # ── Job helpers ──────────────────────────────────────────────────────────────
 
 async def create_job(project_id: str, mode: str = "guided", goal: str = "",
                      user_id: Optional[str] = None) -> Dict[str, Any]:
+    await ensure_job_fk_prerequisites(project_id, user_id)
     job_id = str(uuid.uuid4())
-    now = _now()
+    created = updated = _now()
     async with _pool.acquire() as conn:
+        # Use distinct placeholders for the two timestamps (some asyncpg paths mishandle $5,$5)
         await conn.execute("""
             INSERT INTO jobs (id, project_id, status, mode, goal, current_phase,
                               created_at, updated_at, retry_count, quality_score, user_id)
-            VALUES ($1,$2,'planned',$3,$4,'planning',$5,$5,0,0,$6)
-        """, job_id, project_id, mode, goal, now, user_id)
+            VALUES ($1,$2,'planned',$3,$4,'planning',$5,$6,0,0,$7)
+        """, job_id, project_id, mode, goal, created, updated, user_id)
     return await get_job(job_id)
 
 
@@ -69,6 +134,7 @@ async def update_job_state(job_id: str, status: str,
         updates["started_at"] = _now()
     if status in TERMINAL_JOB_STATES and "completed_at" not in updates:
         updates["completed_at"] = _now()
+    _coerce_ts_updates(updates)
     set_clause = ", ".join(f"{k}=${i+2}" for i, k in enumerate(updates))
     vals = list(updates.values())
     async with _pool.acquire() as conn:
@@ -83,6 +149,27 @@ async def list_jobs(project_id: str) -> List[Dict[str, Any]]:
         rows = await conn.fetch(
             "SELECT * FROM jobs WHERE project_id=$1 ORDER BY created_at DESC LIMIT 50",
             project_id
+        )
+    return [dict(r) for r in rows]
+
+
+async def list_jobs_for_user(user_id: str, limit: int = 40) -> List[Dict[str, Any]]:
+    """Recent Auto-Runner jobs for workspace history (PostgreSQL `jobs` table)."""
+    if not user_id:
+        return []
+    limit = max(1, min(int(limit), 80))
+    async with _pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT id, project_id, status, mode, goal, current_phase, created_at, updated_at,
+                   quality_score, user_id, started_at, completed_at
+            FROM jobs
+            WHERE user_id = $1
+            ORDER BY created_at DESC
+            LIMIT $2
+            """,
+            user_id,
+            limit,
         )
     return [dict(r) for r in rows]
 
@@ -128,6 +215,7 @@ async def update_step_state(step_id: str, status: str,
         updates.setdefault("started_at", _now())
     if status in TERMINAL_STEP_STATES:
         updates.setdefault("completed_at", _now())
+    _coerce_ts_updates(updates)
     set_clause = ", ".join(f"{k}=${i+2}" for i, k in enumerate(updates))
     vals = list(updates.values())
     async with _pool.acquire() as conn:

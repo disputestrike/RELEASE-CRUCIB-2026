@@ -67,7 +67,10 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
 
   const isActive = (path) => location.pathname === path;
   const isActivePrefix = (path) => location.pathname.startsWith(path);
-  const currentTaskId = location.pathname === '/app/workspace' ? searchParams.get('taskId') : null;
+  const currentTaskId =
+    location.pathname === '/app/workspace' || location.pathname === '/app/workspace-manus'
+      ? searchParams.get('taskId')
+      : null;
 
   const togglePin = React.useCallback((id) => {
     setPinnedIds((prev) => {
@@ -113,7 +116,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     { label: 'Fine-Tuning', icon: Zap, href: '/app/fine-tuning' },
     { label: 'Safety Dashboard', icon: ShieldCheck, href: '/app/safety' },
     { label: 'Monitoring', icon: BarChart3, href: '/app/monitoring' },
-    { label: 'Auto-Runner', icon: PlayCircle, href: '/app/auto-runner' },
+    { label: 'Auto-Runner', icon: PlayCircle, href: '/app/workspace' },
     { label: 'VibeCode', icon: Code, href: '/app/vibecode' },
     { label: 'IDE', icon: Monitor, href: '/app/ide' },
   ];

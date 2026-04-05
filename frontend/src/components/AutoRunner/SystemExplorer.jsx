@@ -3,7 +3,7 @@
  * Tabs: Agents | DAG | Routes | DB | Env | Deploys
  * Props: steps, proof, job, projectId, token
  */
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Bot, GitBranch, Route, Database, Settings, Rocket } from 'lucide-react';
 import './SystemExplorer.css';
 
@@ -29,13 +29,85 @@ const BUILT_IN_AGENTS = [
   { name: 'TestAgent',        role: 'Generates and executes test suites' },
 ];
 
-const DAG_NODES = [
-  { id: 'n0', name: 'Initialize',     agent: 'planner',  status: 'completed', x: 40,  y: 80,  deps: [] },
-  { id: 'n1', name: 'Install Deps',   agent: 'executor', status: 'completed', x: 40,  y: 160, deps: [] },
-  { id: 'n2', name: 'Create Routes',  agent: 'executor', status: 'running',   x: 240, y: 60,  deps: ['n0'] },
-  { id: 'n3', name: 'Business Logic', agent: 'executor', status: 'running',   x: 240, y: 160, deps: ['n1'] },
-  { id: 'n4', name: 'Add Tests',      agent: 'verifier', status: 'pending',   x: 440, y: 110, deps: ['n2', 'n3'] },
-];
+function parseStepDeps(step) {
+  const raw = step?.depends_on_json ?? step?.depends_on;
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === 'string') {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+/** Layout job steps as DAG nodes (positions + dependency edges). */
+function buildDagNodesFromSteps(steps) {
+  if (!Array.isArray(steps) || steps.length === 0) return [];
+  const sorted = [...steps].sort(
+    (a, b) =>
+      (a.order_index ?? 0) - (b.order_index ?? 0) ||
+      String(a.step_key || '').localeCompare(String(b.step_key || '')),
+  );
+  const keyToIdx = new Map(sorted.map((s, i) => [s.step_key, i]));
+  const depthMemo = new Map();
+
+  function depthForKey(sk, visiting) {
+    if (!sk) return 0;
+    if (depthMemo.has(sk)) return depthMemo.get(sk);
+    if (visiting.has(sk)) return 0;
+    visiting.add(sk);
+    const step = sorted.find((x) => x.step_key === sk);
+    let d = 0;
+    if (step) {
+      for (const dk of parseStepDeps(step)) {
+        d = Math.max(d, depthForKey(dk, visiting) + 1);
+      }
+    }
+    visiting.delete(sk);
+    depthMemo.set(sk, d);
+    return d;
+  }
+
+  sorted.forEach((s) => depthForKey(s.step_key, new Set()));
+
+  const byLevel = new Map();
+  sorted.forEach((s, i) => {
+    const lv = depthMemo.get(s.step_key) ?? 0;
+    if (!byLevel.has(lv)) byLevel.set(lv, []);
+    byLevel.get(lv).push({ s, i });
+  });
+
+  const maxLv = Math.max(0, ...depthMemo.values());
+  const nodes = [];
+  for (let lv = 0; lv <= maxLv; lv += 1) {
+    const row = byLevel.get(lv) || [];
+    row.forEach(({ s, i }, j) => {
+      const deps = parseStepDeps(s)
+        .map((dk) => {
+          const idx = keyToIdx.get(dk);
+          return idx !== undefined ? `n${idx}` : null;
+        })
+        .filter(Boolean);
+      const shortName = (s.step_key || '').split('.').pop() || s.step_key || 'step';
+      nodes.push({
+        id: `n${i}`,
+        name: shortName,
+        agent: s.agent_name || s.phase || 'step',
+        status: s.status || 'pending',
+        deps,
+        x: 32 + lv * 128,
+        y: 32 + j * 52,
+      });
+    });
+  }
+  return nodes;
+}
+
+function getNodeById(nodes, id) {
+  return nodes.find((n) => n.id === id);
+}
 
 const METHOD_COLORS = {
   GET: 'var(--state-info)',
@@ -72,15 +144,19 @@ function getStatusDotFill(status) {
   }
 }
 
-function getNodeById(id) {
-  return DAG_NODES.find(n => n.id === id);
-}
-
 export default function SystemExplorer({ steps = [], proof, job, projectId, token }) {
   const [activeTab, setActiveTab] = useState('agents');
   const [routeFilter, setRouteFilter] = useState('');
   const [expandedTable, setExpandedTable] = useState(null);
   const [selectedNode, setSelectedNode] = useState(null);
+
+  const dagNodes = useMemo(() => buildDagNodesFromSteps(steps), [steps]);
+  const dagSize = useMemo(() => {
+    if (!dagNodes.length) return { w: 520, h: 220 };
+    const maxX = Math.max(...dagNodes.map((n) => n.x + 110));
+    const maxY = Math.max(...dagNodes.map((n) => n.y + 40));
+    return { w: Math.max(520, maxX + 48), h: Math.max(220, maxY + 40) };
+  }, [dagNodes]);
 
   const bundle = proof?.bundle || {};
   const routeItems = bundle.routes || [];
@@ -138,73 +214,79 @@ export default function SystemExplorer({ steps = [], proof, job, projectId, toke
         {/* DAG — SVG renderer */}
         {activeTab === 'dag' && (
           <div className="se-dag">
-            <svg width="580" height="240" style={{ background: 'var(--bg-0)', borderRadius: 'var(--radius-md)' }}>
-              {/* Edges */}
-              {DAG_NODES.map(node =>
-                node.deps.map(depId => {
-                  const src = getNodeById(depId);
-                  if (!src) return null;
-                  const x1 = src.x + 110;
-                  const y1 = src.y + 18;
-                  const x2 = node.x;
-                  const y2 = node.y + 18;
-                  const cpx1 = x1 + (x2 - x1) * 0.4;
-                  const cpx2 = x2 - (x2 - x1) * 0.4;
-                  return (
-                    <path
-                      key={`${depId}-${node.id}`}
-                      d={`M ${x1} ${y1} C ${cpx1} ${y1}, ${cpx2} ${y2}, ${x2} ${y2}`}
-                      fill="none"
-                      stroke={getNodeStroke(src.status)}
-                      strokeWidth="1.5"
-                      strokeDasharray={src.status === 'pending' ? '4 2' : 'none'}
-                      opacity={0.6}
-                    />
-                  );
-                })
-              )}
-              {/* Nodes */}
-              {DAG_NODES.map(n => (
-                <g key={n.id} onClick={() => setSelectedNode(n.id === selectedNode ? null : n.id)} style={{ cursor: 'pointer' }}>
-                  <rect
-                    x={n.x}
-                    y={n.y}
-                    width={110}
-                    height={36}
-                    rx={6}
-                    fill={getNodeFill(n.status)}
-                    stroke={getNodeStroke(n.status)}
-                    strokeWidth={selectedNode === n.id ? 2 : 1.5}
-                  />
-                  {n.status === 'running' && (
+            {dagNodes.length === 0 ? (
+              <div className="se-empty">No job steps loaded yet. Open or run an Auto-Runner job to see the DAG.</div>
+            ) : (
+              <>
+              <p className="se-dag-caption">
+                Scheduler runs steps whose dependencies are <strong>completed</strong>; independent steps may run in parallel (batch up to 4).
+                Artifact handoff is the <strong>shared workspace folder</strong> on disk — expand a timeline step for <code>dag_node_*</code> events.
+              </p>
+              <svg width={dagSize.w} height={dagSize.h} style={{ background: 'var(--bg-0)', borderRadius: 'var(--radius-md)' }}>
+                {dagNodes.map((node) =>
+                  node.deps.map((depId) => {
+                    const src = getNodeById(dagNodes, depId);
+                    if (!src) return null;
+                    const x1 = src.x + 110;
+                    const y1 = src.y + 18;
+                    const x2 = node.x;
+                    const y2 = node.y + 18;
+                    const cpx1 = x1 + (x2 - x1) * 0.4;
+                    const cpx2 = x2 - (x2 - x1) * 0.4;
+                    return (
+                      <path
+                        key={`${depId}-${node.id}`}
+                        d={`M ${x1} ${y1} C ${cpx1} ${y1}, ${cpx2} ${y2}, ${x2} ${y2}`}
+                        fill="none"
+                        stroke={getNodeStroke(src.status)}
+                        strokeWidth="1.5"
+                        strokeDasharray={src.status === 'pending' ? '4 2' : 'none'}
+                        opacity={0.6}
+                      />
+                    );
+                  }),
+                )}
+                {dagNodes.map((n) => (
+                  <g key={n.id} onClick={() => setSelectedNode(n.id === selectedNode ? null : n.id)} style={{ cursor: 'pointer' }}>
                     <rect
                       x={n.x}
                       y={n.y}
                       width={110}
                       height={36}
                       rx={6}
-                      fill="none"
+                      fill={getNodeFill(n.status)}
                       stroke={getNodeStroke(n.status)}
-                      strokeWidth={2}
-                      opacity={0.5}
-                      className="se-dag-pulse"
+                      strokeWidth={selectedNode === n.id ? 2 : 1.5}
                     />
-                  )}
-                  <text x={n.x + 55} y={n.y + 14} textAnchor="middle" fontSize="11" fill="var(--text-primary)" fontFamily="Inter, sans-serif">
-                    {n.name}
-                  </text>
-                  <text x={n.x + 55} y={n.y + 27} textAnchor="middle" fontSize="9" fill="var(--text-muted)" fontFamily="JetBrains Mono, monospace">
-                    {n.agent}
-                  </text>
-                  {/* Status dot */}
-                  <circle cx={n.x + 104} cy={n.y + 6} r={4} fill={getStatusDotFill(n.status)} />
-                </g>
-              ))}
-            </svg>
+                    {n.status === 'running' && (
+                      <rect
+                        x={n.x}
+                        y={n.y}
+                        width={110}
+                        height={36}
+                        rx={6}
+                        fill="none"
+                        stroke={getNodeStroke(n.status)}
+                        strokeWidth={2}
+                        opacity={0.5}
+                        className="se-dag-pulse"
+                      />
+                    )}
+                    <text x={n.x + 55} y={n.y + 14} textAnchor="middle" fontSize="11" fill="var(--text-primary)" fontFamily="Inter, sans-serif">
+                      {n.name}
+                    </text>
+                    <text x={n.x + 55} y={n.y + 27} textAnchor="middle" fontSize="9" fill="var(--text-muted)" fontFamily="JetBrains Mono, monospace">
+                      {n.agent}
+                    </text>
+                    <circle cx={n.x + 104} cy={n.y + 6} r={4} fill={getStatusDotFill(n.status)} />
+                  </g>
+                ))}
+              </svg>
+              </>
+            )}
 
-            {/* Selected node details */}
-            {selectedNode && (() => {
-              const node = getNodeById(selectedNode);
+            {selectedNode && dagNodes.length > 0 && (() => {
+              const node = getNodeById(dagNodes, selectedNode);
               if (!node) return null;
               return (
                 <div className="se-dag-detail">
@@ -213,7 +295,7 @@ export default function SystemExplorer({ steps = [], proof, job, projectId, toke
                   <span className={`se-dag-detail-status se-dag-status-${node.status}`}>{node.status}</span>
                   {node.deps.length > 0 && (
                     <span className="se-dag-detail-deps">
-                      Depends on: {node.deps.map(d => getNodeById(d)?.name).join(', ')}
+                      Depends on: {node.deps.map((d) => getNodeById(dagNodes, d)?.name).filter(Boolean).join(', ')}
                     </span>
                   )}
                 </div>

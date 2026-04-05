@@ -23,7 +23,7 @@ class SecurityAudit:
     def check_environment_variables(self) -> Dict[str, bool]:
         """Check if all required environment variables are set"""
         required_vars = [
-            'MONGO_URL',
+            'DATABASE_URL',
             'JWT_SECRET',
             'OPENAI_API_KEY',
             'ANTHROPIC_API_KEY',
@@ -122,7 +122,7 @@ class SecurityAudit:
     def check_data_protection(self) -> Dict[str, bool]:
         """Check data protection measures"""
         checks = {
-            'ENCRYPTION_AT_REST': True,  # MongoDB encryption
+            'ENCRYPTION_AT_REST': True,  # PostgreSQL / provider encryption
             'ENCRYPTION_IN_TRANSIT': True,  # HTTPS/TLS
             'DATA_SANITIZATION': True,  # Input sanitization
             'SQL_INJECTION_PREVENTION': True,  # Parameterized queries

@@ -127,3 +127,16 @@
   color: var(--text-muted);
   font-family: 'JetBrains Mono', monospace;
 }
+
+.pp-sandpack-host {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.pp-sandpack-host .sp-wrapper {
+  flex: 1;
+  min-height: 280px;
+}

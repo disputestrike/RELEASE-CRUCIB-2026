@@ -32,6 +32,19 @@ def classify_failure(step: Dict[str, Any],
     error_msg = step.get("error_message", "")
     combined = (issues + " " + error_msg).lower()
 
+    if any(
+        k in combined
+        for k in [
+            "python was not found",
+            "python3 was not found",
+            "node.js not found",
+            "node not found on path",
+            "interpreter not found",
+            "not recognized",
+            "winerror 2",
+        ]
+    ):
+        return "integration_error"
     if any(k in combined for k in ["syntax", "syntaxerror", "py_compile", "node --check"]):
         return "syntax_error"
     if any(k in combined for k in ["compile", "build failed", "tsc", "webpack"]):

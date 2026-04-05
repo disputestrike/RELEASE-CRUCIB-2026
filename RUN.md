@@ -14,6 +14,29 @@ Start backend + frontend first (see below), then open **http://localhost:3000** 
 
 ---
 
+## Docker: Postgres + Redis only (local dev)
+
+If you use Docker Desktop, start databases first (backend + frontend still run on your machine):
+
+```powershell
+.\run-docker-deps.ps1
+```
+
+That runs `docker compose up -d postgres redis`. Postgres is on host **5434** and Redis on **6381** (avoids conflicts with other local Postgres/Redis on 5432/6379). Match **`backend/.env`**:
+
+- `DATABASE_URL=postgresql://crucibai:crucibai@127.0.0.1:5434/crucibai`
+- `REDIS_URL=redis://127.0.0.1:6381/0`
+
+Optional: run the API inside Docker too (full image build):
+
+```powershell
+docker compose --profile container-api up -d --build
+```
+
+Then open the app at **http://localhost:3000** with `npm start` in `frontend` unless the image already serves static files on :8000.
+
+---
+
 ## One command (Windows)
 
 From the repo root in PowerShell:
@@ -22,7 +45,7 @@ From the repo root in PowerShell:
 .\run-dev.ps1
 ```
 
-This starts the backend in a new window and the frontend in the current terminal. Open **http://localhost:3000** when the frontend compiles.
+This starts the backend in a new window and the frontend in the current terminal. Open **http://localhost:3000** when the frontend compiles. Start **`run-docker-deps.ps1`** first if your database is in Docker.
 
 ---
 
@@ -31,9 +54,12 @@ This starts the backend in a new window and the frontend in the current terminal
 1. **Backend (API)** — in a terminal:
    ```powershell
    cd backend
+   set CRUCIBAI_DEV=1
    python -m uvicorn server:app --host 127.0.0.1 --port 8000
    ```
-   Requires: MongoDB running (`MONGO_URL` in `backend/.env`), and `DB_NAME` set.
+   **`CRUCIBAI_DEV=1`** turns off global API rate limiting so local dev does not hit **429** on `/api/auth/me` and other calls. You can also add `CRUCIBAI_DEV=1` to `backend/.env`.  
+   In **PowerShell** (same effect): `$env:CRUCIBAI_DEV = "1"` before `python -m uvicorn ...`.  
+   Requires: **PostgreSQL** and `DATABASE_URL` in `backend/.env` (unless you only need `/api/health` with `CRUCIBAI_DEV=1`).
 
 2. **Frontend** — in another terminal:
    ```powershell
@@ -79,7 +105,7 @@ This starts the backend in a new window and the frontend in the current terminal
   - Click **Retry** in the footer to re-check, or restart the backend and refresh.  
   - See **BACKEND_FRONTEND_CONNECTION.md** for full connection analysis and endpoint map.
 
-- **Backend won’t start (e.g. MONGO_URL)**  
+- **Backend won’t start (e.g. DATABASE_URL)**  
   - Copy `backend/.env.example` to `backend/.env` and set at least:
-    - `MONGO_URL=mongodb://localhost:27017` (or your MongoDB URL)
-    - `DB_NAME=crucibai`
+    - `DATABASE_URL=postgresql://USER:PASSWORD@localhost:5432/crucibai` (PostgreSQL only)
+    - `JWT_SECRET` (any random string in dev; required in production)

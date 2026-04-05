@@ -2,6 +2,12 @@ from fastapi import FastAPI, APIRouter, HTTPException, Depends, BackgroundTasks,
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import StreamingResponse, Response, RedirectResponse, FileResponse
 from dotenv import load_dotenv
+from pathlib import Path
+
+# Load .env before any module that reads LLM keys at import time (e.g. llm_router).
+ROOT_DIR = Path(__file__).resolve().parent
+load_dotenv(ROOT_DIR / ".env", override=True)
+
 from starlette.middleware.cors import CORSMiddleware
 from middleware import (
     RateLimitMiddleware,
@@ -42,7 +48,6 @@ from endpoint_wrapper import wrap_all_endpoints, safe_endpoint
 import os
 import logging
 import httpx
-from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr, model_validator
 from typing import List, Optional, Dict, Any
 import uuid
@@ -81,6 +86,8 @@ class CSRFMiddleware:
         "/api/health",
         "/api/contact",
         "/api/enterprise/contact",
+        # Read-only style cost preview (no job persisted); Bearer still used when available
+        "/api/orchestrator/estimate",
     }
     
     def __init__(self, app):
@@ -88,6 +95,10 @@ class CSRFMiddleware:
     
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        # Local dev should never be blocked by CSRF header checks.
+        if os.environ.get("CRUCIBAI_DEV", "").strip().lower() in ("1", "true", "yes"):
             await self.app(scope, receive, send)
             return
         
@@ -142,6 +153,13 @@ from critic_agent import CriticAgent, TruthModule
 from vector_memory import vector_memory as _vector_memory
 from pgvector_memory import pgvector_memory as _pgvector_memory
 from llm_router import router, classifier, TaskComplexity
+from dev_stub_llm import (
+    stub_build_enabled,
+    plan_and_suggestions as _stub_plan_and_suggestions,
+    stub_multifile_markdown,
+    stub_file_dict,
+    detect_build_kind as _stub_detect_build_kind,
+)
 from credit_tracker import tracker
 
 # Monitoring & Metrics
@@ -215,9 +233,6 @@ if _missing_optional:
 
 import pyotp
 import qrcode
-
-ROOT_DIR = Path(__file__).resolve().parent
-load_dotenv(ROOT_DIR / '.env', override=True)
 
 # Pre-flight: require secrets in production; in dev (CRUCIBAI_DEV=1) allow running without DB for /api/health
 CRUCIBAI_DEV = os.environ.get("CRUCIBAI_DEV", "").strip().lower() in ("1", "true", "yes")
@@ -1698,6 +1713,33 @@ async def ai_chat(data: ChatMessage, user: dict = Depends(get_optional_user)):
         content_blocks = None
         if image_blocks:
             content_blocks = [{"type": "text", "text": combined_text}] + image_blocks
+        if stub_build_enabled():
+            response = stub_multifile_markdown(data.message or "", _stub_detect_build_kind(data.message or ""))
+            session_id = data.session_id or str(uuid.uuid4())
+            tokens_used = min(200, max(40, len(combined_text) // 4))
+            await db.chat_history.insert_one({
+                "id": str(uuid.uuid4()),
+                "session_id": session_id,
+                "user_id": user["id"] if user else None,
+                "message": data.message,
+                "response": response,
+                "model": "dev-stub",
+                "tokens_used": tokens_used,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            })
+            if user and not user.get("public_api"):
+                cred = _user_credits(user)
+                credit_deduct = min(_tokens_to_credits(tokens_used), cred)
+                if credit_deduct > 0:
+                    await _ensure_credit_balance(user["id"])
+                    await db.users.update_one({"id": user["id"]}, {"$inc": {"credit_balance": -credit_deduct}})
+            return {
+                "response": response,
+                "message": response,
+                "session_id": session_id,
+                "model_used": "dev-stub",
+                "tokens_used": tokens_used,
+            }
         model_chain = _get_model_chain(data.model or "auto", combined_text, effective_keys=effective)
         user_tier = (user.get("plan", "free") if user else "free")
         available_credits = (user.get("credit_balance", 0) if user else 0)
@@ -1774,6 +1816,34 @@ async def ai_chat_stream(data: ChatMessage, user: dict = Depends(get_optional_us
             user_keys = await get_workspace_api_keys(user)
             effective = _effective_api_keys(user_keys)
             session_id = data.session_id or str(uuid.uuid4())
+            if stub_build_enabled():
+                response = stub_multifile_markdown(data.message or "", _stub_detect_build_kind(data.message or ""))
+                tokens_used = min(200, max(40, len((data.message or "").split()) * 2))
+                await db.chat_history.insert_one({
+                    "id": str(uuid.uuid4()),
+                    "session_id": session_id,
+                    "user_id": user["id"] if user else None,
+                    "message": data.message,
+                    "response": response,
+                    "model": "dev-stub",
+                    "tokens_used": tokens_used,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                })
+                if user and not user.get("public_api"):
+                    cred = _user_credits(user)
+                    credit_deduct = min(_tokens_to_credits(tokens_used), cred)
+                    if credit_deduct > 0:
+                        await _ensure_credit_balance(user["id"])
+                        await db.users.update_one({"id": user["id"]}, {"$inc": {"credit_balance": -credit_deduct}})
+                async for chunk in _stream_string_chunks(response):
+                    yield json.dumps({"chunk": chunk}) + "\n"
+                yield json.dumps({
+                    "done": True,
+                    "session_id": session_id,
+                    "model_used": "dev-stub",
+                    "tokens_used": tokens_used,
+                }) + "\n"
+                return
             model_chain = _get_model_chain(data.model or "auto", data.message, effective_keys=effective)
             user_tier = (user.get("plan", "free") if user else "free")
             available_credits = (user.get("credit_balance", 0) if user else 0)
@@ -1840,6 +1910,97 @@ async def ai_chat_stream(data: ChatMessage, user: dict = Depends(get_optional_us
     )
 
 
+async def _stub_iterative_ndjson(data: ChatMessage, user):
+    """Stream the same NDJSON shape as iterative build when CRUCIBAI_DEV=1 and no LLM keys."""
+    logger.info("dev-stub iterative build (CRUCIBAI_DEV=1, no LLM API keys configured)")
+    prompt = data.message or ""
+    build_kind = _stub_detect_build_kind(prompt)
+    from iterative_builder import get_build_structure
+
+    structure = get_build_structure(build_kind)
+    passes = structure["passes"]
+    total_steps = len(passes)
+    final_files = stub_file_dict(prompt, build_kind)
+    tokens_used = 120
+    task_id = data.session_id or str(uuid.uuid4())
+
+    yield json.dumps({"type": "start", "build_kind": build_kind, "total_steps": total_steps}) + "\n"
+
+    paths = list(final_files.keys())
+    n = max(len(passes), 1)
+    pass_records = []
+    for idx, pss in enumerate(passes):
+        yield json.dumps({"type": "step_started", "step": pss["name"], "step_num": idx + 1,
+                          "total_steps": total_steps, "status": "pending",
+                          "desc": pss.get("desc", "")}) + "\n"
+
+    for idx, pss in enumerate(passes):
+        chunk = {}
+        for j, path in enumerate(paths):
+            if j % n == idx:
+                chunk[path] = final_files[path]
+        if not chunk and idx == len(passes) - 1:
+            chunk = dict(final_files)
+        if not chunk and paths:
+            chunk = {paths[idx % len(paths)]: final_files[paths[idx % len(paths)]]}
+        elapsed = 40
+        pass_records.append({
+            "pass": idx + 1,
+            "label": pss["name"],
+            "desc": f"{len(chunk)} files in pass",
+            "files_count": len(chunk),
+            "color": ["#a78bfa", "#60a5fa", "#34d399", "#fb923c", "#fbbf24", "#f87171"][idx % 6],
+            "status": "complete",
+            "duration_ms": elapsed,
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+        })
+        yield json.dumps({"type": "step_complete", "step": pss["name"], "step_num": idx + 1,
+                          "total_steps": total_steps, "files_count": len(chunk),
+                          "duration_ms": elapsed, "files": chunk}) + "\n"
+        await asyncio.sleep(0.06)
+
+    if user and not user.get("public_api"):
+        cred = _user_credits(user)
+        deduct = min(_tokens_to_credits(tokens_used), cred)
+        if deduct > 0:
+            await _ensure_credit_balance(user["id"])
+            await db.users.update_one({"id": user["id"]}, {"$inc": {"credit_balance": -deduct}})
+
+    try:
+        await db.tasks.update_one(
+            {"id": task_id},
+            {"$set": {
+                "id": task_id,
+                "user_id": user["id"] if user else "guest",
+                "title": (prompt[:60] + "...") if len(prompt) > 60 else prompt,
+                "prompt": prompt,
+                "build_kind": build_kind,
+                "files": final_files,
+                "status": "complete",
+                "total_files": len(final_files),
+                "passes": pass_records,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }},
+            upsert=True,
+        )
+    except Exception as _save_err:
+        logger.debug(f"Stub build save to tasks skipped: {_save_err}")
+
+    try:
+        from automation_engine import fire_trigger, TriggerType
+        asyncio.create_task(fire_trigger(TriggerType.BUILD_COMPLETE, {
+            "user_id": user["id"] if user else None,
+            "total_files": len(final_files),
+            "build_kind": build_kind,
+        }))
+    except Exception:
+        pass
+
+    yield json.dumps({"type": "done", "files": final_files, "total_files": len(final_files),
+                      "build_kind": build_kind, "tokens_used": tokens_used,
+                      "task_id": task_id}) + "\n"
+
+
 @api_router.post("/ai/build/iterative")
 async def ai_build_iterative(data: ChatMessage, user: dict = Depends(get_optional_user)):
     """Multi-turn iterative build: 2-6 focused API calls → 15-30 complete files.
@@ -1849,6 +2010,10 @@ async def ai_build_iterative(data: ChatMessage, user: dict = Depends(get_optiona
         raise HTTPException(status_code=402, detail=f"Insufficient credits.")
 
     async def generate():
+        if stub_build_enabled():
+            async for line in _stub_iterative_ndjson(data, user):
+                yield line
+            return
         try:
             from iterative_builder import run_iterative_build, get_build_structure
             user_keys = await get_workspace_api_keys(user)
@@ -4044,14 +4209,15 @@ async def agents_create(data: AgentCreate, request: Request, user: dict = Depend
         "created_at": now, "updated_at": now, "next_run_at": trigger_config.get("next_run_at"),
     }
     await db.user_agents.insert_one(doc)
-    base_url = os.environ.get("FRONTEND_URL", request.base_url.rstrip("/")).rstrip("/")
+    _bu = os.environ.get("FRONTEND_URL") or str(request.base_url)
+    base_url = _bu.rstrip("/")
     webhook_url = f"{base_url}/api/agents/webhook/{agent_id}?secret={trigger_config.get('webhook_secret', '')}" if trigger_type == "webhook" else None
     return {"id": agent_id, "user_id": user["id"], "name": doc["name"], "description": doc["description"], "trigger_type": trigger_type, "trigger_config": trigger_config, "actions": actions, "enabled": doc["enabled"], "created_at": now, "updated_at": now, "webhook_url": webhook_url}
 
 
-@agents_router.get("/agents")
+@agents_router.get("/agents/mine")
 async def agents_list(user: dict = Depends(get_current_user), limit: int = Query(50, le=100), offset: int = Query(0, ge=0)):
-    """List current user's agents."""
+    """List current user's automation agents (saved schedules/webhooks)."""
     cursor = db.user_agents.find({"user_id": user["id"]}).sort("updated_at", -1).skip(offset).limit(limit)
     items = await cursor.to_list(length=limit)
     out = []
@@ -4741,6 +4907,26 @@ def _project_workspace_path(project_id: str) -> Path:
     return WORKSPACE_ROOT / safe_id
 
 
+async def _user_can_access_project_workspace(user_id: Optional[str], project_id: str) -> bool:
+    """Allow workspace I/O if Mongo project exists or user has an Auto-Runner job for this project."""
+    if not project_id or not user_id:
+        return False
+    project = await db.projects.find_one({"id": project_id, "user_id": user_id}, {"id": 1})
+    if project:
+        return True
+    try:
+        from db_pg import get_pg_pool
+        pool = await get_pg_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT 1 FROM jobs WHERE project_id = $1 AND user_id = $2 LIMIT 1",
+                project_id, user_id,
+            )
+        return row is not None
+    except Exception:
+        return False
+
+
 def _create_preview_token(project_id: str, user_id: str) -> str:
     """Short-lived JWT so iframe can load preview without Bearer header."""
     payload = {"project_id": project_id, "user_id": user_id, "purpose": "preview", "exp": datetime.now(timezone.utc) + timedelta(minutes=2)}
@@ -4778,8 +4964,7 @@ async def get_settings_capabilities(user: dict = Depends(get_current_user)):
 @projects_router.get("/projects/{project_id}/preview-token")
 async def get_preview_token(project_id: str, user: dict = Depends(get_current_user)):
     """Get short-lived token for iframe preview URL. Wired to preview."""
-    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
-    if not project:
+    if not await _user_can_access_project_workspace(user.get("id"), project_id):
         raise HTTPException(status_code=404, detail="Project not found")
     t = _create_preview_token(project_id, user["id"])
     base = os.environ.get("API_BASE_URL", "").rstrip("/") or "http://localhost:8000"
@@ -4802,8 +4987,7 @@ async def serve_preview(
         raise HTTPException(status_code=401, detail="Invalid or expired preview token")
     if pid != project_id:
         raise HTTPException(status_code=403, detail="Token project mismatch")
-    project = await db.projects.find_one({"id": project_id, "user_id": user_id})
-    if not project:
+    if not await _user_can_access_project_workspace(user_id, project_id):
         raise HTTPException(status_code=404, detail="Project not found")
     root = _project_workspace_path(project_id).resolve()
     if not root.exists():
@@ -4831,8 +5015,7 @@ async def serve_preview(
 @projects_router.get("/projects/{project_id}/workspace/files")
 async def list_workspace_files(project_id: str, user: dict = Depends(get_current_user)):
     """List files in project workspace (view files in task). Wired to workspace."""
-    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
-    if not project:
+    if not await _user_can_access_project_workspace(user.get("id"), project_id):
         raise HTTPException(status_code=404, detail="Project not found")
     root = _project_workspace_path(project_id).resolve()
     if not root.exists():
@@ -4855,8 +5038,7 @@ async def get_workspace_file_content(
     user: dict = Depends(get_current_user),
 ):
     """Get content of a single file in project workspace (for import/open in Workspace)."""
-    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
-    if not project:
+    if not await _user_can_access_project_workspace(user.get("id"), project_id):
         raise HTTPException(status_code=404, detail="Project not found")
     root = _project_workspace_path(project_id).resolve()
     path = (path or "").strip().replace("\\", "/").lstrip("/")
@@ -5311,6 +5493,15 @@ async def build_plan(data: BuildPlanRequest, user: dict = Depends(get_current_us
         # Free/referral credits = landing only: if user has no paid purchase and requests non-landing, block
         # Free users with credits can build anything - no landing-only restriction
         # (The credit balance check above already ensures they have enough credits)
+    if stub_build_enabled():
+        _pt, _sug = _stub_plan_and_suggestions(prompt, build_kind)
+        return {
+            "plan_text": _pt,
+            "suggestions": _sug,
+            "model_used": "dev-stub",
+            "swarm_used": use_swarm,
+            "plan_tokens": 500,
+        }
     kind_instruction = {
         "landing": " The user wants a LANDING PAGE (single page or simple multi-section). Plan for hero, features, CTA, optional waitlist/form; no full app backend or SaaS billing.",
         "mobile": " The user wants a MOBILE APP (React Native, Flutter, or PWA). Plan for mobile-first UI, native or cross-platform, and app store / install considerations. Include in the plan: Mobile stack: Expo (or Flutter), targets: iOS, Android.",
@@ -7559,13 +7750,24 @@ async def integrations_status():
 
 @api_router.get("/jobs/{job_id}")
 async def get_job(job_id: str, user: dict = Depends(get_optional_user)):
-    """Get status and progress of an async job."""
+    """Queue async job (flat JSON) or Auto-Runner job from Postgres (`{ success, job }`)."""
     try:
         from integrations.queue import get_job_status
-        job = await get_job_status(job_id)
-        if not job:
+        qj = await get_job_status(job_id)
+        if qj:
+            return qj
+        runtime_state, _, _, _, _ = _get_orchestration()
+        from db_pg import get_pg_pool
+        pool = await get_pg_pool()
+        runtime_state.set_pool(pool)
+        from orchestration import runtime_state as orch_rs
+        oj = await orch_rs.get_job(job_id)
+        if not oj:
             raise HTTPException(status_code=404, detail="Job not found")
-        return job
+        uid = user.get("id") if user else None
+        if uid and oj.get("user_id") and oj["user_id"] != uid:
+            raise HTTPException(status_code=403, detail="Not your job")
+        return {"success": True, "job": oj}
     except HTTPException:
         raise
     except Exception as e:
@@ -7802,17 +8004,56 @@ class CostEstimateRequest(BaseModel):
     goal: str
 
 
+def _orchestrator_planner_project_state(user: Optional[dict] = None) -> Dict[str, Any]:
+    """
+    Env vars the API process actually has. Fed into the Auto-Runner planner so checklist
+    items are accurate. Checklist items are always advisory (never hard-block runs — dev uses mocks).
+
+    When ``user`` is set, ``billing`` is included so plan/credits can tune advisory risk flags
+    (e.g. no "goal too long" nag for paid tiers or topped-up credit balances).
+    """
+    ev: Dict[str, str] = {}
+    for _k in (
+        "STRIPE_SECRET_KEY",
+        "STRIPE_PUBLISHABLE_KEY",
+        "ANTHROPIC_API_KEY",
+        "CEREBRAS_API_KEY",
+        "LLAMA_API_KEY",
+        "OPENAI_API_KEY",
+        "SMTP_HOST",
+        "SMTP_USER",
+        "SMTP_PASSWORD",
+        "GOOGLE_CLIENT_ID",
+        "GOOGLE_CLIENT_SECRET",
+        "TAVILY_API_KEY",
+    ):
+        if os.environ.get(_k, "").strip():
+            ev[_k] = "configured"
+    out: Dict[str, Any] = {"env_vars": ev}
+    if user:
+        out["billing"] = {
+            "plan": (user.get("plan") or "free"),
+            "credits": _user_credits(user),
+        }
+    return out
+
+
 # ── Cost estimator (pre-execution, no auth required) ──────────────────────────
 
 @api_router.post("/orchestrator/estimate")
-async def estimate_cost(body: CostEstimateRequest):
+async def estimate_cost(
+    body: CostEstimateRequest,
+    user: Optional[dict] = Depends(get_optional_user),
+):
     """
     Pre-execution cost estimate. Show before user approves plan.
     Returns estimated_tokens, estimated_credits, cost_range.
     """
     try:
         _, _, planner_mod, _, _ = _get_orchestration()
-        plan = await planner_mod.generate_plan(body.goal)
+        plan = await planner_mod.generate_plan(
+            body.goal, project_state=_orchestrator_planner_project_state(user)
+        )
         estimate = planner_mod.estimate_tokens(plan)
         return {"success": True, "estimate": estimate, "plan_summary": plan.get("summary", "")}
     except Exception as e:
@@ -7833,7 +8074,9 @@ async def create_plan(body: PlanRequest, user: dict = Depends(get_current_user))
         runtime_state.set_pool(pool)
 
         # Generate plan
-        plan = await planner_mod.generate_plan(body.goal)
+        plan = await planner_mod.generate_plan(
+            body.goal, project_state=_orchestrator_planner_project_state(user)
+        )
         estimate = planner_mod.estimate_tokens(plan)
 
         # Resolve project_id — use provided, or fall back to user id, or generate one
@@ -7885,14 +8128,115 @@ async def create_plan(body: PlanRequest, user: dict = Depends(get_current_user))
 
 # ── Run auto ──────────────────────────────────────────────────────────────────
 
+@api_router.get("/orchestrator/runtime-health")
+async def orchestrator_runtime_health():
+    """
+    Preflight: Python + Node (and npm path) as required by the Auto-Runner verifier.
+    Call before run-auto; run-auto also enforces this gate.
+    """
+    try:
+        from orchestration.runtime_health import (
+            collect_runtime_health,
+            collect_runtime_health_sync,
+            extended_autorunner_preflight_issues,
+            skip_node_verify_env,
+        )
+        sync = collect_runtime_health_sync()
+        issues = await extended_autorunner_preflight_issues()
+        full = await collect_runtime_health()
+        return {
+            "success": True,
+            "ok": len(issues) == 0,
+            "issues": issues,
+            "runtimes": full,
+            "node_verify_enforced": not skip_node_verify_env(),
+        }
+    except Exception as e:
+        logger.exception("orchestrator/runtime-health error")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def _background_auto_runner_job(job_id: str, workspace_path: str) -> None:
+    """Runs after HTTP response so the client can open SSE; do not use ensure_future here."""
+    try:
+        from orchestration import runtime_state as _orch_rs, auto_runner as _orch_ar
+        from db_pg import get_pg_pool
+        pool = await get_pg_pool()
+        if pool is None:
+            logger.error("auto_runner: no database pool for job %s", job_id)
+            return
+        _orch_rs.set_pool(pool)
+        await _orch_ar.run_job_to_completion(
+            job_id, workspace_path=workspace_path or "", db_pool=pool
+        )
+    except Exception as e:
+        logger.exception("auto_runner: background job %s crashed", job_id)
+        try:
+            from orchestration import runtime_state as _ors
+            from orchestration.event_bus import publish as _pub
+            from db_pg import get_pg_pool as _gp
+
+            pool = await _gp()
+            _ors.set_pool(pool)
+            msg = str(e)[:500]
+            await _ors.update_job_state(
+                job_id, "failed", {"current_phase": "background_crash", "error_message": msg}
+            )
+            await _ors.append_job_event(
+                job_id, "job_failed", {"reason": "background_crash", "error": msg}
+            )
+            await _pub(job_id, "job_failed", {"reason": "background_crash", "error": msg[:300]})
+        except Exception:
+            logger.exception("auto_runner: could not persist crash for job %s", job_id)
+
+
+async def _background_resume_auto_job(job_id: str, workspace_path: str) -> None:
+    try:
+        from orchestration import runtime_state as _orch_rs, auto_runner as _orch_ar
+        from db_pg import get_pg_pool
+        pool = await get_pg_pool()
+        if pool is None:
+            logger.error("resume_job: no database pool for job %s", job_id)
+            return
+        _orch_rs.set_pool(pool)
+        await _orch_ar.resume_job(job_id, workspace_path=workspace_path or "", db_pool=pool)
+    except Exception as e:
+        logger.exception("resume_job: background job %s crashed", job_id)
+        try:
+            from orchestration import runtime_state as _ors
+            from orchestration.event_bus import publish as _pub
+            from db_pg import get_pg_pool as _gp
+
+            pool = await _gp()
+            _ors.set_pool(pool)
+            msg = str(e)[:500]
+            await _ors.update_job_state(
+                job_id, "failed", {"current_phase": "background_crash", "error_message": msg}
+            )
+            await _ors.append_job_event(
+                job_id, "job_failed", {"reason": "background_crash", "error": msg}
+            )
+            await _pub(job_id, "job_failed", {"reason": "background_crash", "error": msg[:300]})
+        except Exception:
+            logger.exception("resume_job: could not persist crash for job %s", job_id)
+
+
 @api_router.post("/orchestrator/run-auto")
-async def run_auto(body: RunAutoRequest, user: dict = Depends(get_current_user)):
+async def run_auto(
+    body: RunAutoRequest,
+    background_tasks: BackgroundTasks,
+    user: dict = Depends(get_current_user),
+):
     """
     Start auto-runner for an existing job.
     Returns immediately with job_id; client streams progress via /api/jobs/{id}/stream.
     """
     try:
-        runtime_state, _, _, ar_mod, _ = _get_orchestration()
+        from orchestration.runtime_health import collect_runtime_health_sync
+        from orchestration.preflight_report import build_preflight_report
+        from orchestration.runtime_state import append_job_event
+
+        runtime_state, _, _, _, _ = _get_orchestration()
         from db_pg import get_pg_pool
         pool = await get_pg_pool()
         runtime_state.set_pool(pool)
@@ -7903,12 +8247,34 @@ async def run_auto(body: RunAutoRequest, user: dict = Depends(get_current_user))
         if job.get("user_id") and job["user_id"] != user.get("id"):
             raise HTTPException(status_code=403, detail="Not your job")
 
-        # Run in background
-        _asyncio.ensure_future(ar_mod.run_job_to_completion(
+        preflight = await build_preflight_report()
+        await append_job_event(
             body.job_id,
-            workspace_path=body.workspace_path or "",
-            db_pool=pool,
-        ))
+            "preflight_report",
+            {"preflight": preflight, "kind": "preflight_report.json"},
+        )
+
+        if not preflight["passed"]:
+            sync = collect_runtime_health_sync()
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error": "runtime_unsatisfied",
+                    "message": "Preflight failed — runtimes, package managers, or health checks.",
+                    "issues": preflight["issues"],
+                    "runtimes": sync,
+                    "preflight_report": preflight,
+                },
+            )
+
+        ws = (body.workspace_path or "").strip()
+        pid = job.get("project_id")
+        if not ws and pid:
+            root = _project_workspace_path(pid).resolve()
+            root.mkdir(parents=True, exist_ok=True)
+            ws = str(root)
+
+        background_tasks.add_task(_background_auto_runner_job, body.job_id, ws)
 
         return {"success": True, "job_id": body.job_id,
                 "stream_url": f"/api/jobs/{body.job_id}/stream"}
@@ -7917,6 +8283,27 @@ async def run_auto(body: RunAutoRequest, user: dict = Depends(get_current_user))
     except Exception as e:
         logger.exception("orchestrator/run-auto error")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/orchestrator/build-jobs")
+async def list_orchestrator_build_jobs(
+    user: dict = Depends(get_optional_user),
+    limit: int = 30,
+):
+    """List recent Auto-Runner jobs for the signed-in (or guest) user."""
+    if not user or not user.get("id"):
+        return {"success": True, "jobs": []}
+    try:
+        runtime_state, _, _, _, _ = _get_orchestration()
+        from db_pg import get_pg_pool
+        pool = await get_pg_pool()
+        runtime_state.set_pool(pool)
+        from orchestration import runtime_state as orch_rs
+        jobs = await orch_rs.list_jobs_for_user(user["id"], min(max(1, limit), 50))
+        return {"success": True, "jobs": jobs}
+    except Exception as e:
+        logger.exception("orchestrator/build-jobs")
+        return {"success": False, "jobs": [], "error": str(e)}
 
 
 # ── Job CRUD ──────────────────────────────────────────────────────────────────
@@ -7931,7 +8318,9 @@ async def create_job_route(body: CreateJobRequest,
         pool = await get_pg_pool()
         runtime_state.set_pool(pool)
 
-        plan = await planner_mod.generate_plan(body.goal)
+        plan = await planner_mod.generate_plan(
+            body.goal, project_state=_orchestrator_planner_project_state(user)
+        )
         job = await runtime_state.create_job(
             project_id=body.project_id, mode=body.mode or "guided",
             goal=body.goal, user_id=user.get("id")
@@ -7950,24 +8339,6 @@ async def create_job_route(body: CreateJobRequest,
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@api_router.get("/jobs/{job_id}")
-async def get_job_route(job_id: str, user: dict = Depends(get_optional_user)):
-    """Get job status and metadata."""
-    try:
-        runtime_state, _, _, _, _ = _get_orchestration()
-        from db_pg import get_pg_pool
-        pool = await get_pg_pool()
-        runtime_state.set_pool(pool)
-        job = await runtime_state.get_job(job_id)
-        if not job:
-            raise HTTPException(status_code=404, detail="Job not found")
-        return {"success": True, "job": job}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @api_router.get("/jobs/{job_id}/steps")
 async def get_job_steps(job_id: str, user: dict = Depends(get_optional_user)):
     """Get all steps for a job with their current status."""
@@ -7978,6 +8349,36 @@ async def get_job_steps(job_id: str, user: dict = Depends(get_optional_user)):
         runtime_state.set_pool(pool)
         steps = await runtime_state.get_steps(job_id)
         return {"success": True, "steps": steps, "count": len(steps)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/jobs/{job_id}/plan-draft")
+async def get_job_plan_draft(job_id: str, user: dict = Depends(get_optional_user)):
+    """Latest stored plan JSON for a job (for resuming from history)."""
+    try:
+        runtime_state, _, _, _, _ = _get_orchestration()
+        from db_pg import get_pg_pool
+        pool = await get_pg_pool()
+        runtime_state.set_pool(pool)
+        job = await runtime_state.get_job(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+        uid = user.get("id") if user else None
+        if uid and job.get("user_id") and job["user_id"] != uid:
+            raise HTTPException(status_code=403, detail="Not your job")
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT plan_json FROM build_plans WHERE job_id = $1 ORDER BY created_at DESC LIMIT 1",
+                job_id,
+            )
+        if not row or not row.get("plan_json"):
+            return {"success": True, "plan": None}
+        raw = row["plan_json"]
+        plan = _json.loads(raw) if isinstance(raw, str) else raw
+        return {"success": True, "plan": plan}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -8017,6 +8418,43 @@ async def get_job_proof(job_id: str, user: dict = Depends(get_optional_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.get("/trust/platform-capabilities")
+async def trust_platform_capabilities(user: dict = Depends(get_optional_user)):
+    """Roadmap item wiring status (wired | partial | planned) for operator transparency."""
+    try:
+        from orchestration.trust.roadmap_wiring import roadmap_wiring_status
+
+        return {"success": True, "items": roadmap_wiring_status()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/jobs/{job_id}/trust-report")
+async def get_job_trust_report(job_id: str, user: dict = Depends(get_optional_user)):
+    """Aggregated trust metrics + roadmap wiring snapshot for a job."""
+    try:
+        from orchestration.trust.roadmap_wiring import roadmap_wiring_status
+
+        _, _, _, _, ps_mod = _get_orchestration()
+        from db_pg import get_pg_pool
+        pool = await get_pg_pool()
+        ps_mod.set_pool(pool)
+        proof = await ps_mod.get_proof(job_id)
+        return {
+            "success": True,
+            "job_id": job_id,
+            "roadmap_wiring": roadmap_wiring_status(),
+            "trust_score": proof.get("trust_score"),
+            "class_weighted_score": proof.get("class_weighted_score"),
+            "verification_class_counts": proof.get("verification_class_counts"),
+            "truth_status": proof.get("truth_status"),
+            "total_proof_items": proof.get("total_proof_items"),
+            "category_counts": proof.get("category_counts"),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @api_router.post("/jobs/{job_id}/cancel")
 async def cancel_job(job_id: str, user: dict = Depends(get_current_user)):
     """Cancel a running job."""
@@ -8034,16 +8472,54 @@ async def cancel_job(job_id: str, user: dict = Depends(get_current_user)):
 
 
 @api_router.post("/jobs/{job_id}/resume")
-async def resume_job_route(job_id: str, user: dict = Depends(get_current_user)):
+async def resume_job_route(
+    job_id: str,
+    background_tasks: BackgroundTasks,
+    user: dict = Depends(get_current_user),
+):
     """Resume an interrupted job from its last checkpoint."""
     try:
-        runtime_state, _, _, ar_mod, _ = _get_orchestration()
+        from orchestration.runtime_health import collect_runtime_health_sync
+        from orchestration.preflight_report import build_preflight_report
+        from orchestration.runtime_state import append_job_event
+
+        runtime_state, _, _, _, _ = _get_orchestration()
         from db_pg import get_pg_pool
         pool = await get_pg_pool()
         runtime_state.set_pool(pool)
-        _asyncio.ensure_future(ar_mod.resume_job(job_id, db_pool=pool))
+        job = await runtime_state.get_job(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+
+        preflight = await build_preflight_report()
+        await append_job_event(
+            job_id,
+            "preflight_report",
+            {"preflight": preflight, "kind": "preflight_report.json"},
+        )
+        if not preflight["passed"]:
+            sync = collect_runtime_health_sync()
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error": "runtime_unsatisfied",
+                    "message": "Preflight failed — runtimes, package managers, or health checks.",
+                    "issues": preflight["issues"],
+                    "runtimes": sync,
+                    "preflight_report": preflight,
+                },
+            )
+        ws = ""
+        pid = job.get("project_id")
+        if pid:
+            root = _project_workspace_path(pid).resolve()
+            root.mkdir(parents=True, exist_ok=True)
+            ws = str(root)
+        background_tasks.add_task(_background_resume_auto_job, job_id, ws)
         return {"success": True, "job_id": job_id,
                 "stream_url": f"/api/jobs/{job_id}/stream"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -8792,11 +9268,17 @@ async def init_postgres_primary():
         return
     try:
         from db_pg import get_db, run_migrations, ensure_all_tables
-        from structured_logging import AuditLogger
+
         await run_migrations()
         await ensure_all_tables()  # safety net: creates any tables missed by migration
         db = await get_db()
-        audit_logger = AuditLogger() if AuditLogger else None
+        try:
+            from utils.audit_log import AuditLogger as DbAuditLogger
+
+            audit_logger = DbAuditLogger(db)
+        except Exception as _aud:
+            logger.warning("DB audit logger unavailable: %s", _aud)
+            audit_logger = None
         logger.info("PostgreSQL initialized as primary database")
         # Initialize automation engine defaults
         try:
@@ -9056,9 +9538,11 @@ async def seed_internal_agents_if_requested():
 @app.on_event("shutdown")
 async def shutdown_db_client():
     """Close PostgreSQL pool on shutdown."""
+    global db
     try:
         from db_pg import close_pg_pool
         await close_pg_pool()
+        db = None
         logger.info("✅ PostgreSQL pool closed")
     except Exception as e:
         logger.warning(f"Shutdown warning: {e}")

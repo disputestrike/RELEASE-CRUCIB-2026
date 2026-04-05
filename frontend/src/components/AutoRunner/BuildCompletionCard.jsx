@@ -25,9 +25,16 @@ export default function BuildCompletionCard({
   const routes = stats.api_routes_added || (bundle.routes?.length ?? 0);
   const tables = stats.db_tables_created || (bundle.database?.length ?? 0);
   const deploys = stats.deploy_targets || (bundle.deploy?.length ?? 0);
-  const proofCount = Object.values(bundle).reduce((sum, arr) => sum + (arr?.length || 0), 0);
+  const proofCount =
+    typeof proof?.total_proof_items === 'number'
+      ? proof.total_proof_items
+      : Object.values(bundle).reduce((sum, arr) => sum + (arr?.length || 0), 0);
 
-  // Hard gate: must have completed status, proof items, and quality above 0.8
+  const previewUrl = job?.preview_url || null;
+  const deployProof = (proof?.bundle?.deploy || []).filter(Boolean);
+  const deployPayload = deployProof.length ? deployProof[deployProof.length - 1]?.payload || {} : {};
+  const deployUrl = deployPayload.url || deployPayload.deploy_url || job?.deploy_url || null;
+
   if (job?.status !== 'completed' || proofCount <= 0 || normalizedScore <= 80) {
     return null;
   }
@@ -62,19 +69,34 @@ export default function BuildCompletionCard({
         <span className="bcc-score-label">Verified</span>
       </div>
 
-      {/* Status rows */}
       <div className="bcc-status-rows">
         <div className="bcc-status-row">
-          <span className="bcc-status-dot bcc-dot-success" />
-          <span>Preview ready</span>
+          <span className={`bcc-status-dot ${previewUrl ? 'bcc-dot-success' : 'bcc-dot-warn'}`} />
+          <span>
+            {previewUrl ? (
+              <>
+                Preview: <span className="bcc-mono">{previewUrl.replace(/^https?:\/\//, '').slice(0, 48)}</span>
+              </>
+            ) : (
+              'No remote preview URL on job record (use Preview tab / Sandpack)'
+            )}
+          </span>
+        </div>
+        <div className="bcc-status-row">
+          <span className={`bcc-status-dot ${deployUrl ? 'bcc-dot-success' : 'bcc-dot-warn'}`} />
+          <span>
+            {deployUrl ? (
+              <>
+                Deploy: <span className="bcc-mono">{String(deployUrl).replace(/^https?:\/\//, '').slice(0, 48)}</span>
+              </>
+            ) : (
+              'No deploy URL in proof bundle yet'
+            )}
+          </span>
         </div>
         <div className="bcc-status-row">
           <span className="bcc-status-dot bcc-dot-success" />
-          <span>Deployment live</span>
-        </div>
-        <div className="bcc-status-row">
-          <span className="bcc-status-dot bcc-dot-success" />
-          <span>Proof available</span>
+          <span>Proof bundle: {proofCount} items</span>
         </div>
       </div>
 

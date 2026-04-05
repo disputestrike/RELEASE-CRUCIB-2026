@@ -2,7 +2,7 @@
 10/10 Roadmap: E2E tests for agent orchestration.
 - Full build with mocked LLM → quality score computed.
 - Agent failure recovery → fallback or skip.
-No real API keys or MongoDB required for these tests (mocks used).
+No real API keys required for these tests (mocks used).
 """
 import os
 import pytest

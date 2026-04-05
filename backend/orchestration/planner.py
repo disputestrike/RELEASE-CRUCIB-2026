@@ -1,13 +1,33 @@
 """
 planner.py — Structured build planner for CrucibAI.
 Produces a normalized plan JSON before any execution starts.
+
+Pre-launch checklist policy (missing_inputs):
+- Every item is advisory: blocking is always False. Users run and test in dev with mocks;
+  they wire real keys/services before production. Optional strict mode: set
+  CRUCIBAI_STRICT_PLAN_BLOCKERS=1 to allow blocking=True on individual items (future use).
 """
 import logging
 import json
+import os
 import re
 from typing import Dict, Any, Optional
 
+from pricing_plans import CREDIT_PLANS
+
+from .trust.node_manifest import enrich_plan_with_node_manifests
+
 logger = logging.getLogger(__name__)
+
+_STRICT_PLAN_BLOCKERS = os.environ.get("CRUCIBAI_STRICT_PLAN_BLOCKERS", "").strip().lower() in (
+    "1", "true", "yes",
+)
+
+
+def _advisory_missing(key: str, description: str, *, blocking: bool = False) -> Dict[str, Any]:
+    """Single checklist row; blocking only honored when CRUCIBAI_STRICT_PLAN_BLOCKERS is set."""
+    b = bool(blocking) and _STRICT_PLAN_BLOCKERS
+    return {"key": key, "description": description, "blocking": b}
 
 
 # ── Canonical plan schema ─────────────────────────────────────────────────────
@@ -40,19 +60,42 @@ def _detect_build_kind(goal: str) -> str:
 
 
 def _detect_integrations(goal: str) -> list:
+    """Word-boundary matching avoids substring false positives (e.g. 'payment' in unrelated words)."""
     g = goal.lower()
     integrations = []
-    if any(k in g for k in ["stripe", "payment", "billing", "checkout"]):
+    if re.search(r"\b(stripe|payments?|billing|checkout)\b", g):
         integrations.append("stripe")
-    if any(k in g for k in ["auth", "login", "signup", "user"]):
+    if re.search(r"\b(auth|authentication|login|sign[\s-]?up|oauth|jwt)\b", g):
         integrations.append("auth")
-    if any(k in g for k in ["database", "db", "postgres", "mysql", "storage"]):
+    if re.search(r"\b(database|postgres|postgresql|mysql|mongodb|sqlite|storage)\b", g):
         integrations.append("database")
-    if any(k in g for k in ["email", "notification", "smtp"]):
+    if re.search(r"\b(email|smtp|notification|notify)\b", g):
         integrations.append("email")
-    if any(k in g for k in ["ai", "llm", "gpt", "claude", "openai"]):
+    if re.search(r"\b(llm|gpt|openai|claude|cerebras|anthropic)\b", g) or re.search(r"\bai\b", g):
         integrations.append("llm")
     return integrations
+
+
+# Free-tier default credits (see server.GUEST_TIER_CREDITS); above this implies purchase/top-up/referral.
+_FREE_BUCKET_MAX_CREDITS = int(CREDIT_PLANS.get("free", {}).get("credits") or 200)
+_PAID_PLANS = frozenset(k for k in CREDIT_PLANS if k != "free")
+# Free users with only the default allowance: still allow long specs; warn only on extreme payloads (DoS-ish).
+_FREE_USER_GOAL_LEN_ADVISORY = 24_000
+
+
+def _goal_len_advisory_threshold(project_state: Optional[Dict]) -> Optional[int]:
+    """
+    Max goal length (chars) before we add goal_too_long_consider_splitting.
+    None = no length-based advisory (paid plan or user has topped-up credits).
+    """
+    billing = (project_state or {}).get("billing") or {}
+    plan = (billing.get("plan") or "free").strip().lower()
+    if plan in _PAID_PLANS:
+        return None
+    credits = int(billing.get("credits") or 0)
+    if credits > _FREE_BUCKET_MAX_CREDITS:
+        return None
+    return _FREE_USER_GOAL_LEN_ADVISORY
 
 
 def _detect_risk_flags(goal: str, project_state: Optional[Dict] = None) -> list:
@@ -62,7 +105,8 @@ def _detect_risk_flags(goal: str, project_state: Optional[Dict] = None) -> list:
         flags.append("stripe_keys_missing")
     if len(goal) < 20:
         flags.append("goal_too_vague")
-    if len(goal) > 1000:
+    thresh = _goal_len_advisory_threshold(project_state)
+    if thresh is not None and len(goal) > thresh:
         flags.append("goal_too_long_consider_splitting")
     return flags
 
@@ -184,16 +228,43 @@ async def generate_plan(goal: str,
     # Count total steps
     total_steps = sum(len(p["steps"]) for p in phases)
 
-    # Missing inputs
-    missing_inputs = []
-    if "stripe" in integrations:
-        env_vars = (project_state or {}).get("env_vars", {})
-        if not env_vars.get("STRIPE_SECRET_KEY"):
-            missing_inputs.append({
-                "key": "STRIPE_SECRET_KEY",
-                "description": "Required for Stripe payments",
-                "blocking": True
-            })
+    # Pre-launch checklist (never blocks runs unless CRUCIBAI_STRICT_PLAN_BLOCKERS=1)
+    missing_inputs: list = []
+    env_vars = (project_state or {}).get("env_vars", {})
+
+    if "stripe" in integrations and not env_vars.get("STRIPE_SECRET_KEY"):
+        missing_inputs.append(
+            _advisory_missing(
+                "STRIPE_SECRET_KEY",
+                "For live charges add to backend/.env; dev builds can use checkout mocks / placeholders.",
+                blocking=True,
+            )
+        )
+
+    if "email" in integrations and not env_vars.get("SMTP_HOST"):
+        missing_inputs.append(
+            _advisory_missing(
+                "SMTP_HOST",
+                "For real outbound email set SMTP_* in backend/.env; local runs can log or no-op.",
+                blocking=True,
+            )
+        )
+
+    if "llm" in integrations and not any(
+        env_vars.get(k) for k in ("ANTHROPIC_API_KEY", "CEREBRAS_API_KEY", "LLAMA_API_KEY", "OPENAI_API_KEY")
+    ):
+        missing_inputs.append(
+            _advisory_missing(
+                "LLM_API_KEYS",
+                "Set ANTHROPIC_API_KEY, CEREBRAS_API_KEY, and/or LLAMA_API_KEY for full AI steps; "
+                "CRUCIBAI_DEV can use stubs when no keys are set.",
+                blocking=True,
+            )
+        )
+
+    if not _STRICT_PLAN_BLOCKERS:
+        for row in missing_inputs:
+            row["blocking"] = False
 
     # Acceptance criteria
     acceptance_criteria = [
@@ -206,6 +277,10 @@ async def generate_plan(goal: str,
     if "stripe" in integrations:
         acceptance_criteria.append("Stripe checkout flow reachable")
 
+    tier = os.environ.get("CRUCIB_QUALITY_TIER", "mvp").strip().lower()
+    if tier not in ("prototype", "mvp", "production", "enterprise"):
+        tier = "mvp"
+
     plan = {
         "goal": goal,
         "build_kind": build_kind,
@@ -217,9 +292,10 @@ async def generate_plan(goal: str,
         "estimated_steps": total_steps,
         "missing_inputs": missing_inputs,
         "summary": f"Building a {build_kind} application: {goal[:100]}",
+        "quality_tier": tier,
     }
 
-    return plan
+    return enrich_plan_with_node_manifests(plan)
 
 
 def estimate_tokens(plan: Dict[str, Any]) -> Dict[str, Any]:

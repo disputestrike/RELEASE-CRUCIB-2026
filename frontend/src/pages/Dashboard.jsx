@@ -331,8 +331,6 @@ const Dashboard = () => {
     el.style.height = `${Math.min(Math.max(el.scrollHeight, 28), 240)}px`;
   }, [prompt]);
 
-  const firstName = user?.name?.split(' ')[0] || 'there';
-
   const PROMPT_CONVERT_TO_FILE_LIMIT = 3000;
 
   const attachTextAsFile = (text, filename = 'pasted_content.txt') => {
@@ -761,7 +759,6 @@ const Dashboard = () => {
           <>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="dashboard-greeting">
               <h1 className="dashboard-greeting-text">
-                <span className="dashboard-greeting-name">Hi {firstName}.</span>
                 <span className="dashboard-greeting-sub">{location.state?.newProject ? 'What\'s your new project?' : 'What do you want to build?'}</span>
               </h1>
             </motion.div>

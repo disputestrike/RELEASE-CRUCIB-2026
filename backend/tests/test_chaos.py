@@ -89,10 +89,12 @@ class TestCorruptedStateRecovery:
 
     def test_project_state_load_handles_missing_or_invalid(self):
         """load_state returns default dict for missing/invalid state (no crash)."""
-        try:
-            from project_state import load_state
-        except ImportError:
-            pytest.skip("project_state not importable in test env")
+        import sys
+        from pathlib import Path
+
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+        from project_state import load_state
+
         result = load_state("non-existent-project-id-xyz")
         assert isinstance(result, dict), "load_state must return dict (default state)"
 

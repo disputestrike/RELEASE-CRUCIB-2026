@@ -91,15 +91,28 @@ async def test_projects_crud_with_auth(app_client):
 @pytest.mark.asyncio
 async def test_build_plan_with_auth(app_client):
     """Layer 1e: Build plan with auth returns 200 (or 402 if insufficient credits)."""
+    from unittest.mock import AsyncMock, patch
+
+    import server as server_mod
+
     auth_headers = await register_and_get_headers(app_client)
-    r = await app_client.post(
-        "/api/build/plan",
-        json={"prompt": "A simple landing page with hero and CTA"},
-        headers=auth_headers,
-        timeout=30,
-    )
-    if r.status_code == 500:
-        pytest.skip("No LLM configured (500)")
+    llm_returns = [
+        ("Plan\nKey Features:\n• Hero\nLet me build this now.", 10),
+        ('["Feat1", "Feat2", "Feat3"]', 10),
+    ]
+
+    async def _fake_llm(*args, **kwargs):
+        if llm_returns:
+            return llm_returns.pop(0)
+        return ("Plan\nLet me build this now.", 10)
+
+    with patch.object(server_mod, "_call_llm_with_fallback", new=AsyncMock(side_effect=_fake_llm)):
+        r = await app_client.post(
+            "/api/build/plan",
+            json={"prompt": "A simple landing page with hero and CTA"},
+            headers=auth_headers,
+            timeout=30,
+        )
     assert r.status_code in (200, 402), f"build/plan: got {r.status_code} {r.text[:300]}"
     if r.status_code == 200:
         data = r.json()

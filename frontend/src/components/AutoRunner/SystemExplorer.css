@@ -310,6 +310,17 @@
   margin-top: 2px;
 }
 
+.se-dag-caption {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
+  margin: 0 0 10px;
+  max-width: 560px;
+}
+.se-dag-caption code {
+  font-size: 10px;
+}
+
 /* DAG pulse animation for running nodes */
 @keyframes se-dag-pulse-anim {
   0%, 100% { opacity: 0.5; }

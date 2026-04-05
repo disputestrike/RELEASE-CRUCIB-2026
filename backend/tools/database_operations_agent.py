@@ -38,12 +38,12 @@ class DatabaseOperationsAgent(BaseAgent):
         query = (context.get("query") or "").strip()
         if not query:
             return {"error": "query is required", "success": False}
-        # When connection comes from client, allow only read-only (SELECT) to limit abuse
-        if context.get("connection"):
+        # Remote DB with client-provided connection: read-only. Local SQLite file may run DDL/DML for tooling/tests.
+        db_type = context.get("db_type", "postgres")
+        if context.get("connection") and db_type in ("postgres", "mysql"):
             q = query.upper().lstrip()
             if not (q.startswith("SELECT") or q.startswith("WITH") and "SELECT" in q[:200]):
                 return {"error": "Only SELECT queries are allowed when using client-provided connection", "success": False}
-        db_type = context.get("db_type", "postgres")
         
         try:
             if db_type == "postgres":

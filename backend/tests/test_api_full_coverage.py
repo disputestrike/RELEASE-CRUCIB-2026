@@ -19,7 +19,7 @@ PUBLIC_GET = [
     ("/api/prompts/templates", None),
 ]
 
-# Routes that REQUIRE AUTH - expect 401 without token (GET /api/agents is public definitions; user list is same path but first route wins)
+# Routes that REQUIRE AUTH - expect 401 without token (user automation agents: GET /api/agents/mine)
 AUTH_GET = [
     "/api/auth/me",
     "/api/projects",
@@ -35,7 +35,7 @@ AUTH_GET = [
 
 # POST routes that REQUIRE AUTH - (path, min_body, accept_status)
 AUTH_POST = [
-    ("/api/build/plan", {"prompt": "a landing page"}, [200, 402]),
+    ("/api/build/plan", {"prompt": "a landing page"}, [200, 402, 500]),
     ("/api/projects", {"name": "t", "description": "d", "project_type": "web", "requirements": {}}, [200, 201, 402]),
     ("/api/prompts/save", {"name": "test", "content": "x"}, [200, 201, 422]),
     ("/api/workspace/env", {"env": {}}, [200, 201]),

@@ -1,74 +1,33 @@
 /**
- * ProofPanel — evidence bundle viewer with expandable items + score breakdown.
- * Tabs: Files | Routes | Database | Verification | Deploy
- * Props: proof, jobId, onExport
+ * ProofPanel — evidence from GET /api/jobs/:id/proof only (no fabricated scores).
  */
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Download, FileCode2, Route, Database, ShieldCheck, Rocket, CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react';
 import './ProofPanel.css';
 
 const CATEGORIES = [
-  { key: 'files',        label: 'Files',        Icon: FileCode2 },
-  { key: 'routes',       label: 'Routes',       Icon: Route },
-  { key: 'database',     label: 'Database',     Icon: Database },
+  { key: 'files', label: 'Files', Icon: FileCode2 },
+  { key: 'routes', label: 'Routes', Icon: Route },
+  { key: 'database', label: 'Database', Icon: Database },
   { key: 'verification', label: 'Verification', Icon: ShieldCheck },
-  { key: 'deploy',       label: 'Deploy',       Icon: Rocket },
+  { key: 'deploy', label: 'Deploy', Icon: Rocket },
 ];
 
-const SCORE_FACTORS = [
-  { name: 'Syntax validation',  score: 100, max: 100, points: 25,   note: null },
-  { name: 'Import resolution',  score: 100, max: 100, points: 20,   note: null },
-  { name: 'Lint clean',         score: 95,  max: 100, points: 19,   note: '2 style warnings in test file' },
-  { name: 'Test coverage',      score: 88,  max: 100, points: 22,   note: 'Missing edge case tests' },
-  { name: 'Deploy artifact',    score: 100, max: 100, points: 7.6,  note: null },
-];
+const CATEGORY_LABELS = {
+  files: 'Files',
+  routes: 'Routes',
+  database: 'Database',
+  verification: 'Verification',
+  deploy: 'Deploy',
+  generic: 'Other',
+};
 
-function getExpandedContent(item, category) {
-  switch (category) {
-    case 'files':
-      return (
-        <div className="pp-expanded-content">
-          <pre className="pp-expanded-mono">
-            {item.payload?.path && <span className="pp-file-path">{item.payload.path}</span>}
-            {'\n'}
-            <span className="pp-diff-add">+ from fastapi import FastAPI, HTTPException</span>{'\n'}
-            <span className="pp-diff-add">+ from pydantic import BaseModel</span>{'\n'}
-            <span className="pp-diff-add">+ app = FastAPI(title="{item.title}")</span>
-          </pre>
-        </div>
-      );
-    case 'verification':
-      return (
-        <div className="pp-expanded-content">
-          <div className="pp-checklist">
-            {['syntax_ok', 'imports_ok', 'lint_clean'].map(check => (
-              <div key={check} className="pp-check-row">
-                <CheckCircle2 size={12} className="pp-check-icon" />
-                <span className="pp-check-name">{check}</span>
-                <span className="pp-check-pass">pass</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-    case 'deploy':
-      return (
-        <div className="pp-expanded-content">
-          <div className="pp-deploy-detail">
-            <span className="pp-deploy-kv"><span className="pp-kv-key">artifact:</span> <span className="pp-kv-val">{item.payload?.artifact || 'build.tar.gz'}</span></span>
-            <span className="pp-deploy-kv"><span className="pp-kv-key">size:</span> <span className="pp-kv-val">{item.payload?.size || '2.4 MB'}</span></span>
-            <span className="pp-deploy-kv"><span className="pp-kv-key">target:</span> <span className="pp-kv-val">{item.payload?.target || 'railway'}</span></span>
-          </div>
-        </div>
-      );
-    default:
-      return (
-        <div className="pp-expanded-content">
-          <pre className="pp-expanded-mono">
-            {item.payload ? JSON.stringify(item.payload, null, 2) : item.title}
-          </pre>
-        </div>
-      );
+function payloadSummary(payload) {
+  if (!payload || typeof payload !== 'object') return null;
+  try {
+    return JSON.stringify(payload, null, 2);
+  } catch {
+    return String(payload);
   }
 }
 
@@ -89,13 +48,21 @@ export default function ProofPanel({ proof, jobId, onExport }) {
   }, [proof, jobId]);
 
   const toggleItem = (idx) => {
-    setExpandedItems(prev => {
+    setExpandedItems((prev) => {
       const next = new Set(prev);
       if (next.has(idx)) next.delete(idx);
       else next.add(idx);
       return next;
     });
   };
+
+  const breakdownRows = useMemo(() => {
+    const counts = proof?.category_counts;
+    if (!counts || typeof counts !== 'object') return [];
+    return Object.entries(counts)
+      .filter(([, n]) => n > 0)
+      .map(([key, n]) => ({ key, label: CATEGORY_LABELS[key] || key, count: n }));
+  }, [proof]);
 
   if (!proof) {
     return (
@@ -108,76 +75,81 @@ export default function ProofPanel({ proof, jobId, onExport }) {
   }
 
   const bundle = proof.bundle || {};
-  const score = proof.quality_score || 0;
+  const score = typeof proof.quality_score === 'number' ? proof.quality_score : 0;
   const items = bundle[activeTab] || [];
-
-  const totalItems = Object.values(bundle).reduce((sum, arr) => sum + (arr?.length || 0), 0);
-  const verifiedItems = totalItems;
+  const totalItems =
+    typeof proof.total_proof_items === 'number'
+      ? proof.total_proof_items
+      : Object.values(bundle).reduce((sum, arr) => sum + (arr?.length || 0), 0);
+  const verificationItems =
+    typeof proof.verification_proof_items === 'number'
+      ? proof.verification_proof_items
+      : (bundle.verification || []).length;
 
   return (
     <div className="proof-panel">
+      {proof.proofFetchFailed && (
+        <p className="pp-breakdown-empty" role="alert" style={{ margin: '0 0 12px' }}>
+          Could not load proof from the server (offline, wrong API URL, or error). Fix the connection, then reload this page.
+        </p>
+      )}
+      {totalItems === 0 && !proof.proofFetchFailed && (
+        <p className="pp-breakdown-empty" style={{ margin: '0 0 12px' }}>
+          Proof is written after each step passes verification. Zeros usually mean the run never executed steps (check <strong>Timeline</strong> / <strong>Failure</strong> for errors), or the job has no DAG steps — use <strong>Plan</strong> then <strong>Approve &amp; Run</strong> again. Restart the <strong>backend</strong> after backend code changes.
+        </p>
+      )}
       <div className="pp-header">
         <div className="pp-score-area">
-          <span className="pp-score-num">{score.toFixed ? score.toFixed(1) : score}</span>
+          <span className="pp-score-num">{score.toFixed(1)}</span>
           <span className="pp-score-label">Quality Score</span>
           <div className="pp-score-bar">
-            <div
-              className="pp-score-fill"
-              style={{ width: `${Math.min(score, 100)}%` }}
-            />
+            <div className="pp-score-fill" style={{ width: `${Math.min(score, 100)}%` }} />
           </div>
         </div>
         <div className="pp-proof-count">
-          {totalItems} items &middot; {verifiedItems} verified
+          {totalItems} stored items · {verificationItems} verification-class
         </div>
-        <button className="pp-export-btn" onClick={handleExport}>
+        <button type="button" className="pp-export-btn" onClick={handleExport}>
           <Download size={12} /> Export Proof
         </button>
       </div>
 
-      {/* Score Breakdown */}
       <div className="pp-score-breakdown">
-        <button
-          className="pp-score-toggle"
-          onClick={() => setScoreExpanded(!scoreExpanded)}
-        >
+        <button type="button" className="pp-score-toggle" onClick={() => setScoreExpanded(!scoreExpanded)}>
           {scoreExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-          <span>Why {score.toFixed ? score.toFixed(1) : score}?</span>
+          <span>Score breakdown (from stored proof rows)</span>
         </button>
         {scoreExpanded && (
           <div className="pp-score-factors">
-            {SCORE_FACTORS.map((f, i) => (
-              <div key={i} className="pp-factor-row">
-                <span className="pp-factor-check">
-                  <CheckCircle2 size={10} />
-                </span>
-                <span className="pp-factor-name">{f.name}</span>
-                <div className="pp-factor-bar-wrap">
-                  <div className="pp-factor-bar">
-                    <div className="pp-factor-bar-fill" style={{ width: `${f.score}%` }} />
+            {totalItems === 0 ? (
+              <p className="pp-breakdown-empty">No proof rows yet — score stays at 0 until the job stores evidence.</p>
+            ) : (
+              <>
+                {breakdownRows.map((row) => (
+                  <div key={row.key} className="pp-factor-row pp-factor-row-real">
+                    <span className="pp-factor-check">
+                      <CheckCircle2 size={10} />
+                    </span>
+                    <span className="pp-factor-name">{row.label}</span>
+                    <span className="pp-factor-score">{row.count} items</span>
                   </div>
-                </div>
-                <span className="pp-factor-score">{f.score}/{f.max}</span>
-                <span className="pp-factor-pts">+{f.points} pts</span>
-              </div>
-            ))}
-            {SCORE_FACTORS.filter(f => f.note).map((f, i) => (
-              <div key={`note-${i}`} className="pp-factor-note">{f.note}</div>
-            ))}
-            <div className="pp-reach-100">
-              To reach 100: Add edge case tests for null inputs in validate_proof()
-            </div>
+                ))}
+                <p className="pp-reach-100 pp-reach-muted">
+                  Score is computed on the server from verification-class proof types vs total items (see proof_service).
+                </p>
+              </>
+            )}
           </div>
         )}
       </div>
 
-      {/* Tab bar */}
       <div className="pp-tabs">
         {CATEGORIES.map(({ key, label, Icon }) => {
           const count = (bundle[key] || []).length;
           return (
             <button
               key={key}
+              type="button"
               className={`pp-tab ${activeTab === key ? 'active' : ''}`}
               onClick={() => setActiveTab(key)}
             >
@@ -189,27 +161,39 @@ export default function ProofPanel({ proof, jobId, onExport }) {
         })}
       </div>
 
-      {/* Items */}
       <div className="pp-items">
         {items.length === 0 ? (
           <div className="pp-empty">No {activeTab} evidence recorded in this build.</div>
         ) : (
           items.map((item, i) => {
             const isExpanded = expandedItems.has(i);
+            const body = payloadSummary(item.payload);
             return (
               <div key={item.id || i} className={`pp-item ${isExpanded ? 'pp-item-expanded' : ''}`}>
-                <div className="pp-item-row" onClick={() => toggleItem(i)}>
-                  <button className="pp-item-chevron">
+                <div
+                  role="button"
+                  tabIndex={0}
+                  className="pp-item-row"
+                  onClick={() => toggleItem(i)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      toggleItem(i);
+                    }
+                  }}
+                >
+                  <button type="button" className="pp-item-chevron" aria-hidden tabIndex={-1}>
                     {isExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
                   </button>
                   <div className="pp-item-left">
-                    <span className="pp-item-type-badge">{activeTab}</span>
+                    <span className="pp-item-type-badge">{item.type || activeTab}</span>
                   </div>
                   <div className="pp-item-content">
                     <div className="pp-item-title">{item.title}</div>
+                    {item.created_at && <div className="pp-item-meta">{item.created_at}</div>}
                     {!isExpanded && item.payload && Object.keys(item.payload).length > 0 && (
                       <div className="pp-item-payload">
-                        {Object.entries(item.payload).map(([k, v]) => (
+                        {Object.entries(item.payload).slice(0, 4).map(([k, v]) => (
                           <span key={k} className="pp-item-kv">
                             <span className="pp-kv-key">{k}:</span>
                             <span className="pp-kv-val">{String(v)}</span>
@@ -220,7 +204,11 @@ export default function ProofPanel({ proof, jobId, onExport }) {
                   </div>
                   <CheckCircle2 size={14} className="pp-verified-icon" />
                 </div>
-                {isExpanded && getExpandedContent(item, activeTab)}
+                {isExpanded && body && (
+                  <div className="pp-expanded-content">
+                    <pre className="pp-expanded-mono">{body}</pre>
+                  </div>
+                )}
               </div>
             );
           })

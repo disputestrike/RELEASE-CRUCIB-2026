@@ -1,30 +1,23 @@
 /**
- * SystemStatusHUD — compact inline status indicator for the top bar.
- * Shows: status dot, active agents, latency, mode.
- * On hover: metrics tooltip. On click: agent activity panel.
- * Props: isConnected, activeAgentCount, jobStatus, steps
+ * SystemStatusHUD — real API latency + stream stats (no random/mock metrics).
  */
 import React, { useState, useEffect, useRef } from 'react';
 import AgentActivityPanel from './AgentActivityPanel';
 import './SystemStatusHUD.css';
 
-export default function SystemStatusHUD({ isConnected, activeAgentCount = 0, jobStatus, steps = [] }) {
+export default function SystemStatusHUD({
+  isConnected,
+  activeAgentCount = 0,
+  jobStatus,
+  steps = [],
+  healthLatencyMs = null,
+  eventCount = 0,
+  proofItemCount = 0,
+}) {
   const [showTooltip, setShowTooltip] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
-  const [latency, setLatency] = useState(47);
   const containerRef = useRef(null);
 
-  // Mock latency calculation
-  useEffect(() => {
-    const base = Date.now() % 46;
-    setLatency(47 + base);
-    const interval = setInterval(() => {
-      setLatency(47 + Math.floor(Math.random() * 46));
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Close panel on outside click
   useEffect(() => {
     if (!showPanel) return;
     const handler = (e) => {
@@ -37,12 +30,19 @@ export default function SystemStatusHUD({ isConnected, activeAgentCount = 0, job
   }, [showPanel]);
 
   const isActive = jobStatus === 'running';
-  const mode = isActive ? 'Auto' : 'Idle';
+  const agentsLive = Math.max(activeAgentCount, isActive ? 1 : 0);
+  const opsLabel = isConnected ? 'Operational' : 'Reconnecting';
 
   const latencyColor =
-    latency < 200 ? 'var(--state-success)' :
-    latency < 500 ? 'var(--state-warning)' :
-    'var(--state-error)';
+    healthLatencyMs == null
+      ? 'var(--text-muted)'
+      : healthLatencyMs < 200
+        ? 'var(--state-success)'
+        : healthLatencyMs < 600
+          ? 'var(--state-warning)'
+          : 'var(--state-error)';
+
+  const latencyLabel = healthLatencyMs != null ? `${healthLatencyMs}ms` : '—';
 
   return (
     <div
@@ -50,56 +50,49 @@ export default function SystemStatusHUD({ isConnected, activeAgentCount = 0, job
       ref={containerRef}
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
-      onClick={() => { setShowPanel(!showPanel); setShowTooltip(false); }}
+      onClick={() => {
+        setShowPanel(!showPanel);
+        setShowTooltip(false);
+      }}
     >
       <span className={`ssh-dot ${isActive ? 'ssh-dot-active' : isConnected ? 'ssh-dot-ok' : 'ssh-dot-off'}`} />
       <span className="ssh-text">
-        {activeAgentCount > 0
-          ? `${activeAgentCount} agent${activeAgentCount !== 1 ? 's' : ''}`
-          : 'Idle'
-        }
-        {' '}&middot;{' '}
-        <span style={{ color: latencyColor }}>{latency}ms</span>
-        {' '}&middot;{' '}{mode}
+        {opsLabel}
+        {' · '}
+        {agentsLive} agent{agentsLive !== 1 ? 's' : ''} live
+        {' · '}
+        <span style={{ color: latencyColor }}>{latencyLabel}</span>
+        {isActive && ' · Auto'}
       </span>
 
-      {/* Hover tooltip */}
       {showTooltip && !showPanel && (
         <div className="ssh-tooltip">
           <div className="ssh-tooltip-row">
-            <span className="ssh-tooltip-label">Orchestration Engine</span>
-            <span className="ssh-tooltip-val ssh-val-ok">Healthy</span>
+            <span className="ssh-tooltip-label">API /health RTT</span>
+            <span className="ssh-tooltip-val">{healthLatencyMs != null ? `${healthLatencyMs} ms` : 'n/a'}</span>
           </div>
           <div className="ssh-tooltip-row">
-            <span className="ssh-tooltip-label">DAG Scheduler</span>
-            <span className="ssh-tooltip-val">3 active nodes</span>
+            <span className="ssh-tooltip-label">SSE events (this session)</span>
+            <span className="ssh-tooltip-val">{eventCount}</span>
           </div>
           <div className="ssh-tooltip-row">
-            <span className="ssh-tooltip-label">Event Bus</span>
-            <span className="ssh-tooltip-val">47 events/min</span>
+            <span className="ssh-tooltip-label">Proof items (job)</span>
+            <span className="ssh-tooltip-val">{proofItemCount}</span>
           </div>
           <div className="ssh-tooltip-row">
-            <span className="ssh-tooltip-label">Proof Service</span>
-            <span className="ssh-tooltip-val">7 items stored</span>
+            <span className="ssh-tooltip-label">Job steps loaded</span>
+            <span className="ssh-tooltip-val">{steps.length}</span>
           </div>
           <div className="ssh-tooltip-row">
-            <span className="ssh-tooltip-label">SSE Stream</span>
-            <span className="ssh-tooltip-val ssh-val-ok">Connected &middot; 0ms</span>
-          </div>
-          <div className="ssh-tooltip-row">
-            <span className="ssh-tooltip-label">Database</span>
-            <span className="ssh-tooltip-val">9 tables &middot; 23ms</span>
+            <span className="ssh-tooltip-label">Stream</span>
+            <span className={`ssh-tooltip-val ${isConnected ? 'ssh-val-ok' : ''}`}>
+              {isConnected ? 'connected' : 'disconnected'}
+            </span>
           </div>
         </div>
       )}
 
-      {/* Agent activity panel */}
-      {showPanel && (
-        <AgentActivityPanel
-          steps={steps}
-          onClose={() => setShowPanel(false)}
-        />
-      )}
+      {showPanel && <AgentActivityPanel steps={steps} onClose={() => setShowPanel(false)} />}
     </div>
   );
 }

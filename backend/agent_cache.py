@@ -1,6 +1,6 @@
 """
 Agent cache for CrucibAI — caches agent outputs by (agent_name, input_hash) with TTL.
-Uses MongoDB collection agent_cache; optional in-memory cache for hot path.
+Uses PostgreSQL table agent_cache (via db_pg); optional in-memory cache for hot path.
 Reduces duplicate agent runs, faster repeat requests, lower token/cost.
 """
 from typing import Optional, Dict, Any
@@ -32,7 +32,7 @@ async def get(db, agent_name: str, input_data: str) -> Optional[Dict[str, Any]]:
         if entry.get("expires") and datetime.now(timezone.utc) < entry["expires"]:
             return entry.get("output")
         del _memory_cache[agent_name][key]
-    # MongoDB
+    # PostgreSQL
     try:
         doc = await db[COLLECTION_NAME].find_one({"agent_name": agent_name, "input_hash": key})
         if not doc:
@@ -62,7 +62,7 @@ async def set(db, agent_name: str, input_data: str, output: Dict[str, Any], ttl_
             # Evict oldest (simple: drop one arbitrary)
             cache.pop(next(iter(cache)))
         cache[key] = {"output": output, "expires": expires}
-    # MongoDB
+    # PostgreSQL
     try:
         await db[COLLECTION_NAME].update_one(
             {"agent_name": agent_name, "input_hash": key},

@@ -6,9 +6,7 @@ import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
-# Ensure env before importing server
-os.environ.setdefault("MONGO_URL", "mongodb://localhost:27017")
-os.environ.setdefault("DB_NAME", "crucibai")
+# Ensure env before importing server (PostgreSQL via DATABASE_URL when needed)
 
 
 @pytest.mark.asyncio
@@ -49,8 +47,7 @@ async def test_webhook_invalid_secret_401(app_client, auth_headers):
         "actions": [{"type": "http", "config": {"method": "GET", "url": "https://httpbin.org/get"}}],
     }
     r = await app_client.post("/api/agents", json=create, headers=auth_headers, timeout=10)
-    if r.status_code not in (200, 201):
-        pytest.skip("Create agent failed (maybe DB not available)")
+    assert r.status_code in (200, 201), r.text
     data = r.json()
     agent_id = data["id"]
     # Call webhook with wrong secret
@@ -68,8 +65,7 @@ async def test_agents_crud_create_get_list(app_client, auth_headers):
         "actions": [{"type": "http", "config": {"method": "GET", "url": "https://httpbin.org/get"}}],
     }
     r = await app_client.post("/api/agents", json=create, headers=auth_headers, timeout=10)
-    if r.status_code not in (200, 201):
-        pytest.skip("Create failed: " + r.text)
+    assert r.status_code in (200, 201), r.text
     data = r.json()
     assert data["id"]
     assert data["name"] == create["name"]
@@ -77,7 +73,7 @@ async def test_agents_crud_create_get_list(app_client, auth_headers):
     r2 = await app_client.get(f"/api/agents/{agent_id}", headers=auth_headers, timeout=10)
     assert r2.status_code == 200
     assert r2.json()["id"] == agent_id
-    r3 = await app_client.get("/api/agents", headers=auth_headers, timeout=10)
+    r3 = await app_client.get("/api/agents/mine", headers=auth_headers, timeout=10)
     assert r3.status_code == 200
     assert "items" in r3.json()
     # No auth -> 403 or 401
@@ -94,12 +90,10 @@ async def test_agents_runs_and_logs(app_client, auth_headers):
         "actions": [{"type": "http", "config": {"method": "GET", "url": "https://httpbin.org/get"}}],
     }
     r = await app_client.post("/api/agents", json=create, headers=auth_headers, timeout=10)
-    if r.status_code not in (200, 201):
-        pytest.skip("Create failed")
+    assert r.status_code in (200, 201), r.text
     agent_id = r.json()["id"]
     r2 = await app_client.post(f"/api/agents/{agent_id}/run", headers=auth_headers, timeout=30)
-    if r2.status_code == 402:
-        pytest.skip("Insufficient credits")
+    assert r2.status_code != 402, r2.text
     assert r2.status_code == 200
     run_id = r2.json()["run_id"]
     r3 = await app_client.get(f"/api/agents/{agent_id}/runs", headers=auth_headers, timeout=10)

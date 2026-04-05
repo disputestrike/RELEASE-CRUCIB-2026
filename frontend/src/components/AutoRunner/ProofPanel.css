@@ -434,3 +434,22 @@
   border-radius: var(--radius-sm);
   margin-top: 4px;
 }
+
+.pp-factor-row-real .pp-factor-name {
+  flex: 1;
+}
+.pp-breakdown-empty {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0;
+}
+.pp-reach-muted {
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.pp-item-meta {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}

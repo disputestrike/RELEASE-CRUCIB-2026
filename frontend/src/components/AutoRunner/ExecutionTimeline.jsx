@@ -7,20 +7,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { RefreshCw, Code2, ChevronDown, ChevronRight } from 'lucide-react';
 import './ExecutionTimeline.css';
 
-const FILTERS = ['All', 'Active', 'Errors', 'Retries', 'By Agent'];
-
-const STEP_DETAILS = {
-  'initialize': { input: 'Goal: Build a FastAPI service with proof validation', output: 'Project structure created\nrequirements.txt generated\ngit repository initialized', decision: 'Using FastAPI template with async support for optimal concurrency' },
-  'install': { input: 'requirements.txt with fastapi, asyncpg, httpx', output: 'Successfully installed 3 packages\nfastapi==0.104\nasyncpg==0.29\nhttpx==0.25', decision: null },
-  'routes': { input: 'API specification: health, jobs CRUD, proof endpoints', output: '@app.get("/health")\n@app.post("/api/jobs")\n@app.get("/api/jobs/{id}")\n@app.post("/api/jobs/{id}/proof")\n@app.get("/api/proof/{id}")', decision: 'Agent decided to use RESTful route pattern after detecting CRUD requirement' },
-  'logic': { input: 'Stub functions: validate_proof, score_items, get_proof', output: 'def validate_proof(job_id):\n    items = get_proof(job_id)\n    return score_items(items)\n\n3 functions implemented', decision: 'Using strategy pattern for proof validation to support multiple proof types' },
-  'tests': { input: 'Service functions requiring test coverage', output: 'def test_validate_proof(): assert validate_proof("x") > 0\ndef test_empty_proof(): assert validate_proof("") == 0\n5 tests passing · Coverage: 88%', decision: null },
-};
-
-function getStepDetail(stepKey) {
-  const key = Object.keys(STEP_DETAILS).find(k => stepKey?.toLowerCase().includes(k));
-  return key ? STEP_DETAILS[key] : null;
-}
+const FILTERS = ['All', 'Active', 'Errors', 'Retries'];
 
 function StatusIcon({ status }) {
   switch (status) {
@@ -120,7 +107,6 @@ export default function ExecutionTimeline({
       case 'Active': return ['running', 'verifying'].includes(s.status);
       case 'Errors': return ['failed', 'blocked'].includes(s.status);
       case 'Retries': return (s.retry_count || 0) > 0;
-      case 'By Agent': return true;
       default: return true;
     }
   });
@@ -131,8 +117,18 @@ export default function ExecutionTimeline({
   const getStepLogs = (stepId) =>
     events
       .filter(e => e.step_id === stepId || e.payload?.step_id === stepId)
-      .filter(e => ['step_log', 'step_started', 'step_completed', 'step_failed'].includes(e.type || e.event_type))
-      .slice(-5);
+      .filter(e =>
+        [
+          'step_log',
+          'step_started',
+          'step_completed',
+          'step_failed',
+          'dag_node_started',
+          'dag_node_completed',
+          'dag_node_failed',
+        ].includes(e.type || e.event_type),
+      )
+      .slice(-12);
 
   return (
     <div className="execution-timeline">
@@ -183,8 +179,6 @@ export default function ExecutionTimeline({
             const isDetailExpanded = expandedSteps.has(step.id);
             const isFailed = ['failed', 'blocked'].includes(step.status);
             const timestamp = step.started_at || step.created_at;
-            const detail = getStepDetail(step.step_key);
-
             return (
               <div
                 key={step.id}
@@ -219,21 +213,32 @@ export default function ExecutionTimeline({
                 {/* Expanded detail */}
                 {isDetailExpanded && (
                   <div className="tl-expanded">
-                    <div className="tl-block">
-                      <span className="tl-block-label">Input</span>
-                      <pre className="tl-mono">{step.input || detail?.input || 'Goal context + previous step output'}</pre>
-                    </div>
-                    <div className="tl-block">
-                      <span className="tl-block-label success">Output</span>
-                      <pre className="tl-mono">{step.output || step.result_json?.output || detail?.output || 'Step completed successfully'}</pre>
-                    </div>
-                    {(step.decision || detail?.decision) && (
+                    {(step.input || step.result_json?.input) && (
                       <div className="tl-block">
-                        <span className="tl-block-label">Decision</span>
-                        <p className="tl-decision">{step.decision || detail?.decision}</p>
+                        <span className="tl-block-label">Input</span>
+                        <pre className="tl-mono">{step.input || step.result_json?.input}</pre>
                       </div>
                     )}
-                    <div className="tl-tokens">{step.tokens_used || step.result_json?.tokens_used || 847} tokens used</div>
+                    <div className="tl-block">
+                      <span className="tl-block-label success">Output</span>
+                      <pre className="tl-mono">
+                        {step.output ||
+                          step.result_json?.output ||
+                          step.narrative ||
+                          (step.status === 'completed' ? '—' : 'Pending…')}
+                      </pre>
+                    </div>
+                    {step.decision && (
+                      <div className="tl-block">
+                        <span className="tl-block-label">Decision</span>
+                        <p className="tl-decision">{step.decision}</p>
+                      </div>
+                    )}
+                    {(step.tokens_used != null || step.result_json?.tokens_used != null) && (
+                      <div className="tl-tokens">
+                        {step.tokens_used ?? step.result_json?.tokens_used} tokens used
+                      </div>
+                    )}
 
                     {/* Inline logs */}
                     {logs.length > 0 && (
@@ -241,8 +246,8 @@ export default function ExecutionTimeline({
                         {logs.map((ev, i) => (
                           <div key={i} className="et-log-line">
                             <span className="et-log-type">{ev.type || ev.event_type}</span>
-                            <span className="et-log-msg">
-                              {JSON.stringify(ev.payload || {}).slice(0, 120)}
+                            <span className="et-log-msg et-log-msg-json">
+                              {JSON.stringify(ev.payload || {}, null, 0).slice(0, 420)}
                             </span>
                           </div>
                         ))}

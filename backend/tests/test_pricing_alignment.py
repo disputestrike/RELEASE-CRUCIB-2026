@@ -7,11 +7,11 @@ import pytest
 
 # --- 1. pricing_plans (no server import) ---
 @pytest.mark.parametrize("plan,expected_credits,expected_price", [
-    ("free", 100, 0),
-    ("builder", 250, 15),
-    ("pro", 500, 30),
-    ("scale", 1000, 60),
-    ("teams", 2500, 150),
+    ("free", 200, 0),
+    ("builder", 500, 15),
+    ("pro", 1000, 30),
+    ("scale", 2000, 60),
+    ("teams", 5000, 150),
 ])
 def test_credit_plans_has_correct_plans_and_values(plan, expected_credits, expected_price):
     from pricing_plans import CREDIT_PLANS

@@ -28,7 +28,7 @@ class TestHealthEndpoints:
         assert "CrucibAI" in data["message"]
 
 
-# DB-dependent tests run before AI tests (AI can leave event loop in bad state for Motor).
+# DB-dependent tests run before AI tests (AI can leave event loop in a bad state).
 class TestAuthEndpoints:
     """Auth – real DB; register, login, me."""
 
@@ -39,12 +39,12 @@ class TestAuthEndpoints:
             "password": "testpass123",
             "name": "Test User"
         })
-        assert r.status_code == 200
+        assert r.status_code in (200, 201)
         data = r.json()
         assert "token" in data
         assert "user" in data
         assert data["user"]["email"] == test_email
-        assert "token_balance" in data["user"]
+        assert "token_balance" in data["user"] or "credit_balance" in data["user"]
 
     async def test_register_duplicate_email(self, app_client):
         test_email = f"test_dup_{int(time.time())}@example.com"
@@ -127,9 +127,10 @@ class TestTokenEndpoints:
         r = await app_client.post("/api/tokens/purchase", json={"bundle": "builder"}, headers={"Authorization": f"Bearer {token}"})
         assert r.status_code == 200
         data = r.json()
-        # builder bundle adds 250 credits
-        assert data["new_balance"] == initial_credits + 250
-        assert data["credits_added"] == 250
+        # builder bundle credits (see pricing_plans.CREDIT_PLANS)
+        added = data.get("credits_added", 0)
+        assert data["new_balance"] == initial_credits + added
+        assert added == 500
 
     async def test_get_token_history(self, app_client):
         test_email = f"test_history_{int(time.time())}@example.com"
@@ -357,8 +358,7 @@ class TestDeletionEndpoints:
     async def test_delete_project(self, app_client, auth_headers_with_project):
         """DELETE /api/projects/{id} with auth returns 204 or 200 and removes project."""
         pid = auth_headers_with_project.get("x-test-project-id")
-        if not pid:
-            pytest.skip("No project id from fixture")
+        assert pid, "fixture must provide x-test-project-id"
         headers = {k: v for k, v in auth_headers_with_project.items() if k != "x-test-project-id"}
         r = await app_client.delete(f"/api/projects/{pid}", headers=headers)
         assert r.status_code in (200, 204), r.text
@@ -373,9 +373,7 @@ class TestDeletionEndpoints:
             "password": "DelPass123!",
             "name": "Delete Test"
         })
-        if reg.status_code == 500:
-            pytest.skip("In-process register returned 500 (Motor/event loop). Run backend and set CRUCIBAI_API_URL for full suite.")
-        assert reg.status_code in (200, 201)
+        assert reg.status_code in (200, 201), reg.text
         token = reg.json()["token"]
         r = await app_client.post(
             "/api/users/me/delete",

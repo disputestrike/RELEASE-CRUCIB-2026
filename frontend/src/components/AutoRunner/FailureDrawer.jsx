@@ -27,6 +27,10 @@ const RETRY_STRATEGIES = {
   unknown:            'Retrying with conservative patch strategy',
 };
 
+/** Keep aligned with backend/orchestration/fixer.py MAX_RETRIES (retries after first failure). */
+const MAX_STEP_RETRIES = 3;
+const MAX_ATTEMPTS = MAX_STEP_RETRIES + 1;
+
 const BROKEN_CODE = `@app.post("/api/jobs")
 async def create_job(data: dict)
     job = await db.create(data)`;
@@ -97,7 +101,9 @@ export default function FailureDrawer({ step, onRetry, onOpenCode, onPauseJob, o
         </div>
 
         <div className="fd-retry-info">
-          Attempt {retryCount + 1} of 3
+          Attempt {Math.min(retryCount + 1, MAX_ATTEMPTS)} of {MAX_ATTEMPTS}
+          {' '}
+          <span className="fd-retry-meta">({MAX_STEP_RETRIES} auto-retries max)</span>
         </div>
 
         {/* Recovery section */}
@@ -119,9 +125,9 @@ export default function FailureDrawer({ step, onRetry, onOpenCode, onPauseJob, o
             <div className="fd-diff-stat">+ 3 lines changed</div>
 
             <div className={`fd-recovery-status fd-recovery-${retryState}`}>
-              {retryState === 'in_progress' && 'Attempt 1 of 3 — In Progress'}
-              {retryState === 'recovered' && 'Attempt 1 of 3 — Recovered'}
-              {retryState === 'exhausted' && 'All 3 attempts exhausted'}
+              {retryState === 'in_progress' && `Attempt 1 of ${MAX_ATTEMPTS} — In Progress (demo)`}
+              {retryState === 'recovered' && `Attempt 1 of ${MAX_ATTEMPTS} — Recovered (demo)`}
+              {retryState === 'exhausted' && `All ${MAX_ATTEMPTS} attempts exhausted`}
             </div>
 
             {/* Attempt timeline */}

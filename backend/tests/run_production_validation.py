@@ -3,7 +3,7 @@ Master test runner: 5-Layer Production Validation.
 Run: cd backend && python -m pytest tests/test_endpoint_mapping.py tests/test_webhook_flows.py tests/test_data_integrity.py tests/test_user_journeys.py tests/test_security.py -v --tb=short
 Or:  cd backend && python tests/run_production_validation.py
 
-Note: Tests that use auth (register + protected routes) may hit Motor "Future attached to a different loop"
+Note: Tests that use auth (register + protected routes) may hit async DB "Future attached to a different loop"
 when run in-process. For full pass, start the backend (uvicorn server:app) then run pytest with
 CRUCIBAI_API_URL=http://localhost:8000 (and use a client that hits that URL instead of ASGITransport).
 """

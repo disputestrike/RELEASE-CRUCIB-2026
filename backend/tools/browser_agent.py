@@ -45,7 +45,10 @@ class BrowserAgent(BaseAgent):
         }
         """
         action = context.get("action", "navigate")
-        
+        known = {"navigate", "screenshot", "scrape", "fill_form", "click"}
+        if action not in known:
+            return {"error": f"Unknown action: {action}", "success": False}
+
         async with async_playwright() as p:
             self.browser = await p.chromium.launch(headless=True)
             self.page = await self.browser.new_page()
@@ -62,8 +65,8 @@ class BrowserAgent(BaseAgent):
                 elif action == "click":
                     result = await self._click(context)
                 else:
-                    result = {"error": f"Unknown action: {action}"}
-                
+                    result = {"error": f"Unknown action: {action}", "success": False}
+
                 await self.browser.close()
                 return result
                 

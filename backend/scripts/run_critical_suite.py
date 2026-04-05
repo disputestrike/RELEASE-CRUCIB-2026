@@ -28,8 +28,7 @@ if BACKEND not in sys.path:
 TEST_ENV = os.environ.copy()
 TEST_ENV["DISABLE_CSRF_FOR_TEST"] = "1"
 TEST_ENV.setdefault("RATE_LIMIT_PER_MINUTE", "99999")
-TEST_ENV.setdefault("MONGO_URL", "mongodb://localhost:27017")
-TEST_ENV.setdefault("DB_NAME", "crucibai")
+# DB-backed tests need DATABASE_URL pointing at Postgres (see db_pg.py).
 
 
 def _run(cmd, cwd, timeout=300, env=None):

@@ -3,31 +3,23 @@
  * Shows before plan approval so user knows what they're committing.
  * Props: goal, token, onEstimateReady
  */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { Zap, Info } from 'lucide-react';
+import { API_BASE } from '../../apiBase';
 import './CostEstimator.css';
-
-const API = process.env.REACT_APP_BACKEND_URL || '';
 
 export default function CostEstimator({ goal, token, onEstimateReady }) {
   const [estimate, setEstimate] = useState(null);
   const [loading, setLoading] = useState(false);
   const debounceRef = useRef(null);
 
-  useEffect(() => {
-    if (!goal || goal.length < 10) return;
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      fetchEstimate(goal);
-    }, 700);
-    return () => clearTimeout(debounceRef.current);
-  }, [goal]);
-
-  const fetchEstimate = async (g) => {
+  const fetchEstimate = useCallback(async (g) => {
     setLoading(true);
     try {
-      const res = await axios.post(`${API}/api/orchestrator/estimate`, { goal: g });
+      const headers = {};
+      if (token) headers.Authorization = `Bearer ${token}`;
+      const res = await axios.post(`${API_BASE}/orchestrator/estimate`, { goal: g }, { headers });
       const est = res.data?.estimate;
       setEstimate(est);
       onEstimateReady?.(est);
@@ -36,7 +28,16 @@ export default function CostEstimator({ goal, token, onEstimateReady }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, onEstimateReady]);
+
+  useEffect(() => {
+    if (!goal || goal.length < 10) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetchEstimate(goal);
+    }, 700);
+    return () => clearTimeout(debounceRef.current);
+  }, [goal, fetchEstimate]);
 
   if (!goal || goal.length < 10) return null;
 

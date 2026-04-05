@@ -16,6 +16,7 @@ Usage:
 import asyncio
 import resource
 import subprocess
+import sys
 import tempfile
 import os
 import logging
@@ -216,8 +217,9 @@ class SandboxExecutor:
 
     def _build_command(self, language: str, code_file: str) -> list:
         """Build the execution command for the given language."""
+        py = sys.executable or "python"
         commands = {
-            "python": ["python3", "-u", code_file],
+            "python": [py, "-u", code_file],
             "node": ["node", code_file],
             "bash": ["bash", code_file],
         }

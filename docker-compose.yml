@@ -1,11 +1,49 @@
-# Local dev: backend on port 8000 so frontend (localhost:3000) proxy can connect.
-# Usage:
-#   docker-compose up -d backend    # backend only (you need DATABASE_URL for a real DB)
-#   docker-compose up -d           # backend + postgres (backend uses postgres:5432)
-# Then run frontend on host: cd frontend && npm start → open http://localhost:3000
+# Local dependencies only (recommended): Postgres + Redis for host-run backend/frontend.
+#
+#   docker compose up -d
+#
+# Then from repo root:  .\run-dev.ps1
+#   Backend reads backend/.env → DATABASE_URL / REDIS_URL → 127.0.0.1
+#
+# All-in-Docker API (optional):
+#   docker compose --profile container-api up -d --build
 
 services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: crucibai
+      POSTGRES_PASSWORD: crucibai
+      POSTGRES_DB: crucibai
+    ports:
+      # Host 5432 is often a local Postgres install; use 5434 to avoid conflicts.
+      - "5434:5432"
+    volumes:
+      - crucibai_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crucibai -d crucibai"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      # 6379 may already be used by another Redis container.
+      - "6381:6379"
+    volumes:
+      - crucibai_redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Optional: build & run the API inside Docker (same image as Railway-style deploy).
   backend:
+    profiles:
+      - container-api
     build:
       context: .
       dockerfile: Dockerfile
@@ -15,29 +53,22 @@ services:
       - PORT=8000
       - CRUCIBAI_DEV=1
       - JWT_SECRET=${JWT_SECRET:-dev-secret-change-in-production}
-      - DATABASE_URL=${DATABASE_URL:-postgresql://crucibai:crucibai@postgres:5432/crucibai}
+      - DATABASE_URL=postgresql://crucibai:crucibai@postgres:5432/crucibai
+      - REDIS_URL=redis://redis:6379/0
       - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
       - FRONTEND_URL=http://localhost:3000
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
       interval: 10s
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 15s
 
-  postgres:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_USER: crucibai
-      POSTGRES_PASSWORD: crucibai
-      POSTGRES_DB: crucibai
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U crucibai -d crucibai"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
+volumes:
+  crucibai_pg_data:
+  crucibai_redis_data:

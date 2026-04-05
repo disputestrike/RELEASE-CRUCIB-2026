@@ -1,0 +1,218 @@
+/**
+ * Unified workspace shell — design tokens scoped to .uw-root.
+ * Bridges Auto Runner CSS variables to screenshot-aligned palette (#4ade80 success, #0d0d0d base).
+ * Global :root in index.css remains unchanged; this layer overrides inside the workspace only.
+ */
+.uw-root {
+  /* Primary aliases (use in new UI) */
+  --uw-bg-root: #0d0d0d;
+  --uw-bg-surface: #141414;
+  --uw-bg-elevated: #1a1a1a;
+  --uw-border-subtle: rgba(255, 255, 255, 0.08);
+  --uw-border-strong: rgba(255, 255, 255, 0.12);
+  --uw-text: #e5e7eb;
+  --uw-text-muted: #9ca3af;
+  --uw-accent-success: #4ade80;
+  --uw-accent-success-dim: rgba(74, 222, 128, 0.15);
+  --uw-accent-error: #f87171;
+  --uw-accent-error-dim: rgba(248, 113, 113, 0.12);
+  --uw-accent-warn: #fbbf24;
+  --uw-tab-active-underline: var(--uw-accent-success);
+
+  /* Focus ring — keyboard / :focus-visible only (see rules below) */
+  --uw-focus-ring-color: var(--uw-accent-success);
+  --uw-focus-ring: 0 0 0 2px var(--uw-bg-root), 0 0 0 4px var(--uw-focus-ring-color);
+
+  /* Bridge — existing Auto Runner + Proof components */
+  --bg-0: var(--uw-bg-root);
+  --bg-1: var(--uw-bg-surface);
+  --bg-2: #18181b;
+  --bg-3: var(--uw-bg-elevated);
+  --border-1: var(--uw-border-subtle);
+  --border-2: var(--uw-border-strong);
+  --text-strong: #f3f4f6;
+  --text-primary: var(--uw-text);
+  --text-secondary: #a1a1aa;
+  --text-muted: var(--uw-text-muted);
+  --state-success: var(--uw-accent-success);
+  --state-error: var(--uw-accent-error);
+  --state-warning: var(--uw-accent-warn);
+  --state-info: #60a5fa;
+  --accent: #94a3b8;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --transition-ui: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.uw-root .arp-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+}
+
+.uw-root .arp-breadcrumb .arp-bc-strong {
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.uw-root .arp-breadcrumb .arp-bc-sep {
+  opacity: 0.45;
+  user-select: none;
+}
+
+.uw-root .arp-env-pill {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--uw-accent-success-dim);
+  color: var(--uw-accent-success);
+  border: 1px solid rgba(74, 222, 128, 0.35);
+  font-family: ui-monospace, monospace;
+}
+
+.uw-root .arp-topbar-btn-share {
+  border-color: rgba(74, 222, 128, 0.25);
+}
+
+.uw-root .arp-pane-tab.active {
+  color: var(--uw-accent-success);
+  border-color: transparent;
+  border-bottom: 2px solid var(--uw-tab-active-underline);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: rgba(74, 222, 128, 0.06);
+}
+
+.uw-root .iterative-strip {
+  margin-top: 8px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--uw-border-subtle);
+  background: var(--uw-bg-elevated);
+}
+
+.uw-root .iterative-strip h3 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.uw-root .iterative-strip textarea {
+  width: 100%;
+  min-height: 72px;
+  resize: vertical;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--uw-border-subtle);
+  background: var(--uw-bg-root);
+  color: var(--text-primary);
+  padding: 10px 12px;
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.uw-root .iterative-strip-actions {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.uw-root .iterative-strip button.primary {
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: var(--uw-accent-success);
+  color: #0a0a0a;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.uw-root .iterative-strip button.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.uw-root .iterative-strip a.classic-link {
+  font-size: 12px;
+  color: var(--state-info);
+  text-decoration: underline;
+}
+
+.uw-root .arp-failure-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.uw-root .code-pane-wrap {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.uw-root .code-pane-tabs {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border-1);
+  flex-shrink: 0;
+}
+
+.uw-root .code-pane-tabs button {
+  padding: 8px 12px;
+  font-size: 11px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+}
+
+.uw-root .code-pane-tabs button.active {
+  color: var(--uw-accent-success);
+  border-bottom-color: var(--uw-accent-success);
+}
+
+.uw-root .code-pane-editor {
+  flex: 1;
+  min-height: 200px;
+}
+
+/* Focus-visible: token-driven ring for interactive controls inside unified workspace */
+.uw-root button:focus-visible,
+.uw-root a:focus-visible,
+.uw-root [role='button']:focus-visible,
+.uw-root [role='tab']:focus-visible,
+.uw-root .arp-pane-tab:focus-visible,
+.uw-root .arp-topbar-btn:focus-visible,
+.uw-root .arp-nav-item:focus-visible,
+.uw-root .arp-rail-toggle:focus-visible,
+.uw-root input:focus-visible,
+.uw-root textarea:focus-visible,
+.uw-root select:focus-visible {
+  outline: none;
+  box-shadow: var(--uw-focus-ring);
+}
+
+.uw-root button:focus:not(:focus-visible),
+.uw-root a:focus:not(:focus-visible) {
+  box-shadow: none;
+}
+
+.uw-root .monaco-editor textarea:focus-visible {
+  box-shadow: none;
+  outline: 1px solid var(--uw-focus-ring-color);
+  outline-offset: 1px;
+}

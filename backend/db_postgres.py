@@ -1,5 +1,5 @@
 """
-Re-export from db_pg. The full Motor-like wrapper lives in db_pg.py.
+Re-export from db_pg. Primary data store is PostgreSQL (JSONB documents).
 """
 from db_pg import (
     get_db,

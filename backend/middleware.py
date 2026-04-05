@@ -54,6 +54,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.cleanup_task = None
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # Local dev: SPA + HMR + many parallel calls easily exceed the global limit; skip throttling.
+        if os.environ.get("CRUCIBAI_DEV", "").strip().lower() in ("1", "true", "yes"):
+            return await call_next(request)
         path = (request.url.path or "").rstrip("/")
         if not path.startswith("/api/"):
             path_for_key = path

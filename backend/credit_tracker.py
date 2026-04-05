@@ -2,7 +2,7 @@
 CrucibAI Credit Tracker
 =======================
 Tracks credit usage per model and user tier.
-Uses the Motor-compatible PGDatabase wrapper (db_pg.py) — NOT raw asyncpg.
+Uses the PostgreSQL JSONB wrapper in db_pg.py (not raw asyncpg).
 """
 
 import logging
@@ -47,7 +47,7 @@ class CreditTracker:
         agent_name: str,
         project_id: str,
     ) -> Dict[str, Any]:
-        """Record LLM usage and deduct credits (via PGDatabase Motor-compat wrapper)."""
+        """Record LLM usage and deduct credits via db_pg."""
         try:
             credit_cost = CreditTracker.calculate_credit_cost(model_name, tokens_used, user_tier)
 
