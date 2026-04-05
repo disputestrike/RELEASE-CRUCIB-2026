@@ -261,6 +261,18 @@ class TestBuildPhasesAndValidate:
             assert "valid" in data
 
 
+# When primary keys are absent, chat may fall back to Cerebras or other pools — model_used must still identify a real route.
+_AI_CHAT_MODEL_USED_MARKERS = (
+    "claude",
+    "anthropic",
+    "openai",
+    "gpt",
+    "cerebras",
+    "llama",
+    "haiku",
+)
+
+
 class TestAIChatEndpoints:
     """AI Chat – real endpoint; 200 when keys set, 503/500 when not."""
 
@@ -274,13 +286,18 @@ class TestAIChatEndpoints:
             assert "tokens_used" in data
             assert "session_id" in data
 
-    async def test_ai_chat_gpt4o_model(self, app_client):
-        r = await app_client.post("/api/ai/chat", json={"message": "What is 2+2?", "model": "claude-3-5-haiku-20241022"})
+    async def test_ai_chat_haiku_model_id(self, app_client):
+        """Explicit Anthropic-style id; server may still route to another pool (e.g. Cerebras)."""
+        r = await app_client.post(
+            "/api/ai/chat",
+            json={"message": "What is 2+2?", "model": "claude-3-5-haiku-20241022"},
+        )
         assert r.status_code in AI_OK_STATUSES
         if r.status_code == 200:
             data = r.json()
             assert "response" in data
-            assert "claude-3-5-haiku-20241022" in data["model_used"].lower() or "openai" in data["model_used"].lower()
+            used = (data.get("model_used") or "").lower()
+            assert used and any(m in used for m in _AI_CHAT_MODEL_USED_MARKERS)
 
     async def test_ai_chat_claude_model(self, app_client):
         r = await app_client.post("/api/ai/chat", json={"message": "Say hello", "model": "claude"})
@@ -288,7 +305,8 @@ class TestAIChatEndpoints:
         if r.status_code == 200:
             data = r.json()
             assert "response" in data
-            assert "claude" in data["model_used"].lower() or "anthropic" in data["model_used"].lower()
+            used = (data.get("model_used") or "").lower()
+            assert used and any(m in used for m in _AI_CHAT_MODEL_USED_MARKERS)
 
     async def test_ai_chat_with_session(self, app_client):
         session_id = f"test_session_{int(time.time())}"

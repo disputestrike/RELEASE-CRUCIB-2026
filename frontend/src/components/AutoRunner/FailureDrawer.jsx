@@ -2,7 +2,7 @@
  * FailureDrawer — failure details and recovery UI with before/after visualization.
  * Props: step, onRetry, onOpenCode, onPauseJob, onClose
  */
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { X, RefreshCw, Code2, PauseCircle, AlertTriangle } from 'lucide-react';
 import './FailureDrawer.css';
 

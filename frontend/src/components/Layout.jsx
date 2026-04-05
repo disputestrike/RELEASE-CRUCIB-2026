@@ -6,7 +6,7 @@ import { useTaskStore } from '../stores/useTaskStore';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Menu, X, PanelRightOpen, PanelRightClose } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import Layout3Column from './Layout3Column';
 import Logo from './Logo';
 import './Layout.css';

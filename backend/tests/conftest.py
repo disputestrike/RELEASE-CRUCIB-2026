@@ -47,35 +47,36 @@ pytest_plugins = ("pytest_asyncio",)
 
 
 def pytest_sessionstart(session):
+    """Bring up local docker deps when not in GitHub Actions; CI uses service containers + DATABASE_URL."""
+    skip_compose = os.environ.get("GITHUB_ACTIONS", "").lower() == "true"
     compose = _REPO_ROOT / "docker-compose.yml"
-    if not compose.is_file():
-        return
-    try:
-        subprocess.run(
-            ["docker", "compose", "-f", str(compose), "up", "-d", "postgres", "redis"],
-            cwd=str(_REPO_ROOT),
-            timeout=120,
-            capture_output=True,
-            check=False,
-        )
-    except (FileNotFoundError, subprocess.SubprocessError):
-        return
-    deadline = time.time() + 90
-    ok = False
-    while time.time() < deadline:
+    if not skip_compose and compose.is_file():
         try:
-            s = socket.create_connection(("127.0.0.1", 5434), timeout=2)
-            s.close()
-            ok = True
-            break
-        except OSError:
-            time.sleep(1)
-    if not ok:
-        pytest.exit(
-            "PostgreSQL not reachable on 127.0.0.1:5434 after 90s. "
-            "From repo root run: docker compose up -d postgres redis",
-            returncode=1,
-        )
+            subprocess.run(
+                ["docker", "compose", "-f", str(compose), "up", "-d", "postgres", "redis"],
+                cwd=str(_REPO_ROOT),
+                timeout=120,
+                capture_output=True,
+                check=False,
+            )
+        except (FileNotFoundError, subprocess.SubprocessError):
+            return
+        deadline = time.time() + 90
+        ok = False
+        while time.time() < deadline:
+            try:
+                s = socket.create_connection(("127.0.0.1", 5434), timeout=2)
+                s.close()
+                ok = True
+                break
+            except OSError:
+                time.sleep(1)
+        if not ok:
+            pytest.exit(
+                "PostgreSQL not reachable on 127.0.0.1:5434 after 90s. "
+                "From repo root run: docker compose up -d postgres redis",
+                returncode=1,
+            )
 
     import sys
     from pathlib import Path

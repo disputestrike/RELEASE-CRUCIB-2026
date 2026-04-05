@@ -318,7 +318,7 @@ export const VoiceInput = ({
       {!isRecording && (
         <select
           value={language}
-          onChange={(e) => {
+          onChange={() => {
             // Language change handler would be passed from parent
           }}
           className="text-xs px-2 py-1 border rounded bg-white"

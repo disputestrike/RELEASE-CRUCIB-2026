@@ -76,6 +76,12 @@ class MetricsCollector:
             "Total errors",
             ["error_type"],
         )
+        self.verification_runs_total = Counter(
+            "crucibai_verification_runs_total",
+            "Auto-Runner verify_step outcomes per step_key",
+            ["step_key", "outcome"],
+        )
+
         self.error_rate = Gauge(
             "crucibai_error_rate_percent",
             "Current error rate as percentage",

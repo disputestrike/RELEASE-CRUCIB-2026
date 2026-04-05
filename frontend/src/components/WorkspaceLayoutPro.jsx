@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  ChevronDown, ChevronRight, Menu, X, Settings, Home, Code, Play, Zap, BarChart3, HelpCircle,
+import {
+  ChevronRight, Menu, X, Settings, Home, Code, Play, Zap, BarChart3, HelpCircle,
   Layers, BookOpen, Palette, Cpu, Users, CreditCard, FileText, Download, Eye, Lightbulb,
-  Workflow, Shield, Smartphone, Monitor, Rocket, Search, Bell, LogOut, User, Lock,
-  GitBranch, Terminal, Database, Gauge, AlertCircle, CheckCircle, Clock, TrendingUp
+  Workflow, Shield, Monitor, Rocket, Search, Bell, LogOut, User,
+  Database, Gauge, Clock, TrendingUp, Globe
 } from 'lucide-react';
 import './WorkspaceLayoutPro.css';
 

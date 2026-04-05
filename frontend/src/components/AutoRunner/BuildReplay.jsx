@@ -3,7 +3,7 @@
  * Three-column: Before | Change | After.
  * Props: events, steps
  */
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, GitCompare, Copy } from 'lucide-react';
 import './BuildReplay.css';
 
@@ -41,10 +41,12 @@ const REPLAY_STEPS = [
 ];
 
 function copyToClipboard(text) {
-  navigator.clipboard?.writeText(text).catch(() => {});
+  navigator.clipboard?.writeText(text).catch(() => {
+    /* ignore clipboard errors */
+  });
 }
 
-export default function BuildReplay({ events = [], steps = [] }) {
+export default function BuildReplay({ events: _events = [], steps: _steps = [] }) {
   const [currentStep, setCurrentStep] = useState(0);
 
   const replayData = REPLAY_STEPS;

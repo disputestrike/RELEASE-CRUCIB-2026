@@ -30,14 +30,13 @@ function YourIconSvg({ size }) {
 }
 
 export function Logo({
-  variant = 'full',
+  variant: _variant = 'full',
   dark = false,
   height = 32,
   href,
   className = '',
   alt = 'CrucibAI logo',
   showTagline = true,
-  ...rest
 }) {
   const [iconError, setIconError] = useState(false);
 

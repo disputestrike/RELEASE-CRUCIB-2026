@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Bot, CheckCircle, Clock, AlertCircle, Zap,
+  CheckCircle, Clock, AlertCircle, Zap,
   ChevronDown, ChevronRight, Loader2, RefreshCw, ShieldCheck
 } from 'lucide-react';
 import './InlineAgentMonitor.css';

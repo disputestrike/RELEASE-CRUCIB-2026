@@ -6,6 +6,7 @@ Includes rate limiting, security headers, CORS, and request tracking
 import os
 import time
 import logging
+import uuid
 from typing import Dict, Optional, Callable
 from collections import defaultdict
 from datetime import datetime, timedelta
@@ -167,40 +168,102 @@ class RequestTrackerMiddleware(BaseHTTPMiddleware):
     """
     Track requests for logging and monitoring
     """
-    
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        # Generate request ID
-        request_id = request.headers.get("X-Request-ID", f"{int(time.time() * 1000)}")
+        # Generate request ID (accept inbound header or emit UUID for log/metrics correlation)
+        request_id = (request.headers.get("X-Request-ID") or "").strip() or str(uuid.uuid4())
         request.state.request_id = request_id
-        
-        # Record start time
+        tenant_hdr = (request.headers.get("X-Tenant-ID") or "").strip()
+
+        bind_http_request_context = None
+        clear_http_request_context = None
+        log_request_event = None
+        observe_http_request = None
+        try:
+            from orchestration.observability import (
+                bind_http_request_context as _bind,
+                clear_http_request_context as _clear,
+                log_request_event as _log_ev,
+                observe_http_request as _observe,
+            )
+
+            bind_http_request_context = _bind
+            clear_http_request_context = _clear
+            log_request_event = _log_ev
+            observe_http_request = _observe
+        except Exception:
+            pass
+
+        if bind_http_request_context:
+            bind_http_request_context(
+                request_id=request_id,
+                trace_id=str(uuid.uuid4()),
+                tenant_id=tenant_hdr,
+            )
+
         start_time = time.time()
-        
-        # Log request
+
         logger.info(
             f"[{request_id}] {request.method} {request.url.path} "
             f"from {request.client.host if request.client else 'unknown'}"
         )
-        
+        if log_request_event:
+            log_request_event(
+                logger,
+                "http_request_start",
+                method=request.method,
+                path=request.url.path,
+            )
+
+        status_code = 500
         try:
             response = await call_next(request)
+            status_code = response.status_code
         except Exception as e:
             logger.error(f"[{request_id}] Request failed: {str(e)}")
+            if observe_http_request:
+                try:
+                    observe_http_request(request.method, status_code)
+                except Exception:
+                    pass
+            if clear_http_request_context:
+                try:
+                    clear_http_request_context()
+                except Exception:
+                    pass
             raise
-        
-        # Calculate duration
+
         duration = time.time() - start_time
-        
-        # Log response
+
+        if observe_http_request:
+            try:
+                observe_http_request(request.method, status_code)
+            except Exception:
+                pass
+
         logger.info(
             f"[{request_id}] {request.method} {request.url.path} "
             f"completed with {response.status_code} in {duration:.3f}s"
         )
-        
-        # Add headers
+        if log_request_event:
+            log_request_event(
+                logger,
+                "http_request_complete",
+                method=request.method,
+                path=request.url.path,
+                status_code=response.status_code,
+                duration_s=round(duration, 4),
+            )
+
         response.headers["X-Request-ID"] = request_id
         response.headers["X-Response-Time"] = f"{duration:.3f}s"
-        
+
+        if clear_http_request_context:
+            try:
+                clear_http_request_context()
+            except Exception:
+                pass
+
         return response
 
 class CORSMiddleware(BaseHTTPMiddleware):

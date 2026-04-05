@@ -30,8 +30,14 @@ def test_roadmap_wiring_status_covers_core_items():
     items = roadmap_wiring_status()
     ids = {i["id"] for i in items}
     assert "preflight_structured" in ids
+    assert "spec_guardian_engine" in ids
+    assert "truthful_multiaxis_scores" in ids
     assert "node_runtime_manifest" in ids
     assert "weighted_scoring_10_20_40_30" in ids
+    assert "domain_pack_compliance_sketch_md" in ids
+    assert "github_actions_verify_full" in ids
+    assert "observability_workspace_pack" in ids
+    assert "multiregion_terraform_sketch" in ids
     assert all(i.get("status") in ("wired", "partial", "planned") for i in items)
 
 

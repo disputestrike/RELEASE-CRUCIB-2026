@@ -60,7 +60,6 @@ export default function ExecutionTimeline({
   isConnected,
 }) {
   const [filter, setFilter] = useState('All');
-  const [expandedStep, setExpandedStep] = useState(null);
   const [expandedSteps, setExpandedSteps] = useState(new Set());
   const [userScrolled, setUserScrolled] = useState(false);
   const scrollRef = useRef(null);

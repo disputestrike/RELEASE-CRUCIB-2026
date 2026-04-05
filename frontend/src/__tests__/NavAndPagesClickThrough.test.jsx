@@ -1,6 +1,6 @@
 /**
  * Nav & Pages click-through verification.
- * Evidence: Nav has exactly 6 items (Features, Pricing, Our Projects, Blog, Sign In, Get Started).
+ * Evidence: Nav has Features, Pricing, Our Project, Blog, Log in, Sign up, Get Started.
  * No Prompts, Templates, Documentation in nav. All links go to correct routes. Both pages pass.
  */
 import React from 'react';
@@ -46,7 +46,8 @@ describe('Nav and pages — link and click-through verification', () => {
     forbiddenInNav.forEach((path) => {
       expect(hrefs.filter((h) => h === path || h.startsWith(path + '?'))).toHaveLength(0);
     });
-    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /log in/i })).toHaveAttribute('href', '/auth');
+    expect(screen.getByRole('link', { name: /sign up/i })).toHaveAttribute('href', '/auth?mode=register');
     expect(screen.getByRole('button', { name: /get started/i })).toBeInTheDocument();
   });
 
@@ -119,7 +120,8 @@ describe('Nav and pages — link and click-through verification', () => {
     expect(screen.getByRole('link', { name: /pricing/i })).toHaveAttribute('href', '/pricing');
     expect(screen.getByRole('link', { name: /our project/i })).toHaveAttribute('href', '/our-projects');
     expect(screen.getByRole('link', { name: /blog/i })).toHaveAttribute('href', '/blog');
-    expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute('href', '/auth');
+    expect(screen.getByRole('link', { name: /log in/i })).toHaveAttribute('href', '/auth');
+    expect(screen.getByRole('link', { name: /sign up/i })).toHaveAttribute('href', '/auth?mode=register');
     expect(screen.getByRole('button', { name: /get started/i })).toBeInTheDocument();
   });
 

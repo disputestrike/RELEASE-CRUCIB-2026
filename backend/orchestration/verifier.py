@@ -309,9 +309,66 @@ async def verify_db_step(step: Dict[str, Any],
     return _result(len(issues) == 0, score, issues, proof)
 
 
-async def verify_deploy_step(step: Dict[str, Any]) -> Dict[str, Any]:
+async def verify_deploy_step(step: Dict[str, Any], workspace_path: str = "") -> Dict[str, Any]:
     issues = []
     proof = []
+    step_key = step.get("step_key", "")
+    added_deploy_build_file_proof = False
+
+    if step_key == "deploy.build" and workspace_path and os.path.isdir(workspace_path):
+        from .production_gate import scan_workspace_for_credential_patterns
+        from .tenant_deploy_gate import verify_tenant_context_for_deploy
+
+        t_issues, t_proof = verify_tenant_context_for_deploy(workspace_path)
+        issues.extend(t_issues)
+        for tp in t_proof:
+            proof.append(tp)
+
+        hits = scan_workspace_for_credential_patterns(workspace_path)
+        for h in hits:
+            proof.append(
+                _proof_item(
+                    "verification",
+                    f"Production gate: {h}",
+                    {"gate": "credential_pattern_scan"},
+                    verification_class="runtime",
+                ),
+            )
+        strict = os.environ.get("CRUCIBAI_PRODUCTION_GATE_STRICT", "").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+        if strict and hits:
+            issues.extend(hits)
+        elif not hits:
+            proof.append(
+                _proof_item(
+                    "verification",
+                    "Production gate: no high-confidence credential patterns in code files",
+                    {"gate": "credential_pattern_scan", "clean": True},
+                    verification_class="runtime",
+                ),
+            )
+
+        for rel in step.get("output_files") or []:
+            full = os.path.normpath(os.path.join(workspace_path, rel.replace("/", os.sep)))
+            if os.path.isfile(full):
+                pl: Dict[str, Any] = {"path": rel, "exists": True}
+                if rel.replace("\\", "/") == "docs/COMPLIANCE_SKETCH.md":
+                    pl["compliance_sketch"] = True
+                    pl["note"] = "Educational checklist only — not legal advice"
+                proof.append(
+                    _proof_item(
+                        "file",
+                        f"File exists: {rel}",
+                        pl,
+                        verification_class="presence",
+                    ),
+                )
+                added_deploy_build_file_proof = True
+            else:
+                issues.append(f"Expected deploy artifact missing: {rel}")
 
     deploy_url = step.get("deploy_url")
     if deploy_url:
@@ -332,7 +389,7 @@ async def verify_deploy_step(step: Dict[str, Any]) -> Dict[str, Any]:
                         issues.append(f"Deploy URL returned {resp.status}: {deploy_url}")
         except Exception as e:
             issues.append(f"Deploy smoke check failed: {str(e)}")
-    else:
+    elif not added_deploy_build_file_proof:
         proof.append(
             _proof_item(
                 "deploy",
@@ -438,6 +495,52 @@ async def verify_step(step: Dict[str, Any], workspace_path: str = "",
                 return _result(pr["passed"], pr["score"], pr["issues"], pr["proof"])
             if step_key == "verification.compile":
                 return await verify_compile_workspace(workspace_path or "")
+            if step_key == "verification.security":
+                from .tenant_deploy_gate import workspace_has_multitenancy_rls_migration
+                from .verification_behavior_bundle import (
+                    merge_verification_results,
+                    verify_behavior_bundle_workspace,
+                )
+                from .verification_rls import verify_rls_workspace
+                from .verification_security import verify_security_workspace
+
+                ws = workspace_path or ""
+                parts: List[Dict[str, Any]] = [verify_security_workspace(ws)]
+                if workspace_has_multitenancy_rls_migration(ws):
+                    parts.append(verify_rls_workspace(ws))
+                parts.append(await verify_behavior_bundle_workspace(ws))
+                mr = merge_verification_results(parts)
+                return _result(mr["passed"], mr["score"], mr["issues"], mr["proof"])
+            if step_key == "verification.rls":
+                from .verification_rls import verify_rls_workspace
+
+                rr = verify_rls_workspace(workspace_path or "")
+                return _result(rr["passed"], rr["score"], rr["issues"], rr["proof"])
+            if step_key == "verification.behavior":
+                from .verification_behavior_bundle import verify_behavior_bundle_workspace
+
+                br = await verify_behavior_bundle_workspace(workspace_path or "")
+                return _result(br["passed"], br["score"], br["issues"], br["proof"])
+            if step_key == "verification.tenancy_smoke":
+                from .verification_tenancy_smoke import verify_tenancy_smoke_workspace
+
+                ts = await verify_tenancy_smoke_workspace(workspace_path or "")
+                return _result(ts["passed"], ts["score"], ts["issues"], ts["proof"])
+            if step_key == "verification.stripe_replay":
+                from .verification_stripe_replay import verify_stripe_replay_workspace
+
+                sr = verify_stripe_replay_workspace(workspace_path or "")
+                return _result(sr["passed"], sr["score"], sr["issues"], sr["proof"])
+            if step_key == "verification.rbac_enforcement":
+                from .verification_rbac import verify_rbac_enforcement_workspace
+
+                rb = await verify_rbac_enforcement_workspace(workspace_path or "")
+                return _result(rb["passed"], rb["score"], rb["issues"], rb["proof"])
+            if step_key == "verification.api_smoke":
+                from .verification_api_smoke import verify_api_smoke_workspace
+
+                ar = await verify_api_smoke_workspace(workspace_path or "")
+                return _result(ar["passed"], ar["score"], ar["issues"], ar["proof"])
             return _result(
                 True, 82, [],
                 [_proof_item("generic", f"Verification step recorded: {step_key}",
@@ -455,7 +558,7 @@ async def verify_step(step: Dict[str, Any], workspace_path: str = "",
         elif fn in (verify_frontend_step, verify_backend_step):
             result = await fn(step, workspace_path)
         elif fn == verify_deploy_step:
-            result = await fn(step)
+            result = await fn(step, workspace_path or "")
         else:
             # Generic: record that the step ran
             result = _result(True, 85, [],

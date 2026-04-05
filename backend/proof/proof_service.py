@@ -6,7 +6,7 @@ import uuid
 import json
 import logging
 from datetime import datetime, timezone
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +64,12 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
             "trust_score": 0.0,
             "penalties_applied": 0,
             "truth_status": {},
+            "spec_guard": {},
+            "spec_compliance_percent": 100.0,
+            "production_readiness_score": 0.0,
+            "production_readiness_cap_note": "",
+            "production_readiness_factors": [],
+            "scorecard": {},
         }
     async with _pool.acquire() as conn:
         rows = await conn.fetch(
@@ -158,6 +164,53 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
             "truth_status": {},
         }
 
+    spec_compliance = 100.0
+    spec_guard_snapshot: Dict[str, Any] = {}
+    try:
+        from orchestration.spec_guardian import evaluate_goal_against_runner, merge_plan_risk_flags_into_report
+        from orchestration.truth_scores import compute_production_readiness, build_honest_scorecard
+
+        async with _pool.acquire() as conn:
+            gj = await conn.fetchrow("SELECT goal FROM jobs WHERE id=$1", job_id)
+            goal = (gj.get("goal") or "") if gj else ""
+            bp = await conn.fetchrow(
+                "SELECT plan_json FROM build_plans WHERE job_id=$1 ORDER BY created_at DESC LIMIT 1",
+                job_id,
+            )
+        risk_flags: List = []
+        if bp and bp.get("plan_json"):
+            try:
+                pj = json.loads(bp["plan_json"])
+                risk_flags = pj.get("risk_flags") or []
+            except Exception:
+                pass
+        spec_guard_snapshot = merge_plan_risk_flags_into_report(
+            risk_flags, evaluate_goal_against_runner(goal),
+        )
+        spec_compliance = float(spec_guard_snapshot.get("spec_compliance_percent") or 100.0)
+
+        prod = compute_production_readiness(flat, bundle)
+        scorecard = build_honest_scorecard(
+            pipeline_quality_score=quality_score,
+            trust_score=float(trust.get("trust_score") or 0.0),
+            spec_compliance_percent=spec_compliance,
+            production_readiness=prod,
+        )
+    except Exception:
+        logger.exception("proof_service.get_proof: truthful scorecard failed")
+        prod = {
+            "production_readiness_score": 0.0,
+            "production_readiness_cap_note": "",
+            "production_readiness_factors": [],
+        }
+        scorecard = {
+            "pipeline_quality_score": quality_score,
+            "trust_evidence_score": float(trust.get("trust_score") or 0.0),
+            "spec_compliance_percent": 100.0,
+            "production_readiness_score": 0.0,
+            "honest_summary": "Extended scores unavailable.",
+        }
+
     return {
         "job_id": job_id,
         "quality_score": quality_score,
@@ -166,4 +219,8 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
         "category_counts": category_counts,
         "bundle": bundle,
         **trust,
+        "spec_guard": spec_guard_snapshot,
+        "spec_compliance_percent": spec_compliance,
+        **prod,
+        "scorecard": scorecard,
     }

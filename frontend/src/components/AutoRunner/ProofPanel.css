@@ -74,6 +74,59 @@
   transition: width 0.4s ease;
 }
 
+.pp-compliance-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-1);
+  background: rgba(88, 166, 255, 0.06);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+.pp-compliance-callout svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--state-info);
+}
+.pp-compliance-callout-title {
+  display: block;
+  font-weight: 600;
+  color: var(--text-strong);
+  margin-bottom: 4px;
+}
+.pp-compliance-callout-desc {
+  display: block;
+}
+.pp-compliance-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 0 3px;
+  border-radius: 3px;
+  background: var(--bg-3);
+}
+
+.pp-honest-scorecard {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-1);
+  background: var(--bg-2, rgba(0, 0, 0, 0.02));
+}
+.pp-mini-scores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.pp-honest-summary {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
 .pp-proof-count {
   flex: 1;
   font-size: 12px;

@@ -99,6 +99,12 @@ export default function OnboardingTour({ forceShow = false, onComplete }) {
   const isFirst = step === 0;
   const isLast = step === TOUR_STEPS.length - 1;
 
+  const handleClose = useCallback(() => {
+    setActive(false);
+    localStorage.setItem(STORAGE_KEY, 'true');
+    if (onComplete) onComplete();
+  }, [onComplete]);
+
   const handleNext = useCallback(() => {
     if (isLast) {
       handleClose();
@@ -109,7 +115,7 @@ export default function OnboardingTour({ forceShow = false, onComplete }) {
       navigate(nextStep.navigateTo);
     }
     setStep((s) => s + 1);
-  }, [step, isLast, navigate]);
+  }, [step, isLast, navigate, handleClose]);
 
   const handlePrev = useCallback(() => {
     if (isFirst) return;
@@ -119,12 +125,6 @@ export default function OnboardingTour({ forceShow = false, onComplete }) {
     }
     setStep((s) => s - 1);
   }, [step, isFirst, navigate]);
-
-  const handleClose = useCallback(() => {
-    setActive(false);
-    localStorage.setItem(STORAGE_KEY, 'true');
-    if (onComplete) onComplete();
-  }, [onComplete]);
 
   const handleSkip = useCallback(() => {
     handleClose();

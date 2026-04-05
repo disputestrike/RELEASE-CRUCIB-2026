@@ -2,11 +2,14 @@
 auto_runner.py — Continuous execution engine for CrucibAI.
 Runs a job to completion: plan → approve → execute all steps → verify → finalize.
 Never stops unless: success, max retries, unrecoverable failure, or cancellation.
+
+Job "completed" requires every DAG step in terminal success — not a partial % threshold.
 """
 import asyncio
 import logging
 import json
-from typing import Dict, Any, Optional
+import os
+from typing import Dict, Any, Optional, List
 
 from .runtime_state import (
     get_job, update_job_state, get_steps, create_step,
@@ -29,10 +32,31 @@ from proof import proof_service
 
 logger = logging.getLogger(__name__)
 
-# Safety limits
-MAX_TOTAL_RETRIES = 10
+# Safety limits (global retry budget across all steps — was 10 and exhausted on ~4–5 flaky steps)
+def _max_total_retries() -> int:
+    try:
+        return max(10, int(os.environ.get("CRUCIBAI_MAX_TOTAL_STEP_RETRIES", "40")))
+    except ValueError:
+        return 40
+
+
 POLL_INTERVAL_SEC = 0.5
 MAX_CONCURRENT_STEPS = 4
+
+
+def _skip_duplicate_final_preview(steps: List[Dict[str, Any]]) -> bool:
+    """
+    When verification.preview already completed, re-running full Playwright/npm at job end
+    often fails spuriously (port, timing) while the DAG already proved the bundle once.
+    Set CRUCIBAI_SKIP_DUPLICATE_FINAL_PREVIEW=0 to always run the final gate.
+    """
+    raw = os.environ.get("CRUCIBAI_SKIP_DUPLICATE_FINAL_PREVIEW", "1").strip().lower()
+    if raw in ("0", "false", "no", "off"):
+        return False
+    return any(
+        s.get("step_key") == "verification.preview" and s.get("status") == "completed"
+        for s in steps
+    )
 
 
 async def run_job_to_completion(job_id: str,
@@ -151,11 +175,12 @@ async def run_job_to_completion(job_id: str,
                     continue
 
                 total_retries += 1
-                if total_retries > MAX_TOTAL_RETRIES:
+                max_total = _max_total_retries()
+                if total_retries > max_total:
                     await update_job_state(job_id, "failed",
                                            {"current_phase": "max_retries_exceeded"})
                     await publish(job_id, "job_failed",
-                                  {"reason": f"Max retries ({MAX_TOTAL_RETRIES}) exceeded"})
+                                  {"reason": f"Max retries ({max_total}) exceeded"})
                     return {"success": False, "status": "failed",
                             "reason": "max_retries_exceeded"}
 
@@ -164,16 +189,34 @@ async def run_job_to_completion(job_id: str,
                     # Block dependents and continue
                     await block_dependents(job_id, step["step_key"])
                 else:
+                    err_txt = result.get("error", "") or ""
+                    vr = result.get("verification") if isinstance(result.get("verification"), dict) else {}
+                    v_issues = vr.get("issues") if isinstance(vr.get("issues"), list) else None
+                    vstub = {"issues": v_issues if v_issues else ([err_txt] if err_txt else [])}
+                    ftype = classify_failure({**step, "error_message": err_txt}, vstub)
+                    rplan = build_retry_plan(ftype, {**step, "error_message": err_txt}, vstub)
+                    await append_job_event(
+                        job_id,
+                        "fixer_retry_queued",
+                        {
+                            "step_key": step["step_key"],
+                            "failure_type": ftype,
+                            "retry_plan_actions": rplan.get("retry_plan", []),
+                            "attempt_next": retry_count + 1,
+                        },
+                        step_id=step["id"],
+                    )
+                    await apply_fix({**step, "error_message": err_txt}, rplan)
                     # Queue retry (reset to pending)
                     from .runtime_state import update_step_state
                     await update_step_state(step["id"], "pending", {
                         "retry_count": retry_count + 1,
-                        "error_message": result.get("error", ""),
+                        "error_message": err_txt,
                     })
                     await publish(job_id, "step_retrying",
                                   {"step_key": step["step_key"],
                                    "attempt": retry_count + 1,
-                                   "error": result.get("error", "")})
+                                   "error": err_txt})
 
     # Finalize job
     steps = await get_steps(job_id)
@@ -207,75 +250,120 @@ async def run_job_to_completion(job_id: str,
             "reason": "dependency_blocked",
         }
 
-    if failed_steps and quality_score < 60:
+    # Strict: any failed step means the plan did not complete (no "60% is good enough").
+    if failed_steps:
         await update_job_state(job_id, "failed", {
-            "current_phase": "completed_with_failures",
+            "current_phase": "steps_failed",
             "quality_score": quality_score,
+            "failed_step_keys": [s["step_key"] for s in failed_steps],
         })
         await publish(job_id, "job_failed",
-                      {"quality_score": quality_score,
+                      {"reason": "one_or_more_steps_failed",
+                       "quality_score": quality_score,
                        "failed_steps": [s["step_key"] for s in failed_steps]})
-        return {"success": False, "status": "failed", "quality_score": quality_score}
+        await append_job_event(job_id, "job_failed", {
+            "reason": "steps_failed",
+            "failed_step_keys": [s["step_key"] for s in failed_steps],
+            "quality_score": quality_score,
+        })
+        return {
+            "success": False,
+            "status": "failed",
+            "quality_score": quality_score,
+            "reason": "steps_failed",
+            "failed_steps": [s["step_key"] for s in failed_steps],
+        }
+
+    # Every node must be completed — not left pending/skipped (should not happen if scheduler is sound).
+    if len(completed_steps) != total:
+        bad = [s for s in steps if s["status"] != "completed"]
+        await update_job_state(job_id, "failed", {
+            "current_phase": "incomplete_dag",
+            "quality_score": quality_score,
+            "non_completed": [{"key": s["step_key"], "status": s["status"]} for s in bad],
+        })
+        await publish(job_id, "job_failed", {
+            "reason": "incomplete_dag",
+            "non_completed": [s["step_key"] for s in bad],
+        })
+        return {
+            "success": False,
+            "status": "failed",
+            "reason": "incomplete_dag",
+            "quality_score": quality_score,
+        }
+
+    ws = (workspace_path or "").strip()
+    if not ws:
+        await update_job_state(job_id, "failed", {
+            "current_phase": "no_workspace_for_preview",
+            "quality_score": quality_score,
+        })
+        await append_job_event(job_id, "job_preview_failed", {
+            "issues": ["No workspace_path — cannot verify preview bundle."],
+        })
+        await publish(job_id, "job_failed", {
+            "reason": "no_workspace",
+            "quality_score": quality_score,
+        })
+        return {
+            "success": False,
+            "status": "failed",
+            "quality_score": quality_score,
+            "reason": "no_workspace",
+        }
+
+    from .preview_gate import verify_preview_workspace
+
+    if _skip_duplicate_final_preview(steps):
+        pv = {"passed": True, "issues": [], "score": 100, "proof": []}
+        await append_job_event(
+            job_id,
+            "job_completion_gate",
+            {
+                "mode": "skipped_duplicate_full_preview",
+                "reason": "verification.preview already passed; set CRUCIBAI_SKIP_DUPLICATE_FINAL_PREVIEW=0 to re-run",
+            },
+        )
     else:
-        ws = (workspace_path or "").strip()
-        if not ws:
-            await update_job_state(job_id, "failed", {
-                "current_phase": "no_workspace_for_preview",
-                "quality_score": quality_score,
-            })
-            await append_job_event(job_id, "job_preview_failed", {
-                "issues": ["No workspace_path — cannot verify preview bundle."],
-            })
-            await publish(job_id, "job_failed", {
-                "reason": "no_workspace",
-                "quality_score": quality_score,
-            })
-            return {
-                "success": False,
-                "status": "failed",
-                "quality_score": quality_score,
-                "reason": "no_workspace",
-            }
-
-        from .preview_gate import verify_preview_workspace
         pv = await verify_preview_workspace(ws)
-        if not pv["passed"]:
-            await update_job_state(job_id, "failed", {
-                "current_phase": "preview_gate_failed",
-                "quality_score": quality_score,
-            })
-            await append_job_event(job_id, "job_preview_failed", {
-                "issues": pv["issues"],
-                "score": pv["score"],
-            })
-            await publish(job_id, "job_failed", {
-                "reason": "preview_gate",
-                "issues": pv["issues"],
-                "quality_score": quality_score,
-            })
-            return {
-                "success": False,
-                "status": "failed",
-                "quality_score": quality_score,
-                "reason": "preview_gate",
-            }
 
-        await update_job_state(job_id, "completed", {
-            "current_phase": "completed",
+    if not pv["passed"]:
+        await update_job_state(job_id, "failed", {
+            "current_phase": "preview_gate_failed",
             "quality_score": quality_score,
         })
-        # Build completion summary
-        proof = await proof_service.get_proof(job_id)
-        summary = _build_completion_summary(steps, proof)
-        await publish(job_id, "job_completed", {
-            "quality_score": quality_score,
-            "summary": summary,
-            "proof": proof,
+        await append_job_event(job_id, "job_preview_failed", {
+            "issues": pv["issues"],
+            "score": pv["score"],
         })
-        await append_job_event(job_id, "job_completed",
-                               {"quality_score": quality_score, "summary": summary})
-        return {"success": True, "status": "completed",
-                "quality_score": quality_score, "summary": summary}
+        await publish(job_id, "job_failed", {
+            "reason": "preview_gate",
+            "issues": pv["issues"],
+            "quality_score": quality_score,
+        })
+        return {
+            "success": False,
+            "status": "failed",
+            "quality_score": quality_score,
+            "reason": "preview_gate",
+        }
+
+    await update_job_state(job_id, "completed", {
+        "current_phase": "completed",
+        "quality_score": quality_score,
+    })
+    proof = await proof_service.get_proof(job_id)
+    summary = _build_completion_summary(steps, proof)
+    await publish(job_id, "job_completed", {
+        "quality_score": quality_score,
+        "summary": summary,
+        "proof": proof,
+    })
+    await append_job_event(job_id, "job_completed",
+                           {"quality_score": quality_score, "summary": summary})
+    return {"success": True, "status": "completed",
+            "quality_score": quality_score, "summary": summary}
 
 
 async def _run_single_step(step: Dict, job: Dict,

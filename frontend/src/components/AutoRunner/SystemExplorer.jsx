@@ -144,7 +144,7 @@ function getStatusDotFill(status) {
   }
 }
 
-export default function SystemExplorer({ steps = [], proof, job, projectId, token }) {
+export default function SystemExplorer({ steps = [], proof, job: _job, projectId: _projectId, token: _token }) {
   const [activeTab, setActiveTab] = useState('agents');
   const [routeFilter, setRouteFilter] = useState('');
   const [expandedTable, setExpandedTable] = useState(null);
@@ -162,6 +162,21 @@ export default function SystemExplorer({ steps = [], proof, job, projectId, toke
   const routeItems = bundle.routes || [];
   const dbItems = bundle.database || [];
   const deployItems = bundle.deploy || [];
+  const fileItems = useMemo(() => bundle.files || [], [bundle.files]);
+
+  const deployBuildArtifacts = useMemo(() => {
+    return fileItems.filter((it) => {
+      const p = String(it.payload?.path || '');
+      if (!p) return false;
+      return (
+        p === 'Dockerfile' ||
+        p.startsWith('deploy/') ||
+        p === 'docs/COMPLIANCE_SKETCH.md' ||
+        p === 'docs/OBSERVABILITY_PACK.md' ||
+        p.startsWith('terraform/')
+      );
+    });
+  }, [fileItems]);
 
   const usedAgents = [...new Set(steps.map(s => s.agent_name))].filter(Boolean);
 
@@ -398,25 +413,53 @@ export default function SystemExplorer({ steps = [], proof, job, projectId, toke
         {/* DEPLOYS */}
         {activeTab === 'deploys' && (
           <div className="se-deploys">
-            {deployItems.length === 0 ? (
+            {deployItems.length === 0 && deployBuildArtifacts.length === 0 ? (
               <div className="se-empty">No deployments recorded yet. Deploy artifacts will appear here after a successful build.</div>
             ) : (
-              deployItems.map((d, i) => (
-                <div key={i} className="se-deploy-item">
-                  <span className="se-deploy-dot" />
-                  <div className="se-deploy-info">
-                    <div className="se-deploy-title">{d.title}</div>
-                    {d.payload?.url && (
-                      <a href={d.payload.url} target="_blank" rel="noopener noreferrer" className="se-deploy-url">
-                        {d.payload.url}
-                      </a>
-                    )}
-                    {d.payload?.timestamp && (
-                      <span className="se-deploy-time">{d.payload.timestamp}</span>
-                    )}
+              <>
+                {deployBuildArtifacts.length > 0 && (
+                  <div className="se-deploy-artifacts-block">
+                    <div className="se-deploy-artifacts-heading">Build artifacts (on disk)</div>
+                    <p className="se-deploy-artifacts-hint">
+                      Written during <code className="se-inline-code">deploy.build</code> and verified as present.{' '}
+                      <code className="se-inline-code">docs/COMPLIANCE_SKETCH.md</code> is an educational checklist only, not legal advice.
+                    </p>
+                    <ul className="se-deploy-artifacts-list">
+                      {deployBuildArtifacts.map((d, i) => {
+                        const path = d.payload?.path || d.title;
+                        const isCompliance = path === 'docs/COMPLIANCE_SKETCH.md' || d.payload?.compliance_sketch;
+                        return (
+                          <li key={`art-${i}`} className={isCompliance ? 'se-deploy-artifact-compliance' : ''}>
+                            <span className="se-deploy-dot" />
+                            <span className="se-deploy-artifact-path">{path}</span>
+                            {isCompliance && (
+                              <span className="se-deploy-artifact-badge" title="Regulated-domain goal detected">
+                                compliance sketch
+                              </span>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
                   </div>
-                </div>
-              ))
+                )}
+                {deployItems.map((d, i) => (
+                  <div key={i} className="se-deploy-item">
+                    <span className="se-deploy-dot" />
+                    <div className="se-deploy-info">
+                      <div className="se-deploy-title">{d.title}</div>
+                      {d.payload?.url && (
+                        <a href={d.payload.url} target="_blank" rel="noopener noreferrer" className="se-deploy-url">
+                          {d.payload.url}
+                        </a>
+                      )}
+                      {d.payload?.timestamp && (
+                        <span className="se-deploy-time">{d.payload.timestamp}</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </>
             )}
           </div>
         )}

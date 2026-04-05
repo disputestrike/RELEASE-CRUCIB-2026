@@ -485,7 +485,9 @@ function jobRow(j) {
         const sec = Math.max(0, Math.round((endMs - a) / 1000));
         durationStr = sec < 60 ? `${sec}s` : sec < 3600 ? `${Math.round(sec / 60)}m` : `${(sec / 3600).toFixed(1)}h`;
       }
-    } catch (_) {}
+    } catch {
+      /* ignore invalid job timestamps */
+    }
   }
   const startedShort = started
     ? (() => {

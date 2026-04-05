@@ -25,7 +25,7 @@ export const Layout3Column = ({
   sidebarOpen: controlledSidebarOpen,
   onToggleSidebar,
   setSidebarOpen: setControlledSidebarOpen,
-  hideSidebarToggle = false,
+  hideSidebarToggle: _hideSidebarToggle = false,
 }) => {
   const [internalSidebarOpen, setInternalSidebarOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);

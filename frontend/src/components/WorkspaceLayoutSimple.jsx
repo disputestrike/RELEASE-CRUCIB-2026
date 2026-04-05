@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Menu, X, Settings, Home, Zap, BarChart3, HelpCircle, Search, Bell, LogOut, User,
-  ChevronRight, Lightbulb, BookOpen, Download, Eye, Share2, Smartphone
+import React, { useState, useRef } from 'react';
+import {
+  Menu, X, Settings, Bell, LogOut,
+  ChevronRight, Lightbulb, BookOpen, Download, Share2, HelpCircle,
 } from 'lucide-react';
 import './WorkspaceLayoutSimple.css';
 

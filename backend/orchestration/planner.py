@@ -16,6 +16,9 @@ from typing import Dict, Any, Optional
 from pricing_plans import CREDIT_PLANS
 
 from .trust.node_manifest import enrich_plan_with_node_manifests
+from .multiregion_terraform_sketch import multiregion_terraform_intent
+from .observability_workspace_pack import observability_intent as observability_goal_intent
+from .spec_guardian import evaluate_goal_against_runner, merge_plan_risk_flags_into_report
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +76,21 @@ def _detect_integrations(goal: str) -> list:
         integrations.append("email")
     if re.search(r"\b(llm|gpt|openai|claude|cerebras|anthropic)\b", g) or re.search(r"\bai\b", g):
         integrations.append("llm")
+    if re.search(
+        r"\b(multi[\s-]?tenant|multitenant|tenant isolation|row[\s-]?level|rls)\b",
+        g,
+    ):
+        integrations.append("multi_tenant")
+    if re.search(
+        r"\b(fintech|pci[\s-]?dss|pci\b|hipaa|soc\s*2|soc2|gdpr|glba|"
+        r"regulated|financial services|healthcare|phi\b|banking|lending|insurtech)\b",
+        g,
+    ):
+        integrations.append("compliance_sensitive")
+    if observability_goal_intent(goal):
+        integrations.append("observability")
+    if multiregion_terraform_intent(goal):
+        integrations.append("multiregion_terraform")
     return integrations
 
 
@@ -98,6 +116,27 @@ def _goal_len_advisory_threshold(project_state: Optional[Dict]) -> Optional[int]
     return _FREE_USER_GOAL_LEN_ADVISORY
 
 
+def _detect_spec_vs_runner_template_mismatch(goal: str) -> list:
+    """
+    Auto-Runner always emits the same scaffold family (Vite + React + Python FastAPI sketch).
+    Long enterprise specs often request a different stack — flag so UI/plan reviewers see the gap.
+    """
+    flags: list = []
+    g = (goal or "").lower()
+    if any(k in g for k in ("next.js", "nextjs", "next-auth", "nextauth", "auth.js v5", "app router")):
+        flags.append("goal_spec_nextjs_autorunner_template_is_vite_react")
+    if "typescript" in g and any(
+        k in g for k in ("fastify", "nestjs", "express", "node backend", "rest + openapi")
+    ):
+        flags.append("goal_spec_ts_node_api_autorunner_backend_is_python_sketch")
+    if any(k in g for k in ("prisma", "drizzle orm", "drizzle")):
+        flags.append("goal_spec_orm_autorunner_writes_sql_sketch_not_orm")
+    # Remaining gaps vs template (runner now emits RLS, multitenant SQL, CI workflow, observability stubs, TF sketches).
+    if any(k in g for k in ("bullmq", "testcontainers", "k6")):
+        flags.append("goal_spec_infra_or_tenancy_not_generated_by_autorunner")
+    return flags
+
+
 def _detect_risk_flags(goal: str, project_state: Optional[Dict] = None) -> list:
     flags = []
     g = goal.lower()
@@ -108,7 +147,45 @@ def _detect_risk_flags(goal: str, project_state: Optional[Dict] = None) -> list:
     thresh = _goal_len_advisory_threshold(project_state)
     if thresh is not None and len(goal) > thresh:
         flags.append("goal_too_long_consider_splitting")
+    flags.extend(_detect_spec_vs_runner_template_mismatch(goal))
     return flags
+
+
+def _architecture_outline(build_kind: str, integrations: list) -> Dict[str, Any]:
+    """Pre-code architecture brain (honest template — not generated from LLM)."""
+    ints = list(integrations or [])
+    data_notes = [
+        "Demo items / user preferences (client storage + sketch API)",
+    ]
+    if "multi_tenant" in ints:
+        data_notes.append(
+            "Goal suggests tenancy — runner adds tenants + tenant_id + PostgreSQL RLS on app_items (app.tenant_id GUC); extend to other tables as needed",
+        )
+    else:
+        data_notes.append("No automatic tenant_id / RLS unless goal triggers multi_tenant integration")
+    if "compliance_sensitive" in ints:
+        data_notes.append(
+            "Regulated-domain keywords detected — deploy.build adds docs/COMPLIANCE_SKETCH.md (educational; not legal advice)",
+        )
+    if "observability" in ints:
+        data_notes.append(
+            "Observability keywords — deploy.build adds deploy/observability/* stubs + docs/OBSERVABILITY_PACK.md (OTel/Prometheus/Grafana)",
+        )
+    if "multiregion_terraform" in ints:
+        data_notes.append(
+            "Multi-region / cloud + Terraform keywords — deploy.build adds terraform/modules/{aws,gcp,azure}_region_stub + multiregion_sketch",
+        )
+    return {
+        "data_model_intent": data_notes,
+        "api_contract_intent": "REST JSON sketch under backend/main.py (health + sample routes)",
+        "auth_flow_intent": "AuthProvider + localStorage demo token; MFA / OIDC not generated",
+        "tenancy": "multi_tenant_sketch" if "multi_tenant" in ints else "single_tenant_template",
+        "billing_intent": "Stripe stubs + idempotency SQL sketch if stripe integration detected",
+        "frontend_stack": "vite_react_react_router_zustand",
+        "backend_stack": "python_fastapi_sketch",
+        "build_kind": build_kind,
+        "integrations_detected": list(integrations or []),
+    }
 
 
 # ── Phase builders ────────────────────────────────────────────────────────────
@@ -191,7 +268,8 @@ def _build_phases(goal: str, build_kind: str, integrations: list) -> list:
             "label": "Deploy",
             "steps": [
                 {"key": "deploy.build", "agent": "Deployment Agent",
-                 "name": "Build artifacts", "description": "Run production build",
+                 "name": "Build artifacts",
+                 "description": "Run production build (after security + behavioral bundle in verifier)",
                  "depends_on": ["verification.security"]},
                 {"key": "deploy.publish", "agent": "Deployment Agent",
                  "name": "Publish to target", "description": "Deploy to Vercel/Netlify/Railway",
@@ -276,10 +354,24 @@ async def generate_plan(goal: str,
     ]
     if "stripe" in integrations:
         acceptance_criteria.append("Stripe checkout flow reachable")
+    if "compliance_sensitive" in integrations:
+        acceptance_criteria.append(
+            "Regulated-domain sketch doc present (docs/COMPLIANCE_SKETCH.md) — review with counsel before production",
+        )
+    if "observability" in integrations:
+        acceptance_criteria.append(
+            "Observability stubs under deploy/observability — configure scrape targets, OTLP, and dashboards before production",
+        )
+    if "multiregion_terraform" in integrations:
+        acceptance_criteria.append(
+            "Terraform multi-region sketch under terraform/ — run terraform fmt/validate and extend for VPC, data replication, DNS",
+        )
 
     tier = os.environ.get("CRUCIB_QUALITY_TIER", "mvp").strip().lower()
     if tier not in ("prototype", "mvp", "production", "enterprise"):
         tier = "mvp"
+
+    spec_guard = merge_plan_risk_flags_into_report(risk_flags, evaluate_goal_against_runner(goal))
 
     plan = {
         "goal": goal,
@@ -293,6 +385,8 @@ async def generate_plan(goal: str,
         "missing_inputs": missing_inputs,
         "summary": f"Building a {build_kind} application: {goal[:100]}",
         "quality_tier": tier,
+        "spec_guard": spec_guard,
+        "architecture_outline": _architecture_outline(build_kind, integrations),
     }
 
     return enrich_plan_with_node_manifests(plan)

@@ -7,13 +7,43 @@ import {
   MessageCircle, Zap, AlertCircle, LogOut, ChevronRight,
   FileOutput, FileText, LayoutGrid, BookOpen, Key, Keyboard,
   CreditCard, ScrollText, BarChart3, Wrench, HelpCircle, Coins,
-  X, Bell, MoreHorizontal, ExternalLink, Pencil, Share2,
+  X, MoreHorizontal, ExternalLink, Pencil, Share2,
   Trash2, FolderInput, Star, Settings, ShieldCheck, Code, Monitor,
   PanelLeftClose, PanelLeftOpen, History, Home,
   Bot, Radio, MessageSquare, ShoppingBag, Users, Sparkles, PlayCircle,
 } from 'lucide-react';
 import Logo from './Logo';
 import './Sidebar.css';
+
+/** Engine Room nav — module scope so filter memo deps stay stable */
+const ENGINE_ROOM_ITEMS = [
+  { label: 'Skills', icon: Sparkles, href: '/app/skills' },
+  { label: 'Studio', icon: Bot, href: '/app/studio' },
+  { label: 'Knowledge', icon: BookOpen, href: '/app/knowledge' },
+  { label: 'Channels', icon: Radio, href: '/app/channels' },
+  { label: 'Sessions', icon: MessageSquare, href: '/app/sessions' },
+  { label: 'Commerce', icon: ShoppingBag, href: '/app/commerce' },
+  { label: 'Members', icon: Users, href: '/app/members' },
+  { label: 'Credit Center', icon: Coins, href: '/app/tokens' },
+  { label: 'Exports', icon: FileOutput, href: '/app/exports' },
+  { label: 'Docs / Slides / Sheets', icon: FileText, href: '/app/generate' },
+  { label: 'Patterns', icon: Library, href: '/app/patterns' },
+  { label: 'Templates', icon: LayoutGrid, href: '/app/templates' },
+  { label: 'Prompt Library', icon: BookOpen, href: '/app/prompts' },
+  { label: 'Learn', icon: HelpCircle, href: '/app/learn' },
+  { label: 'Env', icon: Key, href: '/app/env' },
+  { label: 'Shortcuts', icon: Keyboard, href: '/app/shortcuts' },
+  { label: 'Benchmarks', icon: BarChart3, href: '/benchmarks' },
+  { label: 'Add Payments', icon: CreditCard, href: '/app/payments-wizard' },
+  { label: 'Audit Log', icon: ScrollText, href: '/app/audit-log' },
+  { label: 'Model Manager', icon: BarChart3, href: '/app/models' },
+  { label: 'Fine-Tuning', icon: Zap, href: '/app/fine-tuning' },
+  { label: 'Safety Dashboard', icon: ShieldCheck, href: '/app/safety' },
+  { label: 'Monitoring', icon: BarChart3, href: '/app/monitoring' },
+  { label: 'Auto-Runner', icon: PlayCircle, href: '/app/workspace' },
+  { label: 'VibeCode', icon: Code, href: '/app/vibecode' },
+  { label: 'IDE', icon: Monitor, href: '/app/ide' },
+];
 
 /**
  * Sidebar Component (Left Navigation) — Redesigned
@@ -77,7 +107,9 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
       const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id].slice(0, 40);
       try {
         localStorage.setItem('crucibai_sidebar_pinned_ids', JSON.stringify(next));
-      } catch (_) {}
+      } catch {
+        /* ignore quota / private mode */
+      }
       return next;
     });
   }, []);
@@ -86,39 +118,6 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
   const createNav = [
     { label: 'New Task', icon: Plus, href: '/app', exact: true, state: { newAgent: Date.now() } },
     { label: 'New Project', icon: FolderPlus, href: '/app', exact: true, state: { newProject: true } },
-  ];
-
-  // Engine Room — collapsed by default, for power users
-  // Includes platform infrastructure items (Studio/Knowledge/Channels/Sessions/Commerce/Members)
-  // which are internal config and not part of the main builder workflow
-  const engineRoomItems = [
-    { label: 'Skills', icon: Sparkles, href: '/app/skills' },
-    { label: 'Studio', icon: Bot, href: '/app/studio' },
-    { label: 'Knowledge', icon: BookOpen, href: '/app/knowledge' },
-    { label: 'Channels', icon: Radio, href: '/app/channels' },
-    { label: 'Sessions', icon: MessageSquare, href: '/app/sessions' },
-    { label: 'Commerce', icon: ShoppingBag, href: '/app/commerce' },
-    { label: 'Members', icon: Users, href: '/app/members' },
-    // original engine items below:
-    { label: 'Credit Center', icon: Coins, href: '/app/tokens' },
-    { label: 'Exports', icon: FileOutput, href: '/app/exports' },
-    { label: 'Docs / Slides / Sheets', icon: FileText, href: '/app/generate' },
-    { label: 'Patterns', icon: Library, href: '/app/patterns' },
-    { label: 'Templates', icon: LayoutGrid, href: '/app/templates' },
-    { label: 'Prompt Library', icon: BookOpen, href: '/app/prompts' },
-    { label: 'Learn', icon: HelpCircle, href: '/app/learn' },
-    { label: 'Env', icon: Key, href: '/app/env' },
-    { label: 'Shortcuts', icon: Keyboard, href: '/app/shortcuts' },
-    { label: 'Benchmarks', icon: BarChart3, href: '/benchmarks' },
-    { label: 'Add Payments', icon: CreditCard, href: '/app/payments-wizard' },
-    { label: 'Audit Log', icon: ScrollText, href: '/app/audit-log' },
-    { label: 'Model Manager', icon: BarChart3, href: '/app/models' },
-    { label: 'Fine-Tuning', icon: Zap, href: '/app/fine-tuning' },
-    { label: 'Safety Dashboard', icon: ShieldCheck, href: '/app/safety' },
-    { label: 'Monitoring', icon: BarChart3, href: '/app/monitoring' },
-    { label: 'Auto-Runner', icon: PlayCircle, href: '/app/workspace' },
-    { label: 'VibeCode', icon: Code, href: '/app/vibecode' },
-    { label: 'IDE', icon: Monitor, href: '/app/ide' },
   ];
 
   // Show BOTH projects and store tasks — chat tasks must always be visible; include createdAt for History grouping
@@ -256,9 +255,9 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
   }, []);
 
   const filteredEngineItems = useMemo(() => {
-    if (!searchQuery) return engineRoomItems;
+    if (!searchQuery) return ENGINE_ROOM_ITEMS;
     const q = searchQuery.toLowerCase();
-    return engineRoomItems.filter(item => item.label.toLowerCase().includes(q));
+    return ENGINE_ROOM_ITEMS.filter(item => item.label.toLowerCase().includes(q));
   }, [searchQuery]);
 
   // Keyboard shortcut: Ctrl+K for search

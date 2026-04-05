@@ -31,7 +31,7 @@ function payloadSummary(payload) {
   }
 }
 
-export default function ProofPanel({ proof, jobId, onExport }) {
+export default function ProofPanel({ proof, jobId, onExport: _onExport }) {
   const [activeTab, setActiveTab] = useState('files');
   const [expandedItems, setExpandedItems] = useState(new Set());
   const [scoreExpanded, setScoreExpanded] = useState(false);
@@ -62,6 +62,16 @@ export default function ProofPanel({ proof, jobId, onExport }) {
     return Object.entries(counts)
       .filter(([, n]) => n > 0)
       .map(([key, n]) => ({ key, label: CATEGORY_LABELS[key] || key, count: n }));
+  }, [proof]);
+
+  const hasComplianceSketchProof = useMemo(() => {
+    const files = proof?.bundle?.files;
+    if (!Array.isArray(files)) return false;
+    return files.some(
+      (row) =>
+        row?.payload?.compliance_sketch ||
+        row?.payload?.path === 'docs/COMPLIANCE_SKETCH.md',
+    );
   }, [proof]);
 
   if (!proof) {
@@ -101,7 +111,7 @@ export default function ProofPanel({ proof, jobId, onExport }) {
       <div className="pp-header">
         <div className="pp-score-area">
           <span className="pp-score-num">{score.toFixed(1)}</span>
-          <span className="pp-score-label">Quality Score</span>
+          <span className="pp-score-label">Pipeline quality (proof density)</span>
           <div className="pp-score-bar">
             <div className="pp-score-fill" style={{ width: `${Math.min(score, 100)}%` }} />
           </div>
@@ -113,6 +123,38 @@ export default function ProofPanel({ proof, jobId, onExport }) {
           <Download size={12} /> Export Proof
         </button>
       </div>
+
+      {hasComplianceSketchProof && (
+        <div className="pp-compliance-callout" role="status">
+          <ShieldCheck size={14} aria-hidden />
+          <div>
+            <span className="pp-compliance-callout-title">Compliance sketch on disk</span>
+            <span className="pp-compliance-callout-desc">
+              Proof lists <code className="pp-compliance-code">docs/COMPLIANCE_SKETCH.md</code> — an educational
+              checklist tied to your goal. Open the <strong>Files</strong> tab below. Not legal advice.
+            </span>
+          </div>
+        </div>
+      )}
+
+      {proof.scorecard && typeof proof.scorecard === 'object' && (
+        <div className="pp-honest-scorecard" aria-label="Truthful multi-axis scores">
+          <div className="pp-mini-scores">
+            <span title="Evidence-weighted trust">
+              Trust ~{Number(proof.scorecard.trust_evidence_score ?? proof.trust_score ?? 0).toFixed(0)}
+            </span>
+            <span title="Stated goal vs what this runner can emit">
+              Spec compliance {Number(proof.scorecard.spec_compliance_percent ?? proof.spec_compliance_percent ?? 100).toFixed(0)}%
+            </span>
+            <span title="Heuristic only — not enterprise certification">
+              Prod readiness ~{Number(proof.scorecard.production_readiness_score ?? proof.production_readiness_score ?? 0).toFixed(0)}
+            </span>
+          </div>
+          {proof.scorecard.honest_summary && (
+            <p className="pp-honest-summary">{proof.scorecard.honest_summary}</p>
+          )}
+        </div>
+      )}
 
       <div className="pp-score-breakdown">
         <button type="button" className="pp-score-toggle" onClick={() => setScoreExpanded(!scoreExpanded)}>

@@ -128,8 +128,8 @@ function App() {
 
 export default ExampleLayout;
 
-// Styles for example
-const exampleStyles = `
+// Styles for example (reference / future injection)
+const _exampleStyles = `
 .main-content-example {
   display: flex;
   flex-direction: column;

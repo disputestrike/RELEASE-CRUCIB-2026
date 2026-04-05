@@ -16,13 +16,13 @@ const MODES = [
 export default function AutoRunnerPanel({
   mode = 'off',
   onModeChange,
-  jobId,
+  jobId: _jobId,
   jobStatus,
   onRun,
   onPause,
   onResume,
   onCancel,
-  budget,
+  budget: _budget,
   className = '',
 }) {
   const isRunning = jobStatus === 'running';

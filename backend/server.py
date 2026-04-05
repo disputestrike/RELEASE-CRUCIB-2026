@@ -267,6 +267,12 @@ def decode_mfa_temp_token(token: str) -> dict:
     return payload
 
 app = FastAPI(title="CrucibAI Platform")
+try:
+    from orchestration.observability import init_opentelemetry
+
+    init_opentelemetry()
+except Exception:
+    pass
 add_security_headers(app)
 api_router = APIRouter(prefix="/api")
 auth_router = APIRouter(prefix="/api", tags=["auth"])
@@ -8267,6 +8273,45 @@ async def run_auto(
                 },
             )
 
+        # Spec Guardian (Layer 1): record always; hard-block only when CRUCIBAI_SPEC_GUARD_MODE=strict
+        import json as _sg_json
+        from orchestration.spec_guardian import evaluate_goal_against_runner, merge_plan_risk_flags_into_report
+
+        goal_text = (job.get("goal") or "").strip()
+        risk_flags = []
+        async with pool.acquire() as conn:
+            prow = await conn.fetchrow(
+                "SELECT plan_json FROM build_plans WHERE job_id = $1 ORDER BY created_at DESC LIMIT 1",
+                body.job_id,
+            )
+        if prow and prow.get("plan_json"):
+            try:
+                _pj = _sg_json.loads(prow["plan_json"])
+                risk_flags = _pj.get("risk_flags") or []
+            except Exception:
+                risk_flags = []
+        spec_guard = merge_plan_risk_flags_into_report(
+            risk_flags, evaluate_goal_against_runner(goal_text),
+        )
+        await append_job_event(
+            body.job_id,
+            "spec_guardian",
+            {"spec_guard": spec_guard, "kind": "spec_guardian.json"},
+        )
+        if spec_guard.get("blocks_run"):
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "spec_guard_blocked",
+                    "message": (
+                        "Spec Guardian blocked this run: goal asks for stacks or capabilities "
+                        "this pipeline cannot produce. Set CRUCIBAI_SPEC_GUARD_MODE=advisory to allow, "
+                        "or narrow the goal to match the Vite + React + Python sketch template."
+                    ),
+                    "spec_guard": spec_guard,
+                },
+            )
+
         ws = (body.workspace_path or "").strip()
         pid = job.get("project_id")
         if not ws and pid:
@@ -8450,6 +8495,10 @@ async def get_job_trust_report(job_id: str, user: dict = Depends(get_optional_us
             "truth_status": proof.get("truth_status"),
             "total_proof_items": proof.get("total_proof_items"),
             "category_counts": proof.get("category_counts"),
+            "spec_compliance_percent": proof.get("spec_compliance_percent"),
+            "spec_guard": proof.get("spec_guard"),
+            "production_readiness_score": proof.get("production_readiness_score"),
+            "scorecard": proof.get("scorecard"),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

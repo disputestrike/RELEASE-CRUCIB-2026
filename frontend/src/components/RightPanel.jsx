@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  Eye, Code, Settings, Share2, Download, X, Terminal,
+  Eye, Code, Share2, Download, X, Terminal,
   History, Wrench, FolderTree, ChevronRight, FileOutput,
   Library, BookOpen, LayoutGrid, FileText, Copy, Check,
-  ExternalLink, RefreshCw, Puzzle, Github, Zap, Globe
+  Puzzle, Github, Zap, Globe
 } from 'lucide-react';
 import './RightPanel.css';
 
@@ -22,7 +22,7 @@ import './RightPanel.css';
  */
 
 export const RightPanel = ({
-  preview = null,
+  preview: _preview = null,
   code = null,
   files = {},
   terminalOutput = [],
@@ -30,7 +30,7 @@ export const RightPanel = ({
   onShare = () => {},
   onDownload = () => {},
   onClose = () => {},
-  onRefreshPreview = () => {},
+  onRefreshPreview: _onRefreshPreview = () => {},
 }) => {
   const [activeTab, setActiveTab] = useState('preview');
   const [selectedFile, setSelectedFile] = useState(null);

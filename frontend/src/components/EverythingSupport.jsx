@@ -7,10 +7,9 @@
 import React, { useState } from 'react';
 import {
   FileCode, FileText, Presentation, Sheet3, Download, Github,
-  Zap, CheckCircle, AlertCircle, Loader2, Copy, Eye
+  Zap, CheckCircle, AlertCircle, Loader2,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import axios from 'axios';
+import { motion } from 'framer-motion';
 
 /**
  * Everything Support Menu Component
