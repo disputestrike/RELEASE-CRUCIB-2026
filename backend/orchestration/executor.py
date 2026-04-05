@@ -260,6 +260,20 @@ async def handle_planning_step(step: Dict, job: Dict,
         )
         if _safe_write(workspace_path, plan_path, body):
             written.append(plan_path)
+        # Crew-style multi-agent sketches (stubs) — first deep planning step only
+        if step.get("step_key") == "planning.requirements":
+            if os.environ.get("CRUCIBAI_DISABLE_CREW", "").strip().lower() not in (
+                "1",
+                "true",
+                "yes",
+            ):
+                try:
+                    from .agent_orchestrator import run_crew_for_goal
+
+                    crew_pack = await run_crew_for_goal(job.get("goal") or "", workspace_path)
+                    written.extend(crew_pack.get("written") or [])
+                except Exception as exc:
+                    logger.warning("executor: crew orchestrator skipped: %s", exc)
     return {
         "output": f"Planning step '{step['step_key']}' analyzed goal: {job.get('goal', '')[:100]}",
         "artifacts": [],

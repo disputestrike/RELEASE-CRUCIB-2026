@@ -42,6 +42,7 @@ def build_multiregion_terraform_readme(goal_excerpt: str) -> str:
 ## Layout
 
 ```
+infra/multi_region/   # Repo-root stubs: aws/, gcp/, azure/ + shared variables.tf
 terraform/
   multiregion_sketch/
     main.tf       # Example module calls (primary + optional secondary region variables)
