@@ -28,7 +28,9 @@ def test_secret_scan_clean():
 def test_secret_scan_detects_stripe_live():
     with tempfile.TemporaryDirectory() as d:
         with open(os.path.join(d, "bad.py"), "w", encoding="utf-8") as f:
-            f.write('k = "sk_live_REDACTED_TEST_ONLY"\n')
+            # Build at runtime — do not embed sk_live_ + 20+ alnum in source (GitHub push protection).
+            token = "sk_live_" + ("a" * 24)
+            f.write(f'k = "{token}"\n')
         hits = scan_workspace_for_credential_patterns(d)
         assert hits and any("Stripe" in h for h in hits)
 
