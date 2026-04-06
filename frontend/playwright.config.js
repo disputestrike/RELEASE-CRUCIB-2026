@@ -4,7 +4,6 @@
 const { defineConfig, devices } = require('@playwright/test');
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000';
-const apiURL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000';
 
 module.exports = defineConfig({
   testDir: './e2e',
@@ -19,9 +18,26 @@ module.exports = defineConfig({
     screenshot: 'only-on-failure',
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
-    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+    {
+      name: 'chromium',
+      testIgnore: '**/workspace-preview.spec.js',
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'firefox',
+      testIgnore: '**/workspace-preview.spec.js',
+      use: { ...devices['Desktop Firefox'] },
+    },
+    {
+      name: 'webkit',
+      testIgnore: '**/workspace-preview.spec.js',
+      use: { ...devices['Desktop Safari'] },
+    },
+    {
+      name: 'workspace-preview',
+      testMatch: '**/workspace-preview.spec.js',
+      use: { ...devices['Desktop Chrome'] },
+    },
   ],
   webServer: process.env.CI ? undefined : {
     command: 'npm run start',

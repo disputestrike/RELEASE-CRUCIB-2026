@@ -6,11 +6,12 @@ from orchestration.spec_guardian import evaluate_goal_against_runner, merge_plan
 from orchestration.truth_scores import compute_production_readiness, build_honest_scorecard
 
 
-def test_default_mode_is_strict_blocks_nextjs_without_env(monkeypatch):
+def test_default_mode_is_advisory_allows_nextjs_without_env(monkeypatch):
     monkeypatch.delenv("CRUCIBAI_SPEC_GUARD_MODE", raising=False)
     r = evaluate_goal_against_runner("Ship the marketing site on Next.js 14")
-    assert r["mode"] == "strict"
-    assert r["blocks_run"] is True
+    assert r["mode"] == "advisory"
+    assert r["blocks_run"] is False
+    assert any(v.get("code") == "stack_nextjs_requested" for v in r["violations"])
 
 
 def test_advisory_mode_allows_nextjs_goal_but_lowers_compliance(monkeypatch):
@@ -35,6 +36,28 @@ def test_merge_planner_flags():
         base,
     )
     assert len(merged["violations"]) >= 1
+
+
+def test_strict_mode_next_track_skips_nextjs_blocker(monkeypatch):
+    monkeypatch.setenv("CRUCIBAI_SPEC_GUARD_MODE", "strict")
+    r = evaluate_goal_against_runner(
+        "Production SaaS with Next.js App Router",
+        build_target="next_app_router",
+    )
+    assert r["blocks_run"] is False
+    assert not any(v.get("code") == "stack_nextjs_requested" for v in r["violations"])
+
+
+def test_merge_skips_nextjs_planner_flag_when_next_target(monkeypatch):
+    monkeypatch.setenv("CRUCIBAI_SPEC_GUARD_MODE", "strict")
+    base = evaluate_goal_against_runner("simple todo app", build_target="next_app_router")
+    merged = merge_plan_risk_flags_into_report(
+        ["goal_spec_nextjs_autorunner_template_is_vite_react"],
+        base,
+        build_target="next_app_router",
+    )
+    assert not any(v.get("code") == "stack_nextjs_requested" for v in merged["violations"])
+    assert merged["blocks_run"] is False
 
 
 def test_truth_scorecard_shape():

@@ -9,7 +9,7 @@ import { Zap, Info } from 'lucide-react';
 import { API_BASE } from '../../apiBase';
 import './CostEstimator.css';
 
-export default function CostEstimator({ goal, token, onEstimateReady }) {
+export default function CostEstimator({ goal, token, buildTarget, onEstimateReady }) {
   const [estimate, setEstimate] = useState(null);
   const [loading, setLoading] = useState(false);
   const debounceRef = useRef(null);
@@ -19,7 +19,11 @@ export default function CostEstimator({ goal, token, onEstimateReady }) {
     try {
       const headers = {};
       if (token) headers.Authorization = `Bearer ${token}`;
-      const res = await axios.post(`${API_BASE}/orchestrator/estimate`, { goal: g }, { headers });
+      const res = await axios.post(
+        `${API_BASE}/orchestrator/estimate`,
+        { goal: g, build_target: buildTarget || undefined },
+        { headers },
+      );
       const est = res.data?.estimate;
       setEstimate(est);
       onEstimateReady?.(est);
@@ -28,7 +32,7 @@ export default function CostEstimator({ goal, token, onEstimateReady }) {
     } finally {
       setLoading(false);
     }
-  }, [token, onEstimateReady]);
+  }, [token, onEstimateReady, buildTarget]);
 
   useEffect(() => {
     if (!goal || goal.length < 10) return;
@@ -37,7 +41,7 @@ export default function CostEstimator({ goal, token, onEstimateReady }) {
       fetchEstimate(goal);
     }, 700);
     return () => clearTimeout(debounceRef.current);
-  }, [goal, fetchEstimate]);
+  }, [goal, fetchEstimate, buildTarget]);
 
   if (!goal || goal.length < 10) return null;
 

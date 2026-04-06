@@ -82,7 +82,9 @@
     "lint:ci": "eslint src/components --max-warnings 0",
     "lint:warn-budget": "node scripts/eslint-warn-budget.mjs",
     "e2e": "playwright test",
-    "e2e:ui": "playwright test --ui"
+    "e2e:ui": "playwright test --ui",
+    "e2e:workspace-preview": "playwright test e2e/workspace-preview.spec.js --project=workspace-preview --workers=1",
+    "e2e:workspace-preview:next": "cross-env E2E_BUILD_TARGET=next_app_router playwright test e2e/workspace-preview.spec.js --project=workspace-preview --workers=1"
   },
   "browserslist": {
     "production": [

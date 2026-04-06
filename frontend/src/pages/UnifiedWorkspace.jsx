@@ -154,8 +154,13 @@ export default function UnifiedWorkspace() {
   const handleResetWidth = useCallback(() => setRightWidth(440), []);
 
   const [goal, setGoal] = useState('');
+  const [continuationNotes, setContinuationNotes] = useState('');
   const [autoMode, setAutoMode] = useState('guided');
   const [plan, setPlan] = useState(null);
+  const [capabilityNotice, setCapabilityNotice] = useState([]);
+  const [buildTargets, setBuildTargets] = useState([]);
+  const [buildTarget, setBuildTarget] = useState('vite_react');
+  const [buildTargetMeta, setBuildTargetMeta] = useState(null);
   const [estimate, setEstimate] = useState(null);
   const [jobId, setJobId] = useState(null);
   const [stage, setStage] = useState('input');
@@ -180,6 +185,27 @@ export default function UnifiedWorkspace() {
   useEffect(() => {
     fetchBuildJobHistory();
   }, [fetchBuildJobHistory, jobId]);
+
+  useEffect(() => {
+    if (!API) return;
+    axios
+      .get(`${API}/orchestrator/build-targets`)
+      .then((r) => {
+        const list = r.data?.targets || [];
+        setBuildTargets(list);
+      })
+      .catch(() => setBuildTargets([]));
+  }, []);
+
+  useEffect(() => {
+    const id = plan?.crucib_build_target;
+    if (!id || !buildTargets.length) return;
+    const row = buildTargets.find((t) => t.id === id);
+    if (row) {
+      setBuildTarget(id);
+      setBuildTargetMeta(row);
+    }
+  }, [plan, buildTargets]);
 
   useEffect(() => {
     if (!jobIdFromUrl || !token || !API) return;
@@ -221,9 +247,11 @@ export default function UnifiedWorkspace() {
   const sandpackFiles = useMemo(() => computeSandpackFiles(files), [files]);
   const sandpackDeps = useMemo(() => computeSandpackDeps(files), [files]);
 
-  const { job, steps, events, proof, isConnected, refresh } = useJobStream(jobId, token);
+  /** URL wins so stream/poll start on first paint when opening ?jobId=… (state hydrates a tick later). */
+  const effectiveJobId = jobIdFromUrl || jobId;
+  const { job, steps, events, proof, isConnected, refresh } = useJobStream(effectiveJobId, token);
 
-  const effectiveProjectId = projectIdFromUrl || job?.project_id || null;
+  const effectiveProjectId = job?.project_id || projectIdFromUrl || null;
 
   const isCompleted = job?.status === 'completed';
   const latestFailedStep = steps.find((s) => s.status === 'failed' && !failedStep);
@@ -233,17 +261,27 @@ export default function UnifiedWorkspace() {
     [steps],
   );
   const lastPulledStepCount = useRef(0);
+  const completedWorkspaceBumpRef = useRef(null);
   useEffect(() => {
     lastPulledStepCount.current = 0;
-  }, [jobId]);
+    completedWorkspaceBumpRef.current = null;
+  }, [jobId, jobIdFromUrl]);
 
   useEffect(() => {
-    if (!effectiveProjectId || !token || !API) return;
+    if (!token || !API) return;
+    if (!effectiveJobId && !effectiveProjectId) return;
     if (completedStepCount === 0) return;
     if (completedStepCount === lastPulledStepCount.current) return;
     lastPulledStepCount.current = completedStepCount;
     setWorkspacePullKey((k) => k + 1);
-  }, [completedStepCount, effectiveProjectId, token]);
+  }, [completedStepCount, effectiveProjectId, effectiveJobId, token]);
+
+  useEffect(() => {
+    if (job?.status !== 'completed' || !effectiveJobId) return;
+    if (completedWorkspaceBumpRef.current === effectiveJobId) return;
+    completedWorkspaceBumpRef.current = effectiveJobId;
+    setWorkspacePullKey((k) => k + 1);
+  }, [job?.status, effectiveJobId]);
 
   useEffect(() => {
     if (isCompleted && stage === 'running') setStage('completed');
@@ -304,17 +342,26 @@ export default function UnifiedWorkspace() {
   }, [taskIdFromUrl, token]);
 
   useEffect(() => {
-    if (!effectiveProjectId || !token || !API) return;
+    if (!token || !API) return;
+    const useJobWs = Boolean(effectiveJobId);
+    if (!useJobWs && !effectiveProjectId) return;
     const headers = { Authorization: `Bearer ${token}` };
+    const listUrl = useJobWs
+      ? `${API}/jobs/${effectiveJobId}/workspace/files`
+      : `${API}/projects/${effectiveProjectId}/workspace/files`;
+    const fileUrl = (path) =>
+      useJobWs
+        ? `${API}/jobs/${effectiveJobId}/workspace/file`
+        : `${API}/projects/${effectiveProjectId}/workspace/file`;
     axios
-      .get(`${API}/projects/${effectiveProjectId}/workspace/files`, { headers })
+      .get(listUrl, { headers })
       .then((r) => {
         const list = r.data?.files || [];
         if (list.length === 0) return;
         return Promise.all(
           list.map((path) =>
             axios
-              .get(`${API}/projects/${effectiveProjectId}/workspace/file`, { params: { path }, headers })
+              .get(fileUrl(path), { params: { path }, headers })
               .then((f) => ({ path: f.data.path, content: f.data.content }))
               .catch(() => null),
           ),
@@ -325,18 +372,24 @@ export default function UnifiedWorkspace() {
             return acc;
           }, {});
           if (Object.keys(loaded).length > 0) {
-            setFiles(loaded);
+            // Merge so backend-only trees do not wipe Sandpack (computeSandpackFiles ignores .py, etc.).
+            setFiles((prev) => ({ ...prev, ...loaded }));
             setActiveFile((cur) => {
-              if (cur && loaded[cur]) return cur;
+              if (cur) {
+                const normalized = cur.startsWith('/') ? cur : `/${cur}`;
+                if (loaded[normalized]) return normalized;
+              }
               const keys = Object.keys(loaded).sort();
-              return keys.find((k) => /App\.(jsx?|tsx?)$/i.test(k)) || keys[0];
+              return keys.find((k) => /App\.(jsx?|tsx?)$/i.test(k)) || keys[0] || cur;
             });
-            setFilesReadyKey(`proj_${effectiveProjectId}_${Date.now()}`);
+            setFilesReadyKey(
+              useJobWs ? `job_${effectiveJobId}_${Date.now()}` : `proj_${effectiveProjectId}_${Date.now()}`,
+            );
           }
         });
       })
       .catch(() => {});
-  }, [effectiveProjectId, token, workspacePullKey]);
+  }, [effectiveProjectId, effectiveJobId, token, workspacePullKey]);
 
   const reloadWorkspaceFromServer = useCallback(() => {
     lastPulledStepCount.current = 0;
@@ -349,11 +402,25 @@ export default function UnifiedWorkspace() {
     setError(null);
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const res = await axios.post(`${API}/orchestrator/plan`, { goal: goal.trim(), mode: autoMode }, { headers });
+      const cont = continuationNotes.trim();
+      const planGoal = cont
+        ? `${goal.trim()}\n\n--- Continuation / next phase (${new Date().toISOString()}) ---\n${cont}`
+        : goal.trim();
+      const res = await axios.post(
+        `${API}/orchestrator/plan`,
+        { goal: planGoal, mode: autoMode, build_target: buildTarget },
+        { headers },
+      );
       setPlan(res.data.plan);
+      setCapabilityNotice(Array.isArray(res.data.capability_notice) ? res.data.capability_notice : []);
+      if (res.data.build_target_meta) setBuildTargetMeta(res.data.build_target_meta);
+      else if (res.data.build_target && buildTargets.length) {
+        setBuildTargetMeta(buildTargets.find((t) => t.id === res.data.build_target) || null);
+      }
       setEstimate(res.data.estimate);
       setJobId(res.data.job_id);
       setStage('plan');
+      setContinuationNotes('');
       setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev);
@@ -370,13 +437,17 @@ export default function UnifiedWorkspace() {
   };
 
   const handleApprove = async () => {
-    if (!jobId) return;
+    const jid = jobId || jobIdFromUrl;
+    if (!jid) {
+      setError('No job to run — generate a plan first (or open a valid job link).');
+      return;
+    }
     setLoading(true);
     setStage('running');
     setError(null);
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      await axios.post(`${API}/orchestrator/run-auto`, { job_id: jobId }, { headers });
+      await axios.post(`${API}/orchestrator/run-auto`, { job_id: jid }, { headers });
     } catch (e) {
       const d = e.response?.data?.detail;
       let msg = 'Failed to start job.';
@@ -396,30 +467,33 @@ export default function UnifiedWorkspace() {
   };
 
   const handleCancel = async () => {
-    if (!jobId) return;
+    const jid = jobId || jobIdFromUrl;
+    if (!jid) return;
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      await axios.post(`${API}/jobs/${jobId}/cancel`, {}, { headers });
+      await axios.post(`${API}/jobs/${jid}/cancel`, {}, { headers });
     } catch (_) {
       /* ignore */
     }
   };
 
   const handleResume = async () => {
-    if (!jobId) return;
+    const jid = jobId || jobIdFromUrl;
+    if (!jid) return;
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      await axios.post(`${API}/jobs/${jobId}/resume`, {}, { headers });
+      await axios.post(`${API}/jobs/${jid}/resume`, {}, { headers });
     } catch (_) {
       /* ignore */
     }
   };
 
   const handleRetryStep = async (step) => {
-    if (!jobId || !step) return;
+    const jid = jobId || jobIdFromUrl;
+    if (!jid || !step) return;
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      await axios.post(`${API}/jobs/${jobId}/retry-step/${step.id}`, {}, { headers });
+      await axios.post(`${API}/jobs/${jid}/retry-step/${step.id}`, {}, { headers });
       setFailedStep(null);
       refresh();
     } catch (_) {
@@ -429,7 +503,11 @@ export default function UnifiedWorkspace() {
 
   const handleReset = () => {
     setGoal('');
+    setContinuationNotes('');
     setPlan(null);
+    setCapabilityNotice([]);
+    setBuildTarget('vite_react');
+    setBuildTargetMeta(null);
     setEstimate(null);
     setJobId(null);
     setStage('input');
@@ -558,7 +636,7 @@ export default function UnifiedWorkspace() {
             <span className="arp-bc-sep">/</span>
             <code className="arp-env-pill">production</code>
           </div>
-          {effectiveProjectId && token && (
+          {(effectiveProjectId || effectiveJobId) && token && (
             <button
               type="button"
               className="arp-topbar-btn"
@@ -575,7 +653,7 @@ export default function UnifiedWorkspace() {
           <AutoRunnerPanel
             mode={autoMode}
             onModeChange={setAutoMode}
-            jobId={jobId}
+            jobId={effectiveJobId}
             jobStatus={job?.status}
             onRun={() => handleApprove()}
             onPause={handleCancel}
@@ -661,7 +739,7 @@ export default function UnifiedWorkspace() {
             {buildJobs.map((j) => {
               const g = j.goal || '';
               const label = g.length > 56 ? `${g.slice(0, 56)}…` : g || j.id || '';
-              const active = j.id === jobId;
+              const active = j.id === effectiveJobId;
               return (
                 <button
                   key={j.id}
@@ -750,6 +828,11 @@ export default function UnifiedWorkspace() {
                   sessionBootstrapRef.current = false;
                   ensureGuest();
                 }}
+                buildTarget={buildTarget}
+                onBuildTargetChange={setBuildTarget}
+                buildTargets={buildTargets}
+                continuationNotes={continuationNotes}
+                onContinuationChange={setContinuationNotes}
               />
               <div className="iterative-strip">
                 <h3>Iterative build (classic API)</h3>
@@ -790,6 +873,8 @@ export default function UnifiedWorkspace() {
             <PlanApproval
               plan={plan}
               estimate={estimate}
+              capabilityNotice={capabilityNotice}
+              buildTargetMeta={buildTargetMeta}
               onApprove={() => handleApprove()}
               onRunAuto={() => handleApprove()}
               onEdit={() => setStage('input')}
@@ -878,7 +963,7 @@ export default function UnifiedWorkspace() {
                     isConnected={isConnected}
                   />
                 )}
-                {activePane === 'proof' && <ProofPanel proof={proof} jobId={jobId} onExport={() => {}} />}
+                {activePane === 'proof' && <ProofPanel proof={proof} jobId={effectiveJobId} onExport={() => {}} />}
                 {activePane === 'explorer' && uxMode === 'pro' && (
                   <SystemExplorer steps={steps} proof={proof} job={job} projectId={effectiveProjectId} token={token} />
                 )}

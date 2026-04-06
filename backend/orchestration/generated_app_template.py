@@ -1,13 +1,115 @@
 """
 Production-shaped frontend bundle for Auto-Runner workspace (Sandpack-ready).
 Explicit README marks gaps vs a full production deploy.
+
+When ``job["build_target"]`` is set (e.g. ``next_app_router``), extra track files are added
+without breaking the root Vite bundle verifiers expect.
 """
 import json
 from typing import Dict, List, Tuple
 
+from .build_targets import build_target_meta, normalize_build_target
+
+
+def _crucib_build_target_doc(job: Dict, target: str) -> str:
+    meta = build_target_meta(target)
+    g = "\n".join(f"- {x}" for x in meta["guarantees"])
+    run = "\n".join(f"- {x}" for x in meta["on_this_run"])
+    road = "\n".join(f"- {x}" for x in meta["roadmap"])
+    return f"""# CrucibAI — build target for this job
+
+**{meta["label"]}**
+
+{meta["tagline"]}
+
+Goal (excerpt): {(job.get("goal") or "").strip()[:500] or "(none)"}
+
+## What this run is designed to deliver
+
+{g}
+
+## On this run (exactly)
+
+{run}
+
+## Roadmap (platform breadth — not narrowed)
+
+{road}
+
+---
+*CrucibAI’s product direction is multi-stack and multi-modal; each Auto-Runner execution mode documents honest guarantees while we expand tracks (Next-native DAG, mobile, deeper automation, etc.).*
+"""
+
+
+def _next_app_stub_files(goal_snippet: str) -> List[Tuple[str, str]]:
+    """Parallel Next.js 14 App Router starter — separate from root Vite package.json."""
+    readme = f"""# Next.js App Router track (parallel to root Vite app)
+
+This folder is a **standalone** Next.js app. The Auto-Runner still verifies the **root** Vite bundle for this job;
+use this directory when you want to grow an App Router codebase without waiting for a first-class Next DAG.
+
+## Your goal (reference)
+{goal_snippet[:1200]}
+
+## Commands
+```bash
+cd next-app-stub
+npm install
+npm run dev
+```
+
+## Notes
+- Keep root `package.json` (Vite) intact for existing preview/verify flows.
+- Merge or replace with a single Next monorepo when we ship a dedicated Next pipeline.
+"""
+    pkg = {
+        "name": "crucibai-next-stub",
+        "version": "0.1.0",
+        "private": True,
+        "scripts": {"dev": "next dev", "build": "next build", "start": "next start"},
+        "dependencies": {"next": "14.2.18", "react": "^18.2.0", "react-dom": "^18.2.0"},
+    }
+    layout = """export const metadata = { title: 'CrucibAI Next stub' };
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <body style={{ fontFamily: 'system-ui', margin: 0, background: '#0f172a', color: '#e2e8f0' }}>
+        {children}
+      </body>
+    </html>
+  );
+}
+"""
+    page = """export default function Page() {
+  return (
+    <main style={{ padding: 24 }}>
+      <h1>Next.js App Router (stub)</h1>
+      <p style={{ maxWidth: 560, lineHeight: 1.6 }}>
+        This track ships alongside the Vite app at repo root. Expand routes under <code>app/</code> and move
+        business logic here as the platform adds a native Next execution mode.
+      </p>
+    </main>
+  );
+}
+"""
+    nconf = """/** @type {import('next').NextConfig} */
+const nextConfig = { reactStrictMode: true };
+export default nextConfig;
+"""
+    return [
+        ("next-app-stub/README.md", readme),
+        ("next-app-stub/package.json", json.dumps(pkg, indent=2)),
+        ("next-app-stub/next.config.mjs", nconf),
+        ("next-app-stub/app/layout.tsx", layout),
+        ("next-app-stub/app/page.tsx", page),
+        ("next-app-stub/.gitignore", "node_modules\n.next\nout\n"),
+    ]
+
 
 def build_frontend_file_set(job: Dict) -> List[Tuple[str, str]]:
     """(relative_path, utf-8 content)."""
+    target = normalize_build_target(job.get("build_target"))
     goal_raw = (job.get("goal") or "").strip()[:2000] or "(no goal text)"
     goal_literal = json.dumps((job.get("goal") or "Describe your app goal.")[:800])
     pkg = {
@@ -32,8 +134,16 @@ def build_frontend_file_set(job: Dict) -> List[Tuple[str, str]]:
         },
     }
 
-    readme = f"""# Generated app (CrucibAI Auto-Runner)
+    focus_line = ""
+    if target == "static_site":
+        focus_line = "\n**Build target:** Marketing / static site — Vite SPA structured for landing-style pages.\n"
+    elif target == "api_backend":
+        focus_line = "\n**Build target:** API-first — emphasize `backend/` and treat UI as thin/demo layer.\n"
+    elif target == "agent_workflow":
+        focus_line = "\n**Build target:** Agents & automation — crew/workflow sketches complement this scaffold.\n"
 
+    readme = f"""# Generated app (CrucibAI Auto-Runner)
+{focus_line}
 ## Product goal
 {goal_raw}
 
@@ -349,7 +459,7 @@ body {
 }
 """
 
-    return [
+    out = [
         ("package.json", json.dumps(pkg, indent=2)),
         ("index.html", index_html),
         ("vite.config.js", vite_config),
@@ -366,4 +476,8 @@ body {
         # Sandpack in Workspace.jsx expects /src/index.js; Vite uses main.jsx from index.html
         ("src/index.js", main_jsx),
         ("src/styles/global.css", global_css),
+        ("docs/CRUCIB_BUILD_TARGET.md", _crucib_build_target_doc(job, target)),
     ]
+    if target == "next_app_router":
+        out.extend(_next_app_stub_files(goal_raw))
+    return out

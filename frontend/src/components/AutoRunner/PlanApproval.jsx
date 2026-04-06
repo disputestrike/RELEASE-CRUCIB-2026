@@ -4,7 +4,8 @@
  * Props: plan, estimate, onApprove, onEdit, onRunAuto, loading
  */
 import React, { useState } from 'react';
-import { AlertTriangle, CheckCircle2, ChevronRight, ChevronDown } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronRight, ChevronDown, Target } from 'lucide-react';
+import { specGapCopy } from './planApprovalCopy';
 import './PlanApproval.css';
 
 /** Backend sends snake_case keys; map known flags to clearer copy. */
@@ -47,15 +48,31 @@ function integrationLabel(key) {
   return INTEGRATION_LABELS[key] || key.replace(/_/g, ' ');
 }
 
-export default function PlanApproval({ plan, estimate, onApprove, onEdit, onRunAuto, loading }) {
+export default function PlanApproval({
+  plan,
+  estimate,
+  capabilityNotice = [],
+  buildTargetMeta = null,
+  onApprove,
+  onEdit,
+  onRunAuto,
+  loading,
+}) {
   const [openPhase, setOpenPhase] = useState(null);
   if (!plan) return null;
 
   const riskFlags = plan.risk_flags || [];
-  const specGapFlags = riskFlags.filter(
-    f =>
-      typeof f === 'string' &&
-      (f.startsWith('goal_spec_') || f.includes('autorunner')),
+  const displayRiskFlags = riskFlags.filter((f) => {
+    if (
+      plan.crucib_build_target === 'next_app_router' &&
+      f === 'goal_spec_nextjs_autorunner_template_is_vite_react'
+    ) {
+      return false;
+    }
+    return true;
+  });
+  const specGapFlags = displayRiskFlags.filter(
+    (f) => typeof f === 'string' && (f.startsWith('goal_spec_') || f.includes('autorunner')),
   );
   const missingInputs = plan.missing_inputs || [];
   /** Pre-launch reminders only — runs are never blocked here (dev uses mocks; wire secrets before prod). */
@@ -73,6 +90,10 @@ export default function PlanApproval({ plan, estimate, onApprove, onEdit, onRunA
   const timeHint =
     estSteps != null ? `~${Math.max(15, Math.min(300, estSteps * 12))}s` : '—';
 
+  const buildTargetId = plan.crucib_build_target;
+  const specGapText =
+    specGapFlags.length > 0 ? specGapCopy(buildTargetId, buildTargetMeta) : null;
+
   return (
     <div className="plan-approval animate-fade-up">
       {/* Header */}
@@ -84,23 +105,69 @@ export default function PlanApproval({ plan, estimate, onApprove, onEdit, onRunA
         </div>
       </div>
 
-      {specGapFlags.length > 0 && (
+      {buildTargetMeta && buildTargetMeta.id && (
+        <div className="pa-section pa-build-target-panel">
+          <div className="pa-section-label">
+            <Target size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
+            Execution target
+          </div>
+          <p className="pa-premier-hint pa-bt-tagline">{buildTargetMeta.tagline}</p>
+          <div className="pa-bt-columns">
+            <div>
+              <div className="pa-bt-col-title">This run delivers</div>
+              <ul className="pa-bt-list">
+                {(buildTargetMeta.guarantees || []).map((x, i) => (
+                  <li key={i}>{x}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <div className="pa-bt-col-title">Exactly on this run</div>
+              <ul className="pa-bt-list">
+                {(buildTargetMeta.on_this_run || []).map((x, i) => (
+                  <li key={i}>{x}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <div className="pa-bt-col-title">Roadmap (platform)</div>
+              <ul className="pa-bt-list pa-bt-roadmap">
+                {(buildTargetMeta.roadmap || []).map((x, i) => (
+                  <li key={i}>{x}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {specGapText && (
         <div className="pa-section pa-spec-gap-notice">
           <div className="pa-section-label">What this run will actually build</div>
-          <p className="pa-premier-hint">
-            The DAG completes a <strong>fixed scaffold</strong> (Vite + React frontend, Python API sketch, SQL files,
-            verification). It does <strong>not</strong> implement an arbitrary enterprise spec end-to-end. High
-            “quality” in the UI means that scaffold + checks passed — not that every line of your prompt was delivered.
-          </p>
+          <p className="pa-premier-hint">{specGapText.bounded}</p>
+          <p className="pa-premier-hint">{specGapText.targetDetail}</p>
+        </div>
+      )}
+
+      {Array.isArray(capabilityNotice) && capabilityNotice.length > 0 && (
+        <div className="pa-section pa-spec-gap-notice">
+          <div className="pa-section-label">Scope advisory</div>
+          <ul className="pa-capability-notice-list">
+            {capabilityNotice.map((line, i) => (
+              <li key={i} className="pa-premier-hint">
+                {line}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
       {/* Risk flags */}
-      {riskFlags.length > 0 && (
+      {displayRiskFlags.length > 0 && (
         <div className="pa-section">
           <div className="pa-section-label">Risks</div>
           <div className="pa-risks">
-            {riskFlags.map(f => (
+            {displayRiskFlags.map(f => (
               <div key={f} className="pa-risk-item">
                 <AlertTriangle size={12} />
                 <span>{riskFlagLabel(f)}</span>

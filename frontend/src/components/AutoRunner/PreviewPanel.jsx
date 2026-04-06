@@ -78,6 +78,16 @@ export default function PreviewPanel({
           </div>
         )}
 
+        {!useRemote && status === 'ready' && !hasSandpack && (
+          <div className="pp-preview-idle">
+            <span className="pp-preview-idle-text">
+              Build finished, but no React files loaded for Sandpack yet. Open the Files tab, use &quot;Reload files from
+              server&quot; in the header, or confirm this job&apos;s workspace synced (job-scoped workspace API uses your
+              job id).
+            </span>
+          </div>
+        )}
+
         {useRemote && (
           <iframe
             className="pp-preview-iframe"

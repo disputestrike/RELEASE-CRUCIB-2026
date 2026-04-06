@@ -269,8 +269,25 @@ async def handle_planning_step(step: Dict, job: Dict,
             ):
                 try:
                     from .agent_orchestrator import run_crew_for_goal
+                    from .elite_prompt_loader import load_elite_autonomous_prompt
+                    from .execution_authority import (
+                        attach_elite_context_to_job,
+                        elite_context_for_model,
+                    )
 
-                    crew_pack = await run_crew_for_goal(job.get("goal") or "", workspace_path)
+                    attach_elite_context_to_job(job, workspace_path or "")
+                    elite_sp = load_elite_autonomous_prompt()
+                    model_block = elite_context_for_model(job)
+                    if model_block:
+                        elite_sp = (elite_sp or "") + model_block
+                    combined = (elite_sp or "").strip()
+                    if combined:
+                        job["elite_system_prompt"] = combined
+                    crew_pack = await run_crew_for_goal(
+                        job.get("goal") or "",
+                        workspace_path,
+                        system_prompt=combined or None,
+                    )
                     written.extend(crew_pack.get("written") or [])
                 except Exception as exc:
                     logger.warning("executor: crew orchestrator skipped: %s", exc)
@@ -285,7 +302,11 @@ async def handle_frontend_generate(step: Dict, job: Dict,
                                     workspace_path: str, **kwargs) -> Dict:
     out: list = []
     if workspace_path:
-        for rel, content in build_frontend_file_set(job):
+        from .plan_context import fetch_build_target_for_job
+
+        bt = await fetch_build_target_for_job(job.get("id") or "")
+        job_augmented = {**job, "build_target": bt}
+        for rel, content in build_frontend_file_set(job_augmented):
             w = _safe_write(workspace_path, rel, content)
             if w:
                 out.append(w)
@@ -622,6 +643,48 @@ async def handle_verification_step(step: Dict, job: Dict,
     }
 
 
+async def handle_delivery_manifest(step: Dict, job: Dict, workspace_path: str, **kwargs) -> Dict:
+    """Required proof/DELIVERY_CLASSIFICATION.md for elite builder gate."""
+    if not workspace_path:
+        return {"output": "no workspace", "artifacts": [], "output_files": []}
+    goal = (job.get("goal") or "").strip()[:4000]
+    body = f"""# Delivery classification
+
+Auto-generated manifest — refine in continuation runs as the product hardens.
+
+## Implemented
+
+- Workspace files and DAG steps emitted for this job for goal context:
+
+```
+{goal[:1200]}
+```
+
+## Mocked
+
+- Third-party APIs (Stripe, OAuth, email, etc.) using placeholder or test keys in `.env.example` until production secrets exist.
+
+## Stubbed
+
+- Depth not yet implemented for every line item in the goal; list follow-ups in Continuation.
+
+## Unverified
+
+- Capabilities not covered by a passing automated runtime test in this pipeline run.
+
+## Critical runtime notes
+
+- Migration or route **presence** alone does not prove tenancy isolation, payment idempotency, or auth enforcement — reference tests/smokes here when added.
+"""
+    rel = "proof/DELIVERY_CLASSIFICATION.md"
+    w = _safe_write(workspace_path, rel, body)
+    return {
+        "output": "delivery classification written",
+        "output_files": [rel] if w else [],
+        "artifacts": [],
+    }
+
+
 async def handle_generic(step: Dict, job: Dict,
                           workspace_path: str, **kwargs) -> Dict:
     return {"output": f"Step executed: {step['step_key']}", "artifacts": []}
@@ -632,6 +695,7 @@ async def handle_generic(step: Dict, job: Dict,
 STEP_HANDLERS = {
     "planning.analyze": handle_planning_step,
     "planning.requirements": handle_planning_step,
+    "implementation.delivery_manifest": handle_delivery_manifest,
     "frontend.scaffold": handle_frontend_generate,
     "frontend.styling": handle_frontend_modify,
     "frontend.routing": handle_frontend_modify,
@@ -645,6 +709,7 @@ STEP_HANDLERS = {
     "verification.api_smoke": handle_verification_step,
     "verification.preview": handle_verification_step,
     "verification.security": handle_verification_step,
+    "verification.elite_builder": handle_verification_step,
     "deploy.build": handle_deploy,
     "deploy.publish": handle_deploy,
 }
@@ -662,6 +727,7 @@ def _get_handler(step_key: str):
         "frontend": handle_frontend_generate,
         "backend": handle_backend_route,
         "database": handle_db_migration,
+        "implementation": handle_delivery_manifest,
         "verification": handle_verification_step,
         "deploy": handle_deploy,
         "planning": handle_planning_step,
@@ -688,6 +754,10 @@ async def execute_step(step: Dict[str, Any], job: Dict[str, Any],
     step_id = step["id"]
     step_key = step["step_key"]
     t0 = time.monotonic()
+
+    from .execution_authority import attach_elite_context_to_job
+
+    attach_elite_context_to_job(job, workspace_path or "")
 
     # 1. Mark running
     await update_step_state(step_id, "running")
@@ -731,7 +801,12 @@ async def execute_step(step: Dict[str, Any], job: Dict[str, Any],
         await publish(job_id, "step_verifying", {"step_key": step_key, "step_id": step_id})
 
         # Merge output files/tables from result into step for verifier
-        verification_input = {**step, **result}
+        verification_input = {
+            **step,
+            **result,
+            "job_goal": job.get("goal") or "",
+            "job_id": job_id,
+        }
         try:
             max_inner = int(os.environ.get("CRUCIBAI_INNER_VERIFY_REPAIR_MAX", "2"))
         except ValueError:

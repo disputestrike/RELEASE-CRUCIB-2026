@@ -32,6 +32,18 @@ from proof import proof_service
 
 logger = logging.getLogger(__name__)
 
+
+async def _write_blueprint(workspace_path: str, job_id: str, reason: str, **kwargs) -> None:
+    ws = (workspace_path or "").strip()
+    if not ws:
+        return
+    j = await get_job(job_id)
+    goal = (j or {}).get("goal") or ""
+    from .continuation_blueprint import write_continuation_blueprint
+
+    write_continuation_blueprint(ws, job_id=job_id, goal=goal, reason=reason, **kwargs)
+
+
 # Safety limits (global retry budget across all steps — was 10 and exhausted on ~4–5 flaky steps)
 def _max_total_retries() -> int:
     try:
@@ -83,6 +95,15 @@ async def run_job_to_completion(job_id: str,
                   {"job_id": job_id, "mode": job.get("mode"), "goal": job.get("goal", "")})
     await append_job_event(job_id, "job_started",
                            {"mode": job.get("mode"), "goal": job.get("goal", "")})
+
+    from .execution_authority import attach_elite_context_to_job, elite_job_metadata
+
+    attach_elite_context_to_job(job, workspace_path or "")
+    await append_job_event(
+        job_id,
+        "execution_authority",
+        {"kind": "execution_authority.json", **elite_job_metadata(job)},
+    )
 
     total_retries = 0
 
@@ -181,6 +202,13 @@ async def run_job_to_completion(job_id: str,
                                            {"current_phase": "max_retries_exceeded"})
                     await publish(job_id, "job_failed",
                                   {"reason": f"Max retries ({max_total}) exceeded"})
+                    await _write_blueprint(
+                        workspace_path,
+                        job_id,
+                        "max_retries_exceeded",
+                        failed_step_keys=[step["step_key"]],
+                        open_gates=["step_verification"],
+                    )
                     return {"success": False, "status": "failed",
                             "reason": "max_retries_exceeded"}
 
@@ -243,6 +271,13 @@ async def run_job_to_completion(job_id: str,
             "reason": "dependency_blocked",
             "blocked_step_keys": [s["step_key"] for s in blocked_steps],
         })
+        await _write_blueprint(
+            workspace_path,
+            job_id,
+            "dependency_blocked",
+            failed_step_keys=[s["step_key"] for s in blocked_steps],
+            open_gates=["downstream_steps"],
+        )
         return {
             "success": False,
             "status": "failed",
@@ -266,6 +301,13 @@ async def run_job_to_completion(job_id: str,
             "failed_step_keys": [s["step_key"] for s in failed_steps],
             "quality_score": quality_score,
         })
+        await _write_blueprint(
+            workspace_path,
+            job_id,
+            "one_or_more_steps_failed",
+            failed_step_keys=[s["step_key"] for s in failed_steps],
+            open_gates=["failed_step_verification"],
+        )
         return {
             "success": False,
             "status": "failed",
@@ -342,11 +384,73 @@ async def run_job_to_completion(job_id: str,
             "issues": pv["issues"],
             "quality_score": quality_score,
         })
+        await _write_blueprint(
+            workspace_path,
+            job_id,
+            "preview_gate_failed",
+            open_gates=["verification.preview", "preview_bundle"],
+            notes="; ".join(str(x) for x in (pv.get("issues") or [])[:12]),
+        )
         return {
             "success": False,
             "status": "failed",
             "quality_score": quality_score,
             "reason": "preview_gate",
+        }
+
+    job_latest = await get_job(job_id)
+    goal_text = (job_latest or {}).get("goal") or ""
+    from .enforcement.enforcement_engine import run_completion_enforcement_gate
+
+    egr = await run_completion_enforcement_gate(
+        job_id=job_id,
+        workspace_path=ws,
+        goal=goal_text,
+        db_pool=db_pool,
+        job_dict=job_latest,
+    )
+    await append_job_event(
+        job_id,
+        "enforcement_result",
+        {"kind": "enforcement_result.json", **(egr.get("metadata") or {})},
+    )
+    if egr.get("blocked"):
+        await update_job_state(
+            job_id,
+            "failed",
+            {
+                "current_phase": "critical_enforcement_block",
+                "quality_score": quality_score,
+            },
+        )
+        await append_job_event(
+            job_id,
+            "job_failed",
+            {
+                "reason": "critical_enforcement_block",
+                "issues": (egr.get("issues") or [])[:50],
+            },
+        )
+        await publish(
+            job_id,
+            "job_failed",
+            {
+                "reason": "critical_enforcement_block",
+                "quality_score": quality_score,
+            },
+        )
+        await _write_blueprint(
+            ws,
+            job_id,
+            "critical_enforcement_block",
+            open_gates=["enforcement", "proof_bundle"],
+            notes="; ".join(str(x) for x in (egr.get("issues") or [])[:12]),
+        )
+        return {
+            "success": False,
+            "status": "failed",
+            "quality_score": quality_score,
+            "reason": "critical_enforcement_block",
         }
 
     await update_job_state(job_id, "completed", {
@@ -360,8 +464,15 @@ async def run_job_to_completion(job_id: str,
         "summary": summary,
         "proof": proof,
     })
-    await append_job_event(job_id, "job_completed",
-                           {"quality_score": quality_score, "summary": summary})
+    await append_job_event(
+        job_id,
+        "job_completed",
+        {
+            "quality_score": quality_score,
+            "summary": summary,
+            "enforcement_advisory": bool(egr.get("advisory_would_block")),
+        },
+    )
     return {"success": True, "status": "completed",
             "quality_score": quality_score, "summary": summary}
 

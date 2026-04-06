@@ -33,11 +33,23 @@ class Agent:
     async def execute(self, task: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """Stub reasoning — returns structured text for downstream tasks."""
         snippet = (task or "")[:120]
+        elite = (
+            (context.get("elite_system_prompt") or context.get("system_prompt") or "")
+            .strip()
+        )
+        digest = ""
+        if elite:
+            digest = (
+                f"\n\n### Execution authority digest (first 900 chars of system prompt)\n\n"
+                f"```\n{elite[:900]}\n```\n"
+            )
         return {
             "role": self.role,
             "content": (
                 f"## {self.role}\n\n**Task:** {snippet}\n\n"
-                f"**Goal:** {self.goal}\n\n_Note: stub output — wire LLM in Agent.execute for production._\n"
+                f"**Goal:** {self.goal}\n"
+                f"{digest}\n"
+                f"_Stub agent: wire LLM here; execution authority above is already in model-bound payload when provided._\n"
             ),
             "context_echo": {k: (str(context.get(k) or "")[:200]) for k in context},
         }
@@ -76,6 +88,9 @@ class Crew:
             if self.verbose:
                 logger.info("crew: %s → %s", task.agent.role, task.description[:80])
             task_context = {k: context.get(k) for k in task.context_keys}
+            for inj in ("system_prompt", "elite_system_prompt"):
+                if inj in context and inj not in task_context:
+                    task_context[inj] = context.get(inj)
             result = await task.agent.execute(task.description, task_context)
             outputs.append(result)
             text = (result.get("content") or "").strip()
@@ -225,16 +240,28 @@ def _select_crew(goal: str) -> Crew:
     return architect_crew(goal)
 
 
-async def run_crew_for_goal(goal: str, workspace_path: str) -> Dict[str, Any]:
+async def run_crew_for_goal(
+    goal: str,
+    workspace_path: str,
+    *,
+    system_prompt: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     Run a crew for the goal and write artifacts under workspace_path.
+    Optional ``system_prompt`` is injected into kickoff inputs for future LLM-backed agents
+    and is recorded under proof/ when non-empty.
     Returns {written: [...], crew: kickoff result}.
     """
     if not workspace_path or not os.path.isdir(workspace_path):
         return {"written": [], "crew": {}, "skipped": True}
 
     crew = _select_crew(goal or "")
-    result = await crew.kickoff({"goal": goal or "", "workspace": workspace_path})
+    kick_inputs: Dict[str, Any] = {"goal": goal or "", "workspace": workspace_path}
+    if system_prompt and str(system_prompt).strip():
+        sp = str(system_prompt).strip()
+        kick_inputs["system_prompt"] = sp
+        kick_inputs["elite_system_prompt"] = sp
+    result = await crew.kickoff(kick_inputs)
     ctx = result.get("context") or {}
 
     written: List[str] = []
@@ -265,5 +292,23 @@ async def run_crew_for_goal(goal: str, workspace_path: str) -> Dict[str, Any]:
     openapi = (ctx.get("openapi") or "").strip()
     if openapi:
         _write("docs/CREW_OPENAPI_SKETCH.md", openapi)
+
+    sp = (kick_inputs.get("system_prompt") or "").strip()
+    if sp:
+        try:
+            from .elite_prompt_loader import elite_prompt_fingerprint
+
+            fp = elite_prompt_fingerprint(sp)
+            excerpt = sp[:4096] + ("\n\n… [truncated]\n" if len(sp) > 4096 else "")
+            body = (
+                "# Elite execution directive (injected at planning.requirements)\n\n"
+                "Full source: `config/agent_prompts/ELITE_AUTONOMOUS_PROMPT.md` in the CrucibAI repo.\n\n"
+                f"SHA256 prefix: `{fp}`\n\n"
+                "---\n\n"
+                + excerpt
+            )
+            _write("proof/ELITE_EXECUTION_DIRECTIVE.md", body)
+        except Exception as exc:
+            logger.warning("crew: could not write proof/ELITE_EXECUTION_DIRECTIVE.md: %s", exc)
 
     return {"written": written, "crew": result, "skipped": False}

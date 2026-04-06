@@ -178,14 +178,18 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
                 job_id,
             )
         risk_flags: List = []
+        plan_bt = None
         if bp and bp.get("plan_json"):
             try:
                 pj = json.loads(bp["plan_json"])
                 risk_flags = pj.get("risk_flags") or []
+                plan_bt = pj.get("crucib_build_target")
             except Exception:
                 pass
         spec_guard_snapshot = merge_plan_risk_flags_into_report(
-            risk_flags, evaluate_goal_against_runner(goal),
+            risk_flags,
+            evaluate_goal_against_runner(goal, build_target=plan_bt),
+            build_target=plan_bt,
         )
         spec_compliance = float(spec_guard_snapshot.get("spec_compliance_percent") or 100.0)
 

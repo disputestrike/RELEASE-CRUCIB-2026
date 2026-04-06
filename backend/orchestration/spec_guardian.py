@@ -3,16 +3,17 @@ Spec Guardian — compares user goal text to what the Auto-Runner can actually e
 
 Modes (CRUCIBAI_SPEC_GUARD_MODE):
 - off:     no violations recorded (not recommended)
-- advisory: violations + compliance %; run always allowed
-- strict:  stack / tenancy / infra claims that the template cannot satisfy → blocks run (default)
+- advisory: violations + compliance %; run always allowed (**default** — matches “show risks but still run”)
+- strict:  stack / tenancy / infra claims that the template cannot satisfy → blocks run (set explicitly for hard gates)
 
 This is Layer 1 "spec enforcement" — honest gatekeeping, not magic codegen.
 """
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
+from .build_targets import normalize_build_target
 from .multiregion_terraform_sketch import multiregion_terraform_intent
 
 
@@ -28,13 +29,13 @@ RUNNER_TRUTH = (
 
 
 def _mode() -> str:
-    m = os.environ.get("CRUCIBAI_SPEC_GUARD_MODE", "strict").strip().lower()
+    m = os.environ.get("CRUCIBAI_SPEC_GUARD_MODE", "advisory").strip().lower()
     if m in ("off", "advisory", "strict"):
         return m
-    return "strict"
+    return "advisory"
 
 
-def evaluate_goal_against_runner(goal: str) -> Dict[str, Any]:
+def evaluate_goal_against_runner(goal: str, *, build_target: Optional[str] = None) -> Dict[str, Any]:
     """
     Returns violations (with severity), compliance score, and whether run must be blocked in strict mode.
     """
@@ -51,6 +52,7 @@ def evaluate_goal_against_runner(goal: str) -> Dict[str, Any]:
 
     g = (goal or "").lower()
     violations: List[Dict[str, Any]] = []
+    bt = normalize_build_target(build_target) if build_target else None
 
     def add(code: str, message: str, remediation: str, *, strict_blocker: bool) -> None:
         sev = "blocker" if strict_blocker and _mode() == "strict" else "warning"
@@ -63,8 +65,10 @@ def evaluate_goal_against_runner(goal: str) -> Dict[str, Any]:
             }
         )
 
-    # Stack mismatches (always warnings in advisory; blockers in strict)
-    if any(k in g for k in ("next.js", "nextjs", "app router", "next-auth", "nextauth")):
+    # Stack mismatches (always warnings in advisory; blockers in strict unless plan picked Next track)
+    if bt != "next_app_router" and any(
+        k in g for k in ("next.js", "nextjs", "app router", "next-auth", "nextauth")
+    ):
         add(
             "stack_nextjs_requested",
             "Goal requests Next.js / NextAuth — runner template is Vite + React.",
@@ -228,9 +232,15 @@ def evaluate_goal_against_runner(goal: str) -> Dict[str, Any]:
     }
 
 
-def merge_plan_risk_flags_into_report(plan_risk_flags: List[str], base: Dict[str, Any]) -> Dict[str, Any]:
+def merge_plan_risk_flags_into_report(
+    plan_risk_flags: List[str],
+    base: Dict[str, Any],
+    *,
+    build_target: Optional[str] = None,
+) -> Dict[str, Any]:
     """If planner already tagged mismatch flags, reflect them as violations if missing."""
     out = dict(base)
+    bt = normalize_build_target(build_target) if build_target else None
     flag_to_violation = {
         "goal_spec_nextjs_autorunner_template_is_vite_react": (
             "stack_nextjs_requested",
@@ -252,6 +262,8 @@ def merge_plan_risk_flags_into_report(plan_risk_flags: List[str], base: Dict[str
     seen_codes = {v["code"] for v in out.get("violations") or []}
     for rf in plan_risk_flags or []:
         if rf not in flag_to_violation:
+            continue
+        if bt == "next_app_router" and rf == "goal_spec_nextjs_autorunner_template_is_vite_react":
             continue
         code, msg = flag_to_violation[rf]
         if code in seen_codes:

@@ -92,9 +92,18 @@ def compute_production_readiness(flat: List[Dict[str, Any]], bundle: Dict[str, L
         reasons.append("compile_checks")
 
     route_n = len(bundle.get("routes", []) or [])
+    has_runtime_route = any(
+        (i.get("payload") or {}).get("check") == "health_endpoint"
+        or "api smoke" in (i.get("title") or "").lower()
+        for i in flat
+    )
     if route_n:
-        score += min(12, 4 + route_n)
-        reasons.append("route_proof")
+        if has_runtime_route:
+            score += min(12, 4 + route_n)
+            reasons.append("route_proof_with_runtime_hint")
+        else:
+            score += min(4, 2 + max(1, route_n // 2))
+            reasons.append("route_proof_structure_only_demoted")
 
     if bundle.get("database"):
         score += 8

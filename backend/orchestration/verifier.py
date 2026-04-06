@@ -541,6 +541,14 @@ async def verify_step(step: Dict[str, Any], workspace_path: str = "",
 
                 ar = await verify_api_smoke_workspace(workspace_path or "")
                 return _result(ar["passed"], ar["score"], ar["issues"], ar["proof"])
+            if step_key == "verification.elite_builder":
+                from .elite_builder_gate import verify_elite_builder_workspace
+
+                er = await verify_elite_builder_workspace(
+                    workspace_path or "",
+                    job_goal=(step.get("job_goal") or ""),
+                )
+                return _result(er["passed"], er["score"], er["issues"], er["proof"])
             return _result(
                 True, 82, [],
                 [_proof_item("generic", f"Verification step recorded: {step_key}",

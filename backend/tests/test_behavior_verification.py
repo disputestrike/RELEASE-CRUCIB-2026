@@ -29,13 +29,14 @@ async def test_rbac_verification_skips_without_url():
 
 
 @pytest.mark.asyncio
-async def test_planner_deploy_depends_only_on_security():
+async def test_planner_deploy_depends_only_on_elite_builder_gate():
     plan = await generate_plan("Build a simple todo app with React")
     deploy = next(p for p in plan["phases"] if p["key"] == "deploy")
     db = next(s for s in deploy["steps"] if s["key"] == "deploy.build")
-    assert db["depends_on"] == ["verification.security"]
+    assert db["depends_on"] == ["verification.elite_builder"]
     ver_phase = next(p for p in plan["phases"] if p["key"] == "verification")
     keys = [s["key"] for s in ver_phase["steps"]]
+    assert "verification.elite_builder" in keys
     assert "verification.rbac_enforcement" not in keys
     assert "verification.tenancy_smoke" not in keys
 
@@ -47,7 +48,7 @@ async def test_planner_multitenant_stripe_same_security_gate():
         project_state={"env_vars": {"STRIPE_SECRET_KEY": "x"}},
     )
     deploy = next(s for s in next(p for p in plan["phases"] if p["key"] == "deploy")["steps"] if s["key"] == "deploy.build")
-    assert deploy["depends_on"] == ["verification.security"]
+    assert deploy["depends_on"] == ["verification.elite_builder"]
 
 
 @pytest.mark.asyncio

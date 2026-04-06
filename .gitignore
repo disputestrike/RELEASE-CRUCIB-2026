@@ -95,3 +95,11 @@ backend/workspace/
 *.jpg
 *.jpeg
 screenshots/
+
+# Local dev / test artifacts (do not push)
+frontend/dev.log
+frontend/playwright-report/
+frontend/test-results/
+pytest-out.txt
+pytest-full.txt
+pytest-final.txt

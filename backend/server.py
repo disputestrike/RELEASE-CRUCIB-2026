@@ -4933,6 +4933,27 @@ async def _user_can_access_project_workspace(user_id: Optional[str], project_id:
         return False
 
 
+async def _resolve_workspace_project_for_job(job_id: str, user: dict) -> str:
+    """Orchestrator job → workspace root via project_id; same access rules as project workspace."""
+    runtime_state, _, _, _, _ = _get_orchestration()
+    from db_pg import get_pg_pool
+    pool = await get_pg_pool()
+    runtime_state.set_pool(pool)
+    from orchestration import runtime_state as orch_rs
+    oj = await orch_rs.get_job(job_id)
+    if not oj:
+        raise HTTPException(status_code=404, detail="Job not found")
+    uid = user.get("id")
+    if uid and oj.get("user_id") and oj["user_id"] != uid:
+        raise HTTPException(status_code=403, detail="Not your job")
+    pid = oj.get("project_id")
+    if not pid:
+        raise HTTPException(status_code=404, detail="Job has no project workspace")
+    if not await _user_can_access_project_workspace(uid, pid):
+        raise HTTPException(status_code=404, detail="Project not found")
+    return str(pid)
+
+
 def _create_preview_token(project_id: str, user_id: str) -> str:
     """Short-lived JWT so iframe can load preview without Bearer header."""
     payload = {"project_id": project_id, "user_id": user_id, "purpose": "preview", "exp": datetime.now(timezone.utc) + timedelta(minutes=2)}
@@ -7992,6 +8013,7 @@ class PlanRequest(BaseModel):
     project_id: Optional[str] = None  # optional — auto-assigned from user.id if missing
     goal: str
     mode: Optional[str] = "guided"
+    build_target: Optional[str] = None  # vite_react | next_app_router | static_site | api_backend | agent_workflow
 
 
 class RunAutoRequest(BaseModel):
@@ -8008,6 +8030,7 @@ class CreateJobRequest(BaseModel):
 class CostEstimateRequest(BaseModel):
     project_id: Optional[str] = None
     goal: str
+    build_target: Optional[str] = None
 
 
 def _orchestrator_planner_project_state(user: Optional[dict] = None) -> Dict[str, Any]:
@@ -8044,6 +8067,16 @@ def _orchestrator_planner_project_state(user: Optional[dict] = None) -> Dict[str
     return out
 
 
+# ── Build targets (execution modes — broad platform, honest per-run scope) ───
+
+@api_router.get("/orchestrator/build-targets")
+async def list_build_targets():
+    """Catalog of Auto-Runner execution targets for the workspace UI."""
+    from orchestration.build_targets import build_target_catalog
+
+    return {"success": True, "targets": build_target_catalog()}
+
+
 # ── Cost estimator (pre-execution, no auth required) ──────────────────────────
 
 @api_router.post("/orchestrator/estimate")
@@ -8056,12 +8089,19 @@ async def estimate_cost(
     Returns estimated_tokens, estimated_credits, cost_range.
     """
     try:
+        from orchestration.build_targets import normalize_build_target
+
         _, _, planner_mod, _, _ = _get_orchestration()
         plan = await planner_mod.generate_plan(
             body.goal, project_state=_orchestrator_planner_project_state(user)
         )
         estimate = planner_mod.estimate_tokens(plan)
-        return {"success": True, "estimate": estimate, "plan_summary": plan.get("summary", "")}
+        return {
+            "success": True,
+            "estimate": estimate,
+            "plan_summary": plan.get("summary", ""),
+            "build_target": normalize_build_target(body.build_target),
+        }
     except Exception as e:
         return {"success": False, "error": str(e), "estimate": {
             "estimated_credits": 5, "cost_range": {"min_credits": 3, "max_credits": 15, "typical_credits": 5}
@@ -8074,15 +8114,20 @@ async def estimate_cost(
 async def create_plan(body: PlanRequest, user: dict = Depends(get_current_user)):
     """Generate a structured build plan before execution. Returns plan JSON + estimate."""
     try:
+        from orchestration.build_targets import build_target_meta, normalize_build_target
+
         runtime_state, dag_engine, planner_mod, _, _ = _get_orchestration()
         from db_pg import get_pg_pool
         pool = await get_pg_pool()
         runtime_state.set_pool(pool)
 
+        bt = normalize_build_target(body.build_target)
+
         # Generate plan
         plan = await planner_mod.generate_plan(
             body.goal, project_state=_orchestrator_planner_project_state(user)
         )
+        plan["crucib_build_target"] = bt
         estimate = planner_mod.estimate_tokens(plan)
 
         # Resolve project_id — use provided, or fall back to user id, or generate one
@@ -8118,6 +8163,9 @@ async def create_plan(body: PlanRequest, user: dict = Depends(get_current_user))
                 order_index=idx,
             )
 
+        from orchestration.capability_notice import capability_notice_lines
+
+        btm = build_target_meta(bt)
         return {
             "success": True,
             "job_id": job["id"],
@@ -8126,6 +8174,9 @@ async def create_plan(body: PlanRequest, user: dict = Depends(get_current_user))
             "step_count": len(step_defs),
             "missing_inputs": plan.get("missing_inputs", []),
             "risk_flags": plan.get("risk_flags", []),
+            "capability_notice": capability_notice_lines(body.goal, bt),
+            "build_target": bt,
+            "build_target_meta": btm,
         }
     except Exception as e:
         logger.exception("orchestrator/plan error")
@@ -8172,6 +8223,28 @@ async def _background_auto_runner_job(job_id: str, workspace_path: str) -> None:
             logger.error("auto_runner: no database pool for job %s", job_id)
             return
         _orch_rs.set_pool(pool)
+        ws = (workspace_path or "").strip()
+        if ws:
+            try:
+                from orchestration.elite_prompt_loader import (
+                    elite_prompt_fingerprint,
+                    load_elite_autonomous_prompt,
+                    write_elite_directive_to_workspace,
+                )
+
+                _elite = load_elite_autonomous_prompt()
+                if _elite and write_elite_directive_to_workspace(ws, _elite):
+                    await _orch_rs.append_job_event(
+                        job_id,
+                        "elite_builder_prompt",
+                        {
+                            "kind": "elite_builder_prompt.json",
+                            "sha16": elite_prompt_fingerprint(_elite),
+                            "path": "proof/ELITE_EXECUTION_DIRECTIVE.md",
+                        },
+                    )
+            except Exception:
+                logger.exception("auto_runner: elite directive for job %s", job_id)
         await _orch_ar.run_job_to_completion(
             job_id, workspace_path=workspace_path or "", db_pool=pool
         )
@@ -8279,6 +8352,7 @@ async def run_auto(
 
         goal_text = (job.get("goal") or "").strip()
         risk_flags = []
+        plan_build_target = None
         async with pool.acquire() as conn:
             prow = await conn.fetchrow(
                 "SELECT plan_json FROM build_plans WHERE job_id = $1 ORDER BY created_at DESC LIMIT 1",
@@ -8288,10 +8362,14 @@ async def run_auto(
             try:
                 _pj = _sg_json.loads(prow["plan_json"])
                 risk_flags = _pj.get("risk_flags") or []
+                plan_build_target = _pj.get("crucib_build_target")
             except Exception:
                 risk_flags = []
+        spec_base = evaluate_goal_against_runner(goal_text, build_target=plan_build_target)
         spec_guard = merge_plan_risk_flags_into_report(
-            risk_flags, evaluate_goal_against_runner(goal_text),
+            risk_flags,
+            spec_base,
+            build_target=plan_build_target,
         )
         await append_job_event(
             body.job_id,
@@ -8461,6 +8539,50 @@ async def get_job_proof(job_id: str, user: dict = Depends(get_optional_user)):
         return {"success": True, **proof}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/jobs/{job_id}/workspace/files")
+async def list_job_workspace_files(job_id: str, user: dict = Depends(get_current_user)):
+    """List files under the job's project workspace (avoids client project_id mismatch)."""
+    project_id = await _resolve_workspace_project_for_job(job_id, user)
+    root = _project_workspace_path(project_id).resolve()
+    if not root.exists():
+        return {"files": []}
+    files = []
+    for p in root.rglob("*"):
+        if p.is_file() and "node_modules" not in str(p) and "__pycache__" not in str(p):
+            try:
+                rel = p.relative_to(root)
+                files.append(str(rel).replace("\\", "/"))
+            except ValueError:
+                pass
+    return {"files": sorted(files)[:500]}
+
+
+@api_router.get("/jobs/{job_id}/workspace/file")
+async def get_job_workspace_file_content(
+    job_id: str,
+    path: str = Query(..., description="Relative file path in workspace"),
+    user: dict = Depends(get_current_user),
+):
+    """Read one file from the job's project workspace."""
+    project_id = await _resolve_workspace_project_for_job(job_id, user)
+    root = _project_workspace_path(project_id).resolve()
+    path = (path or "").strip().replace("\\", "/").lstrip("/")
+    if ".." in path or not path:
+        raise HTTPException(status_code=400, detail="Invalid path")
+    full = (root / path).resolve()
+    try:
+        full.relative_to(root)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Path outside workspace")
+    if not full.exists() or not full.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    try:
+        content = full.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        raise HTTPException(status_code=400, detail="File not readable as text")
+    return {"path": path, "content": content}
 
 
 @api_router.get("/trust/platform-capabilities")
@@ -9654,8 +9776,14 @@ if _static_dir.exists():
 
         def lookup_path(self, path: str):
             full_path, stat_result = super().lookup_path(path)
-            if stat_result is None:
-                full_path, stat_result = super().lookup_path("index.html")
+            if stat_result is not None:
+                return full_path, stat_result
+            # Do not SPA-fallback under /api — unknown API paths must 404, not return index.html
+            # (otherwise clients see HTML instead of JSON and new routes look "broken" until matched).
+            norm = (path or "").lstrip("/")
+            if norm.startswith("api/") or norm == "api":
+                return full_path, None
+            full_path, stat_result = super().lookup_path("index.html")
             return full_path, stat_result
 
     app.mount("/", SpaStaticFiles(directory=str(_static_dir), html=True), name="frontend")

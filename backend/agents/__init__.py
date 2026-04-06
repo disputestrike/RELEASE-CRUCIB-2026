@@ -10,6 +10,7 @@ from agents.test_generation_agent import TestGenerationAgent
 from agents.security_agent import SecurityAgent
 from agents.deployment_agent import DeploymentAgent
 from agents.documentation_agent import DocumentationAgent
+from agents.builder_agent import BuilderAgent
 
 __all__ = [
     "PlannerAgent",
@@ -22,4 +23,5 @@ __all__ = [
     "SecurityAgent",
     "DeploymentAgent",
     "DocumentationAgent",
+    "BuilderAgent",
 ]

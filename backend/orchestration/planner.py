@@ -246,12 +246,23 @@ def _build_phases(goal: str, build_kind: str, integrations: list) -> list:
             ]
         },
         {
+            "key": "implementation",
+            "label": "Delivery manifest",
+            "steps": [
+                {"key": "implementation.delivery_manifest", "agent": "Delivery",
+                 "name": "Delivery classification",
+                 "description": "Write proof/DELIVERY_CLASSIFICATION.md (Implemented/Mocked/Stubbed/Unverified)",
+                 "depends_on": ["database.seed"]},
+            ]
+        },
+        {
             "key": "verification",
             "label": "Verification",
             "steps": [
                 {"key": "verification.compile", "agent": "Verifier",
                  "name": "Compile check", "description": "Verify frontend and backend compile cleanly",
-                 "depends_on": ["frontend.routing", "backend.auth", "database.migration"]},
+                 "depends_on": ["frontend.routing", "backend.auth", "database.migration",
+                                "implementation.delivery_manifest"]},
                 {"key": "verification.api_smoke", "agent": "Verifier",
                  "name": "API smoke test", "description": "Hit key endpoints, check responses",
                  "depends_on": ["verification.compile"]},
@@ -261,6 +272,10 @@ def _build_phases(goal: str, build_kind: str, integrations: list) -> list:
                 {"key": "verification.security", "agent": "Security Checker",
                  "name": "Security scan", "description": "Check CORS, auth headers, input validation",
                  "depends_on": ["verification.api_smoke"]},
+                {"key": "verification.elite_builder", "agent": "Verifier",
+                 "name": "Elite builder gate",
+                 "description": "Delivery classifications, elite directive materialized, critical proof depth",
+                 "depends_on": ["verification.security"]},
             ]
         },
         {
@@ -270,7 +285,7 @@ def _build_phases(goal: str, build_kind: str, integrations: list) -> list:
                 {"key": "deploy.build", "agent": "Deployment Agent",
                  "name": "Build artifacts",
                  "description": "Run production build (after security + behavioral bundle in verifier)",
-                 "depends_on": ["verification.security"]},
+                 "depends_on": ["verification.elite_builder"]},
                 {"key": "deploy.publish", "agent": "Deployment Agent",
                  "name": "Publish to target", "description": "Deploy to Vercel/Netlify/Railway",
                  "depends_on": ["deploy.build"]},
