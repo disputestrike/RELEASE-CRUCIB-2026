@@ -300,18 +300,78 @@ async def handle_planning_step(step: Dict, job: Dict,
 
 async def handle_frontend_generate(step: Dict, job: Dict,
                                     workspace_path: str, **kwargs) -> Dict:
+    """Generate actual frontend code using FrontendAgent + LLM, not stubs."""
     out: list = []
-    if workspace_path:
-        from .plan_context import fetch_build_target_for_job
-
-        bt = await fetch_build_target_for_job(job.get("id") or "")
-        job_augmented = {**job, "build_target": bt}
-        for rel, content in build_frontend_file_set(job_augmented):
-            w = _safe_write(workspace_path, rel, content)
-            if w:
-                out.append(w)
+    job_id = job.get("id") or ""
+    goal = job.get("goal", "").strip()
+    
+    try:
+        if workspace_path and goal:
+            # STEP 1: Try to use FrontendAgent with LLM
+            try:
+                from agents.frontend_agent import FrontendAgent
+                
+                agent = FrontendAgent()
+                context = {
+                    "user_prompt": goal,
+                    "project_id": job_id,
+                    "workspace_path": workspace_path,
+                }
+                
+                logger.info(f"frontend_generate: Running FrontendAgent for job {job_id}")
+                result = await agent.execute(context)
+                
+                # Write generated files to workspace
+                if result and result.get("files"):
+                    for file_path, content in result["files"].items():
+                        if isinstance(content, dict):
+                            # Handle JSON files
+                            import json
+                            content = json.dumps(content, indent=2)
+                        
+                        w = _safe_write(workspace_path, file_path, content)
+                        if w:
+                            out.append(w)
+                    
+                    logger.info(f"frontend_generate: FrontendAgent wrote {len(out)} files")
+                
+            except Exception as e:
+                logger.warning(f"frontend_generate: FrontendAgent failed: {e}, falling back to stubs")
+                # Fallback to template files on error
+                from .plan_context import fetch_build_target_for_job
+                bt = await fetch_build_target_for_job(job_id)
+                job_augmented = {**job, "build_target": bt}
+                for rel, content in build_frontend_file_set(job_augmented):
+                    w = _safe_write(workspace_path, rel, content)
+                    if w:
+                        out.append(w)
+        else:
+            # No workspace or goal - use stubs
+            from .plan_context import fetch_build_target_for_job
+            bt = await fetch_build_target_for_job(job.get("id") or "")
+            job_augmented = {**job, "build_target": bt}
+            for rel, content in build_frontend_file_set(job_augmented):
+                w = _safe_write(workspace_path, rel, content)
+                if w:
+                    out.append(w)
+    
+    except Exception as e:
+        logger.exception("frontend_generate: Critical error")
+        # Last resort: stub files
+        if workspace_path:
+            try:
+                from .plan_context import fetch_build_target_for_job
+                bt = await fetch_build_target_for_job(job.get("id") or "")
+                job_augmented = {**job, "build_target": bt}
+                for rel, content in build_frontend_file_set(job_augmented):
+                    w = _safe_write(workspace_path, rel, content)
+                    if w:
+                        out.append(w)
+            except Exception:
+                logger.exception("frontend_generate: Stub fallback also failed")
+    
     return {
-        "output": f"Production-shaped frontend bundle: {job.get('goal', '')[:80]}",
+        "output": f"Generated {len(out)} frontend files: {goal[:60]}",
         "output_files": out,
         "artifacts": [{"kind": "workspace", "handoff": "next_steps_read_workspace"}],
     }
@@ -390,6 +450,9 @@ export default function TeamPage() {
 
 async def handle_backend_route(step: Dict, job: Dict,
                                 workspace_path: str, **kwargs) -> Dict:
+    """Generate actual backend code using BackendAgent + LLM, not stubs."""
+    job_id = job.get("id") or ""
+    goal = job.get("goal", "").strip()
     key = step.get("step_key", "")
     routes_added: list = []
     out_files: list = []
@@ -402,10 +465,61 @@ async def handle_backend_route(step: Dict, job: Dict,
             "artifacts": [],
         }
 
-    if key == "backend.models":
-        mt = multitenant_intent(job)
-        if mt:
-            models_py = '''"""ORM / schema sketch — multi-tenant intent (CrucibAI domain pack)."""
+    try:
+        if goal and key in ["backend.models", "backend.routes"]:
+            # Try BackendAgent with LLM
+            try:
+                from agents.backend_agent import BackendAgent
+                
+                agent = BackendAgent()
+                context = {
+                    "user_prompt": goal,
+                    "project_id": job_id,
+                    "workspace_path": workspace_path,
+                }
+                
+                logger.info(f"backend_route: Running BackendAgent for job {job_id}")
+                result = await agent.execute(context)
+                
+                # Write generated files
+                if result and result.get("files"):
+                    for file_path, content in result["files"].items():
+                        if isinstance(content, dict):
+                            import json
+                            content = json.dumps(content, indent=2)
+                        
+                        w = _safe_write(workspace_path, file_path, content)
+                        if w:
+                            out_files.append(w)
+                    
+                    logger.info(f"backend_route: BackendAgent wrote {len(out_files)} files")
+                
+                # Extract routes
+                if result and result.get("api_spec"):
+                    routes_added = result["api_spec"].get("endpoints", [])
+            
+            except Exception as e:
+                logger.warning(f"backend_route: BackendAgent failed: {e}, falling back to stubs")
+                # Use stubs
+                if key == "backend.routes":
+                    main_py = _main_py_sketch(multitenant=multitenant_intent(job))
+                    w = _safe_write(workspace_path, "backend/main.py", main_py)
+                    if w:
+                        out_files.append(w)
+                    routes_added = [
+                        {"method": "GET", "path": "/health", "description": "Health check"},
+                        {"method": "GET", "path": "/api/items", "description": "List demo items"},
+                    ]
+    
+    except Exception as e:
+        logger.exception("backend_route: Critical error")
+
+    # Fallback to original stub logic if no BackendAgent call
+    if not out_files:
+        if key == "backend.models":
+            mt = multitenant_intent(job)
+            if mt:
+                models_py = '''"""ORM / schema sketch — multi-tenant intent (CrucibAI domain pack)."""
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
@@ -425,8 +539,8 @@ class ItemRecord(BaseModel):
     title: str
     created_at: Optional[datetime] = None
 '''
-        else:
-            models_py = '''"""ORM / schema sketch generated by Auto-Runner."""
+            else:
+                models_py = '''"""ORM / schema sketch generated by Auto-Runner."""
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
@@ -437,52 +551,52 @@ class ItemRecord(BaseModel):
     title: str
     created_at: Optional[datetime] = None
 '''
-        w = _safe_write(workspace_path, "backend/models.py", models_py)
-        if w:
-            out_files.append(w)
+            w = _safe_write(workspace_path, "backend/models.py", models_py)
+            if w:
+                out_files.append(w)
 
-    elif key == "backend.routes":
-        main_py = _main_py_sketch(multitenant=multitenant_intent(job))
-        w = _safe_write(workspace_path, "backend/main.py", main_py)
-        if w:
-            out_files.append(w)
-        routes_added = [
-            {"method": "GET", "path": "/health", "description": "Health check"},
-            {"method": "GET", "path": "/api/items", "description": "List demo items"},
-        ]
+        elif key == "backend.routes":
+            main_py = _main_py_sketch(multitenant=multitenant_intent(job))
+            w = _safe_write(workspace_path, "backend/main.py", main_py)
+            if w:
+                out_files.append(w)
+            routes_added = [
+                {"method": "GET", "path": "/health", "description": "Health check"},
+                {"method": "GET", "path": "/api/items", "description": "List demo items"},
+            ]
 
-    elif key == "backend.auth":
-        auth_py = '''"""Auth placeholder — JWT wiring lives in your real deployment."""
+        elif key == "backend.auth":
+            auth_py = '''"""Auth placeholder — JWT wiring lives in your real deployment."""
 # Use python-jose + passlib in production; routes are documented in proof bundle.
 PROTECTED_PREFIX = "/api/private"
 '''
-        w = _safe_write(workspace_path, "backend/auth.py", auth_py)
-        if w:
-            out_files.append(w)
-        routes_added = [
-            {"method": "POST", "path": "/api/auth/login", "description": "Login (stub)"},
-        ]
+            w = _safe_write(workspace_path, "backend/auth.py", auth_py)
+            if w:
+                out_files.append(w)
+            routes_added = [
+                {"method": "POST", "path": "/api/auth/login", "description": "Login (stub)"},
+            ]
 
-    elif key == "backend.stripe":
-        stripe_py = _stripe_routes_sketch()
-        w = _safe_write(workspace_path, "backend/stripe_routes.py", stripe_py)
-        if w:
-            out_files.append(w)
-        _ensure_stripe_router_mounted(workspace_path)
-        m = _read_text(workspace_path, "backend/main.py")
-        if m and "CRUCIBAI_STRIPE_ROUTER_MOUNT" in m and "backend/main.py" not in out_files:
-            out_files.append("backend/main.py")
-        routes_added = [
-            {"method": "POST", "path": "/api/stripe/webhook", "description": "Stripe webhook (idempotency sketch)"},
-        ]
+        elif key == "backend.stripe":
+            stripe_py = _stripe_routes_sketch()
+            w = _safe_write(workspace_path, "backend/stripe_routes.py", stripe_py)
+            if w:
+                out_files.append(w)
+            _ensure_stripe_router_mounted(workspace_path)
+            m = _read_text(workspace_path, "backend/main.py")
+            if m and "CRUCIBAI_STRIPE_ROUTER_MOUNT" in m and "backend/main.py" not in out_files:
+                out_files.append("backend/main.py")
+            routes_added = [
+                {"method": "POST", "path": "/api/stripe/webhook", "description": "Stripe webhook (idempotency sketch)"},
+            ]
 
-    else:
-        w = _safe_write(workspace_path, "backend/main.py", "# backend placeholder\n")
-        if w:
-            out_files.append(w)
+        else:
+            w = _safe_write(workspace_path, "backend/main.py", "# backend placeholder\n")
+            if w:
+                out_files.append(w)
 
     return {
-        "output": f"Backend route generated: {key}",
+        "output": f"Generated {len(out_files)} backend files: {key}",
         "routes_added": routes_added,
         "output_files": out_files,
         "artifacts": [],
