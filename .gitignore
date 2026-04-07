@@ -89,8 +89,8 @@ frontend/node_modules/.cache/default-development/
 backend/logs/
 backend/golden_eval_report.json
 
-# Workspace directories for tool agents
-workspace/
+# Workspace directories for tool agents (root only — do not use plain workspace/ or frontend/src/workspace is omitted from Docker/Railway)
+/workspace/
 backend/workspace/
 *.png
 *.jpg
