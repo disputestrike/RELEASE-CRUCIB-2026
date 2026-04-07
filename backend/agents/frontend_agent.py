@@ -115,23 +115,27 @@ Your task:
 Output ONLY valid JSON in this exact format:
 {{
   "files": {{
-    "package.json": "{{\\"name\\": \\"my-app\\", \\"version\\": \\"1.0.0\\", \\"type\\": \\"module\\", \\"scripts\\": {{\\"dev\\": \\"vite\\", \\"build\\": \\"vite build\\", \\"preview\\": \\"vite preview\\"}}, \\"dependencies\\": {{\\"react\\": \\"^18.2.0\\", \\"react-dom\\": \\"^18.2.0\\"}}, \\"devDependencies\\": {{\\"@types/react\\": \\"^18.2.0\\", \\"@vitejs/plugin-react\\": \\"^4.0.0\\", \\"typescript\\": \\"^5.0.0\\", \\"vite\\": \\"^5.0.0\\"}}}}",
-    "src/main.tsx": "import React from 'react'\\nimport ReactDOM from 'react-dom/client'\\nimport App from './App'\\nimport './index.css'\\n\\nReactDOM.createRoot(document.getElementById('root')!).render(\\n  <React.StrictMode>\\n    <App />\\n  </React.StrictMode>\\n)",
-    "src/App.tsx": "import {{ useState }} from 'react'\\nimport Header from './components/Header'\\nimport Footer from './components/Footer'\\n\\nfunction App() {{\\n  const [count, setCount] = useState(0)\\n\\n  return (\\n    <div className=\\"min-h-screen bg-gray-50\\">\\n      <Header />\\n      <main className=\\"container mx-auto px-4 py-8\\">\\n        <h1 className=\\"text-4xl font-bold text-gray-900\\">Welcome</h1>\\n        <button onClick={{() => setCount(count + 1)}} className=\\"mt-4 px-4 py-2 bg-blue-500 text-white rounded\\">\\n          Count: {{count}}\\n        </button>\\n      </main>\\n      <Footer />\\n    </div>\\n  )\\n}}\\n\\nexport default App",
-    "src/components/Header.tsx": "export default function Header() {{\\n  return (\\n    <header className=\\"bg-white shadow\\">\\n      <div className=\\"container mx-auto px-4 py-4\\">\\n        <h1 className=\\"text-2xl font-bold\\">My App</h1>\\n      </div>\\n    </header>\\n  )\\n}}",
-    "src/components/Footer.tsx": "export default function Footer() {{\\n  return (\\n    <footer className=\\"bg-gray-800 text-white py-4 mt-8\\">\\n      <div className=\\"container mx-auto px-4 text-center\\">\\n        <p>&copy; 2024 My App. All rights reserved.</p>\\n      </div>\\n    </footer>\\n  )\\n}}",
+    "package.json": "{{\\"name\\": \\"my-app\\", \\"version\\": \\"1.0.0\\", \\"type\\": \\"module\\", \\"scripts\\": {{\\"dev\\": \\"vite\\", \\"build\\": \\"vite build\\", \\"preview\\": \\"vite preview\\"}}, \\"dependencies\\": {{\\"react\\": \\"^18.2.0\\", \\"react-dom\\": \\"^18.2.0\\", \\"react-router-dom\\": \\"^6.20.0\\", \\"zustand\\": \\"^4.4.0\\"}}, \\"devDependencies\\": {{\\"@types/react\\": \\"^18.2.0\\", \\"@vitejs/plugin-react\\": \\"^4.0.0\\", \\"typescript\\": \\"^5.0.0\\", \\"vite\\": \\"^5.0.0\\"}}}}",
+    "src/main.jsx": "import React from 'react'\\nimport ReactDOM from 'react-dom/client'\\nimport App from './App'\\nimport './index.css'\\n\\nReactDOM.createRoot(document.getElementById('root')).render(\\n  <React.StrictMode>\\n    <App />\\n  </React.StrictMode>\\n)",
+    "src/App.jsx": "import {{ useState }} from 'react'\\nimport {{ MemoryRouter, Routes, Route }} from 'react-router-dom'\\nimport {{ useAuthStore }} from './stores/authStore'\\nimport Header from './components/Header'\\nimport Footer from './components/Footer'\\nimport Home from './pages/Home'\\nimport {{ AuthContext }} from './context/AuthContext'\\n\\nfunction App() {{\\n  const user = useAuthStore(state => state.user)\\n  const [authState] = useState({{ user, isAuthenticated: !!user }})\\n\\n  return (\\n    <AuthContext.Provider value={{authState}}>\\n      <MemoryRouter>\\n        <div className=\\"min-h-screen bg-gray-50 flex flex-col\\">\\n          <Header />\\n          <main className=\\"flex-1 container mx-auto px-4 py-8\\">\\n            <Routes>\\n              <Route path=\\"/*\\" element={{<Home />}} />\\n            </Routes>\\n          </main>\\n          <Footer />\\n        </div>\\n      </MemoryRouter>\\n    </AuthContext.Provider>\\n  )\\n}}\\n\\nexport default App",
+    "src/context/AuthContext.jsx": "import { createContext } from 'react'\\n\\nexport const AuthContext = createContext(null)",
+    "src/stores/authStore.js": "import { create } from 'zustand'\\nimport { persist } from 'zustand/middleware'\\n\\nexport const useAuthStore = create(\\n  persist(\\n    (set) => ({{\\n      user: null,\\n      setUser: (user) => set({{ user }}),\\n      logout: () => set({{ user: null }})\\n    }}),\\n    {{ name: 'auth-store', storage: localStorage }}\\n  )\\n)",
+    "src/pages/Home.jsx": "import {{ useState }} from 'react'\\n\\nexport default function Home() {{\\n  const [count, setCount] = useState(0)\\n\\n  return (\\n    <div>\\n      <h1 className=\\"text-4xl font-bold text-gray-900 mb-4\\">Welcome to your app</h1>\\n      <button onClick={{() => setCount(count + 1)}} className=\\"px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600\\">\\n        Count: {{count}}\\n      </button>\\n    </div>\\n  )\\n}}",
+    "src/components/Header.jsx": "export default function Header() {{\\n  return (\\n    <header className=\\"bg-white shadow\\">\\n      <div className=\\"container mx-auto px-4 py-4\\">\\n        <h1 className=\\"text-2xl font-bold text-gray-900\\">My App</h1>\\n      </div>\\n    </header>\\n  )\\n}}",
+    "src/components/Footer.jsx": "export default function Footer() {{\\n  return (\\n    <footer className=\\"bg-gray-800 text-white py-4 mt-8\\">\\n      <div className=\\"container mx-auto px-4 text-center\\">\\n        <p>&copy; 2024 My App. All rights reserved.</p>\\n      </div>\\n    </footer>\\n  )\\n}}",
     "src/index.css": "@tailwind base;\\n@tailwind components;\\n@tailwind utilities;",
-    "tailwind.config.js": "export default {{\\n  content: ['./index.html', './src/**/*.{{js,ts,jsx,tsx}}'],\\n  theme: {{\\n    extend: {{\\n      colors: {{\\n        primary: '#1A1A1A',\\n        secondary: '#808080'\\n      }}\\n    }}\\n  }},\\n  plugins: []\\n}}",
-    "vite.config.ts": "import {{ defineConfig }} from 'vite'\\nimport react from '@vitejs/plugin-react'\\n\\nexport default defineConfig({{\\n  plugins: [react()],\\n  server: {{ port: 5173 }}\\n}})",
-    "tsconfig.json": "{{\\"compilerOptions\\": {{\\"target\\": \\"ES2020\\", \\"useDefineForClassFields\\": true, \\"lib\\": [\\"ES2020\\", \\"DOM\\", \\"DOM.Iterable\\"], \\"module\\": \\"ESNext\\", \\"skipLibCheck\\": true, \\"moduleResolution\\": \\"bundler\\", \\"allowImportingTsExtensions\\": true, \\"resolveJsonModule\\": true, \\"isolatedModules\\": true, \\"noEmit\\": true, \\"jsx\\": \\"react-jsx\\", \\"strict\\": true, \\"noUnusedLocals\\": true, \\"noUnusedParameters\\": true, \\"noFallthroughCasesInSwitch\\": true}}, \\"include\\": [\\"src\\"], \\"references\\": [{{\\"path\\": \\"./tsconfig.node.json\\"}}]}}",
-    "index.html": "<!DOCTYPE html>\\n<html lang=\\"en\\">\\n<head>\\n  <meta charset=\\"UTF-8\\" />\\n  <meta name=\\"viewport\\" content=\\"width=device-width, initial-scale=1.0\\" />\\n  <title>My App</title>\\n</head>\\n<body>\\n  <div id=\\"root\\"></div>\\n  <script type=\\"module\\" src=\\"/src/main.tsx\\"></script>\\n</body>\\n</html>"
+    "tailwind.config.js": "export default {{\\n  content: ['./index.html', './src/**/*.{{js,jsx,ts,tsx}}'],\\n  theme: {{\\n    extend: {{\\n      colors: {{\\n        primary: '#1A1A1A',\\n        secondary: '#808080'\\n      }}\\n    }}\\n  }},\\n  plugins: []\\n}}",
+    "vite.config.js": "import { defineConfig } from 'vite'\\nimport react from '@vitejs/plugin-react'\\n\\nexport default defineConfig({{\\n  plugins: [react()],\\n  server: {{ port: 5173 }}\\n}})",
+    "tsconfig.json": "{{\\"compilerOptions\\": {{\\"target\\": \\"ES2020\\", \\"useDefineForClassFields\\": true, \\"lib\\": [\\"ES2020\\", \\"DOM\\", \\"DOM.Iterable\\"], \\"module\\": \\"ESNext\\", \\"skipLibCheck\\": true, \\"moduleResolution\\": \\"bundler\\", \\"resolveJsonModule\\": true, \\"isolatedModules\\": true, \\"noEmit\\": true, \\"jsx\\": \\"react-jsx\\", \\"strict\\": true}}, \\"include\\": [\\"src\\"], \\"exclude\\": [\\"node_modules\\"]}}", 
+    "index.html": "<!DOCTYPE html>\\n<html lang=\\"en\\">\\n<head>\\n  <meta charset=\\"UTF-8\\" />\\n  <meta name=\\"viewport\\" content=\\"width=device-width, initial-scale=1.0\\" />\\n  <title>My App</title>\\n</head>\\n<body>\\n  <div id=\\"root\\"></div>\\n  <script type=\\"module\\" src=\\"/src/main.jsx\\"></script>\\n</body>\\n</html>"
   }},
   "structure": {{
-    "description": "Modern React application with TypeScript and TailwindCSS. Component-based architecture with clear separation of concerns.",
-    "entry_point": "src/main.tsx",
-    "main_components": ["App", "Header", "Footer"],
-    "routing": "React Router (if needed)",
-    "state_management": "Context API / useState hooks"
+    "description": "Modern React application with TypeScript and TailwindCSS. Includes routing, authentication context, persistence layer, and component-based architecture.",
+    "entry_point": "src/main.jsx",
+    "main_components": ["App", "Home", "Header", "Footer"],
+    "routing": "React Router (MemoryRouter with Routes)",
+    "state_management": "Zustand with localStorage persistence + Context API for auth",
+    "auth": "AuthContext + useAuthStore (Zustand)"
   }},
   "setup_instructions": [
     "npm install",
@@ -141,10 +145,16 @@ Output ONLY valid JSON in this exact format:
 }}
 
 Quality expectations:
-- All files must have proper imports and exports
+- ALL files must have proper imports and exports
+- MUST include react-router-dom (MemoryRouter/Routes/Route) for routing
+- MUST include zustand with persist middleware for state management + localStorage
+- MUST include AuthContext and useAuth pattern for authentication
+- MUST have src/components/ directory with reusable components
+- MUST have App.jsx/App.js as root component
+- MUST have src/main.jsx with ReactDOM.createRoot
 - TypeScript interfaces for props and state
 - Proper component structure and naming conventions
-- Responsive design with mobile-first approach
+- Responsive design with mobile-first approach (Tailwind)
 - Accessible components (ARIA labels, semantic HTML)
 - Error boundaries for production
 - Loading and error states
