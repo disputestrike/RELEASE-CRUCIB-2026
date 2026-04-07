@@ -305,36 +305,48 @@ async def handle_frontend_generate(step: Dict, job: Dict,
     job_id = job.get("id") or ""
     goal = job.get("goal", "").strip()
     
+    logger.info(f"=== FRONTEND HANDLER START ===")
+    logger.info(f"Job: {job_id}, Goal: {goal[:60] if goal else 'NONE'}, WS: {bool(workspace_path)}")
+    
     try:
         if workspace_path and goal:
+            logger.info(f"Attempting FrontendAgent...")
             # STEP 1: Try to use FrontendAgent with LLM
             try:
                 from agents.frontend_agent import FrontendAgent
                 import json
                 
                 agent = FrontendAgent()
+                logger.info(f"Agent instantiated: {agent.name}")
+                
                 context = {
                     "user_prompt": goal,
                     "project_id": job_id,
                     "workspace_path": workspace_path,
                 }
                 
-                logger.info(f"frontend_generate: Running FrontendAgent for job {job_id}")
+                logger.info(f"Calling agent.execute() with context...")
                 result = await agent.execute(context)
+                
+                logger.info(f"Agent returned: type={type(result)}, keys={list(result.keys()) if isinstance(result, dict) else 'NOT_DICT'}")
                 
                 # Write generated files to workspace
                 if result and result.get("files"):
                     files_dict = result["files"]
+                    logger.info(f"Files dict: type={type(files_dict)}, len={len(str(files_dict))}")
                     
                     # Ensure files is a dict (might be nested JSON string)
                     if isinstance(files_dict, str):
+                        logger.info(f"Files is string, parsing JSON...")
                         try:
                             files_dict = json.loads(files_dict)
-                        except:
-                            logger.warning("Could not parse files as JSON")
+                            logger.info(f"Parsed: {len(files_dict)} files")
+                        except Exception as e:
+                            logger.error(f"Could not parse files JSON: {e}")
                             files_dict = {}
                     
                     if isinstance(files_dict, dict):
+                        logger.info(f"Writing {len(files_dict)} files to disk...")
                         for file_path, content in files_dict.items():
                             # Convert to string if needed
                             if isinstance(content, dict):
@@ -344,29 +356,41 @@ async def handle_frontend_generate(step: Dict, job: Dict,
                             else:
                                 content = str(content)
                             
+                            logger.debug(f"Writing: {file_path} ({len(content)} bytes)")
                             # Write file
                             w = _safe_write(workspace_path, file_path, content)
                             if w:
                                 out.append(w)
-                                logger.debug(f"Wrote: {file_path}")
+                                logger.info(f"✓ Wrote: {file_path}")
+                            else:
+                                logger.error(f"✗ Failed to write: {file_path}")
                         
-                        logger.info(f"frontend_generate: FrontendAgent wrote {len(out)} files")
+                        logger.info(f"✓ FrontendAgent wrote {len(out)} files total")
                     else:
-                        logger.warning(f"files not a dict: {type(files_dict)}")
+                        logger.error(f"files not a dict: {type(files_dict)}")
                 else:
-                    logger.warning(f"No files in result: {bool(result)}, {bool(result.get('files') if result else False)}")
+                    logger.error(f"No files in result! result={bool(result)}, files={bool(result.get('files') if result else False)}")
                 
             except Exception as e:
-                logger.exception(f"frontend_generate: FrontendAgent failed: {e}")
+                logger.exception(f"❌ FrontendAgent EXCEPTION: {e}")
+                import traceback
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                
                 # Fallback to template files on error
+                logger.info(f"Falling back to stub files...")
                 from .plan_context import fetch_build_target_for_job
-                bt = await fetch_build_target_for_job(job_id)
-                job_augmented = {**job, "build_target": bt}
-                for rel, content in build_frontend_file_set(job_augmented):
-                    w = _safe_write(workspace_path, rel, content)
-                    if w:
-                        out.append(w)
+                try:
+                    bt = await fetch_build_target_for_job(job_id)
+                    job_augmented = {**job, "build_target": bt}
+                    for rel, content in build_frontend_file_set(job_augmented):
+                        w = _safe_write(workspace_path, rel, content)
+                        if w:
+                            out.append(w)
+                    logger.info(f"✓ Fallback wrote {len(out)} stub files")
+                except Exception as e2:
+                    logger.exception(f"Fallback also failed: {e2}")
         else:
+            logger.warning(f"Skipping agent: workspace_path={bool(workspace_path)}, goal={bool(goal)}")
             # No workspace or goal - use stubs
             from .plan_context import fetch_build_target_for_job
             bt = await fetch_build_target_for_job(job.get("id") or "")
@@ -377,7 +401,7 @@ async def handle_frontend_generate(step: Dict, job: Dict,
                     out.append(w)
     
     except Exception as e:
-        logger.exception("frontend_generate: Critical error")
+        logger.exception(f"❌ FrontendHandler CRITICAL: {e}")
         # Last resort: stub files
         if workspace_path:
             try:
@@ -388,8 +412,11 @@ async def handle_frontend_generate(step: Dict, job: Dict,
                     w = _safe_write(workspace_path, rel, content)
                     if w:
                         out.append(w)
+                logger.info(f"Last resort wrote {len(out)} files")
             except Exception:
-                logger.exception("frontend_generate: Stub fallback also failed")
+                logger.exception("Last resort fallback also failed")
+    
+    logger.info(f"=== FRONTEND HANDLER END: {len(out)} files ===")
     
     return {
         "output": f"Generated {len(out)} frontend files: {goal[:60]}",
