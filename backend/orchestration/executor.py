@@ -310,6 +310,7 @@ async def handle_frontend_generate(step: Dict, job: Dict,
             # STEP 1: Try to use FrontendAgent with LLM
             try:
                 from agents.frontend_agent import FrontendAgent
+                import json
                 
                 agent = FrontendAgent()
                 context = {
@@ -323,20 +324,40 @@ async def handle_frontend_generate(step: Dict, job: Dict,
                 
                 # Write generated files to workspace
                 if result and result.get("files"):
-                    for file_path, content in result["files"].items():
-                        if isinstance(content, dict):
-                            # Handle JSON files
-                            import json
-                            content = json.dumps(content, indent=2)
-                        
-                        w = _safe_write(workspace_path, file_path, content)
-                        if w:
-                            out.append(w)
+                    files_dict = result["files"]
                     
-                    logger.info(f"frontend_generate: FrontendAgent wrote {len(out)} files")
+                    # Ensure files is a dict (might be nested JSON string)
+                    if isinstance(files_dict, str):
+                        try:
+                            files_dict = json.loads(files_dict)
+                        except:
+                            logger.warning("Could not parse files as JSON")
+                            files_dict = {}
+                    
+                    if isinstance(files_dict, dict):
+                        for file_path, content in files_dict.items():
+                            # Convert to string if needed
+                            if isinstance(content, dict):
+                                content = json.dumps(content, indent=2)
+                            elif content is None:
+                                content = ""
+                            else:
+                                content = str(content)
+                            
+                            # Write file
+                            w = _safe_write(workspace_path, file_path, content)
+                            if w:
+                                out.append(w)
+                                logger.debug(f"Wrote: {file_path}")
+                        
+                        logger.info(f"frontend_generate: FrontendAgent wrote {len(out)} files")
+                    else:
+                        logger.warning(f"files not a dict: {type(files_dict)}")
+                else:
+                    logger.warning(f"No files in result: {bool(result)}, {bool(result.get('files') if result else False)}")
                 
             except Exception as e:
-                logger.warning(f"frontend_generate: FrontendAgent failed: {e}, falling back to stubs")
+                logger.exception(f"frontend_generate: FrontendAgent failed: {e}")
                 # Fallback to template files on error
                 from .plan_context import fetch_build_target_for_job
                 bt = await fetch_build_target_for_job(job_id)
@@ -470,6 +491,7 @@ async def handle_backend_route(step: Dict, job: Dict,
             # Try BackendAgent with LLM
             try:
                 from agents.backend_agent import BackendAgent
+                import json
                 
                 agent = BackendAgent()
                 context = {
@@ -483,23 +505,40 @@ async def handle_backend_route(step: Dict, job: Dict,
                 
                 # Write generated files
                 if result and result.get("files"):
-                    for file_path, content in result["files"].items():
-                        if isinstance(content, dict):
-                            import json
-                            content = json.dumps(content, indent=2)
-                        
-                        w = _safe_write(workspace_path, file_path, content)
-                        if w:
-                            out_files.append(w)
+                    files_dict = result["files"]
                     
-                    logger.info(f"backend_route: BackendAgent wrote {len(out_files)} files")
+                    # Ensure files is a dict
+                    if isinstance(files_dict, str):
+                        try:
+                            files_dict = json.loads(files_dict)
+                        except:
+                            logger.warning("Could not parse files as JSON")
+                            files_dict = {}
+                    
+                    if isinstance(files_dict, dict):
+                        for file_path, content in files_dict.items():
+                            # Convert to string if needed
+                            if isinstance(content, dict):
+                                content = json.dumps(content, indent=2)
+                            elif content is None:
+                                content = ""
+                            else:
+                                content = str(content)
+                            
+                            # Write file
+                            w = _safe_write(workspace_path, file_path, content)
+                            if w:
+                                out_files.append(w)
+                                logger.debug(f"Wrote: {file_path}")
+                        
+                        logger.info(f"backend_route: BackendAgent wrote {len(out_files)} files")
                 
                 # Extract routes
                 if result and result.get("api_spec"):
                     routes_added = result["api_spec"].get("endpoints", [])
             
             except Exception as e:
-                logger.warning(f"backend_route: BackendAgent failed: {e}, falling back to stubs")
+                logger.exception(f"backend_route: BackendAgent failed: {e}")
                 # Use stubs
                 if key == "backend.routes":
                     main_py = _main_py_sketch(multitenant=multitenant_intent(job))
