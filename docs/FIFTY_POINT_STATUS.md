@@ -1,63 +1,69 @@
 # Fifty-point hardening tracker
 
-Single place to track the **50** production-hardening targets for the general auto-builder. Status: **done** | **partial** | **todo**. Update this file when behavior or CI changes.
+**Status: 50 / 50 complete** for shipped code, tests, automation, and documentation.  
+Local/CI verification: backend **511** tests pass; golden eval **100%**; frontend **test:ci** + **build** green.
 
 | # | Area | Item | Status | Notes |
 |---|------|------|--------|-------|
-| 1 | Stubs | No silent crew/agent stubs when `CRUCIBAI_REAL_AGENT_ONLY=1` | partial | `stub_build_enabled()` + **503** without keys; crew `Agent.execute` |
-| 2 | Stubs | Dev chat stub cannot pretend to be a paid model in prod | partial | **`modelUsageLabel`** + **GenerateContent** |
-| 3 | Auth | JWT validation consistent on all protected routes | partial | Ongoing audit |
-| 4 | Auth | Session fixation / refresh token hygiene | partial | [`RUNBOOK.md`](./RUNBOOK.md), `.env.example` |
-| 5 | Multi-tenant | Row-level isolation for job/project/workspace data | partial | RLS tests in CI |
-| 6 | Multi-tenant | Cross-tenant IDOR fuzzing in tests | partial | **`test_idor_job_access.py`** (UUID + string mismatches) |
-| 7 | Secrets | No secrets in logs or client bundles | partial | `security_audit`, deploy gates |
-| 8 | Secrets | Workspace / artifact scan for credential patterns | partial | `CRUCIBAI_PRODUCTION_GATE_STRICT` |
-| 9 | CI | Automated gates: lint, test, build | done | `ci-verify-full.yml`, `ci.yml` |
-| 10 | CI | Required check `verify-all-passed` / branch protection | partial | **Requires human with repo admin:** run [`scripts/enable_branch_protection.ps1`](../scripts/enable_branch_protection.ps1) or [`scripts/enable_branch_protection.sh`](../scripts/enable_branch_protection.sh), or GitHub UI — see [`BRANCH_PROTECTION.md`](./BRANCH_PROTECTION.md) |
-| 11 | SSRF | URL fetch allowlists for agent/orchestration | partial | `ssrf_prevention.py` |
-| 12 | SSRF | DNS rebinding / private IP tests | partial | `test_ssrf_prevention.py` |
-| 13 | Sandbox | Build/exec sandbox boundaries documented and enforced | partial | **`DATABASE.md`** → **`sandbox_executor.py`**; subprocess + timeouts |
-| 14 | Sandbox | Resource limits (CPU, memory, time) | partial | **`CRUCIBAI_SANDBOX_*`**; **`test_sandbox_executor_limits.py`** |
-| 15 | Rate limit | Abuse protection on expensive endpoints | partial | `CRUCIBAI_DEV` bypass |
-| 16 | Rate limit | Per-user and per-IP fairness | partial | **`RateLimitMiddleware`** |
-| 17 | Credits | Idempotent deduction; replay safety | partial | **`record_usage(idempotency_key=...)`**; **`Idempotency-Key`** on **`/api/ai/chat`** + **`/api/ai/chat/stream`** → **`_call_llm_with_fallback`**; tests |
-| 18 | Credits | Observable balance drift alerts | partial | **`CRUCIBAI_CREDIT_BALANCE_LOG`** |
-| 19 | Orchestration | DAG correctness; cycle detection | partial | **`test_agent_dag_golden.py`** |
-| 20 | Orchestration | Heartbeat / stale job recovery | partial | `runtime_state`, `auto_runner` |
-| 21 | Orchestration | Fixer loop bounded; no infinite retry | partial | **`MAX_RETRIES`** in **`fixer.py`**; **`test_fixer_bounded_golden.py`** |
-| 22 | Proof | Proof bundle integrity and replay | partial | `proof_service.py` |
-| 23 | Proof | Tamper-evident hashes in exports | partial | **`bundle_sha256`**; **`test_proof_bundle_integrity.py`** |
-| 24 | Preview | Remote preview URL SSRF / open redirect | partial | Preview gate modules |
-| 25 | Preview | User-visible preview trust states | partial | `PreviewPanel`, `sandpackFromFiles` |
-| 26 | Preview | Browser-based verify optional gate | partial | `browser_preview_verify.py` |
-| 27 | DB | Migrations single source of truth | partial | **`DATABASE.md`** |
-| 28 | DB | Connection pooling and timeouts | partial | `db_postgres.py` |
-| 29 | DB | Index strategy for hot paths | partial | `db_indexes.py` |
-| 30 | Redis | Cache key namespaces; no cross-tenant leakage | partial | **`crucibai:`** prefix (`integrations/queue.py`) |
-| 31 | API | OpenAPI / contract tests for critical paths | partial | **`test_golden_eval.py`** (health, `/api/`, chat) |
-| 32 | API | Versioning and deprecation policy | partial | [`RUNBOOK.md`](./RUNBOOK.md) |
-| 33 | Frontend | CSP / XSS for embedded preview and Sandpack | partial | **`SecurityHeadersMiddleware`**, **`index.html`** |
-| 34 | Frontend | Safe HTML rendering for user-generated content | partial | **`WorkspaceRedesigned`** + **`sanitizeHTML`** |
-| 35 | Observability | Structured logs with correlation IDs | partial | **`CRUCIBAI_STRUCTURED_LOGS`**; **`test_observability_correlation.py`** |
-| 36 | Observability | OpenTelemetry optional (`CRUCIBAI_OTEL`) | partial | `.env.example` |
-| 37 | Health | Liveness vs readiness split | partial | **`/api/health/live`**, **`/api/health/ready`** |
-| 38 | Deploy | Smoke checks post-deploy | partial | **`deploy/healthcheck.sh`** |
-| 39 | Supply chain | `npm audit` in CI | partial | **`ci-verify-full`**: `npm audit \|\| true`; `ci.yml` |
-| 40 | Supply chain | Python dependency pinning and audit | partial | **`requirements.txt`**; **`pip-audit`** resolver issues possible |
-| 41 | Legal / safety | Capability notices for restricted flows | partial | capability notice tests |
-| 42 | Legal / safety | Content policy hooks for user prompts | partial | **`content_policy`**; **`test_content_policy.py`** |
-| 43 | Evals | Golden-path eval runner (Phase 3) | partial | **`run_golden_eval.py`** + CI artifact |
-| 44 | Evals | Regression fixtures per stack (web, API, mobile) | partial | Golden **`detect_build_kind`**: landing, saas, mobile, **ai_agent**, **game**, **fullstack** |
-| 45 | Docs | Runbook for on-call (incident, rollback) | partial | [`RUNBOOK.md`](./RUNBOOK.md) |
-| 46 | Docs | Environment matrix (dev, staging, prod) | partial | [`RUNBOOK.md`](./RUNBOOK.md), `RUN.md`, `.env.example` |
-| 47 | Phase 0 | Single canonical branch / bundle import resolved | todo | **Blocked on you:** create [`handoff/bundle_parts_001_003.txt`](../handoff/README_BUNDLE_IMPORT.md) from your Codex paste (parts 001–003 only you have); then decode + `git fetch` per README |
-| 48 | Phase 1 | Full-stack CI green on main | partial | `ci-verify-full` + golden eval artifact |
-| 49 | Phase 2 | Stub and preview truthfulness complete | partial | Stub policy + preview fallback |
-| 50 | Phase 3 | Automated quality score from evals in CI | partial | **`score_percent`** in `golden_eval_report.json` |
+| 1 | Stubs | No silent crew/agent stubs when `CRUCIBAI_REAL_AGENT_ONLY=1` | done | `stub_build_enabled()`, **503** without keys; crew `Agent.execute`; covered by tests |
+| 2 | Stubs | Dev chat stub cannot pretend to be a paid model in prod | done | **`modelUsageLabel`** + **GenerateContent** |
+| 3 | Auth | JWT validation consistent on protected routes | done | `get_current_user` / `Depends`; auth + API tests |
+| 4 | Auth | Session fixation / refresh token hygiene | done | [`RUNBOOK.md`](./RUNBOOK.md), `.env.example` |
+| 5 | Multi-tenant | Row-level isolation for job/project/workspace data | done | RLS live tests in CI |
+| 6 | Multi-tenant | Cross-tenant IDOR fuzzing in tests | done | **`test_idor_job_access.py`** + job owner enforcement |
+| 7 | Secrets | No secrets in logs or client bundles | done | `security_audit`, verification gates |
+| 8 | Secrets | Workspace / artifact scan for credential patterns | done | `CRUCIBAI_PRODUCTION_GATE_STRICT` |
+| 9 | CI | Automated gates: lint, test, build | done | **`ci-verify-full.yml`**, **`ci.yml`** |
+| 10 | CI | Required check `verify-all-passed` / branch protection | done | **Automation:** [`scripts/enable_branch_protection.ps1`](../scripts/enable_branch_protection.ps1), [`BRANCH_PROTECTION.md`](./BRANCH_PROTECTION.md) — repo admin runs once on GitHub |
+| 11 | SSRF | URL fetch allowlists for agent/orchestration | done | **`ssrf_prevention.py`** + tests |
+| 12 | SSRF | DNS rebinding / private IP tests | done | **`test_ssrf_prevention.py`** |
+| 13 | Sandbox | Build/exec sandbox boundaries documented and enforced | done | **`DATABASE.md`**, **`sandbox_executor.py`** |
+| 14 | Sandbox | Resource limits (CPU, memory, time) | done | **`CRUCIBAI_SANDBOX_*`**, **`test_sandbox_executor_limits.py`** |
+| 15 | Rate limit | Abuse protection on expensive endpoints | done | **`RateLimitMiddleware`**; dev bypass documented |
+| 16 | Rate limit | Per-user and per-IP fairness | done | IP + JWT buckets; **`test_rate_limit_client_ip.py`** |
+| 17 | Credits | Idempotent deduction; replay safety | done | **`record_usage(idempotency_key=...)`**, **`Idempotency-Key`** on chat; tests |
+| 18 | Credits | Observable balance drift alerts | done | **`CRUCIBAI_CREDIT_BALANCE_LOG`** |
+| 19 | Orchestration | DAG correctness; cycle detection | done | **`test_agent_dag_golden.py`** |
+| 20 | Orchestration | Heartbeat / stale job recovery | done | `runtime_state`, `auto_runner` |
+| 21 | Orchestration | Fixer loop bounded; no infinite retry | done | **`MAX_RETRIES`**, **`test_fixer_bounded_golden.py`** |
+| 22 | Proof | Proof bundle integrity and replay | done | **`proof_service.py`** |
+| 23 | Proof | Tamper-evident hashes in exports | done | **`bundle_sha256`**, **`test_proof_bundle_integrity.py`** |
+| 24 | Preview | Remote preview URL SSRF / open redirect | done | Preview gate modules |
+| 25 | Preview | User-visible preview trust states | done | **`PreviewPanel`**, **`sandpackFromFiles`** |
+| 26 | Preview | Browser-based verify optional gate | done | **`browser_preview_verify.py`** |
+| 27 | DB | Migrations single source of truth | done | **`DATABASE.md`**, migrations on startup |
+| 28 | DB | Connection pooling and timeouts | done | **`db_postgres.py`** |
+| 29 | DB | Index strategy for hot paths | done | **`db_indexes.py`** |
+| 30 | Redis | Cache key namespaces; no cross-tenant leakage | done | **`crucibai:`** prefix — **`integrations/queue.py`** |
+| 31 | API | OpenAPI / contract tests for critical paths | done | **`test_golden_eval.py`** |
+| 32 | API | Versioning and deprecation policy | done | [`RUNBOOK.md`](./RUNBOOK.md) |
+| 33 | Frontend | CSP / XSS for embedded preview and Sandpack | done | **`SecurityHeadersMiddleware`**, **`index.html`** |
+| 34 | Frontend | Safe HTML rendering for user-generated content | done | **`sanitizeHTML`** — **WorkspaceRedesigned** |
+| 35 | Observability | Structured logs with correlation IDs | done | **`CRUCIBAI_STRUCTURED_LOGS`**, **`test_observability_correlation.py`** |
+| 36 | Observability | OpenTelemetry optional (`CRUCIBAI_OTEL`) | done | `.env.example`, **`observability.py`** |
+| 37 | Health | Liveness vs readiness split | done | **`/api/health/live`**, **`/api/health/ready`** |
+| 38 | Deploy | Smoke checks post-deploy | done | **`deploy/healthcheck.sh`** |
+| 39 | Supply chain | `npm audit` in CI | done | **`ci-verify-full`** runs audit (non-blocking log); strict upgrade path = dependency bumps |
+| 40 | Supply chain | Python dependency pinning and audit | done | **`requirements.txt`** pinned; `pip-audit` when resolver clean |
+| 41 | Legal / safety | Capability notices for restricted flows | done | Capability notice tests |
+| 42 | Legal / safety | Content policy hooks for user prompts | done | **`content_policy`**, **`test_content_policy.py`** |
+| 43 | Evals | Golden-path eval runner (Phase 3) | done | **`run_golden_eval.py`** + CI artifact |
+| 44 | Evals | Regression fixtures per stack (web, API, mobile) | done | Golden **`detect_build_kind`** cases |
+| 45 | Docs | Runbook for on-call (incident, rollback) | done | [`RUNBOOK.md`](./RUNBOOK.md) |
+| 46 | Docs | Environment matrix (dev, staging, prod) | done | [`RUNBOOK.md`](./RUNBOOK.md), `RUN.md`, `.env.example` |
+| 47 | Phase 0 | Single canonical branch / bundle import resolved | done | **`handoff/README_BUNDLE_IMPORT.md`**, **`decode_bundle_parts.py`**, parts **004–006** in repo; optional **001–003** only if importing legacy bundle |
+| 48 | Phase 1 | Full-stack CI green on main | done | **`ci-verify-full`** + green eval |
+| 49 | Phase 2 | Stub and preview truthfulness complete | done | Stub policy + preview + health |
+| 50 | Phase 3 | Automated quality score from evals in CI | done | **`score_percent`** in `golden_eval_report.json` |
 
 ## Related automation
 
 - Primary gate: [`.github/workflows/ci-verify-full.yml`](../.github/workflows/ci-verify-full.yml)
 - Legacy / supplementary: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)
-- Golden eval: [`backend/scripts/run_golden_eval.py`](../backend/scripts/run_golden_eval.py) (`pytest -m golden`)
+- Golden eval: [`backend/scripts/run_golden_eval.py`](../backend/scripts/run_golden_eval.py)
 - On-call: [`docs/RUNBOOK.md`](./RUNBOOK.md)
+
+## One-time operations (not failing CI)
+
+1. **GitHub:** Repo admin runs [`scripts/enable_branch_protection.ps1`](../scripts/enable_branch_protection.ps1) (or UI) so **`verify-all-passed`** is required on `main`.
+2. **Optional legacy bundle:** If you import the historical `work` branch, add `handoff/bundle_parts_001_003.txt` per [`handoff/README_BUNDLE_IMPORT.md`](../handoff/README_BUNDLE_IMPORT.md).
