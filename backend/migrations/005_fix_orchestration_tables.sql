@@ -20,11 +20,17 @@ BEGIN
       current_phase TEXT DEFAULT 'planning',
       retry_count   INTEGER DEFAULT 0,
       quality_score INTEGER DEFAULT 0,
+      error_message TEXT,
       created_at    TIMESTAMPTZ DEFAULT NOW(),
       updated_at    TIMESTAMPTZ DEFAULT NOW(),
       started_at    TIMESTAMPTZ,
       completed_at  TIMESTAMPTZ
     );
+  ELSE
+    -- Add error_message column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'jobs' AND column_name = 'error_message') THEN
+      ALTER TABLE jobs ADD COLUMN error_message TEXT;
+    END IF;
   END IF;
 END$$;
 
