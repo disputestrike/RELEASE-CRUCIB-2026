@@ -713,6 +713,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     current_phase TEXT DEFAULT 'planning',
     retry_count INTEGER DEFAULT 0,
     quality_score INTEGER DEFAULT 0,
+    error_message TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     started_at TIMESTAMPTZ,
