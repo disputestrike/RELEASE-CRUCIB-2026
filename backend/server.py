@@ -8634,7 +8634,11 @@ async def get_job_proof(job_id: str, user: dict = Depends(get_optional_user)):
         ps_mod.set_pool(pool)
         proof = await ps_mod.get_proof(job_id)
         return {"success": True, **proof}
+    except HTTPException:
+        raise
     except Exception as e:
+        import traceback
+        logger.error(f"Proof endpoint error for job {job_id}: {e}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
