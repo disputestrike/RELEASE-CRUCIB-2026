@@ -72,6 +72,20 @@
   overflow: hidden;
 }
 
+.pp-preview-trust-banner {
+  padding: 6px 10px;
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--text-secondary, #a1a1aa);
+  background: color-mix(in srgb, var(--state-warning, #f59e0b) 12%, transparent);
+  border-bottom: 1px solid var(--border-1);
+  flex-shrink: 0;
+}
+
+.pp-preview-trust-banner code {
+  font-size: 9px;
+}
+
 .pp-preview-idle {
   display: flex;
   align-items: center;

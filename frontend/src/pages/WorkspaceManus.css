@@ -264,3 +264,17 @@
     min-height: 340px;
   }
 }
+
+.mw-preview-fallback-banner {
+  padding: 6px 10px;
+  font-size: 10px;
+  line-height: 1.35;
+  color: #a1a1aa;
+  background: rgba(245, 158, 11, 0.12);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.mw-preview-fallback-banner code {
+  font-size: 9px;
+}

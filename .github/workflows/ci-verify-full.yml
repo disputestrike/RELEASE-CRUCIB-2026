@@ -1,6 +1,10 @@
-# Full verification gate: backend pytest (incl. live RLS tests) + API healthcheck + frontend lint/tests.
+# Full verification gate: backend pytest (incl. live RLS tests) + API healthcheck + frontend lint/tests/build.
 # Failing jobs block merges; wire this workflow as a required status check in branch protection.
 # Reusable via workflow_call from crucibai-verify.yml (manual / chained gates).
+#
+# 10/10 roadmap — Phase 1 (this file): CI green (#45), automated grade signal build+test (#9).
+# Phase 2: stub policy — crew stubs + dev_stub_llm fail closed when CRUCIBAI_REAL_AGENT_ONLY=1 (orchestrator + dev_stub_llm.stub_build_enabled).
+# Phase 3: golden eval report — job `verify-all-passed` is the single status check name for branch protection (#10).
 name: Verify full stack
 
 on:
@@ -51,6 +55,7 @@ jobs:
       DISABLE_CSRF_FOR_TEST: "1"
       CRUCIBAI_TEST: "1"
       CRUCIBAI_DEV: "1"
+      CRUCIBAI_REAL_AGENT_ONLY: "0"
       FRONTEND_URL: http://localhost:3000
       GOOGLE_CLIENT_ID: test.apps.googleusercontent.com
       GOOGLE_CLIENT_SECRET: test-google-client-secret
@@ -74,6 +79,18 @@ jobs:
         run: |
           python -m pytest tests/ -q --tb=short --ignore=tests/run_production_validation.py
 
+      - name: Golden eval score (Phase 3, fifty-point #43 / #50)
+        working-directory: backend
+        run: |
+          python scripts/run_golden_eval.py --write-report golden_eval_report.json
+
+      - name: Upload golden eval report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-eval-report
+          path: backend/golden_eval_report.json
+
       - name: Uvicorn smoke + healthcheck script
         working-directory: backend
         run: |
@@ -85,6 +102,7 @@ jobs:
           curl -fsS "http://127.0.0.1:${PORT}/api/health" | head -c 500
           echo
           chmod +x ../deploy/healthcheck.sh
+          ../deploy/healthcheck.sh "http://127.0.0.1:${PORT}" live
           ../deploy/healthcheck.sh "http://127.0.0.1:${PORT}"
           kill "$UV_PID" || true
           wait "$UV_PID" 2>/dev/null || true
@@ -108,9 +126,11 @@ jobs:
           ESLINT_WARN_BUDGET: "50"
         run: |
           npm ci
+          npm audit --omit=dev || true
           npm run lint:ci
           npm run lint:warn-budget
           npm run test:ci
+          npm run build
 
   # Single status check name for branch protection: require `verify-all-passed`.
   verify-all-passed:

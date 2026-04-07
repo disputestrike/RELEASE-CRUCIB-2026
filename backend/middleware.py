@@ -43,84 +43,130 @@ class HTTPSRedirectMiddleware(BaseHTTPMiddleware):
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """
-    Rate limiting middleware with per-IP and per-user tracking.
-    Stricter limits for auth and payment endpoints (register, login, checkout).
+    Rate limiting: per-client-IP (X-Forwarded-For aware) plus per-user JWT when Bearer is valid.
+    Stricter limits for auth/payment paths (always keyed by IP for credential-stuffing fairness).
+    Env: RATE_LIMIT_PER_MINUTE (user bucket, default passed in), RATE_LIMIT_PER_IP_PER_MINUTE (optional).
     """
-    
+
     def __init__(self, app, requests_per_minute: int = 60):
         super().__init__(app)
         self.requests_per_minute = requests_per_minute
-        self.request_times: Dict[str, list] = defaultdict(list)
+        self.by_ip: Dict[str, list] = defaultdict(list)
+        self.by_user: Dict[str, list] = defaultdict(list)
         self.strict_times: Dict[str, list] = defaultdict(list)
-        self.cleanup_task = None
-    
+
+    @staticmethod
+    def _client_ip(request: Request) -> str:
+        xff = (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
+        if xff:
+            return xff
+        return (request.client.host if request.client else "") or "unknown"
+
+    @staticmethod
+    def _jwt_user_id(request: Request) -> Optional[str]:
+        auth = request.headers.get("Authorization", "")
+        if not auth.startswith("Bearer "):
+            return None
+        token = auth[7:].strip()
+        if not token:
+            return None
+        secret = os.environ.get("JWT_SECRET")
+        if not secret:
+            return None
+        try:
+            import jwt
+
+            algo = (os.environ.get("JWT_ALGORITHM") or "HS256").strip() or "HS256"
+            payload = jwt.decode(token, secret, algorithms=[algo])
+            uid = payload.get("user_id")
+            return str(uid) if uid is not None else None
+        except Exception:
+            return None
+
+    def _ip_limit(self) -> int:
+        raw = (os.environ.get("RATE_LIMIT_PER_IP_PER_MINUTE") or "").strip()
+        if raw.isdigit():
+            return max(1, int(raw))
+        return max(self.requests_per_minute * 3, 120)
+
+    def _prune(self, bucket: Dict[str, list], key: str, now: float, window: float = 60.0) -> None:
+        cutoff = now - window
+        bucket[key] = [t for t in bucket[key] if t > cutoff]
+
+    def _under(self, bucket: Dict[str, list], key: str, limit: int, now: float) -> bool:
+        self._prune(bucket, key, now)
+        return len(bucket[key]) < limit
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        # Local dev: SPA + HMR + many parallel calls easily exceed the global limit; skip throttling.
         if os.environ.get("CRUCIBAI_DEV", "").strip().lower() in ("1", "true", "yes"):
             return await call_next(request)
+
         path = (request.url.path or "").rstrip("/")
         if not path.startswith("/api/"):
             path_for_key = path
         else:
             path_for_key = "/api/" + path[4:].split("?")[0].rstrip("/")
-        identifier = self._get_identifier(request)
-        strict_limit = STRICT_RATE_LIMITS.get(path_for_key)
 
-        # Stricter limit for auth/payment
+        now = time.time()
+        ip_key = f"ip:{self._client_ip(request)}"
+        user_id = self._jwt_user_id(request)
+        limit_ip = self._ip_limit()
+        limit_user = self.requests_per_minute
+
+        strict_limit = STRICT_RATE_LIMITS.get(path_for_key)
         if strict_limit is not None:
-            key = f"strict_{path_for_key}_{identifier}"
-            if not self._check_limit(key, strict_limit, self.strict_times):
+            strict_key = f"strict:{path_for_key}:{ip_key}"
+            if not self._under(self.strict_times, strict_key, strict_limit, now):
                 return JSONResponse(
                     status_code=429,
                     content={
                         "error": "Rate limit exceeded",
                         "message": f"Maximum {strict_limit} requests per minute for this endpoint",
-                        "retry_after": 60
-                    }
+                        "retry_after": 60,
+                    },
                 )
-            self.strict_times[key].append(time.time())
-        
-        # Global rate limit
-        if not self._check_rate_limit(identifier):
+            self.strict_times[strict_key].append(now)
+
+        if not self._under(self.by_ip, ip_key, limit_ip, now):
             return JSONResponse(
                 status_code=429,
                 content={
                     "error": "Rate limit exceeded",
-                    "message": f"Maximum {self.requests_per_minute} requests per minute allowed",
-                    "retry_after": 60
-                }
+                    "message": f"Maximum {limit_ip} requests per minute from this network",
+                    "retry_after": 60,
+                },
             )
-        
-        self.request_times[identifier].append(time.time())
-        response = await call_next(request)
-        response.headers["X-RateLimit-Limit"] = str(self.requests_per_minute)
-        response.headers["X-RateLimit-Remaining"] = str(
-            self.requests_per_minute - len(self.request_times[identifier])
-        )
-        return response
-    
-    def _check_limit(self, key: str, limit: int, bucket: Dict[str, list]) -> bool:
-        now = time.time()
-        minute_ago = now - 60
-        bucket[key] = [t for t in bucket[key] if t > minute_ago]
-        return len(bucket[key]) < limit
 
-    def _get_identifier(self, request: Request) -> str:
-        """Get unique identifier for rate limiting"""
-        auth_header = request.headers.get("Authorization", "")
-        if auth_header.startswith("Bearer "):
-            return auth_header[7:]
-        client_ip = request.client.host if request.client else "unknown"
-        return f"ip_{client_ip}"
-    
-    def _check_rate_limit(self, identifier: str) -> bool:
-        """Check if identifier has exceeded rate limit"""
-        now = time.time()
-        minute_ago = now - 60
-        self.request_times[identifier] = [
-            t for t in self.request_times[identifier] if t > minute_ago
-        ]
-        return len(self.request_times[identifier]) < self.requests_per_minute
+        user_key = f"user:{user_id}" if user_id else None
+        if user_key and not self._under(self.by_user, user_key, limit_user, now):
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "error": "Rate limit exceeded",
+                    "message": f"Maximum {limit_user} requests per minute for this account",
+                    "retry_after": 60,
+                },
+            )
+
+        self.by_ip[ip_key].append(now)
+        if user_key:
+            self.by_user[user_key].append(now)
+
+        response = await call_next(request)
+        self._prune(self.by_ip, ip_key, time.time())
+        response.headers["X-RateLimit-Limit-IP"] = str(limit_ip)
+        rem_ip = max(0, limit_ip - len(self.by_ip[ip_key]))
+        response.headers["X-RateLimit-Remaining-IP"] = str(rem_ip)
+        if user_key:
+            self._prune(self.by_user, user_key, time.time())
+            rem_u = max(0, limit_user - len(self.by_user[user_key]))
+            response.headers["X-RateLimit-Limit"] = str(limit_user)
+            response.headers["X-RateLimit-Remaining"] = str(min(rem_ip, rem_u))
+        else:
+            response.headers["X-RateLimit-Limit"] = str(limit_ip)
+            response.headers["X-RateLimit-Remaining"] = str(rem_ip)
+        return response
+
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """
@@ -142,8 +188,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # script-src 'unsafe-eval' for the bundler, and wss: for HMR websockets.
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.codesandbox.io https://sandpack-bundler.codesandbox.io; "
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.codesandbox.io; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.codesandbox.io https://sandpack-bundler.codesandbox.io https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.codesandbox.io https://cdn.jsdelivr.net; "
             "img-src 'self' data: https: blob:; "
             "font-src 'self' data: https://fonts.gstatic.com https://*.codesandbox.io; "
             "connect-src 'self' https: wss: ws:; "

@@ -8,7 +8,7 @@ import "../components/SandpackErrorBoundary.css";
 import { Globe, Rocket, Download, Loader2 } from "lucide-react";
 import { API, useAuth } from "../App";
 import { useTaskStore } from "../stores/useTaskStore";
-import { computeSandpackFiles, computeSandpackDeps } from "../workspace/sandpackFromFiles";
+import { computeSandpackFilesWithMeta, computeSandpackDeps } from "../workspace/sandpackFromFiles";
 import {
   DEFAULT_FILES,
   ConsolePanel,
@@ -146,7 +146,7 @@ export default function WorkspaceManus() {
     setWorkspacePullKey((k) => k + 1);
   }, []);
 
-  const sandpackFiles = useMemo(() => computeSandpackFiles(files), [files]);
+  const { sandpackFiles, isFallback: sandpackIsFallback } = useMemo(() => computeSandpackFilesWithMeta(files), [files]);
   const sandpackDeps = useMemo(() => computeSandpackDeps(files), [files]);
 
   const localMdDocs = useMemo(
@@ -1091,6 +1091,13 @@ export default function WorkspaceManus() {
         </div>
         <div className="mw-panel">
           {tab === "preview" && (
+            <>
+              {sandpackIsFallback && Object.keys(sandpackFiles || {}).length > 0 && (
+                <div className="mw-preview-fallback-banner" role="status">
+                  Fallback preview: no <code>/src/App.jsx</code> — mounting the first JS/JSX module. Sync workspace files for a
+                  faithful entry, or use the unified workspace when a job is attached.
+                </div>
+              )}
             <SandpackProvider
               key={filesReadyKey}
               files={sandpackFiles}
@@ -1117,6 +1124,7 @@ export default function WorkspaceManus() {
                 </div>
               </SandpackErrorBoundary>
             </SandpackProvider>
+            </>
           )}
 
           {tab === "code" && (

@@ -45,6 +45,17 @@ async def test_run_crew_writes_elite_proof_when_system_prompt_set():
 
 
 @pytest.mark.asyncio
+async def test_real_agent_only_blocks_stub_execute():
+    crew = architect_crew("x")
+    os.environ["CRUCIBAI_REAL_AGENT_ONLY"] = "1"
+    try:
+        with pytest.raises(RuntimeError, match="stubbed"):
+            await crew.kickoff({"goal": "x"})
+    finally:
+        os.environ.pop("CRUCIBAI_REAL_AGENT_ONLY", None)
+
+
+@pytest.mark.asyncio
 async def test_run_crew_system_prompt_reaches_agent_execute_digest():
     """Execution path: kickoff passes elite_system_prompt so stub Agent echoes authority."""
     with tempfile.TemporaryDirectory() as d:

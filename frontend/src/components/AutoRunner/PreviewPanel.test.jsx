@@ -60,4 +60,20 @@ describe('PreviewPanel', () => {
     );
     expect(container.querySelector('.pp-preview-building')).toBeTruthy();
   });
+
+  test('shows fallback trust banner when sandpackIsFallback', () => {
+    const sandpackFiles = { '/src/Foo.jsx': { code: 'export default function Foo(){return null}' } };
+    const sandpackDeps = { react: '^18.2.0', 'react-dom': '^18.2.0' };
+    render(
+      <PreviewPanel
+        previewUrl={null}
+        status="ready"
+        sandpackFiles={sandpackFiles}
+        sandpackDeps={sandpackDeps}
+        filesReadyKey="t5"
+        sandpackIsFallback
+      />,
+    );
+    expect(screen.getByRole('status')).toHaveTextContent(/Fallback preview/i);
+  });
 });

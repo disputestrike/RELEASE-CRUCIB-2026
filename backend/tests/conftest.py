@@ -15,7 +15,14 @@ import time
 from pathlib import Path
 
 import pytest
-import pytest_asyncio
+
+try:
+    import pytest_asyncio
+except ImportError as exc:  # pragma: no cover - env setup
+    raise ImportError(
+        "Missing pytest_asyncio. Install test deps: pip install -r backend/requirements.txt "
+        "(includes pytest-asyncio)."
+    ) from exc
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 

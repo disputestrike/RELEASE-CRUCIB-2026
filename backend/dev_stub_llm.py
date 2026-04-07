@@ -7,12 +7,41 @@ from __future__ import annotations
 import json
 import os
 import re
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from llm_router import router
 
 
+REAL_AGENT_NO_LLM_KEYS_DETAIL = (
+    "CRUCIBAI_REAL_AGENT_ONLY is enabled but no LLM API keys are configured. "
+    "Set ANTHROPIC_API_KEY, CEREBRAS_API_KEY, and/or LLAMA_API_KEY (or disable CRUCIBAI_REAL_AGENT_ONLY for local dev)."
+)
+
+
+def _real_agent_only() -> bool:
+    v = (os.environ.get("CRUCIBAI_REAL_AGENT_ONLY") or "").strip().lower()
+    return v in ("1", "true", "yes", "on")
+
+
+def is_real_agent_only() -> bool:
+    """True when the deployment forbids dev stubs (crew + chat stub); real LLM keys must be present."""
+    return _real_agent_only()
+
+
+def chat_llm_available(effective_keys: Optional[Dict[str, Any]] = None) -> bool:
+    """Whether server/workspace effective keys or env can reach an LLM (matches stub_build_enabled key detection)."""
+    ek = effective_keys or {}
+    if str(ek.get("anthropic") or "").strip():
+        return True
+    if str(ek.get("cerebras") or "").strip():
+        return True
+    return bool(router.llama_available or router.cerebras_available or router.haiku_available)
+
+
 def stub_build_enabled() -> bool:
+    # Production-style: forbid dev stub when real LLM execution is required.
+    if _real_agent_only():
+        return False
     # Pytest sets CRUCIBAI_TEST=1; do not stub or API contract tests break when .env has CRUCIBAI_DEV=1.
     if os.environ.get("CRUCIBAI_TEST") == "1":
         return False

@@ -5,12 +5,18 @@ Tracks credit usage per model and user tier.
 Uses the PostgreSQL JSONB wrapper in db_pg.py (not raw asyncpg).
 """
 
+import hashlib
 import logging
+import os
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone
 from enum import Enum
 
 logger = logging.getLogger(__name__)
+
+
+def _credit_audit_log_enabled() -> bool:
+    return (os.environ.get("CRUCIBAI_CREDIT_BALANCE_LOG") or "").strip().lower() in ("1", "true", "yes", "on")
 
 
 class ModelCost(str, Enum):
@@ -38,6 +44,11 @@ class CreditTracker:
         return max(1, round(credit_cost)) if credit_cost > 0 else 0.0
 
     @staticmethod
+    def _usage_id_for_idempotency(user_id: str, idempotency_key: str) -> str:
+        h = hashlib.sha256(f"{user_id}\0{idempotency_key}".encode("utf-8")).hexdigest()
+        return f"usage_idem_{h}"
+
+    @staticmethod
     async def record_usage(
         db,
         user_id: str,
@@ -46,13 +57,38 @@ class CreditTracker:
         user_tier: str,
         agent_name: str,
         project_id: str,
+        idempotency_key: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Record LLM usage and deduct credits via db_pg."""
+        """Record LLM usage and deduct credits via db_pg.
+
+        If ``idempotency_key`` is set, the same key for the same ``user_id`` replays without
+        a second deduction (safe for client retries / double-submit).
+        """
         try:
             credit_cost = CreditTracker.calculate_credit_cost(model_name, tokens_used, user_tier)
 
+            if idempotency_key:
+                uid = CreditTracker._usage_id_for_idempotency(user_id, idempotency_key)
+                existing = await db.usage_log.find_one({"_id": uid})
+                if existing:
+                    user = await db.users.find_one({"id": user_id}, {"credit_balance": 1})
+                    remaining = user.get("credit_balance", 0) if user else 0
+                    return {
+                        "usage_id": uid,
+                        "credits_deducted": 0.0,
+                        "remaining_credits": remaining,
+                        "model": model_name,
+                        "replay": True,
+                    }
+
+            usage_id = (
+                CreditTracker._usage_id_for_idempotency(user_id, idempotency_key)
+                if idempotency_key
+                else f"usage_{user_id}_{datetime.now(timezone.utc).timestamp()}"
+            )
+
             usage_record = {
-                "_id": f"usage_{user_id}_{datetime.now(timezone.utc).timestamp()}",
+                "_id": usage_id,
                 "user_id": user_id,
                 "model": model_name,
                 "tokens_used": tokens_used,
@@ -62,8 +98,25 @@ class CreditTracker:
                 "project_id": project_id,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }
+            if idempotency_key:
+                usage_record["idempotency_key"] = idempotency_key
 
-            await db.usage_log.insert_one(usage_record)
+            try:
+                await db.usage_log.insert_one(usage_record)
+            except Exception as exc:
+                # Concurrent duplicate submit with same idempotency key
+                err = str(exc).lower()
+                if idempotency_key and ("duplicate" in err or "e11000" in err):
+                    user = await db.users.find_one({"id": user_id}, {"credit_balance": 1})
+                    remaining = user.get("credit_balance", 0) if user else 0
+                    return {
+                        "usage_id": CreditTracker._usage_id_for_idempotency(user_id, idempotency_key),
+                        "credits_deducted": 0.0,
+                        "remaining_credits": remaining,
+                        "model": model_name,
+                        "replay": True,
+                    }
+                raise
 
             if credit_cost > 0:
                 await db.users.update_one(
@@ -74,7 +127,25 @@ class CreditTracker:
             user = await db.users.find_one({"id": user_id}, {"credit_balance": 1})
             remaining = user.get("credit_balance", 0) if user else 0
 
-            logger.info(f"Usage recorded: {user_id} used {model_name}, deducted {credit_cost} credits")
+            if remaining < 0:
+                logger.warning(
+                    "credit_balance_negative user_id=%s balance=%s model=%s deducted=%s",
+                    user_id,
+                    remaining,
+                    model_name,
+                    credit_cost,
+                )
+            if _credit_audit_log_enabled():
+                logger.info(
+                    "credit_balance_event user_id=%s delta=%s balance_after=%s model=%s tokens=%s",
+                    user_id,
+                    -float(credit_cost),
+                    remaining,
+                    model_name,
+                    tokens_used,
+                )
+            elif remaining >= 0:
+                logger.info("Usage recorded: %s used %s, deducted %s credits", user_id, model_name, credit_cost)
             return {
                 "usage_id": usage_record["_id"],
                 "credits_deducted": credit_cost,

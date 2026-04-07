@@ -70,8 +70,6 @@ from urllib.parse import quote, urlencode
 from env_encryption import encrypt_env, decrypt_env
 from agent_dag import AGENT_DAG, get_execution_phases, build_context_from_previous_agents, get_system_prompt_for_agent
 from real_agent_runner import REAL_AGENT_NAMES, run_real_agent, persist_agent_output, run_real_post_step
-from security_headers import add_security_headers
-
 # CSRF Protection Middleware
 class CSRFMiddleware:
     """Middleware to protect against CSRF attacks on state-changing requests."""
@@ -155,12 +153,16 @@ from pgvector_memory import pgvector_memory as _pgvector_memory
 from llm_router import router, classifier, TaskComplexity
 from dev_stub_llm import (
     stub_build_enabled,
+    is_real_agent_only,
+    chat_llm_available,
+    REAL_AGENT_NO_LLM_KEYS_DETAIL,
     plan_and_suggestions as _stub_plan_and_suggestions,
     stub_multifile_markdown,
     stub_file_dict,
     detect_build_kind as _stub_detect_build_kind,
 )
 from credit_tracker import tracker
+from content_policy import screen_user_content
 
 # Monitoring & Metrics
 try:
@@ -273,7 +275,7 @@ try:
     init_opentelemetry()
 except Exception:
     pass
-add_security_headers(app)
+# Security headers: middleware.SecurityHeadersMiddleware (Sandpack-aware CSP, SAMEORIGIN framing).
 api_router = APIRouter(prefix="/api")
 auth_router = APIRouter(prefix="/api", tags=["auth"])
 projects_router = APIRouter(prefix="/api", tags=["projects"])
@@ -1352,6 +1354,7 @@ async def _call_llm_with_fallback(
     agent_name: str = "",
     api_keys: Optional[Dict[str, Optional[str]]] = None,
     content_blocks: Optional[List[Dict[str, Any]]] = None,
+    idempotency_key: Optional[str] = None,
 ) -> tuple[str, str]:
     """
     Intelligent LLM router with Llama + Cerebras primary, Haiku fallback.
@@ -1397,11 +1400,12 @@ async def _call_llm_with_fallback(
                 # Record usage
                 if user_id and db:
                     await tracker.record_usage(
-                        db, user_id, "llama", 
+                        db, user_id, "llama",
                         len(message.split()) * 1.3,  # Estimate tokens
-                        user_tier, agent_name, session_id
+                        user_tier, agent_name, session_id,
+                        idempotency_key=idempotency_key,
                     )
-                
+
                 return (response, f"llama/{model_id}")
             
             elif provider == "cerebras" and router.cerebras_available:
@@ -1417,9 +1421,10 @@ async def _call_llm_with_fallback(
                     await tracker.record_usage(
                         db, user_id, "cerebras",
                         len(message.split()) * 1.3,  # Estimate tokens
-                        user_tier, agent_name, session_id
+                        user_tier, agent_name, session_id,
+                        idempotency_key=idempotency_key,
                     )
-                
+
                 return (response, f"cerebras/{model_id}")
             
             elif provider == "anthropic" and router.haiku_available:
@@ -1435,9 +1440,10 @@ async def _call_llm_with_fallback(
                     await tracker.record_usage(
                         db, user_id, "haiku",
                         len(message.split()) * 1.3,  # Estimate tokens
-                        user_tier, agent_name, session_id
+                        user_tier, agent_name, session_id,
+                        idempotency_key=idempotency_key,
                     )
-                
+
                 return (response, f"haiku/{model_id}")
         
         except Exception as e:
@@ -1459,6 +1465,16 @@ async def _call_llm_with_fallback(
 # ==================== AI CHAT ROUTES ====================
 # Prepay: require at least MIN_CREDITS_FOR_LLM credits (legacy MIN_BALANCE_FOR_LLM_CALL = 5000 tokens ≈ 5 credits)
 MIN_BALANCE_FOR_LLM_CALL = 5_000  # legacy token value; we check credits now
+
+
+def _idempotency_key_from_request(request: Optional[Request]) -> Optional[str]:
+    """HTTP Idempotency-Key (or X-Idempotency-Key) for credit replay safety (#17). Max 256 chars."""
+    if request is None:
+        return None
+    h = (request.headers.get("Idempotency-Key") or request.headers.get("X-Idempotency-Key") or "").strip()
+    if not h or len(h) > 256:
+        return None
+    return h
 
 
 def _extract_pdf_text_from_b64(b64_data: str) -> str:
@@ -1671,7 +1687,11 @@ Be concise and factual. Then offer to build something related if relevant.
 """
 
 @api_router.post("/ai/chat")
-async def ai_chat(data: ChatMessage, user: dict = Depends(get_optional_user)):
+async def ai_chat(
+    data: ChatMessage,
+    request: Request,
+    user: dict = Depends(get_optional_user),
+):
     """Multi-model AI chat with auto-selection and fallback on failure. Requires sufficient credits (prepay)."""
     if user is not None and not user.get("public_api"):
         credits = _user_credits(user)
@@ -1719,6 +1739,11 @@ async def ai_chat(data: ChatMessage, user: dict = Depends(get_optional_user)):
         content_blocks = None
         if image_blocks:
             content_blocks = [{"type": "text", "text": combined_text}] + image_blocks
+        _content_block = screen_user_content(combined_text)
+        if _content_block:
+            raise HTTPException(status_code=400, detail=_content_block)
+        if is_real_agent_only() and not chat_llm_available(effective):
+            raise HTTPException(status_code=503, detail=REAL_AGENT_NO_LLM_KEYS_DETAIL)
         if stub_build_enabled():
             response = stub_multifile_markdown(data.message or "", _stub_detect_build_kind(data.message or ""))
             session_id = data.session_id or str(uuid.uuid4())
@@ -1757,6 +1782,7 @@ async def ai_chat(data: ChatMessage, user: dict = Depends(get_optional_user)):
             if haiku_key:
                 from llm_router import HAIKU_MODEL
                 model_chain = [("haiku", HAIKU_MODEL, "anthropic")]
+        _idem = _idempotency_key_from_request(request)
         response, model_used = await _call_llm_with_fallback(
             message=combined_text,
             system_message=system_message,
@@ -1768,6 +1794,7 @@ async def ai_chat(data: ChatMessage, user: dict = Depends(get_optional_user)):
             user_tier=user_tier,
             speed_selector=speed_selector,
             available_credits=available_credits,
+            idempotency_key=_idem,
         )
         tokens_used = len(data.message.split()) * 2 + len(response.split()) * 2
         await db.chat_history.insert_one({
@@ -1813,10 +1840,23 @@ async def _stream_string_chunks(text: str, chunk_size: int = 8):
         await asyncio.sleep(0.02)
 
 @api_router.post("/ai/chat/stream")
-async def ai_chat_stream(data: ChatMessage, user: dict = Depends(get_optional_user)):
+async def ai_chat_stream(
+    data: ChatMessage,
+    request: Request,
+    user: dict = Depends(get_optional_user),
+):
     """Stream AI response in chunks (real-time code streaming). Requires sufficient credits."""
     if user and not user.get("public_api") and _user_credits(user) < MIN_CREDITS_FOR_LLM:
         raise HTTPException(status_code=402, detail=f"Insufficient credits. Need at least {MIN_CREDITS_FOR_LLM}. Buy more in Credit Center.")
+    _stream_block = screen_user_content((data.message or "").strip())
+    if _stream_block:
+        raise HTTPException(status_code=400, detail=_stream_block)
+    user_keys_stream = await get_workspace_api_keys(user)
+    effective_stream = _effective_api_keys(user_keys_stream)
+    if is_real_agent_only() and not chat_llm_available(effective_stream):
+        raise HTTPException(status_code=503, detail=REAL_AGENT_NO_LLM_KEYS_DETAIL)
+    _stream_idem = _idempotency_key_from_request(request)
+
     async def generate():
         try:
             user_keys = await get_workspace_api_keys(user)
@@ -1869,6 +1909,7 @@ async def ai_chat_stream(data: ChatMessage, user: dict = Depends(get_optional_us
                 user_tier=user_tier,
                 speed_selector=speed_selector,
                 available_credits=available_credits,
+                idempotency_key=_stream_idem,
             )
             tokens_used = len(data.message.split()) * 2 + len(response.split()) * 2
             await db.chat_history.insert_one({
@@ -2014,6 +2055,15 @@ async def ai_build_iterative(data: ChatMessage, user: dict = Depends(get_optiona
     Streams step_complete events so frontend can show files appearing in real time."""
     if user and not user.get("public_api") and _user_credits(user) < MIN_CREDITS_FOR_LLM:
         raise HTTPException(status_code=402, detail=f"Insufficient credits.")
+
+    _iter_content = screen_user_content((data.message or "").strip())
+    if _iter_content:
+        raise HTTPException(status_code=400, detail=_iter_content)
+
+    user_keys_iter = await get_workspace_api_keys(user)
+    effective_iter = _effective_api_keys(user_keys_iter)
+    if is_real_agent_only() and not chat_llm_available(effective_iter):
+        raise HTTPException(status_code=503, detail=REAL_AGENT_NO_LLM_KEYS_DETAIL)
 
     async def generate():
         if stub_build_enabled():
@@ -4881,7 +4931,7 @@ async def stream_build_events(
                 if ev.get("id", 0) >= seen:
                     yield f"data: {json.dumps(ev)}\n\n"
                     seen = ev.get("id", 0) + 1
-            project_doc = await db.projects.find_one({"id": project_id}, {"status": 1})
+            project_doc = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"status": 1})
             if project_doc and project_doc.get("status") in ("completed", "failed"):
                 yield f"data: {json.dumps({'type': 'stream_end', 'status': project_doc['status']})}\n\n"
                 break
@@ -4943,9 +4993,8 @@ async def _resolve_workspace_project_for_job(job_id: str, user: dict) -> str:
     oj = await orch_rs.get_job(job_id)
     if not oj:
         raise HTTPException(status_code=404, detail="Job not found")
+    _assert_job_owner_match(oj.get("user_id"), user)
     uid = user.get("id")
-    if uid and oj.get("user_id") and oj["user_id"] != uid:
-        raise HTTPException(status_code=403, detail="Not your job")
     pid = oj.get("project_id")
     if not pid:
         raise HTTPException(status_code=404, detail="Job has no project workspace")
@@ -5508,6 +5557,9 @@ async def build_plan(data: BuildPlanRequest, user: dict = Depends(get_current_us
     prompt = (data.prompt or "").strip()
     if not prompt:
         raise HTTPException(status_code=400, detail="Prompt is required")
+    _plan_block = screen_user_content(prompt)
+    if _plan_block:
+        raise HTTPException(status_code=400, detail=_plan_block)
     build_kind = (getattr(data, "build_kind", None) or "").strip().lower() or "fullstack"
     if build_kind not in ("landing", "fullstack", "mobile", "saas", "bot", "ai_agent", "game", "trading", "any"):
         build_kind = "fullstack"
@@ -5520,6 +5572,10 @@ async def build_plan(data: BuildPlanRequest, user: dict = Depends(get_current_us
         # Free/referral credits = landing only: if user has no paid purchase and requests non-landing, block
         # Free users with credits can build anything - no landing-only restriction
         # (The credit balance check above already ensures they have enough credits)
+    user_keys_plan = await get_workspace_api_keys(user)
+    effective_plan = _effective_api_keys(user_keys_plan)
+    if is_real_agent_only() and not chat_llm_available(effective_plan):
+        raise HTTPException(status_code=503, detail=REAL_AGENT_NO_LLM_KEYS_DETAIL)
     if stub_build_enabled():
         _pt, _sug = _stub_plan_and_suggestions(prompt, build_kind)
         return {
@@ -7737,23 +7793,52 @@ async def brand_config():
 async def root():
     return {"message": "CrucibAI Platform API", "version": "1.0.0"}
 
+
+async def _health_readiness_response() -> dict:
+    """Shared DB probe for readiness (`/api/health?deps=true` and `/api/health/ready`)."""
+    if not db:
+        raise HTTPException(
+            status_code=503,
+            detail={"status": "degraded", "database": "unavailable", "error": "Database not configured"},
+        )
+    try:
+        await db.users.find_one({})
+        return {
+            "status": "healthy",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "database": "ok",
+        }
+    except Exception as e:
+        logger.warning("Health check DB failed: %s", e)
+        raise HTTPException(
+            status_code=503,
+            detail={"status": "degraded", "database": "unavailable", "error": str(e)[:200]},
+        )
+
+
+@api_router.get("/health/live")
+async def health_live():
+    """Liveness probe: process up only (load balancers / orchestrators)."""
+    return {
+        "status": "healthy",
+        "check": "liveness",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@api_router.get("/health/ready")
+async def health_ready():
+    """Readiness probe: database reachable (503 when degraded)."""
+    body = await _health_readiness_response()
+    body["check"] = "readiness"
+    return body
+
+
 @api_router.get("/health")
 async def health(deps: bool = Query(False, description="Check dependencies (DB); return 503 if unavailable")):
     check_deps = deps or os.environ.get("HEALTH_CHECK_DEPS", "").strip().lower() in ("1", "true", "yes")
-    if check_deps and db:
-        try:
-            await db.users.find_one({})
-            return {
-                "status": "healthy",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "database": "ok",
-            }
-        except Exception as e:
-            logger.warning("Health check DB failed: %s", e)
-            raise HTTPException(
-                status_code=503,
-                detail={"status": "degraded", "database": "unavailable", "error": str(e)[:200]},
-            )
+    if check_deps:
+        return await _health_readiness_response()
     return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
 
 
@@ -7775,6 +7860,15 @@ async def integrations_status():
 
 # ==================== JOB QUEUE ====================
 
+def _assert_job_owner_match(owner_id: Optional[str], user: Optional[dict]) -> None:
+    """If the job is owned, only that user may access it. No owner_id = guest / link-scoped job."""
+    if not owner_id:
+        return
+    uid = user.get("id") if user else None
+    if not uid or uid != owner_id:
+        raise HTTPException(status_code=403, detail="Not your job")
+
+
 @api_router.get("/jobs/{job_id}")
 async def get_job(job_id: str, user: dict = Depends(get_optional_user)):
     """Queue async job (flat JSON) or Auto-Runner job from Postgres (`{ success, job }`)."""
@@ -7782,6 +7876,8 @@ async def get_job(job_id: str, user: dict = Depends(get_optional_user)):
         from integrations.queue import get_job_status
         qj = await get_job_status(job_id)
         if qj:
+            payload = qj.get("payload") or {}
+            _assert_job_owner_match(payload.get("user_id"), user)
             return qj
         runtime_state, _, _, _, _ = _get_orchestration()
         from db_pg import get_pg_pool
@@ -7791,9 +7887,7 @@ async def get_job(job_id: str, user: dict = Depends(get_optional_user)):
         oj = await orch_rs.get_job(job_id)
         if not oj:
             raise HTTPException(status_code=404, detail="Job not found")
-        uid = user.get("id") if user else None
-        if uid and oj.get("user_id") and oj["user_id"] != uid:
-            raise HTTPException(status_code=403, detail="Not your job")
+        _assert_job_owner_match(oj.get("user_id"), user)
         return {"success": True, "job": oj}
     except HTTPException:
         raise
@@ -8470,6 +8564,10 @@ async def get_job_steps(job_id: str, user: dict = Depends(get_optional_user)):
         from db_pg import get_pg_pool
         pool = await get_pg_pool()
         runtime_state.set_pool(pool)
+        job = await runtime_state.get_job(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+        _assert_job_owner_match(job.get("user_id"), user)
         steps = await runtime_state.get_steps(job_id)
         return {"success": True, "steps": steps, "count": len(steps)}
     except Exception as e:
@@ -8487,9 +8585,7 @@ async def get_job_plan_draft(job_id: str, user: dict = Depends(get_optional_user
         job = await runtime_state.get_job(job_id)
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
-        uid = user.get("id") if user else None
-        if uid and job.get("user_id") and job["user_id"] != uid:
-            raise HTTPException(status_code=403, detail="Not your job")
+        _assert_job_owner_match(job.get("user_id"), user)
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
                 "SELECT plan_json FROM build_plans WHERE job_id = $1 ORDER BY created_at DESC LIMIT 1",
@@ -8515,6 +8611,10 @@ async def get_job_events(job_id: str, since_id: Optional[str] = None,
         from db_pg import get_pg_pool
         pool = await get_pg_pool()
         runtime_state.set_pool(pool)
+        job = await runtime_state.get_job(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+        _assert_job_owner_match(job.get("user_id"), user)
         events = await runtime_state.get_job_events(job_id, since_id=since_id)
         # Parse payload_json
         for e in events:
@@ -8531,9 +8631,14 @@ async def get_job_events(job_id: str, since_id: Optional[str] = None,
 async def get_job_proof(job_id: str, user: dict = Depends(get_optional_user)):
     """Get proof bundle for job (files, routes, DB, verification, deploy)."""
     try:
-        _, _, _, _, ps_mod = _get_orchestration()
+        runtime_state, _, _, _, ps_mod = _get_orchestration()
         from db_pg import get_pg_pool
         pool = await get_pg_pool()
+        runtime_state.set_pool(pool)
+        job = await runtime_state.get_job(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+        _assert_job_owner_match(job.get("user_id"), user)
         ps_mod.set_pool(pool)
         proof = await ps_mod.get_proof(job_id)
         return {"success": True, **proof}
@@ -8602,9 +8707,14 @@ async def get_job_trust_report(job_id: str, user: dict = Depends(get_optional_us
     try:
         from orchestration.trust.roadmap_wiring import roadmap_wiring_status
 
-        _, _, _, _, ps_mod = _get_orchestration()
+        runtime_state, _, _, _, ps_mod = _get_orchestration()
         from db_pg import get_pg_pool
         pool = await get_pg_pool()
+        runtime_state.set_pool(pool)
+        job = await runtime_state.get_job(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+        _assert_job_owner_match(job.get("user_id"), user)
         ps_mod.set_pool(pool)
         proof = await ps_mod.get_proof(job_id)
         return {
@@ -8634,6 +8744,10 @@ async def cancel_job(job_id: str, user: dict = Depends(get_current_user)):
         from db_pg import get_pg_pool
         pool = await get_pg_pool()
         runtime_state.set_pool(pool)
+        job = await runtime_state.get_job(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+        _assert_job_owner_match(job.get("user_id"), user)
         await runtime_state.update_job_state(job_id, "cancelled")
         from orchestration.event_bus import publish
         await publish(job_id, "job_cancelled", {"job_id": job_id})
@@ -8661,6 +8775,7 @@ async def resume_job_route(
         job = await runtime_state.get_job(job_id)
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
+        _assert_job_owner_match(job.get("user_id"), user)
 
         preflight = await build_preflight_report()
         await append_job_event(
@@ -8738,7 +8853,13 @@ async def stream_job_events(job_id: str, user: dict = Depends(get_optional_user)
     from orchestration.runtime_state import get_job_events as _get_stored
     from db_pg import get_pg_pool
 
+    runtime_state, _, _, _, _ = _get_orchestration()
     pool = await get_pg_pool()
+    runtime_state.set_pool(pool)
+    job = await runtime_state.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    _assert_job_owner_match(job.get("user_id"), user)
 
     async def event_generator():
         queue = await subscribe(job_id)
@@ -9427,7 +9548,14 @@ app.add_middleware(
     allow_credentials=True,
     allow_origins=CORS_ORIGINS_LIST,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["Content-Type", "Authorization", "X-Requested-With", "X-Request-ID"],
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "X-Requested-With",
+        "X-Request-ID",
+        "Idempotency-Key",
+        "X-Idempotency-Key",
+    ],
 )
 
 @app.on_event("startup")

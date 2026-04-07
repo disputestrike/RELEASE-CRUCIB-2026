@@ -1,7 +1,7 @@
 """
 Request-scoped context (trace_id, tenant_id, request_id), optional OpenTelemetry, Prometheus HTTP counter.
 
-Enable JSON request lines: CRUCIBAI_STRUCTURED_LOGS=1
+Enable JSON request lines: CRUCIBAI_STRUCTURED_LOGS=1 (includes request_id + correlation_id)
 Enable OTel tracer (console exporter): CRUCIBAI_OTEL=1
 """
 from __future__ import annotations
@@ -67,9 +67,11 @@ def structured_logs_enabled() -> bool:
 def log_request_event(log: logging.Logger, event: str, **fields: Any) -> None:
     if not structured_logs_enabled():
         return
+    rid = request_id_cv.get() or None
     payload = {
         "event": event,
-        "request_id": request_id_cv.get() or None,
+        "request_id": rid,
+        "correlation_id": rid,
         "trace_id": trace_id_cv.get() or None,
         "tenant_id": tenant_id_cv.get() or None,
         **fields,

@@ -1,5 +1,6 @@
 /**
  * PreviewPanel — live preview: remote iframe when URL ready, else Sandpack from editor files.
+ * `sandpackIsFallback`: show trust banner when Sandpack boots from a heuristic entry (no App.jsx).
  */
 import React from 'react';
 import { SandpackProvider, SandpackPreview } from '@codesandbox/sandpack-react';
@@ -14,6 +15,7 @@ export default function PreviewPanel({
   sandpackFiles = null,
   sandpackDeps = null,
   filesReadyKey = 'default',
+  sandpackIsFallback = false,
 }) {
   const hasSandpack = sandpackFiles && Object.keys(sandpackFiles).length > 0;
   const useRemote = status === 'ready' && previewUrl;
@@ -95,6 +97,13 @@ export default function PreviewPanel({
             title="Live Preview"
             style={{ width: '100%', height: '100%', border: 'none' }}
           />
+        )}
+
+        {!useRemote && hasSandpack && sandpackDeps && sandpackIsFallback && (
+          <div className="pp-preview-trust-banner" role="status">
+            Fallback preview: workspace had no runnable React entry, so a minimal shell is shown until files sync or
+            you add <code>/src/App.jsx</code>. Deployed output may differ until build targets match.
+          </div>
         )}
 
         {!useRemote && hasSandpack && sandpackDeps && (

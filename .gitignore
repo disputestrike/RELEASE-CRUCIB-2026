@@ -87,6 +87,7 @@ frontend/node_modules/.cache/default-development/
 !*.env.example
 !.env.example
 backend/logs/
+backend/golden_eval_report.json
 
 # Workspace directories for tool agents
 workspace/

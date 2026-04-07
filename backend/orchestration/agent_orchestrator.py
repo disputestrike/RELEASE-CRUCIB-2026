@@ -32,6 +32,12 @@ class Agent:
 
     async def execute(self, task: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """Stub reasoning — returns structured text for downstream tasks."""
+        _rao = (os.environ.get("CRUCIBAI_REAL_AGENT_ONLY") or "").strip().lower()
+        if _rao in ("1", "true", "yes", "on"):
+            raise RuntimeError(
+                "Crew Agent.execute is stubbed (no LLM). Unset CRUCIBAI_REAL_AGENT_ONLY "
+                "or implement real model calls in Agent.execute."
+            )
         snippet = (task or "")[:120]
         elite = (
             (context.get("elite_system_prompt") or context.get("system_prompt") or "")

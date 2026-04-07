@@ -1,3 +1,6 @@
+# Primary merge gate: `.github/workflows/ci-verify-full.yml` (backend pytest + frontend lint/test/build).
+# This workflow is kept for Docker publish / integration hooks; lint + unit jobs use repo layout (backend/, frontend/).
+
 name: CI/CD Pipeline
 
 on:
@@ -23,12 +26,14 @@ jobs:
         with:
           python-version: '3.11'
           cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
 
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install Python dependencies
         run: |
@@ -36,6 +41,7 @@ jobs:
           pip install pylint black isort flake8 mypy
 
       - name: Install Node dependencies
+        working-directory: frontend
         run: npm ci
 
       - name: Run Python linting
@@ -49,10 +55,14 @@ jobs:
         run: mypy backend --ignore-missing-imports
 
       - name: Run Node linting
+        working-directory: frontend
         run: npm run lint
 
-      - name: Run TypeScript type checking
-        run: npm run type-check
+      - name: Frontend production build (smoke)
+        working-directory: frontend
+        env:
+          CI: "true"
+        run: npm run build
 
   security-scan:
     runs-on: ubuntu-latest
@@ -78,6 +88,7 @@ jobs:
         run: safety check --json > safety-report.json || true
 
       - name: Run npm audit
+        working-directory: frontend
         run: npm audit --audit-level=moderate || true
 
       - name: Upload security reports
@@ -94,17 +105,27 @@ jobs:
 
     services:
       postgres:
-        image: postgres:15
+        image: postgres:15-alpine
         env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: crucibai_test
+          POSTGRES_USER: crucibai
+          POSTGRES_PASSWORD: crucibai
+          POSTGRES_DB: crucibai
         options: >-
-          --health-cmd pg_isready
+          --health-cmd pg_isready -U crucibai -d crucibai
           --health-interval 10s
           --health-timeout 5s
-          --health-retries 5
+          --health-retries 10
         ports:
           - 5432:5432
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 6379:6379
 
     steps:
       - uses: actions/checkout@v4
@@ -114,35 +135,49 @@ jobs:
         with:
           python-version: '3.11'
           cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
 
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest pytest-cov pytest-asyncio
+          pip install -r backend/requirements.txt
 
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install Node dependencies
+        working-directory: frontend
         run: npm ci
 
       - name: Run Python unit tests
+        working-directory: backend
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/crucibai_test
+          GITHUB_ACTIONS: "true"
+          CRUCIBAI_TEST: "1"
+          DISABLE_CSRF_FOR_TEST: "1"
+          DATABASE_URL: postgresql://crucibai:crucibai@127.0.0.1:5432/crucibai
+          REDIS_URL: redis://127.0.0.1:6379/0
+          JWT_SECRET: ci-jwt-secret-at-least-32-characters-long-for-pytest
+          FRONTEND_URL: http://localhost:3000
+          GOOGLE_CLIENT_ID: test.apps.googleusercontent.com
+          GOOGLE_CLIENT_SECRET: test-google-client-secret
         run: |
-          pytest backend/tests -v --cov=backend --cov-report=xml --cov-report=html
+          python -m pytest tests/ -v --cov=. --cov-report=xml --cov-report=html --ignore=tests/run_production_validation.py
 
       - name: Run JavaScript unit tests
-        run: npm run test:unit
+        working-directory: frontend
+        env:
+          CI: "true"
+        run: npm run test:ci
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v3
         with:
-          files: ./coverage.xml
+          files: ./backend/coverage.xml
           flags: unittests
           name: codecov-umbrella
 
@@ -150,7 +185,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: coverage-reports
-          path: htmlcov/
+          path: backend/htmlcov/
 
   build:
     runs-on: ubuntu-latest
@@ -238,15 +273,19 @@ jobs:
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest pytest-asyncio
+          pip install -r backend/requirements.txt
 
       - name: Run integration tests
+        working-directory: backend
         env:
+          GITHUB_ACTIONS: "true"
+          CRUCIBAI_TEST: "1"
+          DISABLE_CSRF_FOR_TEST: "1"
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/crucibai_test
-          REDIS_URL: redis://localhost:6379
+          REDIS_URL: redis://localhost:6379/0
+          JWT_SECRET: ci-jwt-secret-at-least-32-characters-long-for-pytest
         run: |
-          pytest backend/tests/integration -v
+          python -m pytest tests/test_integration.py -v
 
   deploy-staging:
     runs-on: ubuntu-latest

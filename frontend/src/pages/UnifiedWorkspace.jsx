@@ -38,7 +38,7 @@ import SystemStatusHUD from '../components/AutoRunner/SystemStatusHUD';
 import PreviewPanel from '../components/AutoRunner/PreviewPanel';
 import ResizableDivider from '../components/AutoRunner/ResizableDivider';
 import { DEFAULT_FILES } from '../components/workspace/constants';
-import { computeSandpackFiles, computeSandpackDeps } from '../workspace/sandpackFromFiles';
+import { computeSandpackFilesWithMeta, computeSandpackDeps } from '../workspace/sandpackFromFiles';
 import { API_BASE } from '../apiBase';
 import '../styles/unified-workspace-tokens.css';
 import './AutoRunnerPage.css';
@@ -244,7 +244,7 @@ export default function UnifiedWorkspace() {
 
   const [workspacePullKey, setWorkspacePullKey] = useState(0);
 
-  const sandpackFiles = useMemo(() => computeSandpackFiles(files), [files]);
+  const { sandpackFiles, isFallback: sandpackIsFallback } = useMemo(() => computeSandpackFilesWithMeta(files), [files]);
   const sandpackDeps = useMemo(() => computeSandpackDeps(files), [files]);
 
   /** URL wins so stream/poll start on first paint when opening ?jobId=… (state hydrates a tick later). */
@@ -951,6 +951,7 @@ export default function UnifiedWorkspace() {
                     sandpackFiles={sandpackFiles}
                     sandpackDeps={sandpackDeps}
                     filesReadyKey={filesReadyKey}
+                    sandpackIsFallback={sandpackIsFallback}
                   />
                 )}
                 {activePane === 'timeline' && (

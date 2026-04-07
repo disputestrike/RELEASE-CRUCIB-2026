@@ -11,6 +11,7 @@ import axios from 'axios';
 import Layout3Column from '../components/Layout3Column';
 import Sidebar from '../components/Sidebar';
 import RightPanel from '../components/RightPanel';
+import { sanitizeHTML } from '../utils/sanitization';
 import './WorkspaceRedesigned.css';
 
 /**
@@ -289,7 +290,11 @@ export default function App() {
             </div>
             <div
               className="preview-content"
-              dangerouslySetInnerHTML={{ __html: preview || '<p>Your preview will appear here</p>' }}
+              dangerouslySetInnerHTML={{
+                __html: preview
+                  ? sanitizeHTML(preview)
+                  : '<p>Your preview will appear here</p>',
+              }}
             />
           </div>
         ) : null

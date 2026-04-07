@@ -2,6 +2,7 @@
 proof_service.py — Proof persistence and retrieval.
 Every verified action produces evidence stored here.
 """
+import hashlib
 import uuid
 import json
 import logging
@@ -20,6 +21,12 @@ def set_pool(pool):
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def compute_bundle_integrity_sha256(flat_items: List[Dict[str, Any]]) -> str:
+    """Stable SHA-256 over canonical JSON of proof rows (Fifty-point #23)."""
+    canonical = json.dumps(flat_items, sort_keys=True, default=str)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 async def store_proof(job_id: str, step_id: str,
@@ -58,6 +65,7 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
                 "files": [], "routes": [], "database": [],
                 "verification": [], "deploy": [], "generic": [],
             },
+            "bundle_sha256": compute_bundle_integrity_sha256([]),
             "verification_class_counts": {},
             "class_coverage": {},
             "class_weighted_score": 0.0,
@@ -222,6 +230,7 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
         "verification_proof_items": verified_items,
         "category_counts": category_counts,
         "bundle": bundle,
+        "bundle_sha256": compute_bundle_integrity_sha256(flat),
         **trust,
         "spec_guard": spec_guard_snapshot,
         "spec_compliance_percent": spec_compliance,

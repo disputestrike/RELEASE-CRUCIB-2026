@@ -5,6 +5,7 @@
 import { useState } from "react";
 import axios from "axios";
 import { useAuth } from "../App";
+import { formatModelUsageLine } from "../utils/modelUsageLabel";
 import { FileText, Presentation, Table, Loader2, Download } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL === '' ? '/api' : `${process.env.REACT_APP_BACKEND_URL || "http://localhost:8000"}/api`;
@@ -118,7 +119,13 @@ export default function GenerateContent() {
       </div>
 
       {error && <p className="text-[#666666] text-sm mt-2">{error}</p>}
-      {modelUsed && <p className="text-gray-500 text-xs mt-1">Model: {modelUsed}</p>}
+      {modelUsed && (
+        <p
+          className={`text-xs mt-1 ${isDevStubModel(modelUsed) ? "text-amber-800 bg-amber-50 border border-amber-200/80 rounded px-2 py-1" : "text-gray-500"}`}
+        >
+          {formatModelUsageLine(modelUsed)}
+        </p>
+      )}
 
       {content && (
         <div className="mt-6">

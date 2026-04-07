@@ -32,6 +32,10 @@ Railway: attach Postgres and set `DATABASE_URL` in service variables.
 
 On startup the app runs migrations and ensures tables exist.
 
+## Code execution sandbox (related)
+
+LLM-generated **Python/Node/bash** snippets for validation run in **`sandbox_executor.py`**: subprocess isolation, optional Linux `resource` rlimits (`CRUCIBAI_SANDBOX_*`), wall-clock timeout on `execute()`. This is separate from DB migrations but part of safe build/exec boundaries (fifty-point #13 / #14).
+
 ## Local dev
 
 - **Required for auth / guest / builds:** valid `DATABASE_URL` and reachable Postgres.
