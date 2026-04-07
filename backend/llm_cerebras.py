@@ -18,10 +18,21 @@ CEREBRAS_MODEL = "llama-3.1-8b"
 
 
 class CerebrasClient:
-    """Async client for Cerebras API - uses streaming by default"""
+    """Async client for Cerebras API - uses streaming by default with round-robin key rotation"""
     
     def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.environ.get("CEREBRAS_API_KEY")
+        # Use provided key, or get next one from round-robin pool
+        if api_key:
+            self.api_key = api_key
+        else:
+            try:
+                from cerebras_roundrobin import get_next_cerebras_key
+                self.api_key = get_next_cerebras_key()
+                logger.info(f"CerebrasClient: Using rotated API key (pool size: 5)")
+            except Exception as e:
+                logger.warning(f"Round-robin failed: {e}, falling back to env var")
+                self.api_key = os.environ.get("CEREBRAS_API_KEY")
+        
         if not self.api_key:
             raise ValueError("CEREBRAS_API_KEY not set in environment")
         
