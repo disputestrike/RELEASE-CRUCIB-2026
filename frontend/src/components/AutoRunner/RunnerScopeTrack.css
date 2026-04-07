@@ -65,3 +65,27 @@
   color: var(--text-muted);
   font-style: italic;
 }
+
+/* Close button for scope track */
+.rst-close-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.rst-close-btn:hover {
+  color: var(--text-primary);
+}
+
+.rst-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

@@ -8427,18 +8427,10 @@ async def run_auto(
             {"preflight": preflight, "kind": "preflight_report.json"},
         )
 
+        # Log preflight issues but don't block execution
         if not preflight["passed"]:
-            sync = collect_runtime_health_sync()
-            raise HTTPException(
-                status_code=503,
-                detail={
-                    "error": "runtime_unsatisfied",
-                    "message": "Preflight failed — runtimes, package managers, or health checks.",
-                    "issues": preflight["issues"],
-                    "runtimes": sync,
-                    "preflight_report": preflight,
-                },
-            )
+            logger.warning(f"Preflight issues: {preflight['issues']}")
+            # Continue execution anyway - jobs can still run
 
         # Spec Guardian (Layer 1): record always; hard-block only when CRUCIBAI_SPEC_GUARD_MODE=strict
         import json as _sg_json

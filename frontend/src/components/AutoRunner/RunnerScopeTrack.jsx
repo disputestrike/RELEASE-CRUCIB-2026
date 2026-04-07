@@ -2,8 +2,8 @@
  * Always-on scope disclosure — separate track from goal/plan/timeline.
  * Sticky in the center pane so it stays visible while scrolling; does not block runs.
  */
-import React, { useMemo } from 'react';
-import { Info } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Info, X } from 'lucide-react';
 import {
   specGapCopy,
   PIPELINE_INFRA_SCOPE_RISK,
@@ -12,13 +12,25 @@ import {
 import './RunnerScopeTrack.css';
 
 export default function RunnerScopeTrack({ buildTargetId = 'vite_react', buildTargetMeta = null }) {
+  const [isVisible, setIsVisible] = useState(true);
   const copy = useMemo(() => specGapCopy(buildTargetId, buildTargetMeta), [buildTargetId, buildTargetMeta]);
+
+  if (!isVisible) return null;
 
   return (
     <aside className="rst-root" aria-label="Auto-Runner scope disclosure">
       <div className="rst-header">
         <Info size={14} className="rst-icon" aria-hidden />
         <span className="rst-title">Full pipeline — run never blocked</span>
+        <button 
+          type="button"
+          onClick={() => setIsVisible(false)}
+          className="rst-close-btn"
+          aria-label="Close"
+          title="Close"
+        >
+          <X size={16} />
+        </button>
       </div>
       <p className="rst-p">{copy.runIntro}</p>
       <p className="rst-p rst-target">{copy.targetDetail}</p>

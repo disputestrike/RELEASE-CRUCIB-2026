@@ -825,61 +825,60 @@ export default function UnifiedWorkspace() {
 
         <div className="arp-center-pane">
           <RunnerScopeTrack buildTargetId={effectiveBuildTargetId} buildTargetMeta={effectiveBuildTargetMeta} />
-          {stage === 'input' && (
-            <>
-              <GoalComposer
-                goal={goal}
-                onGoalChange={setGoal}
-                onSubmit={handleGeneratePlan}
-                loading={loading}
-                error={error}
-                token={token}
-                onEstimateReady={setEstimate}
-                authLoading={authLoading}
-                onRetrySession={() => {
-                  sessionBootstrapRef.current = false;
-                  ensureGuest();
-                }}
-                buildTarget={buildTarget}
-                onBuildTargetChange={setBuildTarget}
-                buildTargets={buildTargets}
-                continuationNotes={continuationNotes}
-                onContinuationChange={setContinuationNotes}
+          {/* Always show input - never hide it */}
+          <>
+            <GoalComposer
+              goal={goal}
+              onGoalChange={setGoal}
+              onSubmit={handleGeneratePlan}
+              loading={loading}
+              error={error}
+              token={token}
+              onEstimateReady={setEstimate}
+              authLoading={authLoading}
+              onRetrySession={() => {
+                sessionBootstrapRef.current = false;
+                ensureGuest();
+              }}
+              buildTarget={buildTarget}
+              onBuildTargetChange={setBuildTarget}
+              buildTargets={buildTargets}
+              continuationNotes={continuationNotes}
+              onContinuationChange={setContinuationNotes}
+            />
+            <div className="iterative-strip">
+              <h3>Iterative build (classic API)</h3>
+              <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--text-muted)' }}>
+                Streams file updates into the preview panel. Full Monaco, deploy ZIP, and Pro panels remain in{' '}
+                <button
+                  type="button"
+                  className="classic-link"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
+                    color: 'var(--state-info)',
+                    textDecoration: 'underline',
+                  }}
+                  onClick={() => navigate(`/app/workspace-classic${location.search}`)}
+                >
+                  Classic workspace
+                </button>
+                .
+              </p>
+              <textarea
+                value={iterPrompt}
+                onChange={(e) => setIterPrompt(e.target.value)}
+                placeholder="e.g. Build a proof-validation microservice with REST API and tests…"
               />
-              <div className="iterative-strip">
-                <h3>Iterative build (classic API)</h3>
-                <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--text-muted)' }}>
-                  Streams file updates into the preview panel. Full Monaco, deploy ZIP, and Pro panels remain in{' '}
-                  <button
-                    type="button"
-                    className="classic-link"
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      padding: 0,
-                      cursor: 'pointer',
-                      color: 'var(--state-info)',
-                      textDecoration: 'underline',
-                    }}
-                    onClick={() => navigate(`/app/workspace-classic${location.search}`)}
-                  >
-                    Classic workspace
-                  </button>
-                  .
-                </p>
-                <textarea
-                  value={iterPrompt}
-                  onChange={(e) => setIterPrompt(e.target.value)}
-                  placeholder="e.g. Build a proof-validation microservice with REST API and tests…"
-                />
-                <div className="iterative-strip-actions">
-                  <button type="button" className="primary" disabled={iterBuilding || !iterPrompt.trim()} onClick={runIterativeBuild}>
-                    {iterBuilding ? 'Building…' : 'Run iterative build'}
-                  </button>
-                </div>
+              <div className="iterative-strip-actions">
+                <button type="button" className="primary" disabled={iterBuilding || !iterPrompt.trim()} onClick={runIterativeBuild}>
+                  {iterBuilding ? 'Building…' : 'Run iterative build'}
+                </button>
               </div>
-            </>
-          )}
+            </div>
+          </>
 
           {stage === 'plan' && plan && (
             <PlanApproval
