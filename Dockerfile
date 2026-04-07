@@ -16,14 +16,17 @@ ENV NODE_ENV=production
 RUN npm run build
 
 # Stage 2: backend + serve frontend static
-FROM python:3.11.0-slim
+FROM python:3.11-slim-bookworm
 WORKDIR /app
 
-# Cache-bust: force rebuild - timestamp: 2026-03-04-1937
-RUN echo "Build: 2026-03-04"
+# curl: slim image has no curl — without it Docker HEALTHCHECK always fails (Railway marks service unhealthy).
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+# Single source of truth for Python deps (matches CI / local backend dev).
+COPY backend/requirements.txt ./requirements.txt
 RUN echo "Installing dependencies..." && pip install --no-cache-dir -r requirements.txt && echo "Dependencies installed successfully"
+
 COPY backend/ ./
 RUN echo "Backend files copied"
 COPY --from=frontend /app/build ./static
@@ -32,7 +35,8 @@ RUN echo "Frontend static files copied"
 ENV PORT=8000
 EXPOSE 8000
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+# App health is GET /api/health (not /health). Respect Railway $PORT for the probe.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
+    CMD sh -c 'curl -fsS "http://127.0.0.1:${PORT:-8000}/api/health" >/dev/null || exit 1'
 
 CMD ["sh", "-c", "uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000}"]
