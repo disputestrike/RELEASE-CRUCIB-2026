@@ -3370,6 +3370,15 @@ BUILD IT NOW — output every file completely:`;
                   >
                     {isTranscribing ? <Loader2 className="w-4 h-4 animate-spin" /> : isRecording ? <MicOff className="w-4 h-4 animate-pulse" /> : <Mic className="w-4 h-4" />}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => { addLog('Recent builds feature coming soon', 'info', 'system'); }}
+                    className="p-1.5 rounded-lg transition hover:bg-white/10"
+                    style={{ color: 'var(--theme-muted, #52525b)' }}
+                    title="View recent builds"
+                  >
+                    <History className="w-4 h-4" />
+                  </button>
                   <div className="ml-auto flex items-center gap-2">
                     {devMode && (
                       <select
