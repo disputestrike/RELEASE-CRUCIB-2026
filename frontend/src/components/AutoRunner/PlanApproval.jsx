@@ -21,7 +21,7 @@ const RISK_FLAG_LABELS = {
   goal_spec_orm_autorunner_writes_sql_sketch_not_orm:
     'Your spec mentions Prisma/Drizzle — Auto-Runner only emits SQL file sketches, not ORM projects',
   goal_spec_infra_or_tenancy_not_generated_by_autorunner:
-    'Your spec mentions Terraform, RLS/multi-tenant, queues, CI, OTel, k6, etc. — those are not produced by this pipeline (scaffold only)',
+    'Your spec mentions Terraform, RLS/multi-tenant, queues, CI, OTel, k6, etc. — expect stubs/sketches in this pass; harden in-repo or follow-up runs (does not stop execution)',
 };
 
 function riskFlagLabel(key) {
@@ -71,9 +71,6 @@ export default function PlanApproval({
     }
     return true;
   });
-  const specGapFlags = displayRiskFlags.filter(
-    (f) => typeof f === 'string' && (f.startsWith('goal_spec_') || f.includes('autorunner')),
-  );
   const missingInputs = plan.missing_inputs || [];
   /** Pre-launch reminders only — runs are never blocked here (dev uses mocks; wire secrets before prod). */
   const hasPreLaunchNotes = missingInputs.length > 0;
@@ -91,8 +88,8 @@ export default function PlanApproval({
     estSteps != null ? `~${Math.max(15, Math.min(300, estSteps * 12))}s` : '—';
 
   const buildTargetId = plan.crucib_build_target;
-  const specGapText =
-    specGapFlags.length > 0 ? specGapCopy(buildTargetId, buildTargetMeta) : null;
+  /** Always show — scope is not conditional on planner risk flags. */
+  const specGapText = specGapCopy(buildTargetId, buildTargetMeta);
 
   return (
     <div className="plan-approval animate-fade-up">
@@ -141,17 +138,15 @@ export default function PlanApproval({
         </div>
       )}
 
-      {specGapText && (
-        <div className="pa-section pa-spec-gap-notice">
-          <div className="pa-section-label">What this run will actually build</div>
-          <p className="pa-premier-hint">{specGapText.bounded}</p>
-          <p className="pa-premier-hint">{specGapText.targetDetail}</p>
-        </div>
-      )}
+      <div className="pa-section pa-spec-gap-notice">
+        <div className="pa-section-label">Full pipeline — run never blocked</div>
+        <p className="pa-premier-hint">{specGapText.runIntro}</p>
+        <p className="pa-premier-hint">{specGapText.targetDetail}</p>
+      </div>
 
       {Array.isArray(capabilityNotice) && capabilityNotice.length > 0 && (
         <div className="pa-section pa-spec-gap-notice">
-          <div className="pa-section-label">Scope advisory</div>
+          <div className="pa-section-label">Build context (does not stop your run)</div>
           <ul className="pa-capability-notice-list">
             {capabilityNotice.map((line, i) => (
               <li key={i} className="pa-premier-hint">
@@ -165,7 +160,7 @@ export default function PlanApproval({
       {/* Risk flags */}
       {displayRiskFlags.length > 0 && (
         <div className="pa-section">
-          <div className="pa-section-label">Risks</div>
+          <div className="pa-section-label">Planner notes (informational)</div>
           <div className="pa-risks">
             {displayRiskFlags.map(f => (
               <div key={f} className="pa-risk-item">

@@ -32,7 +32,7 @@ describe('PlanApproval', () => {
         loading={false}
       />,
     );
-    expect(screen.getByText('What this run will actually build')).toBeInTheDocument();
+    expect(screen.getByText('Full pipeline — run never blocked')).toBeInTheDocument();
     expect(screen.getByText(/Python API routes/)).toBeInTheDocument();
     expect(screen.queryByText(/fixed scaffold/)).not.toBeInTheDocument();
   });

@@ -13,7 +13,7 @@ from orchestration.capability_notice import (
 def test_long_goal_line_vite_default():
     s = _long_goal_line("vite_react")
     assert "Vite + React (JS)" in s
-    assert "mega-spec" in s
+    assert "runs to completion" in s
 
 
 def test_long_goal_line_api_backend_no_vite_frontend_lead():

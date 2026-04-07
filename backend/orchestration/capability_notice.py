@@ -12,34 +12,33 @@ from .build_targets import build_target_meta, normalize_build_target
 
 
 def _long_goal_line(tid: str) -> str:
-    """Mega-spec honesty — wording matches selected execution target (not always 'Vite + React')."""
+    """Long-goal advisory — run still completes; wording matches execution target."""
     t = normalize_build_target(tid)
     if t == "next_app_router":
         return (
-            "This goal is very long. This run still emits a bounded bundle: root Vite workspace "
-            "(today’s preview/verify path), Python FastAPI and SQL sketches when implied, plus "
-            "next-app-stub/ for App Router—not every bullet in a mega-spec as its own subsystem."
+            "This goal is very long. The job still runs to completion: root Vite workspace (preview/verify), "
+            "Python FastAPI and SQL sketches when implied, plus next-app-stub/ for App Router. "
+            "Use continuation runs or edits to cover every line item in a huge spec."
         )
     if t == "static_site":
         return (
-            "This goal is very long. This run emits a bounded marketing-style scaffold (Vite-oriented pages) "
-            "and verification gates—not every campaign or CMS bullet as its own subsystem."
+            "This goal is very long. The job still runs to completion: marketing-style Vite-oriented pages "
+            "and verification gates. Extend with more runs or edits for full campaign/CMS depth."
         )
     if t == "api_backend":
         return (
-            "This goal is very long. This run emphasizes a bounded API sketch (Python FastAPI-style routes, "
-            "SQL stubs, verification gates)—not every integration or scale pattern in your spec as a "
-            "shipped subsystem."
+            "This goal is very long. The job still runs to completion: Python FastAPI-style routes, "
+            "SQL stubs, verification gates. Add integrations and scale patterns in-repo or follow-up runs."
         )
     if t == "agent_workflow":
         return (
-            "This goal is very long. This run emits bounded workflow/agent sketches (files, docs, hooks) "
-            "inside the DAG bundle—not a full custom runtime for every automation bullet in your spec."
+            "This goal is very long. The job still runs to completion: workflow/agent sketches (files, docs, hooks). "
+            "Host heavier runtimes in your stack if you need them beyond this pass."
         )
     return (
-        "This goal is very long. This run emits a bounded bundle: Vite + React (JS) frontend sketch, "
-        "Python FastAPI backend sketch, SQL migrations, and verification gates—not every bullet in a "
-        "mega-spec as its own subsystem."
+        "This goal is very long. The job still runs to completion: Vite + React (JS) app, Python FastAPI sketch, "
+        "SQL migrations, and verification gates. Nothing here stops the run—use continuation runs or edits "
+        "to cover every production extra in a huge spec."
     )
 
 
@@ -65,7 +64,7 @@ def capability_notice_lines(goal: str, build_target: Optional[str] = None) -> Li
 
     lines.append(
         "CrucibAI is aimed at apps, websites, backend services, automation, and agents — not a single narrow niche. "
-        "Each Auto-Runner job picks an **execution target** so you get clear guarantees for *this run* while we expand native tracks (Next-only pipelines, mobile, deeper automation, etc.)."
+        "Each Auto-Runner job picks an **execution target** for this run’s pipeline; approved jobs run to completion."
     )
     lines.append(f"This run: {meta['label']} — {meta['tagline']}")
 
@@ -78,18 +77,18 @@ def capability_notice_lines(goal: str, build_target: Optional[str] = None) -> Li
         lines.append(_long_goal_line(tid))
 
     triggers = [
-        ("langgraph", "LangGraph / custom agent frameworks are not generated end-to-end by this pipeline."),
-        ("crewai", "CrewAI-style crews are optional sketches; the DAG uses fixed step keys."),
-        ("pinecone", "Vector DBs (Pinecone/Weaviate) are not wired automatically."),
-        ("weaviate", "Vector DBs (Pinecone/Weaviate) are not wired automatically."),
-        ("testcontainers", "Testcontainers / k6 load tests are not run in the default DAG."),
-        ("playwright", "Playwright E2E is not a default DAG step (can be added later)."),
-        ("k6", "k6 / load testing is not run in the default DAG."),
-        ("phase_8", "Phase-gated reports (PHASE_X_REPORT.md) are not auto-emitted unless added as steps."),
-        ("omega build", "Full “Omega” platform scope exceeds the template; expect scaffold + proofs, not full product."),
-        ("self-improving", "Self-improving / weekly optimization jobs are not part of the default runner."),
-        ("slack", "Slack/email human escalation is not wired in the default runner."),
-        ("soc 2", "SOC 2 / audit packs are checklist sketches only unless you extend the pipeline."),
+        ("langgraph", "LangGraph / custom agent frameworks: extend in-repo or a follow-up run if you need full runtime wiring."),
+        ("crewai", "CrewAI-style crews: optional sketches in this pass; customize step keys in your fork if needed."),
+        ("pinecone", "Vector DBs (Pinecone/Weaviate): connect in your project or a follow-up run (not auto-wired by default)."),
+        ("weaviate", "Vector DBs (Pinecone/Weaviate): connect in your project or a follow-up run (not auto-wired by default)."),
+        ("testcontainers", "Testcontainers / k6: add to your CI or extend the DAG in a follow-up run."),
+        ("playwright", "Playwright E2E: add as a project step or follow-up run (not a default DAG step)."),
+        ("k6", "k6 / load testing: run in your CI or extend the pipeline when you need it."),
+        ("phase_8", "Phase-gated reports (PHASE_X_REPORT.md): add as explicit steps if your process requires them."),
+        ("omega build", "Very large “Omega”-style platform goals: this pass emits scaffold + proofs—grow with continuation runs."),
+        ("self-improving", "Self-improving / scheduled optimization: implement in your deployment layer beyond the default runner."),
+        ("slack", "Slack / email escalation: add webhooks or SMTP in your app (not pre-wired in the default runner)."),
+        ("soc 2", "SOC 2 / audit packs: checklist sketches here—harden with your compliance process."),
     ]
     for needle, msg in triggers:
         if needle in gl and msg not in lines:

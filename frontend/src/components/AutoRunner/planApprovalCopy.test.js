@@ -1,4 +1,9 @@
-import { specGapCopy, normalizePlanBuildTarget } from './planApprovalCopy';
+import {
+  specGapCopy,
+  normalizePlanBuildTarget,
+  PIPELINE_INFRA_SCOPE_RISK,
+  BEFORE_PRODUCTION_SMTP_NOTE,
+} from './planApprovalCopy';
 
 describe('planApprovalCopy', () => {
   test('normalizePlanBuildTarget defaults', () => {
@@ -7,9 +12,9 @@ describe('planApprovalCopy', () => {
     expect(normalizePlanBuildTarget('api-backend')).toBe('api_backend');
   });
 
-  test('vite_react mentions Vite and FastAPI', () => {
-    const { bounded, targetDetail } = specGapCopy('vite_react', { label: 'Full-stack web (Vite + React)' });
-    expect(bounded).toMatch(/bounded DAG/i);
+  test('vite_react mentions full pipeline and Vite + FastAPI', () => {
+    const { runIntro, targetDetail } = specGapCopy('vite_react', { label: 'Full-stack web (Vite + React)' });
+    expect(runIntro).toMatch(/runs to completion/i);
     expect(targetDetail).toMatch(/Vite \+ React/);
     expect(targetDetail).toMatch(/FastAPI/);
   });
@@ -23,5 +28,11 @@ describe('planApprovalCopy', () => {
   test('next_app_router mentions next-app-stub', () => {
     const { targetDetail } = specGapCopy('next_app_router', null);
     expect(targetDetail).toMatch(/next-app-stub/);
+  });
+
+  test('static scope strings mention infra and SMTP without implying blocked runs', () => {
+    expect(PIPELINE_INFRA_SCOPE_RISK).toMatch(/Terraform|OTel/i);
+    expect(PIPELINE_INFRA_SCOPE_RISK).toMatch(/not block/i);
+    expect(BEFORE_PRODUCTION_SMTP_NOTE).toMatch(/SMTP/i);
   });
 });

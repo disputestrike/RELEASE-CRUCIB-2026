@@ -1,6 +1,14 @@
 /**
- * Target-honest copy for plan review (keeps "What this run will actually build" aligned with execution target).
+ * Plan review copy: execution target + pipeline intro (runs complete; nothing here blocks).
  */
+
+/** Infra depth — framed as follow-up work; does not block the run. */
+export const PIPELINE_INFRA_SCOPE_RISK =
+  'Deep infra (Terraform, RLS/multi-tenant, queues, CI, OTel, k6, etc.) may land as stubs in this track—harden and wire in-repo or in a follow-up run. Execution is not blocked.';
+
+/** Pre-production reminder — runs are never blocked by this note. */
+export const BEFORE_PRODUCTION_SMTP_NOTE =
+  'For real outbound email set SMTP_* in backend/.env; local runs can log or no-op. (dev OK)';
 
 const DEFAULT_TARGET = 'vite_react';
 
@@ -12,7 +20,7 @@ export function normalizePlanBuildTarget(raw) {
 /**
  * @param {string} [buildTargetId] plan.crucib_build_target
  * @param {object|null} [meta] buildTargetMeta from API (label, tagline, …)
- * @returns {{ bounded: string, targetDetail: string }}
+ * @returns {{ runIntro: string, targetDetail: string }}
  */
 export function specGapCopy(buildTargetId, meta) {
   const tid = normalizePlanBuildTarget(buildTargetId);
@@ -27,22 +35,21 @@ export function specGapCopy(buildTargetId, meta) {
     }[tid] ||
     'This execution target';
 
-  const bounded =
-    'The Auto-Runner runs a bounded DAG: it emits the artifact set for your execution target and runs ' +
-    'verification gates. It does not implement an arbitrary enterprise or mega-spec end-to-end. ' +
-    'A passing run means the emitted bundle plus checks succeeded—not that every bullet in your prompt ' +
-    'shipped as a separate production subsystem.';
+  const runIntro =
+    'Every approved job runs to completion: the DAG emits the full artifact set for your execution target and runs ' +
+    'verification gates. Nothing on this screen stops or cancels your run. Large goals are folded into this pass as far ' +
+    'as the pipeline reaches; add continuation runs or edit the repo to cover every production extra.';
 
   const byId = {
-    vite_react: `For “${label}”, expect a Vite + React (JS) scaffold, a Python FastAPI sketch when the goal implies a backend, SQL migration stubs, and the proof/preview gates described above.`,
-    next_app_router: `For “${label}”, the root Vite workspace still drives Sandpack preview and today’s verify path, while a Next.js App Router starter is emitted under next-app-stub/ for you to grow. This run does not promise a full Next-first production platform in one shot.`,
-    static_site: `For “${label}”, expect a Vite-oriented landing/marketing scaffold (pages and sections). Campaign tools, full CMS wiring, and every SEO edge case are not guaranteed in a single run.`,
-    api_backend: `For “${label}”, the emphasis is Python API routes, OpenAPI-shaped sketches, and SQL stubs; the UI bundle may be thin or placeholder so preview stays valid. It does not ship every integration, queue, or scale pattern implied by a long spec.`,
-    agent_workflow: `For “${label}”, expect workflow and agent sketches (files, docs, hooks) inside the same DAG bundle—not a hosted LangGraph/Crew runtime or an unbounded custom multi-agent system.`,
+    vite_react: `For “${label}”, this run produces a Vite + React (JS) app, a Python FastAPI sketch when your goal calls for a backend, SQL migration stubs, and proof/preview gates.`,
+    next_app_router: `For “${label}”, you get the full root Vite workspace (preview/verify today) plus a Next.js App Router starter under next-app-stub/ to grow—native Next-first pipelines are on the roadmap.`,
+    static_site: `For “${label}”, this run produces a Vite-oriented landing/marketing scaffold (pages and sections); deeper CMS/SEO can follow in further runs or edits.`,
+    api_backend: `For “${label}”, this run emphasizes Python API routes, OpenAPI-shaped sketches, and SQL stubs; the UI may stay thin so preview stays valid—extend the UI in-repo as needed.`,
+    agent_workflow: `For “${label}”, this run produces workflow and agent sketches (files, docs, hooks) in the bundle—host LangGraph/Crew-style runtimes in your stack if you need them.`,
   };
 
   return {
-    bounded,
+    runIntro,
     targetDetail: byId[tid] || byId.vite_react,
   };
 }

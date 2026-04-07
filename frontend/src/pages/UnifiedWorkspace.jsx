@@ -28,6 +28,7 @@ import {
 import AutoRunnerPanel from '../components/AutoRunner/AutoRunnerPanel';
 import GoalComposer from '../components/AutoRunner/GoalComposer';
 import PlanApproval from '../components/AutoRunner/PlanApproval';
+import RunnerScopeTrack from '../components/AutoRunner/RunnerScopeTrack';
 import ExecutionTimeline from '../components/AutoRunner/ExecutionTimeline';
 import ProofPanel from '../components/AutoRunner/ProofPanel';
 import SystemExplorer from '../components/AutoRunner/SystemExplorer';
@@ -626,6 +627,16 @@ export default function UnifiedWorkspace() {
     return Object.values(proof.bundle || {}).reduce((s, arr) => s + (arr?.length || 0), 0);
   }, [proof]);
 
+  const effectiveBuildTargetId = useMemo(
+    () => plan?.crucib_build_target || buildTarget,
+    [plan?.crucib_build_target, buildTarget],
+  );
+  const effectiveBuildTargetMeta = useMemo(() => {
+    if (buildTargetMeta && buildTargetMeta.id === effectiveBuildTargetId) return buildTargetMeta;
+    const row = buildTargets.find((t) => t.id === effectiveBuildTargetId);
+    return row || buildTargetMeta;
+  }, [effectiveBuildTargetId, buildTargetMeta, buildTargets]);
+
   return (
     <div className={`uw-root arp-root arp-ux-${uxMode}`}>
       <div className="arp-topbar">
@@ -813,6 +824,7 @@ export default function UnifiedWorkspace() {
         )}
 
         <div className="arp-center-pane">
+          <RunnerScopeTrack buildTargetId={effectiveBuildTargetId} buildTargetMeta={effectiveBuildTargetMeta} />
           {stage === 'input' && (
             <>
               <GoalComposer
