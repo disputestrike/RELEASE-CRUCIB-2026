@@ -8562,6 +8562,8 @@ async def get_job_steps(job_id: str, user: dict = Depends(get_optional_user)):
         _assert_job_owner_match(job.get("user_id"), user)
         steps = await runtime_state.get_steps(job_id)
         return {"success": True, "steps": steps, "count": len(steps)}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -8615,6 +8617,8 @@ async def get_job_events(job_id: str, since_id: Optional[str] = None,
             except Exception:
                 e["payload"] = {}
         return {"success": True, "events": events, "count": len(events)}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
