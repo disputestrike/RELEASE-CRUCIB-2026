@@ -230,3 +230,12 @@ def test_job_state_structured_lists_are_json_text():
     assert json.loads(updates["failed_step_keys"]) == ["verification.preview"]
     assert json.loads(updates["non_completed"])[0]["status"] == "blocked"
     assert json.loads(updates["failure_details"])["reason"] == "late_stage_failure"
+
+
+def test_browser_preview_installs_dev_dependencies_for_vite():
+    from pathlib import Path
+
+    source = Path("backend/orchestration/browser_preview_verify.py").read_text(encoding="utf-8")
+
+    assert '"--include=dev"' in source
+    assert '"install", "--include=dev", "--no-fund", "--no-audit"' in source

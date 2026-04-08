@@ -117,7 +117,9 @@ def _verify_browser_preview_sync(workspace_path: str) -> Dict[str, Any]:
     install_timeout = int(os.environ.get("CRUCIBAI_NPM_INSTALL_TIMEOUT", "300"))
     build_timeout = int(os.environ.get("CRUCIBAI_NPM_BUILD_TIMEOUT", "180"))
 
-    code, log = _run_npm(["install", "--no-fund", "--no-audit"], ws, install_timeout)
+    # Railway often runs with NODE_ENV=production; npm then omits devDependencies
+    # unless we explicitly include them. Vite lives in devDependencies for generated apps.
+    code, log = _run_npm(["install", "--include=dev", "--no-fund", "--no-audit"], ws, install_timeout)
     if code != 0:
         issues.append(f"npm install failed (exit {code}): {log[:500]}")
         return {"passed": False, "issues": issues, "proof": proof}
