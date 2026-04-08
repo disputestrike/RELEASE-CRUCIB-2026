@@ -64,7 +64,7 @@ Tasks:
 - [x] Commit and push the retry-step ownership slice (`6c09d38`).
 - [x] Ignore client-supplied `workspace_path` in Auto-Runner start and derive workspace from the job project.
 - [x] Add focused smoke coverage proving Auto-Runner ignores malicious request workspace paths.
-- [ ] Commit and push the Auto-Runner workspace boundary slice.
+- [x] Commit and push the Auto-Runner workspace boundary slice (`e6399cd`).
 
 ## Verification Log
 
