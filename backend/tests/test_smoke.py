@@ -113,6 +113,14 @@ async def _register_smoke_headers(app_client):
     )
     assert r.status_code in (200, 201), f"Register failed: {r.status_code} {r.text}"
     data = r.json()
+    user_id = data.get("user", {}).get("id")
+    if user_id:
+        import server
+
+        await server.db.users.update_one(
+            {"id": user_id},
+            {"$set": {"credit_balance": 10000, "plan": "pro"}},
+        )
     return {"Authorization": f"Bearer {data['token']}"}
 
 
@@ -538,6 +546,47 @@ async def test_smoke_run_auto_ignores_client_workspace_path(app_client, auth_hea
     assert captured.get("workspace_path")
     assert malicious not in captured["workspace_path"]
     assert project_id in captured["workspace_path"]
+
+
+async def test_smoke_orchestrator_plan_rejects_unowned_project(app_client, auth_headers):
+    """POST /api/orchestrator/plan rejects a project_id owned by another user."""
+    other_headers = await _register_smoke_headers(app_client)
+    other_project_id = await _create_smoke_project(app_client, other_headers)
+    r = await app_client.post(
+        "/api/orchestrator/plan",
+        json={"project_id": other_project_id, "goal": "Build a smoke todo app", "mode": "guided"},
+        headers=auth_headers,
+        timeout=20,
+    )
+    assert r.status_code == 404
+
+
+async def test_smoke_create_job_rejects_unowned_project(app_client, auth_headers):
+    """POST /api/jobs rejects a project_id owned by another user."""
+    other_headers = await _register_smoke_headers(app_client)
+    other_project_id = await _create_smoke_project(app_client, other_headers)
+    r = await app_client.post(
+        "/api/jobs",
+        json={"project_id": other_project_id, "goal": "Build a smoke todo app", "mode": "guided"},
+        headers=auth_headers,
+        timeout=20,
+    )
+    assert r.status_code == 404
+
+
+async def test_smoke_create_job_allows_owned_project(app_client, auth_headers):
+    """POST /api/jobs accepts a project_id owned by the current user."""
+    project_id = await _create_smoke_project(app_client, auth_headers)
+    r = await app_client.post(
+        "/api/jobs",
+        json={"project_id": project_id, "goal": "Build a smoke todo app", "mode": "guided"},
+        headers=auth_headers,
+        timeout=20,
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data.get("success") is True
+    assert data.get("job", {}).get("project_id") == project_id
 
 
 async def test_smoke_app_db_schema_returns_200_for_owned_task(app_client, auth_headers):

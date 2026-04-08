@@ -5016,6 +5016,18 @@ async def _resolve_project_workspace_path_for_user(project_id: Optional[str], us
     return root
 
 
+async def _resolve_job_project_id_for_user(project_id: Optional[str], user: dict) -> str:
+    """Resolve a job project_id without letting users attach jobs to other workspaces."""
+    pid = (project_id or "").strip()
+    if not pid:
+        return user["id"]
+    if pid == user.get("id"):
+        return pid
+    if not await _user_can_access_project_workspace(user.get("id"), pid):
+        raise HTTPException(status_code=404, detail="Project not found")
+    return pid
+
+
 def _create_preview_token(project_id: str, user_id: str) -> str:
     """Short-lived JWT so iframe can load preview without Bearer header."""
     payload = {"project_id": project_id, "user_id": user_id, "purpose": "preview", "exp": datetime.now(timezone.utc) + timedelta(minutes=2)}
@@ -8242,6 +8254,7 @@ async def create_plan(body: PlanRequest, user: dict = Depends(get_current_user))
         runtime_state.set_pool(pool)
 
         bt = normalize_build_target(body.build_target)
+        effective_project_id = await _resolve_job_project_id_for_user(body.project_id, user)
 
         # Generate plan
         plan = await planner_mod.generate_plan(
@@ -8251,8 +8264,6 @@ async def create_plan(body: PlanRequest, user: dict = Depends(get_current_user))
         estimate = planner_mod.estimate_tokens(plan)
 
         # Resolve project_id — use provided, or fall back to user id, or generate one
-        effective_project_id = body.project_id or user.get("id") or str(uuid.uuid4())
-
         # Create job record
         job = await runtime_state.create_job(
             project_id=effective_project_id,
@@ -8298,6 +8309,8 @@ async def create_plan(body: PlanRequest, user: dict = Depends(get_current_user))
             "build_target": bt,
             "build_target_meta": btm,
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception("orchestrator/plan error")
         raise HTTPException(status_code=500, detail=str(e))
@@ -8552,12 +8565,13 @@ async def create_job_route(body: CreateJobRequest,
         from db_pg import get_pg_pool
         pool = await get_pg_pool()
         runtime_state.set_pool(pool)
+        effective_project_id = await _resolve_job_project_id_for_user(body.project_id, user)
 
         plan = await planner_mod.generate_plan(
             body.goal, project_state=_orchestrator_planner_project_state(user)
         )
         job = await runtime_state.create_job(
-            project_id=body.project_id, mode=body.mode or "guided",
+            project_id=effective_project_id, mode=body.mode or "guided",
             goal=body.goal, user_id=user.get("id")
         )
         from orchestration.dag_engine import build_dag_from_plan
@@ -8569,6 +8583,8 @@ async def create_job_route(body: CreateJobRequest,
                 depends_on=sd["depends_on"], order_index=idx,
             )
         return {"success": True, "job": job, "plan": plan}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception("POST /jobs error")
         raise HTTPException(status_code=500, detail=str(e))

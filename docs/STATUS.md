@@ -65,6 +65,10 @@ Tasks:
 - [x] Ignore client-supplied `workspace_path` in Auto-Runner start and derive workspace from the job project.
 - [x] Add focused smoke coverage proving Auto-Runner ignores malicious request workspace paths.
 - [x] Commit and push the Auto-Runner workspace boundary slice (`e6399cd`).
+- [x] Require project ownership before creating plans/jobs with a supplied `project_id`.
+- [x] Preserve 404/403 errors from plan/job creation instead of converting them to 500s.
+- [x] Add focused smoke coverage for owned and unowned plan/job creation.
+- [ ] Commit and push the plan/job project ownership slice.
 
 ## Verification Log
 
@@ -81,6 +85,9 @@ Tasks:
 - `python -m pytest backend\tests\test_smoke.py -k "retry_step or agent_memory or agent_automation or app_db or cache_invalidate or detect_frameworks or deploy" -q` passed with local Postgres/Redis env: 15 passed, 23 deselected.
 - `python -m py_compile backend\server.py` passed.
 - `python -m pytest backend\tests\test_smoke.py -k "run_auto or retry_step or agent_memory or agent_automation or app_db or cache_invalidate or detect_frameworks or deploy" -q` passed with local Postgres/Redis env: 16 passed, 23 deselected.
+- `python -m py_compile backend\server.py` passed.
+- `python -m pytest backend\tests\test_smoke.py -k "orchestrator_plan or create_job or run_auto or retry_step" -q` passed with local Postgres/Redis env: 6 passed, 36 deselected.
+- `python -m pytest backend\tests\test_smoke.py -k "orchestrator_plan or create_job or run_auto or retry_step or agent_memory or agent_automation or app_db or cache_invalidate or detect_frameworks or deploy" -q` passed with local Postgres/Redis env: 19 passed, 23 deselected.
 - `.\scripts\verify-local.ps1` correctly failed on Node `v24.14.0`; the frontend declares Node `>=18 <=22`.
 
 ## Next Milestone
