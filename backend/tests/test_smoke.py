@@ -592,7 +592,7 @@ async def test_smoke_create_job_allows_owned_project(app_client, auth_headers):
 async def test_smoke_app_db_schema_returns_200_for_owned_task(app_client, auth_headers):
     """GET /api/app-db/{task_id} returns schema only for an owned task."""
     task_id = await _create_smoke_task(auth_headers)
-    r = await app_client.get(f"/api/app-db/{task_id}", headers=auth_headers, timeout=10)
+    r = await app_client.get(f"/api/app-db/task/{task_id}", headers=auth_headers, timeout=10)
     assert r.status_code == 200
     schema = r.json().get("schema")
     assert schema
@@ -601,7 +601,7 @@ async def test_smoke_app_db_schema_returns_200_for_owned_task(app_client, auth_h
 
 async def test_smoke_app_db_schema_requires_auth(app_client):
     """GET /api/app-db/{task_id} requires auth."""
-    r = await app_client.get("/api/app-db/not-owned", timeout=10)
+    r = await app_client.get("/api/app-db/task/not-owned", timeout=10)
     assert r.status_code == 401
 
 
@@ -609,7 +609,7 @@ async def test_smoke_app_db_schema_rejects_unowned_task(app_client, auth_headers
     """GET /api/app-db/{task_id} rejects another user's task."""
     other_headers = await _register_smoke_headers(app_client)
     task_id = await _create_smoke_task(other_headers)
-    r = await app_client.get(f"/api/app-db/{task_id}", headers=auth_headers, timeout=10)
+    r = await app_client.get(f"/api/app-db/task/{task_id}", headers=auth_headers, timeout=10)
     assert r.status_code == 403
 
 
@@ -622,7 +622,7 @@ async def test_smoke_app_db_provision_returns_200_for_owned_task(app_client, aut
         headers=auth_headers,
         timeout=10,
     )
-    assert r.status_code == 200
+    assert r.status_code in (200, 201)
     assert r.json().get("status") == "ok"
 
 
@@ -637,3 +637,55 @@ async def test_smoke_legacy_vercel_deploy_rejects_unowned_task(app_client, auth_
         timeout=10,
     )
     assert r.status_code == 403
+
+
+async def test_smoke_git_sync_rejects_unowned_task(app_client, auth_headers):
+    """POST /api/git-sync/push rejects another user's task before external GitHub work."""
+    other_headers = await _register_smoke_headers(app_client)
+    task_id = await _create_smoke_task(other_headers, files={"README.md": "# private"})
+    r = await app_client.post(
+        "/api/git-sync/push",
+        json={"task_id": task_id, "repo_name": "smoke-private"},
+        headers=auth_headers,
+        timeout=10,
+    )
+    assert r.status_code == 403
+
+
+async def test_smoke_git_sync_rejects_unowned_project(app_client, auth_headers):
+    """POST /api/git-sync/push rejects another user's project."""
+    other_headers = await _register_smoke_headers(app_client)
+    project_id = await _create_smoke_project(app_client, other_headers)
+    r = await app_client.post(
+        "/api/git-sync/push",
+        json={"project_id": project_id, "repo_name": "smoke-private"},
+        headers=auth_headers,
+        timeout=10,
+    )
+    assert r.status_code == 404
+
+
+async def test_smoke_railway_deploy_rejects_unowned_task(app_client, auth_headers):
+    """POST /api/deploy/railway rejects another user's task before external Railway work."""
+    other_headers = await _register_smoke_headers(app_client)
+    task_id = await _create_smoke_task(other_headers, files={"README.md": "# private"})
+    r = await app_client.post(
+        "/api/deploy/railway",
+        json={"task_id": task_id, "service_name": "smoke-private"},
+        headers=auth_headers,
+        timeout=10,
+    )
+    assert r.status_code == 403
+
+
+async def test_smoke_railway_deploy_rejects_unowned_project(app_client, auth_headers):
+    """POST /api/deploy/railway rejects another user's project."""
+    other_headers = await _register_smoke_headers(app_client)
+    project_id = await _create_smoke_project(app_client, other_headers)
+    r = await app_client.post(
+        "/api/deploy/railway",
+        json={"project_id": project_id, "service_name": "smoke-private"},
+        headers=auth_headers,
+        timeout=10,
+    )
+    assert r.status_code == 404

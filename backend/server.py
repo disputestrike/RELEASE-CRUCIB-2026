@@ -9312,9 +9312,32 @@ async def cache_invalidate(agent_name: Optional[str] = Query(None), admin: dict 
     return {"status": "ok", "deleted": n}
 
 # ==================== APP-DB SCHEMA ENDPOINT ====================
+@api_router.post("/app-db/provision")
+async def provision_app_db(body: dict = Body(...), user: dict = Depends(get_current_user)):
+    """Generate a database schema for the given task/prompt."""
+    task_id = body.get("task_id")
+    if task_id:
+        await _get_task_for_user(task_id, user)
+    return {
+        "status": "ok",
+        "message": "Schema generation queued. Run a full build to generate database schema files.",
+        "task_id": task_id,
+    }
+
 @api_router.get("/app-db/{task_id}")
 async def get_app_db_schema(task_id: str, user: dict = Depends(get_current_user)):
     """Return provisioned database schema for a build task."""
+    return await _get_app_db_schema_for_task(task_id, user)
+
+
+@api_router.get("/app-db/task/{task_id}")
+async def get_app_db_schema_by_task(task_id: str, user: dict = Depends(get_current_user)):
+    """Return provisioned database schema for a build task without colliding with project app-db routes."""
+    return await _get_app_db_schema_for_task(task_id, user)
+
+
+async def _get_app_db_schema_for_task(task_id: str, user: dict):
+    """Shared task-backed app DB schema extraction."""
     if db is None:
         return {"schema": None}
     task = await _get_task_for_user(task_id, user)
@@ -9335,18 +9358,6 @@ async def get_app_db_schema(task_id: str, user: dict = Depends(get_current_user)
             }
         }
     return {"schema": None}
-
-@api_router.post("/app-db/provision")
-async def provision_app_db(body: dict = Body(...), user: dict = Depends(get_current_user)):
-    """Generate a database schema for the given task/prompt."""
-    task_id = body.get("task_id")
-    if task_id:
-        await _get_task_for_user(task_id, user)
-    return {
-        "status": "ok",
-        "message": "Schema generation queued. Run a full build to generate database schema files.",
-        "task_id": task_id,
-    }
 
 # ==================== DEPLOY VERCEL ENDPOINT ====================
 @api_router.post("/deploy/vercel")
@@ -9476,17 +9487,7 @@ async def publish_skill(skill_id: str, user: dict = Depends(get_current_user)):
     return {"status": "ok", "published": True}
 
 # Include routers (domain split) — all wired in app (9.5+)
-try:
-    from routers import monitoring_router, health_router
-    app.include_router(health_router)
-    app.include_router(monitoring_router)
-except ImportError:
-    pass
-app.include_router(auth_router)
-app.include_router(projects_router)
-app.include_router(tools_router)
-app.include_router(agents_router)
-app.include_router(api_router)
+ROUTERS_INCLUDED_AT_MODULE_END = True
 
 # Blueprint modules: Personas, Knowledge/RAG, Channels, Sessions, Trust & Safety,
 # Workspace/RBAC, Analytics, Commerce, Auto-DB Schema
@@ -9941,7 +9942,7 @@ if _static_dir.exists():
             full_path, stat_result = super().lookup_path("index.html")
             return full_path, stat_result
 
-    app.mount("/", SpaStaticFiles(directory=str(_static_dir), html=True), name="frontend")
+    FRONTEND_STATIC_READY = True
 
 # ==================== SKILLS ROUTES ====================
 
@@ -10188,11 +10189,12 @@ async def git_sync_push_to_github(body: GitSyncBody, user: dict = Depends(get_cu
     if db is not None:
         if body.project_id:
             proj = await db.projects.find_one({"id": body.project_id, "user_id": user["id"]})
-            if proj:
-                files = proj.get("deploy_files") or {}
-                project_name = body.repo_name or (proj.get("name") or "crucibai-app")
+            if not proj:
+                raise HTTPException(status_code=404, detail="Project not found")
+            files = proj.get("deploy_files") or {}
+            project_name = body.repo_name or (proj.get("name") or "crucibai-app")
         if not files and body.task_id:
-            task = await db.tasks.find_one({"id": body.task_id})
+            task = await _get_task_for_user(body.task_id, user)
             if task:
                 files = task.get("files") or {}
                 project_name = body.repo_name or (task.get("prompt") or "crucibai-app")[:40]
@@ -10473,11 +10475,12 @@ async def deploy_to_railway(body: RailwayDeployBody, user: dict = Depends(get_cu
     if db is not None:
         if body.project_id:
             proj = await db.projects.find_one({"id": body.project_id, "user_id": user["id"]})
-            if proj:
-                files = proj.get("deploy_files") or {}
-                project_name = body.service_name or (proj.get("name") or "crucibai-app")
+            if not proj:
+                raise HTTPException(status_code=404, detail="Project not found")
+            files = proj.get("deploy_files") or {}
+            project_name = body.service_name or (proj.get("name") or "crucibai-app")
         if not files and body.task_id:
-            task = await db.tasks.find_one({"id": body.task_id})
+            task = await _get_task_for_user(body.task_id, user)
             if task:
                 files = task.get("files") or {}
                 project_name = body.service_name or (task.get("prompt") or "crucibai-app")[:40]
@@ -10568,4 +10571,21 @@ async def deploy_to_railway(body: RailwayDeployBody, user: dict = Depends(get_cu
         "status": "deploying",
         "note": "Your app is being deployed. It will be live at the URL above in ~60 seconds.",
     }
+
+
+# Include routers after all route declarations. Mount the frontend SPA last so it cannot shadow /api routes.
+try:
+    from routers import monitoring_router, health_router
+    app.include_router(health_router)
+    app.include_router(monitoring_router)
+except ImportError:
+    pass
+app.include_router(auth_router)
+app.include_router(projects_router)
+app.include_router(tools_router)
+app.include_router(agents_router)
+app.include_router(api_router)
+
+if _static_dir.exists():
+    app.mount("/", SpaStaticFiles(directory=str(_static_dir), html=True), name="frontend")
 

@@ -1047,7 +1047,7 @@ root.render(<${compName} />);` };
   // ── Issue #5: Database — fetch live schema when tab opens ─────────────────
   useEffect(() => {
     if (activePanel !== 'database' || !taskIdFromUrl || !token) return;
-    axios.get(`${API}/app-db/${taskIdFromUrl}`, { headers: { Authorization: `Bearer ${token}` } })
+    axios.get(`${API}/app-db/task/${taskIdFromUrl}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => setAppDbSchema(r.data?.schema || null))
       .catch(() => setAppDbSchema(null));
   }, [activePanel, taskIdFromUrl, token, API]);

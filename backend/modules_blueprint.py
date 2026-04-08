@@ -1597,7 +1597,9 @@ async def get_commerce_stats(user: dict = Depends(_resolve_current_user)):
 
 class AppDBProvision(BaseModel):
     project_id: Optional[str] = None
-    description: str = Field(..., min_length=10, max_length=5000)
+    task_id: Optional[str] = None
+    prompt: Optional[str] = Field(None, max_length=5000)
+    description: Optional[str] = Field(None, max_length=5000)
     project_name: Optional[str] = Field(None, max_length=100)
     features: Optional[List[str]] = None
 
@@ -2468,17 +2470,29 @@ async def provision_app_db(body: AppDBProvision, user: dict = Depends(_resolve_c
     db = _db()
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready")
+    if body.task_id:
+        import server
+
+        await server._get_task_for_user(body.task_id, user)
+        return {
+            "status": "ok",
+            "message": "Schema generation queued. Run a full build to generate database schema files.",
+            "task_id": body.task_id,
+        }
+    description = body.description or body.prompt or ""
+    if len(description.strip()) < 10:
+        raise HTTPException(status_code=400, detail="description or task_id required")
     project_id = body.project_id or str(uuid.uuid4())
     project_name = body.project_name or f"Project {project_id[:8]}"
     features = body.features or []
     now = datetime.now(timezone.utc).isoformat()
-    schema = await _generate_schema_llm(body.description, project_name, features)
+    schema = await _generate_schema_llm(description, project_name, features)
     doc = {
         "id": str(uuid.uuid4()),
         "project_id": project_id,
         "user_id": user["id"],
         "project_name": project_name,
-        "description": body.description,
+        "description": description,
         "features": features,
         "tables_sql": schema["tables_sql"],
         "rls_policies": schema["rls_policies"],

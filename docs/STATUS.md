@@ -69,6 +69,11 @@ Tasks:
 - [x] Preserve 404/403 errors from plan/job creation instead of converting them to 500s.
 - [x] Add focused smoke coverage for owned and unowned plan/job creation.
 - [x] Commit and push the plan/job project ownership slice (`9d0b580`).
+- [x] Move router inclusion after all API route declarations and mount frontend static last.
+- [x] Add task-specific app-db route to avoid project/task dynamic route collisions.
+- [x] Add task ownership checks for GitHub sync and Railway deploy helpers.
+- [x] Add focused smoke coverage for Git sync/Railway deploy unowned task/project rejection.
+- [ ] Commit and push the late-route registration and deploy ownership slice.
 
 ## Verification Log
 
@@ -88,6 +93,9 @@ Tasks:
 - `python -m py_compile backend\server.py` passed.
 - `python -m pytest backend\tests\test_smoke.py -k "orchestrator_plan or create_job or run_auto or retry_step" -q` passed with local Postgres/Redis env: 6 passed, 36 deselected.
 - `python -m pytest backend\tests\test_smoke.py -k "orchestrator_plan or create_job or run_auto or retry_step or agent_memory or agent_automation or app_db or cache_invalidate or detect_frameworks or deploy" -q` passed with local Postgres/Redis env: 19 passed, 23 deselected.
+- `python -m py_compile backend\server.py backend\modules_blueprint.py` passed.
+- `python -m pytest backend\tests\test_smoke.py -k "git_sync or railway_deploy or deploy or app_db" -q` passed with local Postgres/Redis env: 10 passed, 36 deselected.
+- `python -m pytest backend\tests\test_smoke.py -k "orchestrator_plan or create_job or run_auto or retry_step or agent_memory or agent_automation or app_db or cache_invalidate or detect_frameworks or deploy or git_sync or railway_deploy" -q` passed with local Postgres/Redis env: 23 passed, 23 deselected.
 - `.\scripts\verify-local.ps1` correctly failed on Node `v24.14.0`; the frontend declares Node `>=18 <=22`.
 
 ## Next Milestone
