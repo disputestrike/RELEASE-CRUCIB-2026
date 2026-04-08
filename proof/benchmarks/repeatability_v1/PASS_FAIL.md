@@ -1,9 +1,9 @@
 # CrucibAI Repeatability Benchmark
 
 - Version: `2026-04-08.repeatability.v1`
-- Generated at: `2026-04-08T12:28:36.691024+00:00`
-- Prompt count: `25`
-- Passed count: `25`
+- Generated at: `2026-04-08T12:49:02.032024+00:00`
+- Prompt count: `50`
+- Passed count: `50`
 - Pass rate: `100.00%`
 - Average score: `100.00`
 - Required pass rate: `90.00%`
@@ -37,6 +37,31 @@
 | `hr_onboarding` | hr | 100.00 | PASS | - |
 | `analytics_report` | analytics | 100.00 | PASS | - |
 | `mobile_companion` | mobile | 100.00 | PASS | - |
+| `legal_case_tracker` | legal | 100.00 | PASS | - |
+| `fitness_coach` | fitness | 100.00 | PASS | - |
+| `travel_planner` | travel | 100.00 | PASS | - |
+| `creator_membership` | creator | 100.00 | PASS | - |
+| `newsletter_cms` | media | 100.00 | PASS | - |
+| `job_board` | recruiting | 100.00 | PASS | - |
+| `property_management` | property | 100.00 | PASS | - |
+| `podcast_site` | media | 100.00 | PASS | - |
+| `survey_builder` | research | 100.00 | PASS | - |
+| `knowledge_base` | knowledge | 100.00 | PASS | - |
+| `event_ticketing` | ticketing | 100.00 | PASS | - |
+| `micro_saas_waitlist` | saas | 100.00 | PASS | - |
+| `dao_governance` | web3 | 100.00 | PASS | - |
+| `iot_monitoring` | iot | 100.00 | PASS | - |
+| `fleet_management` | logistics | 100.00 | PASS | - |
+| `church_community` | community | 100.00 | PASS | - |
+| `artist_store` | commerce | 100.00 | PASS | - |
+| `subscription_box` | commerce | 100.00 | PASS | - |
+| `restaurant_reservations` | food | 100.00 | PASS | - |
+| `construction_project` | construction | 100.00 | PASS | - |
+| `insurance_claims` | insurance | 100.00 | PASS | - |
+| `music_lessons` | education | 100.00 | PASS | - |
+| `farm_operations` | agriculture | 100.00 | PASS | - |
+| `government_services` | civic | 100.00 | PASS | - |
+| `ai_agent_console` | automation | 100.00 | PASS | - |
 
 ## Blockers
 - None recorded.

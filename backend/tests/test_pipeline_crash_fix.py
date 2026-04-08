@@ -12,6 +12,7 @@ from orchestration.executor import (
     _verification_failure_message,
     _verification_failure_payload,
     handle_delivery_manifest,
+    handle_deploy,
     handle_frontend_generate,
 )
 from orchestration.generated_app_template import build_frontend_file_set
@@ -249,3 +250,29 @@ def test_production_image_installs_playwright_chromium():
 
     assert "python -m playwright install --with-deps chromium" in dockerfile
     assert '"id": "playwright_chromium"' in preflight
+
+
+def test_published_app_url_uses_public_base(monkeypatch):
+    from orchestration.publish_urls import published_app_url
+
+    monkeypatch.setenv("CRUCIBAI_PUBLIC_BASE_URL", "https://crucibai.example.com/")
+
+    assert published_app_url("job-123") == "https://crucibai.example.com/published/job-123/"
+
+
+@pytest.mark.asyncio
+async def test_deploy_publish_emits_public_generated_app_url_when_configured(monkeypatch):
+    monkeypatch.setenv("CRUCIBAI_PUBLIC_BASE_URL", "https://crucibai.example.com")
+    with tempfile.TemporaryDirectory() as d:
+        result = await handle_deploy(
+            {"step_key": "deploy.publish"},
+            {"id": "job-public-url"},
+            d,
+        )
+
+        assert result["deploy_url"] == "https://crucibai.example.com/published/job-public-url/"
+        assert "deploy/PUBLISH.md" in result["output_files"]
+        assert "https://crucibai.example.com/published/job-public-url/" in open(
+            os.path.join(d, "deploy", "PUBLISH.md"),
+            encoding="utf-8",
+        ).read()

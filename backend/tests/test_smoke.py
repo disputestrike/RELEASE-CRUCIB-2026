@@ -146,6 +146,8 @@ async def test_smoke_critical_endpoints_respond(app_client):
         ("/api/templates", "GET"),
         ("/api/patterns", "GET"),
         ("/api/examples", "GET"),  # Landing + ExamplesGallery
+        ("/api/trust/benchmark-summary", "GET"),
+        ("/api/trust/security-posture", "GET"),
     ]
     for path, method in endpoints:
         if method == "GET":
@@ -153,6 +155,33 @@ async def test_smoke_critical_endpoints_respond(app_client):
         else:
             r = await app_client.post(path, json={}, timeout=10)
         assert r.status_code != 500, f"{path} returned 500"
+
+
+async def test_smoke_published_generated_app_url_serves_dist(app_client, auth_headers):
+    """Completed generated jobs can serve a public in-platform generated-app URL."""
+    import server
+    from db_pg import get_pg_pool
+    from orchestration import runtime_state
+
+    pool = await get_pg_pool()
+    runtime_state.set_pool(pool)
+    user_id = _user_id_from_auth_headers(auth_headers)
+    project_id = f"published-smoke-{uuid.uuid4().hex[:8]}"
+    job = await runtime_state.create_job(
+        project_id=project_id,
+        mode="guided",
+        goal="Published app smoke",
+        user_id=user_id,
+    )
+    root = server._project_workspace_path(project_id)
+    (root / "dist").mkdir(parents=True, exist_ok=True)
+    (root / "dist" / "index.html").write_text("<!doctype html><h1>Published smoke</h1>", encoding="utf-8")
+    await runtime_state.update_job_state(job["id"], "completed", {"current_phase": "completed"})
+
+    r = await app_client.get(f"/published/{job['id']}/", timeout=10)
+
+    assert r.status_code == 200
+    assert "Published smoke" in r.text
 
 
 async def test_smoke_examples_returns_200(app_client):

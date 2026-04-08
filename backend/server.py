@@ -8844,6 +8844,81 @@ async def trust_platform_capabilities(user: dict = Depends(get_optional_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.get("/trust/benchmark-summary")
+async def trust_benchmark_summary():
+    """Public benchmark summary for trust/status/benchmark pages."""
+    summary_path = ROOT_DIR.parent / "proof" / "benchmarks" / "repeatability_v1" / "summary.json"
+    pass_fail_path = ROOT_DIR.parent / "proof" / "benchmarks" / "repeatability_v1" / "PASS_FAIL.md"
+    if not summary_path.is_file():
+        return {
+            "status": "not_available",
+            "message": "Repeatability benchmark proof has not been generated in this deployment.",
+            "prompt_count": 0,
+            "passed_count": 0,
+            "pass_rate": 0,
+            "average_score": 0,
+            "proof": {"summary": "proof/benchmarks/repeatability_v1/summary.json", "pass_fail": None},
+            "cases": [],
+        }
+    try:
+        data = json.loads(summary_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        logger.warning("trust_benchmark_summary parse failed: %s", exc)
+        raise HTTPException(status_code=503, detail="Benchmark proof summary unreadable")
+    return {
+        "status": "ready" if data.get("passed") else "failing",
+        "benchmark_version": data.get("benchmark_version"),
+        "generated_at": data.get("generated_at"),
+        "prompt_count": data.get("prompt_count"),
+        "passed_count": data.get("passed_count"),
+        "pass_rate": data.get("pass_rate"),
+        "average_score": data.get("average_score"),
+        "thresholds": data.get("thresholds"),
+        "preview_mode": data.get("preview_mode"),
+        "summary_sha256": data.get("summary_sha256"),
+        "blockers": data.get("blockers") or [],
+        "proof": {
+            "summary": "proof/benchmarks/repeatability_v1/summary.json",
+            "pass_fail": "proof/benchmarks/repeatability_v1/PASS_FAIL.md" if pass_fail_path.is_file() else None,
+        },
+        "cases": [
+            {
+                "id": ((case.get("case") or {}).get("id")),
+                "category": ((case.get("case") or {}).get("category")),
+                "score": case.get("score"),
+                "passed": case.get("passed"),
+            }
+            for case in (data.get("results") or [])
+            if isinstance(case, dict)
+        ],
+    }
+
+
+@api_router.get("/trust/security-posture")
+async def trust_security_posture():
+    """Public security posture summary without exposing secret values."""
+    return {
+        "database": "PostgreSQL only",
+        "tenant_isolation": "auth and project ownership enforced on workspace/job/helper routes",
+        "terminal_policy": {
+            "status": "restricted",
+            "public_default": "disabled unless CRUCIBAI_TERMINAL_ENABLED explicitly allows it",
+            "boundary": "project-scoped; container sandbox remains launch debt before broad public exposure",
+        },
+        "proof_locations": [
+            "proof/phase2_security/",
+            "proof/pipeline_crash_fix/",
+            "proof/live_production_golden_path/",
+            "proof/benchmarks/",
+        ],
+        "generated_app_publish": {
+            "mode": "in-platform public URL",
+            "route": "/published/{job_id}/",
+            "external_providers": "Vercel/Netlify/Railway adapters remain separate provider work",
+        },
+    }
+
+
 @api_router.get("/jobs/{job_id}/trust-report")
 async def get_job_trust_report(job_id: str, user: dict = Depends(get_current_user)):
     """Aggregated trust metrics + roadmap wiring snapshot for a job."""
@@ -9648,6 +9723,53 @@ async def stripe_webhook(request: Request):
 async def branding_badge():
     """Serves the CrucibAI badge for free-tier iframe. Content is on our server so free users cannot remove it."""
     return Response(content=BRANDING_HTML, media_type="text/html")
+
+
+@app.get("/published/{job_id}")
+@app.get("/published/{job_id}/{path:path}")
+async def serve_published_generated_app(job_id: str, path: str = ""):
+    """Serve a completed generated app as a public URL from this CrucibAI deployment."""
+    try:
+        from orchestration import runtime_state as _orch_rs
+        from orchestration.publish_urls import safe_publish_id
+
+        if safe_publish_id(job_id) != job_id:
+            raise HTTPException(status_code=400, detail="Invalid published app id")
+        job = await _orch_rs.get_job(job_id)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.warning("Published app lookup failed for job %s: %s", job_id, exc)
+        raise HTTPException(status_code=503, detail="Published app lookup unavailable")
+
+    if not job or job.get("status") in {"failed", "blocked", "cancelled", "canceled", "error"}:
+        raise HTTPException(status_code=404, detail="Published app not found")
+    project_id = job.get("project_id")
+    if not project_id:
+        raise HTTPException(status_code=404, detail="Published app has no workspace")
+
+    root = (_project_workspace_path(project_id).resolve() / "dist").resolve()
+    workspace_root = WORKSPACE_ROOT.resolve()
+    try:
+        root.relative_to(workspace_root)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Published app path outside workspace")
+    if not root.exists():
+        raise HTTPException(status_code=404, detail="Published app build artifact missing")
+
+    clean = (path or "").strip().replace("\\", "/").lstrip("/")
+    if ".." in clean or clean.startswith("/"):
+        raise HTTPException(status_code=400, detail="Invalid published app path")
+    full = (root / clean).resolve() if clean else (root / "index.html").resolve()
+    try:
+        full.relative_to(root)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Published app path outside dist")
+    if full.is_dir():
+        full = full / "index.html"
+    if not full.exists():
+        full = root / "index.html"
+    return FileResponse(full)
 
 
 @app.websocket("/ws/projects/{project_id}/progress")

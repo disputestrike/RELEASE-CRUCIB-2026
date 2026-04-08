@@ -37,7 +37,7 @@ For heavier browser validation, use:
 python scripts\run-repeatability-benchmark.py --run-browser-preview
 ```
 
-## Current 25-prompt suite
+## Current 50-prompt suite
 
 The suite is stored in:
 
@@ -72,7 +72,6 @@ The current hard gate is:
 
 ## Expansion path
 
-The next iteration should grow the suite from 25 to 50 prompts. Once the suite
-is stable, add a scheduled live run that samples prompts against Railway and
-stores production results in a separate proof folder so release gates do not
-depend on live LLM/provider availability.
+The next iteration should add a scheduled live run that samples prompts against
+Railway and stores production results in a separate proof folder so release gates
+do not depend on live LLM/provider availability.

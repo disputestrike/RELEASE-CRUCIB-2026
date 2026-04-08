@@ -15,14 +15,14 @@ ROOT = Path(__file__).resolve().parents[2]
 SUITE = ROOT / "benchmarks" / "repeatability_prompts_v1.json"
 
 
-def test_repeatability_prompt_suite_has_first_twenty_five_categories():
+def test_repeatability_prompt_suite_has_first_fifty_categories():
     suite = load_prompt_suite(SUITE)
     cases = parse_cases(suite)
 
     assert suite["version"] == BENCHMARK_VERSION
-    assert len(cases) == 25
-    assert len({case.id for case in cases}) == 25
-    assert {"saas", "marketplace", "automation", "byoc", "marketing", "healthcare", "finance"}.issubset(
+    assert len(cases) == 50
+    assert len({case.id for case in cases}) == 50
+    assert {"saas", "marketplace", "automation", "byoc", "marketing", "healthcare", "finance", "legal", "civic"}.issubset(
         {case.category for case in cases}
     )
     assert all(case.goal and case.required_terms for case in cases)
@@ -40,8 +40,8 @@ async def test_repeatability_benchmark_writes_passing_scorecard(tmp_path, monkey
     )
 
     assert summary["benchmark_version"] == BENCHMARK_VERSION
-    assert summary["prompt_count"] == 25
-    assert summary["passed_count"] == 25
+    assert summary["prompt_count"] == 50
+    assert summary["passed_count"] == 50
     assert summary["pass_rate"] == 1.0
     assert summary["average_score"] >= 90.0
     assert summary["passed"] is True

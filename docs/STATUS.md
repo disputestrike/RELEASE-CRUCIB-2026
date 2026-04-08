@@ -38,7 +38,7 @@ Latest completed golden-path proof:
 
 Latest active 10/10 scoring work:
 
-- `benchmarks/repeatability_prompts_v1.json` defines the first 25-prompt repeatability suite.
+- `benchmarks/repeatability_prompts_v1.json` defines the first 50-prompt repeatability suite.
 - `scripts/run-repeatability-benchmark.py` produces a deterministic scorecard under `proof/benchmarks/repeatability_v1/`.
 - `scripts/release-gate.ps1` runs the repeatability tests and scorecard in backend-only mode.
 
@@ -239,7 +239,7 @@ Phase 3: Backend Router Extraction
 
 Planned tasks:
 
-- Expand repeatability benchmark from 25 prompts to 50 while tracking live vs deterministic proof separately.
+- Add scheduled/sampled live Railway repeatability proof while keeping deterministic benchmark gating local and stable.
 - Extract coherent route modules from `backend/server.py` without changing public API behavior.
 - Keep Phase 2 terminal sandbox debt visible and decide launch policy before public exposure.
 - Preserve the release-gate and proof artifacts as the regression bar while extracting routers.

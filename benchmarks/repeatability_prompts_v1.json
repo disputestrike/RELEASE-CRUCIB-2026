@@ -1,6 +1,6 @@
 {
   "version": "2026-04-08.repeatability.v1",
-  "description": "Golden repeatability suite for CrucibAI prompt-to-app builds. These prompts cover the first twenty-five app categories we need to win before expanding to 50.",
+  "description": "Golden repeatability suite for CrucibAI prompt-to-app builds. These prompts cover the first fifty app categories we need to win.",
   "cases": [
     {
       "id": "saas_dashboard",
@@ -201,6 +201,206 @@
       "goal": "Build a mobile companion sketch with responsive pages, login notes, dashboard routing, team preview, and deployment caveats.",
       "build_target": "vite_react",
       "required_terms": ["mobile", "responsive", "login", "preview", "deployment"]
+    },
+    {
+      "id": "legal_case_tracker",
+      "category": "legal",
+      "title": "Legal case tracker",
+      "goal": "Build a legal case tracker with matter dashboard, client notes, privacy reminders, team review flow, and compliance proof.",
+      "build_target": "vite_react",
+      "required_terms": ["legal", "case", "client", "privacy", "compliance"]
+    },
+    {
+      "id": "fitness_coach",
+      "category": "fitness",
+      "title": "Fitness coaching app",
+      "goal": "Build a fitness coaching app with workout plans, member login, progress dashboard, saved coach notes, and publish readiness.",
+      "build_target": "vite_react",
+      "required_terms": ["fitness", "workout", "member", "progress", "publish"]
+    },
+    {
+      "id": "travel_planner",
+      "category": "travel",
+      "title": "Travel planner",
+      "goal": "Build a travel planner with itinerary dashboard, saved trip notes, team sharing, routing, and export-ready files.",
+      "build_target": "vite_react",
+      "required_terms": ["travel", "itinerary", "trip", "sharing", "export"]
+    },
+    {
+      "id": "creator_membership",
+      "category": "creator",
+      "title": "Creator membership portal",
+      "goal": "Build a creator membership portal with content dashboard, member login, mocked payments, team notes, and deployment readiness.",
+      "build_target": "vite_react",
+      "required_terms": ["creator", "membership", "content", "payments", "deployment"]
+    },
+    {
+      "id": "newsletter_cms",
+      "category": "media",
+      "title": "Newsletter CMS",
+      "goal": "Build a newsletter CMS with draft dashboard, subscriber notes, editor team page, routing, and proof artifacts.",
+      "build_target": "vite_react",
+      "required_terms": ["newsletter", "draft", "subscriber", "editor", "proof"]
+    },
+    {
+      "id": "job_board",
+      "category": "recruiting",
+      "title": "Job board",
+      "goal": "Build a job board with listing browsing, applicant notes, employer dashboard, login, and publish readiness.",
+      "build_target": "vite_react",
+      "required_terms": ["job", "listing", "applicant", "employer", "publish"]
+    },
+    {
+      "id": "property_management",
+      "category": "property",
+      "title": "Property management",
+      "goal": "Build a property management tool with tenant notes, maintenance dashboard, team routing, mocked auth, and deploy-ready files.",
+      "build_target": "vite_react",
+      "required_terms": ["property", "tenant", "maintenance", "auth", "deploy"]
+    },
+    {
+      "id": "podcast_site",
+      "category": "media",
+      "title": "Podcast site",
+      "goal": "Build a podcast site with episode sections, host notes, preview-safe routing, launch copy, and export readiness.",
+      "build_target": "static_site",
+      "required_terms": ["podcast", "episode", "host", "launch", "export"]
+    },
+    {
+      "id": "survey_builder",
+      "category": "research",
+      "title": "Survey builder",
+      "goal": "Build a survey builder with question dashboard, response notes, team review page, routing, and deployment proof.",
+      "build_target": "vite_react",
+      "required_terms": ["survey", "question", "response", "review", "proof"]
+    },
+    {
+      "id": "knowledge_base",
+      "category": "knowledge",
+      "title": "Knowledge base",
+      "goal": "Build a knowledge base with article browsing, editor login, team notes, search placeholder, and deployment readiness.",
+      "build_target": "vite_react",
+      "required_terms": ["knowledge", "article", "editor", "search", "deployment"]
+    },
+    {
+      "id": "event_ticketing",
+      "category": "ticketing",
+      "title": "Event ticketing",
+      "goal": "Build an event ticketing app with ticket dashboard, attendee notes, checkout placeholder, organizer team page, and publish proof.",
+      "build_target": "vite_react",
+      "required_terms": ["event", "ticket", "attendee", "checkout", "proof"]
+    },
+    {
+      "id": "micro_saas_waitlist",
+      "category": "saas",
+      "title": "Micro-SaaS waitlist",
+      "goal": "Build a micro-SaaS waitlist app with launch page, signup notes, admin dashboard, routing, and export-ready files.",
+      "build_target": "static_site",
+      "required_terms": ["saas", "waitlist", "signup", "dashboard", "export"]
+    },
+    {
+      "id": "dao_governance",
+      "category": "web3",
+      "title": "DAO governance dashboard",
+      "goal": "Build a DAO governance dashboard with proposal notes, member login, voting placeholder, team review, and deployment caveats.",
+      "build_target": "vite_react",
+      "required_terms": ["dao", "proposal", "member", "voting", "deployment"]
+    },
+    {
+      "id": "iot_monitoring",
+      "category": "iot",
+      "title": "IoT monitoring dashboard",
+      "goal": "Build an IoT monitoring dashboard with device status, alert notes, team page, routing, and proof artifacts.",
+      "build_target": "vite_react",
+      "required_terms": ["iot", "device", "alert", "status", "proof"]
+    },
+    {
+      "id": "fleet_management",
+      "category": "logistics",
+      "title": "Fleet management",
+      "goal": "Build a fleet management tool with vehicle dashboard, route notes, operator login, team page, and deploy readiness.",
+      "build_target": "vite_react",
+      "required_terms": ["fleet", "vehicle", "route", "operator", "deploy"]
+    },
+    {
+      "id": "church_community",
+      "category": "community",
+      "title": "Church community hub",
+      "goal": "Build a church community hub with event notes, member dashboard, volunteer team page, routing, and publish readiness.",
+      "build_target": "vite_react",
+      "required_terms": ["church", "community", "volunteer", "member", "publish"]
+    },
+    {
+      "id": "artist_store",
+      "category": "commerce",
+      "title": "Artist store",
+      "goal": "Build an artist store with artwork browsing, cart placeholder, creator notes, dashboard, and deployment proof.",
+      "build_target": "vite_react",
+      "required_terms": ["artist", "artwork", "cart", "creator", "proof"]
+    },
+    {
+      "id": "subscription_box",
+      "category": "commerce",
+      "title": "Subscription box site",
+      "goal": "Build a subscription box site with plan cards, member notes, checkout placeholder, team dashboard, and export-ready files.",
+      "build_target": "vite_react",
+      "required_terms": ["subscription", "box", "checkout", "dashboard", "export"]
+    },
+    {
+      "id": "restaurant_reservations",
+      "category": "food",
+      "title": "Restaurant reservations",
+      "goal": "Build a restaurant reservations app with table notes, guest login, schedule dashboard, team page, and publish readiness.",
+      "build_target": "vite_react",
+      "required_terms": ["restaurant", "reservations", "guest", "schedule", "publish"]
+    },
+    {
+      "id": "construction_project",
+      "category": "construction",
+      "title": "Construction project tracker",
+      "goal": "Build a construction project tracker with site dashboard, task notes, crew team page, safety reminders, and deployment proof.",
+      "build_target": "vite_react",
+      "required_terms": ["construction", "site", "crew", "safety", "proof"]
+    },
+    {
+      "id": "insurance_claims",
+      "category": "insurance",
+      "title": "Insurance claims portal",
+      "goal": "Build an insurance claims portal with claim notes, adjuster dashboard, customer login, privacy reminders, and deploy-ready artifacts.",
+      "build_target": "vite_react",
+      "required_terms": ["insurance", "claim", "adjuster", "privacy", "deploy"]
+    },
+    {
+      "id": "music_lessons",
+      "category": "education",
+      "title": "Music lessons booking",
+      "goal": "Build a music lessons booking app with lesson notes, student login, teacher dashboard, routing, and publish readiness.",
+      "build_target": "vite_react",
+      "required_terms": ["music", "lesson", "student", "teacher", "publish"]
+    },
+    {
+      "id": "farm_operations",
+      "category": "agriculture",
+      "title": "Farm operations",
+      "goal": "Build a farm operations dashboard with crop notes, equipment status, team page, routing, and deployment readiness.",
+      "build_target": "vite_react",
+      "required_terms": ["farm", "crop", "equipment", "status", "deployment"]
+    },
+    {
+      "id": "government_services",
+      "category": "civic",
+      "title": "Government services portal",
+      "goal": "Build a government services portal with citizen notes, service dashboard, staff team page, accessibility reminders, and proof artifacts.",
+      "build_target": "vite_react",
+      "required_terms": ["government", "citizen", "service", "accessibility", "proof"]
+    },
+    {
+      "id": "ai_agent_console",
+      "category": "automation",
+      "title": "AI agent console",
+      "goal": "Build an AI agent console with run_agent workflow notes, execution dashboard, operator login, proof panel, and deploy readiness.",
+      "build_target": "agent_workflow",
+      "required_terms": ["agent", "run_agent", "workflow", "operator", "proof"]
     }
   ]
 }

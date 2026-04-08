@@ -4,6 +4,18 @@ import PublicFooter from '../components/PublicFooter';
 
 const ENTRIES = [
   {
+    version: '2.5',
+    date: 'April 8, 2026',
+    tag: 'Proof',
+    tagColor: '#10b981',
+    items: [
+      'Live Railway golden path completed 18/18 steps with LLM, preview, proof, deploy build, deploy publish readiness, and no background crash',
+      '50-prompt repeatability benchmark added to the backend release gate',
+      'Generated apps can now publish to an in-platform public URL at /published/{job_id}/',
+      'Benchmark, status, and security trust pages updated to reflect proof-backed release discipline',
+    ],
+  },
+  {
     version: '2.4',
     date: 'March 17, 2026',
     tag: 'Major',

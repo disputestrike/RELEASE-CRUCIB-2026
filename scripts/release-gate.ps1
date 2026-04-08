@@ -41,6 +41,7 @@ try {
         backend\modules_blueprint.py `
         backend\terminal_integration.py `
         backend\provider_readiness.py `
+        backend\orchestration\publish_urls.py `
         backend\agents\frontend_agent.py `
         backend\proof\build_contract.py `
         backend\proof\proof_service.py

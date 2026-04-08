@@ -16,5 +16,5 @@ Optional route count: 13
 | backend/server.py | 8243 | POST | `/orchestrator/estimate` | safe as optional | safe as optional: advisory estimate, no persisted tenant data |
 | backend/server.py | 8639 | GET | `/orchestrator/build-jobs` | safe as optional | safe as optional: anonymous returns empty; authenticated lists own jobs |
 | backend/server.py | 8837 | GET | `/trust/platform-capabilities` | safe as optional | safe as optional: public capability/status metadata |
-| backend/server.py | 9182 | POST | `/vibecoding/detect-frameworks` | safe as optional | must require project ownership when project_id is supplied; code enforces auth and user_id lookup |
-| backend/server.py | 9535 | GET | `/skills/marketplace` | safe as optional | safe as optional: public marketplace listing plus own user skills when authenticated |
+| backend/server.py | 9257 | POST | `/vibecoding/detect-frameworks` | safe as optional | must require project ownership when project_id is supplied; code enforces auth and user_id lookup |
+| backend/server.py | 9610 | GET | `/skills/marketplace` | safe as optional | safe as optional: public marketplace listing plus own user skills when authenticated |

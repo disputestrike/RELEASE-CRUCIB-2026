@@ -10,8 +10,8 @@ export default function Security() {
         <p className="text-sm text-[#666666] mb-6">How we keep the platform and your code safe.</p>
 
         <div className="p-6 rounded-xl border border-indigo-200 bg-indigo-50 mb-10">
-          <p className="text-indigo-900 font-medium">We run CrucibAI on CrucibAI.</p>
-          <p className="text-[#666666] text-sm mt-2">Every feature we ship is built and tested with the same 120-agent swarm our customers use. 188 tests passing. Security-first. GDPR & CCPA compliant.</p>
+          <p className="text-indigo-900 font-medium">We prove builds before we call them ready.</p>
+          <p className="text-[#666666] text-sm mt-2">The current release gate includes tenant-isolation checks, late-stage pipeline crash tests, provider readiness tests, automation bridge tests, and a 50-prompt repeatability benchmark.</p>
         </div>
 
         <div className="space-y-6 text-[#1A1A1A] leading-relaxed">
@@ -24,6 +24,8 @@ export default function Security() {
             <li><strong className="text-[#1A1A1A]">Rate limiting:</strong> Requests are rate-limited per user and IP to prevent abuse.</li>
             <li><strong className="text-[#1A1A1A]">Security headers:</strong> We send headers such as X-Content-Type-Options, X-Frame-Options, HSTS, Content-Security-Policy, and Referrer-Policy to reduce XSS and related risks.</li>
             <li><strong className="text-[#1A1A1A]">HTTPS:</strong> Use HTTPS in production; we send Strict-Transport-Security so browsers enforce TLS.</li>
+            <li><strong className="text-[#1A1A1A]">Database:</strong> PostgreSQL is the primary system of record; MongoDB references are treated as documentation drift.</li>
+            <li><strong className="text-[#1A1A1A]">Terminal:</strong> Terminal access is project-scoped and launch-gated. Broad public terminal exposure remains blocked until sandbox boundaries are complete.</li>
             <li><strong className="text-[#1A1A1A]">Payments:</strong> We use Stripe for payments. Card data is handled by Stripe; we do not store full card numbers.</li>
           </ul>
 
@@ -35,6 +37,9 @@ export default function Security() {
             <li><strong className="text-[#1A1A1A]">Validate-and-fix:</strong> Use <strong className="text-[#1A1A1A]">Validate-and-fix</strong> to catch syntax and common errors and get suggested fixes.</li>
           </ul>
           <p className="text-[#333] text-sm">We do not scan or modify your code without you triggering these actions. You own your code and data.</p>
+
+          <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">Public generated apps</h2>
+          <p>Completed generated apps can be served from a public CrucibAI URL at <code>/published/&lbrace;job_id&rbrace;/</code> once build proof has produced a previewable bundle. External provider adapters remain separate deploy work.</p>
 
           <h2 className="text-xl font-semibold text-[#1A1A1A] mt-8 mb-3">Fraud and abuse prevention</h2>
           <p>We block disposable email addresses at signup and cap referral rewards to reduce abuse. Credits are enforced so usage is tied to your account and plan.</p>

@@ -458,6 +458,7 @@ def main() -> int:
     _, final_events = client.request("GET", f"/api/jobs/{job_id}/events", token=token, label="final_events")
     _, final_proof = client.request("GET", f"/api/jobs/{job_id}/proof", token=token, label="final_proof")
     _, final_files = client.request("GET", f"/api/jobs/{job_id}/workspace/files", token=token, label="final_workspace_files")
+    status, published_app = client.request("GET", f"/published/{job_id}/", label="final_published_app")
 
     current_steps = step_map(final_steps)
     for requirement, step_key in KEY_STEPS.items():
@@ -491,6 +492,10 @@ def main() -> int:
         "status": "PASS" if files_count > 0 else "FAIL",
         "evidence": f"workspace_file_count={files_count}",
     }
+    matrix["published_generated_app_url"] = {
+        "status": "PASS" if status == 200 else "FAIL",
+        "evidence": f"GET /published/{job_id}/ -> {status}",
+    }
 
     all_required = [
         "railway_health",
@@ -506,6 +511,7 @@ def main() -> int:
         "background_runner_stability",
         "proof_artifacts_available",
         "generated_workspace_files",
+        "published_generated_app_url",
     ]
     failed = [key for key in all_required if matrix.get(key, {}).get("status") != "PASS"]
     if failed:
