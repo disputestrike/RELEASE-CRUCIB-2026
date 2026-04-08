@@ -78,35 +78,75 @@ async def run_job_to_completion(job_id: str,
     Main auto-runner loop.
     mode=auto: runs until done without asking user.
     mode=guided: pauses before risky actions (future: emit guided_approval_needed event).
+    
+    CRITICAL: This function MUST return a terminal state (SUCCESS, FAILED, or CANCELED).
+    Never returns undefined state or background_crash.
     """
-    job = await get_job(job_id)
-    if not job:
-        return {"success": False, "error": "Job not found"}
+    try:
+        job = await get_job(job_id)
+        if not job:
+            error_result = {"success": False, "error": "Job not found", "status": "failed", "reason": "job_not_found"}
+            await _finalize_job_with_failure(job_id, "job_not_found", "Job not found")
+            return error_result
 
-    if job["status"] in ("completed", "failed", "cancelled"):
-        return {"success": job["status"] == "completed",
-                "status": job["status"]}
+        if job["status"] in ("completed", "failed", "cancelled"):
+            return {"success": job["status"] == "completed",
+                    "status": job["status"]}
 
-    if db_pool:
-        proof_service.set_pool(db_pool)
+        if db_pool:
+            proof_service.set_pool(db_pool)
 
-    await update_job_state(job_id, "running")
-    await publish(job_id, "job_started",
-                  {"job_id": job_id, "mode": job.get("mode"), "goal": job.get("goal", "")})
-    await append_job_event(job_id, "job_started",
-                           {"mode": job.get("mode"), "goal": job.get("goal", "")})
+        await update_job_state(job_id, "running")
+        await publish(job_id, "job_started",
+                      {"job_id": job_id, "mode": job.get("mode"), "goal": job.get("goal", "")})
+        await append_job_event(job_id, "job_started",
+                               {"mode": job.get("mode"), "goal": job.get("goal", "")})
 
-    from .execution_authority import attach_elite_context_to_job, elite_job_metadata
+        from .execution_authority import attach_elite_context_to_job, elite_job_metadata
 
-    attach_elite_context_to_job(job, workspace_path or "")
-    await append_job_event(
-        job_id,
-        "execution_authority",
-        {"kind": "execution_authority.json", **elite_job_metadata(job)},
-    )
+        attach_elite_context_to_job(job, workspace_path or "")
+        await append_job_event(
+            job_id,
+            "execution_authority",
+            {"kind": "execution_authority.json", **elite_job_metadata(job)},
+        )
 
-    total_retries = 0
+        total_retries = 0
 
+        # MAIN EXECUTION LOOP (wrapped with exception handler below)
+        result = await _execute_job_loop(job_id, workspace_path, db_pool, total_retries)
+        return result
+    
+    except asyncio.TimeoutError:
+        # Explicit timeout (not background_crash)
+        error_msg = "Job execution exceeded 30 minute timeout"
+        await _finalize_job_with_failure(job_id, "execution_timeout", error_msg)
+        return {"success": False, "status": "failed", "reason": "execution_timeout", "details": error_msg}
+    
+    except asyncio.CancelledError:
+        # Job was canceled (not background_crash)
+        await update_job_state(job_id, "cancelled")
+        await publish(job_id, "job_cancelled", {"reason": "User canceled"})
+        return {"success": False, "status": "cancelled", "reason": "user_canceled"}
+    
+    except Exception as e:
+        # CATCH-ALL: Prevents background_crash (every exception captured)
+        import traceback
+        error_msg = f"{type(e).__name__}: {str(e)}"
+        logger.error("auto_runner: UNHANDLED EXCEPTION in job %s: %s", job_id, error_msg, exc_info=True)
+        await _finalize_job_with_failure(job_id, "orchestrator_error", error_msg)
+        return {"success": False, "status": "failed", "reason": "orchestrator_error", "details": error_msg, "traceback": traceback.format_exc()}
+    
+    finally:
+        # ALWAYS finalize job state
+        try:
+            await _ensure_job_finalized(job_id)
+        except Exception as e:
+            logger.error("auto_runner: Error finalizing job %s: %s", job_id, e)
+
+
+async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_retries: int) -> Dict[str, Any]:
+    """Inner execution loop (wrapped by exception handlers in run_job_to_completion)."""
     while True:
         # Check cancellation
         job = await get_job(job_id)
@@ -526,3 +566,43 @@ async def resume_job(job_id: str, workspace_path: str = "",
     logger.info("auto_runner: resuming job %s from checkpoint", job_id)
     await publish(job_id, "job_resumed", {"job_id": job_id})
     return await run_job_to_completion(job_id, workspace_path, db_pool)
+
+
+# ============================================================================
+# FIX #1: DETERMINISTIC JOB LIFECYCLE HANDLERS
+# Prevents background_crash by ensuring explicit terminal states
+# ============================================================================
+
+async def _finalize_job_with_failure(job_id: str, reason: str, details: str) -> None:
+    """Finalize job with explicit failure reason (never background_crash)."""
+    try:
+        await update_job_state(job_id, "failed", {
+            "current_phase": reason,
+            "failure_reason": reason,
+            "failure_details": details,
+        })
+        await publish(job_id, "job_failed", {
+            "reason": reason,
+            "details": details,
+        })
+        await append_job_event(job_id, "job_failed", {
+            "reason": reason,
+            "details": details,
+        })
+    except Exception as e:
+        logger.error("auto_runner: Error finalizing job %s with failure: %s", job_id, e)
+
+
+async def _ensure_job_finalized(job_id: str) -> None:
+    """Ensure job has a terminal state (SUCCESS, FAILED, or CANCELED)."""
+    try:
+        job = await get_job(job_id)
+        if not job:
+            return
+        
+        # If job is still in "running" state, mark as failed
+        if job.get("status") == "running":
+            logger.warning("auto_runner: Job %s still in running state at finalization — marking as failed", job_id)
+            await _finalize_job_with_failure(job_id, "incomplete_at_finalization", "Job reached finalization without terminal state")
+    except Exception as e:
+        logger.error("auto_runner: Error ensuring job finalized: %s", e)
