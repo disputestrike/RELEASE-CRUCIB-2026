@@ -30,9 +30,13 @@ async def test_generate_plan_uses_agent_swarm_for_multistack_prompt():
 
     assert plan["orchestration_mode"] == "agent_swarm"
     assert uses_agent_swarm(FULL_SYSTEM_PROMPT, plan["stack_contract"]) is True
+    assert plan["selected_agent_count"] > 0
+    assert plan["selected_agent_count"] < len(AGENT_DAG)
     flat_keys = [step["key"] for phase in plan["phases"] for step in phase["steps"]]
     assert swarm_step_key("Frontend Generation") in flat_keys
     assert swarm_step_key("Backend Generation") in flat_keys
+    assert swarm_step_key("Message Queue Advanced Agent") in flat_keys
+    assert swarm_step_key("Kubernetes Advanced Agent") in flat_keys
     assert "frontend.scaffold" not in flat_keys
 
 
@@ -41,9 +45,11 @@ async def test_generate_plan_uses_agent_swarm_for_helios_prompt():
     plan = await generate_plan(HELIOS_PROMPT)
 
     assert plan["orchestration_mode"] == "agent_swarm"
+    assert plan["selected_agent_count"] > 0
+    assert plan["selected_agent_count"] < len(AGENT_DAG)
     flat_keys = [step["key"] for phase in plan["phases"] for step in phase["steps"]]
     assert swarm_step_key("Planner") in flat_keys
-    assert swarm_step_key("Design Agent") in flat_keys
+    assert swarm_step_key("Approval Flow Agent") in flat_keys
     assert swarm_step_key("Queue Agent") in flat_keys
 
 

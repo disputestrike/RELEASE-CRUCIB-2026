@@ -19,6 +19,7 @@ from .trust.node_manifest import enrich_plan_with_node_manifests
 from .multiregion_terraform_sketch import multiregion_terraform_intent
 from .observability_workspace_pack import observability_intent as observability_goal_intent
 from .generation_contract import parse_generation_contract
+from .agent_selection_logic import select_agents_for_goal
 from .spec_guardian import evaluate_goal_against_runner, merge_plan_risk_flags_into_report
 from .swarm_agent_runner import build_agent_swarm_phases, uses_agent_swarm
 
@@ -215,9 +216,10 @@ def _architecture_outline(build_kind: str, integrations: list,
 # ── Phase builders ────────────────────────────────────────────────────────────
 
 def _build_phases(goal: str, build_kind: str, integrations: list,
-                  stack_contract: Optional[Dict[str, Any]] = None) -> list:
+                  stack_contract: Optional[Dict[str, Any]] = None,
+                  selected_agents: Optional[list] = None) -> list:
     if uses_agent_swarm(goal, stack_contract):
-        phases = build_agent_swarm_phases()
+        phases = build_agent_swarm_phases(goal, stack_contract, selected_agents=selected_agents)
         phases.append(
             {
                 "key": "implementation",
@@ -424,7 +426,12 @@ async def generate_plan(goal: str,
     build_kind = _detect_build_kind(goal)
     integrations = _detect_integrations(goal)
     risk_flags = _detect_risk_flags(goal, project_state, stack_contract)
-    phases = _build_phases(goal, build_kind, integrations, stack_contract)
+    selected_agents = (
+        select_agents_for_goal(goal, stack_contract)
+        if uses_agent_swarm(goal, stack_contract)
+        else []
+    )
+    phases = _build_phases(goal, build_kind, integrations, stack_contract, selected_agents)
 
     # Count total steps
     total_steps = sum(len(p["steps"]) for p in phases)
@@ -533,6 +540,8 @@ async def generate_plan(goal: str,
         "generation_mode": "full_system_builder" if stack_contract.get("requires_full_system_builder") else "targeted_pack",
         "recommended_build_target": recommended_target,
         "orchestration_mode": "agent_swarm" if uses_agent_swarm(goal, stack_contract) else "fixed_autorunner",
+        "selected_agents": selected_agents,
+        "selected_agent_count": len(selected_agents),
     }
 
     return enrich_plan_with_node_manifests(plan)

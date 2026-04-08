@@ -14,6 +14,7 @@ from typing import Any, Dict, List
 from agent_dag import AGENT_DAG, get_execution_phases
 from agent_resilience import get_criticality
 
+from .agent_selection_logic import build_full_phases_from_dag, select_agents_for_goal
 from .runtime_state import get_steps, load_checkpoint
 
 
@@ -66,9 +67,28 @@ def uses_agent_swarm(goal: str, stack_contract: Dict[str, Any] | None = None) ->
     return hit_count >= 4
 
 
-def build_agent_swarm_phases() -> List[Dict[str, Any]]:
+def build_agent_swarm_phases(
+    goal: str = "",
+    stack_contract: Dict[str, Any] | None = None,
+    selected_agents: List[str] | None = None,
+) -> List[Dict[str, Any]]:
     phases: List[Dict[str, Any]] = []
-    for idx, agent_names in enumerate(get_execution_phases(AGENT_DAG), start=1):
+    chosen_agents = selected_agents
+    if chosen_agents is None:
+        chosen_agents = (
+            select_agents_for_goal(goal, stack_contract)
+            if goal
+            else list(AGENT_DAG.keys())
+        )
+
+    filtered = {name: AGENT_DAG[name] for name in chosen_agents if name in AGENT_DAG}
+    phase_groups = (
+        build_full_phases_from_dag(list(filtered.keys()), AGENT_DAG)
+        if filtered
+        else get_execution_phases(AGENT_DAG)
+    )
+
+    for idx, agent_names in enumerate(phase_groups, start=1):
         steps = []
         for agent_name in agent_names:
             deps = [

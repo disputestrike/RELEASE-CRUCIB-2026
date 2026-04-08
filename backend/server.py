@@ -5761,29 +5761,32 @@ async def get_project_phases(project_id: str, user: dict = Depends(get_current_u
 
 # ==================== ORCHESTRATION ====================
 
-# All 20 agents – orchestration runs each with real LLM when keys are set
+# Legacy orchestration views derive from the source-of-truth DAG so they stay
+# in sync with the swarm runtime instead of drifting behind it.
+def _token_budget_for_orchestration_agent(agent_name: str, system_msg: str) -> int:
+    explicit = {
+        "Frontend Generation": 150000,
+        "Backend Generation": 120000,
+        "Database Agent": 80000,
+        "Test Generation": 100000,
+        "Deployment Agent": 60000,
+    }
+    if agent_name in explicit:
+        return explicit[agent_name]
+    if agent_name.endswith("Tool Agent"):
+        return 70000
+    prompt_len = len(system_msg or "")
+    return max(25000, min(110000, 22000 + prompt_len * 18))
+
+
 _ORCHESTRATION_AGENTS = [
-    ("Planner", 50000, "You are a Planner. Decompose the request into 3-7 executable tasks. Numbered list only."),
-    ("Requirements Clarifier", 30000, "You are a Requirements Clarifier. Ask 2-4 clarifying questions. One per line."),
-    ("Stack Selector", 20000, "You are a Stack Selector. Recommend tech stack (frontend, backend, DB). Short bullets."),
-    ("Frontend Generation", 150000, "You are Frontend Generation. Output only complete React/JSX code. No markdown."),
-    ("Backend Generation", 120000, "You are Backend Generation. Output only backend code (e.g. FastAPI/Express). No markdown."),
-    ("Database Agent", 80000, "You are a Database Agent. Output schema and migration steps. Plain text or SQL."),
-    ("API Integration", 60000, "You are API Integration. Output only code that calls an API. No markdown."),
-    ("Test Generation", 100000, "You are Test Generation. Output only test code. No markdown."),
-    ("Image Generation", 40000, "You are Image Generation. Output a detailed image prompt (style, composition, colors) for the request."),
-    ("Security Checker", 40000, "You are a Security Checker. List 3-5 security checklist items with PASS/FAIL."),
-    ("Test Executor", 50000, "You are a Test Executor. Give the test command and one line of what to check."),
-    ("UX Auditor", 35000, "You are a UX Auditor. List 2-4 accessibility/UX checklist items with PASS/FAIL."),
-    ("Performance Analyzer", 40000, "You are a Performance Analyzer. List 2-4 performance tips for the project."),
-    ("Deployment Agent", 60000, "You are a Deployment Agent. Give step-by-step deploy instructions."),
-    ("Error Recovery", 45000, "You are Error Recovery. List 2-3 common failure points and how to recover."),
-    ("Memory Agent", 25000, "You are a Memory Agent. Summarize the project in 2-3 lines for reuse."),
-    ("PDF Export", 30000, "You are PDF Export. Describe what a one-page project summary PDF would include."),
-    ("Excel Export", 25000, "You are Excel Export. Suggest 3-5 columns for a project tracking spreadsheet."),
-    ("Markdown Export", 20000, "You are Markdown Export. Output a short project summary in Markdown (headings, bullets)."),
-    ("Scraping Agent", 35000, "You are a Scraping Agent. Suggest 2-3 data sources or URLs to scrape for this project."),
-    ("Automation Agent", 30000, "You are an Automation Agent. Suggest 2-3 automated tasks or cron jobs for this project."),
+    (
+        agent_name,
+        _token_budget_for_orchestration_agent(agent_name, get_system_prompt_for_agent(agent_name)),
+        get_system_prompt_for_agent(agent_name),
+    )
+    for phase in get_execution_phases(AGENT_DAG)
+    for agent_name in phase
 ]
 
 async def run_orchestration(project_id: str, user_id: str):
