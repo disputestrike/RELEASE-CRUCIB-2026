@@ -33,6 +33,35 @@ def skip_browser_preview_env() -> bool:
     )
 
 
+def playwright_chromium_status() -> Dict[str, Any]:
+    """Check whether the Playwright package and Chromium browser binary are available."""
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        return {
+            "package_available": False,
+            "chromium_available": False,
+            "executable_path": "",
+            "error": "playwright package not installed",
+        }
+    try:
+        with sync_playwright() as p:
+            exe = p.chromium.executable_path
+            return {
+                "package_available": True,
+                "chromium_available": bool(exe and os.path.exists(exe)),
+                "executable_path": exe or "",
+                "error": "" if exe and os.path.exists(exe) else "chromium browser binary missing",
+            }
+    except Exception as exc:
+        return {
+            "package_available": True,
+            "chromium_available": False,
+            "executable_path": "",
+            "error": str(exc)[:300],
+        }
+
+
 def _proof(
     kind: str,
     title: str,

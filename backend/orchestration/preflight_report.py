@@ -6,9 +6,10 @@ from __future__ import annotations
 
 import os
 import shutil
+import asyncio
 from typing import Any, Dict, List
 
-from .browser_preview_verify import skip_browser_preview_env
+from .browser_preview_verify import playwright_chromium_status, skip_browser_preview_env
 from .runtime_health import (
     collect_runtime_health_sync,
     extended_autorunner_preflight_issues,
@@ -109,19 +110,27 @@ async def build_preflight_report() -> Dict[str, Any]:
         "recommended_fix": _recommended_fix("docker", docker_ok),
     })
 
-    playwright_pkg = False
-    try:
-        import playwright  # noqa: F401
-        playwright_pkg = True
-    except ImportError:
-        pass
+    pw_status = await asyncio.to_thread(playwright_chromium_status)
+    playwright_pkg = bool(pw_status.get("package_available"))
+    playwright_chromium = bool(pw_status.get("chromium_available"))
     pw_ok = playwright_pkg or skip_browser_preview_env()
+    chromium_ok = playwright_chromium or skip_browser_preview_env()
     checks.append({
         "id": "playwright_python",
         "ok": pw_ok,
         "browser_preview_skipped": skip_browser_preview_env(),
         "recommended_fix": _recommended_fix("playwright_python", pw_ok),
     })
+    checks.append({
+        "id": "playwright_chromium",
+        "ok": chromium_ok,
+        "browser_preview_skipped": skip_browser_preview_env(),
+        "executable_path": (pw_status.get("executable_path") or "")[:300],
+        "error": (pw_status.get("error") or "")[:300],
+        "recommended_fix": _recommended_fix("playwright_python", chromium_ok),
+    })
+    if not chromium_ok:
+        issues.append("Playwright Chromium not available. Run: python -m playwright install chromium")
 
     db_ok = bool(os.environ.get("DATABASE_URL", "").strip())
     checks.append({

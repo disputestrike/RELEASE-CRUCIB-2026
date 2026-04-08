@@ -27,6 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
 # Single source of truth for Python deps (matches CI / local backend dev).
 COPY backend/requirements.txt ./requirements.txt
 RUN echo "Installing dependencies..." && pip install --no-cache-dir -r requirements.txt && echo "Dependencies installed successfully"
+RUN python -m playwright install --with-deps chromium
 
 COPY backend/ ./
 RUN echo "Backend files copied"

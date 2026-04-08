@@ -151,12 +151,18 @@ async def extended_autorunner_preflight_issues() -> List[str]:
     if os.environ.get("CRUCIBAI_REQUIRE_BROWSER_PREVIEW", "").strip().lower() in (
         "1", "true", "yes",
     ):
-        try:
-            import playwright  # noqa: F401
-        except ImportError:
+        from .browser_preview_verify import playwright_chromium_status
+
+        pw_status = await asyncio.to_thread(playwright_chromium_status)
+        if not pw_status.get("package_available"):
             issues.append(
                 "CRUCIBAI_REQUIRE_BROWSER_PREVIEW is set but the playwright package "
                 "is not installed (pip install playwright; python -m playwright install chromium).",
+            )
+        elif not pw_status.get("chromium_available"):
+            issues.append(
+                "CRUCIBAI_REQUIRE_BROWSER_PREVIEW is set but Playwright Chromium is not installed "
+                "(python -m playwright install chromium).",
             )
 
     if os.environ.get("CRUCIBAI_REQUIRE_DEV_SERVER", "").strip().lower() in (

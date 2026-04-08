@@ -239,3 +239,13 @@ def test_browser_preview_installs_dev_dependencies_for_vite():
 
     assert '"--include=dev"' in source
     assert '"install", "--include=dev", "--no-fund", "--no-audit"' in source
+
+
+def test_production_image_installs_playwright_chromium():
+    from pathlib import Path
+
+    dockerfile = Path("Dockerfile").read_text(encoding="utf-8")
+    preflight = Path("backend/orchestration/preflight_report.py").read_text(encoding="utf-8")
+
+    assert "python -m playwright install --with-deps chromium" in dockerfile
+    assert '"id": "playwright_chromium"' in preflight
