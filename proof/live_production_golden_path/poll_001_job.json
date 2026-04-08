@@ -1,0 +1,35 @@
+{
+  "finished_at": "2026-04-08T12:04:32.022214+00:00",
+  "label": "poll_001_job",
+  "method": "GET",
+  "ok": true,
+  "path": "/api/jobs/8c3273ef-297e-4953-80b2-78356036a34b",
+  "request_body": null,
+  "response": {
+    "job": {
+      "blocked_steps": null,
+      "completed_at": null,
+      "created_at": "2026-04-08T12:04:30.568857+00:00",
+      "current_phase": "frontend",
+      "error_details": null,
+      "error_message": null,
+      "failed_step_keys": null,
+      "failure_details": null,
+      "failure_reason": null,
+      "goal": "Build a tiny production proof app: a Vite React single page product dashboard with reusable components, localStorage state, clear empty/loading/error states, a FastAPI health endpoint sketch if backend output is supported, and deploy readiness proof. Keep dependencies minimal and produce previewable files.",
+      "id": "8c3273ef-297e-4953-80b2-78356036a34b",
+      "mode": "auto",
+      "non_completed": null,
+      "project_id": "ca0d32ff-433d-42d9-8f2a-2f9d6a92bf79",
+      "quality_score": 0,
+      "retry_count": 0,
+      "started_at": "2026-04-08T12:04:32.337634+00:00",
+      "status": "running",
+      "updated_at": "2026-04-08T12:04:32.337631+00:00",
+      "user_id": "ca0d32ff-433d-42d9-8f2a-2f9d6a92bf79"
+    },
+    "success": true
+  },
+  "started_at": "2026-04-08T12:04:31.662578+00:00",
+  "status_code": 200
+}

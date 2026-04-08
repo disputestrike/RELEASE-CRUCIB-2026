@@ -1,0 +1,1282 @@
+{
+  "finished_at": "2026-04-08T12:05:01.523614+00:00",
+  "label": "final_proof",
+  "method": "GET",
+  "ok": true,
+  "path": "/api/jobs/8c3273ef-297e-4953-80b2-78356036a34b/proof",
+  "request_body": null,
+  "response": {
+    "build_contract": {
+      "blockers": [],
+      "bundle_sha256": "d761793d4c98478268ad0a7d74ea1968babcf70b7e68ef7725e064eeab32a8b7",
+      "deploy_ready": true,
+      "evidence": {
+        "deploy": true,
+        "files": true,
+        "preview": false,
+        "tests": false,
+        "verification": true
+      },
+      "generated_at": "2026-04-08T12:05:01.840573+00:00",
+      "goal": "Build a tiny production proof app: a Vite React single page product dashboard with reusable components, localStorage state, clear empty/loading/error states, a FastAPI health endpoint sketch if backend output is supported, and deploy readiness proof. Keep dependencies minimal and produce previewable files.",
+      "golden_path": [
+        "goal",
+        "plan",
+        "approval",
+        "workspace",
+        "build",
+        "proof",
+        "preview",
+        "export_or_deploy",
+        "continue"
+      ],
+      "job_id": "8c3273ef-297e-4953-80b2-78356036a34b",
+      "mode": "auto",
+      "project_id": "ca0d32ff-433d-42d9-8f2a-2f9d6a92bf79",
+      "scores": {
+        "production_readiness": 97.0,
+        "quality": 77.0,
+        "trust": 69.79
+      },
+      "status": "completed",
+      "step_completion": {
+        "completed": 18,
+        "percent": 100.0,
+        "total": 18
+      },
+      "step_counts": {
+        "completed": 18
+      },
+      "user_id": "ca0d32ff-433d-42d9-8f2a-2f9d6a92bf79",
+      "version": "2026-04-08.v1"
+    },
+    "bundle": {
+      "database": [
+        {
+          "created_at": "2026-04-08 12:04:33.956988+00:00",
+          "id": "a4e31f36-cbf2-4a88-83f9-1d5a64fc9091",
+          "payload": {
+            "kind": "migration_or_seed",
+            "path": "db/migrations/001_schema.sql"
+          },
+          "proof_type": "db",
+          "title": "SQL artifact: db/migrations/001_schema.sql",
+          "type": "db"
+        },
+        {
+          "created_at": "2026-04-08 12:04:34.874248+00:00",
+          "id": "72475060-1a8f-4f88-86d3-c31847a4a8a9",
+          "payload": {
+            "kind": "migration_or_seed",
+            "path": "db/seeds/001_seed.sql"
+          },
+          "proof_type": "db",
+          "title": "SQL artifact: db/seeds/001_seed.sql",
+          "type": "db"
+        }
+      ],
+      "deploy": [
+        {
+          "created_at": "2026-04-08 12:04:41.659921+00:00",
+          "id": "10f961db-4fae-4bff-b5c1-660a057dfc9f",
+          "payload": {
+            "deploy_url": null,
+            "publish_mode": "readiness_only",
+            "verification_class": "presence"
+          },
+          "proof_type": "deploy",
+          "title": "Deploy publish recorded as readiness-only (no live URL configured)",
+          "type": "deploy"
+        }
+      ],
+      "files": [
+        {
+          "created_at": "2026-04-08 12:04:33.544604+00:00",
+          "id": "5d91e493-c990-4b19-9596-455d701797b6",
+          "payload": {
+            "exists": true,
+            "path": "package.json",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: package.json",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.560965+00:00",
+          "id": "dd987045-b799-4e04-9034-2d6375433918",
+          "payload": {
+            "exists": true,
+            "path": "index.html",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: index.html",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.569224+00:00",
+          "id": "97e24a63-196a-425e-a9f7-166088200510",
+          "payload": {
+            "exists": true,
+            "path": "vite.config.js",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: vite.config.js",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.585409+00:00",
+          "id": "6ab60678-52b2-4709-8fe7-88d702bfa921",
+          "payload": {
+            "exists": true,
+            "path": "README_BUILD.md",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: README_BUILD.md",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.593203+00:00",
+          "id": "76b383c6-f20f-4d18-a5e3-c0b21bb681e5",
+          "payload": {
+            "exists": true,
+            "path": "src/store/useAppStore.js",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: src/store/useAppStore.js",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.602121+00:00",
+          "id": "4e8487c4-d351-422d-b054-88bd0f2ce230",
+          "payload": {
+            "exists": true,
+            "path": "src/context/AuthContext.jsx",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: src/context/AuthContext.jsx",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.613578+00:00",
+          "id": "cabbba37-acb4-49fa-8d76-9e3afcd7d19b",
+          "payload": {
+            "exists": true,
+            "path": "src/components/ErrorBoundary.jsx",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: src/components/ErrorBoundary.jsx",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.621963+00:00",
+          "id": "0fe6ae6f-6696-46ca-bf03-8c3c96570b77",
+          "payload": {
+            "exists": true,
+            "path": "src/components/ShellLayout.jsx",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: src/components/ShellLayout.jsx",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.628604+00:00",
+          "id": "7e07f050-b38b-4dfe-9f23-cc42b2476d96",
+          "payload": {
+            "exists": true,
+            "path": "src/pages/HomePage.jsx",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: src/pages/HomePage.jsx",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.633211+00:00",
+          "id": "89cb5b5e-906a-4bed-a5b5-53a21a5c8bcc",
+          "payload": {
+            "exists": true,
+            "path": "src/pages/LoginPage.jsx",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: src/pages/LoginPage.jsx",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.641415+00:00",
+          "id": "123b3e6c-d086-4bec-982e-185fcff2c876",
+          "payload": {
+            "exists": true,
+            "path": "src/pages/DashboardPage.jsx",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: src/pages/DashboardPage.jsx",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.650440+00:00",
+          "id": "1072b79c-5614-4874-9dac-ff2194607be2",
+          "payload": {
+            "exists": true,
+            "path": "src/pages/TeamPage.jsx",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: src/pages/TeamPage.jsx",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.655764+00:00",
+          "id": "d5f6d809-c903-447a-ad7a-2ca233343850",
+          "payload": {
+            "exists": true,
+            "path": "src/App.jsx",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: src/App.jsx",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.656261+00:00",
+          "id": "2047bf06-6ea1-4a32-883e-7bd3213e8523",
+          "payload": {
+            "exists": true,
+            "path": "main.py",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: main.py",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.660165+00:00",
+          "id": "eacfb4cc-41c4-4cef-a49c-5fd15d388454",
+          "payload": {
+            "exists": true,
+            "path": "src/main.jsx",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: src/main.jsx",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.667249+00:00",
+          "id": "f75fdb48-ac36-40df-87bf-154d19f84af0",
+          "payload": {
+            "exists": true,
+            "path": "src/index.js",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: src/index.js",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.671357+00:00",
+          "id": "a202d24f-768a-47fe-b7cf-c6fa8b97ef8c",
+          "payload": {
+            "exists": true,
+            "path": "src/styles/global.css",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: src/styles/global.css",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.684973+00:00",
+          "id": "c3b000f0-2d25-4197-a941-d394fdc320b4",
+          "payload": {
+            "exists": true,
+            "path": "docs/CRUCIB_BUILD_TARGET.md",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: docs/CRUCIB_BUILD_TARGET.md",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.912491+00:00",
+          "id": "614ad293-fbd2-4ff7-9fc9-f15c080eaf3f",
+          "payload": {
+            "exists": true,
+            "path": "src/pages/TeamPage.jsx",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: src/pages/TeamPage.jsx",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.918657+00:00",
+          "id": "c866d9f3-c990-4fbd-ad8a-5526b9a110c4",
+          "payload": {
+            "exists": true,
+            "path": "src/styles/global.css",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: src/styles/global.css",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.921316+00:00",
+          "id": "c775c3e3-20c2-4326-94c1-4f65356aaef5",
+          "payload": {
+            "exists": true,
+            "path": "src/App.jsx",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: src/App.jsx",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 12:04:34.719803+00:00",
+          "id": "d02b2c83-e1d4-4fab-b9a1-a17a129334fc",
+          "payload": {
+            "exists": true,
+            "path": "backend/main.py",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: backend/main.py",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 12:04:34.896981+00:00",
+          "id": "5fc1f5c1-2c12-4290-b69a-12a3e402b41c",
+          "payload": {
+            "exists": true,
+            "path": "backend/auth.py",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: backend/auth.py",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 12:04:40.621466+00:00",
+          "id": "33fdeba2-5463-4866-9d29-1ee9d4a73392",
+          "payload": {
+            "path": "src/App.jsx",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "Root app file: src/App.jsx",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 12:04:41.297652+00:00",
+          "id": "c4c83b6d-b891-4a4e-a270-198fbb356174",
+          "payload": {
+            "elite_materialized": true,
+            "path": "proof/ELITE_EXECUTION_DIRECTIVE.md",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "Elite directive present",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 12:04:41.531592+00:00",
+          "id": "582bd717-6be6-4f79-bf13-61a2d7283b2a",
+          "payload": {
+            "exists": true,
+            "path": "Dockerfile",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: Dockerfile",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 12:04:41.539749+00:00",
+          "id": "79478693-9c68-48eb-9555-52a6bf5f16e1",
+          "payload": {
+            "exists": true,
+            "path": "deploy/PRODUCTION_SKETCH.md",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: deploy/PRODUCTION_SKETCH.md",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 12:04:41.546362+00:00",
+          "id": "4ace4a82-0a82-4273-9bfd-0024b9eaabca",
+          "payload": {
+            "exists": true,
+            "path": "deploy/healthcheck.sh",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: deploy/healthcheck.sh",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 12:04:41.653479+00:00",
+          "id": "e10bdc01-3511-426e-8bff-3fbbd03584ea",
+          "payload": {
+            "exists": true,
+            "path": "deploy/PUBLISH.md",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: deploy/PUBLISH.md",
+          "type": "file"
+        }
+      ],
+      "generic": [
+        {
+          "created_at": "2026-04-08 12:04:32.174453+00:00",
+          "id": "2201329a-45ce-470d-8c67-2711fbc5f8a6",
+          "payload": {
+            "output_preview": "None",
+            "step_key": "planning.analyze"
+          },
+          "proof_type": "generic",
+          "title": "Step executed: planning.analyze",
+          "type": "generic"
+        },
+        {
+          "created_at": "2026-04-08 12:04:32.280448+00:00",
+          "id": "19f81d07-a90c-4559-b244-56047ec36015",
+          "payload": {
+            "output_preview": "None",
+            "step_key": "planning.requirements"
+          },
+          "proof_type": "generic",
+          "title": "Step executed: planning.requirements",
+          "type": "generic"
+        },
+        {
+          "created_at": "2026-04-08 12:04:34.910024+00:00",
+          "id": "9a3ca530-35a3-481a-adcc-6dd0fed467aa",
+          "payload": {
+            "auth_mode": "client_demo_stub",
+            "source": "verifier_note",
+            "verification_class": "presence"
+          },
+          "proof_type": "verification",
+          "title": "Auth evidence: generated apps use client-side demo session; production OAuth is not asserted in workspace.",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:35.007728+00:00",
+          "id": "965200a2-e42c-49c3-a9d3-c0fa1b956fe3",
+          "payload": {
+            "output_preview": "None",
+            "step_key": "implementation.delivery_manifest"
+          },
+          "proof_type": "generic",
+          "title": "Step executed: implementation.delivery_manifest",
+          "type": "generic"
+        },
+        {
+          "created_at": "2026-04-08 12:04:40.575876+00:00",
+          "id": "c107ddaa-6410-465f-acc0-47254b59aa58",
+          "payload": {
+            "deps": [
+              "react",
+              "react-dom",
+              "react-router-dom",
+              "zustand"
+            ],
+            "verification_class": "presence"
+          },
+          "proof_type": "verification",
+          "title": "package.json has core deps",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:40.586100+00:00",
+          "id": "c65b2a99-2058-4541-a028-e13f449c3d0f",
+          "payload": {
+            "path": "src/index.js",
+            "verification_class": "presence"
+          },
+          "proof_type": "verification",
+          "title": "Entry mount found: src/index.js",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:40.591570+00:00",
+          "id": "53a90028-5df5-4f15-9247-6a05ca7c5ab4",
+          "payload": {
+            "hint": "router",
+            "verification_class": "presence"
+          },
+          "proof_type": "verification",
+          "title": "Routing primitives present",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:40.600597+00:00",
+          "id": "6b63d2df-e9f3-4740-bf1f-c739731fd376",
+          "payload": {
+            "verification_class": "presence"
+          },
+          "proof_type": "verification",
+          "title": "Auth context pattern present",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:40.607980+00:00",
+          "id": "0d324dd1-1cc2-4a32-b17b-f37b8e425ad5",
+          "payload": {
+            "storage": true,
+            "verification_class": "presence",
+            "zustand_persist": true
+          },
+          "proof_type": "verification",
+          "title": "Client persistence present",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:40.613668+00:00",
+          "id": "f941089c-e0ff-4af5-b441-48a9bd6c20d2",
+          "payload": {
+            "count": 2,
+            "verification_class": "presence"
+          },
+          "proof_type": "verification",
+          "title": "Component modules: 2 files",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:40.626640+00:00",
+          "id": "6ddd2f42-22fe-4854-93c5-d3dfb1faaf72",
+          "payload": {
+            "exit": 0,
+            "verification_class": "runtime"
+          },
+          "proof_type": "verification",
+          "title": "npm install completed",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:40.631893+00:00",
+          "id": "cd061e8a-2109-48a9-9f35-dfce09a68507",
+          "payload": {
+            "exit": 0,
+            "verification_class": "runtime"
+          },
+          "proof_type": "verification",
+          "title": "npm run build completed",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:40.639367+00:00",
+          "id": "4d200e9a-b2a0-4c1d-8e40-48382f560b49",
+          "payload": {
+            "root_len": 461,
+            "verification_class": "experience"
+          },
+          "proof_type": "verification",
+          "title": "Playwright: root rendered",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:40.646212+00:00",
+          "id": "d74e5790-a0d9-47e1-92a3-9a34e160a886",
+          "payload": {
+            "flow": "demo_auth",
+            "verification_class": "experience"
+          },
+          "proof_type": "verification",
+          "title": "Playwright: login \u2192 dashboard flow",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:40.652254+00:00",
+          "id": "cb0aaa56-ff52-4063-a45b-c9f23a6a1859",
+          "payload": {
+            "bytes": 24364,
+            "kind": "preview_screenshot",
+            "relative_path": ".crucibai/preview/screenshot.png",
+            "sha256_prefix": "88e35c039ed7ba82500f38aad2d4c4ce",
+            "verification_class": "experience"
+          },
+          "proof_type": "verification",
+          "title": "Preview screenshot captured",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:40.657794+00:00",
+          "id": "bba22f47-600d-454c-8610-fd01d6eeede6",
+          "payload": {
+            "url": "http://127.0.0.1:58063/",
+            "verification_class": "experience"
+          },
+          "proof_type": "verification",
+          "title": "Browser preview gate passed",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:41.111621+00:00",
+          "id": "433a2c11-44ae-47ae-a1da-136b9b11492b",
+          "payload": {
+            "check": "tenancy_sql_sketch",
+            "verification_class": "runtime"
+          },
+          "proof_type": "verification",
+          "title": "Security: tenancy columns/tables present in migration sketch",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:41.128818+00:00",
+          "id": "c30fe80b-c0da-4e9b-98ff-3ef3c4172263",
+          "payload": {
+            "check": "migrations_read",
+            "verification_class": "presence"
+          },
+          "proof_type": "verification",
+          "title": "Security: scanned 534 chars of migration SQL",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:41.136835+00:00",
+          "id": "373231aa-39cd-4c06-9369-163fc8922bd8",
+          "payload": {
+            "check": "cors_wildcard",
+            "severity": "advisory",
+            "verification_class": "presence"
+          },
+          "proof_type": "verification",
+          "title": "Security note: CORS allow_origins is wildcard \u2014 tighten before production",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:41.153419+00:00",
+          "id": "2385a035-775b-4db6-afef-fcb6effe49e2",
+          "payload": {
+            "check": "package_json_present",
+            "verification_class": "presence"
+          },
+          "proof_type": "verification",
+          "title": "Security: package.json dependencies declared (supply-chain review is manual)",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:41.165316+00:00",
+          "id": "c9323e81-8e3b-4b46-beca-7b354ca0e933",
+          "payload": {
+            "check": "package_engines_missing",
+            "severity": "advisory",
+            "verification_class": "presence"
+          },
+          "proof_type": "verification",
+          "title": "Security note: package.json has no engines field \u2014 pin Node for production CI",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:41.176926+00:00",
+          "id": "18470572-cf2c-47e9-9ee1-4540e9036a59",
+          "payload": {
+            "check": "stripe_replay_skipped",
+            "reason": "no_stripe_migration",
+            "verification_class": "presence"
+          },
+          "proof_type": "verification",
+          "title": "Stripe replay skipped (no stripe_events_processed migration)",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:41.187539+00:00",
+          "id": "e52a41e8-679b-4e06-b365-753b3ca37939",
+          "payload": {
+            "check": "tenancy_isolation_proven",
+            "verification_class": "runtime",
+            "workspace": true
+          },
+          "proof_type": "verification",
+          "title": "Tenancy smoke: two tenants, no cross-tenant reads; cross-tenant write blocked by RLS",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:41.194115+00:00",
+          "id": "8024e5b7-0db3-4230-879f-7de9409d358b",
+          "payload": {
+            "check": "rbac_smoke_skipped",
+            "host_tests": "tests/test_admin_security.py",
+            "verification_class": "presence"
+          },
+          "proof_type": "verification",
+          "title": "RBAC smoke skipped \u2014 set CRUCIBAI_RBAC_SMOKE_URL to hit /api/admin/* (see tests/test_admin_security.py)",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:41.320811+00:00",
+          "id": "8c242d10-1e8f-4a01-9019-ea5a79b6c92c",
+          "payload": {
+            "checks": "four_labels",
+            "path": "proof/DELIVERY_CLASSIFICATION.md",
+            "verification_class": "syntax"
+          },
+          "proof_type": "verification",
+          "title": "Delivery classification file",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:41.332627+00:00",
+          "id": "81f7e783-55f1-4819-922e-656a26c0464e",
+          "payload": {
+            "presence_and_runtime": true,
+            "tags": [],
+            "verification_class": "runtime"
+          },
+          "proof_type": "verification",
+          "title": "Critical feature proof depth",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:41.339611+00:00",
+          "id": "76be2d1a-5c90-4df1-85a7-4bc7c63ffa0d",
+          "payload": {
+            "check": "error_boundaries",
+            "verification_class": "syntax"
+          },
+          "proof_type": "verification",
+          "title": "Error boundaries present",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:41.364973+00:00",
+          "id": "37425ad5-98d3-409e-8804-ccb5b175e154",
+          "payload": {
+            "check": "console_clean",
+            "verification_class": "syntax"
+          },
+          "proof_type": "verification",
+          "title": "No console.error/warn",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:41.375322+00:00",
+          "id": "2552f4a0-fcf9-46d3-afd7-75b519d4f1fd",
+          "payload": {
+            "check": "api_errors",
+            "verification_class": "syntax"
+          },
+          "proof_type": "verification",
+          "title": "API error handling",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:41.385304+00:00",
+          "id": "0659e0f8-21d4-4694-8fb0-815d6ad216b5",
+          "payload": {
+            "check": "sql_safety",
+            "verification_class": "syntax"
+          },
+          "proof_type": "verification",
+          "title": "SQL parameterization",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:41.392809+00:00",
+          "id": "39b07360-5035-43fa-b4ff-b682c48af613",
+          "payload": {
+            "check": "authentication",
+            "verification_class": "syntax"
+          },
+          "proof_type": "verification",
+          "title": "Auth/RBAC present",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:41.404100+00:00",
+          "id": "9d0e5d9d-b6aa-414c-88a9-91890759e90e",
+          "payload": {
+            "check": "secrets",
+            "verification_class": "syntax"
+          },
+          "proof_type": "verification",
+          "title": "No hardcoded secrets",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:41.414550+00:00",
+          "id": "d556662b-74b1-4bfb-b112-bd64afe863c8",
+          "payload": {
+            "check": "headers",
+            "verification_class": "syntax"
+          },
+          "proof_type": "verification",
+          "title": "Security headers",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:41.516456+00:00",
+          "id": "ddea7921-2d6d-4e7a-9923-432f0da733ca",
+          "payload": {
+            "check": "tenant_context_gate_skipped_no_rls_migration"
+          },
+          "proof_type": "verification",
+          "title": "No multitenant RLS migration \u2014 tenant session GUC gate skipped",
+          "type": "verification"
+        },
+        {
+          "created_at": "2026-04-08 12:04:41.525415+00:00",
+          "id": "6995281b-8c32-4b28-a437-85a7256101a6",
+          "payload": {
+            "clean": true,
+            "gate": "credential_pattern_scan",
+            "verification_class": "runtime"
+          },
+          "proof_type": "verification",
+          "title": "Production gate: no high-confidence credential patterns in code files",
+          "type": "verification"
+        }
+      ],
+      "routes": [
+        {
+          "created_at": "2026-04-08 12:04:34.702915+00:00",
+          "id": "b50dd8f9-ce91-43e5-9044-40b5e6c5351d",
+          "payload": {
+            "description": "Health check",
+            "method": "GET",
+            "path": "/health"
+          },
+          "proof_type": "route",
+          "title": "GET /health",
+          "type": "route"
+        },
+        {
+          "created_at": "2026-04-08 12:04:34.713371+00:00",
+          "id": "e91fbe2a-aea5-45e1-be4f-f07d7d0ecce1",
+          "payload": {
+            "description": "List demo items",
+            "method": "GET",
+            "path": "/api/items"
+          },
+          "proof_type": "route",
+          "title": "GET /api/items",
+          "type": "route"
+        },
+        {
+          "created_at": "2026-04-08 12:04:34.733429+00:00",
+          "id": "a4589b71-63c7-4200-a097-1d539c420d0f",
+          "payload": {
+            "file": "main.py",
+            "kind": "workspace_route_scan",
+            "method": "GET",
+            "path": "/healthcheck",
+            "verification_class": "presence"
+          },
+          "proof_type": "route",
+          "title": "Declared in workspace: GET /healthcheck",
+          "type": "route"
+        },
+        {
+          "created_at": "2026-04-08 12:04:34.740518+00:00",
+          "id": "83b8e06a-28b0-409d-8596-1ec8ef794222",
+          "payload": {
+            "file": "backend/main.py",
+            "kind": "workspace_route_scan",
+            "method": "GET",
+            "path": "/health",
+            "verification_class": "presence"
+          },
+          "proof_type": "route",
+          "title": "Declared in workspace: GET /health",
+          "type": "route"
+        },
+        {
+          "created_at": "2026-04-08 12:04:34.746024+00:00",
+          "id": "f0b288c0-1dc2-4dca-84a6-81b4c50f6ab3",
+          "payload": {
+            "file": "backend/main.py",
+            "kind": "workspace_route_scan",
+            "method": "GET",
+            "path": "/api/items",
+            "verification_class": "presence"
+          },
+          "proof_type": "route",
+          "title": "Declared in workspace: GET /api/items",
+          "type": "route"
+        },
+        {
+          "created_at": "2026-04-08 12:04:34.891595+00:00",
+          "id": "82342481-2699-4dad-895e-bfe4328722e6",
+          "payload": {
+            "description": "Login (stub)",
+            "method": "POST",
+            "path": "/api/auth/login"
+          },
+          "proof_type": "route",
+          "title": "POST /api/auth/login",
+          "type": "route"
+        }
+      ],
+      "verification": [
+        {
+          "created_at": "2026-04-08 12:04:33.666344+00:00",
+          "id": "de72dae7-0b08-486f-8409-483adc239348",
+          "payload": {
+            "command": [
+              "/usr/local/bin/python3.11",
+              "-m",
+              "py_compile",
+              "/app/workspace/ca0d32ff-433d-42d9-8f2a-2f9d6a92bf79/main.py"
+            ],
+            "file": "main.py"
+          },
+          "proof_type": "compile",
+          "title": "Python syntax OK: main.py",
+          "type": "compile"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.689525+00:00",
+          "id": "b50cbf92-7d7e-48ec-9a63-9100335782c6",
+          "payload": {
+            "command": [
+              "node",
+              "--check",
+              "/app/workspace/ca0d32ff-433d-42d9-8f2a-2f9d6a92bf79/vite.config.js"
+            ],
+            "file": "vite.config.js",
+            "verification_class": "syntax"
+          },
+          "proof_type": "compile",
+          "title": "Syntax OK: vite.config.js",
+          "type": "compile"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.694492+00:00",
+          "id": "d59d9a9b-01cc-460b-a2d4-e03f39c10867",
+          "payload": {
+            "command": [
+              "node",
+              "--check",
+              "/app/workspace/ca0d32ff-433d-42d9-8f2a-2f9d6a92bf79/src/store/useAppStore.js"
+            ],
+            "file": "src/store/useAppStore.js",
+            "verification_class": "syntax"
+          },
+          "proof_type": "compile",
+          "title": "Syntax OK: src/store/useAppStore.js",
+          "type": "compile"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.699716+00:00",
+          "id": "f13c7b60-ed90-4626-a8cd-1ebd93d58ac3",
+          "payload": {
+            "file": "src/context/AuthContext.jsx",
+            "verification_class": "presence"
+          },
+          "proof_type": "compile",
+          "title": "JSX source present: src/context/AuthContext.jsx",
+          "type": "compile"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.705592+00:00",
+          "id": "6ad77e6b-722c-4c1b-9a10-55b10eb822d6",
+          "payload": {
+            "file": "src/components/ErrorBoundary.jsx",
+            "verification_class": "presence"
+          },
+          "proof_type": "compile",
+          "title": "JSX source present: src/components/ErrorBoundary.jsx",
+          "type": "compile"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.720872+00:00",
+          "id": "430ce79c-a1a4-44b3-91cc-f2ff0cfb5ea9",
+          "payload": {
+            "file": "src/components/ShellLayout.jsx",
+            "verification_class": "presence"
+          },
+          "proof_type": "compile",
+          "title": "JSX source present: src/components/ShellLayout.jsx",
+          "type": "compile"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.726412+00:00",
+          "id": "8b19da5b-8cbc-4576-8332-174d26af0d2c",
+          "payload": {
+            "file": "src/pages/HomePage.jsx",
+            "verification_class": "presence"
+          },
+          "proof_type": "compile",
+          "title": "JSX source present: src/pages/HomePage.jsx",
+          "type": "compile"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.733158+00:00",
+          "id": "1fc2e96f-98b9-43cc-b31d-2165c6b18f0b",
+          "payload": {
+            "file": "src/pages/LoginPage.jsx",
+            "verification_class": "presence"
+          },
+          "proof_type": "compile",
+          "title": "JSX source present: src/pages/LoginPage.jsx",
+          "type": "compile"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.739713+00:00",
+          "id": "fbd304f6-cf00-495d-965f-70145ec14495",
+          "payload": {
+            "file": "src/pages/DashboardPage.jsx",
+            "verification_class": "presence"
+          },
+          "proof_type": "compile",
+          "title": "JSX source present: src/pages/DashboardPage.jsx",
+          "type": "compile"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.744589+00:00",
+          "id": "1f60c535-64e6-4830-bdac-85a70f6a0968",
+          "payload": {
+            "file": "src/pages/TeamPage.jsx",
+            "verification_class": "presence"
+          },
+          "proof_type": "compile",
+          "title": "JSX source present: src/pages/TeamPage.jsx",
+          "type": "compile"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.751775+00:00",
+          "id": "427d9874-1054-4a4a-9d38-d27e0ec5d0d3",
+          "payload": {
+            "file": "src/App.jsx",
+            "verification_class": "presence"
+          },
+          "proof_type": "compile",
+          "title": "JSX source present: src/App.jsx",
+          "type": "compile"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.756159+00:00",
+          "id": "f319136f-abc3-4dd1-af94-bf716ec622b4",
+          "payload": {
+            "file": "src/main.jsx",
+            "verification_class": "presence"
+          },
+          "proof_type": "compile",
+          "title": "JSX source present: src/main.jsx",
+          "type": "compile"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.761794+00:00",
+          "id": "bc00b25d-4f6a-4aab-9441-8bbe17bab869",
+          "payload": {
+            "file": "src/index.js",
+            "verification_class": "syntax"
+          },
+          "proof_type": "compile",
+          "title": "JSX in src/index.js (skipped node --check)",
+          "type": "compile"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.927487+00:00",
+          "id": "85c89723-dd3d-4445-9b00-bba43c3945bf",
+          "payload": {
+            "file": "src/pages/TeamPage.jsx",
+            "verification_class": "presence"
+          },
+          "proof_type": "compile",
+          "title": "JSX source present: src/pages/TeamPage.jsx",
+          "type": "compile"
+        },
+        {
+          "created_at": "2026-04-08 12:04:33.936379+00:00",
+          "id": "711429fc-32b9-46d2-b4ad-d71ecc8ba152",
+          "payload": {
+            "file": "src/App.jsx",
+            "verification_class": "presence"
+          },
+          "proof_type": "compile",
+          "title": "JSX source present: src/App.jsx",
+          "type": "compile"
+        },
+        {
+          "created_at": "2026-04-08 12:04:34.725702+00:00",
+          "id": "0c5d42a1-317e-4dcc-aff6-1a9f5ed743c5",
+          "payload": {
+            "command": [
+              "/usr/local/bin/python3.11",
+              "-m",
+              "py_compile",
+              "/app/workspace/ca0d32ff-433d-42d9-8f2a-2f9d6a92bf79/backend/main.py"
+            ],
+            "file": "backend/main.py"
+          },
+          "proof_type": "compile",
+          "title": "Python syntax OK: backend/main.py",
+          "type": "compile"
+        },
+        {
+          "created_at": "2026-04-08 12:04:34.904095+00:00",
+          "id": "629e8447-90a6-4a37-a784-8f9507eeb5a8",
+          "payload": {
+            "command": [
+              "/usr/local/bin/python3.11",
+              "-m",
+              "py_compile",
+              "/app/workspace/ca0d32ff-433d-42d9-8f2a-2f9d6a92bf79/backend/auth.py"
+            ],
+            "file": "backend/auth.py"
+          },
+          "proof_type": "compile",
+          "title": "Python syntax OK: backend/auth.py",
+          "type": "compile"
+        },
+        {
+          "created_at": "2026-04-08 12:04:35.089879+00:00",
+          "id": "e61260b0-6cc4-43d7-803b-c0fb2e404f4f",
+          "payload": {
+            "skipped": true
+          },
+          "proof_type": "compile",
+          "title": "Workspace JS syntax check skipped (CRUCIBAI_SKIP_NODE_VERIFY)",
+          "type": "compile"
+        },
+        {
+          "created_at": "2026-04-08 12:04:35.243608+00:00",
+          "id": "794f2fde-ac92-4357-91f4-0ffa74289dd2",
+          "payload": {
+            "file": "backend/main.py",
+            "method": "GET",
+            "path": "/health",
+            "verification_class": "presence"
+          },
+          "proof_type": "api",
+          "title": "API smoke: declared GET /health",
+          "type": "api"
+        },
+        {
+          "created_at": "2026-04-08 12:04:35.252453+00:00",
+          "id": "0d95d456-d98e-4c40-bdc4-ce84e2f6d1c7",
+          "payload": {
+            "file": "backend/main.py",
+            "method": "GET",
+            "path": "/api/items",
+            "verification_class": "presence"
+          },
+          "proof_type": "api",
+          "title": "API smoke: declared GET /api/items",
+          "type": "api"
+        },
+        {
+          "created_at": "2026-04-08 12:04:35.261411+00:00",
+          "id": "05743be9-d50f-4c1b-b496-743b992be867",
+          "payload": {
+            "check": "health_endpoint",
+            "verification_class": "runtime"
+          },
+          "proof_type": "api",
+          "title": "API smoke: GET /health present in route scan",
+          "type": "api"
+        },
+        {
+          "created_at": "2026-04-08 12:04:35.281013+00:00",
+          "id": "72dfefac-e907-4213-b89c-23ab2d8e3cda",
+          "payload": {
+            "file": "backend/main.py",
+            "verification_class": "syntax"
+          },
+          "proof_type": "compile",
+          "title": "API smoke: py_compile OK backend/main.py",
+          "type": "compile"
+        },
+        {
+          "created_at": "2026-04-08 12:04:35.289129+00:00",
+          "id": "58cb9068-0427-47b7-a583-57a2b9d4998f",
+          "payload": {
+            "file": "backend/auth.py",
+            "verification_class": "syntax"
+          },
+          "proof_type": "compile",
+          "title": "API smoke: py_compile OK backend/auth.py",
+          "type": "compile"
+        }
+      ]
+    },
+    "bundle_sha256": "d761793d4c98478268ad0a7d74ea1968babcf70b7e68ef7725e064eeab32a8b7",
+    "category_counts": {
+      "database": 2,
+      "deploy": 1,
+      "files": 29,
+      "generic": 35,
+      "routes": 6,
+      "verification": 23
+    },
+    "class_coverage": {
+      "experience": 0.5208333333333334,
+      "presence": 1.0,
+      "runtime": 0.7291666666666665,
+      "syntax": 1.0
+    },
+    "class_weighted_score": 74.79,
+    "job_id": "8c3273ef-297e-4953-80b2-78356036a34b",
+    "penalties_applied": 5,
+    "production_readiness_cap_note": "Capped heuristic only. Template RLS covers generated app_items; it does not certify your full data model, webhook idempotency, MFA, or infra.",
+    "production_readiness_factors": [
+      "no_test_proof_autorunner_template",
+      "security_step_evidence",
+      "tenancy_sql_sketch_in_security_proof",
+      "tenancy_smoke_live_isolation",
+      "api_smoke_proof",
+      "preview_screenshot",
+      "compile_checks",
+      "route_proof_with_runtime_hint",
+      "database_artifacts"
+    ],
+    "production_readiness_score": 97.0,
+    "quality_score": 77.0,
+    "scorecard": {
+      "honest_summary": "Pipeline quality (proof density): ~77. Trust-weighted evidence: ~70. Spec compliance vs stated goal: ~100%. Production readiness (heuristic): ~97. These are different axes; high pipeline score does not mean enterprise spec was met.",
+      "pipeline_quality_score": 77.0,
+      "production_readiness_score": 97.0,
+      "spec_compliance_percent": 100.0,
+      "trust_evidence_score": 69.8
+    },
+    "spec_compliance_percent": 100.0,
+    "spec_guard": {
+      "block_reasons": [],
+      "blocks_run": false,
+      "mode": "advisory",
+      "runner_truth": "CrucibAI Auto-Runner emits a fixed scaffold: Vite + React (JS), Python FastAPI sketch, SQL migration/seed files, template auth/store, verification gates. For multitenant goals it emits PostgreSQL RLS on generated app_items (session GUC app.tenant_id) \u2014 not schema-per-tenant or custom table graphs. For observability keywords it adds deploy/observability stubs (OTel collector, Prometheus, Grafana) and docs. For multi-region + cloud + Terraform-style goals it adds terraform/multiregion_sketch and aws/gcp/azure region stubs \u2014 not production VPC/DR. It does not generate Next.js App Router, TypeScript Node services, Prisma/Drizzle projects, or BullMQ/Testcontainers/k6 harnesses from prompts.",
+      "schema": "crucibai.spec_guard/v1",
+      "spec_compliance_percent": 100.0,
+      "violations": []
+    },
+    "success": true,
+    "total_proof_items": 96,
+    "trust_score": 69.79,
+    "truth_status": {
+      "claims_verified_only_with_proof": true,
+      "deploy_live_evidence": false,
+      "preview_visual_evidence": true,
+      "weights": {
+        "experience": 0.3,
+        "presence": 0.1,
+        "runtime": 0.4,
+        "syntax": 0.2
+      }
+    },
+    "verification_class_counts": {
+      "experience": 4,
+      "presence": 59,
+      "runtime": 7,
+      "syntax": 13,
+      "unknown": 13
+    },
+    "verification_proof_items": 23
+  },
+  "started_at": "2026-04-08T12:05:01.118961+00:00",
+  "status_code": 200
+}

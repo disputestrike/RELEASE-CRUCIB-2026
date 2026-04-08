@@ -1,0 +1,166 @@
+{
+  "blockers": [],
+  "final_job_phase": "completed",
+  "final_job_status": "completed",
+  "job_id": "8c3273ef-297e-4953-80b2-78356036a34b",
+  "key_steps": {
+    "deploy_build": {
+      "agent_name": "Deployment Agent",
+      "completed_at": "2026-04-08T12:04:41.553240+00:00",
+      "created_at": "2026-04-08T12:04:30.900128+00:00",
+      "depends_on_json": "[\"verification.elite_builder\"]",
+      "error_details": null,
+      "error_message": null,
+      "id": "ee7428c1-598b-4662-a1a4-2e31e4832c58",
+      "job_id": "8c3273ef-297e-4953-80b2-78356036a34b",
+      "order_index": 16,
+      "output_files": null,
+      "output_ref": "\"Deploy step: deploy.build\"",
+      "phase": "deploy",
+      "retry_count": 0,
+      "score": 0,
+      "started_at": "2026-04-08T12:04:41.485669+00:00",
+      "status": "completed",
+      "step_key": "deploy.build",
+      "updated_at": "2026-04-08T12:04:41.553235+00:00",
+      "verifier_score": 100,
+      "verifier_status": "passed"
+    },
+    "deploy_publish": {
+      "agent_name": "Deployment Agent",
+      "completed_at": "2026-04-08T12:04:41.665981+00:00",
+      "created_at": "2026-04-08T12:04:30.912354+00:00",
+      "depends_on_json": "[\"deploy.build\"]",
+      "error_details": null,
+      "error_message": null,
+      "id": "e8573b18-7644-4f63-abf4-079a34301843",
+      "job_id": "8c3273ef-297e-4953-80b2-78356036a34b",
+      "order_index": 17,
+      "output_files": null,
+      "output_ref": "\"Deploy step: deploy.publish\"",
+      "phase": "deploy",
+      "retry_count": 0,
+      "score": 0,
+      "started_at": "2026-04-08T12:04:41.622909+00:00",
+      "status": "completed",
+      "step_key": "deploy.publish",
+      "updated_at": "2026-04-08T12:04:41.665977+00:00",
+      "verifier_score": 100,
+      "verifier_status": "passed"
+    },
+    "elite_proof": {
+      "agent_name": "Verifier",
+      "completed_at": "2026-04-08T12:04:41.431449+00:00",
+      "created_at": "2026-04-08T12:04:30.878473+00:00",
+      "depends_on_json": "[\"verification.security\"]",
+      "error_details": null,
+      "error_message": null,
+      "id": "7a949f4d-99db-4203-a217-3f8be6bcb32d",
+      "job_id": "8c3273ef-297e-4953-80b2-78356036a34b",
+      "order_index": 15,
+      "output_files": null,
+      "output_ref": "\"Verification gate: verification.elite_builder\"",
+      "phase": "verification",
+      "retry_count": 0,
+      "score": 0,
+      "started_at": "2026-04-08T12:04:41.264427+00:00",
+      "status": "completed",
+      "step_key": "verification.elite_builder",
+      "updated_at": "2026-04-08T12:04:41.431444+00:00",
+      "verifier_score": 100,
+      "verifier_status": "passed"
+    },
+    "preview_boot": {
+      "agent_name": "Verifier",
+      "completed_at": "2026-04-08T12:04:40.663848+00:00",
+      "created_at": "2026-04-08T12:04:30.836552+00:00",
+      "depends_on_json": "[\"verification.compile\"]",
+      "error_details": null,
+      "error_message": null,
+      "id": "2b4b989d-92fd-4882-bfe8-026ad2624c59",
+      "job_id": "8c3273ef-297e-4953-80b2-78356036a34b",
+      "order_index": 13,
+      "output_files": null,
+      "output_ref": "\"Verification gate: verification.preview\"",
+      "phase": "verification",
+      "retry_count": 0,
+      "score": 0,
+      "started_at": "2026-04-08T12:04:35.158860+00:00",
+      "status": "completed",
+      "step_key": "verification.preview",
+      "updated_at": "2026-04-08T12:04:40.663843+00:00",
+      "verifier_score": 100,
+      "verifier_status": "passed"
+    }
+  },
+  "matrix": {
+    "auth_register": {
+      "evidence": "POST /api/auth/register -> 200, token_present=True",
+      "status": "PASS"
+    },
+    "autorunner_runtime_health": {
+      "evidence": "GET /api/orchestrator/runtime-health -> 200, ok=True",
+      "status": "PASS"
+    },
+    "background_runner_stability": {
+      "evidence": "job_status=completed, phase=completed, background_crash_found=False",
+      "status": "PASS"
+    },
+    "deploy_build": {
+      "evidence": "deploy.build: completed",
+      "status": "PASS"
+    },
+    "deploy_publish": {
+      "evidence": "deploy.publish: completed",
+      "status": "PASS"
+    },
+    "elite_proof": {
+      "evidence": "verification.elite_builder: completed",
+      "status": "PASS"
+    },
+    "generated_workspace_files": {
+      "evidence": "workspace_file_count=40",
+      "status": "PASS"
+    },
+    "live_llm_invocation": {
+      "evidence": "POST /api/ai/chat -> 200, model_used=cerebras/llama3.1-8b",
+      "status": "PASS"
+    },
+    "llm_readiness": {
+      "evidence": "GET /api/health/llm -> 200, status=ready",
+      "status": "PASS"
+    },
+    "plan_created": {
+      "evidence": "POST /api/orchestrator/plan -> 200, job_id=8c3273ef-297e-4953-80b2-78356036a34b, step_count=18",
+      "status": "PASS"
+    },
+    "preview_boot": {
+      "evidence": "verification.preview: completed",
+      "status": "PASS"
+    },
+    "proof_artifacts_available": {
+      "evidence": "proof_item_count=62",
+      "status": "PASS"
+    },
+    "railway_health": {
+      "evidence": "GET /api/health -> 200",
+      "status": "PASS"
+    },
+    "run_auto_started": {
+      "evidence": "POST /api/orchestrator/run-auto -> 200, success=True",
+      "status": "PASS"
+    }
+  },
+  "metadata": {
+    "base_url": "https://crucibai-production.up.railway.app",
+    "goal": "Build a tiny production proof app: a Vite React single page product dashboard with reusable components, localStorage state, clear empty/loading/error states, a FastAPI health endpoint sketch if backend output is supported, and deploy readiness proof. Keep dependencies minimal and produce previewable files.",
+    "mode": "fresh_live_replay",
+    "notes": [
+      "This uses the same backend API calls the browser uses for prompt/plan/run.",
+      "Auth tokens and secrets are redacted from proof artifacts."
+    ],
+    "run_id": "1775649866-20d206be5f",
+    "schema": "crucibai.live_production_golden_path/v1",
+    "started_at": "2026-04-08T12:04:26.817524+00:00"
+  }
+}
