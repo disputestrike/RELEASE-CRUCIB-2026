@@ -3837,23 +3837,22 @@ async def agent_deploy(data: AgentPromptBody, user: dict = Depends(get_optional_
     return {"agent": "Deployment Agent", "result": response, "model_used": model_used}
 
 @agents_router.post("/agents/run/memory-store")
-async def agent_memory_store(data: AgentMemoryBody, user: dict = Depends(get_optional_user)):
+async def agent_memory_store(data: AgentMemoryBody, user: dict = Depends(get_current_user)):
     """Memory Agent: store a pattern for reuse."""
     doc = {
         "id": str(uuid.uuid4()),
         "name": data.name,
         "content": data.content,
-        "user_id": (user or {}).get("id"),
+        "user_id": user["id"],
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.agent_memory.insert_one(doc)
     return {"agent": "Memory Agent", "action": "stored", "id": doc["id"]}
 
 @agents_router.get("/agents/run/memory-list")
-async def agent_memory_list(user: dict = Depends(get_optional_user)):
+async def agent_memory_list(user: dict = Depends(get_current_user)):
     """Memory Agent: list stored patterns."""
-    user_id = (user or {}).get("id")
-    cursor = db.agent_memory.find({"user_id": user_id} if user_id else {}, {"_id": 0}).sort("created_at", -1).limit(50)
+    cursor = db.agent_memory.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).limit(50)
     items = await cursor.to_list(length=50)
     return {"agent": "Memory Agent", "items": items}
 
@@ -3937,7 +3936,7 @@ async def agent_scrape(data: AgentScrapeBody, user: dict = Depends(get_optional_
     return {"agent": "Scraping Agent", "result": response, "url": data.url, "model_used": model_used}
 
 @agents_router.post("/agents/run/automation")
-async def agent_automation(data: AgentAutomationBody, user: dict = Depends(get_optional_user)):
+async def agent_automation(data: AgentAutomationBody, user: dict = Depends(get_current_user)):
     """Automation Agent: schedules a task (store and optional run_at)."""
     doc = {
         "id": str(uuid.uuid4()),
@@ -3945,17 +3944,16 @@ async def agent_automation(data: AgentAutomationBody, user: dict = Depends(get_o
         "prompt": data.prompt,
         "run_at": data.run_at or datetime.now(timezone.utc).isoformat(),
         "status": "scheduled",
-        "user_id": (user or {}).get("id"),
+        "user_id": user["id"],
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.automation_tasks.insert_one(doc)
     return {"agent": "Automation Agent", "action": "scheduled", "id": doc["id"], "run_at": doc["run_at"]}
 
 @agents_router.get("/agents/run/automation-list")
-async def agent_automation_list(user: dict = Depends(get_optional_user)):
+async def agent_automation_list(user: dict = Depends(get_current_user)):
     """List scheduled automation tasks."""
-    user_id = (user or {}).get("id")
-    cursor = db.automation_tasks.find({"user_id": user_id} if user_id else {}, {"_id": 0}).sort("created_at", -1).limit(50)
+    cursor = db.automation_tasks.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).limit(50)
     items = await cursor.to_list(length=50)
     return {"agent": "Automation Agent", "items": items}
 

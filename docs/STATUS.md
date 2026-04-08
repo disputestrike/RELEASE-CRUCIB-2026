@@ -53,7 +53,12 @@ Tasks:
 - [x] Require admin access for agent cache invalidation.
 - [x] Require authentication and project ownership when framework detection reads project metadata.
 - [x] Add focused smoke coverage for app-db, cache invalidation, legacy deploy, and project-backed framework detection.
-- [ ] Commit and push the optional-auth state route hardening slice.
+- [x] Commit and push the optional-auth state route hardening slice (`57b4011`).
+- [x] Require authentication for agent memory store/list routes.
+- [x] Require authentication for agent automation store/list routes.
+- [x] Scope agent memory and automation list routes to the authenticated user.
+- [x] Add focused smoke coverage for agent memory and automation auth/tenant isolation.
+- [ ] Commit and push the agent memory/automation tenant isolation slice.
 
 ## Verification Log
 
@@ -64,6 +69,8 @@ Tasks:
 - `python -m py_compile backend\server.py` passed.
 - `python -m pytest backend\tests\test_smoke.py -k "app_db or cache_invalidate or detect_frameworks or deploy" -q` passed with local Postgres/Redis env: 9 passed, 23 deselected.
 - `python -m pytest backend\tests\test_smoke.py -k "ide_ or git_status or terminal or app_db or cache_invalidate or detect_frameworks or deploy" -q` passed with local Postgres/Redis env: 19 passed, 13 deselected.
+- `python -m py_compile backend\server.py` passed.
+- `python -m pytest backend\tests\test_smoke.py -k "agent_memory or agent_automation or app_db or cache_invalidate or detect_frameworks or deploy" -q` passed with local Postgres/Redis env: 13 passed, 23 deselected.
 - `.\scripts\verify-local.ps1` correctly failed on Node `v24.14.0`; the frontend declares Node `>=18 <=22`.
 
 ## Next Milestone

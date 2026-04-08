@@ -364,6 +364,78 @@ async def test_smoke_cache_invalidate_returns_200(app_client):
     assert r.status_code == 401
 
 
+async def test_smoke_agent_memory_requires_auth(app_client):
+    """Agent memory routes require auth."""
+    store = await app_client.post(
+        "/api/agents/run/memory-store",
+        json={"name": "pattern", "content": "private"},
+        timeout=10,
+    )
+    listing = await app_client.get("/api/agents/run/memory-list", timeout=10)
+    assert store.status_code == 401
+    assert listing.status_code == 401
+
+
+async def test_smoke_agent_memory_list_is_user_scoped(app_client, auth_headers):
+    """Agent memory list only returns the current user's rows."""
+    other_headers = await _register_smoke_headers(app_client)
+    other = await app_client.post(
+        "/api/agents/run/memory-store",
+        json={"name": "other-memory", "content": "not yours"},
+        headers=other_headers,
+        timeout=10,
+    )
+    own = await app_client.post(
+        "/api/agents/run/memory-store",
+        json={"name": "own-memory", "content": "yours"},
+        headers=auth_headers,
+        timeout=10,
+    )
+    assert other.status_code == 200
+    assert own.status_code == 200
+    listing = await app_client.get("/api/agents/run/memory-list", headers=auth_headers, timeout=10)
+    assert listing.status_code == 200
+    names = [item.get("name") for item in listing.json().get("items", [])]
+    assert "own-memory" in names
+    assert "other-memory" not in names
+
+
+async def test_smoke_agent_automation_requires_auth(app_client):
+    """Agent automation routes require auth."""
+    store = await app_client.post(
+        "/api/agents/run/automation",
+        json={"name": "job", "prompt": "private"},
+        timeout=10,
+    )
+    listing = await app_client.get("/api/agents/run/automation-list", timeout=10)
+    assert store.status_code == 401
+    assert listing.status_code == 401
+
+
+async def test_smoke_agent_automation_list_is_user_scoped(app_client, auth_headers):
+    """Agent automation list only returns the current user's rows."""
+    other_headers = await _register_smoke_headers(app_client)
+    other = await app_client.post(
+        "/api/agents/run/automation",
+        json={"name": "other-automation", "prompt": "not yours"},
+        headers=other_headers,
+        timeout=10,
+    )
+    own = await app_client.post(
+        "/api/agents/run/automation",
+        json={"name": "own-automation", "prompt": "yours"},
+        headers=auth_headers,
+        timeout=10,
+    )
+    assert other.status_code == 200
+    assert own.status_code == 200
+    listing = await app_client.get("/api/agents/run/automation-list", headers=auth_headers, timeout=10)
+    assert listing.status_code == 200
+    names = [item.get("name") for item in listing.json().get("items", [])]
+    assert "own-automation" in names
+    assert "other-automation" not in names
+
+
 async def test_smoke_app_db_schema_returns_200_for_owned_task(app_client, auth_headers):
     """GET /api/app-db/{task_id} returns schema only for an owned task."""
     task_id = await _create_smoke_task(auth_headers)
