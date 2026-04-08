@@ -60,11 +60,11 @@ BUILD_TARGETS: Dict[str, Dict[str, Any]] = {
     "full_system_generator": {
         "id": "full_system_generator",
         "label": "Full system generator",
-        "tagline": "Direct multi-stack build mode for complex prompts across frontend, backend, data, infra, tests, and docs.",
+        "tagline": "Full AGENT_DAG swarm mode for complex prompts across frontend, backend, data, infra, tests, and docs.",
         "guarantees": [
-            "Routes complex prompts through the full-system builder instead of the fixed scaffold path.",
-            "Can emit mixed-language workspaces when the prompt requests a broader stack.",
-            "Fails explicitly when generation cannot produce real files instead of silently downgrading to a scaffold.",
+            "Routes complex prompts through the full AGENT_DAG swarm instead of the fixed scaffold path.",
+            "Lets design, layout, backend, database, auth, payment, queue, deployment, image, and tool agents participate in one shared workspace build.",
+            "Fails explicitly when core build agents fall back instead of silently downgrading to a scaffold or pack.",
         ],
         "on_this_run": [
             "Verifier depth still depends on the generated stack and what the runtime can execute inside this pipeline.",

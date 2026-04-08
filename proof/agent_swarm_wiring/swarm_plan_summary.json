@@ -1,0 +1,12 @@
+{
+  "agent_count": 123,
+  "phase_count": 8,
+  "full_orchestration_mode": "agent_swarm",
+  "helios_orchestration_mode": "agent_swarm",
+  "full_step_count": 131,
+  "helios_step_count": 131,
+  "full_has_frontend_generation": true,
+  "helios_has_queue_agent": true,
+  "full_avoids_frontend_scaffold": true,
+  "helios_avoids_frontend_scaffold": true
+}

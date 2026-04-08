@@ -27,6 +27,7 @@ from .enterprise_command_pack import (
     enterprise_command_intent,
 )
 from .generation_contract import parse_generation_contract, requires_full_system_builder
+from .swarm_agent_runner import run_swarm_agent_step
 from .domain_packs import compliance_regulated_intent, multitenant_intent, stripe_intent
 from .compliance_sketch import build_compliance_sketch_markdown
 from .multiregion_terraform_sketch import (
@@ -1238,6 +1239,11 @@ async def handle_generic(step: Dict, job: Dict,
     return {"output": f"Step executed: {step['step_key']}", "artifacts": []}
 
 
+async def handle_agent_swarm_step(step: Dict, job: Dict,
+                                  workspace_path: str, **kwargs) -> Dict:
+    return await run_swarm_agent_step(step, job, workspace_path)
+
+
 # ── Handler routing ───────────────────────────────────────────────────────────
 
 STEP_HANDLERS = {
@@ -1272,6 +1278,7 @@ def _get_handler(step_key: str):
         return STEP_HANDLERS[prefix]
     phase = step_key.split(".")[0]
     phase_defaults = {
+        "agents": handle_agent_swarm_step,
         "frontend": handle_frontend_generate,
         "backend": handle_backend_route,
         "database": handle_db_migration,
@@ -1461,8 +1468,10 @@ async def execute_step(step: Dict[str, Any], job: Dict[str, Any],
         # 6. Checkpoint
         await save_checkpoint(job_id, step_key, {
             "step_id": step_id, "step_key": step_key,
+            "agent_name": step.get("agent_name"),
             "status": "completed", "score": vr["score"],
             "output": str(result.get("output", ""))[:500],
+            "result": result,
         })
 
         append_node_artifact_record(

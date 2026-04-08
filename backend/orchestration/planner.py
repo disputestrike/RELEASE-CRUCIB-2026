@@ -20,6 +20,7 @@ from .multiregion_terraform_sketch import multiregion_terraform_intent
 from .observability_workspace_pack import observability_intent as observability_goal_intent
 from .generation_contract import parse_generation_contract
 from .spec_guardian import evaluate_goal_against_runner, merge_plan_risk_flags_into_report
+from .swarm_agent_runner import build_agent_swarm_phases, uses_agent_swarm
 
 logger = logging.getLogger(__name__)
 
@@ -117,11 +118,13 @@ def _goal_len_advisory_threshold(project_state: Optional[Dict]) -> Optional[int]
     return _FREE_USER_GOAL_LEN_ADVISORY
 
 
-def _detect_spec_vs_runner_template_mismatch(goal: str) -> list:
+def _detect_spec_vs_runner_template_mismatch(goal: str, use_agent_swarm: bool = False) -> list:
     """
     Auto-Runner always emits the same scaffold family (Vite + React + Python FastAPI sketch).
     Long enterprise specs often request a different stack — flag so UI/plan reviewers see the gap.
     """
+    if use_agent_swarm:
+        return []
     flags: list = []
     g = (goal or "").lower()
     if any(k in g for k in ("next.js", "nextjs", "next-auth", "nextauth", "auth.js v5", "app router")):
@@ -138,7 +141,8 @@ def _detect_spec_vs_runner_template_mismatch(goal: str) -> list:
     return flags
 
 
-def _detect_risk_flags(goal: str, project_state: Optional[Dict] = None) -> list:
+def _detect_risk_flags(goal: str, project_state: Optional[Dict] = None,
+                       stack_contract: Optional[Dict[str, Any]] = None) -> list:
     flags = []
     g = goal.lower()
     if "stripe" in g and not (project_state or {}).get("env_vars", {}).get("STRIPE_SECRET_KEY"):
@@ -148,13 +152,15 @@ def _detect_risk_flags(goal: str, project_state: Optional[Dict] = None) -> list:
     thresh = _goal_len_advisory_threshold(project_state)
     if thresh is not None and len(goal) > thresh:
         flags.append("goal_too_long_consider_splitting")
-    flags.extend(_detect_spec_vs_runner_template_mismatch(goal))
+    flags.extend(_detect_spec_vs_runner_template_mismatch(goal, uses_agent_swarm(goal, stack_contract)))
     return flags
 
 
-def _architecture_outline(build_kind: str, integrations: list) -> Dict[str, Any]:
+def _architecture_outline(build_kind: str, integrations: list,
+                          stack_contract: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Pre-code architecture brain (honest template — not generated from LLM)."""
     ints = list(integrations or [])
+    swarm_mode = uses_agent_swarm("", stack_contract)
     data_notes = [
         "Demo items / user preferences (client storage + sketch API)",
     ]
@@ -178,20 +184,120 @@ def _architecture_outline(build_kind: str, integrations: list) -> Dict[str, Any]
         )
     return {
         "data_model_intent": data_notes,
-        "api_contract_intent": "REST JSON sketch under backend/main.py (health + sample routes)",
-        "auth_flow_intent": "AuthProvider + localStorage demo token; MFA / OIDC not generated",
+        "api_contract_intent": (
+            "Multi-agent swarm emits API/backend artifacts across requested services."
+            if swarm_mode
+            else "REST JSON sketch under backend/main.py (health + sample routes)"
+        ),
+        "auth_flow_intent": (
+            "Agent swarm should emit auth artifacts requested by the prompt; verify refresh/MFA/SSO explicitly."
+            if swarm_mode
+            else "AuthProvider + localStorage demo token; MFA / OIDC not generated"
+        ),
         "tenancy": "multi_tenant_sketch" if "multi_tenant" in ints else "single_tenant_template",
         "billing_intent": "Stripe stubs + idempotency SQL sketch if stripe integration detected",
-        "frontend_stack": "vite_react_react_router_zustand",
-        "backend_stack": "python_fastapi_sketch",
+        "frontend_stack": (
+            "agent_swarm_requested_stack"
+            if swarm_mode
+            else "vite_react_react_router_zustand"
+        ),
+        "backend_stack": (
+            "agent_swarm_requested_stack"
+            if swarm_mode
+            else "python_fastapi_sketch"
+        ),
         "build_kind": build_kind,
         "integrations_detected": list(integrations or []),
+        "orchestration_mode": "agent_swarm" if swarm_mode else "fixed_autorunner",
     }
 
 
 # ── Phase builders ────────────────────────────────────────────────────────────
 
-def _build_phases(goal: str, build_kind: str, integrations: list) -> list:
+def _build_phases(goal: str, build_kind: str, integrations: list,
+                  stack_contract: Optional[Dict[str, Any]] = None) -> list:
+    if uses_agent_swarm(goal, stack_contract):
+        phases = build_agent_swarm_phases()
+        phases.append(
+            {
+                "key": "implementation",
+                "label": "Delivery manifest",
+                "steps": [
+                    {
+                        "key": "implementation.delivery_manifest",
+                        "agent": "Delivery",
+                        "name": "Delivery classification",
+                        "description": "Write proof/DELIVERY_CLASSIFICATION.md (Implemented/Mocked/Stubbed/Unverified)",
+                    }
+                ],
+            }
+        )
+        phases.append(
+            {
+                "key": "verification",
+                "label": "Verification",
+                "steps": [
+                    {
+                        "key": "verification.compile",
+                        "agent": "Verifier",
+                        "name": "Compile check",
+                        "description": "Verify generated workspace compiles cleanly",
+                    },
+                    {
+                        "key": "verification.api_smoke",
+                        "agent": "Verifier",
+                        "name": "API smoke test",
+                        "description": "Hit key endpoints, check responses",
+                        "depends_on": ["verification.compile"],
+                    },
+                    {
+                        "key": "verification.preview",
+                        "agent": "Verifier",
+                        "name": "Preview render check",
+                        "description": "Confirm preview iframe loads",
+                        "depends_on": ["verification.compile"],
+                    },
+                    {
+                        "key": "verification.security",
+                        "agent": "Security Checker",
+                        "name": "Security scan",
+                        "description": "Check CORS, auth headers, input validation",
+                        "depends_on": ["verification.api_smoke"],
+                    },
+                    {
+                        "key": "verification.elite_builder",
+                        "agent": "Verifier",
+                        "name": "Elite builder gate",
+                        "description": "Delivery classifications, elite directive materialized, critical proof depth",
+                        "depends_on": ["verification.security"],
+                    },
+                ],
+            }
+        )
+        phases.append(
+            {
+                "key": "deploy",
+                "label": "Deploy",
+                "steps": [
+                    {
+                        "key": "deploy.build",
+                        "agent": "Deployment Agent",
+                        "name": "Build artifacts",
+                        "description": "Run production build after verification passes",
+                        "depends_on": ["verification.elite_builder"],
+                    },
+                    {
+                        "key": "deploy.publish",
+                        "agent": "Deployment Agent",
+                        "name": "Publish to target",
+                        "description": "Deploy to Railway/Vercel/Netlify",
+                        "depends_on": ["deploy.build"],
+                    },
+                ],
+            }
+        )
+        return phases
+
     phases = [
         {
             "key": "planning",
@@ -317,8 +423,8 @@ async def generate_plan(goal: str,
     stack_contract = parse_generation_contract(goal)
     build_kind = _detect_build_kind(goal)
     integrations = _detect_integrations(goal)
-    risk_flags = _detect_risk_flags(goal, project_state)
-    phases = _build_phases(goal, build_kind, integrations)
+    risk_flags = _detect_risk_flags(goal, project_state, stack_contract)
+    phases = _build_phases(goal, build_kind, integrations, stack_contract)
 
     # Count total steps
     total_steps = sum(len(p["steps"]) for p in phases)
@@ -387,6 +493,10 @@ async def generate_plan(goal: str,
         acceptance_criteria.append(
             "Requested stack components are emitted as real files across application, services, tests, docs, and infrastructure.",
         )
+    if uses_agent_swarm(goal, stack_contract):
+        acceptance_criteria.append(
+            "Complex requests route through the full AGENT_DAG swarm instead of pack/scaffold fallback.",
+        )
     if stack_contract.get("queues"):
         acceptance_criteria.append("Requested queue/worker technology is represented in generated worker or adapter files.")
     if stack_contract.get("realtime"):
@@ -418,10 +528,11 @@ async def generate_plan(goal: str,
         "summary": f"Building a {build_kind} application: {goal[:100]}",
         "quality_tier": tier,
         "spec_guard": spec_guard,
-        "architecture_outline": _architecture_outline(build_kind, integrations),
+        "architecture_outline": _architecture_outline(build_kind, integrations, stack_contract),
         "stack_contract": stack_contract,
         "generation_mode": "full_system_builder" if stack_contract.get("requires_full_system_builder") else "targeted_pack",
         "recommended_build_target": recommended_target,
+        "orchestration_mode": "agent_swarm" if uses_agent_swarm(goal, stack_contract) else "fixed_autorunner",
     }
 
     return enrich_plan_with_node_manifests(plan)
