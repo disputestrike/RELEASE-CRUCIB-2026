@@ -1,0 +1,15 @@
+{
+  "finished_at": "2026-04-08T19:42:46.603684+00:00",
+  "label": "01_health",
+  "method": "GET",
+  "ok": true,
+  "path": "/api/health",
+  "request_body": null,
+  "response": {
+    "service": "crucibai",
+    "status": "healthy",
+    "timestamp": "2026-04-08T19:42:47.326397+00:00"
+  },
+  "started_at": "2026-04-08T19:42:46.281330+00:00",
+  "status_code": 200
+}

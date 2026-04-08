@@ -1,0 +1,17 @@
+{
+  "finished_at": "2026-04-08T19:42:50.580252+00:00",
+  "label": "07_run_auto",
+  "method": "POST",
+  "ok": true,
+  "path": "/api/orchestrator/run-auto",
+  "request_body": {
+    "job_id": "f6f887eb-f6bc-4c86-861b-8cb2a8abe089"
+  },
+  "response": {
+    "job_id": "f6f887eb-f6bc-4c86-861b-8cb2a8abe089",
+    "stream_url": "/api/jobs/f6f887eb-f6bc-4c86-861b-8cb2a8abe089/stream",
+    "success": true
+  },
+  "started_at": "2026-04-08T19:42:49.424148+00:00",
+  "status_code": 200
+}

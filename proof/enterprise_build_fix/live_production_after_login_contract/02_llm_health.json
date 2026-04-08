@@ -1,0 +1,92 @@
+{
+  "finished_at": "2026-04-08T19:42:46.854097+00:00",
+  "label": "02_llm_health",
+  "method": "GET",
+  "ok": true,
+  "path": "/api/health/llm",
+  "request_body": null,
+  "response": {
+    "env_contract": {
+      "providers": {
+        "anthropic": {
+          "default_model": "claude-3-5-haiku-20241022",
+          "key_env": "ANTHROPIC_API_KEY",
+          "model_env": "ANTHROPIC_MODEL",
+          "role": "quality/complex build fallback and preferred complex build path"
+        },
+        "cerebras": {
+          "default_model": "llama3.1-8b",
+          "key_env": [
+            "CEREBRAS_API_KEY",
+            "CEREBRAS_API_KEY_1",
+            "CEREBRAS_API_KEY_2",
+            "CEREBRAS_API_KEY_3",
+            "CEREBRAS_API_KEY_4",
+            "CEREBRAS_API_KEY_5"
+          ],
+          "model_env": "CEREBRAS_MODEL",
+          "role": "fast/simple generation path and fallback when configured"
+        },
+        "llama": {
+          "default_model": "meta-llama/Llama-2-70b-chat-hf",
+          "key_env": "LLAMA_API_KEY",
+          "model_env": "LLAMA_MODEL",
+          "role": "optional Together-hosted Llama path when configured"
+        }
+      },
+      "required_for_any_live_llm": [
+        "one of ANTHROPIC_API_KEY, CEREBRAS_API_KEY, CEREBRAS_API_KEY_1..5, LLAMA_API_KEY"
+      ]
+    },
+    "generated_at": "2026-04-08T19:42:47.574633+00:00",
+    "live_invocation": "not_run",
+    "prompt_classification": "complex",
+    "providers": {
+      "anthropic": {
+        "configured": true,
+        "disabled": false,
+        "key_count": 1,
+        "missing_env": [],
+        "model": "claude-3-5-haiku-20241022"
+      },
+      "cerebras": {
+        "configured": true,
+        "configured_key_envs": [
+          "CEREBRAS_API_KEY",
+          "CEREBRAS_API_KEY_2",
+          "CEREBRAS_API_KEY_3",
+          "CEREBRAS_API_KEY_4",
+          "CEREBRAS_API_KEY_5"
+        ],
+        "disabled": false,
+        "key_count": 5,
+        "missing_env": [],
+        "model": "llama3.1-8b"
+      },
+      "llama": {
+        "configured": false,
+        "disabled": false,
+        "key_count": 0,
+        "missing_env": [
+          "LLAMA_API_KEY"
+        ],
+        "model": "meta-llama/Llama-2-70b-chat-hf"
+      }
+    },
+    "secret_values_included": "<redacted>",
+    "selected_chain": [
+      {
+        "model": "llama3.1-8b",
+        "provider": "cerebras"
+      },
+      {
+        "model": "claude-3-5-haiku-20241022",
+        "provider": "anthropic"
+      }
+    ],
+    "status": "ready",
+    "warnings": []
+  },
+  "started_at": "2026-04-08T19:42:46.604722+00:00",
+  "status_code": 200
+}
