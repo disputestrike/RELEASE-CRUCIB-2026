@@ -57,6 +57,10 @@ try {
         -q
     Assert-LastExit "backend smoke"
 
+    Step "Running LLM routing guard tests"
+    & python -m pytest backend\tests\test_tool_agents.py -k "large_cerebras or base_agent" -q
+    Assert-LastExit "LLM routing guard tests"
+
     if (-not $BackendOnly) {
         Step "Checking frontend runtime"
         Require-Command node | Out-Null

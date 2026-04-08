@@ -15,6 +15,10 @@ from llm_cerebras import invoke_cerebras, invoke_cerebras_stream
 
 logger = logging.getLogger(__name__)
 
+CEREBRAS_CONTEXT_TOKEN_LIMIT = int(os.environ.get("CEREBRAS_CONTEXT_TOKEN_LIMIT", "8192"))
+CEREBRAS_CONTEXT_SAFETY_MARGIN = int(os.environ.get("CEREBRAS_CONTEXT_SAFETY_MARGIN", "512"))
+ANTHROPIC_FALLBACK_MODEL = os.environ.get("ANTHROPIC_FALLBACK_MODEL", "claude-3-5-haiku-20241022")
+
 
 class AgentValidationError(Exception):
     """Raised when agent input/output validation fails."""
@@ -53,6 +57,15 @@ class BaseAgent(ABC):
             self.memory = None
             self.performance = None
             self.strategy = None
+
+    @staticmethod
+    def _estimate_prompt_tokens(*parts: str) -> int:
+        """Rough guardrail estimate used before provider calls."""
+        return sum(len(part or "") for part in parts) // 4
+
+    def _cerebras_context_too_large(self, user_prompt: str, system_prompt: str, max_tokens: int) -> bool:
+        requested = self._estimate_prompt_tokens(user_prompt, system_prompt) + int(max_tokens or 0)
+        return requested + CEREBRAS_CONTEXT_SAFETY_MARGIN > CEREBRAS_CONTEXT_TOKEN_LIMIT
         
     def validate_input(self, context: Dict[str, Any]) -> bool:
         """
@@ -197,8 +210,27 @@ class BaseAgent(ABC):
         Returns:
             Tuple of (response_text, tokens_used)
         """
+        anthropic_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+
         # Use Cerebras by default (free tier, streaming is more reliable)
-        if model == "cerebras" or not os.getenv("ANTHROPIC_API_KEY"):
+        if model == "cerebras" or not anthropic_key:
+            if self._cerebras_context_too_large(user_prompt, system_prompt, max_tokens):
+                if anthropic_key:
+                    logger.info(
+                        "%s prompt exceeds Cerebras context; routing to Anthropic fallback",
+                        self.name,
+                    )
+                    return await self.call_llm(
+                        user_prompt,
+                        system_prompt,
+                        ANTHROPIC_FALLBACK_MODEL,
+                        temperature,
+                        max_tokens,
+                        stream=False,
+                    )
+                raise AgentValidationError(
+                    f"{self.name}: prompt too large for Cerebras context window; configure ANTHROPIC_API_KEY for large build prompts"
+                )
             try:
                 if stream:
                     # Use streaming API (more reliable, no compression issues)
@@ -262,6 +294,10 @@ class BaseAgent(ABC):
             except Exception as e:
                 logger.error(f"{self.name}: Anthropic API call failed: {e}")
                 # Fallback to Cerebras streaming
+                if self._cerebras_context_too_large(user_prompt, system_prompt, max_tokens):
+                    raise AgentValidationError(
+                        f"{self.name}: Anthropic failed and Cerebras fallback was skipped because the prompt exceeds the Cerebras context window"
+                    )
                 logger.info(f"{self.name} falling back to Cerebras")
                 return await self.call_llm(user_prompt, system_prompt, "cerebras", temperature, max_tokens, stream=True)
         

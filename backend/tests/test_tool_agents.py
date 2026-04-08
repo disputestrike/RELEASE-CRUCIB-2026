@@ -26,6 +26,27 @@ def test_base_agent_abstract():
         BaseAgent(llm_client=None, config={})
 
 
+@pytest.mark.asyncio
+async def test_base_agent_rejects_large_cerebras_prompt_without_anthropic(monkeypatch):
+    """Large prompts should not be sent to Cerebras when no Anthropic fallback exists."""
+    from agents.base_agent import AgentValidationError, BaseAgent
+
+    class ConcreteAgent(BaseAgent):
+        async def execute(self, context):
+            return {"ok": True}
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    agent = ConcreteAgent(llm_client=None, config={})
+    giant_prompt = "Build a real app.\n" + ("x" * 40000)
+    with pytest.raises(AgentValidationError, match="prompt too large for Cerebras"):
+        await agent.call_llm(
+            user_prompt=giant_prompt,
+            system_prompt="You are a frontend builder.",
+            model="claude-3-5-haiku-20241022",
+            max_tokens=6000,
+        )
+
+
 # ==================== BROWSER AGENT ====================
 
 def test_browser_agent_import():

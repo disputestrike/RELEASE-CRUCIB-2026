@@ -104,7 +104,11 @@ Tasks:
 - [x] Commit and push the deployment docs cleanup slice (`fa064b5`).
 - [x] Add `scripts/release-gate.ps1` for backend security/proof smoke and optional frontend gate.
 - [x] Validate the release-gate script parser and backend-only path.
-- [ ] Commit and push the release-gate slice.
+- [x] Commit and push the release-gate slice (`825c3bd`).
+- [x] Add a Cerebras context-window guard in the shared agent LLM path.
+- [x] Add the LLM routing guard test to the release gate.
+- [x] Add focused coverage so large build prompts require Anthropic instead of silently hitting Cerebras.
+- [ ] Commit and push the LLM context-window guard slice.
 
 ## Verification Log
 
@@ -134,7 +138,7 @@ Tasks:
 - `python -m py_compile backend\server.py` passed after project progress websocket auth changes.
 - `python -m py_compile backend\modules_blueprint.py backend\server.py` passed.
 - `python -m pytest backend\tests\test_smoke.py -k "app_db or git_sync or railway_deploy" -q` passed with local Postgres/Redis env: 9 passed, 38 deselected.
-- `.\scripts\release-gate.ps1 -BackendOnly` passed: 28 passed, 24 deselected.
+- `.\scripts\release-gate.ps1 -BackendOnly` passed after LLM guard update: smoke 28 passed, 24 deselected; tool agent guard 8 passed, 18 deselected.
 - `.\scripts\verify-local.ps1` correctly failed on Node `v24.14.0`; the frontend declares Node `>=18 <=22`.
 
 ## Next Milestone
