@@ -9,4 +9,5 @@ backend/__pycache__
 .env.*
 *.md
 !proof/benchmarks/repeatability_v1/PASS_FAIL.md
+!proof/full_systems/PASS_FAIL.md
 node_modules

@@ -1,5 +1,5 @@
 ﻿{
-    "generated_at":  "2026-04-08T16:13:30.4748074Z",
+    "generated_at":  "2026-04-08T16:24:59.5440771Z",
     "base_url":  null,
     "required_failures":  0,
     "results":  [
@@ -10,7 +10,7 @@
                         "exit_code":  0,
                         "command":  "git diff --check",
                         "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\git_diff_check.log",
-                        "duration_seconds":  0.35,
+                        "duration_seconds":  0.23,
                         "error":  null
                     },
                     {
@@ -20,7 +20,7 @@
                         "exit_code":  0,
                         "command":  "python -m py_compile critical backend/scripts",
                         "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\py_compile.log",
-                        "duration_seconds":  0.97,
+                        "duration_seconds":  0.67,
                         "error":  null
                     },
                     {
@@ -30,7 +30,7 @@
                         "exit_code":  0,
                         "command":  "python -m pytest backend\\tests -q --tb=short",
                         "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\backend_all_pytest.log",
-                        "duration_seconds":  157.17,
+                        "duration_seconds":  156.42,
                         "error":  null
                     },
                     {
@@ -40,7 +40,7 @@
                         "exit_code":  0,
                         "command":  ".\\scripts\\release-gate.ps1 -BackendOnly",
                         "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\release_gate_backend.log",
-                        "duration_seconds":  78.63,
+                        "duration_seconds":  93.29,
                         "error":  null
                     },
                     {
@@ -50,7 +50,7 @@
                         "exit_code":  0,
                         "command":  "python scripts\\golden-path-ux-audit.py --proof-dir proof\\full_systems\\golden_path_ux",
                         "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\golden_path_ux_audit.log",
-                        "duration_seconds":  0.26,
+                        "duration_seconds":  0.17,
                         "error":  null
                     },
                     {
@@ -60,7 +60,7 @@
                         "exit_code":  0,
                         "command":  ".\\scripts\\frontend-runtime-gate.ps1 -RunDockerBuild",
                         "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\frontend_runtime_gate.log",
-                        "duration_seconds":  121.15,
+                        "duration_seconds":  5.98,
                         "error":  null
                     },
                     {
@@ -70,7 +70,7 @@
                         "exit_code":  0,
                         "command":  ".\\scripts\\verify-railway-readiness.ps1 -RunDockerBuild -RunContainerHealth",
                         "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\railway_readiness.log",
-                        "duration_seconds":  25.29,
+                        "duration_seconds":  30.16,
                         "error":  null
                     }
                 ]

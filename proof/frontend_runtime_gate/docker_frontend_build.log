@@ -1,83 +1,53 @@
 #0 building with "desktop-linux" instance using docker driver
 
 #1 [internal] load build definition from Dockerfile
-#1 transferring dockerfile: 2.15kB 0.0s done
+#1 transferring dockerfile: 2.31kB 0.0s done
 #1 DONE 0.1s
 
 #2 [internal] load metadata for docker.io/library/node:22-alpine
-#2 DONE 1.4s
+#2 DONE 0.8s
 
 #3 [internal] load .dockerignore
-#3 transferring context: 269B done
-#3 DONE 0.0s
+#3 transferring context:
+#3 transferring context: 302B 0.0s done
+#3 DONE 0.1s
 
-#4 [frontend 1/7] FROM docker.io/library/node:22-alpine@sha256:4d64b49e6c891c8fc821007cb1cdc6c0db7773110ac2c34bf2e6960adef62ed3
-#4 resolve docker.io/library/node:22-alpine@sha256:4d64b49e6c891c8fc821007cb1cdc6c0db7773110ac2c34bf2e6960adef62ed3 0.0s done
+#4 [internal] load build context
 #4 DONE 0.0s
 
-#5 [internal] load build context
-#5 transferring context: 162.54kB 0.8s done
-#5 DONE 1.0s
+#5 [frontend 1/7] FROM docker.io/library/node:22-alpine@sha256:4d64b49e6c891c8fc821007cb1cdc6c0db7773110ac2c34bf2e6960adef62ed3
+#5 resolve docker.io/library/node:22-alpine@sha256:4d64b49e6c891c8fc821007cb1cdc6c0db7773110ac2c34bf2e6960adef62ed3 0.0s done
+#5 DONE 0.0s
 
-#6 [frontend 2/7] WORKDIR /app
+#4 [internal] load build context
+#4 transferring context: 18.85kB 1.1s done
+#4 DONE 1.2s
+
+#6 [frontend 5/7] RUN npm ci --omit=optional --legacy-peer-deps
 #6 CACHED
 
-#7 [frontend 3/7] COPY frontend/package.json frontend/package-lock.json frontend/.npmrc ./
+#7 [frontend 6/7] COPY frontend/ ./
 #7 CACHED
 
-#8 [frontend 4/7] COPY frontend/scripts ./scripts
+#8 [frontend 2/7] WORKDIR /app
 #8 CACHED
 
-#9 [frontend 5/7] RUN npm ci --omit=optional --legacy-peer-deps
+#9 [frontend 3/7] COPY frontend/package.json frontend/package-lock.json frontend/.npmrc ./
 #9 CACHED
 
-#10 [frontend 6/7] COPY frontend/ ./
-#10 DONE 0.8s
+#10 [frontend 4/7] COPY frontend/scripts ./scripts
+#10 CACHED
 
 #11 [frontend 7/7] RUN npm run build
-#11 3.295 
-#11 3.295 > frontend@0.1.0 build
-#11 3.295 > cross-env DISABLE_ESLINT_PLUGIN=true craco build
-#11 3.295 
-#11 7.602 Creating an optimized production build...
-#11 106.5 Compiled successfully.
-#11 106.5 
-#11 106.5 File sizes after gzip:
-#11 106.5 
-#11 106.6   731.03 kB  build/static/js/main.9ac65832.js
-#11 106.6   41.43 kB   build/static/css/main.df67999e.css
-#11 106.6   26.57 kB   build/static/js/531.d8d55189.chunk.js
-#11 106.6   23.45 kB   build/static/js/967.d1fbc514.chunk.js
-#11 106.6   8.86 kB    build/static/js/550.1f9c4ac7.chunk.js
-#11 106.6   6.23 kB    build/static/js/55.3eaba4e4.chunk.js
-#11 106.6 
-#11 106.6 The bundle size is significantly larger than recommended.
-#11 106.6 Consider reducing it with code splitting: https://goo.gl/9VhYWB
-#11 106.6 You can also analyze the project dependencies: https://goo.gl/LeUzfb
-#11 106.6 
-#11 106.6 The project was built assuming it is hosted at /.
-#11 106.6 You can control this with the homepage field in your package.json.
-#11 106.6 
-#11 106.6 The build folder is ready to be deployed.
-#11 106.6 You may serve it with a static server:
-#11 106.6 
-#11 106.6   yarn global add serve
-#11 106.6   serve -s build
-#11 106.6 
-#11 106.6 Find out more about deployment here:
-#11 106.6 
-#11 106.6   https://cra.link/deployment
-#11 106.6 
-#11 DONE 107.7s
+#11 CACHED
 
 #12 exporting to image
-#12 exporting layers
-#12 exporting layers 3.9s done
-#12 exporting manifest sha256:380cf332b32755c7af3f89b9da22eba016ca8c12f515d9b6fea3b3ed6c6be112 0.0s done
-#12 exporting config sha256:5e19437c9d84d95dd93fab36cdc00158b76416c1f50732d17a98b80f934dcac3 0.0s done
-#12 exporting attestation manifest sha256:1408223116aedb6e797e7d7d7d44f4f32455e03c27ddbc84f3163a36226544a2 0.1s done
-#12 exporting manifest list sha256:ae3979b7e06c4a1a583e98a27e69763accfd058e91990f27d1aadd4c067893e4 0.0s done
+#12 exporting layers 0.0s done
+#12 exporting manifest sha256:380cf332b32755c7af3f89b9da22eba016ca8c12f515d9b6fea3b3ed6c6be112 done
+#12 exporting config sha256:5e19437c9d84d95dd93fab36cdc00158b76416c1f50732d17a98b80f934dcac3 done
+#12 exporting attestation manifest sha256:55d5056bb5ed3d4132475ea7d84465344c7be923632b961bf454a2efa0d27b9e
+#12 exporting attestation manifest sha256:55d5056bb5ed3d4132475ea7d84465344c7be923632b961bf454a2efa0d27b9e 0.1s done
+#12 exporting manifest list sha256:1e28b19fdddcbb261d0b435897698f52354439394b173ce2d52a511639a93908 0.0s done
 #12 naming to docker.io/library/crucibai-frontend-runtime-gate:latest 0.0s done
-#12 unpacking to docker.io/library/crucibai-frontend-runtime-gate:latest
-#12 unpacking to docker.io/library/crucibai-frontend-runtime-gate:latest 2.4s done
-#12 DONE 6.6s
+#12 unpacking to docker.io/library/crucibai-frontend-runtime-gate:latest 0.0s done
+#12 DONE 0.4s

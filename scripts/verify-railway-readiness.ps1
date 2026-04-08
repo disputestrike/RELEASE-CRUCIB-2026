@@ -47,6 +47,7 @@ $checks = [ordered]@{
     dockerfile_static_frontend_copy = ($dockerfile -match "COPY --from=frontend /app/build ./static")
     dockerfile_uvicorn_cmd_uses_port = ($dockerfile -match "uvicorn server:app" -and $dockerfile -match 'PORT')
     dockerfile_healthcheck_api_health = ($dockerfile -match "/api/health")
+    dockerfile_copies_full_systems_proof = ($dockerfile -match "proof/full_systems/summary.json" -and $dockerfile -match "proof/full_systems/PASS_FAIL.md")
     procfile_uvicorn_fallback = ($procfile -match "uvicorn server:app")
 }
 

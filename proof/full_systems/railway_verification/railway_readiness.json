@@ -1,5 +1,5 @@
 ﻿{
-    "generated_at":  "2026-04-08T16:13:30.4010668Z",
+    "generated_at":  "2026-04-08T16:24:59.4027181Z",
     "static_readiness":  "passed",
     "live_confirmation":  "not_run",
     "checks":  {
@@ -12,6 +12,7 @@
                    "dockerfile_static_frontend_copy":  true,
                    "dockerfile_uvicorn_cmd_uses_port":  true,
                    "dockerfile_healthcheck_api_health":  true,
+                   "dockerfile_copies_full_systems_proof":  true,
                    "procfile_uvicorn_fallback":  true
                },
     "required_env":  [
@@ -74,7 +75,7 @@
                              "health_output":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\railway_verification\\docker_container_health.json",
                              "health_url":  "http://127.0.0.1:18080/api/health",
                              "status":  "passed",
-                             "container_id":  "fbee9375ab9318dcb51470a668fb893560ec040481ab75c173e6bec0dd028071",
+                             "container_id":  "93707d8552edf21b8b43c476f04b02cce8c4db662f9ff1bfea093c819b2c05fe",
                              "image":  "crucibai-railway-readiness"
                          },
     "live":  {

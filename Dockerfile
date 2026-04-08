@@ -35,7 +35,9 @@ COPY --from=frontend /app/build ./static
 RUN echo "Frontend static files copied"
 COPY proof/benchmarks/repeatability_v1/summary.json /proof/benchmarks/repeatability_v1/summary.json
 COPY proof/benchmarks/repeatability_v1/PASS_FAIL.md /proof/benchmarks/repeatability_v1/PASS_FAIL.md
-RUN echo "Benchmark proof files copied"
+COPY proof/full_systems/summary.json /proof/full_systems/summary.json
+COPY proof/full_systems/PASS_FAIL.md /proof/full_systems/PASS_FAIL.md
+RUN echo "Benchmark and full systems proof files copied"
 
 ENV PORT=8000
 EXPOSE 8000

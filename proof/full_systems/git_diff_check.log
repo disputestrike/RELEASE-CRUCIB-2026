@@ -1,30 +1,10 @@
-﻿git.exe : warning: in the working copy of 'backend/routes/trust.py', LF will be replaced by CRLF the next time Git
-touches it
+﻿git.exe : warning: in the working copy of '.dockerignore', LF will be replaced by CRLF the next time Git touches it
 At C:\Users\benxp\OneDrive\Documents\New project\scripts\full-systems-test.ps1:135 char:19
 +         -Script { & git diff --check }
 +                   ~~~~~~~~~~~~~~~~~~
     + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
     + FullyQualifiedErrorId : NativeCommandError
 
-warning: in the working copy of 'backend/server.py', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'backend/terminal_integration.py', LF will be replaced by CRLF the next time Git
+warning: in the working copy of 'Dockerfile', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'scripts/verify-railway-readiness.ps1', LF will be replaced by CRLF the next time Git
 touches it
-warning: in the working copy of 'backend/tests/test_smoke.py', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'docs/FULL_SYSTEMS_TESTING.md', LF will be replaced by CRLF the next time Git touches
-it
-warning: in the working copy of 'frontend/src/components/Sidebar.css', LF will be replaced by CRLF the next time Git
-touches it
-warning: in the working copy of 'frontend/src/components/Sidebar.jsx', LF will be replaced by CRLF the next time Git
-touches it
-warning: in the working copy of 'frontend/src/pages/Dashboard.css', LF will be replaced by CRLF the next time Git
-touches it
-warning: in the working copy of 'frontend/src/pages/Dashboard.jsx', LF will be replaced by CRLF the next time Git
-touches it
-warning: in the working copy of 'frontend/src/pages/OnboardingPage.jsx', LF will be replaced by CRLF the next time Git
-touches it
-warning: in the working copy of 'frontend/src/pages/Security.jsx', LF will be replaced by CRLF the next time Git
-touches it
-warning: in the working copy of 'frontend/src/pages/Status.jsx', LF will be replaced by CRLF the next time Git touches
-it
-warning: in the working copy of 'scripts/full-systems-test.ps1', LF will be replaced by CRLF the next time Git touches
-it
