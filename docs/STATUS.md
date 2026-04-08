@@ -81,7 +81,7 @@ Tasks:
 - [x] Add `docs/POSTGRES_ONLY_MIGRATION.md`.
 - [x] Add `docs/LOCAL_RUNBOOK.md`.
 - [x] Validate PowerShell syntax for `run-dev.ps1` and `scripts/verify-local.ps1`.
-- [ ] Commit and push the local bootstrap/runbook slice.
+- [x] Commit and push the local bootstrap/runbook slice (`f90cf30`).
 
 ## Verification Log
 
