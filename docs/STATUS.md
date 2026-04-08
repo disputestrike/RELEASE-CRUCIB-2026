@@ -94,7 +94,11 @@ Tasks:
 - [x] Commit and push the job state ownership slice (`a6fbe8d`).
 - [x] Add a stable build contract envelope to proof bundles.
 - [x] Add focused smoke coverage proving job proof returns the build contract.
-- [ ] Commit and push the proof build-contract slice.
+- [x] Commit and push the proof build-contract slice (`60cbe7e`).
+- [x] Add an explicit `CRUCIBAI_TERMINAL_ENABLED` launch gate for terminal sessions and command execution.
+- [x] Keep terminal enabled for test/dev by default while disabled by default in production.
+- [x] Add focused smoke coverage for disabled terminal create/execute behavior.
+- [ ] Commit and push the terminal launch-gate slice.
 
 ## Verification Log
 

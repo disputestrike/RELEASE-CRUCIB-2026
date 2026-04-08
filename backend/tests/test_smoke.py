@@ -333,6 +333,19 @@ async def test_smoke_terminal_create_requires_auth(app_client):
     assert r.status_code == 401
 
 
+async def test_smoke_terminal_create_respects_disabled_env(app_client, auth_headers, monkeypatch):
+    """Terminal execution is disabled in production unless explicitly enabled."""
+    project_id = await _create_smoke_project(app_client, auth_headers)
+    monkeypatch.setenv("CRUCIBAI_TERMINAL_ENABLED", "0")
+    r = await app_client.post(
+        "/api/terminal/create",
+        params={"project_id": project_id},
+        headers=auth_headers,
+        timeout=10,
+    )
+    assert r.status_code == 403
+
+
 async def test_smoke_terminal_execute_returns_result(app_client, auth_headers):
     """Create session, POST /api/terminal/{id}/execute with a command; get returncode/stdout."""
     project_id = await _create_smoke_project(app_client, auth_headers)
@@ -357,6 +370,28 @@ async def test_smoke_terminal_execute_returns_result(app_client, auth_headers):
     assert data.get("returncode") == 0, f"expected 0, got {data}"
     assert "stdout" in data
     assert "hello" in data.get("stdout", "")
+
+
+async def test_smoke_terminal_execute_respects_disabled_env(app_client, auth_headers, monkeypatch):
+    """Terminal command execution can be gated off after a session exists."""
+    project_id = await _create_smoke_project(app_client, auth_headers)
+    monkeypatch.setenv("CRUCIBAI_TERMINAL_ENABLED", "1")
+    create_r = await app_client.post(
+        "/api/terminal/create",
+        params={"project_id": project_id},
+        headers=auth_headers,
+        timeout=10,
+    )
+    assert create_r.status_code == 200
+    session_id = create_r.json().get("session_id")
+    monkeypatch.setenv("CRUCIBAI_TERMINAL_ENABLED", "0")
+    exec_r = await app_client.post(
+        f"/api/terminal/{session_id}/execute",
+        json={"command": "echo blocked", "timeout": 10},
+        headers=auth_headers,
+        timeout=15,
+    )
+    assert exec_r.status_code == 403
 
 
 async def test_smoke_git_branches_returns_200(app_client, auth_headers):
