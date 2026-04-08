@@ -4,11 +4,11 @@ Last updated: 2026-04-08
 
 ## Current Branch
 
-`codex/postgres-foundation-and-execution-plan`
+`main`
 
 ## Current Objective
 
-Establish the Postgres-only foundation and execution tracking trail before changing runtime behavior.
+Continue Phase 2 execution-surface hardening on `main`, with every approved slice committed and pushed directly to GitHub.
 
 ## Confirmed Direction
 
@@ -16,13 +16,12 @@ Establish the Postgres-only foundation and execution tracking trail before chang
 - MongoDB references in primary docs and CI are treated as drift.
 - The golden path is prompt/import to plan, build, proof, preview, iterate, export/deploy.
 - Security hardening for terminal/git/workspace operations is required before public launch.
-- Work should be committed in small slices on a `codex/*` branch.
+- Work should be committed in small slices and pushed directly to `main` unless the owner says otherwise.
 
 ## Known Risks
 
 - `backend/server.py` is too large and mixes too many domains.
-- Terminal and git endpoints currently expose powerful operations and need stricter authentication/path controls.
-- CI still had MongoDB-era configuration before this branch.
+- Remaining optional-auth routes must be reviewed before public launch.
 - Fresh checkout setup requires dependency and environment bootstrapping.
 - The full test suite was not run in this checkout before foundation fixes because frontend dependencies and local database setup were not ready.
 
@@ -48,7 +47,13 @@ Tasks:
 - [x] Bind debugger/profiler sessions to the authenticated user.
 - [x] Update IDE Debug/Lint/Profiler panels to send bearer auth.
 - [x] Add focused smoke coverage for IDE auth and ownership checks.
-- [ ] Commit the IDE execution-surface hardening slice.
+- [x] Commit and push the IDE execution-surface hardening slice (`0bb5886`).
+- [x] Require authentication and task ownership for app database schema/provision routes.
+- [x] Require authentication and task ownership for the legacy Vercel deploy helper.
+- [x] Require admin access for agent cache invalidation.
+- [x] Require authentication and project ownership when framework detection reads project metadata.
+- [x] Add focused smoke coverage for app-db, cache invalidation, legacy deploy, and project-backed framework detection.
+- [ ] Commit and push the optional-auth state route hardening slice.
 
 ## Verification Log
 
@@ -56,6 +61,9 @@ Tasks:
 - `python -m pytest backend\tests\test_smoke.py -k "git_status or terminal" -q` passed with `DATABASE_URL=postgresql://crucibai:crucibai@127.0.0.1:5434/crucibai` and `REDIS_URL=redis://127.0.0.1:6381/0`: 5 passed, 17 deselected.
 - `python -m py_compile backend\server.py backend\ide_features.py backend\terminal_integration.py` passed.
 - `python -m pytest backend\tests\test_smoke.py -k "ide_ or git_status or terminal" -q` passed with `DATABASE_URL=postgresql://crucibai:crucibai@127.0.0.1:5434/crucibai` and `REDIS_URL=redis://127.0.0.1:6381/0`: 10 passed, 16 deselected.
+- `python -m py_compile backend\server.py` passed.
+- `python -m pytest backend\tests\test_smoke.py -k "app_db or cache_invalidate or detect_frameworks or deploy" -q` passed with local Postgres/Redis env: 9 passed, 23 deselected.
+- `python -m pytest backend\tests\test_smoke.py -k "ide_ or git_status or terminal or app_db or cache_invalidate or detect_frameworks or deploy" -q` passed with local Postgres/Redis env: 19 passed, 13 deselected.
 - `.\scripts\verify-local.ps1` correctly failed on Node `v24.14.0`; the frontend declares Node `>=18 <=22`.
 
 ## Next Milestone
@@ -64,8 +72,6 @@ Phase 2: Execution Surface Hardening
 
 Planned tasks:
 
-- Require authentication for terminal create/execute/close.
-- Remove raw path trust from terminal and git APIs.
-- Resolve workspaces server-side from authenticated `project_id` or `job_id`.
-- Add tenant-isolation regression tests.
+- Continue reviewing remaining optional-auth routes and classify them as public, authenticated, or admin-only.
+- Add tenant-isolation regression tests beyond smoke coverage where high-risk endpoints remain.
 - Decide whether terminal execution is removed, sandboxed, or admin-only for launch.

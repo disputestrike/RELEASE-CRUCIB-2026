@@ -32,6 +32,38 @@ async def _create_smoke_project(app_client, auth_headers):
     return project_id
 
 
+async def _create_smoke_task(auth_headers, files=None):
+    """Create a user-owned task row for state-scoped smoke tests."""
+    import server
+
+    token = auth_headers["Authorization"].split(" ", 1)[1]
+    payload = server.jwt.decode(token, server.JWT_SECRET, algorithms=[server.JWT_ALGORITHM])
+    task_id = str(uuid.uuid4())
+    await server.db.tasks.insert_one({
+        "id": task_id,
+        "user_id": payload["user_id"],
+        "name": "Smoke Task",
+        "status": "complete",
+        "files": files or {"schema.sql": "CREATE TABLE IF NOT EXISTS smoke_items (id text);"},
+        "created_at": "2026-01-01T00:00:00+00:00",
+        "updated_at": "2026-01-01T00:00:00+00:00",
+    })
+    return task_id
+
+
+async def _register_smoke_headers(app_client):
+    """Register another test user and return auth headers."""
+    email = f"smoke-{uuid.uuid4().hex[:12]}@example.com"
+    r = await app_client.post(
+        "/api/auth/register",
+        json={"email": email, "password": "TestPass123!", "name": "Smoke User"},
+        timeout=10,
+    )
+    assert r.status_code in (200, 201), f"Register failed: {r.status_code} {r.text}"
+    data = r.json()
+    return {"Authorization": f"Bearer {data['token']}"}
+
+
 async def test_smoke_health_returns_200(app_client):
     """App starts and /api/health returns 200."""
     r = await app_client.get("/api/health", timeout=10)
@@ -302,6 +334,12 @@ async def test_smoke_vibecoding_detect_frameworks_returns_200(app_client):
     assert "languages" in data
 
 
+async def test_smoke_vibecoding_detect_frameworks_project_requires_auth(app_client):
+    """Project-backed framework detection requires auth before reading project metadata."""
+    r = await app_client.post("/api/vibecoding/detect-frameworks", json={"project_id": "not-owned"}, timeout=10)
+    assert r.status_code == 401
+
+
 async def test_smoke_ai_docs_generate_returns_200(app_client):
     """POST /api/ai/docs/generate returns 200 and readme."""
     r = await app_client.post("/api/ai/docs/generate", json={"project_name": "TestApp", "description": "A test app"}, timeout=10)
@@ -321,9 +359,56 @@ async def test_smoke_deploy_validate_returns_200(app_client):
 
 
 async def test_smoke_cache_invalidate_returns_200(app_client):
-    """POST /api/cache/invalidate returns 200."""
+    """POST /api/cache/invalidate requires admin auth."""
     r = await app_client.post("/api/cache/invalidate", timeout=10)
+    assert r.status_code == 401
+
+
+async def test_smoke_app_db_schema_returns_200_for_owned_task(app_client, auth_headers):
+    """GET /api/app-db/{task_id} returns schema only for an owned task."""
+    task_id = await _create_smoke_task(auth_headers)
+    r = await app_client.get(f"/api/app-db/{task_id}", headers=auth_headers, timeout=10)
     assert r.status_code == 200
-    data = r.json()
-    assert data.get("status") == "ok"
-    assert "deleted" in data
+    schema = r.json().get("schema")
+    assert schema
+    assert "smoke_items" in schema.get("tables", [])
+
+
+async def test_smoke_app_db_schema_requires_auth(app_client):
+    """GET /api/app-db/{task_id} requires auth."""
+    r = await app_client.get("/api/app-db/not-owned", timeout=10)
+    assert r.status_code == 401
+
+
+async def test_smoke_app_db_schema_rejects_unowned_task(app_client, auth_headers):
+    """GET /api/app-db/{task_id} rejects another user's task."""
+    other_headers = await _register_smoke_headers(app_client)
+    task_id = await _create_smoke_task(other_headers)
+    r = await app_client.get(f"/api/app-db/{task_id}", headers=auth_headers, timeout=10)
+    assert r.status_code == 403
+
+
+async def test_smoke_app_db_provision_returns_200_for_owned_task(app_client, auth_headers):
+    """POST /api/app-db/provision accepts an owned task."""
+    task_id = await _create_smoke_task(auth_headers)
+    r = await app_client.post(
+        "/api/app-db/provision",
+        json={"task_id": task_id, "prompt": "schema"},
+        headers=auth_headers,
+        timeout=10,
+    )
+    assert r.status_code == 200
+    assert r.json().get("status") == "ok"
+
+
+async def test_smoke_legacy_vercel_deploy_rejects_unowned_task(app_client, auth_headers):
+    """Legacy deploy helper rejects another user's task."""
+    other_headers = await _register_smoke_headers(app_client)
+    task_id = await _create_smoke_task(other_headers)
+    r = await app_client.post(
+        "/api/deploy/vercel",
+        json={"task_id": task_id},
+        headers=auth_headers,
+        timeout=10,
+    )
+    assert r.status_code == 403

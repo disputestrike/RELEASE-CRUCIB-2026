@@ -7884,6 +7884,19 @@ def _assert_job_owner_match(owner_id: Optional[str], user: Optional[dict]) -> No
         raise HTTPException(status_code=403, detail="Not your job")
 
 
+async def _get_task_for_user(task_id: str, user: dict) -> Optional[dict]:
+    """Return a task only when it belongs to the authenticated user."""
+    if not task_id:
+        return None
+    task = await db.tasks.find_one({"id": task_id})
+    if not task:
+        return None
+    owner_id = task.get("user_id")
+    if owner_id and owner_id != user["id"]:
+        raise HTTPException(status_code=403, detail="Not your task")
+    return task
+
+
 @api_router.get("/jobs/{job_id}")
 async def get_job(job_id: str, user: dict = Depends(get_optional_user)):
     """Queue async job (flat JSON) or Auto-Runner job from Postgres (`{ success, job }`)."""
@@ -9045,13 +9058,17 @@ class VibeDetectFrameworksRequest(BaseModel):
     project_id: Optional[str] = None
 
 @api_router.post("/vibecoding/detect-frameworks")
-async def vibecoding_detect_frameworks(body: VibeDetectFrameworksRequest):
+async def vibecoding_detect_frameworks(body: VibeDetectFrameworksRequest, user: dict = Depends(get_optional_user)):
     """Detect frameworks and languages from text (or from project description when project_id given)."""
     try:
         from vibe_analysis import vibe_analyzer
         text = body.text or ""
         if body.project_id and not text:
-            proj = await db.projects.find_one({"id": body.project_id}, {"description": 1, "requirements": 1})
+            if not user:
+                raise HTTPException(status_code=401, detail="Not authenticated")
+            proj = await db.projects.find_one({"id": body.project_id, "user_id": user["id"]}, {"description": 1, "requirements": 1})
+            if not proj:
+                raise HTTPException(status_code=404, detail="Project not found")
             if proj:
                 req = proj.get("requirements") or {}
                 text = req.get("prompt") or req.get("description") or proj.get("description") or ""
@@ -9059,6 +9076,8 @@ async def vibecoding_detect_frameworks(body: VibeDetectFrameworksRequest):
             return {"status": "success", "frameworks": [], "languages": []}
         vibe = vibe_analyzer.analyze(text)
         return {"status": "success", "frameworks": vibe.detected_frameworks, "languages": vibe.detected_languages}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.warning("vibecoding_detect_frameworks failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
@@ -9268,19 +9287,19 @@ async def deploy_validate(body: DeployValidateRequest):
     return {"valid": result.valid, "errors": result.errors, "warnings": result.warnings, "platform": result.platform}
 
 @api_router.post("/cache/invalidate")
-async def cache_invalidate(agent_name: Optional[str] = Query(None), user: dict = Depends(get_optional_user)):
-    """Invalidate agent cache (optional: by agent_name)."""
+async def cache_invalidate(agent_name: Optional[str] = Query(None), admin: dict = Depends(get_current_admin(("owner", "operations")))):
+    """Invalidate agent cache (optional: by agent_name). Admin only."""
     from agent_cache import invalidate
     n = await invalidate(db, agent_name=agent_name)
     return {"status": "ok", "deleted": n}
 
 # ==================== APP-DB SCHEMA ENDPOINT ====================
 @api_router.get("/app-db/{task_id}")
-async def get_app_db_schema(task_id: str, user: dict = Depends(get_optional_user)):
+async def get_app_db_schema(task_id: str, user: dict = Depends(get_current_user)):
     """Return provisioned database schema for a build task."""
     if db is None:
         return {"schema": None}
-    task = await db.tasks.find_one({"id": task_id})
+    task = await _get_task_for_user(task_id, user)
     if not task:
         return {"schema": None}
     # Extract schema from task files
@@ -9300,10 +9319,11 @@ async def get_app_db_schema(task_id: str, user: dict = Depends(get_optional_user
     return {"schema": None}
 
 @api_router.post("/app-db/provision")
-async def provision_app_db(body: dict = Body(...), user: dict = Depends(get_optional_user)):
+async def provision_app_db(body: dict = Body(...), user: dict = Depends(get_current_user)):
     """Generate a database schema for the given task/prompt."""
     task_id = body.get("task_id")
-    prompt = body.get("prompt", "")
+    if task_id:
+        await _get_task_for_user(task_id, user)
     return {
         "status": "ok",
         "message": "Schema generation queued. Run a full build to generate database schema files.",
@@ -9314,7 +9334,7 @@ async def provision_app_db(body: dict = Body(...), user: dict = Depends(get_opti
 @api_router.post("/deploy/vercel")
 async def deploy_to_vercel(
     body: dict = Body(...),
-    user: dict = Depends(get_optional_user)
+    user: dict = Depends(get_current_user)
 ):
     """Create a Vercel deployment URL for the user's built files."""
     task_id = body.get("task_id")
@@ -9324,7 +9344,7 @@ async def deploy_to_vercel(
             "method": "manual",
             "instructions": "Download your ZIP and drag-drop it at vercel.com/new"
         }
-    task = await db.tasks.find_one({"id": task_id})
+    task = await _get_task_for_user(task_id, user)
     if not task:
         return {"deploy_url": "https://vercel.com/new", "method": "manual"}
     return {
