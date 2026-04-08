@@ -91,7 +91,10 @@ Tasks:
 - [x] Require authenticated owner access for stateful job/proof/stream endpoints.
 - [x] Reject legacy unowned job records from stateful job/proof execution surfaces.
 - [x] Add focused smoke coverage for unauthenticated and cross-user job state access.
-- [ ] Commit and push the job state ownership slice.
+- [x] Commit and push the job state ownership slice (`a6fbe8d`).
+- [x] Add a stable build contract envelope to proof bundles.
+- [x] Add focused smoke coverage proving job proof returns the build contract.
+- [ ] Commit and push the proof build-contract slice.
 
 ## Verification Log
 

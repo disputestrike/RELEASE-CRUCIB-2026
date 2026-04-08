@@ -29,6 +29,39 @@ def compute_bundle_integrity_sha256(flat_items: List[Dict[str, Any]]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+def _empty_bundle(job_id: str) -> Dict[str, Any]:
+    from proof.build_contract import empty_contract
+
+    return {
+        "job_id": job_id,
+        "quality_score": 0.0,
+        "total_proof_items": 0,
+        "verification_proof_items": 0,
+        "category_counts": {
+            "files": 0, "routes": 0, "database": 0,
+            "verification": 0, "deploy": 0, "generic": 0,
+        },
+        "bundle": {
+            "files": [], "routes": [], "database": [],
+            "verification": [], "deploy": [], "generic": [],
+        },
+        "bundle_sha256": compute_bundle_integrity_sha256([]),
+        "build_contract": empty_contract(job_id),
+        "verification_class_counts": {},
+        "class_coverage": {},
+        "class_weighted_score": 0.0,
+        "trust_score": 0.0,
+        "penalties_applied": 0,
+        "truth_status": {},
+        "spec_guard": {},
+        "spec_compliance_percent": 100.0,
+        "production_readiness_score": 0.0,
+        "production_readiness_cap_note": "",
+        "production_readiness_factors": [],
+        "scorecard": {},
+    }
+
+
 async def store_proof(job_id: str, step_id: str,
                        proof_type: str, title: str,
                        payload: Dict[str, Any]) -> str:
@@ -52,33 +85,7 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
     """Return proof bundle grouped by category for the proof panel UI."""
     if _pool is None:
         logger.warning("proof_service.get_proof: DB pool not set; returning empty bundle")
-        return {
-            "job_id": job_id,
-            "quality_score": 0.0,
-            "total_proof_items": 0,
-            "verification_proof_items": 0,
-            "category_counts": {
-                "files": 0, "routes": 0, "database": 0,
-                "verification": 0, "deploy": 0, "generic": 0,
-            },
-            "bundle": {
-                "files": [], "routes": [], "database": [],
-                "verification": [], "deploy": [], "generic": [],
-            },
-            "bundle_sha256": compute_bundle_integrity_sha256([]),
-            "verification_class_counts": {},
-            "class_coverage": {},
-            "class_weighted_score": 0.0,
-            "trust_score": 0.0,
-            "penalties_applied": 0,
-            "truth_status": {},
-            "spec_guard": {},
-            "spec_compliance_percent": 100.0,
-            "production_readiness_score": 0.0,
-            "production_readiness_cap_note": "",
-            "production_readiness_factors": [],
-            "scorecard": {},
-        }
+        return _empty_bundle(job_id)
     async with _pool.acquire() as conn:
         rows = await conn.fetch(
             "SELECT * FROM proof_items WHERE job_id=$1 ORDER BY created_at",
@@ -223,6 +230,31 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
             "honest_summary": "Extended scores unavailable.",
         }
 
+    bundle_sha256 = compute_bundle_integrity_sha256(flat)
+    try:
+        from proof.build_contract import build_contract
+
+        async with _pool.acquire() as conn:
+            job_row = await conn.fetchrow("SELECT * FROM jobs WHERE id=$1", job_id)
+            step_rows = await conn.fetch(
+                "SELECT * FROM job_steps WHERE job_id=$1 ORDER BY order_index, created_at",
+                job_id,
+            )
+        contract = build_contract(
+            job=dict(job_row) if job_row else {"id": job_id},
+            steps=[dict(row) for row in step_rows],
+            bundle=bundle,
+            bundle_sha256=bundle_sha256,
+            quality_score=quality_score,
+            trust_score=float(trust.get("trust_score") or 0.0),
+            production_readiness_score=float(prod.get("production_readiness_score") or 0.0),
+        )
+    except Exception:
+        logger.exception("proof_service.get_proof: build contract failed")
+        from proof.build_contract import empty_contract
+
+        contract = empty_contract(job_id)
+
     return {
         "job_id": job_id,
         "quality_score": quality_score,
@@ -230,7 +262,8 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
         "verification_proof_items": verified_items,
         "category_counts": category_counts,
         "bundle": bundle,
-        "bundle_sha256": compute_bundle_integrity_sha256(flat),
+        "bundle_sha256": bundle_sha256,
+        "build_contract": contract,
         **trust,
         "spec_guard": spec_guard_snapshot,
         "spec_compliance_percent": spec_compliance,

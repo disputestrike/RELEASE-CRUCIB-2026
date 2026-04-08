@@ -595,6 +595,20 @@ async def test_smoke_job_state_routes_reject_unowned_job(app_client, auth_header
     assert run.status_code == 403
 
 
+async def test_smoke_job_proof_includes_build_contract(app_client, auth_headers):
+    """GET /api/jobs/{job_id}/proof includes the stable build contract envelope."""
+    job_id, _project_id = await _create_smoke_auto_job(auth_headers)
+    r = await app_client.get(f"/api/jobs/{job_id}/proof", headers=auth_headers, timeout=10)
+    assert r.status_code == 200, r.text
+    contract = r.json().get("build_contract")
+    assert contract
+    assert contract.get("version") == "2026-04-08.v1"
+    assert contract.get("job_id") == job_id
+    assert contract.get("goal") == "Build a smoke app"
+    assert contract.get("deploy_ready") is False
+    assert "missing_verification_evidence" in contract.get("blockers", [])
+
+
 async def test_smoke_orchestrator_plan_rejects_unowned_project(app_client, auth_headers):
     """POST /api/orchestrator/plan rejects a project_id owned by another user."""
     other_headers = await _register_smoke_headers(app_client)
