@@ -40,6 +40,7 @@ try {
         backend\server.py `
         backend\modules_blueprint.py `
         backend\terminal_integration.py `
+        backend\agents\frontend_agent.py `
         backend\proof\build_contract.py `
         backend\proof\proof_service.py
     Assert-LastExit "py_compile"

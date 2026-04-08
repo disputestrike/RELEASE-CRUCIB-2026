@@ -111,7 +111,9 @@ Tasks:
 - [x] Commit and push the LLM context-window guard slice (`b120bbb`).
 - [x] Reduce the FrontendAgent system prompt by replacing the giant example app with a compact JSON contract.
 - [x] Verify FrontendAgent compiles and prompt size is materially lower.
-- [ ] Commit and push the FrontendAgent prompt compaction slice.
+- [x] Commit and push the FrontendAgent prompt compaction slice (`8f4d895`).
+- [x] Add `backend\agents\frontend_agent.py` to the release-gate compile list.
+- [ ] Commit and push the release-gate compile coverage update.
 
 ## Verification Log
 
@@ -144,6 +146,7 @@ Tasks:
 - `.\scripts\release-gate.ps1 -BackendOnly` passed after LLM guard update: smoke 28 passed, 24 deselected; tool agent guard 8 passed, 18 deselected.
 - `python -m py_compile backend\agents\frontend_agent.py` passed after prompt compaction.
 - `python -m pytest backend\tests\test_agents.py backend\tests\test_tool_agents.py -k "frontend_agent or base_agent or large_cerebras" -q` passed: 9 passed, 41 deselected.
+- `.\scripts\release-gate.ps1 -BackendOnly` passed after adding FrontendAgent to compile gate: smoke 28 passed, 24 deselected; tool agent guard 8 passed, 18 deselected.
 - `.\scripts\verify-local.ps1` correctly failed on Node `v24.14.0`; the frontend declares Node `>=18 <=22`.
 
 ## Next Milestone
