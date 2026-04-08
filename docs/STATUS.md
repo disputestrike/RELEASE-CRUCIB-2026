@@ -84,7 +84,7 @@ Tasks:
 - [x] Commit and push the local bootstrap/runbook slice (`f90cf30`).
 - [x] Require a valid JWT and project ownership before accepting project progress websocket connections.
 - [x] Update frontend project progress websocket callers to pass encoded auth tokens.
-- [ ] Commit and push the websocket project progress auth slice.
+- [x] Commit and push the websocket project progress auth slice (`8e0ac58`).
 
 ## Verification Log
 
