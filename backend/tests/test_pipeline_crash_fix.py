@@ -1,10 +1,22 @@
+import json
 import os
 import tempfile
 
 import pytest
 
 from orchestration.auto_runner import _step_failure_context
-from orchestration.executor import _verification_failure_message, _verification_failure_payload
+from orchestration.executor import (
+    _ensure_backend_elite_hardening,
+    _main_py_sketch,
+    _safe_write,
+    _verification_failure_message,
+    _verification_failure_payload,
+    handle_delivery_manifest,
+    handle_frontend_generate,
+)
+from orchestration.generated_app_template import build_frontend_file_set
+from orchestration.preview_gate import verify_preview_workspace
+from orchestration.runtime_state import _coerce_json_text_updates
 from orchestration.verifier import verify_deploy_step, verify_step
 
 
@@ -147,3 +159,74 @@ def test_auto_runner_failure_context_preserves_verification_reason():
     assert ctx["failure_reason"] == "browser_preview_failed"
     assert ctx["stage"] == "preview_boot"
     assert ctx["issues"] == ["Preview boot failed: port closed"]
+
+
+@pytest.mark.asyncio
+async def test_frontend_empty_agent_output_falls_back_to_preview_scaffold(monkeypatch):
+    from agents.frontend_agent import FrontendAgent
+    import orchestration.plan_context as plan_context
+
+    async def empty_execute(self, context):
+        return {"files": {}, "structure": {}, "setup_instructions": []}
+
+    async def fake_fetch_build_target(job_id):
+        return "vite_react"
+
+    monkeypatch.setattr(FrontendAgent, "execute", empty_execute)
+    monkeypatch.setattr(plan_context, "fetch_build_target_for_job", fake_fetch_build_target)
+
+    with tempfile.TemporaryDirectory() as d:
+        result = await handle_frontend_generate(
+            {"step_key": "frontend.scaffold"},
+            {"id": "job-empty-frontend", "goal": "Build a tiny product dashboard"},
+            d,
+        )
+
+        assert result["output_files"]
+        assert "package.json" in result["output_files"]
+        assert "src/App.jsx" in result["output_files"]
+        assert os.path.isfile(os.path.join(d, "package.json"))
+        assert os.path.isfile(os.path.join(d, "src", "main.jsx"))
+
+
+@pytest.mark.asyncio
+async def test_fallback_scaffold_passes_preview_and_elite_gates(monkeypatch):
+    monkeypatch.setenv("CRUCIBAI_SKIP_BROWSER_PREVIEW", "1")
+    monkeypatch.setenv("CRUCIBAI_ELITE_BUILDER_GATE", "strict")
+
+    job = {
+        "id": "job-template-proof",
+        "goal": "Build a tiny production proof app with auth, localStorage, routing, and deploy readiness",
+        "build_target": "vite_react",
+    }
+    with tempfile.TemporaryDirectory() as d:
+        for rel, content in build_frontend_file_set(job):
+            _safe_write(d, rel, content)
+        _safe_write(d, "backend/main.py", _main_py_sketch(multitenant=False))
+        _ensure_backend_elite_hardening(d)
+        await handle_delivery_manifest({"step_key": "implementation.delivery_manifest"}, job, d)
+
+        preview = await verify_preview_workspace(d)
+        elite = await verify_step(
+            {"step_key": "verification.elite_builder", "job_goal": job["goal"]},
+            d,
+        )
+
+        assert preview["passed"] is True, preview.get("issues")
+        assert elite["passed"] is True, elite.get("issues")
+
+
+def test_job_state_structured_lists_are_json_text():
+    updates = {
+        "blocked_steps": ["deploy.build", "deploy.publish"],
+        "failed_step_keys": ["verification.preview"],
+        "non_completed": [{"key": "deploy.publish", "status": "blocked"}],
+        "failure_details": {"reason": "late_stage_failure"},
+    }
+
+    _coerce_json_text_updates(updates)
+
+    assert json.loads(updates["blocked_steps"]) == ["deploy.build", "deploy.publish"]
+    assert json.loads(updates["failed_step_keys"]) == ["verification.preview"]
+    assert json.loads(updates["non_completed"])[0]["status"] == "blocked"
+    assert json.loads(updates["failure_details"])["reason"] == "late_stage_failure"

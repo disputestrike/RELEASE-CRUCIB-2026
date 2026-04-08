@@ -42,6 +42,13 @@ def _now() -> datetime:
 
 # Columns that must be datetime objects for asyncpg (never ISO strings from JSON round-trips)
 _TS_KEYS = frozenset({"created_at", "updated_at", "started_at", "completed_at"})
+_JSON_TEXT_KEYS = frozenset({
+    "blocked_steps",
+    "failed_step_keys",
+    "non_completed",
+    "error_details",
+    "failure_details",
+})
 
 
 def _as_timestamptz(val: Any) -> Any:
@@ -63,6 +70,13 @@ def _coerce_ts_updates(updates: Dict[str, Any]) -> None:
     for k in list(updates.keys()):
         if k in _TS_KEYS:
             updates[k] = _as_timestamptz(updates[k])
+
+
+def _coerce_json_text_updates(updates: Dict[str, Any]) -> None:
+    """Coerce structured job metadata into TEXT columns before asyncpg binding."""
+    for k in list(updates.keys()):
+        if k in _JSON_TEXT_KEYS and updates[k] is not None and not isinstance(updates[k], str):
+            updates[k] = json.dumps(updates[k], default=str)
 
 
 async def ensure_job_fk_prerequisites(project_id: str, user_id: Optional[str] = None) -> None:
@@ -135,6 +149,7 @@ async def update_job_state(job_id: str, status: str,
     if status in TERMINAL_JOB_STATES and "completed_at" not in updates:
         updates["completed_at"] = _now()
     _coerce_ts_updates(updates)
+    _coerce_json_text_updates(updates)
     set_clause = ", ".join(f"{k}=${i+2}" for i, k in enumerate(updates))
     vals = list(updates.values())
     async with _pool.acquire() as conn:

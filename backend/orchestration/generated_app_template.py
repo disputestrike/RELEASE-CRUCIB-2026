@@ -269,6 +269,32 @@ export default function ShellLayout() {
 }
 """
 
+    error_boundary = """import React from 'react';
+
+export default class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <main style={{ padding: 24, color: '#e2e8f0', background: '#0f172a', minHeight: '100vh' }}>
+          <h1>Something needs attention</h1>
+          <p>The preview caught a recoverable UI error. Adjust the component and try again.</p>
+        </main>
+      );
+    }
+    return this.props.children;
+  }
+}
+"""
+
     home = f"""import React from 'react';
 import {{ useNavigate }} from 'react-router-dom';
 import {{ useAppStore }} from '../store/useAppStore';
@@ -393,6 +419,7 @@ export default function DashboardPage() {
     app = """import React from 'react';
 import { MemoryRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import ErrorBoundary from './components/ErrorBoundary';
 import ShellLayout from './components/ShellLayout';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
@@ -401,20 +428,22 @@ import TeamPage from './pages/TeamPage';
 
 export default function App() {
   return (
-    <AuthProvider>
-      <MemoryRouter initialEntries={['/']}>
-        <Routes>
-          <Route element={<ShellLayout />}>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/team" element={<TeamPage />} />
-            {/* CRUCIB_APP_ROUTE_ANCHOR */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Route>
-        </Routes>
-      </MemoryRouter>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <MemoryRouter initialEntries={['/']}>
+          <Routes>
+            <Route element={<ShellLayout />}>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/team" element={<TeamPage />} />
+              {/* CRUCIB_APP_ROUTE_ANCHOR */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 """
@@ -466,6 +495,7 @@ body {
         ("README_BUILD.md", readme),
         ("src/store/useAppStore.js", store),
         ("src/context/AuthContext.jsx", auth),
+        ("src/components/ErrorBoundary.jsx", error_boundary),
         ("src/components/ShellLayout.jsx", shell),
         ("src/pages/HomePage.jsx", home),
         ("src/pages/LoginPage.jsx", login),

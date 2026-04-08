@@ -210,6 +210,33 @@ except Exception:
     _safe_write(workspace_path, rel, text.rstrip() + suffix)
 
 
+def _ensure_backend_elite_hardening(workspace_path: str) -> Optional[str]:
+    """Ensure generated FastAPI sketch has explicit safety proof hooks."""
+    rel = "backend/main.py"
+    text = _read_text(workspace_path, rel)
+    if not text or "FastAPI" not in text or "app =" not in text:
+        return None
+    if "CRUCIBAI_SECURITY_HEADERS" in text:
+        return None
+    suffix = '''
+
+# CRUCIBAI_SECURITY_HEADERS - generated deploy hardening hook.
+from fastapi import HTTPException, Request
+
+
+@app.middleware("http")
+async def crucibai_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Content-Security-Policy"] = "default-src 'self'"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["X-XSS-Protection"] = "0"
+    return response
+'''
+    return _safe_write(workspace_path, rel, text.rstrip() + suffix)
+
+
 def _production_sketch_readme() -> str:
     return """# Production sketch checklist (CrucibAI)
 
@@ -425,6 +452,19 @@ async def handle_frontend_generate(step: Dict, job: Dict,
                     logger.info(f"✓ Fallback wrote {len(out)} stub files")
                 except Exception as e2:
                     logger.exception(f"Fallback also failed: {e2}")
+            if workspace_path and not out:
+                logger.warning("FrontendAgent produced no files; writing deterministic preview scaffold")
+                try:
+                    from .plan_context import fetch_build_target_for_job
+                    bt = await fetch_build_target_for_job(job_id)
+                    job_augmented = {**job, "build_target": bt}
+                    for rel, content in build_frontend_file_set(job_augmented):
+                        w = _safe_write(workspace_path, rel, content)
+                        if w:
+                            out.append(w)
+                    logger.info("Frontend empty-output fallback wrote %s files", len(out))
+                except Exception as e2:
+                    logger.exception("Frontend empty-output fallback failed: %s", e2)
         else:
             logger.warning(f"Skipping agent: workspace_path={bool(workspace_path)}, goal={bool(goal)}")
             # No workspace or goal - use stubs
@@ -731,6 +771,11 @@ async def root():
                 out_files.append(w)
                 logger.info(f"backend_route: Created fallback main.py")
 
+    if key in {"backend.routes", "backend.auth"} and workspace_path:
+        hardened = _ensure_backend_elite_hardening(workspace_path)
+        if hardened and hardened not in out_files:
+            out_files.append(hardened)
+
     return {
         "output": f"Generated {len(out_files)} backend files: {key}",
         "routes_added": routes_added,
@@ -928,9 +973,31 @@ Auto-generated manifest — refine in continuation runs as the product hardens.
 """
     rel = "proof/DELIVERY_CLASSIFICATION.md"
     w = _safe_write(workspace_path, rel, body)
+    out = [rel] if w else []
+    directive_rel = "proof/ELITE_EXECUTION_DIRECTIVE.md"
+    if not _read_text(workspace_path, directive_rel):
+        directive = f"""# Elite Execution Directive
+
+This job must make every late-stage gate deterministic and evidence-backed.
+
+## Current goal
+
+```
+{goal[:1200]}
+```
+
+## Required proof posture
+
+- Do not mark deploy ready unless preview, proof, and deploy-readiness checks pass.
+- Preserve explicit failure reasons for preview, elite, deploy build, and deploy publish.
+- Treat mocked or readiness-only output as labeled proof, not live deployment proof.
+"""
+        wd = _safe_write(workspace_path, directive_rel, directive)
+        if wd:
+            out.append(directive_rel)
     return {
         "output": "delivery classification written",
-        "output_files": [rel] if w else [],
+        "output_files": out,
         "artifacts": [],
     }
 
