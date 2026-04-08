@@ -77,6 +77,11 @@ Tasks:
 - [x] Replace terminal command execution `shell=True` with explicit shell invocation using `shell=False`.
 - [x] Add focused smoke verification that scoped terminal execution still works on Windows.
 - [x] Commit and push the terminal shell hardening slice (`6cf1e13`).
+- [x] Upgrade `run-dev.ps1` to check Node, start Postgres/Redis, install frontend deps when missing, and use Postgres-only dev env.
+- [x] Add `docs/POSTGRES_ONLY_MIGRATION.md`.
+- [x] Add `docs/LOCAL_RUNBOOK.md`.
+- [x] Validate PowerShell syntax for `run-dev.ps1` and `scripts/verify-local.ps1`.
+- [ ] Commit and push the local bootstrap/runbook slice.
 
 ## Verification Log
 
@@ -101,6 +106,8 @@ Tasks:
 - `python -m pytest backend\tests\test_smoke.py -k "orchestrator_plan or create_job or run_auto or retry_step or agent_memory or agent_automation or app_db or cache_invalidate or detect_frameworks or deploy or git_sync or railway_deploy" -q` passed with local Postgres/Redis env: 23 passed, 23 deselected.
 - `python -m py_compile backend\terminal_integration.py backend\server.py` passed.
 - `python -m pytest backend\tests\test_smoke.py -k "terminal" -q` passed with local Postgres/Redis env: 3 passed, 43 deselected.
+- PowerShell parser check passed for `run-dev.ps1`.
+- PowerShell parser check passed for `scripts\verify-local.ps1`.
 - `.\scripts\verify-local.ps1` correctly failed on Node `v24.14.0`; the frontend declares Node `>=18 <=22`.
 
 ## Next Milestone
