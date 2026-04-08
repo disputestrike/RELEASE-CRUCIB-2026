@@ -6,7 +6,7 @@ import AgentActivityPanel from './AgentActivityPanel';
 import './SystemStatusHUD.css';
 
 export default function SystemStatusHUD({
-  isConnected,
+  connectionMode = 'offline',
   activeAgentCount = 0,
   jobStatus,
   steps = [],
@@ -31,7 +31,12 @@ export default function SystemStatusHUD({
 
   const isActive = jobStatus === 'running';
   const agentsLive = Math.max(activeAgentCount, isActive ? 1 : 0);
-  const opsLabel = isConnected ? 'Operational' : 'Reconnecting';
+  const opsLabel =
+    connectionMode === 'stream'
+      ? 'Operational'
+      : connectionMode === 'polling'
+        ? 'Operational (Polling)'
+        : 'Disconnected';
 
   const latencyColor =
     healthLatencyMs == null
@@ -55,7 +60,7 @@ export default function SystemStatusHUD({
         setShowTooltip(false);
       }}
     >
-      <span className={`ssh-dot ${isActive ? 'ssh-dot-active' : isConnected ? 'ssh-dot-ok' : 'ssh-dot-off'}`} />
+      <span className={`ssh-dot ${isActive ? 'ssh-dot-active' : connectionMode !== 'offline' ? 'ssh-dot-ok' : 'ssh-dot-off'}`} />
       <span className="ssh-text">
         {opsLabel}
         {' · '}
@@ -85,8 +90,12 @@ export default function SystemStatusHUD({
           </div>
           <div className="ssh-tooltip-row">
             <span className="ssh-tooltip-label">Stream</span>
-            <span className={`ssh-tooltip-val ${isConnected ? 'ssh-val-ok' : ''}`}>
-              {isConnected ? 'connected' : 'disconnected'}
+            <span className={`ssh-tooltip-val ${connectionMode !== 'offline' ? 'ssh-val-ok' : ''}`}>
+              {connectionMode === 'stream'
+                ? 'connected'
+                : connectionMode === 'polling'
+                  ? 'polling fallback'
+                  : 'disconnected'}
             </span>
           </div>
         </div>

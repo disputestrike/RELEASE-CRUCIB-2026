@@ -57,7 +57,7 @@ export default function ExecutionTimeline({
   job,
   onRetryStep,
   onJumpToCode,
-  isConnected,
+  connectionMode = 'offline',
 }) {
   const [filter, setFilter] = useState('All');
   const [expandedSteps, setExpandedSteps] = useState(new Set());
@@ -129,14 +129,17 @@ export default function ExecutionTimeline({
       )
       .slice(-12);
 
+  const connectionLabel =
+    connectionMode === 'stream' ? 'Live' : connectionMode === 'polling' ? 'Polling' : 'Disconnected';
+
   return (
     <div className="execution-timeline">
       <div className="et-header">
         <div className="et-title-row">
           <span className="et-title">Execution Timeline</span>
-          <span className={`et-conn ${isConnected ? 'live' : 'offline'}`}>
+          <span className={`et-conn ${connectionMode === 'offline' ? 'offline' : 'live'}`}>
             <span className="et-conn-dot" />
-            {isConnected ? 'Live' : 'Reconnecting'}
+            {connectionLabel}
           </span>
         </div>
         <div className="et-progress-row">

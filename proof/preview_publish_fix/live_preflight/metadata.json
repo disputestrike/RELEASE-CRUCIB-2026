@@ -1,0 +1,12 @@
+{
+  "base_url": "https://crucibai-production.up.railway.app",
+  "goal": "Build a tiny production proof app: a Vite React single page product dashboard with reusable components, localStorage state, clear empty/loading/error states, a FastAPI health endpoint sketch if backend output is supported, and deploy readiness proof. Keep dependencies minimal and produce previewable files.",
+  "mode": "fresh_live_replay",
+  "notes": [
+    "This uses the same backend API calls the browser uses for prompt/plan/run.",
+    "Auth tokens and secrets are redacted from proof artifacts."
+  ],
+  "run_id": "1775673884-cc80f6df67",
+  "schema": "crucibai.live_production_golden_path/v1",
+  "started_at": "2026-04-08T18:44:44.328059+00:00"
+}

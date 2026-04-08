@@ -188,6 +188,95 @@ async def test_smoke_published_generated_app_url_serves_dist(app_client, auth_he
     assert "Published smoke" in r.text
 
 
+async def test_smoke_published_generated_app_rewrites_asset_paths_and_serves_job_assets(app_client, auth_headers):
+    """Published app HTML must point at job-scoped assets, not CrucibAI's root frontend bundle."""
+    import server
+    from db_pg import get_pg_pool
+    from orchestration import runtime_state
+
+    pool = await get_pg_pool()
+    runtime_state.set_pool(pool)
+    user_id = _user_id_from_auth_headers(auth_headers)
+    project_id = f"published-assets-{uuid.uuid4().hex[:8]}"
+    job = await runtime_state.create_job(
+        project_id=project_id,
+        mode="guided",
+        goal="Published asset rewrite smoke",
+        user_id=user_id,
+    )
+    root = server._project_workspace_path(project_id)
+    (root / "dist" / "assets").mkdir(parents=True, exist_ok=True)
+    (root / "dist" / "index.html").write_text(
+        """<!doctype html><html><head><script type="module" src="/assets/app.js"></script></head><body><div id="root"></div></body></html>""",
+        encoding="utf-8",
+    )
+    (root / "dist" / "assets" / "app.js").write_text("console.log('published-job-asset');", encoding="utf-8")
+    await runtime_state.update_job_state(job["id"], "completed", {"current_phase": "completed"})
+
+    html = await app_client.get(f"/published/{job['id']}/", timeout=10)
+    asset = await app_client.get(f"/published/{job['id']}/assets/app.js", timeout=10)
+
+    assert html.status_code == 200
+    assert f'/published/{job["id"]}/assets/app.js' in html.text
+    assert asset.status_code == 200
+    assert "published-job-asset" in asset.text
+
+
+async def test_smoke_published_missing_asset_returns_404(app_client, auth_headers):
+    """Missing asset files should not silently fall back to index.html."""
+    import server
+    from db_pg import get_pg_pool
+    from orchestration import runtime_state
+
+    pool = await get_pg_pool()
+    runtime_state.set_pool(pool)
+    user_id = _user_id_from_auth_headers(auth_headers)
+    project_id = f"published-missing-{uuid.uuid4().hex[:8]}"
+    job = await runtime_state.create_job(
+        project_id=project_id,
+        mode="guided",
+        goal="Published missing asset smoke",
+        user_id=user_id,
+    )
+    root = server._project_workspace_path(project_id)
+    (root / "dist").mkdir(parents=True, exist_ok=True)
+    (root / "dist" / "index.html").write_text("<!doctype html><h1>Published smoke</h1>", encoding="utf-8")
+    await runtime_state.update_job_state(job["id"], "completed", {"current_phase": "completed"})
+
+    missing = await app_client.get(f"/published/{job['id']}/assets/missing.js", timeout=10)
+
+    assert missing.status_code == 404
+
+
+async def test_smoke_job_api_exposes_preview_url_for_completed_published_app(app_client, auth_headers):
+    """Completed published jobs should return a preview_url so the workspace iframe can boot."""
+    import server
+    from db_pg import get_pg_pool
+    from orchestration import runtime_state
+
+    pool = await get_pg_pool()
+    runtime_state.set_pool(pool)
+    user_id = _user_id_from_auth_headers(auth_headers)
+    project_id = f"job-preview-{uuid.uuid4().hex[:8]}"
+    job = await runtime_state.create_job(
+        project_id=project_id,
+        mode="guided",
+        goal="Job preview url smoke",
+        user_id=user_id,
+    )
+    root = server._project_workspace_path(project_id)
+    (root / "dist").mkdir(parents=True, exist_ok=True)
+    (root / "dist" / "index.html").write_text("<!doctype html><h1>Preview smoke</h1>", encoding="utf-8")
+    await runtime_state.update_job_state(job["id"], "completed", {"current_phase": "completed"})
+
+    r = await app_client.get(f"/api/jobs/{job['id']}", headers=auth_headers, timeout=10)
+
+    assert r.status_code == 200
+    payload = r.json()["job"]
+    assert payload["preview_url"].endswith(f"/published/{job['id']}/")
+    assert payload["deploy_url"].endswith(f"/published/{job['id']}/")
+
+
 async def test_smoke_visual_edit_patches_owned_job_workspace(app_client, auth_headers):
     """Visual edit loop can patch a generated file and leaves an undo snapshot."""
     import server

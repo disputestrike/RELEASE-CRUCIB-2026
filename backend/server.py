@@ -8002,7 +8002,7 @@ async def get_job(job_id: str, user: dict = Depends(get_current_user)):
         if not oj:
             raise HTTPException(status_code=404, detail="Job not found")
         _assert_job_owner_match(oj.get("user_id"), user)
-        return {"success": True, "job": oj}
+        return {"success": True, "job": _enrich_job_public_urls(oj)}
     except HTTPException:
         raise
     except Exception as e:
@@ -9800,6 +9800,7 @@ async def serve_published_generated_app(job_id: str, path: str = ""):
     clean = (path or "").strip().replace("\\", "/").lstrip("/")
     if ".." in clean or clean.startswith("/"):
         raise HTTPException(status_code=400, detail="Invalid published app path")
+    requested_rel = Path(clean) if clean else Path("index.html")
     full = (root / clean).resolve() if clean else (root / "index.html").resolve()
     try:
         full.relative_to(root)
@@ -9808,8 +9809,99 @@ async def serve_published_generated_app(job_id: str, path: str = ""):
     if full.is_dir():
         full = full / "index.html"
     if not full.exists():
+        if clean and requested_rel.suffix:
+            raise HTTPException(status_code=404, detail="Published app file not found")
         full = root / "index.html"
+    if full.suffix.lower() == ".html":
+        html = full.read_text(encoding="utf-8", errors="replace")
+        return Response(
+            content=_rewrite_published_html(html, job_id),
+            media_type="text/html",
+        )
     return FileResponse(full)
+
+
+def _job_dist_root(project_id: Optional[str]) -> Optional[Path]:
+    if not project_id:
+        return None
+    root = (_project_workspace_path(project_id).resolve() / "dist").resolve()
+    workspace_root = WORKSPACE_ROOT.resolve()
+    try:
+        root.relative_to(workspace_root)
+    except ValueError:
+        return None
+    return root
+
+
+def _job_public_preview_url(job: Dict[str, Any]) -> Optional[str]:
+    from orchestration.publish_urls import published_app_url
+
+    project_id = job.get("project_id")
+    job_id = str(job.get("id") or "").strip()
+    if not project_id or not job_id:
+        return None
+    dist_root = _job_dist_root(project_id)
+    if not dist_root or not dist_root.exists():
+        return None
+    return published_app_url(job_id)
+
+
+def _enrich_job_public_urls(job: Dict[str, Any]) -> Dict[str, Any]:
+    enriched = dict(job or {})
+    preview_url = enriched.get("preview_url") or _job_public_preview_url(enriched)
+    if preview_url:
+        enriched["preview_url"] = preview_url
+        enriched.setdefault("published_url", preview_url)
+        enriched.setdefault("deploy_url", preview_url)
+    return enriched
+
+
+_PUBLISHED_HTML_REWRITE_PATTERN = re.compile(
+    r'(?P<attr>\b(?:src|href|content)=["\'])(?P<path>/(?!/)[^"\']+)(?P<quote>["\'])',
+    flags=re.IGNORECASE,
+)
+
+
+def _should_prefix_published_asset(path: str) -> bool:
+    if not path.startswith("/"):
+        return False
+    if path.startswith(("/api/", "/published/", "//")):
+        return False
+    return path.startswith(
+        (
+            "/assets/",
+            "/static/",
+            "/favicon",
+            "/manifest",
+            "/logo",
+            "/robots",
+            "/vite.svg",
+            "/icons/",
+            "/apple-touch",
+            "/android-chrome",
+            "/mstile",
+        )
+    )
+
+
+def _rewrite_published_html(html: str, job_id: str) -> str:
+    publish_prefix = f"/published/{job_id}/"
+
+    def _repl(match: re.Match[str]) -> str:
+        original_path = match.group("path")
+        if not _should_prefix_published_asset(original_path):
+            return match.group(0)
+        rewritten = publish_prefix.rstrip("/") + original_path
+        return f"{match.group('attr')}{rewritten}{match.group('quote')}"
+
+    rewritten = _PUBLISHED_HTML_REWRITE_PATTERN.sub(_repl, html)
+    if "<head" in rewritten and "<base " not in rewritten:
+        rewritten = rewritten.replace(
+            "<head>",
+            f'<head><base href="{publish_prefix}">',
+            1,
+        )
+    return rewritten
 
 
 @app.websocket("/ws/projects/{project_id}/progress")

@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import time
 import uuid
@@ -496,6 +497,20 @@ def main() -> int:
         "status": "PASS" if status == 200 else "FAIL",
         "evidence": f"GET /published/{job_id}/ -> {status}",
     }
+    published_html = published_app.get("raw_text") if isinstance(published_app, dict) else ""
+    scoped_asset_match = re.search(rf"/published/{re.escape(job_id)}/(?:assets|static)/[^\"']+", published_html or "")
+    asset_status = None
+    if scoped_asset_match:
+        asset_path = scoped_asset_match.group(0)
+        asset_status, _ = client.request("GET", asset_path, label="final_published_asset")
+    matrix["published_assets_scoped"] = {
+        "status": "PASS" if status == 200 and scoped_asset_match and asset_status == 200 else "FAIL",
+        "evidence": (
+            f"scoped_asset={scoped_asset_match.group(0)}, asset_status={asset_status}"
+            if scoped_asset_match
+            else "published HTML did not reference a job-scoped asset path"
+        ),
+    }
 
     all_required = [
         "railway_health",
@@ -512,6 +527,7 @@ def main() -> int:
         "proof_artifacts_available",
         "generated_workspace_files",
         "published_generated_app_url",
+        "published_assets_scoped",
     ]
     failed = [key for key in all_required if matrix.get(key, {}).get("status") != "PASS"]
     if failed:

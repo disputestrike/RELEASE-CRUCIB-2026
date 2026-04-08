@@ -30,7 +30,11 @@ export default function BuildCompletionCard({
       ? proof.total_proof_items
       : Object.values(bundle).reduce((sum, arr) => sum + (arr?.length || 0), 0);
 
-  const previewUrl = job?.preview_url || null;
+  const previewUrl =
+    job?.preview_url ||
+    job?.published_url ||
+    job?.deploy_url ||
+    (job?.id ? `/published/${encodeURIComponent(job.id)}/` : null);
   const deployProof = (proof?.bundle?.deploy || []).filter(Boolean);
   const deployPayload = deployProof.length ? deployProof[deployProof.length - 1]?.payload || {} : {};
   const publishedPath = job?.id ? `/published/${job.id}/` : null;

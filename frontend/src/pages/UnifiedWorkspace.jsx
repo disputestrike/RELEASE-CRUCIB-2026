@@ -250,7 +250,7 @@ export default function UnifiedWorkspace() {
 
   /** URL wins so stream/poll start on first paint when opening ?jobId=… (state hydrates a tick later). */
   const effectiveJobId = jobIdFromUrl || jobId;
-  const { job, steps, events, proof, isConnected, refresh } = useJobStream(effectiveJobId, token);
+  const { job, steps, events, proof, isConnected, connectionMode, refresh } = useJobStream(effectiveJobId, token);
 
   const effectiveProjectId = job?.project_id || projectIdFromUrl || null;
 
@@ -289,7 +289,11 @@ export default function UnifiedWorkspace() {
   }, [isCompleted, stage]);
 
   const previewStatus = isCompleted ? 'ready' : stage === 'running' || iterBuilding ? 'building' : 'idle';
-  const previewUrl = job?.preview_url || null;
+  const previewUrl =
+    job?.preview_url ||
+    job?.published_url ||
+    job?.deploy_url ||
+    (isCompleted && effectiveJobId ? `/published/${encodeURIComponent(effectiveJobId)}/` : null);
 
   const projectSlug = effectiveProjectId
     ? `project-${String(effectiveProjectId).slice(0, 8)}…`
@@ -733,6 +737,7 @@ export default function UnifiedWorkspace() {
 
           <SystemStatusHUD
             isConnected={isConnected}
+            connectionMode={connectionMode}
             activeAgentCount={activeAgentCount}
             jobStatus={job?.status}
             steps={steps}
@@ -922,6 +927,7 @@ export default function UnifiedWorkspace() {
                 onRetryStep={handleRetryStep}
                 onJumpToCode={() => setActivePane('code')}
                 isConnected={isConnected}
+                connectionMode={connectionMode}
               />
 
               {failureStep && activePane !== 'failure' && (
@@ -973,6 +979,7 @@ export default function UnifiedWorkspace() {
                     onRetryStep={handleRetryStep}
                     onJumpToCode={() => setActivePane('code')}
                     isConnected={isConnected}
+                    connectionMode={connectionMode}
                   />
                 )}
                 {activePane === 'proof' && <ProofPanel proof={proof} jobId={effectiveJobId} onExport={() => {}} />}

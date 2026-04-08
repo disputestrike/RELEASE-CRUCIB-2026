@@ -44,6 +44,18 @@ def main() -> int:
             "requirement": "Dashboard foregrounds the prompt/import -> proof -> publish journey.",
         },
         {
+            "id": "workspace_preview_remote_fallback",
+            "file": ROOT / "frontend/src/pages/UnifiedWorkspace.jsx",
+            "markers": ["job?.preview_url", "job?.published_url", "job?.deploy_url", "/published/${encodeURIComponent(effectiveJobId)}/"],
+            "requirement": "Workspace preview falls back to the published app URL when jobs do not persist preview_url explicitly.",
+        },
+        {
+            "id": "polling_is_not_misreported_as_reconnecting",
+            "file": ROOT / "frontend/src/components/AutoRunner/ExecutionTimeline.jsx",
+            "markers": ["connectionMode === 'polling' ? 'Polling' : 'Disconnected'"],
+            "requirement": "Timeline labels polling fallback accurately instead of implying the product is broken.",
+        },
+        {
             "id": "engine_room_beta_gating",
             "file": ROOT / "frontend/src/components/Sidebar.jsx",
             "markers": ["beta: true", "sidebar-engine-beta"],

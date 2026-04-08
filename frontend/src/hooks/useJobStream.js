@@ -90,6 +90,7 @@ export function useJobStream(jobId, token) {
   const [events, setEvents] = useState([]);
   const [proof, setProof] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [connectionMode, setConnectionMode] = useState('offline');
   const [error, setError] = useState(null);
   const pollRef = useRef(null);
 
@@ -118,8 +119,12 @@ export function useJobStream(jobId, token) {
           proofFetchFailed: true,
         });
       }
+      const anySuccess = [jobRes, stepsRes, eventsRes, proofRes].some((result) => result.status === 'fulfilled');
+      if (anySuccess && pollRef.current) {
+        setConnectionMode('polling');
+      }
     } catch (e) {
-      // non-fatal
+      if (pollRef.current) setConnectionMode('offline');
     }
   }, [jobId, token]);
 
@@ -129,6 +134,7 @@ export function useJobStream(jobId, token) {
       setJob(null);
       setSteps([]);
       setEvents([]);
+      setConnectionMode('offline');
       return undefined;
     }
     setProof(null);
@@ -138,6 +144,7 @@ export function useJobStream(jobId, token) {
       if (!pollRef.current) {
         pollRef.current = setInterval(fetchJobState, 3000);
       }
+      setConnectionMode('polling');
     };
 
     const ac = new AbortController();
@@ -155,6 +162,7 @@ export function useJobStream(jobId, token) {
           throw new Error(`stream ${res.status}`);
         }
         setIsConnected(true);
+        setConnectionMode('stream');
         setError(null);
         const reader = res.body?.getReader();
         if (!reader) {
@@ -199,8 +207,9 @@ export function useJobStream(jobId, token) {
         clearInterval(pollRef.current);
         pollRef.current = null;
       }
+      setConnectionMode('offline');
     };
   }, [jobId, token, fetchJobState]);
 
-  return { job, steps, events, proof, isConnected, error, refresh: fetchJobState };
+  return { job, steps, events, proof, isConnected, connectionMode, error, refresh: fetchJobState };
 }
