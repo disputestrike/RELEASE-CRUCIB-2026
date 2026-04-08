@@ -47,6 +47,14 @@ From the repo root in PowerShell:
 
 This starts the backend in a new window and the frontend in the current terminal. Open **http://localhost:3000** when the frontend compiles. Start **`run-docker-deps.ps1`** first if your database is in Docker.
 
+To check the local toolchain before starting the app:
+
+```powershell
+.\scripts\verify-local.ps1
+```
+
+The verifier checks Python, Node, npm, frontend dependencies, backend import in dev mode, and git status. It expects Node 18-22; Node 20 is recommended.
+
 ---
 
 ## Quick start (two terminals)

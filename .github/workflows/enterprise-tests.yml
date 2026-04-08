@@ -79,14 +79,36 @@ jobs:
     name: Backend integration & smoke
     runs-on: ubuntu-latest
     services:
-      mongodb:
-        image: mongo:6
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: crucibai
+          POSTGRES_PASSWORD: crucibai
+          POSTGRES_DB: crucibai_test
         ports:
-          - 27017:27017
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U crucibai -d crucibai_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     env:
-      MONGO_URL: mongodb://localhost:27017
-      DB_NAME: crucibai_test
-      JWT_SECRET: test-secret
+      DATABASE_URL: postgresql://crucibai:crucibai@localhost:5432/crucibai_test
+      REDIS_URL: redis://localhost:6379/0
+      JWT_SECRET: test-secret-for-ci-minimum-32-characters-long
+      FRONTEND_URL: http://localhost:3000
+      GOOGLE_CLIENT_ID: test.apps.googleusercontent.com
+      GOOGLE_CLIENT_SECRET: test-google-client-secret
+      CRUCIBAI_TEST: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
