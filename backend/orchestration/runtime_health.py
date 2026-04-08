@@ -71,6 +71,19 @@ def skip_node_verify_env() -> bool:
     )
 
 
+def default_api_healthcheck_url() -> str:
+    """Local API health URL used by the Auto-Runner preflight.
+
+    Railway injects PORT dynamically, so a hard-coded 8000 check can report a
+    false preflight failure even when the container is healthy.
+    """
+    explicit = os.environ.get("CRUCIBAI_HEALTHCHECK_URL", "").strip()
+    if explicit:
+        return explicit
+    port = os.environ.get("PORT", "").strip() or "8000"
+    return f"http://127.0.0.1:{port}/api/health"
+
+
 def runtime_issues_for_autorunner(sync_report: Dict[str, Any]) -> List[str]:
     """Human-readable blockers for starting an Auto-Runner job."""
     issues: List[str] = []
@@ -121,10 +134,7 @@ async def extended_autorunner_preflight_issues() -> List[str]:
     if os.environ.get("CRUCIBAI_SKIP_HEALTHCHECK", "").strip().lower() not in (
         "1", "true", "yes",
     ):
-        health_url = os.environ.get(
-            "CRUCIBAI_HEALTHCHECK_URL",
-            "http://127.0.0.1:8000/api/health",
-        )
+        health_url = default_api_healthcheck_url()
         try:
             import httpx
             async with httpx.AsyncClient(timeout=5.0) as client:
