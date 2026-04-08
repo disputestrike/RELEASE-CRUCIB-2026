@@ -20,6 +20,7 @@ from .fixer import (
 )
 from .self_repair import attempt_verification_self_repair, maybe_commit_workspace_repairs
 from .generated_app_template import build_frontend_file_set
+from agents.code_repair_agent import CodeRepairAgent
 from .enterprise_command_pack import (
     build_enterprise_backend_file_set,
     build_enterprise_database_file_set,
@@ -1407,6 +1408,36 @@ async def execute_step(step: Dict[str, Any], job: Dict[str, Any],
             plan = build_retry_plan(ftype, st, {"issues": issues_list})
             await apply_fix(step, plan)
             changed_paths = attempt_verification_self_repair(step_key, workspace_path or "", vr)
+            repaired_output_files: list[str] = []
+            if workspace_path and ftype in {"syntax_error", "compile_error", "runtime_error"}:
+                candidate_files = list(dict.fromkeys((result.get("output_files") or []) + changed_paths))
+                repaired_output_files = await CodeRepairAgent.repair_workspace_files(
+                    workspace_path or "",
+                    candidate_files,
+                    verification_issues=issues_list,
+                )
+                if repaired_output_files:
+                    await append_job_event(
+                        job_id,
+                        "code_repair_applied",
+                        {
+                            "step_key": step_key,
+                            "files": repaired_output_files[:20],
+                            "failure_type": ftype,
+                            "issues": issues_list[:6],
+                        },
+                        step_id=step_id,
+                    )
+                    await publish(
+                        job_id,
+                        "code_repair_applied",
+                        {
+                            "step_key": step_key,
+                            "files": repaired_output_files[:20],
+                            "failure_type": ftype,
+                        },
+                    )
+            changed_paths = list(dict.fromkeys(changed_paths + repaired_output_files))
             if changed_paths:
                 maybe_commit_workspace_repairs(
                     workspace_path or "",

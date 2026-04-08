@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional
 import uuid
 
+from agents.code_repair_agent import coerce_text_output
+
 logger = logging.getLogger(__name__)
 
 # --- DAG: phases run in order; within each phase agents run in parallel ---
@@ -135,25 +137,25 @@ def _build_context_additions(agent_name: str, previous_outputs: Dict[str, Any], 
     """Build context string from previous agent outputs for prompt enhancement."""
     parts = []
     if "Planner" in previous_outputs and previous_outputs["Planner"].get("output"):
-        out = (previous_outputs["Planner"]["output"] or "")[:MAX_CONTEXT_CHARS]
+        out = coerce_text_output(previous_outputs["Planner"]["output"] or "", limit=MAX_CONTEXT_CHARS)
         parts.append(f"Previous step (Planning):\n{out}\n\nUse this plan to inform your decisions.")
     if "Stack Selector" in previous_outputs and previous_outputs["Stack Selector"].get("output"):
-        out = (previous_outputs["Stack Selector"]["output"] or "")[:MAX_CONTEXT_CHARS]
+        out = coerce_text_output(previous_outputs["Stack Selector"]["output"] or "", limit=MAX_CONTEXT_CHARS)
         parts.append(f"Selected Tech Stack:\n{out}\n\nGenerate code using this stack.")
     if "Frontend Generation" in previous_outputs and agent_name in ("Security Checker", "UX Auditor", "Performance Analyzer", "Layout Agent", "Validation Agent", "Accessibility Agent"):
-        out = (previous_outputs["Frontend Generation"].get("output") or "")[:MAX_CONTEXT_CHARS]
+        out = coerce_text_output(previous_outputs["Frontend Generation"].get("output") or "", limit=MAX_CONTEXT_CHARS)
         parts.append(f"Generated Frontend (excerpt):\n{out}")
     if "Backend Generation" in previous_outputs and agent_name in ("Security Checker", "Test Generation", "Validation Agent", "Webhook Agent"):
-        out = (previous_outputs["Backend Generation"].get("output") or "")[:MAX_CONTEXT_CHARS]
+        out = coerce_text_output(previous_outputs["Backend Generation"].get("output") or "", limit=MAX_CONTEXT_CHARS)
         parts.append(f"Generated Backend (excerpt):\n{out}")
     if "Design Agent" in previous_outputs and agent_name in ("Image Generation", "Layout Agent"):
-        out = (previous_outputs["Design Agent"].get("output") or "")[:MAX_CONTEXT_CHARS]
+        out = coerce_text_output(previous_outputs["Design Agent"].get("output") or "", limit=MAX_CONTEXT_CHARS)
         parts.append(f"Design placement spec:\n{out}")
     if "Image Generation" in previous_outputs and agent_name == "Layout Agent":
-        out = (previous_outputs["Image Generation"].get("output") or "")[:MAX_CONTEXT_CHARS]
+        out = coerce_text_output(previous_outputs["Image Generation"].get("output") or "", limit=MAX_CONTEXT_CHARS)
         parts.append(f"Image prompts:\n{out}")
     if "Deployment Agent" in previous_outputs and agent_name in ("Documentation Agent", "Monitoring Agent", "DevOps Agent"):
-        out = (previous_outputs["Deployment Agent"].get("output") or "")[:MAX_CONTEXT_CHARS]
+        out = coerce_text_output(previous_outputs["Deployment Agent"].get("output") or "", limit=MAX_CONTEXT_CHARS)
         parts.append(f"Deployment plan:\n{out}")
     if not parts:
         return ""

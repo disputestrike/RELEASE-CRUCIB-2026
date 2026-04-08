@@ -70,6 +70,7 @@ from urllib.parse import quote, urlencode
 from env_encryption import encrypt_env, decrypt_env
 from agent_dag import AGENT_DAG, get_execution_phases, build_context_from_previous_agents, get_system_prompt_for_agent
 from real_agent_runner import REAL_AGENT_NAMES, run_real_agent, persist_agent_output, run_real_post_step
+from agents.code_repair_agent import CodeRepairAgent, coerce_text_output
 
 # Track the last plan/build state for debug visibility in production.
 LAST_BUILD_STATE = {
@@ -5948,6 +5949,7 @@ async def _run_single_agent_with_context(
     user_tier: str = "free",
     speed_selector: str = "lite",
     available_credits: int = 0,
+    retry_error: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Run one agent with context from previous agents. Returns {output, tokens_used, status} or raises."""
     if agent_name not in AGENT_DAG:
@@ -5968,6 +5970,12 @@ async def _run_single_agent_with_context(
     if agent_name == "Frontend Generation" and (build_kind or "").strip().lower() == "mobile":
         system_msg = "You are Frontend Generation for a mobile app. Output only Expo/React Native code (App.js, use React Native components from 'react-native', no DOM or web-only APIs). No markdown."
     enhanced_message = build_context_from_previous_agents(agent_name, previous_outputs, project_prompt)
+    if retry_error:
+        enhanced_message += (
+            "\n\n[Previous attempt failed]\n"
+            f"{retry_error[:1200]}\n"
+            "Return corrected code/config only. Do not repeat the failure."
+        )
     response, _ = await _call_llm_with_fallback(
         message=enhanced_message,
         system_message=system_msg,
@@ -6026,6 +6034,18 @@ async def _run_single_agent_with_context(
         except Exception as e:
             logger.warning("Video generation agent failed: %s", e)
 
+    result = await _repair_generated_agent_output(
+        agent_name=agent_name,
+        result=result,
+        model_chain=model_chain,
+        effective=effective,
+        user_id=user_id,
+        user_tier=user_tier,
+        speed_selector=speed_selector,
+        available_credits=available_credits,
+        project_id=project_id,
+    )
+
     result = await run_real_post_step(agent_name, project_id, previous_outputs, result)
     persist_agent_output(project_id, agent_name, result)
     try:
@@ -6036,7 +6056,8 @@ async def _run_single_agent_with_context(
     
     # --- METRICS: Track agent execution ---
     try:
-        _metrics.agent_executions_total.labels(agent=agent_name, status="success" if out and len(out) > 50 else "partial").inc()
+        safe_output = coerce_text_output(result.get("output") or result.get("result") or "")
+        _metrics.agent_executions_total.labels(agent=agent_name, status="success" if safe_output and len(safe_output) > 50 else "partial").inc()
         _metrics.active_agents.dec()
     except Exception:
         pass
@@ -6044,11 +6065,12 @@ async def _run_single_agent_with_context(
     try:
         memory = await _init_agent_learning()
         if memory:
+            safe_output = coerce_text_output(result.get("output") or result.get("result") or "")
             await memory.record_execution(
                 agent_name=agent_name,
                 input_data={"prompt": input_data[:500], "project_id": project_id},
-                output={"result": (result.get("output") or result.get("result") or "")[:500], "tokens": tokens_used},
-                status=ExecutionStatus.SUCCESS if out and len(out) > 50 else ExecutionStatus.PARTIAL,
+                output={"result": safe_output[:500], "tokens": tokens_used},
+                status=ExecutionStatus.SUCCESS if safe_output and len(safe_output) > 50 else ExecutionStatus.PARTIAL,
                 duration_ms=0,
                 metadata={"build_kind": build_kind or "web"},
             )
@@ -6060,7 +6082,7 @@ async def _run_single_agent_with_context(
             await _vector_memory.store_agent_output(
                 project_id=project_id,
                 agent_name=agent_name,
-                output=(result.get("output") or result.get("result") or "")[:2000],
+                output=coerce_text_output(result.get("output") or result.get("result") or "", limit=2000),
                 tokens_used=tokens_used,
             )
     except Exception as e:
@@ -6071,12 +6093,83 @@ async def _run_single_agent_with_context(
             await _pgvector_memory.store_agent_output(
                 project_id=project_id,
                 agent_name=agent_name,
-                output=(result.get("output") or result.get("result") or "")[:2000],
+                output=coerce_text_output(result.get("output") or result.get("result") or "", limit=2000),
                 tokens_used=tokens_used,
             )
     except Exception as e:
         logger.debug("PGVector memory store failed (non-fatal): %s", e)
 
+    return result
+
+
+async def _repair_generated_agent_output(
+    *,
+    agent_name: str,
+    result: Dict[str, Any],
+    model_chain: list,
+    effective: Dict[str, Optional[str]],
+    user_id: str,
+    user_tier: str,
+    speed_selector: str,
+    available_credits: int,
+    project_id: str,
+) -> Dict[str, Any]:
+    raw_output = result.get("output") or result.get("result") or result.get("code") or ""
+    if not CodeRepairAgent.requires_validation(agent_name, raw_output):
+        safe_text = coerce_text_output(raw_output)
+        result["output"] = safe_text
+        result["result"] = safe_text
+        result["code"] = safe_text
+        return result
+
+    async def _llm_repair_callback(name: str, language: str, broken: str, error: str) -> str:
+        repair_prompt = (
+            f"The previous output for agent '{name}' is invalid {language}.\n"
+            f"Error: {error}\n\n"
+            "Return ONLY corrected code/config. Do not explain. Do not wrap in markdown.\n\n"
+            f"{broken[:12000]}"
+        )
+        repaired, _ = await _call_llm_with_fallback(
+            message=repair_prompt,
+            system_message=(
+                "You are a precise code repair system. Make the smallest fix that produces valid syntax "
+                "and preserves intent."
+            ),
+            session_id=f"repair_{project_id}_{name.lower().replace(' ', '_')}",
+            model_chain=model_chain,
+            api_keys=effective,
+            user_id=user_id,
+            user_tier=user_tier,
+            speed_selector=speed_selector,
+            available_credits=available_credits,
+            agent_name=name,
+        )
+        return repaired or ""
+
+    repaired = await CodeRepairAgent.repair_output(
+        agent_name=agent_name,
+        output=raw_output,
+        error_message="agent_output_validation_failed",
+        llm_repair=_llm_repair_callback,
+    )
+    if not repaired.get("valid"):
+        raise AgentError(agent_name, f"output_validation_failed: {repaired.get('error')}", "high")
+
+    safe_text = repaired.get("output") or ""
+    result["output"] = safe_text
+    result["result"] = safe_text
+    result["code"] = safe_text
+    if repaired.get("repaired"):
+        result["repair_metadata"] = {
+            "language": repaired.get("language"),
+            "strategy": repaired.get("strategy"),
+            "status": "repaired",
+        }
+        logger.warning(
+            "agent %s output repaired via %s",
+            agent_name,
+            repaired.get("strategy") or "unknown_strategy",
+        )
     return result
 
 
@@ -6086,7 +6179,10 @@ def _agent_cache_input(agent_name: str, project_prompt: str, previous_outputs: D
     deps = list(AGENT_DAG.get(agent_name, {}).get("depends_on", []))
     for dep in sorted(deps):
         if dep in previous_outputs:
-            out = (previous_outputs[dep].get("output") or previous_outputs[dep].get("result") or "")[:800]
+            out = coerce_text_output(
+                previous_outputs[dep].get("output") or previous_outputs[dep].get("result") or "",
+                limit=800,
+            )
             parts.append(f"{dep}:{out}")
     return "\n".join(parts)
 
@@ -6115,7 +6211,8 @@ async def _run_single_agent_with_retry(
         try:
             r = await _run_single_agent_with_context(
                 project_id, user_id, agent_name, project_prompt, previous_outputs, effective, model_chain, build_kind=build_kind,
-                user_tier=user_tier, speed_selector=speed_selector, available_credits=available_credits
+                user_tier=user_tier, speed_selector=speed_selector, available_credits=available_credits,
+                retry_error=str(last_err) if last_err else None,
             )
             if not (r.get("output") or r.get("result")):
                 raise AgentError(agent_name, "Empty output", "medium")
@@ -6123,6 +6220,13 @@ async def _run_single_agent_with_retry(
             return r
         except Exception as e:
             last_err = e
+            logger.warning(
+                "agent retry %s attempt %s/%s failed: %s",
+                agent_name,
+                attempt + 1,
+                max_retries,
+                str(e)[:300],
+            )
             if attempt < max_retries - 1:
                 await asyncio.sleep(2 ** attempt)
     crit = get_criticality(agent_name)
@@ -6381,7 +6485,10 @@ async def run_orchestration_v2(project_id: str, user_id: str):
                 if (r.get("status") or "").lower() in ("skipped", "failed", "failed_with_fallback"):
                     phase_fail_count += 1
             emit_build_event(project_id, "agent_completed", agent=name, tokens=results[name].get("tokens_used", 0), status=results[name].get("status", ""), message=f"{name} completed")
-            out_snippet = (results[name].get("output") or results[name].get("result") or "")[:200]
+            out_snippet = coerce_text_output(
+                results[name].get("output") or results[name].get("result") or "",
+                limit=200,
+            )
             await db.agent_status.update_one(
                 {"project_id": project_id, "agent_name": name},
                 {"$set": {"status": "completed", "progress": 100, "tokens_used": results[name].get("tokens_used", 0)}}
@@ -6489,7 +6596,10 @@ async def run_orchestration_v2(project_id: str, user_id: str):
                 api_keys=effective,
             )
             return r or ""
-        build_output = {k: (v.get("output") or v.get("result") or "")[:5000] for k, v in list(results.items())[:15]}
+        build_output = {
+            k: coerce_text_output(v.get("output") or v.get("result") or "", limit=5000)
+            for k, v in list(results.items())[:15]
+        }
         truth_result = await truth_check_build(project_id, build_output, _llm_for_truth)
         await db.project_logs.insert_one({
             "id": str(uuid.uuid4()),
