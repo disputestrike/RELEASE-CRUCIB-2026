@@ -58,7 +58,7 @@ Tasks:
 - [x] Require authentication for agent automation store/list routes.
 - [x] Scope agent memory and automation list routes to the authenticated user.
 - [x] Add focused smoke coverage for agent memory and automation auth/tenant isolation.
-- [ ] Commit and push the agent memory/automation tenant isolation slice.
+- [x] Commit and push the agent memory/automation tenant isolation slice (`37d90ca`).
 
 ## Verification Log
 
