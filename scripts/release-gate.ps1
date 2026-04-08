@@ -54,9 +54,13 @@ try {
     }
     $env:CRUCIBAI_TEST = "1"
     & python -m pytest backend\tests\test_smoke.py `
-        -k "terminal or job_state or job_proof or run_auto or retry_step or app_db or git_sync or railway_deploy or agent_memory or agent_automation or detect_frameworks or deploy" `
+        -k "terminal or job_state or job_proof or run_auto or retry_step or app_db or git_sync or railway_deploy or agent_memory or agent_automation or agent_run_generic or agents_from_description or detect_frameworks or deploy" `
         -q
     Assert-LastExit "backend smoke"
+
+    Step "Running automation bridge tests"
+    & python -m pytest backend\tests\test_automation.py -k "run_agent" -q
+    Assert-LastExit "automation bridge tests"
 
     Step "Running LLM routing guard tests"
     & python -m pytest backend\tests\test_tool_agents.py -k "large_cerebras or base_agent" -q

@@ -531,6 +531,69 @@ async def test_smoke_agent_automation_list_is_user_scoped(app_client, auth_heade
     assert "other-automation" not in names
 
 
+async def test_smoke_agent_run_generic_requires_auth(app_client):
+    """Generic LLM-backed agent runner requires user auth."""
+    r = await app_client.post(
+        "/api/agents/run/generic",
+        json={"agent_name": "Content Agent", "prompt": "Summarize this"},
+        timeout=10,
+    )
+    assert r.status_code == 401
+
+
+async def test_smoke_agent_run_generic_unknown_agent_returns_404_for_user(app_client, auth_headers):
+    """Authenticated generic runner rejects unknown agents before LLM execution."""
+    r = await app_client.post(
+        "/api/agents/run/generic",
+        json={"agent_name": "Not A Real Agent", "prompt": "Summarize this"},
+        headers=auth_headers,
+        timeout=10,
+    )
+    assert r.status_code == 404
+
+
+async def test_smoke_agents_from_description_creates_run_agent_automation(app_client, auth_headers, monkeypatch):
+    """Prompt-to-automation can save an automation that calls the app-building agent DAG."""
+    import server
+
+    async def fake_llm_with_fallback(**kwargs):
+        return (
+            """
+            {
+              "name": "Daily build summary",
+              "description": "Summarize new build output every morning.",
+              "trigger": {"type": "schedule", "cron_expression": "0 9 * * *"},
+              "actions": [
+                {
+                  "type": "run_agent",
+                  "config": {
+                    "agent_name": "Content Agent",
+                    "prompt": "Summarize yesterday's build output and list blockers."
+                  }
+                }
+              ]
+            }
+            """,
+            "test-model",
+        )
+
+    monkeypatch.setattr(server, "_call_llm_with_fallback", fake_llm_with_fallback)
+
+    r = await app_client.post(
+        "/api/agents/from-description",
+        json={"description": "Every day at 9am, summarize yesterday's build output with Content Agent."},
+        headers=auth_headers,
+        timeout=10,
+    )
+
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert data["name"] == "Daily build summary"
+    assert data["trigger_type"] == "schedule"
+    assert data["actions"][0]["type"] == "run_agent"
+    assert data["actions"][0]["config"]["agent_name"] == "Content Agent"
+
+
 async def test_smoke_retry_step_rejects_unowned_job(app_client, auth_headers):
     """POST /api/jobs/{job_id}/retry-step/{step_id} rejects another user's job step."""
     other_headers = await _register_smoke_headers(app_client)

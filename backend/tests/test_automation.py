@@ -37,6 +37,51 @@ async def test_executor_http_action():
 
 
 @pytest.mark.asyncio
+async def test_executor_run_agent_action_uses_callback_with_substituted_prompt():
+    """T-1: Executor run_agent action bridges automation steps into the agent DAG."""
+    from automation.executor import run_actions
+
+    calls = []
+
+    async def fake_run_agent(user_id, agent_name, prompt):
+        calls.append({"user_id": user_id, "agent_name": agent_name, "prompt": prompt})
+        return {"result": "Summarized: shipped bridge proof"}
+
+    agent_doc = {
+        "id": "test-agent",
+        "user_id": "user-1",
+        "actions": [
+            {
+                "type": "run_agent",
+                "config": {
+                    "agent_name": "Content Agent",
+                    "prompt": "Summarize {{steps.0.output}}",
+                },
+            }
+        ],
+    }
+
+    status, output_summary, log_lines, _ = await run_actions(
+        agent_doc,
+        "user-1",
+        "run-1",
+        [{"output": "CrucibAI builds apps and automates workflows."}],
+        run_agent_callback=fake_run_agent,
+    )
+
+    assert status == "success"
+    assert calls == [
+        {
+            "user_id": "user-1",
+            "agent_name": "Content Agent",
+            "prompt": "Summarize CrucibAI builds apps and automates workflows.",
+        }
+    ]
+    assert output_summary["steps"][1]["output"]["result"] == "Summarized: shipped bridge proof"
+    assert any("[RUN_AGENT] Content Agent" in line for line in log_lines)
+
+
+@pytest.mark.asyncio
 async def test_webhook_invalid_secret_401(app_client, auth_headers):
     """T-3: POST webhook with invalid secret returns 401."""
     # Create agent with webhook trigger

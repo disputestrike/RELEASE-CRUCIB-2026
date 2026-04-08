@@ -8,7 +8,7 @@ Last updated: 2026-04-08
 
 ## Current Objective
 
-Paused before the next implementation pass. Resume from `main` commit `1020791` after release-gate/FrontendAgent prompt work, with every approved slice committed and pushed directly to GitHub.
+Continue proving and hardening the golden-path wedge after `main` commit `ec06ffa`: CrucibAI as a unified outcome platform where app-building agents can also run inside user automations via the `run_agent` bridge.
 
 ## Confirmed Direction
 
@@ -126,6 +126,11 @@ Tasks:
 - [x] Commit and push the FrontendAgent prompt compaction slice (`8f4d895`).
 - [x] Add `backend\agents\frontend_agent.py` to the release-gate compile list.
 - [x] Commit and push the release-gate compile coverage update (`1020791`).
+- [x] Confirm the requested external `/home/claude/CRUCIBAI_WHAT_IT_IS_COMPLETE.md` was unavailable locally and record the nearest repo source-of-truth docs (`ec06ffa`).
+- [x] Require authentication for the generic LLM-backed `/api/agents/run/generic` endpoint.
+- [x] Add executor coverage proving a `run_agent` automation action calls the app-building agent callback with substituted prior-step output.
+- [x] Add prompt-to-automation smoke coverage proving `/api/agents/from-description` can save a `run_agent` action from a natural-language description.
+- [x] Add the prompt-to-automation and automation `run_agent` bridge checks to the backend release gate.
 
 ## Verification Log
 
@@ -160,6 +165,11 @@ Tasks:
 - `python -m pytest backend\tests\test_agents.py backend\tests\test_tool_agents.py -k "frontend_agent or base_agent or large_cerebras" -q` passed: 9 passed, 41 deselected.
 - `.\scripts\release-gate.ps1 -BackendOnly` passed after adding FrontendAgent to compile gate: smoke 28 passed, 24 deselected; tool agent guard 8 passed, 18 deselected.
 - `.\scripts\verify-local.ps1` correctly failed on Node `v24.14.0`; the frontend declares Node `>=18 <=22`.
+- `python -m py_compile backend\server.py backend\automation\executor.py` passed after generic agent auth hardening.
+- Initial focused automation test attempt failed before exercising code because the shell had a stale `DATABASE_URL` for user `username`; rerun used `DATABASE_URL=postgresql://crucibai:crucibai@127.0.0.1:5434/crucibai` and `REDIS_URL=redis://127.0.0.1:6381/0`.
+- `python -m pytest backend\tests\test_automation.py -k "run_agent" -q` passed with local Postgres/Redis env: 1 passed, 6 deselected.
+- `python -m pytest backend\tests\test_smoke.py -k "agent_run_generic or agents_from_description" -q` passed with local Postgres/Redis env: 3 passed, 52 deselected.
+- `.\scripts\release-gate.ps1 -BackendOnly` passed after adding automation bridge coverage: smoke 31 passed, 24 deselected; automation bridge 1 passed, 6 deselected; tool agent guard 8 passed, 18 deselected.
 
 ## Next Milestone
 

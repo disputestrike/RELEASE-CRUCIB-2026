@@ -4095,7 +4095,7 @@ async def agent_legal_compliance(data: AgentPromptBody, user: dict = Depends(get
     return {"agent": "Legal Compliance Agent", "result": response, "model_used": model_used}
 
 @agents_router.post("/agents/run/generic")
-async def agent_run_generic(data: AgentGenericRunBody, user: dict = Depends(get_optional_user)):
+async def agent_run_generic(data: AgentGenericRunBody, user: dict = Depends(get_current_user)):
     """Run any agent by name (100-agent roster). Uses system prompt from agent DAG."""
     if data.agent_name not in AGENT_DAG:
         raise HTTPException(status_code=404, detail=f"Unknown agent: {data.agent_name}")
