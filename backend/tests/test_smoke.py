@@ -51,6 +51,40 @@ async def _create_smoke_task(auth_headers, files=None):
     return task_id
 
 
+def _user_id_from_auth_headers(auth_headers):
+    """Decode the test JWT and return the owning user id."""
+    import server
+
+    token = auth_headers["Authorization"].split(" ", 1)[1]
+    payload = server.jwt.decode(token, server.JWT_SECRET, algorithms=[server.JWT_ALGORITHM])
+    return payload["user_id"]
+
+
+async def _create_failed_smoke_job_step(auth_headers):
+    """Create a user-owned failed job step for retry ownership smoke tests."""
+    from db_pg import get_pg_pool
+    from orchestration import runtime_state
+
+    pool = await get_pg_pool()
+    runtime_state.set_pool(pool)
+    user_id = _user_id_from_auth_headers(auth_headers)
+    job = await runtime_state.create_job(
+        project_id=f"smoke-project-{uuid.uuid4().hex[:8]}",
+        mode="guided",
+        goal="Smoke retry",
+        user_id=user_id,
+    )
+    step = await runtime_state.create_step(
+        job_id=job["id"],
+        step_key="smoke-step",
+        agent_name="Smoke Agent",
+        phase="test",
+    )
+    await runtime_state.update_step_state(step["id"], "failed", {"error_message": "smoke"})
+    step = await runtime_state.get_step(step["id"])
+    return job["id"], step["id"]
+
+
 async def _register_smoke_headers(app_client):
     """Register another test user and return auth headers."""
     email = f"smoke-{uuid.uuid4().hex[:12]}@example.com"
@@ -434,6 +468,32 @@ async def test_smoke_agent_automation_list_is_user_scoped(app_client, auth_heade
     names = [item.get("name") for item in listing.json().get("items", [])]
     assert "own-automation" in names
     assert "other-automation" not in names
+
+
+async def test_smoke_retry_step_rejects_unowned_job(app_client, auth_headers):
+    """POST /api/jobs/{job_id}/retry-step/{step_id} rejects another user's job step."""
+    other_headers = await _register_smoke_headers(app_client)
+    job_id, step_id = await _create_failed_smoke_job_step(other_headers)
+    r = await app_client.post(
+        f"/api/jobs/{job_id}/retry-step/{step_id}",
+        headers=auth_headers,
+        timeout=10,
+    )
+    assert r.status_code == 403
+
+
+async def test_smoke_retry_step_returns_200_for_owned_failed_step(app_client, auth_headers):
+    """POST /api/jobs/{job_id}/retry-step/{step_id} resets an owned failed step."""
+    job_id, step_id = await _create_failed_smoke_job_step(auth_headers)
+    r = await app_client.post(
+        f"/api/jobs/{job_id}/retry-step/{step_id}",
+        headers=auth_headers,
+        timeout=10,
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data.get("success") is True
+    assert data.get("status") == "pending"
 
 
 async def test_smoke_app_db_schema_returns_200_for_owned_task(app_client, auth_headers):

@@ -8848,6 +8848,10 @@ async def retry_step(job_id: str, step_id: str,
         step = await runtime_state.get_step(step_id)
         if not step or step["job_id"] != job_id:
             raise HTTPException(status_code=404, detail="Step not found")
+        job = await runtime_state.get_job(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+        _assert_job_owner_match(job.get("user_id"), user)
         if step["status"] not in ("failed", "blocked"):
             raise HTTPException(status_code=400,
                 detail=f"Step is {step['status']}, can only retry failed/blocked steps")

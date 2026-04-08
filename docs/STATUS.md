@@ -59,6 +59,9 @@ Tasks:
 - [x] Scope agent memory and automation list routes to the authenticated user.
 - [x] Add focused smoke coverage for agent memory and automation auth/tenant isolation.
 - [x] Commit and push the agent memory/automation tenant isolation slice (`37d90ca`).
+- [x] Require job ownership before retrying a failed/blocked job step.
+- [x] Add focused smoke coverage for owned and unowned retry-step attempts.
+- [ ] Commit and push the retry-step ownership slice.
 
 ## Verification Log
 
@@ -71,6 +74,8 @@ Tasks:
 - `python -m pytest backend\tests\test_smoke.py -k "ide_ or git_status or terminal or app_db or cache_invalidate or detect_frameworks or deploy" -q` passed with local Postgres/Redis env: 19 passed, 13 deselected.
 - `python -m py_compile backend\server.py` passed.
 - `python -m pytest backend\tests\test_smoke.py -k "agent_memory or agent_automation or app_db or cache_invalidate or detect_frameworks or deploy" -q` passed with local Postgres/Redis env: 13 passed, 23 deselected.
+- `python -m py_compile backend\server.py` passed.
+- `python -m pytest backend\tests\test_smoke.py -k "retry_step or agent_memory or agent_automation or app_db or cache_invalidate or detect_frameworks or deploy" -q` passed with local Postgres/Redis env: 15 passed, 23 deselected.
 - `.\scripts\verify-local.ps1` correctly failed on Node `v24.14.0`; the frontend declares Node `>=18 <=22`.
 
 ## Next Milestone
