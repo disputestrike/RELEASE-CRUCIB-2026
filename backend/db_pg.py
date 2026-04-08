@@ -714,6 +714,8 @@ CREATE TABLE IF NOT EXISTS jobs (
     retry_count INTEGER DEFAULT 0,
     quality_score INTEGER DEFAULT 0,
     error_message TEXT,
+    failure_reason TEXT,
+    failure_details TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     started_at TIMESTAMPTZ,

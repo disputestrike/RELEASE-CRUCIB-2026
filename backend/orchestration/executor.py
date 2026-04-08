@@ -56,8 +56,44 @@ class VerificationFailed(Exception):
 
     def __init__(self, vr: Dict[str, Any]):
         self.vr = vr
-        msg = "; ".join(vr.get("issues") or []) or "verification failed"
+        msg = _verification_failure_message("", vr)
         super().__init__(msg)
+
+
+def _verification_failure_message(step_key: str, vr: Dict[str, Any]) -> str:
+    reason = str(vr.get("failure_reason") or "verification_failed")
+    issues = [str(i) for i in (vr.get("issues") or []) if i]
+    checks = [str(i) for i in (vr.get("failed_checks") or []) if i]
+    parts = []
+    if step_key:
+        parts.append(step_key)
+    parts.append(reason)
+    if checks:
+        parts.append("failed_checks=" + ",".join(checks[:8]))
+    if issues:
+        parts.append("; ".join(issues[:6]))
+    return " | ".join(parts)[:1000]
+
+
+def _verification_failure_payload(
+    step_key: str,
+    vr: Dict[str, Any],
+    *,
+    duration_ms: Optional[int] = None,
+) -> Dict[str, Any]:
+    payload: Dict[str, Any] = {
+        "step_key": step_key,
+        "stage": vr.get("stage") or step_key or "verification",
+        "failure_reason": vr.get("failure_reason") or "verification_failed",
+        "score": vr.get("score"),
+        "issues": list(vr.get("issues") or [])[:12],
+    }
+    if duration_ms is not None:
+        payload["duration_ms"] = duration_ms
+    for key in ("failed_checks", "checks_passed", "checks_total", "recommendation"):
+        if key in vr:
+            payload[key] = vr[key]
+    return payload
 
 
 def _record_verifier_metrics(step_key: str, vr: Dict[str, Any]) -> None:
@@ -1041,6 +1077,21 @@ async def execute_step(step: Dict[str, Any], job: Dict[str, Any],
             )
             if vr.get("passed"):
                 break
+            failure_payload = _verification_failure_payload(step_key, vr)
+            failure_payload.update({"inner_attempt": inner, "max_inner_attempt": max_inner})
+            await append_job_event(
+                job_id,
+                "verification_attempt_failed",
+                failure_payload,
+                step_id=step_id,
+            )
+            await publish(
+                job_id,
+                "verification_attempt_failed",
+                {k: v for k, v in failure_payload.items() if k != "issues"} | {
+                    "issues": failure_payload.get("issues", [])[:5],
+                },
+            )
             if inner >= max_inner:
                 break
             issues_list = vr.get("issues") or []
@@ -1134,16 +1185,19 @@ async def execute_step(step: Dict[str, Any], job: Dict[str, Any],
 
     except VerificationFailed as vf:
         duration_ms = int((time.monotonic() - t0) * 1000)
-        error_msg = str(vf)[:500]
+        error_msg = _verification_failure_message(step_key, vf.vr)[:500]
+        failure_payload = _verification_failure_payload(step_key, vf.vr, duration_ms=duration_ms)
+        failure_payload.update({"error": error_msg})
         logger.warning("executor: step %s verification failed: %s", step_key, error_msg)
         await update_step_state(step_id, "failed", {
             "error_message": error_msg,
             "verifier_status": "failed",
+            "verifier_score": vf.vr.get("score"),
         })
         await append_job_event(
             job_id,
             "step_failed",
-            {"step_key": step_key, "error": error_msg, "duration_ms": duration_ms},
+            failure_payload,
             step_id=step_id,
         )
         await append_job_event(
@@ -1154,7 +1208,12 @@ async def execute_step(step: Dict[str, Any], job: Dict[str, Any],
                 "step_id": step_id,
                 "ended_at_ms": int(time.time() * 1000),
                 "duration_ms": duration_ms,
-                "failure_reason": error_msg,
+                "failure_reason": failure_payload.get("failure_reason"),
+                "failure_detail": error_msg,
+                "stage": failure_payload.get("stage"),
+                "issues": failure_payload.get("issues", []),
+                "failed_checks": failure_payload.get("failed_checks", []),
+                "recommendation": failure_payload.get("recommendation"),
                 "retry_count": step.get("retry_count") or 0,
                 "execution_mode": "executed",
             },
@@ -1163,7 +1222,7 @@ async def execute_step(step: Dict[str, Any], job: Dict[str, Any],
         await publish(
             job_id,
             "step_failed",
-            {"step_key": step_key, "step_id": step_id, "error": error_msg, "duration_ms": duration_ms},
+            {"step_key": step_key, "step_id": step_id, **failure_payload},
         )
         return {"success": False, "error": error_msg, "verification": vf.vr}
 

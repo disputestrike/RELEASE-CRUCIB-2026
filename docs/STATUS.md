@@ -151,6 +151,12 @@ Tasks:
 - [x] Add source-audit tests for remaining optional-auth routes, websocket project-progress auth, and blueprint optional-auth usage.
 - [x] Add `scripts/phase2-security-audit.py` to generate reproducible route inventory and proof artifacts under `proof/phase2_security/`.
 - [x] Add the Phase 2 route/websocket audit to `scripts/release-gate.ps1`.
+- [x] Preserve preview and elite-builder verifier `failure_reason` / failed-check metadata through `verify_step`.
+- [x] Add explicit deploy build/publish failure reasons, including readiness-only publish when no live deploy URL is configured.
+- [x] Add `failure_reason` and `failure_details` to the Postgres jobs schema so failure persistence does not crash during late-stage pipeline errors.
+- [x] Replace generic background wrapper `background_crash` persistence with explicit `background_runner_exception` metadata.
+- [x] Add late-stage pipeline failure tests and include them in `scripts/release-gate.ps1`.
+- [x] Add deterministic crash-fix proof artifacts under `proof/pipeline_crash_fix/`.
 
 ## Verification Log
 
@@ -207,6 +213,13 @@ Tasks:
 - `python -m pytest backend\tests\test_phase2_security.py -q` passed with local Postgres/Redis env: 3 passed.
 - `python scripts\phase2-security-audit.py --fail-on-unclassified` generated `proof\phase2_security\` and passed with 13 optional routes inventoried and 0 failures.
 - `.\scripts\release-gate.ps1 -BackendOnly` passed after Phase 2 audit additions: smoke 43 passed, 24 deselected; Phase 2 audit 3 passed; optional-auth audit 13 routes, 0 failures; provider readiness 5 passed; automation bridge 1 passed, 6 deselected; LLM routing guard 8 passed, 18 deselected.
+- `python -m py_compile backend\db_pg.py backend\orchestration\verifier.py backend\orchestration\executor.py backend\orchestration\auto_runner.py backend\server.py scripts\generate-pipeline-crash-fix-proof.py` passed.
+- Initial focused pipeline pytest attempt failed before exercising code because the shell had a placeholder `DATABASE_URL` for user `username`; rerun used local Postgres/Redis env.
+- `python -m pytest backend\tests\test_pipeline_crash_fix.py -q` passed with local Postgres/Redis env: 7 passed.
+- `python -m pytest backend\tests\test_smoke.py -k "background_runner" -q` passed with local Postgres/Redis env: 1 passed, 67 deselected.
+- `python -m pytest backend\tests\test_verifier_deploy.py backend\tests\test_pipeline_crash_fix.py -q` passed with local Postgres/Redis env: 9 passed.
+- `python scripts\generate-pipeline-crash-fix-proof.py` generated `proof\pipeline_crash_fix\` and passed all five PASS/FAIL checks: preview boot, elite/proof verification, deploy build, deploy publish, and background runner stability.
+- `.\scripts\release-gate.ps1 -BackendOnly` passed after late-stage pipeline crash fixes: smoke 44 passed, 24 deselected; pipeline crash fix 7 passed; Phase 2 audit 3 passed; optional-auth audit 13 routes, 0 failures; provider readiness 5 passed; automation bridge 1 passed, 6 deselected; LLM routing guard 8 passed, 18 deselected.
 
 ## Next Milestone
 

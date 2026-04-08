@@ -817,6 +817,36 @@ async def test_smoke_run_auto_ignores_client_workspace_path(app_client, auth_hea
     assert project_id in captured["workspace_path"]
 
 
+async def test_smoke_background_runner_exception_has_precise_reason(app_client, auth_headers, monkeypatch, tmp_path):
+    """Background wrapper records explicit exception metadata, not generic background_crash."""
+    import json
+    import server
+    from db_pg import get_pg_pool
+    from orchestration import auto_runner, runtime_state
+
+    pool = await get_pg_pool()
+    runtime_state.set_pool(pool)
+    job_id, _project_id = await _create_smoke_auto_job(auth_headers)
+
+    async def fake_run_job_to_completion(job_id, workspace_path="", db_pool=None):
+        raise RuntimeError("late-stage verifier boom")
+
+    monkeypatch.setattr(auto_runner, "run_job_to_completion", fake_run_job_to_completion)
+
+    await server._background_auto_runner_job(job_id, str(tmp_path))
+
+    job = await runtime_state.get_job(job_id)
+    assert job["status"] == "failed"
+    assert job["current_phase"] == "background_runner_exception"
+
+    events = await runtime_state.get_job_events(job_id, limit=50)
+    payloads = [json.loads(event["payload_json"]) for event in events]
+    reasons = [payload.get("reason") for payload in payloads]
+    assert "background_runner_exception" in reasons
+    assert "background_crash" not in reasons
+    assert any(payload.get("exception_type") == "RuntimeError" for payload in payloads)
+
+
 async def test_smoke_job_state_routes_require_auth(app_client, auth_headers):
     """Stateful job/proof endpoints require an authenticated owner."""
     job_id, _project_id = await _create_smoke_auto_job(auth_headers)

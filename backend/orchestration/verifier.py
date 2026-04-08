@@ -70,6 +70,26 @@ def _result(passed: bool, score: int, issues: List[str],
     return {"passed": passed, "score": score, "issues": issues, "proof": proof}
 
 
+def _gate_result(
+    src: Dict[str, Any],
+    *,
+    stage: str,
+    extra_keys: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Normalize a gate result without dropping its root-cause metadata."""
+    out = _result(
+        bool(src.get("passed")),
+        int(src.get("score") or 0),
+        list(src.get("issues") or []),
+        list(src.get("proof") or []),
+    )
+    out["stage"] = stage
+    for key in ["failure_reason", *(extra_keys or [])]:
+        if key in src:
+            out[key] = src[key]
+    return out
+
+
 def _proof_item(
     proof_type: str,
     title: str,
@@ -313,43 +333,53 @@ async def verify_deploy_step(step: Dict[str, Any], workspace_path: str = "") -> 
     issues = []
     proof = []
     step_key = step.get("step_key", "")
-    added_deploy_build_file_proof = False
+    failure_reason = ""
+    added_deploy_file_proof = False
 
-    if step_key == "deploy.build" and workspace_path and os.path.isdir(workspace_path):
+    if not workspace_path or not os.path.isdir(workspace_path):
+        issues.append(f"Deploy workspace missing: {workspace_path or '<empty>'}")
+        failure_reason = "deploy_workspace_missing"
+
+    if workspace_path and os.path.isdir(workspace_path):
         from .production_gate import scan_workspace_for_credential_patterns
         from .tenant_deploy_gate import verify_tenant_context_for_deploy
 
-        t_issues, t_proof = verify_tenant_context_for_deploy(workspace_path)
-        issues.extend(t_issues)
-        for tp in t_proof:
-            proof.append(tp)
+        if step_key == "deploy.build":
+            t_issues, t_proof = verify_tenant_context_for_deploy(workspace_path)
+            issues.extend(t_issues)
+            if t_issues and not failure_reason:
+                failure_reason = "deploy_tenant_gate_failed"
+            for tp in t_proof:
+                proof.append(tp)
 
-        hits = scan_workspace_for_credential_patterns(workspace_path)
-        for h in hits:
-            proof.append(
-                _proof_item(
-                    "verification",
-                    f"Production gate: {h}",
-                    {"gate": "credential_pattern_scan"},
-                    verification_class="runtime",
-                ),
+            hits = scan_workspace_for_credential_patterns(workspace_path)
+            for h in hits:
+                proof.append(
+                    _proof_item(
+                        "verification",
+                        f"Production gate: {h}",
+                        {"gate": "credential_pattern_scan"},
+                        verification_class="runtime",
+                    ),
+                )
+            strict = os.environ.get("CRUCIBAI_PRODUCTION_GATE_STRICT", "").strip().lower() in (
+                "1",
+                "true",
+                "yes",
             )
-        strict = os.environ.get("CRUCIBAI_PRODUCTION_GATE_STRICT", "").strip().lower() in (
-            "1",
-            "true",
-            "yes",
-        )
-        if strict and hits:
-            issues.extend(hits)
-        elif not hits:
-            proof.append(
-                _proof_item(
-                    "verification",
-                    "Production gate: no high-confidence credential patterns in code files",
-                    {"gate": "credential_pattern_scan", "clean": True},
-                    verification_class="runtime",
-                ),
-            )
+            if strict and hits:
+                issues.extend(hits)
+                if not failure_reason:
+                    failure_reason = "deploy_credential_gate_failed"
+            elif not hits:
+                proof.append(
+                    _proof_item(
+                        "verification",
+                        "Production gate: no high-confidence credential patterns in code files",
+                        {"gate": "credential_pattern_scan", "clean": True},
+                        verification_class="runtime",
+                    ),
+                )
 
         for rel in step.get("output_files") or []:
             full = os.path.normpath(os.path.join(workspace_path, rel.replace("/", os.sep)))
@@ -366,9 +396,11 @@ async def verify_deploy_step(step: Dict[str, Any], workspace_path: str = "") -> 
                         verification_class="presence",
                     ),
                 )
-                added_deploy_build_file_proof = True
+                added_deploy_file_proof = True
             else:
                 issues.append(f"Expected deploy artifact missing: {rel}")
+                if not failure_reason:
+                    failure_reason = "deploy_artifact_missing"
 
     deploy_url = step.get("deploy_url")
     if deploy_url:
@@ -387,9 +419,32 @@ async def verify_deploy_step(step: Dict[str, Any], workspace_path: str = "") -> 
                         )
                     else:
                         issues.append(f"Deploy URL returned {resp.status}: {deploy_url}")
+                        if not failure_reason:
+                            failure_reason = "deploy_smoke_check_failed"
         except Exception as e:
             issues.append(f"Deploy smoke check failed: {str(e)}")
-    elif not added_deploy_build_file_proof:
+            if not failure_reason:
+                failure_reason = "deploy_smoke_check_failed"
+    elif step_key == "deploy.publish":
+        require_live_publish = os.environ.get("CRUCIBAI_REQUIRE_LIVE_DEPLOY_PUBLISH", "").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+        if require_live_publish:
+            issues.append("Deploy publish requires deploy_url but none was produced")
+            if not failure_reason:
+                failure_reason = "deploy_publish_url_missing"
+        else:
+            proof.append(
+                _proof_item(
+                    "deploy",
+                    "Deploy publish recorded as readiness-only (no live URL configured)",
+                    {"publish_mode": "readiness_only", "deploy_url": None},
+                    verification_class="presence",
+                ),
+            )
+    elif not added_deploy_file_proof:
         proof.append(
             _proof_item(
                 "deploy",
@@ -400,7 +455,11 @@ async def verify_deploy_step(step: Dict[str, Any], workspace_path: str = "") -> 
         )
 
     score = 100 if not issues else 50
-    return _result(len(issues) == 0, score, issues, proof)
+    out = _result(len(issues) == 0, score, issues, proof)
+    out["stage"] = step_key or "deploy"
+    if failure_reason:
+        out["failure_reason"] = failure_reason
+    return out
 
 
 # ── Generic verifier dispatcher ───────────────────────────────────────────────
@@ -492,7 +551,7 @@ async def verify_step(step: Dict[str, Any], workspace_path: str = "",
                 from .preview_gate import verify_preview_workspace
 
                 pr = await verify_preview_workspace(workspace_path or "")
-                return _result(pr["passed"], pr["score"], pr["issues"], pr["proof"])
+                return _gate_result(pr, stage="preview_boot")
             if step_key == "verification.compile":
                 return await verify_compile_workspace(workspace_path or "")
             if step_key == "verification.security":
@@ -548,7 +607,17 @@ async def verify_step(step: Dict[str, Any], workspace_path: str = "",
                     workspace_path or "",
                     job_goal=(step.get("job_goal") or ""),
                 )
-                return _result(er["passed"], er["score"], er["issues"], er["proof"])
+                return _gate_result(
+                    er,
+                    stage="elite_builder",
+                    extra_keys=[
+                        "checks",
+                        "checks_passed",
+                        "checks_total",
+                        "failed_checks",
+                        "recommendation",
+                    ],
+                )
             return _result(
                 True, 82, [],
                 [_proof_item("generic", f"Verification step recorded: {step_key}",

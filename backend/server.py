@@ -8404,28 +8404,65 @@ async def _background_auto_runner_job(job_id: str, workspace_path: str) -> None:
                     )
             except Exception:
                 logger.exception("auto_runner: elite directive for job %s", job_id)
-        await _orch_ar.run_job_to_completion(
+        result = await _orch_ar.run_job_to_completion(
             job_id, workspace_path=workspace_path or "", db_pool=pool
         )
+        await _orch_rs.append_job_event(
+            job_id,
+            "background_runner_completed",
+            {
+                "success": bool((result or {}).get("success")),
+                "status": (result or {}).get("status"),
+                "reason": (result or {}).get("reason"),
+                "details": str((result or {}).get("details") or "")[:1000],
+            },
+        )
+        if result and not result.get("success"):
+            job = await _orch_rs.get_job(job_id)
+            if job and job.get("status") not in {"failed", "completed", "cancelled", "canceled"}:
+                reason = result.get("reason") or "auto_runner_failed"
+                details = str(result.get("details") or result.get("error") or reason)[:1000]
+                await _orch_rs.update_job_state(
+                    job_id,
+                    "failed",
+                    {
+                        "current_phase": reason,
+                        "failure_reason": reason,
+                        "failure_details": details,
+                    },
+                )
     except Exception as e:
-        logger.exception("auto_runner: background job %s crashed", job_id)
+        logger.exception("auto_runner: background job %s raised", job_id)
         try:
+            import traceback
             from orchestration import runtime_state as _ors
             from orchestration.event_bus import publish as _pub
             from db_pg import get_pg_pool as _gp
 
             pool = await _gp()
             _ors.set_pool(pool)
+            reason = "background_runner_exception"
             msg = str(e)[:500]
+            payload = {
+                "reason": reason,
+                "exception_type": type(e).__name__,
+                "error": msg,
+                "traceback_tail": traceback.format_exc()[-2000:],
+            }
             await _ors.update_job_state(
-                job_id, "failed", {"current_phase": "background_crash", "error_message": msg}
+                job_id,
+                "failed",
+                {
+                    "current_phase": reason,
+                    "failure_reason": reason,
+                    "failure_details": msg,
+                    "error_message": msg,
+                },
             )
-            await _ors.append_job_event(
-                job_id, "job_failed", {"reason": "background_crash", "error": msg}
-            )
-            await _pub(job_id, "job_failed", {"reason": "background_crash", "error": msg[:300]})
+            await _ors.append_job_event(job_id, "job_failed", payload)
+            await _pub(job_id, "job_failed", {k: v for k, v in payload.items() if k != "traceback_tail"})
         except Exception:
-            logger.exception("auto_runner: could not persist crash for job %s", job_id)
+            logger.exception("auto_runner: could not persist background exception for job %s", job_id)
 
 
 async def _background_resume_auto_job(job_id: str, workspace_path: str) -> None:
@@ -8437,26 +8474,65 @@ async def _background_resume_auto_job(job_id: str, workspace_path: str) -> None:
             logger.error("resume_job: no database pool for job %s", job_id)
             return
         _orch_rs.set_pool(pool)
-        await _orch_ar.resume_job(job_id, workspace_path=workspace_path or "", db_pool=pool)
+        result = await _orch_ar.resume_job(job_id, workspace_path=workspace_path or "", db_pool=pool)
+        await _orch_rs.append_job_event(
+            job_id,
+            "background_runner_completed",
+            {
+                "resume": True,
+                "success": bool((result or {}).get("success")),
+                "status": (result or {}).get("status"),
+                "reason": (result or {}).get("reason"),
+                "details": str((result or {}).get("details") or "")[:1000],
+            },
+        )
+        if result and not result.get("success"):
+            job = await _orch_rs.get_job(job_id)
+            if job and job.get("status") not in {"failed", "completed", "cancelled", "canceled"}:
+                reason = result.get("reason") or "auto_runner_failed"
+                details = str(result.get("details") or result.get("error") or reason)[:1000]
+                await _orch_rs.update_job_state(
+                    job_id,
+                    "failed",
+                    {
+                        "current_phase": reason,
+                        "failure_reason": reason,
+                        "failure_details": details,
+                    },
+                )
     except Exception as e:
-        logger.exception("resume_job: background job %s crashed", job_id)
+        logger.exception("resume_job: background job %s raised", job_id)
         try:
+            import traceback
             from orchestration import runtime_state as _ors
             from orchestration.event_bus import publish as _pub
             from db_pg import get_pg_pool as _gp
 
             pool = await _gp()
             _ors.set_pool(pool)
+            reason = "background_runner_exception"
             msg = str(e)[:500]
+            payload = {
+                "reason": reason,
+                "resume": True,
+                "exception_type": type(e).__name__,
+                "error": msg,
+                "traceback_tail": traceback.format_exc()[-2000:],
+            }
             await _ors.update_job_state(
-                job_id, "failed", {"current_phase": "background_crash", "error_message": msg}
+                job_id,
+                "failed",
+                {
+                    "current_phase": reason,
+                    "failure_reason": reason,
+                    "failure_details": msg,
+                    "error_message": msg,
+                },
             )
-            await _ors.append_job_event(
-                job_id, "job_failed", {"reason": "background_crash", "error": msg}
-            )
-            await _pub(job_id, "job_failed", {"reason": "background_crash", "error": msg[:300]})
+            await _ors.append_job_event(job_id, "job_failed", payload)
+            await _pub(job_id, "job_failed", {k: v for k, v in payload.items() if k != "traceback_tail"})
         except Exception:
-            logger.exception("resume_job: could not persist crash for job %s", job_id)
+            logger.exception("resume_job: could not persist background exception for job %s", job_id)
 
 
 @api_router.post("/orchestrator/run-auto")

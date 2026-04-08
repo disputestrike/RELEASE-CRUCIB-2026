@@ -71,6 +71,23 @@ def _skip_duplicate_final_preview(steps: List[Dict[str, Any]]) -> bool:
     )
 
 
+def _step_failure_context(step: Dict[str, Any], result: Dict[str, Any]) -> Dict[str, Any]:
+    """Extract durable late-stage failure metadata from executor results."""
+    vr = result.get("verification") if isinstance(result.get("verification"), dict) else {}
+    issues = vr.get("issues") if isinstance(vr.get("issues"), list) else []
+    context: Dict[str, Any] = {
+        "step_key": step.get("step_key"),
+        "error": result.get("error") or "",
+        "failure_reason": vr.get("failure_reason") or result.get("reason") or "step_failed",
+        "stage": vr.get("stage") or step.get("step_key"),
+        "issues": issues[:12],
+    }
+    for key in ("failed_checks", "checks_passed", "checks_total", "recommendation", "score"):
+        if key in vr:
+            context[key] = vr[key]
+    return context
+
+
 async def run_job_to_completion(job_id: str,
                                  workspace_path: str = "",
                                  db_pool=None) -> Dict[str, Any]:
@@ -227,10 +244,17 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
 
             if not result["success"]:
                 err_msg = result.get("error", "") or ""
+                failure_context = _step_failure_context(step, result)
                 if is_infrastructure_failure(err_msg):
                     logger.error(
                         "auto_runner: infra failure on step %s — not retrying: %s",
                         step["step_key"], err_msg[:200],
+                    )
+                    await append_job_event(
+                        job_id,
+                        "step_infrastructure_failure",
+                        failure_context,
+                        step_id=step["id"],
                     )
                     await block_dependents(job_id, step["step_key"])
                     continue
@@ -239,9 +263,23 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
                 max_total = _max_total_retries()
                 if total_retries > max_total:
                     await update_job_state(job_id, "failed",
-                                           {"current_phase": "max_retries_exceeded"})
+                                           {"current_phase": "max_retries_exceeded",
+                                            "failure_reason": failure_context.get("failure_reason"),
+                                            "failure_details": err_msg[:1000]})
                     await publish(job_id, "job_failed",
-                                  {"reason": f"Max retries ({max_total}) exceeded"})
+                                  {"reason": "max_retries_exceeded",
+                                   "message": f"Max retries ({max_total}) exceeded",
+                                   **failure_context})
+                    await append_job_event(
+                        job_id,
+                        "job_failed",
+                        {
+                            "reason": "max_retries_exceeded",
+                            "max_total_retries": max_total,
+                            **failure_context,
+                        },
+                        step_id=step["id"],
+                    )
                     await _write_blueprint(
                         workspace_path,
                         job_id,
@@ -255,6 +293,27 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
                 retry_count = step.get("retry_count", 0)
                 if retry_count >= MAX_RETRIES:
                     # Block dependents and continue
+                    await append_job_event(
+                        job_id,
+                        "step_retry_exhausted",
+                        {
+                            **failure_context,
+                            "retry_count": retry_count,
+                            "max_retries": MAX_RETRIES,
+                        },
+                        step_id=step["id"],
+                    )
+                    await publish(
+                        job_id,
+                        "step_retry_exhausted",
+                        {
+                            "step_key": step["step_key"],
+                            "retry_count": retry_count,
+                            "max_retries": MAX_RETRIES,
+                            "failure_reason": failure_context.get("failure_reason"),
+                            "stage": failure_context.get("stage"),
+                        },
+                    )
                     await block_dependents(job_id, step["step_key"])
                 else:
                     err_txt = result.get("error", "") or ""
@@ -269,6 +328,10 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
                         {
                             "step_key": step["step_key"],
                             "failure_type": ftype,
+                            "failure_reason": failure_context.get("failure_reason"),
+                            "stage": failure_context.get("stage"),
+                            "issues": failure_context.get("issues", []),
+                            "failed_checks": failure_context.get("failed_checks", []),
                             "retry_plan_actions": rplan.get("retry_plan", []),
                             "attempt_next": retry_count + 1,
                         },
@@ -284,13 +347,33 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
                     await publish(job_id, "step_retrying",
                                   {"step_key": step["step_key"],
                                    "attempt": retry_count + 1,
-                                   "error": err_txt})
+                                   "error": err_txt,
+                                   "failure_reason": failure_context.get("failure_reason"),
+                                   "stage": failure_context.get("stage")})
 
     # Finalize job
     steps = await get_steps(job_id)
     failed_steps = [s for s in steps if s["status"] == "failed"]
     blocked_steps = [s for s in steps if s["status"] == "blocked"]
     completed_steps = [s for s in steps if s["status"] == "completed"]
+    failed_step_details = [
+        {
+            "step_key": s.get("step_key"),
+            "status": s.get("status"),
+            "retry_count": s.get("retry_count") or 0,
+            "error_message": str(s.get("error_message") or "")[:500],
+        }
+        for s in failed_steps
+    ]
+    blocked_step_details = [
+        {
+            "step_key": s.get("step_key"),
+            "status": s.get("status"),
+            "retry_count": s.get("retry_count") or 0,
+            "error_message": str(s.get("error_message") or "")[:500],
+        }
+        for s in blocked_steps
+    ]
 
     # Quality score = % of steps that passed verification
     total = len(steps)
@@ -301,15 +384,23 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
             "current_phase": "dependency_blocked",
             "quality_score": quality_score,
             "blocked_steps": [s["step_key"] for s in blocked_steps],
+            "failure_reason": "dependency_blocked",
+            "failure_details": json.dumps(
+                {"blocked_steps": blocked_step_details, "failed_steps": failed_step_details}
+            )[:2000],
         })
         await publish(job_id, "job_failed", {
             "reason": "dependency_blocked",
             "quality_score": quality_score,
             "blocked_steps": [s["step_key"] for s in blocked_steps],
+            "blocked_step_details": blocked_step_details,
+            "failed_step_details": failed_step_details,
         })
         await append_job_event(job_id, "job_failed", {
             "reason": "dependency_blocked",
             "blocked_step_keys": [s["step_key"] for s in blocked_steps],
+            "blocked_step_details": blocked_step_details,
+            "failed_step_details": failed_step_details,
         })
         await _write_blueprint(
             workspace_path,
@@ -331,14 +422,18 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
             "current_phase": "steps_failed",
             "quality_score": quality_score,
             "failed_step_keys": [s["step_key"] for s in failed_steps],
+            "failure_reason": "steps_failed",
+            "failure_details": json.dumps({"failed_steps": failed_step_details})[:2000],
         })
         await publish(job_id, "job_failed",
                       {"reason": "one_or_more_steps_failed",
                        "quality_score": quality_score,
-                       "failed_steps": [s["step_key"] for s in failed_steps]})
+                       "failed_steps": [s["step_key"] for s in failed_steps],
+                       "failed_step_details": failed_step_details})
         await append_job_event(job_id, "job_failed", {
             "reason": "steps_failed",
             "failed_step_keys": [s["step_key"] for s in failed_steps],
+            "failed_step_details": failed_step_details,
             "quality_score": quality_score,
         })
         await _write_blueprint(
