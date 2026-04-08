@@ -108,7 +108,10 @@ Tasks:
 - [x] Add a Cerebras context-window guard in the shared agent LLM path.
 - [x] Add the LLM routing guard test to the release gate.
 - [x] Add focused coverage so large build prompts require Anthropic instead of silently hitting Cerebras.
-- [ ] Commit and push the LLM context-window guard slice.
+- [x] Commit and push the LLM context-window guard slice (`b120bbb`).
+- [x] Reduce the FrontendAgent system prompt by replacing the giant example app with a compact JSON contract.
+- [x] Verify FrontendAgent compiles and prompt size is materially lower.
+- [ ] Commit and push the FrontendAgent prompt compaction slice.
 
 ## Verification Log
 
@@ -139,6 +142,8 @@ Tasks:
 - `python -m py_compile backend\modules_blueprint.py backend\server.py` passed.
 - `python -m pytest backend\tests\test_smoke.py -k "app_db or git_sync or railway_deploy" -q` passed with local Postgres/Redis env: 9 passed, 38 deselected.
 - `.\scripts\release-gate.ps1 -BackendOnly` passed after LLM guard update: smoke 28 passed, 24 deselected; tool agent guard 8 passed, 18 deselected.
+- `python -m py_compile backend\agents\frontend_agent.py` passed after prompt compaction.
+- `python -m pytest backend\tests\test_agents.py backend\tests\test_tool_agents.py -k "frontend_agent or base_agent or large_cerebras" -q` passed: 9 passed, 41 deselected.
 - `.\scripts\verify-local.ps1` correctly failed on Node `v24.14.0`; the frontend declares Node `>=18 <=22`.
 
 ## Next Milestone

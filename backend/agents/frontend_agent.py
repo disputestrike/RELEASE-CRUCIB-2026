@@ -97,69 +97,37 @@ class FrontendAgent(BaseAgent):
         
         context_info = f"\n\nTechnology Context:\nFramework: {framework}\nLanguage: {language}\nStyling: {styling}\nState Management: {state_mgmt}{design_info}"
         
-        system_prompt = f"""You are an expert Frontend Development agent. Your job is to generate complete, production-ready frontend code.
+        system_prompt = f"""You are an expert Frontend Development agent. Generate a complete, runnable Vite React frontend for the request.
 
 Project Requirements:
 {user_prompt}{context_info}
 
-Your task:
-1. Generate package.json with all dependencies
-2. Create main application entry point
-3. Implement reusable components
-4. Configure build tools (Vite/Webpack)
-5. Set up styling configuration (TailwindCSS config, etc.)
-6. Add proper TypeScript types and interfaces
-7. Include error boundaries and loading states
-8. Provide setup instructions
-
-Output ONLY valid JSON in this exact format:
+Return ONLY valid JSON with this shape:
 {{
   "files": {{
-    "package.json": "{{\\"name\\": \\"my-app\\", \\"version\\": \\"1.0.0\\", \\"type\\": \\"module\\", \\"scripts\\": {{\\"dev\\": \\"vite\\", \\"build\\": \\"vite build\\", \\"preview\\": \\"vite preview\\"}}, \\"dependencies\\": {{\\"react\\": \\"^18.2.0\\", \\"react-dom\\": \\"^18.2.0\\", \\"react-router-dom\\": \\"^6.20.0\\", \\"zustand\\": \\"^4.4.0\\"}}, \\"devDependencies\\": {{\\"@types/react\\": \\"^18.2.0\\", \\"@vitejs/plugin-react\\": \\"^4.0.0\\", \\"tailwindcss\\": \\"^3.3.0\\", \\"postcss\\": \\"^8.4.0\\", \\"autoprefixer\\": \\"^10.4.0\\", \\"typescript\\": \\"^5.0.0\\", \\"vite\\": \\"^5.0.0\\"}}}}",
-    "src/main.jsx": "import React from 'react'\\nimport ReactDOM from 'react-dom/client'\\nimport App from './App'\\nimport './index.css'\\n\\nconst root = document.getElementById('root')\\nif (root) {{\\n  ReactDOM.createRoot(root).render(\\n    <React.StrictMode>\\n      <App />\\n    </React.StrictMode>\\n  )\\n}}",
-    "src/App.jsx": "import {{ useState }} from 'react'\\nimport {{ MemoryRouter, Routes, Route }} from 'react-router-dom'\\nimport {{ useAuthStore }} from './stores/authStore'\\nimport Header from './components/Header'\\nimport Footer from './components/Footer'\\nimport Home from './pages/Home'\\nimport {{ AuthContext }} from './context/AuthContext'\\n\\nfunction App() {{\\n  const user = useAuthStore(state => state.user)\\n  const [authState] = useState({{ user, isAuthenticated: !!user }})\\n\\n  return (\\n    <AuthContext.Provider value={{authState}}>\\n      <MemoryRouter>\\n        <div className=\\"min-h-screen bg-gray-50 flex flex-col\\">\\n          <Header />\\n          <main className=\\"flex-1 container mx-auto px-4 py-8\\">\\n            <Routes>\\n              <Route path=\\"/*\\" element={{<Home />}} />\\n            </Routes>\\n          </main>\\n          <Footer />\\n        </div>\\n      </MemoryRouter>\\n    </AuthContext.Provider>\\n  )\\n}}\\n\\nexport default App",
-    "src/context/AuthContext.jsx": "import {{ createContext }} from 'react'\\n\\nexport const AuthContext = createContext(null)",
-    "src/stores/authStore.js": "import {{ create }} from 'zustand'\\nimport {{ persist }} from 'zustand/middleware'\\n\\nexport const useAuthStore = create(\\n  persist(\\n    (set) => ({{\\n      user: null,\\n      setUser: (user) => set({{ user }}),\\n      logout: () => set({{ user: null }})\\n    }}),\\n    {{ name: 'auth-store', storage: localStorage }}\\n  )\\n)",
-    "src/pages/Home.jsx": "import {{ useState }} from 'react'\\n\\nexport default function Home() {{\\n  const [count, setCount] = useState(0)\\n\\n  return (\\n    <div>\\n      <h1 className=\\"text-4xl font-bold text-gray-900 mb-4\\">Welcome to your app</h1>\\n      <button onClick={{() => setCount(count + 1)}} className=\\"px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600\\">\\n        Count: {{count}}\\n      </button>\\n    </div>\\n  )\\n}}",
-    "src/components/Header.jsx": "export default function Header() {{\\n  return (\\n    <header className=\\"bg-white shadow\\">\\n      <div className=\\"container mx-auto px-4 py-4\\">\\n        <h1 className=\\"text-2xl font-bold text-gray-900\\">My App</h1>\\n      </div>\\n    </header>\\n  )\\n}}",
-    "src/components/Footer.jsx": "export default function Footer() {{\\n  return (\\n    <footer className=\\"bg-gray-800 text-white py-4 mt-8\\">\\n      <div className=\\"container mx-auto px-4 text-center\\">\\n        <p>&copy; 2024 My App. All rights reserved.</p>\\n      </div>\\n    </footer>\\n  )\\n}}",
-    "src/index.css": "@tailwind base;\\n@tailwind components;\\n@tailwind utilities;",
-    "tailwind.config.js": "export default {{\\n  content: ['./index.html', './src/**/*.{{js,jsx,ts,tsx}}'],\\n  theme: {{\\n    extend: {{\\n      colors: {{\\n        primary: '#1A1A1A',\\n        secondary: '#808080'\\n      }}\\n    }}\\n  }},\\n  plugins: []\\n}}",
-    "vite.config.js": "import {{ defineConfig }} from 'vite'\\nimport react from '@vitejs/plugin-react'\\n\\nexport default defineConfig({{\\n  plugins: [react()],\\n  server: {{ port: 5173 }}\\n}})",
-    "postcss.config.js": "export default {{\\n  plugins: {{\\n    tailwindcss: {{}},\\n    autoprefixer: {{}}\\n  }}\\n}}",
-    "tsconfig.json": "{{\\"compilerOptions\\": {{\\"target\\": \\"ES2020\\", \\"useDefineForClassFields\\": true, \\"lib\\": [\\"ES2020\\", \\"DOM\\", \\"DOM.Iterable\\"], \\"module\\": \\"ESNext\\", \\"skipLibCheck\\": true, \\"moduleResolution\\": \\"bundler\\", \\"resolveJsonModule\\": true, \\"isolatedModules\\": true, \\"noEmit\\": true, \\"jsx\\": \\"react-jsx\\", \\"strict\\": true}}, \\"include\\": [\\"src\\"], \\"exclude\\": [\\"node_modules\\"]}}", 
-    "index.html": "<!DOCTYPE html>\\n<html lang=\\"en\\">\\n<head>\\n  <meta charset=\\"UTF-8\\" />\\n  <meta name=\\"viewport\\" content=\\"width=device-width, initial-scale=1.0\\" />\\n  <title>My App</title>\\n</head>\\n<body>\\n  <div id=\\"root\\"></div>\\n  <script type=\\"module\\" src=\\"./src/main.jsx\\"></script>\\n</body>\\n</html>"
+    "package.json": "valid JSON string with scripts dev/build/preview and needed dependencies",
+    "index.html": "complete Vite HTML entry",
+    "src/main.jsx": "ReactDOM.createRoot entry that imports App and CSS",
+    "src/App.jsx": "root app component",
+    "src/index.css": "global CSS or Tailwind directives"
   }},
   "structure": {{
-    "description": "Modern React application with TypeScript and TailwindCSS. Includes routing, authentication context, persistence layer, and component-based architecture.",
+    "description": "short architecture summary",
     "entry_point": "src/main.jsx",
-    "main_components": ["App", "Home", "Header", "Footer"],
-    "routing": "React Router (MemoryRouter with Routes)",
-    "state_management": "Zustand with localStorage persistence + Context API for auth",
-    "auth": "AuthContext + useAuthStore (Zustand)"
+    "main_components": ["App"]
   }},
-  "setup_instructions": [
-    "npm install",
-    "npm run dev",
-    "Open http://localhost:5173"
-  ]
+  "setup_instructions": ["npm install", "npm run dev"]
 }}
 
-Quality expectations:
-- ALL files must have proper imports and exports
-- MUST include react-router-dom (MemoryRouter/Routes/Route) for routing
-- MUST include zustand with persist middleware for state management + localStorage
-- MUST include AuthContext and useAuth pattern for authentication
-- MUST have src/components/ directory with reusable components
-- MUST have App.jsx/App.js as root component
-- MUST have src/main.jsx with ReactDOM.createRoot
-- TypeScript interfaces for props and state
-- Proper component structure and naming conventions
-- Responsive design with mobile-first approach (Tailwind)
-- Accessible components (ARIA labels, semantic HTML)
-- Error boundaries for production
-- Loading and error states
-- Clean, maintainable code with comments where needed"""
+Hard requirements:
+- Use React 18 with Vite and include a valid package.json.
+- Include every imported file in the files object; no dangling imports.
+- Include App.jsx or App.js and src/main.jsx.
+- Use react-router-dom when the request needs routes or multiple screens.
+- Use state management only when the app actually needs shared state.
+- Include accessible, responsive UI with loading and error states.
+- Keep code self-contained and runnable in a browser preview.
+- Do not include markdown fences, prose, comments outside JSON, or placeholder TODO-only files."""
 
         # Call LLM
         response, tokens = await self.call_llm(
