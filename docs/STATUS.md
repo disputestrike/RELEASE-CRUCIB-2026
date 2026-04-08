@@ -76,7 +76,7 @@ Tasks:
 - [x] Commit and push the late-route registration and deploy ownership slice (`412141d`).
 - [x] Replace terminal command execution `shell=True` with explicit shell invocation using `shell=False`.
 - [x] Add focused smoke verification that scoped terminal execution still works on Windows.
-- [ ] Commit and push the terminal shell hardening slice.
+- [x] Commit and push the terminal shell hardening slice (`6cf1e13`).
 
 ## Verification Log
 
