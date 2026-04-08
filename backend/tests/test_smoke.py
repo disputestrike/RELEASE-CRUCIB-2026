@@ -626,6 +626,19 @@ async def test_smoke_app_db_provision_returns_200_for_owned_task(app_client, aut
     assert r.json().get("status") == "ok"
 
 
+async def test_smoke_app_db_provision_rejects_unowned_project(app_client, auth_headers):
+    """POST /api/app-db/provision rejects a project_id owned by another user."""
+    other_headers = await _register_smoke_headers(app_client)
+    project_id = await _create_smoke_project(app_client, other_headers)
+    r = await app_client.post(
+        "/api/app-db/provision",
+        json={"project_id": project_id, "description": "Generate a schema for a private CRM workspace."},
+        headers=auth_headers,
+        timeout=10,
+    )
+    assert r.status_code == 404
+
+
 async def test_smoke_legacy_vercel_deploy_rejects_unowned_task(app_client, auth_headers):
     """Legacy deploy helper rejects another user's task."""
     other_headers = await _register_smoke_headers(app_client)

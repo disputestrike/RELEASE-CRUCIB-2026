@@ -85,6 +85,9 @@ Tasks:
 - [x] Require a valid JWT and project ownership before accepting project progress websocket connections.
 - [x] Update frontend project progress websocket callers to pass encoded auth tokens.
 - [x] Commit and push the websocket project progress auth slice (`8e0ac58`).
+- [x] Require project ownership for blueprint app-db schema provisioning when a `project_id` is supplied.
+- [x] Add focused smoke coverage for unowned blueprint app-db project rejection.
+- [ ] Commit and push the blueprint app-db ownership slice.
 
 ## Verification Log
 
@@ -112,6 +115,8 @@ Tasks:
 - PowerShell parser check passed for `run-dev.ps1`.
 - PowerShell parser check passed for `scripts\verify-local.ps1`.
 - `python -m py_compile backend\server.py` passed after project progress websocket auth changes.
+- `python -m py_compile backend\modules_blueprint.py backend\server.py` passed.
+- `python -m pytest backend\tests\test_smoke.py -k "app_db or git_sync or railway_deploy" -q` passed with local Postgres/Redis env: 9 passed, 38 deselected.
 - `.\scripts\verify-local.ps1` correctly failed on Node `v24.14.0`; the frontend declares Node `>=18 <=22`.
 
 ## Next Milestone

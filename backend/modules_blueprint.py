@@ -2483,6 +2483,10 @@ async def provision_app_db(body: AppDBProvision, user: dict = Depends(_resolve_c
     if len(description.strip()) < 10:
         raise HTTPException(status_code=400, detail="description or task_id required")
     project_id = body.project_id or str(uuid.uuid4())
+    if body.project_id:
+        project = await db.projects.find_one({"id": body.project_id, "user_id": user["id"]}, {"id": 1})
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
     project_name = body.project_name or f"Project {project_id[:8]}"
     features = body.features or []
     now = datetime.now(timezone.utc).isoformat()
