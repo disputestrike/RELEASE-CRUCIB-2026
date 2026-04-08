@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-04-08T16:49:33.651024+00:00",
+  "base_url": "https://crucibai-production.up.railway.app",
+  "passed": true,
+  "rounds": 2,
+  "concurrency": 8,
+  "checks": [
+    {
+      "name": "all_required_endpoints_healthy",
+      "passed": true,
+      "detail": "All public readiness endpoints/pages must return 2xx/3xx and valid JSON where expected."
+    },
+    {
+      "name": "benchmark_50_prompt_90_percent",
+      "passed": true,
+      "detail": "benchmark status=ready prompt_count=50 pass_rate=1.0"
+    },
+    {
+      "name": "full_systems_zero_required_failures",
+      "passed": true,
+      "detail": "full_systems status=ready required_failures=0"
+    },
+    {
+      "name": "terminal_public_host_shell_blocked",
+      "passed": true,
+      "detail": "terminal public_default=disabled for non-admin users in production"
+    },
+    {
+      "name": "readiness_p95_under_5000ms",
+      "passed": true,
+      "detail": "p95_ms=886.82"
+    }
+  ],
+  "request_count": 18,
+  "failed_requests": []
+}

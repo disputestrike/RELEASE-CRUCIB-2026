@@ -8,10 +8,10 @@
 #2 ...
 
 #3 [internal] load metadata for docker.io/library/node:22-alpine
-#3 DONE 0.2s
+#3 DONE 0.3s
 
 #2 [internal] load metadata for docker.io/library/python:3.11-slim-bookworm
-#2 DONE 0.5s
+#2 DONE 0.7s
 
 #4 [internal] load .dockerignore
 #4 transferring context: 302B done
@@ -20,25 +20,26 @@
 #5 [internal] load build context
 #5 DONE 0.0s
 
-#6 [frontend 1/7] FROM docker.io/library/node:22-alpine@sha256:4d64b49e6c891c8fc821007cb1cdc6c0db7773110ac2c34bf2e6960adef62ed3
-#6 resolve docker.io/library/node:22-alpine@sha256:4d64b49e6c891c8fc821007cb1cdc6c0db7773110ac2c34bf2e6960adef62ed3 0.1s done
-#6 DONE 0.1s
+#6 [stage-1  1/16] FROM docker.io/library/python:3.11-slim-bookworm@sha256:9c6f90801e6b68e772b7c0ca74260cbf7af9f320acec894e26fccdaccfbe3b47
+#6 resolve docker.io/library/python:3.11-slim-bookworm@sha256:9c6f90801e6b68e772b7c0ca74260cbf7af9f320acec894e26fccdaccfbe3b47
+#6 resolve docker.io/library/python:3.11-slim-bookworm@sha256:9c6f90801e6b68e772b7c0ca74260cbf7af9f320acec894e26fccdaccfbe3b47 0.1s done
+#6 DONE 0.2s
 
-#7 [stage-1  1/16] FROM docker.io/library/python:3.11-slim-bookworm@sha256:9c6f90801e6b68e772b7c0ca74260cbf7af9f320acec894e26fccdaccfbe3b47
-#7 resolve docker.io/library/python:3.11-slim-bookworm@sha256:9c6f90801e6b68e772b7c0ca74260cbf7af9f320acec894e26fccdaccfbe3b47 0.1s done
-#7 DONE 0.1s
+#7 [frontend 1/7] FROM docker.io/library/node:22-alpine@sha256:4d64b49e6c891c8fc821007cb1cdc6c0db7773110ac2c34bf2e6960adef62ed3
+#7 resolve docker.io/library/node:22-alpine@sha256:4d64b49e6c891c8fc821007cb1cdc6c0db7773110ac2c34bf2e6960adef62ed3 0.2s done
+#7 DONE 0.2s
 
 #5 [internal] load build context
-#5 transferring context: 22.33MB 3.7s done
-#5 DONE 3.8s
+#5 transferring context: 22.34MB 3.7s done
+#5 DONE 3.7s
 
-#8 [stage-1  2/16] RUN apt-get update && apt-get install -y nodejs npm curl && rm -rf /var/lib/apt/lists/*
+#8 [stage-1  5/16] COPY backend/requirements.txt ./requirements.txt
 #8 CACHED
 
-#9 [stage-1  3/16] WORKDIR /app
+#9 [stage-1  2/16] RUN apt-get update && apt-get install -y nodejs npm curl && rm -rf /var/lib/apt/lists/*
 #9 CACHED
 
-#10 [stage-1  5/16] COPY backend/requirements.txt ./requirements.txt
+#10 [stage-1  3/16] WORKDIR /app
 #10 CACHED
 
 #11 [stage-1  4/16] RUN apt-get update && apt-get install -y --no-install-recommends curl     && rm -rf /var/lib/apt/lists/*
@@ -47,7 +48,7 @@
 #12 [stage-1  6/16] RUN echo "Installing dependencies..." && pip install --no-cache-dir -r requirements.txt && echo "Dependencies installed successfully"
 #12 CACHED
 
-#13 [frontend 4/7] COPY frontend/scripts ./scripts
+#13 [frontend 5/7] RUN npm ci --omit=optional --legacy-peer-deps
 #13 CACHED
 
 #14 [frontend 2/7] WORKDIR /app
@@ -56,10 +57,10 @@
 #15 [frontend 6/7] COPY frontend/ ./
 #15 CACHED
 
-#16 [frontend 5/7] RUN npm ci --omit=optional --legacy-peer-deps
+#16 [frontend 3/7] COPY frontend/package.json frontend/package-lock.json frontend/.npmrc ./
 #16 CACHED
 
-#17 [frontend 3/7] COPY frontend/package.json frontend/package-lock.json frontend/.npmrc ./
+#17 [frontend 4/7] COPY frontend/scripts ./scripts
 #17 CACHED
 
 #18 [stage-1  7/16] RUN python -m playwright install --with-deps chromium
@@ -69,18 +70,18 @@
 #19 CACHED
 
 #20 [stage-1  8/16] COPY backend/ ./
-#20 DONE 1.2s
+#20 DONE 1.6s
 
 #21 [stage-1  9/16] RUN echo "Backend files copied"
-#21 1.281 Backend files copied
-#21 DONE 1.3s
+#21 1.437 Backend files copied
+#21 DONE 1.5s
 
 #22 [stage-1 10/16] COPY --from=frontend /app/build ./static
-#22 DONE 0.8s
+#22 DONE 0.6s
 
 #23 [stage-1 11/16] RUN echo "Frontend static files copied"
-#23 0.485 Frontend static files copied
-#23 DONE 0.5s
+#23 0.568 Frontend static files copied
+#23 DONE 0.6s
 
 #24 [stage-1 12/16] COPY proof/benchmarks/repeatability_v1/summary.json /proof/benchmarks/repeatability_v1/summary.json
 #24 DONE 0.1s
@@ -95,18 +96,18 @@
 #27 DONE 0.1s
 
 #28 [stage-1 16/16] RUN echo "Benchmark and full systems proof files copied"
-#28 0.634 Benchmark and full systems proof files copied
-#28 DONE 0.7s
+#28 0.362 Benchmark and full systems proof files copied
+#28 DONE 0.5s
 
 #29 exporting to image
 #29 exporting layers
-#29 exporting layers 2.5s done
-#29 exporting manifest sha256:b480651e0b185243c089d46800d71113b073f59d2ccbd34c45a12c801c99246a 0.0s done
-#29 exporting config sha256:04b805bc284f322929d695ab16bbc193347453a0edd64f0766ba7d0cf23e8cd5 0.0s done
-#29 exporting attestation manifest sha256:1df8117e7564b162062224ec11d9e0351c931d31f827b9f14ce636f67bb15a11 0.0s done
-#29 exporting manifest list sha256:7da54d3296e369882c001fb1b5189fbf35a44b164bceda29090e083a29f29d48
-#29 exporting manifest list sha256:7da54d3296e369882c001fb1b5189fbf35a44b164bceda29090e083a29f29d48 0.0s done
+#29 exporting layers 1.7s done
+#29 exporting manifest sha256:52175d2c4f184a3f588e436cb3c82f153d168609333a783a7e61eb305cdf4fd6 0.0s done
+#29 exporting config sha256:e579c0de5a1b765fd7b60f42a3ca0b3ab076db2da457dce7a684d6e3058ac635 0.0s done
+#29 exporting attestation manifest sha256:c30e7d83c72b5ec2c0c268852dc078dda79c3bfa0e0268d4a5aedf03ed0cbc74 0.0s done
+#29 exporting manifest list sha256:76afa6c9aa791916403ba256deca28081fced16e952f29b5829d5868bf75011f
+#29 exporting manifest list sha256:76afa6c9aa791916403ba256deca28081fced16e952f29b5829d5868bf75011f 0.0s done
 #29 naming to docker.io/library/crucibai-railway-readiness:latest done
 #29 unpacking to docker.io/library/crucibai-railway-readiness:latest
-#29 unpacking to docker.io/library/crucibai-railway-readiness:latest 2.0s done
-#29 DONE 4.9s
+#29 unpacking to docker.io/library/crucibai-railway-readiness:latest 1.2s done
+#29 DONE 3.1s

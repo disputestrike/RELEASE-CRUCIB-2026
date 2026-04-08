@@ -1,17 +1,17 @@
 {
-  "finished_at": "2026-04-08T14:07:22.083725+00:00",
+  "finished_at": "2026-04-08T16:49:38.028946+00:00",
   "label": "07_run_auto",
   "method": "POST",
   "ok": true,
   "path": "/api/orchestrator/run-auto",
   "request_body": {
-    "job_id": "44fd5fdc-41c4-4ea9-9d6f-025637491a26"
+    "job_id": "809560f2-bc0d-4f92-9ef6-d4fe43c72938"
   },
   "response": {
-    "job_id": "44fd5fdc-41c4-4ea9-9d6f-025637491a26",
-    "stream_url": "/api/jobs/44fd5fdc-41c4-4ea9-9d6f-025637491a26/stream",
+    "job_id": "809560f2-bc0d-4f92-9ef6-d4fe43c72938",
+    "stream_url": "/api/jobs/809560f2-bc0d-4f92-9ef6-d4fe43c72938/stream",
     "success": true
   },
-  "started_at": "2026-04-08T14:07:21.072532+00:00",
+  "started_at": "2026-04-08T16:49:37.031436+00:00",
   "status_code": 200
 }

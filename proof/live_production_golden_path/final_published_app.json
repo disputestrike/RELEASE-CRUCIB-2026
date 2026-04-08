@@ -1,13 +1,13 @@
 {
-  "finished_at": "2026-04-08T14:07:53.022909+00:00",
+  "finished_at": "2026-04-08T16:50:17.669152+00:00",
   "label": "final_published_app",
   "method": "GET",
   "ok": true,
-  "path": "/published/44fd5fdc-41c4-4ea9-9d6f-025637491a26/",
+  "path": "/published/809560f2-bc0d-4f92-9ef6-d4fe43c72938/",
   "request_body": null,
   "response": {
     "raw_text": "<!DOCTYPE html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>CrucibAI Generated App</title>\n    <script type=\"module\" crossorigin src=\"/assets/index-D-wCuBv4.js\"></script>\n    <link rel=\"stylesheet\" crossorigin href=\"/assets/index-CD64OU-g.css\">\n  </head>\n  <body>\n    <div id=\"root\"></div>\n  </body>\n</html>\n"
   },
-  "started_at": "2026-04-08T14:07:52.846936+00:00",
+  "started_at": "2026-04-08T16:50:17.378004+00:00",
   "status_code": 200
 }

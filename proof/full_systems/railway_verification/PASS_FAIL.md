@@ -11,6 +11,6 @@
 | dockerfile_healthcheck_api_health | PASS | static config |
 | dockerfile_copies_full_systems_proof | PASS | static config |
 | procfile_uvicorn_fallback | PASS | static config |
-| Live health check | not_run | C:\Users\benxp\OneDrive\Documents\New project\proof\full_systems\railway_verification\health_check.json |
+| Live health check | passed | C:\Users\benxp\OneDrive\Documents\New project\proof\full_systems\railway_verification\health_check.json |
 | Full Docker image build | passed | C:\Users\benxp\OneDrive\Documents\New project\proof\full_systems\railway_verification\docker_full_build.log |
 | Local Railway image health check | passed | C:\Users\benxp\OneDrive\Documents\New project\proof\full_systems\railway_verification\docker_container_health.json; C:\Users\benxp\OneDrive\Documents\New project\proof\full_systems\railway_verification\docker_container_logs.log |

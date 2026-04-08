@@ -1,9 +1,9 @@
 {
-  "finished_at": "2026-04-08T14:07:52.845330+00:00",
+  "finished_at": "2026-04-08T16:50:17.370570+00:00",
   "label": "final_workspace_files",
   "method": "GET",
   "ok": true,
-  "path": "/api/jobs/44fd5fdc-41c4-4ea9-9d6f-025637491a26/workspace/files",
+  "path": "/api/jobs/809560f2-bc0d-4f92-9ef6-d4fe43c72938/workspace/files",
   "request_body": null,
   "response": {
     "files": [
@@ -53,6 +53,6 @@
       "vite.config.js"
     ]
   },
-  "started_at": "2026-04-08T14:07:52.500355+00:00",
+  "started_at": "2026-04-08T16:50:17.048320+00:00",
   "status_code": 200
 }

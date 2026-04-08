@@ -1,1 +1,1 @@
-﻿Live Railway URL not provided; run scripts/verify-railway-readiness.ps1 -BaseUrl https://your-app.up.railway.app
+﻿{"status":"healthy","service":"crucibai","timestamp":"2026-04-08T16:49:32.236709+00:00"}

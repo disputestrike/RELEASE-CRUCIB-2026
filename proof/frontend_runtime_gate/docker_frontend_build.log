@@ -5,37 +5,37 @@
 #1 DONE 0.1s
 
 #2 [internal] load metadata for docker.io/library/node:22-alpine
-#2 DONE 1.3s
+#2 DONE 0.8s
 
 #3 [internal] load .dockerignore
+#3 transferring context:
 #3 transferring context: 302B 0.0s done
-#3 DONE 0.0s
+#3 DONE 0.3s
 
 #4 [internal] load build context
 #4 DONE 0.0s
 
 #5 [frontend 1/7] FROM docker.io/library/node:22-alpine@sha256:4d64b49e6c891c8fc821007cb1cdc6c0db7773110ac2c34bf2e6960adef62ed3
-#5 resolve docker.io/library/node:22-alpine@sha256:4d64b49e6c891c8fc821007cb1cdc6c0db7773110ac2c34bf2e6960adef62ed3
 #5 resolve docker.io/library/node:22-alpine@sha256:4d64b49e6c891c8fc821007cb1cdc6c0db7773110ac2c34bf2e6960adef62ed3 0.1s done
 #5 DONE 0.1s
 
 #4 [internal] load build context
-#4 transferring context: 18.85kB 0.7s done
-#4 DONE 0.7s
+#4 transferring context: 18.85kB 1.7s done
+#4 DONE 1.8s
 
-#6 [frontend 2/7] WORKDIR /app
+#6 [frontend 5/7] RUN npm ci --omit=optional --legacy-peer-deps
 #6 CACHED
 
-#7 [frontend 3/7] COPY frontend/package.json frontend/package-lock.json frontend/.npmrc ./
+#7 [frontend 6/7] COPY frontend/ ./
 #7 CACHED
 
-#8 [frontend 4/7] COPY frontend/scripts ./scripts
+#8 [frontend 2/7] WORKDIR /app
 #8 CACHED
 
-#9 [frontend 5/7] RUN npm ci --omit=optional --legacy-peer-deps
+#9 [frontend 3/7] COPY frontend/package.json frontend/package-lock.json frontend/.npmrc ./
 #9 CACHED
 
-#10 [frontend 6/7] COPY frontend/ ./
+#10 [frontend 4/7] COPY frontend/scripts ./scripts
 #10 CACHED
 
 #11 [frontend 7/7] RUN npm run build
@@ -45,9 +45,9 @@
 #12 exporting layers 0.0s done
 #12 exporting manifest sha256:380cf332b32755c7af3f89b9da22eba016ca8c12f515d9b6fea3b3ed6c6be112 done
 #12 exporting config sha256:5e19437c9d84d95dd93fab36cdc00158b76416c1f50732d17a98b80f934dcac3 done
-#12 exporting attestation manifest sha256:bb53c047b941dd0f39a956a4438b9ca4a848830db135f178a4a25921bca6e3fd 0.1s done
-#12 exporting manifest list sha256:37b32a44d379942b0845f516bee0ba706e7c76e1b425b462b5556fef09eb7bde
-#12 exporting manifest list sha256:37b32a44d379942b0845f516bee0ba706e7c76e1b425b462b5556fef09eb7bde 0.0s done
+#12 exporting attestation manifest sha256:cb62660d8b71191fcfdf3c32a114c0ff9550e700543ecf2a8fa771b3573ffc75
+#12 exporting attestation manifest sha256:cb62660d8b71191fcfdf3c32a114c0ff9550e700543ecf2a8fa771b3573ffc75 0.1s done
+#12 exporting manifest list sha256:0744d3289338bfac119c22928d3fec1f733130b397e3ba1c65bb03db4a260e89 0.0s done
 #12 naming to docker.io/library/crucibai-frontend-runtime-gate:latest done
 #12 unpacking to docker.io/library/crucibai-frontend-runtime-gate:latest 0.0s done
-#12 DONE 0.2s
+#12 DONE 0.4s
