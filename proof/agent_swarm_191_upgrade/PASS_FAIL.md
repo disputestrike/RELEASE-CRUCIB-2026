@@ -10,6 +10,8 @@
 - `public_build_planner_alias_added`: PASS (`/api/build`)
 - `build_route_csrf_exempt`: PASS
 - `negated_ar_selection_fix`: PASS
+- `production_routing_checklist_script`: PASS (`scripts/verify-agent-routing-production.py`)
+- `selection_log_proxy_script`: PASS (`scripts/railway-log-proxy.sh`)
 - `swarm_phases_use_selected_agents`: PASS
 - `legacy_server_registry_synced_to_dag`: PASS
 - `focused_orchestration_tests`: PASS (`19 passed`)
@@ -19,6 +21,7 @@
 ```powershell
 python -m py_compile backend\agent_dag.py backend\orchestration\agent_selection_logic.py backend\orchestration\planner.py backend\orchestration\swarm_agent_runner.py backend\server.py backend\tests\test_agent_selection_logic.py backend\tests\test_agent_swarm_autorunner.py
 $env:PYTHONPATH='backend'; python -m pytest backend\tests\test_swarm_runtime_fix.py backend\tests\test_agent_selection_logic.py backend\tests\test_agent_swarm_autorunner.py backend\tests\test_generation_contract.py -q --noconftest
+python scripts\verify-agent-routing-production.py
 ```
 
 ## Notes
@@ -37,3 +40,5 @@ $env:PYTHONPATH='backend'; python -m pytest backend\tests\test_swarm_runtime_fix
   - `/api/build` is now a read-only plan alias for production routing tests
   - `/api/build` is exempt from CSRF because it does not mutate jobs/projects
   - negated prompts like `NOT an AR app` no longer select `3D AR/VR Agent`
+  - production checklist output is stored at `proof/agent_swarm_191_upgrade/production_routing_checklist.json`
+  - local Git Bash shim `~/bin/railway` can proxy `railway logs -e production` to `/api/debug/agent-selection-logs` on this machine when Railway CLI/token are unavailable
