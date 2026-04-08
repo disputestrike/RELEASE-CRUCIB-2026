@@ -184,6 +184,67 @@ async def test_smoke_published_generated_app_url_serves_dist(app_client, auth_he
     assert "Published smoke" in r.text
 
 
+async def test_smoke_visual_edit_patches_owned_job_workspace(app_client, auth_headers):
+    """Visual edit loop can patch a generated file and leaves an undo snapshot."""
+    import server
+    from db_pg import get_pg_pool
+    from orchestration import runtime_state
+
+    pool = await get_pg_pool()
+    runtime_state.set_pool(pool)
+    user_id = _user_id_from_auth_headers(auth_headers)
+    project_id = f"visual-edit-smoke-{uuid.uuid4().hex[:8]}"
+    job = await runtime_state.create_job(
+        project_id=project_id,
+        mode="guided",
+        goal="Visual edit smoke",
+        user_id=user_id,
+    )
+    root = server._project_workspace_path(project_id)
+    (root / "src").mkdir(parents=True, exist_ok=True)
+    (root / "src" / "App.jsx").write_text("export default function App(){return <h1>Old copy</h1>}", encoding="utf-8")
+    await runtime_state.update_job_state(job["id"], "completed", {"current_phase": "completed"})
+
+    r = await app_client.post(
+        f"/api/jobs/{job['id']}/visual-edit",
+        json={"file_path": "src/App.jsx", "find_text": "Old copy", "replace_text": "New copy"},
+        headers=auth_headers,
+        timeout=10,
+    )
+
+    assert r.status_code == 200
+    data = r.json()
+    assert data["status"] == "patched"
+    assert "New copy" in (root / "src" / "App.jsx").read_text(encoding="utf-8")
+    assert (root / data["snapshot_path"]).is_file()
+
+
+async def test_smoke_visual_edit_rejects_cross_user_job(app_client, auth_headers):
+    """Visual edit loop is scoped to the owning job user."""
+    from db_pg import get_pg_pool
+    from orchestration import runtime_state
+
+    other_headers = await _register_smoke_headers(app_client)
+    pool = await get_pg_pool()
+    runtime_state.set_pool(pool)
+    user_id = _user_id_from_auth_headers(auth_headers)
+    job = await runtime_state.create_job(
+        project_id=f"visual-edit-cross-{uuid.uuid4().hex[:8]}",
+        mode="guided",
+        goal="Visual edit cross user",
+        user_id=user_id,
+    )
+
+    r = await app_client.post(
+        f"/api/jobs/{job['id']}/visual-edit",
+        json={"file_path": "src/App.jsx", "find_text": "Old", "replace_text": "New"},
+        headers=other_headers,
+        timeout=10,
+    )
+
+    assert r.status_code == 403
+
+
 async def test_smoke_examples_returns_200(app_client):
     """GET /api/examples returns 200 and examples array (Landing + ExamplesGallery)."""
     r = await app_client.get("/api/examples", timeout=10)
@@ -191,6 +252,25 @@ async def test_smoke_examples_returns_200(app_client):
     data = r.json()
     assert "examples" in data
     assert isinstance(data["examples"], list)
+
+
+async def test_smoke_template_remix_plan_and_remix(app_client, auth_headers):
+    """Template gallery has a deterministic remix path into the golden workspace."""
+    plan = await app_client.get("/api/templates/dashboard/remix-plan", timeout=10)
+    assert plan.status_code == 200
+    assert plan.json()["route"] == "/app/workspace"
+
+    remix = await app_client.post(
+        "/api/templates/dashboard/remix",
+        json={"goal": "make it founder friendly"},
+        headers=auth_headers,
+        timeout=10,
+    )
+    assert remix.status_code == 200
+    data = remix.json()
+    assert data["remix"] is True
+    assert data["next_route"] == "/app/workspace"
+    assert "src/App.jsx" in data["files"]
 
 
 async def test_smoke_health_with_retries(app_client):
@@ -413,6 +493,30 @@ async def test_smoke_terminal_execute_returns_result(app_client, auth_headers):
     assert data.get("returncode") == 0, f"expected 0, got {data}"
     assert "stdout" in data
     assert "hello" in data.get("stdout", "")
+
+
+async def test_smoke_terminal_execute_blocks_dangerous_commands(app_client, auth_headers, monkeypatch):
+    """Terminal policy blocks high-risk commands while host-shell execution remains launch-gated."""
+    project_id = await _create_smoke_project(app_client, auth_headers)
+    monkeypatch.setenv("CRUCIBAI_TERMINAL_ENABLED", "1")
+    create_r = await app_client.post(
+        "/api/terminal/create",
+        params={"project_id": project_id},
+        headers=auth_headers,
+        timeout=10,
+    )
+    assert create_r.status_code == 200
+    session_id = create_r.json().get("session_id")
+    exec_r = await app_client.post(
+        f"/api/terminal/{session_id}/execute",
+        json={"command": "rm -rf /", "timeout": 10},
+        headers=auth_headers,
+        timeout=15,
+    )
+    assert exec_r.status_code == 200
+    data = exec_r.json()
+    assert data.get("returncode") == -1
+    assert "terminal policy" in data.get("stderr", "")
 
 
 async def test_smoke_terminal_execute_respects_disabled_env(app_client, auth_headers, monkeypatch):

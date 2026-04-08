@@ -33,7 +33,8 @@ export default function BuildCompletionCard({
   const previewUrl = job?.preview_url || null;
   const deployProof = (proof?.bundle?.deploy || []).filter(Boolean);
   const deployPayload = deployProof.length ? deployProof[deployProof.length - 1]?.payload || {} : {};
-  const deployUrl = deployPayload.url || deployPayload.deploy_url || job?.deploy_url || null;
+  const publishedPath = job?.id ? `/published/${job.id}/` : null;
+  const deployUrl = deployPayload.url || deployPayload.deploy_url || job?.deploy_url || publishedPath;
 
   if (job?.status !== 'completed' || proofCount <= 0 || normalizedScore <= 80) {
     return null;
@@ -111,6 +112,11 @@ export default function BuildCompletionCard({
         <button className="bcc-btn" onClick={onOpenCode}>
           <Code2 size={13} /> Open Code
         </button>
+        {deployUrl && (
+          <a className="bcc-btn" href={deployUrl} target="_blank" rel="noopener noreferrer">
+            <Rocket size={13} /> Open Live URL
+          </a>
+        )}
         <button className="bcc-btn" onClick={onDeployAgain}>
           <Rocket size={13} /> Deploy Again
         </button>

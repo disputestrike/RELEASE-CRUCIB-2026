@@ -126,6 +126,7 @@
   background: var(--bg-2);
   border: 1px solid var(--border-1);
   color: var(--text-secondary);
+  text-decoration: none;
   transition: all var(--transition-ui);
 }
 .bcc-btn:hover {

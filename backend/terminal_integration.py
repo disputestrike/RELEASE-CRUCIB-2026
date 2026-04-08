@@ -16,6 +16,18 @@ logger = logging.getLogger(__name__)
 
 # Max time for a single command
 TERMINAL_CMD_TIMEOUT = 120
+DENIED_COMMAND_FRAGMENTS = (
+    "rm -rf /",
+    "rm -rf /*",
+    "del /s",
+    "format ",
+    "shutdown",
+    "reboot",
+    "mkfs",
+    ":(){:|:&};:",
+    "curl ",
+    "wget ",
+)
 
 
 @dataclass
@@ -70,6 +82,16 @@ def _run_command_sync(cwd: Path, shell: str, command: str, timeout_sec: int = TE
         return -1, "", str(e)
 
 
+def _command_blocked_by_policy(command: str) -> bool:
+    """Block high-risk shell commands until the terminal runs inside a real sandbox."""
+    normalized = " ".join((command or "").strip().lower().split())
+    if not normalized:
+        return True
+    if "|" in normalized and any(token in normalized for token in (" sh", " bash", "powershell", "pwsh")):
+        return True
+    return any(fragment in normalized for fragment in DENIED_COMMAND_FRAGMENTS)
+
+
 class TerminalManager:
     _sessions: Dict[str, TerminalSession] = {}
 
@@ -99,6 +121,8 @@ class TerminalManager:
         session = self._sessions[session_id]
         if session.user_id != user_id:
             return {"returncode": -1, "stdout": "", "stderr": "Session not found"}
+        if _command_blocked_by_policy(command):
+            return {"returncode": -1, "stdout": "", "stderr": "Command blocked by terminal policy"}
         path = Path(session.project_path)
         if not path.exists():
             return {"returncode": -1, "stdout": "", "stderr": "Project path does not exist"}

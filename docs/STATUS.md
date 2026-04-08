@@ -232,6 +232,9 @@ Tasks:
 - `python -m pytest backend\tests\test_verifier_deploy.py backend\tests\test_pipeline_crash_fix.py -q` passed with local Postgres/Redis env: 9 passed.
 - `python scripts\generate-pipeline-crash-fix-proof.py` generated `proof\pipeline_crash_fix\` and passed all five PASS/FAIL checks: preview boot, elite/proof verification, deploy build, deploy publish, and background runner stability.
 - `.\scripts\release-gate.ps1 -BackendOnly` passed after late-stage pipeline crash fixes: smoke 44 passed, 24 deselected; pipeline crash fix 7 passed; Phase 2 audit 3 passed; optional-auth audit 13 routes, 0 failures; provider readiness 5 passed; automation bridge 1 passed, 6 deselected; LLM routing guard 8 passed, 18 deselected.
+- `python -m pytest backend\tests\test_smoke.py -k "visual_edit or template_remix or terminal_execute_blocks_dangerous_commands or critical_endpoints" -q` passed with local Postgres/Redis env: 5 passed, 68 deselected.
+- `.\scripts\release-gate.ps1 -BackendOnly` passed after Batch B UX/security work: smoke 48 passed, 25 deselected; pipeline crash fix 14 passed; repeatability benchmark 2 passed; Phase 2 audit 3 passed with 14 optional routes and 0 failures; provider readiness 5 passed; automation bridge 1 passed, 6 deselected; LLM routing guard 8 passed, 18 deselected.
+- `.\scripts\frontend-runtime-gate.ps1 -RunDockerBuild` passed after completion-card and template-gallery changes; host Node remains v24.14.0, Docker Node 22 path remains green.
 
 ## Next Milestone
 
@@ -239,7 +242,7 @@ Phase 3: Backend Router Extraction
 
 Planned tasks:
 
-- Add scheduled/sampled live Railway repeatability proof while keeping deterministic benchmark gating local and stable.
-- Extract coherent route modules from `backend/server.py` without changing public API behavior.
-- Keep Phase 2 terminal sandbox debt visible and decide launch policy before public exposure.
+- Continue extracting coherent route modules from `backend/server.py` after trust routes moved into `backend/routes/trust.py`.
+- Upgrade visual editing from deterministic text/style replacement to click-to-component selection and AI patch preview.
+- Replace terminal host-shell execution with a per-project container sandbox before broad public exposure.
 - Preserve the release-gate and proof artifacts as the regression bar while extracting routers.

@@ -521,6 +521,11 @@ class SuggestNextBody(BaseModel):
     files: Dict[str, str]
     last_prompt: Optional[str] = None
 
+class VisualEditRequest(BaseModel):
+    file_path: str = "src/App.jsx"
+    find_text: str
+    replace_text: str
+
 class InjectStripeBody(BaseModel):
     code: str
     target: Optional[str] = "checkout"  # checkout | subscription | both
@@ -7651,14 +7656,59 @@ async def share_get(token: str):
 # ==================== TEMPLATES GALLERY / SAVE AS TEMPLATE ====================
 
 TEMPLATES_GALLERY = [
-    {"id": "dashboard", "name": "Dashboard", "description": "Sidebar + stats cards + chart placeholder", "prompt": "Create a dashboard with a sidebar, stat cards, and a chart area. React and Tailwind."},
-    {"id": "blog", "name": "Blog", "description": "Blog layout with posts list and post detail", "prompt": "Build a blog with a list of posts and a post detail view. React and Tailwind."},
-    {"id": "saas-shell", "name": "SaaS shell", "description": "Auth shell with nav and settings", "prompt": "Create a SaaS app shell with top nav, user menu, and settings page. React and Tailwind."},
+    {"id": "dashboard", "name": "Dashboard", "description": "Sidebar + stats cards + chart placeholder", "prompt": "Create a dashboard with a sidebar, stat cards, and a chart area. React and Tailwind.", "tags": ["saas", "analytics"], "difficulty": "starter"},
+    {"id": "blog", "name": "Blog", "description": "Blog layout with posts list and post detail", "prompt": "Build a blog with a list of posts and a post detail view. React and Tailwind.", "tags": ["cms", "publishing"], "difficulty": "starter"},
+    {"id": "saas-shell", "name": "SaaS shell", "description": "Auth shell with nav and settings", "prompt": "Create a SaaS app shell with top nav, user menu, and settings page. React and Tailwind.", "tags": ["saas", "auth"], "difficulty": "intermediate"},
 ]
 
 @api_router.get("/templates")
 async def get_templates(user: dict = Depends(get_optional_user)):
     return {"templates": TEMPLATES_GALLERY}
+
+
+@api_router.get("/templates/{template_id}/remix-plan")
+async def get_template_remix_plan(template_id: str, user: dict = Depends(get_optional_user)):
+    t = next((x for x in TEMPLATES_GALLERY if x["id"] == template_id), None)
+    if not t:
+        raise HTTPException(status_code=404, detail="Template not found")
+    return {
+        "template_id": template_id,
+        "name": t["name"],
+        "prompt": f"Remix template '{t['name']}': {t['prompt']}",
+        "tags": t.get("tags", []),
+        "difficulty": t.get("difficulty", "starter"),
+        "route": "/app/workspace",
+    }
+
+
+@api_router.post("/templates/{template_id}/remix")
+async def remix_template(template_id: str, body: dict, user: dict = Depends(get_current_user)):
+    t = next((x for x in TEMPLATES_GALLERY if x["id"] == template_id), None)
+    if not t:
+        raise HTTPException(status_code=404, detail="Template not found")
+    extra = (body.get("goal") or "").strip()
+    prompt = f"Remix template '{t['name']}': {t['prompt']}"
+    if extra:
+        prompt = f"{prompt}\nUser remix direction: {extra}"
+    app_title = t["name"].replace("'", "")
+    code = (
+        "export default function App() {\n"
+        "  return (\n"
+        "    <main style={{ padding: 32, fontFamily: 'Inter, sans-serif' }}>\n"
+        f"      <h1>{app_title} Remix</h1>\n"
+        f"      <p>{t['description']}</p>\n"
+        "      <p>Continue this remix in the CrucibAI workspace.</p>\n"
+        "    </main>\n"
+        "  );\n"
+        "}\n"
+    )
+    return {
+        "template_id": template_id,
+        "prompt": prompt,
+        "files": {"src/App.jsx": code},
+        "remix": True,
+        "next_route": "/app/workspace",
+    }
 
 @projects_router.post("/projects/from-template")
 async def create_from_template(body: dict, user: dict = Depends(require_permission(Permission.CREATE_PROJECT if Permission else None))):
@@ -8833,6 +8883,49 @@ async def get_job_workspace_file_content(
     return {"path": path, "content": content}
 
 
+@api_router.post("/jobs/{job_id}/visual-edit")
+async def visual_edit_job_workspace_file(
+    job_id: str,
+    body: VisualEditRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Apply a deterministic visual text/style edit to a generated app file."""
+    project_id = await _resolve_workspace_project_for_job(job_id, user)
+    root = _project_workspace_path(project_id).resolve()
+    rel_path = (body.file_path or "").strip().replace("\\", "/").lstrip("/")
+    if ".." in rel_path or not rel_path:
+        raise HTTPException(status_code=400, detail="Invalid path")
+    full = (root / rel_path).resolve()
+    try:
+        full.relative_to(root)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Path outside workspace")
+    if not full.exists() or not full.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    if not body.find_text:
+        raise HTTPException(status_code=400, detail="find_text is required")
+    before = full.read_text(encoding="utf-8", errors="replace")
+    if body.find_text not in before:
+        raise HTTPException(status_code=400, detail="find_text not found in target file")
+    after = before.replace(body.find_text, body.replace_text, 1)
+    snapshot_dir = root / ".crucibai" / "snapshots"
+    snapshot_dir.mkdir(parents=True, exist_ok=True)
+    snapshot_name = f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{full.name}.bak"
+    snapshot_path = snapshot_dir / snapshot_name
+    snapshot_path.write_text(before, encoding="utf-8")
+    full.write_text(after, encoding="utf-8")
+    return {
+        "status": "patched",
+        "job_id": job_id,
+        "project_id": project_id,
+        "file_path": rel_path,
+        "snapshot_path": str(snapshot_path.relative_to(root)).replace("\\", "/"),
+        "changed": True,
+        "find_text": body.find_text,
+        "replace_text": body.replace_text,
+    }
+
+
 @api_router.get("/trust/platform-capabilities")
 async def trust_platform_capabilities(user: dict = Depends(get_optional_user)):
     """Roadmap item wiring status (wired | partial | planned) for operator transparency."""
@@ -8842,81 +8935,6 @@ async def trust_platform_capabilities(user: dict = Depends(get_optional_user)):
         return {"success": True, "items": roadmap_wiring_status()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@api_router.get("/trust/benchmark-summary")
-async def trust_benchmark_summary():
-    """Public benchmark summary for trust/status/benchmark pages."""
-    summary_path = ROOT_DIR.parent / "proof" / "benchmarks" / "repeatability_v1" / "summary.json"
-    pass_fail_path = ROOT_DIR.parent / "proof" / "benchmarks" / "repeatability_v1" / "PASS_FAIL.md"
-    if not summary_path.is_file():
-        return {
-            "status": "not_available",
-            "message": "Repeatability benchmark proof has not been generated in this deployment.",
-            "prompt_count": 0,
-            "passed_count": 0,
-            "pass_rate": 0,
-            "average_score": 0,
-            "proof": {"summary": "proof/benchmarks/repeatability_v1/summary.json", "pass_fail": None},
-            "cases": [],
-        }
-    try:
-        data = json.loads(summary_path.read_text(encoding="utf-8"))
-    except Exception as exc:
-        logger.warning("trust_benchmark_summary parse failed: %s", exc)
-        raise HTTPException(status_code=503, detail="Benchmark proof summary unreadable")
-    return {
-        "status": "ready" if data.get("passed") else "failing",
-        "benchmark_version": data.get("benchmark_version"),
-        "generated_at": data.get("generated_at"),
-        "prompt_count": data.get("prompt_count"),
-        "passed_count": data.get("passed_count"),
-        "pass_rate": data.get("pass_rate"),
-        "average_score": data.get("average_score"),
-        "thresholds": data.get("thresholds"),
-        "preview_mode": data.get("preview_mode"),
-        "summary_sha256": data.get("summary_sha256"),
-        "blockers": data.get("blockers") or [],
-        "proof": {
-            "summary": "proof/benchmarks/repeatability_v1/summary.json",
-            "pass_fail": "proof/benchmarks/repeatability_v1/PASS_FAIL.md" if pass_fail_path.is_file() else None,
-        },
-        "cases": [
-            {
-                "id": ((case.get("case") or {}).get("id")),
-                "category": ((case.get("case") or {}).get("category")),
-                "score": case.get("score"),
-                "passed": case.get("passed"),
-            }
-            for case in (data.get("results") or [])
-            if isinstance(case, dict)
-        ],
-    }
-
-
-@api_router.get("/trust/security-posture")
-async def trust_security_posture():
-    """Public security posture summary without exposing secret values."""
-    return {
-        "database": "PostgreSQL only",
-        "tenant_isolation": "auth and project ownership enforced on workspace/job/helper routes",
-        "terminal_policy": {
-            "status": "restricted",
-            "public_default": "disabled unless CRUCIBAI_TERMINAL_ENABLED explicitly allows it",
-            "boundary": "project-scoped; container sandbox remains launch debt before broad public exposure",
-        },
-        "proof_locations": [
-            "proof/phase2_security/",
-            "proof/pipeline_crash_fix/",
-            "proof/live_production_golden_path/",
-            "proof/benchmarks/",
-        ],
-        "generated_app_publish": {
-            "mode": "in-platform public URL",
-            "route": "/published/{job_id}/",
-            "external_providers": "Vercel/Netlify/Railway adapters remain separate provider work",
-        },
-    }
 
 
 @api_router.get("/jobs/{job_id}/trust-report")
@@ -10841,6 +10859,11 @@ try:
     app.include_router(monitoring_router)
 except ImportError:
     pass
+try:
+    from routes.trust import create_trust_router
+    app.include_router(create_trust_router(ROOT_DIR))
+except ImportError as exc:
+    logger.warning("trust router unavailable: %s", exc)
 app.include_router(auth_router)
 app.include_router(projects_router)
 app.include_router(tools_router)

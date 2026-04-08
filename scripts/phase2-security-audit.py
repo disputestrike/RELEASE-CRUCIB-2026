@@ -27,6 +27,7 @@ SERVER_SAFE_OPTIONAL = {
     "/prompts/recent": "safe as optional: anonymous returns empty; authenticated reads own user_id",
     "/workspace/env": "safe as optional: compatibility endpoint returns empty env only",
     "/templates": "safe as optional: public template gallery",
+    "/templates/{template_id}/remix-plan": "safe as optional: public remix metadata only; authenticated remix creation uses strict auth",
     "/agents/activity": "safe as optional: anonymous returns empty; authenticated reads own user_id",
     "/orchestrator/estimate": "safe as optional: advisory estimate, no persisted tenant data",
     "/orchestrator/build-jobs": "safe as optional: anonymous returns empty; authenticated lists own jobs",

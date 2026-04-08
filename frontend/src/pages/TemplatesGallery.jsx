@@ -24,10 +24,10 @@ export default function TemplatesGallery() {
       return;
     }
     setCreatingId(templateId);
-    axios.post(`${API}/projects/from-template`, { template_id: templateId }, { headers: { Authorization: `Bearer ${token}` } })
+    axios.post(`${API}/templates/${templateId}/remix`, {}, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => {
         const files = r.data.files || {};
-        const query = new URLSearchParams({ prompt: (r.data.template_id && templates.find(t => t.id === r.data.template_id)?.prompt) || '' });
+        const query = new URLSearchParams({ prompt: r.data.prompt || (r.data.template_id && templates.find(t => t.id === r.data.template_id)?.prompt) || '' });
         navigate(`/app/workspace?${query.toString()}`, { state: { initialFiles: files } });
       })
       .catch((e) => { logApiError('TemplatesGallery from-template', e); setCreatingId(null); })
@@ -52,6 +52,9 @@ export default function TemplatesGallery() {
                 <div>
                   <h2 className="font-semibold">{t.name}</h2>
                   <p className="text-sm text-gray-500">{t.description}</p>
+                  {Array.isArray(t.tags) && t.tags.length > 0 && (
+                    <p className="text-xs text-gray-500 mt-1">{t.tags.join(' - ')} - {t.difficulty || 'starter'}</p>
+                  )}
                 </div>
               </div>
               <button
