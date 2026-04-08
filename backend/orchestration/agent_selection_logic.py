@@ -254,13 +254,33 @@ def _keyword_match(keyword: str, text: str) -> bool:
     """Match keyword with word boundaries to avoid substring false positives."""
     normalized = (keyword or "").lower()
     haystack = (text or "").lower()
-    if normalized == "ar":
-        return bool(re.search(r"\bar\b", haystack)) or "augmented reality" in haystack
-    if normalized == "vr":
-        return bool(re.search(r"\bvr\b", haystack)) or "virtual reality" in haystack
     escaped = re.escape(normalized)
     if not escaped:
         return False
+
+    negation_patterns = (
+        rf"\b(?:not|no|without)\s+(?:an?\s+)?{escaped}\b",
+        rf"\b(?:exclude|excluding)\s+(?:an?\s+)?{escaped}\b",
+    )
+    if any(re.search(pattern, haystack) for pattern in negation_patterns):
+        return False
+
+    if normalized == "ar":
+        return (
+            bool(re.search(r"\bar\b", haystack))
+            and not re.search(r"\b(?:not|no|without)\s+(?:an?\s+)?ar\b", haystack)
+        ) or (
+            "augmented reality" in haystack
+            and not re.search(r"\b(?:not|no|without)\s+(?:an?\s+)?augmented reality\b", haystack)
+        )
+    if normalized == "vr":
+        return (
+            bool(re.search(r"\bvr\b", haystack))
+            and not re.search(r"\b(?:not|no|without)\s+(?:an?\s+)?vr\b", haystack)
+        ) or (
+            "virtual reality" in haystack
+            and not re.search(r"\b(?:not|no|without)\s+(?:an?\s+)?virtual reality\b", haystack)
+        )
     pattern = rf"\b{escaped}\b"
     return bool(re.search(pattern, haystack))
 

@@ -7,9 +7,12 @@
 - `routing_threshold_for_3d_ml_blockchain`: PASS
 - `debug_endpoint_added`: PASS (`/api/debug/agent-info`)
 - `swarm_runtime_planner_unbound_result_fix`: PASS
+- `public_build_planner_alias_added`: PASS (`/api/build`)
+- `build_route_csrf_exempt`: PASS
+- `negated_ar_selection_fix`: PASS
 - `swarm_phases_use_selected_agents`: PASS
 - `legacy_server_registry_synced_to_dag`: PASS
-- `focused_orchestration_tests`: PASS (`18 passed`)
+- `focused_orchestration_tests`: PASS (`19 passed`)
 
 ## Commands
 
@@ -30,3 +33,7 @@ $env:PYTHONPATH='backend'; python -m pytest backend\tests\test_swarm_runtime_fix
 - Local swarm runtime verification after the execution fix:
   - `Planner` no longer crashes with `cannot access local variable 'result'`
   - `_run_single_agent_with_context(...)` returns a completed result for non-media agents
+- Public routing verification:
+  - `/api/build` is now a read-only plan alias for production routing tests
+  - `/api/build` is exempt from CSRF because it does not mutate jobs/projects
+  - negated prompts like `NOT an AR app` no longer select `3D AR/VR Agent`

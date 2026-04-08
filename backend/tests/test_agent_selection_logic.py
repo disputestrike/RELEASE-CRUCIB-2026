@@ -36,11 +36,19 @@ def test_select_agents_for_goal_expands_dependencies():
 def test_keyword_match_uses_word_boundaries():
     assert _keyword_match("ar", "augmented reality")
     assert not _keyword_match("ar", "smart contract")
+    assert not _keyword_match("ar", "Build smart contract system - NOT an AR app")
     assert _keyword_match("smart contract", "build ethereum smart contract")
 
 
 def test_blockchain_goal_does_not_pull_false_positive_3d_agent():
     agents = set(select_agents_for_goal("Build Ethereum smart contract DeFi dApp"))
+
+    assert "Smart Contract Agent" in agents
+    assert "3D AR/VR Agent" not in agents
+
+
+def test_negated_ar_phrase_does_not_pull_ar_vr_agent():
+    agents = set(select_agents_for_goal("Build smart contract system - NOT an AR app"))
 
     assert "Smart Contract Agent" in agents
     assert "3D AR/VR Agent" not in agents
@@ -81,4 +89,7 @@ def test_server_legacy_orchestration_registry_is_dag_backed():
     assert "_token_budget_for_orchestration_agent" in source
     assert "for phase in get_execution_phases(AGENT_DAG)" in source
     assert '/debug/agent-info' in source
+    assert '/debug/agent-selection-logs' in source
+    assert '@api_router.post("/build")' in source
+    assert '"/api/build"' in source
     assert 'LAST_BUILD_STATE' in source

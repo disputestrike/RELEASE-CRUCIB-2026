@@ -78,6 +78,7 @@ LAST_BUILD_STATE = {
     "phase_count": 0,
     "orchestration_mode": "unknown",
 }
+RECENT_AGENT_SELECTION_LOGS: list[str] = []
 # CSRF Protection Middleware
 class CSRFMiddleware:
     """Middleware to protect against CSRF attacks on state-changing requests."""
@@ -92,6 +93,7 @@ class CSRFMiddleware:
         "/api/health",
         "/api/contact",
         "/api/enterprise/contact",
+        "/api/build",
         # Read-only style cost preview (no job persisted); Bearer still used when available
         "/api/orchestrator/estimate",
     }
@@ -432,6 +434,11 @@ class BuildPlanRequest(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=MAX_PROMPT_LENGTH)
     swarm: Optional[bool] = False  # run plan + suggestions in parallel; token multiplier applied
     build_kind: Optional[str] = None  # fullstack | mobile | saas | bot | ai_agent | game | trading | any
+
+
+class BuildGoalRequest(BaseModel):
+    goal: str = Field(..., min_length=1, max_length=MAX_PROMPT_LENGTH)
+    project_id: Optional[str] = None
 
 class EnterpriseContact(BaseModel):
     company: str
@@ -8275,15 +8282,35 @@ def _orchestrator_planner_project_state(user: Optional[dict] = None) -> Dict[str
 
 
 def _update_last_build_state(plan: Dict[str, Any]) -> None:
+    phase_count = int(plan.get("phase_count") or len(plan.get("phases", [])))
+    selected_agent_count = int(plan.get("selected_agent_count") or 0)
+    orchestration_mode = plan.get("orchestration_mode", "unknown")
+    selected_agents = plan.get("selected_agents", [])
     LAST_BUILD_STATE.update(
         {
-            "selected_agents": plan.get("selected_agents", []),
-            "selected_agent_count": plan.get("selected_agent_count", 0),
-            "phase_count": len(plan.get("phases", [])),
-            "orchestration_mode": plan.get("orchestration_mode", "unknown"),
+            "selected_agents": selected_agents,
+            "selected_agent_count": selected_agent_count,
+            "phase_count": phase_count,
+            "orchestration_mode": orchestration_mode,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     )
+    log_lines = []
+    if orchestration_mode == "agent_swarm":
+        log_lines = [
+            f"Agent selection triggered for goal: {plan.get('goal', '')[:120]}",
+            f"Generated {phase_count} phases from DAG",
+            f"Executing swarm with {selected_agent_count} selected agents",
+        ]
+    else:
+        log_lines = [
+            f"Agent selection not triggered for goal: {plan.get('goal', '')[:120]}",
+            f"Falling back to {orchestration_mode}",
+        ]
+    for line in log_lines:
+        logger.info(line)
+        RECENT_AGENT_SELECTION_LOGS.append(line)
+    del RECENT_AGENT_SELECTION_LOGS[:-20]
 
 
 # ── Build targets (execution modes — broad platform, honest per-run scope) ───
@@ -8305,16 +8332,53 @@ async def get_agent_info():
         "agent_families": {
             "3d_webgl": len([a for a in AGENT_DAG if "3D" in a or "Canvas" in a or "WebGL" in a]),
             "ml_ai": len([a for a in AGENT_DAG if a.startswith("ML ") or "Embeddings" in a]),
-            "blockchain": len([a for a in AGENT_DAG if "Blockchain" in a or "Smart Contract" in a or "Web3" in a or "DeFi" in a]),
-            "iot": len([a for a in AGENT_DAG if "IoT" in a or "Microcontroller" in a or "Sensor" in a]),
-            "data_science": len([a for a in AGENT_DAG if "Jupyter" in a or "Data Visualization" in a or "Time Series" in a or "Statistical" in a]),
-            "infrastructure": len([a for a in AGENT_DAG if "Kubernetes" in a or "Serverless" in a or "Edge Deployment" in a or "Load Balancer" in a]),
-            "testing": len([a for a in AGENT_DAG if "Chaos" in a or "Mutation" in a or "Property-Based" in a or "Smoke Test" in a or "Synthetic" in a]),
-            "business_logic": len([a for a in AGENT_DAG if "Workflow" in a or "Business Rules" in a or "Approval" in a or "Audit & Compliance" in a]),
+            "blockchain": len([a for a in AGENT_DAG if "Blockchain" in a or "Smart Contract" in a or "Web3" in a or "DeFi" in a or "Contract " in a]),
+            "iot": len([a for a in AGENT_DAG if "IoT" in a or "Microcontroller" in a or "Sensor" in a or "Edge Computing" in a]),
+            "data_science": len([a for a in AGENT_DAG if "Jupyter" in a or "Data " in a or "Time Series" in a or "Statistical" in a or "Report Generation" in a]),
+            "infrastructure": len([a for a in AGENT_DAG if "Kubernetes" in a or "Serverless" in a or "Edge Deployment" in a or "Load Balancer" in a or "DevOps" in a or "Message Queue" in a or "Disaster Recovery" in a]),
+            "testing": len([a for a in AGENT_DAG if "Chaos" in a or "Mutation" in a or "Property-Based" in a or "Smoke Test" in a or "Synthetic" in a or "Load Test" in a or "E2E" in a]),
+            "business_logic": len([a for a in AGENT_DAG if "Workflow" in a or "Business Rules" in a or "Approval" in a or "Audit & Compliance" in a or "Notification Rules" in a or "Scheduling" in a or "Multi-tenant" in a or "RBAC" in a]),
         },
         "last_build": LAST_BUILD_STATE,
+        "selection_log_tail": RECENT_AGENT_SELECTION_LOGS,
         "selection_logic_working": True,
     }
+
+
+@api_router.get("/debug/agent-selection-logs")
+async def get_agent_selection_logs():
+    """Expose recent agent-selection log lines for environments without Railway CLI access."""
+    return {"logs": RECENT_AGENT_SELECTION_LOGS, "count": len(RECENT_AGENT_SELECTION_LOGS)}
+
+
+@api_router.post("/build")
+async def public_build_plan(
+    body: BuildGoalRequest,
+    user: Optional[dict] = Depends(get_optional_user),
+):
+    """
+    Public, read-only planner alias for production routing verification.
+
+    This endpoint does not create projects or jobs; it only returns the
+    structured orchestrator plan for the supplied goal.
+    """
+    goal = (body.goal or "").strip()
+    if not goal:
+        raise HTTPException(status_code=400, detail="goal is required")
+    try:
+        _, _, planner_mod, _, _ = _get_orchestration()
+        plan = await planner_mod.generate_plan(
+            goal,
+            project_state=_orchestrator_planner_project_state(user),
+        )
+        plan["phase_count"] = int(plan.get("phase_count") or len(plan.get("phases", [])))
+        _update_last_build_state(plan)
+        return {"success": True, "plan": plan}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("public /build planning error")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ── Cost estimator (pre-execution, no auth required) ──────────────────────────

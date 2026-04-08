@@ -248,6 +248,11 @@ def _build_phases(goal: str, build_kind: str, integrations: list,
     if _uses_intelligent_orchestration(goal, stack_contract):
         logger.info("Routing to intelligent agent selection / swarm path")
         phases = build_agent_swarm_phases(goal, stack_contract, selected_agents=selected_agents)
+        logger.info(
+            "Generated %s phases from DAG for %s selected agents",
+            len(phases),
+            len(selected_agents or []),
+        )
         phases.append(
             {
                 "key": "implementation",
@@ -555,6 +560,7 @@ async def generate_plan(goal: str,
         "goal": goal,
         "build_kind": build_kind,
         "phases": phases,
+        "phase_count": len(phases),
         "dependencies": integrations,
         "acceptance_criteria": acceptance_criteria,
         "required_integrations": integrations,
