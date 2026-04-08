@@ -113,6 +113,27 @@ async def test_elite_builder_gate_passes_with_manifest_and_directive():
                 "## Implemented\nx\n## Mocked\ny\n## Stubbed\nz\n## Unverified\nw\n"
                 "tenancy pytest runtime isolation\n"
             )
+        os.makedirs(os.path.join(d, "src"), exist_ok=True)
+        with open(os.path.join(d, "src", "App.jsx"), "w", encoding="utf-8") as f:
+            f.write(
+                "import React from 'react';\n"
+                "export class ErrorBoundary extends React.Component {}\n"
+                "export const AuthContext = React.createContext(null);\n"
+            )
+        os.makedirs(os.path.join(d, "backend"), exist_ok=True)
+        with open(os.path.join(d, "backend", "main.py"), "w", encoding="utf-8") as f:
+            f.write(
+                "from fastapi import FastAPI, Depends, HTTPException\n"
+                "app = FastAPI()\n"
+                "@app.get('/health')\n"
+                "def health(user=Depends(get_current_user)):\n"
+                "    try:\n"
+                "        return {'ok': True}\n"
+                "    except Exception:\n"
+                "        raise HTTPException(status_code=500)\n"
+                "SECURITY_HEADERS = ['Content-Security-Policy', 'X-Frame-Options', "
+                "'X-Content-Type-Options', 'Strict-Transport-Security']\n"
+            )
         os.environ["CRUCIBAI_ELITE_BUILDER_GATE"] = "strict"
         try:
             r = await verify_elite_builder_workspace(d, job_goal="multi-tenant RLS app")

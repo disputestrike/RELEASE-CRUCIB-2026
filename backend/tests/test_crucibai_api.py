@@ -249,11 +249,11 @@ class TestBuildPhasesAndValidate:
         assert len(data["phases"]) >= 1
         assert data["phases"][0].get("id") and data["phases"][0].get("name")
 
-    async def test_validate_and_fix(self, app_client):
+    async def test_validate_and_fix(self, app_client, auth_headers):
         r = await app_client.post("/api/ai/validate-and-fix", json={
             "code": "function foo() { return 1; }",
             "language": "javascript"
-        })
+        }, headers=auth_headers)
         assert r.status_code in AI_OK_STATUSES
         if r.status_code == 200:
             data = r.json()
@@ -276,8 +276,8 @@ _AI_CHAT_MODEL_USED_MARKERS = (
 class TestAIChatEndpoints:
     """AI Chat – real endpoint; 200 when keys set, 503/500 when not."""
 
-    async def test_ai_chat_auto_model(self, app_client):
-        r = await app_client.post("/api/ai/chat", json={"message": "Hello, test", "model": "auto"})
+    async def test_ai_chat_auto_model(self, app_client, auth_headers):
+        r = await app_client.post("/api/ai/chat", json={"message": "Hello, test", "model": "auto"}, headers=auth_headers)
         assert r.status_code in AI_OK_STATUSES
         if r.status_code == 200:
             data = r.json()
@@ -286,11 +286,12 @@ class TestAIChatEndpoints:
             assert "tokens_used" in data
             assert "session_id" in data
 
-    async def test_ai_chat_haiku_model_id(self, app_client):
+    async def test_ai_chat_haiku_model_id(self, app_client, auth_headers):
         """Explicit Anthropic-style id; server may still route to another pool (e.g. Cerebras)."""
         r = await app_client.post(
             "/api/ai/chat",
             json={"message": "What is 2+2?", "model": "claude-3-5-haiku-20241022"},
+            headers=auth_headers,
         )
         assert r.status_code in AI_OK_STATUSES
         if r.status_code == 200:
@@ -299,8 +300,8 @@ class TestAIChatEndpoints:
             used = (data.get("model_used") or "").lower()
             assert used and any(m in used for m in _AI_CHAT_MODEL_USED_MARKERS)
 
-    async def test_ai_chat_claude_model(self, app_client):
-        r = await app_client.post("/api/ai/chat", json={"message": "Say hello", "model": "claude"})
+    async def test_ai_chat_claude_model(self, app_client, auth_headers):
+        r = await app_client.post("/api/ai/chat", json={"message": "Say hello", "model": "claude"}, headers=auth_headers)
         assert r.status_code in AI_OK_STATUSES
         if r.status_code == 200:
             data = r.json()
@@ -308,13 +309,13 @@ class TestAIChatEndpoints:
             used = (data.get("model_used") or "").lower()
             assert used and any(m in used for m in _AI_CHAT_MODEL_USED_MARKERS)
 
-    async def test_ai_chat_with_session(self, app_client):
+    async def test_ai_chat_with_session(self, app_client, auth_headers):
         session_id = f"test_session_{int(time.time())}"
         r1 = await app_client.post("/api/ai/chat", json={
             "message": "Remember the number 42",
             "session_id": session_id,
             "model": "auto"
-        })
+        }, headers=auth_headers)
         assert r1.status_code in AI_OK_STATUSES
         if r1.status_code == 200:
             assert r1.json()["session_id"] == session_id
@@ -322,7 +323,7 @@ class TestAIChatEndpoints:
                 "message": "What number did I mention?",
                 "session_id": session_id,
                 "model": "auto"
-            })
+            }, headers=auth_headers)
             assert r2.status_code in AI_OK_STATUSES
             if r2.status_code == 200:
                 assert r2.json()["session_id"] == session_id
@@ -331,22 +332,22 @@ class TestAIChatEndpoints:
 class TestAIAnalysisEndpoints:
     """AI Analyze – 200, 503, or 500."""
 
-    async def test_ai_analyze_summarize(self, app_client):
+    async def test_ai_analyze_summarize(self, app_client, auth_headers):
         r = await app_client.post("/api/ai/analyze", json={
             "content": "This is a test document about software development.",
             "task": "summarize"
-        })
+        }, headers=auth_headers)
         assert r.status_code in AI_OK_STATUSES
         if r.status_code == 200:
             data = r.json()
             assert "result" in data
             assert data["task"] == "summarize"
 
-    async def test_ai_analyze_extract(self, app_client):
+    async def test_ai_analyze_extract(self, app_client, auth_headers):
         r = await app_client.post("/api/ai/analyze", json={
             "content": "John Smith works at Acme Corp in New York.",
             "task": "extract"
-        })
+        }, headers=auth_headers)
         assert r.status_code in AI_OK_STATUSES
         if r.status_code == 200:
             data = r.json()
@@ -357,11 +358,11 @@ class TestAIAnalysisEndpoints:
 class TestSearchEndpoint:
     """Search – 200, 503, or 500."""
 
-    async def test_hybrid_search(self, app_client):
+    async def test_hybrid_search(self, app_client, auth_headers):
         r = await app_client.post("/api/search", json={
             "query": "React components",
             "search_type": "hybrid"
-        })
+        }, headers=auth_headers)
         assert r.status_code in AI_OK_STATUSES
         if r.status_code == 200:
             data = r.json()

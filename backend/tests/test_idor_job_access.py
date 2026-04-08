@@ -6,10 +6,15 @@ from server import _assert_job_owner_match
 
 
 @pytest.mark.golden
-def test_job_owner_match_allows_guest_job():
-    _assert_job_owner_match(None, None)
-    _assert_job_owner_match("", {"id": "u1"})
-    _assert_job_owner_match(None, {"id": "u1"})
+def test_job_owner_match_blocks_legacy_guest_job():
+    for owner_id, user_payload in (
+        (None, None),
+        ("", {"id": "u1"}),
+        (None, {"id": "u1"}),
+    ):
+        with pytest.raises(HTTPException) as exc:
+            _assert_job_owner_match(owner_id, user_payload)
+        assert exc.value.status_code == 403
 
 
 @pytest.mark.golden

@@ -1,0 +1,4 @@
+﻿Frontend runtime gate proof: C:\Users\benxp\OneDrive\Documents\New
+project\proof\frontend_runtime_gate\runtime_gate.json
+Frontend runtime matrix: C:\Users\benxp\OneDrive\Documents\New project\proof\frontend_runtime_gate\PASS_FAIL.md
+Active host Node is blocked, but repo now has Node 22 paths (.nvmrc, Dockerfile, CI).

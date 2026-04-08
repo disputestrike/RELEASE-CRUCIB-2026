@@ -5,82 +5,45 @@
 #1 DONE 0.1s
 
 #2 [internal] load metadata for docker.io/library/node:22-alpine
-#2 DONE 0.9s
+#2 DONE 0.8s
 
 #3 [internal] load .dockerignore
 #3 transferring context: 269B 0.0s done
-#3 DONE 0.0s
+#3 DONE 0.1s
 
-#4 [internal] load build context
-#4 DONE 0.0s
+#4 [frontend 1/7] FROM docker.io/library/node:22-alpine@sha256:4d64b49e6c891c8fc821007cb1cdc6c0db7773110ac2c34bf2e6960adef62ed3
+#4 resolve docker.io/library/node:22-alpine@sha256:4d64b49e6c891c8fc821007cb1cdc6c0db7773110ac2c34bf2e6960adef62ed3 0.1s done
+#4 DONE 0.1s
 
-#5 [frontend 1/7] FROM docker.io/library/node:22-alpine@sha256:4d64b49e6c891c8fc821007cb1cdc6c0db7773110ac2c34bf2e6960adef62ed3
-#5 resolve docker.io/library/node:22-alpine@sha256:4d64b49e6c891c8fc821007cb1cdc6c0db7773110ac2c34bf2e6960adef62ed3 0.1s done
-#5 DONE 0.1s
+#5 [internal] load build context
+#5 transferring context: 18.85kB 0.7s done
+#5 DONE 0.7s
 
-#4 [internal] load build context
-#4 transferring context: 30.16kB 0.6s done
-#4 DONE 0.6s
-
-#6 [frontend 2/7] WORKDIR /app
+#6 [frontend 5/7] RUN npm ci --omit=optional --legacy-peer-deps
 #6 CACHED
 
-#7 [frontend 3/7] COPY frontend/package.json frontend/package-lock.json frontend/.npmrc ./
+#7 [frontend 6/7] COPY frontend/ ./
 #7 CACHED
 
-#8 [frontend 4/7] COPY frontend/scripts ./scripts
+#8 [frontend 2/7] WORKDIR /app
 #8 CACHED
 
-#9 [frontend 5/7] RUN npm ci --omit=optional --legacy-peer-deps
+#9 [frontend 3/7] COPY frontend/package.json frontend/package-lock.json frontend/.npmrc ./
 #9 CACHED
 
-#10 [frontend 6/7] COPY frontend/ ./
-#10 DONE 0.8s
+#10 [frontend 4/7] COPY frontend/scripts ./scripts
+#10 CACHED
 
 #11 [frontend 7/7] RUN npm run build
-#11 8.380
-#11 8.380 > frontend@0.1.0 build
-#11 8.380 > cross-env DISABLE_ESLINT_PLUGIN=true craco build
-#11 8.380
-#11 21.02 Creating an optimized production build...
-#11 185.3 Compiled successfully.
-#11 185.3
-#11 185.3 File sizes after gzip:
-#11 185.3
-#11 185.5   730.5 kB  build/static/js/main.79ab97bd.js
-#11 185.5   41.27 kB  build/static/css/main.22d4fbc4.css
-#11 185.5   26.57 kB  build/static/js/531.d8d55189.chunk.js
-#11 185.5   23.45 kB  build/static/js/967.d1fbc514.chunk.js
-#11 185.5   8.86 kB   build/static/js/550.1f9c4ac7.chunk.js
-#11 185.5   6.23 kB   build/static/js/55.3eaba4e4.chunk.js
-#11 185.5
-#11 185.5 The bundle size is significantly larger than recommended.
-#11 185.5 Consider reducing it with code splitting: https://goo.gl/9VhYWB
-#11 185.5 You can also analyze the project dependencies: https://goo.gl/LeUzfb
-#11 185.5
-#11 185.5 The project was built assuming it is hosted at /.
-#11 185.5 You can control this with the homepage field in your package.json.
-#11 185.5
-#11 185.5 The build folder is ready to be deployed.
-#11 185.5 You may serve it with a static server:
-#11 185.5
-#11 185.5   yarn global add serve
-#11 185.5   serve -s build
-#11 185.5
-#11 185.5 Find out more about deployment here:
-#11 185.5
-#11 185.5   https://cra.link/deployment
-#11 185.5
-#11 DONE 187.1s
+#11 CACHED
 
 #12 exporting to image
-#12 exporting layers
-#12 exporting layers 6.3s done
-#12 exporting manifest sha256:4a72af9534e2119f1f0d685e98c859c3e9fa7bdcda11ca31b4f14a13bab6ed1d 0.0s done
-#12 exporting config sha256:6a68fd53f981c60b475ab110c1d0d3d9af9941ace1a1e67a73100e69cb2ef42d 0.0s done
-#12 exporting attestation manifest sha256:ba0602e2588c3bfb5765170c0a74849cad29f75ddf9cc42e0ab2fb3982c0c0ee 0.1s done
-#12 exporting manifest list sha256:7a4f665a666cb1a008be31b3855c562cb05f06cfdd292aced611740f5ac8b3fb 0.0s done
-#12 naming to docker.io/library/crucibai-frontend-runtime-gate:latest 0.0s done
-#12 unpacking to docker.io/library/crucibai-frontend-runtime-gate:latest
-#12 unpacking to docker.io/library/crucibai-frontend-runtime-gate:latest 1.6s done
-#12 DONE 8.2s
+#12 exporting layers 0.0s done
+#12 exporting manifest sha256:4a72af9534e2119f1f0d685e98c859c3e9fa7bdcda11ca31b4f14a13bab6ed1d done
+#12 exporting config sha256:6a68fd53f981c60b475ab110c1d0d3d9af9941ace1a1e67a73100e69cb2ef42d done
+#12 exporting attestation manifest sha256:1d6e972576f78ac9a63177e09e861ced8764e54378f24b667ee4899a37c82208 0.1s done
+#12 exporting manifest list sha256:f1b1d167a14b3e429b8e59db928c287f2b34da4d854ad2d38cc8dea34f12e1a1 0.0s done
+#12 naming to docker.io/library/crucibai-frontend-runtime-gate:latest
+#12 naming to docker.io/library/crucibai-frontend-runtime-gate:latest done
+#12 unpacking to docker.io/library/crucibai-frontend-runtime-gate:latest 0.0s done
+#12 DONE 0.3s

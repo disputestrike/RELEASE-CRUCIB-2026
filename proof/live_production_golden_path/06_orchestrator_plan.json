@@ -1,5 +1,5 @@
 {
-  "finished_at": "2026-04-08T13:10:25.870100+00:00",
+  "finished_at": "2026-04-08T14:07:21.062357+00:00",
   "label": "06_orchestrator_plan",
   "method": "POST",
   "ok": true,
@@ -43,7 +43,7 @@
       "estimated_tokens": "<redacted>",
       "note": "Final cost depends on complexity encountered during execution."
     },
-    "job_id": "ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd",
+    "job_id": "44fd5fdc-41c4-4ea9-9d6f-025637491a26",
     "missing_inputs": [],
     "plan": {
       "acceptance_criteria": [
@@ -601,6 +601,6 @@
     "step_count": 18,
     "success": true
   },
-  "started_at": "2026-04-08T13:10:25.241458+00:00",
+  "started_at": "2026-04-08T14:07:20.501476+00:00",
   "status_code": 200
 }

@@ -1,18 +1,18 @@
 {
-  "finished_at": "2026-04-08T13:10:27.871575+00:00",
+  "finished_at": "2026-04-08T14:07:23.060395+00:00",
   "label": "poll_001_events",
   "method": "GET",
   "ok": true,
-  "path": "/api/jobs/ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd/events",
+  "path": "/api/jobs/44fd5fdc-41c4-4ea9-9d6f-025637491a26/events",
   "request_body": null,
   "response": {
     "count": 16,
     "events": [
       {
-        "created_at": "2026-04-08T13:10:27.453595+00:00",
+        "created_at": "2026-04-08T14:07:22.620070+00:00",
         "event_type": "preflight_report",
-        "id": "b843dfaa-2c78-4e7d-8949-2b9dcf5b463c",
-        "job_id": "ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd",
+        "id": "82d75463-4e19-46f6-b057-edacc757cffb",
+        "job_id": "44fd5fdc-41c4-4ea9-9d6f-025637491a26",
         "narrative": "",
         "payload": {
           "kind": "preflight_report.json",
@@ -100,10 +100,10 @@
         "step_id": null
       },
       {
-        "created_at": "2026-04-08T13:10:27.472850+00:00",
+        "created_at": "2026-04-08T14:07:22.635434+00:00",
         "event_type": "spec_guardian",
-        "id": "fcfdd0b3-aef6-46e8-9d62-999aa2bd8edc",
-        "job_id": "ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd",
+        "id": "ef59c4bb-fc9b-46c0-a31f-61d31e46b0c6",
+        "job_id": "44fd5fdc-41c4-4ea9-9d6f-025637491a26",
         "narrative": "",
         "payload": {
           "kind": "spec_guardian.json",
@@ -121,10 +121,10 @@
         "step_id": null
       },
       {
-        "created_at": "2026-04-08T13:10:27.490583+00:00",
+        "created_at": "2026-04-08T14:07:22.657619+00:00",
         "event_type": "job_started",
-        "id": "e69ceb5a-fcd3-4774-a485-bfc84f9f94e4",
-        "job_id": "ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd",
+        "id": "2938a41b-8891-4d80-a121-b334c28ff12b",
+        "job_id": "44fd5fdc-41c4-4ea9-9d6f-025637491a26",
         "narrative": "",
         "payload": {
           "goal": "Build a tiny production proof app: a Vite React single page product dashboard with reusable components, localStorage state, clear empty/loading/error states, a FastAPI health endpoint sketch if backend output is supported, and deploy readiness proof. Keep dependencies minimal and produce previewable files.",
@@ -134,10 +134,10 @@
         "step_id": null
       },
       {
-        "created_at": "2026-04-08T13:10:27.498322+00:00",
+        "created_at": "2026-04-08T14:07:22.663380+00:00",
         "event_type": "execution_authority",
-        "id": "736220e6-bf02-4e78-b078-df2ce16f273a",
-        "job_id": "ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd",
+        "id": "e43d6620-0fd2-4601-945d-6440713b6c02",
+        "job_id": "44fd5fdc-41c4-4ea9-9d6f-025637491a26",
         "narrative": "",
         "payload": {
           "elite_chars": 0,
@@ -150,23 +150,23 @@
         "step_id": null
       },
       {
-        "created_at": "2026-04-08T13:10:27.533277+00:00",
+        "created_at": "2026-04-08T14:07:22.698516+00:00",
         "event_type": "step_started",
-        "id": "31c8b6b8-1d65-4968-8d84-eab453146f4f",
-        "job_id": "ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd",
+        "id": "a9e05170-2224-4d93-a4dd-b4cd219c3e41",
+        "job_id": "44fd5fdc-41c4-4ea9-9d6f-025637491a26",
         "narrative": "",
         "payload": {
           "agent": "Planner",
           "step_key": "planning.analyze"
         },
         "payload_json": "{\"step_key\": \"planning.analyze\", \"agent\": \"Planner\"}",
-        "step_id": "eed6693d-c406-4f7b-bf8a-a85eda1c0bc2"
+        "step_id": "5555061f-87d9-47ea-93cf-2a4c7e7ab269"
       },
       {
-        "created_at": "2026-04-08T13:10:27.542312+00:00",
+        "created_at": "2026-04-08T14:07:22.704907+00:00",
         "event_type": "dag_node_started",
-        "id": "45129412-69ef-44c0-af6a-8ce1d4fb4ede",
-        "job_id": "ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd",
+        "id": "9901f12a-9ed5-4b16-b530-1e51278d268a",
+        "job_id": "44fd5fdc-41c4-4ea9-9d6f-025637491a26",
         "narrative": "",
         "payload": {
           "agent_name": "Planner",
@@ -177,69 +177,69 @@
           "mocked": false,
           "phase": "planning",
           "retry_count": 0,
-          "started_at_ms": 1775653827533,
-          "step_id": "eed6693d-c406-4f7b-bf8a-a85eda1c0bc2",
+          "started_at_ms": 1775657242698,
+          "step_id": "5555061f-87d9-47ea-93cf-2a4c7e7ab269",
           "step_key": "planning.analyze",
           "workspace_path_set": true
         },
-        "payload_json": "{\"step_key\": \"planning.analyze\", \"step_id\": \"eed6693d-c406-4f7b-bf8a-a85eda1c0bc2\", \"phase\": \"planning\", \"agent_name\": \"Planner\", \"depends_on\": [], \"workspace_path_set\": true, \"execution_mode\": \"executed\", \"mocked\": false, \"handoff\": \"shared_workspace_disk\", \"downstream\": \"pending_steps_whose_deps_include_this_step_key\", \"started_at_ms\": 1775653827533, \"retry_count\": 0}",
-        "step_id": "eed6693d-c406-4f7b-bf8a-a85eda1c0bc2"
+        "payload_json": "{\"step_key\": \"planning.analyze\", \"step_id\": \"5555061f-87d9-47ea-93cf-2a4c7e7ab269\", \"phase\": \"planning\", \"agent_name\": \"Planner\", \"depends_on\": [], \"workspace_path_set\": true, \"execution_mode\": \"executed\", \"mocked\": false, \"handoff\": \"shared_workspace_disk\", \"downstream\": \"pending_steps_whose_deps_include_this_step_key\", \"started_at_ms\": 1775657242698, \"retry_count\": 0}",
+        "step_id": "5555061f-87d9-47ea-93cf-2a4c7e7ab269"
       },
       {
-        "created_at": "2026-04-08T13:10:27.571486+00:00",
+        "created_at": "2026-04-08T14:07:22.735846+00:00",
         "event_type": "step_completed",
-        "id": "33a865dc-674d-4061-b4b7-b8193f976639",
-        "job_id": "ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd",
+        "id": "b53dff58-de5a-401b-9a63-0382f1fea842",
+        "job_id": "44fd5fdc-41c4-4ea9-9d6f-025637491a26",
         "narrative": "",
         "payload": {
-          "duration_ms": 26,
+          "duration_ms": 21,
           "step_key": "planning.analyze",
           "verifier_score": 85
         },
-        "payload_json": "{\"step_key\": \"planning.analyze\", \"duration_ms\": 26, \"verifier_score\": 85}",
-        "step_id": "eed6693d-c406-4f7b-bf8a-a85eda1c0bc2"
+        "payload_json": "{\"step_key\": \"planning.analyze\", \"duration_ms\": 21, \"verifier_score\": 85}",
+        "step_id": "5555061f-87d9-47ea-93cf-2a4c7e7ab269"
       },
       {
-        "created_at": "2026-04-08T13:10:27.577252+00:00",
+        "created_at": "2026-04-08T14:07:22.741539+00:00",
         "event_type": "dag_node_completed",
-        "id": "f5e850f8-c523-4b58-b236-e93d571184cd",
-        "job_id": "ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd",
+        "id": "3465e0db-8b2c-4ea6-92e0-f07fd23c0601",
+        "job_id": "44fd5fdc-41c4-4ea9-9d6f-025637491a26",
         "narrative": "",
         "payload": {
           "artifacts": [],
-          "duration_ms": 26,
-          "ended_at_ms": 1775653827577,
+          "duration_ms": 21,
+          "ended_at_ms": 1775657242741,
           "execution_mode": "executed",
           "output_files": [
             "PLAN.md"
           ],
           "proof_count": 1,
           "skipped": false,
-          "step_id": "eed6693d-c406-4f7b-bf8a-a85eda1c0bc2",
+          "step_id": "5555061f-87d9-47ea-93cf-2a4c7e7ab269",
           "step_key": "planning.analyze",
           "verifier_score": 85
         },
-        "payload_json": "{\"step_key\": \"planning.analyze\", \"step_id\": \"eed6693d-c406-4f7b-bf8a-a85eda1c0bc2\", \"ended_at_ms\": 1775653827577, \"duration_ms\": 26, \"output_files\": [\"PLAN.md\"], \"artifacts\": [], \"verifier_score\": 85, \"proof_count\": 1, \"execution_mode\": \"executed\", \"skipped\": false}",
-        "step_id": "eed6693d-c406-4f7b-bf8a-a85eda1c0bc2"
+        "payload_json": "{\"step_key\": \"planning.analyze\", \"step_id\": \"5555061f-87d9-47ea-93cf-2a4c7e7ab269\", \"ended_at_ms\": 1775657242741, \"duration_ms\": 21, \"output_files\": [\"PLAN.md\"], \"artifacts\": [], \"verifier_score\": 85, \"proof_count\": 1, \"execution_mode\": \"executed\", \"skipped\": false}",
+        "step_id": "5555061f-87d9-47ea-93cf-2a4c7e7ab269"
       },
       {
-        "created_at": "2026-04-08T13:10:27.617753+00:00",
+        "created_at": "2026-04-08T14:07:22.778108+00:00",
         "event_type": "step_started",
-        "id": "874fd7bf-60c7-4809-a416-0dff9df967ba",
-        "job_id": "ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd",
+        "id": "abc91239-9634-4fad-8ff5-1942f975949a",
+        "job_id": "44fd5fdc-41c4-4ea9-9d6f-025637491a26",
         "narrative": "",
         "payload": {
           "agent": "Requirements Clarifier",
           "step_key": "planning.requirements"
         },
         "payload_json": "{\"step_key\": \"planning.requirements\", \"agent\": \"Requirements Clarifier\"}",
-        "step_id": "d7a70d4a-f2b2-4c87-ae56-cfc42a4701db"
+        "step_id": "735876b7-443b-49a5-8425-c776745d5298"
       },
       {
-        "created_at": "2026-04-08T13:10:27.622647+00:00",
+        "created_at": "2026-04-08T14:07:22.782891+00:00",
         "event_type": "dag_node_started",
-        "id": "1d59f66a-25cb-464a-ba32-209b523c700f",
-        "job_id": "ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd",
+        "id": "f59768ad-c58d-48c8-9b2e-871f1dc11387",
+        "job_id": "44fd5fdc-41c4-4ea9-9d6f-025637491a26",
         "narrative": "",
         "payload": {
           "agent_name": "Requirements Clarifier",
@@ -252,38 +252,38 @@
           "mocked": false,
           "phase": "planning",
           "retry_count": 0,
-          "started_at_ms": 1775653827617,
-          "step_id": "d7a70d4a-f2b2-4c87-ae56-cfc42a4701db",
+          "started_at_ms": 1775657242778,
+          "step_id": "735876b7-443b-49a5-8425-c776745d5298",
           "step_key": "planning.requirements",
           "workspace_path_set": true
         },
-        "payload_json": "{\"step_key\": \"planning.requirements\", \"step_id\": \"d7a70d4a-f2b2-4c87-ae56-cfc42a4701db\", \"phase\": \"planning\", \"agent_name\": \"Requirements Clarifier\", \"depends_on\": [\"planning.analyze\"], \"workspace_path_set\": true, \"execution_mode\": \"executed\", \"mocked\": false, \"handoff\": \"shared_workspace_disk\", \"downstream\": \"pending_steps_whose_deps_include_this_step_key\", \"started_at_ms\": 1775653827617, \"retry_count\": 0}",
-        "step_id": "d7a70d4a-f2b2-4c87-ae56-cfc42a4701db"
+        "payload_json": "{\"step_key\": \"planning.requirements\", \"step_id\": \"735876b7-443b-49a5-8425-c776745d5298\", \"phase\": \"planning\", \"agent_name\": \"Requirements Clarifier\", \"depends_on\": [\"planning.analyze\"], \"workspace_path_set\": true, \"execution_mode\": \"executed\", \"mocked\": false, \"handoff\": \"shared_workspace_disk\", \"downstream\": \"pending_steps_whose_deps_include_this_step_key\", \"started_at_ms\": 1775657242778, \"retry_count\": 0}",
+        "step_id": "735876b7-443b-49a5-8425-c776745d5298"
       },
       {
-        "created_at": "2026-04-08T13:10:27.648755+00:00",
+        "created_at": "2026-04-08T14:07:22.809359+00:00",
         "event_type": "step_completed",
-        "id": "b9923d1e-57ea-4c72-8c74-cb83420861d2",
-        "job_id": "ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd",
+        "id": "587a180f-d5f3-4d1f-8b8f-ffcf1c5a61fb",
+        "job_id": "44fd5fdc-41c4-4ea9-9d6f-025637491a26",
         "narrative": "",
         "payload": {
-          "duration_ms": 20,
+          "duration_ms": 16,
           "step_key": "planning.requirements",
           "verifier_score": 85
         },
-        "payload_json": "{\"step_key\": \"planning.requirements\", \"duration_ms\": 20, \"verifier_score\": 85}",
-        "step_id": "d7a70d4a-f2b2-4c87-ae56-cfc42a4701db"
+        "payload_json": "{\"step_key\": \"planning.requirements\", \"duration_ms\": 16, \"verifier_score\": 85}",
+        "step_id": "735876b7-443b-49a5-8425-c776745d5298"
       },
       {
-        "created_at": "2026-04-08T13:10:27.653798+00:00",
+        "created_at": "2026-04-08T14:07:22.815405+00:00",
         "event_type": "dag_node_completed",
-        "id": "107021f9-4e1f-448a-b5c7-e82bcd39956e",
-        "job_id": "ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd",
+        "id": "2d5e1a93-ecdc-41e5-b985-6546adc3e8c1",
+        "job_id": "44fd5fdc-41c4-4ea9-9d6f-025637491a26",
         "narrative": "",
         "payload": {
           "artifacts": [],
-          "duration_ms": 20,
-          "ended_at_ms": 1775653827653,
+          "duration_ms": 16,
+          "ended_at_ms": 1775657242815,
           "execution_mode": "executed",
           "output_files": [
             "PLAN.md",
@@ -293,44 +293,31 @@
           ],
           "proof_count": 1,
           "skipped": false,
-          "step_id": "d7a70d4a-f2b2-4c87-ae56-cfc42a4701db",
+          "step_id": "735876b7-443b-49a5-8425-c776745d5298",
           "step_key": "planning.requirements",
           "verifier_score": 85
         },
-        "payload_json": "{\"step_key\": \"planning.requirements\", \"step_id\": \"d7a70d4a-f2b2-4c87-ae56-cfc42a4701db\", \"ended_at_ms\": 1775653827653, \"duration_ms\": 20, \"output_files\": [\"PLAN.md\", \"docs/CREW_ARCHITECTURE.md\", \"db/migrations/000_crew_schema.sql\", \"docs/CREW_OPENAPI_SKETCH.md\"], \"artifacts\": [], \"verifier_score\": 85, \"proof_count\": 1, \"execution_mode\": \"executed\", \"skipped\": false}",
-        "step_id": "d7a70d4a-f2b2-4c87-ae56-cfc42a4701db"
+        "payload_json": "{\"step_key\": \"planning.requirements\", \"step_id\": \"735876b7-443b-49a5-8425-c776745d5298\", \"ended_at_ms\": 1775657242815, \"duration_ms\": 16, \"output_files\": [\"PLAN.md\", \"docs/CREW_ARCHITECTURE.md\", \"db/migrations/000_crew_schema.sql\", \"docs/CREW_OPENAPI_SKETCH.md\"], \"artifacts\": [], \"verifier_score\": 85, \"proof_count\": 1, \"execution_mode\": \"executed\", \"skipped\": false}",
+        "step_id": "735876b7-443b-49a5-8425-c776745d5298"
       },
       {
-        "created_at": "2026-04-08T13:10:27.694937+00:00",
+        "created_at": "2026-04-08T14:07:22.846716+00:00",
         "event_type": "step_started",
-        "id": "f5a222e3-f36d-46da-9529-928e511a29e2",
-        "job_id": "ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd",
+        "id": "fc9e4972-cbe8-4266-8bff-c316a6fda7b8",
+        "job_id": "44fd5fdc-41c4-4ea9-9d6f-025637491a26",
         "narrative": "",
         "payload": {
           "agent": "Frontend Generation",
           "step_key": "frontend.scaffold"
         },
         "payload_json": "{\"step_key\": \"frontend.scaffold\", \"agent\": \"Frontend Generation\"}",
-        "step_id": "d52a4a2c-6880-4f41-8b65-85a1f3db9649"
+        "step_id": "48edaaf6-9239-4a3f-bbd6-2bee8b983705"
       },
       {
-        "created_at": "2026-04-08T13:10:27.700194+00:00",
-        "event_type": "step_started",
-        "id": "2e832124-1662-4b75-a140-00110e521743",
-        "job_id": "ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd",
-        "narrative": "",
-        "payload": {
-          "agent": "Database Agent",
-          "step_key": "backend.models"
-        },
-        "payload_json": "{\"step_key\": \"backend.models\", \"agent\": \"Database Agent\"}",
-        "step_id": "d449fc92-0144-4eed-8b68-3da9bd679cea"
-      },
-      {
-        "created_at": "2026-04-08T13:10:27.702828+00:00",
+        "created_at": "2026-04-08T14:07:22.853836+00:00",
         "event_type": "dag_node_started",
-        "id": "6732c356-0a6d-4bfe-a5f8-a4b9eeefbb65",
-        "job_id": "ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd",
+        "id": "4d2b3a69-a622-43c8-b32e-4bf7843c9776",
+        "job_id": "44fd5fdc-41c4-4ea9-9d6f-025637491a26",
         "narrative": "",
         "payload": {
           "agent_name": "Frontend Generation",
@@ -343,19 +330,32 @@
           "mocked": false,
           "phase": "frontend",
           "retry_count": 0,
-          "started_at_ms": 1775653827694,
-          "step_id": "d52a4a2c-6880-4f41-8b65-85a1f3db9649",
+          "started_at_ms": 1775657242846,
+          "step_id": "48edaaf6-9239-4a3f-bbd6-2bee8b983705",
           "step_key": "frontend.scaffold",
           "workspace_path_set": true
         },
-        "payload_json": "{\"step_key\": \"frontend.scaffold\", \"step_id\": \"d52a4a2c-6880-4f41-8b65-85a1f3db9649\", \"phase\": \"frontend\", \"agent_name\": \"Frontend Generation\", \"depends_on\": [\"planning.requirements\"], \"workspace_path_set\": true, \"execution_mode\": \"executed\", \"mocked\": false, \"handoff\": \"shared_workspace_disk\", \"downstream\": \"pending_steps_whose_deps_include_this_step_key\", \"started_at_ms\": 1775653827694, \"retry_count\": 0}",
-        "step_id": "d52a4a2c-6880-4f41-8b65-85a1f3db9649"
+        "payload_json": "{\"step_key\": \"frontend.scaffold\", \"step_id\": \"48edaaf6-9239-4a3f-bbd6-2bee8b983705\", \"phase\": \"frontend\", \"agent_name\": \"Frontend Generation\", \"depends_on\": [\"planning.requirements\"], \"workspace_path_set\": true, \"execution_mode\": \"executed\", \"mocked\": false, \"handoff\": \"shared_workspace_disk\", \"downstream\": \"pending_steps_whose_deps_include_this_step_key\", \"started_at_ms\": 1775657242846, \"retry_count\": 0}",
+        "step_id": "48edaaf6-9239-4a3f-bbd6-2bee8b983705"
       },
       {
-        "created_at": "2026-04-08T13:10:27.704678+00:00",
+        "created_at": "2026-04-08T14:07:22.938600+00:00",
+        "event_type": "step_started",
+        "id": "6d208fec-333b-4be1-9abe-dbea752b4e94",
+        "job_id": "44fd5fdc-41c4-4ea9-9d6f-025637491a26",
+        "narrative": "",
+        "payload": {
+          "agent": "Database Agent",
+          "step_key": "backend.models"
+        },
+        "payload_json": "{\"step_key\": \"backend.models\", \"agent\": \"Database Agent\"}",
+        "step_id": "d4a3edbe-e09b-46b0-9df3-397e2ee018f7"
+      },
+      {
+        "created_at": "2026-04-08T14:07:22.950278+00:00",
         "event_type": "dag_node_started",
-        "id": "e4ba6b06-9954-472d-a427-4999f0ddaf5a",
-        "job_id": "ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd",
+        "id": "5e32e3b8-5a0f-4216-aac2-3fd69f278cc4",
+        "job_id": "44fd5fdc-41c4-4ea9-9d6f-025637491a26",
         "narrative": "",
         "payload": {
           "agent_name": "Database Agent",
@@ -368,17 +368,17 @@
           "mocked": false,
           "phase": "backend",
           "retry_count": 0,
-          "started_at_ms": 1775653827700,
-          "step_id": "d449fc92-0144-4eed-8b68-3da9bd679cea",
+          "started_at_ms": 1775657242938,
+          "step_id": "d4a3edbe-e09b-46b0-9df3-397e2ee018f7",
           "step_key": "backend.models",
           "workspace_path_set": true
         },
-        "payload_json": "{\"step_key\": \"backend.models\", \"step_id\": \"d449fc92-0144-4eed-8b68-3da9bd679cea\", \"phase\": \"backend\", \"agent_name\": \"Database Agent\", \"depends_on\": [\"planning.requirements\"], \"workspace_path_set\": true, \"execution_mode\": \"executed\", \"mocked\": false, \"handoff\": \"shared_workspace_disk\", \"downstream\": \"pending_steps_whose_deps_include_this_step_key\", \"started_at_ms\": 1775653827700, \"retry_count\": 0}",
-        "step_id": "d449fc92-0144-4eed-8b68-3da9bd679cea"
+        "payload_json": "{\"step_key\": \"backend.models\", \"step_id\": \"d4a3edbe-e09b-46b0-9df3-397e2ee018f7\", \"phase\": \"backend\", \"agent_name\": \"Database Agent\", \"depends_on\": [\"planning.requirements\"], \"workspace_path_set\": true, \"execution_mode\": \"executed\", \"mocked\": false, \"handoff\": \"shared_workspace_disk\", \"downstream\": \"pending_steps_whose_deps_include_this_step_key\", \"started_at_ms\": 1775657242938, \"retry_count\": 0}",
+        "step_id": "d4a3edbe-e09b-46b0-9df3-397e2ee018f7"
       }
     ],
     "success": true
   },
-  "started_at": "2026-04-08T13:10:27.566651+00:00",
+  "started_at": "2026-04-08T14:07:22.813761+00:00",
   "status_code": 200
 }

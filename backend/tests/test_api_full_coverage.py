@@ -130,9 +130,9 @@ async def test_dynamic_paths(app_client):
 
 @pytest.mark.asyncio
 async def test_voice_transcribe_requires_file(app_client):
-    """POST /voice/transcribe returns 422 without file."""
+    """POST /voice/transcribe requires auth before file validation."""
     r = await app_client.post("/api/voice/transcribe", timeout=5)
-    assert r.status_code == 422
+    assert r.status_code == 401
 
 
 @pytest.mark.asyncio

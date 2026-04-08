@@ -235,6 +235,7 @@ Tasks:
 - `python -m pytest backend\tests\test_smoke.py -k "visual_edit or template_remix or terminal_execute_blocks_dangerous_commands or critical_endpoints" -q` passed with local Postgres/Redis env: 5 passed, 68 deselected.
 - `.\scripts\release-gate.ps1 -BackendOnly` passed after Batch B UX/security work: smoke 49 passed, 25 deselected; pipeline crash fix 14 passed; repeatability benchmark 2 passed; Phase 2 audit 3 passed with 14 optional routes and 0 failures; provider readiness 5 passed; automation bridge 1 passed, 6 deselected; LLM routing guard 8 passed, 18 deselected.
 - `.\scripts\frontend-runtime-gate.ps1 -RunDockerBuild` passed after completion-card and template-gallery changes; host Node remains v24.14.0, Docker Node 22 path remains green.
+- `.\scripts\full-systems-test.ps1` passed with 0 required failures. It covered `git diff --check`, backend syntax compile, full backend pytest suite (`595 passed, 1 warning`), backend release gate, Node 22 frontend Docker runtime gate, Railway Docker/container/live health readiness, and the live production golden path.
 
 ## Next Milestone
 

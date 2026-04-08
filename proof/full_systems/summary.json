@@ -1,0 +1,77 @@
+﻿{
+    "generated_at":  "2026-04-08T14:07:53.1271438Z",
+    "base_url":  "https://crucibai-production.up.railway.app",
+    "required_failures":  0,
+    "results":  [
+                    {
+                        "name":  "Git diff whitespace check",
+                        "required":  true,
+                        "status":  "PASS",
+                        "exit_code":  0,
+                        "command":  "git diff --check",
+                        "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\git_diff_check.log",
+                        "duration_seconds":  0.45,
+                        "error":  null
+                    },
+                    {
+                        "name":  "Backend syntax compile",
+                        "required":  true,
+                        "status":  "PASS",
+                        "exit_code":  0,
+                        "command":  "python -m py_compile critical backend/scripts",
+                        "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\py_compile.log",
+                        "duration_seconds":  1.38,
+                        "error":  null
+                    },
+                    {
+                        "name":  "Backend full pytest suite",
+                        "required":  true,
+                        "status":  "PASS",
+                        "exit_code":  0,
+                        "command":  "python -m pytest backend\\tests -q --tb=short",
+                        "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\backend_all_pytest.log",
+                        "duration_seconds":  145.94,
+                        "error":  null
+                    },
+                    {
+                        "name":  "Backend release gate",
+                        "required":  true,
+                        "status":  "PASS",
+                        "exit_code":  0,
+                        "command":  ".\\scripts\\release-gate.ps1 -BackendOnly",
+                        "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\release_gate_backend.log",
+                        "duration_seconds":  92.47,
+                        "error":  null
+                    },
+                    {
+                        "name":  "Frontend Node 22 Docker runtime gate",
+                        "required":  true,
+                        "status":  "PASS",
+                        "exit_code":  0,
+                        "command":  ".\\scripts\\frontend-runtime-gate.ps1 -RunDockerBuild",
+                        "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\frontend_runtime_gate.log",
+                        "duration_seconds":  5.09,
+                        "error":  null
+                    },
+                    {
+                        "name":  "Railway readiness and smoke",
+                        "required":  true,
+                        "status":  "PASS",
+                        "exit_code":  0,
+                        "command":  ".\\scripts\\verify-railway-readiness.ps1 -BaseUrl https://crucibai-production.up.railway.app -RunDockerBuild -RunContainerHealth",
+                        "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\railway_readiness.log",
+                        "duration_seconds":  25.47,
+                        "error":  null
+                    },
+                    {
+                        "name":  "Live production golden path",
+                        "required":  true,
+                        "status":  "PASS",
+                        "exit_code":  0,
+                        "command":  "python scripts\\live-production-golden-path.py --base-url https://crucibai-production.up.railway.app --timeout-sec 1200 --poll-sec 8 --request-timeout-sec 90",
+                        "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\live_production_golden_path.log",
+                        "duration_seconds":  35.35,
+                        "error":  null
+                    }
+                ]
+}

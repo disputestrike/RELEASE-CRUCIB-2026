@@ -2,93 +2,93 @@
   "blockers": [],
   "final_job_phase": "completed",
   "final_job_status": "completed",
-  "job_id": "ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd",
+  "job_id": "44fd5fdc-41c4-4ea9-9d6f-025637491a26",
   "key_steps": {
     "deploy_build": {
       "agent_name": "Deployment Agent",
-      "completed_at": "2026-04-08T13:10:38.449679+00:00",
-      "created_at": "2026-04-08T13:10:26.267576+00:00",
+      "completed_at": "2026-04-08T14:07:31.377393+00:00",
+      "created_at": "2026-04-08T14:07:21.506901+00:00",
       "depends_on_json": "[\"verification.elite_builder\"]",
       "error_details": null,
       "error_message": null,
-      "id": "a3e3aa4a-ae5b-4674-b32e-096a03a0c530",
-      "job_id": "ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd",
+      "id": "30b0a736-eb43-4ff5-a957-257da56a277c",
+      "job_id": "44fd5fdc-41c4-4ea9-9d6f-025637491a26",
       "order_index": 16,
       "output_files": null,
       "output_ref": "\"Deploy step: deploy.build\"",
       "phase": "deploy",
       "retry_count": 0,
       "score": 0,
-      "started_at": "2026-04-08T13:10:38.395122+00:00",
+      "started_at": "2026-04-08T14:07:31.326236+00:00",
       "status": "completed",
       "step_key": "deploy.build",
-      "updated_at": "2026-04-08T13:10:38.449674+00:00",
+      "updated_at": "2026-04-08T14:07:31.377389+00:00",
       "verifier_score": 100,
       "verifier_status": "passed"
     },
     "deploy_publish": {
       "agent_name": "Deployment Agent",
-      "completed_at": "2026-04-08T13:10:38.879852+00:00",
-      "created_at": "2026-04-08T13:10:26.284549+00:00",
+      "completed_at": "2026-04-08T14:07:32.501272+00:00",
+      "created_at": "2026-04-08T14:07:21.515773+00:00",
       "depends_on_json": "[\"deploy.build\"]",
       "error_details": null,
       "error_message": null,
-      "id": "4aba0b51-4440-472b-83f9-dbe63422cc57",
-      "job_id": "ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd",
+      "id": "6334cba3-5984-43f6-8452-bdbdcefeb24a",
+      "job_id": "44fd5fdc-41c4-4ea9-9d6f-025637491a26",
       "order_index": 17,
       "output_files": null,
       "output_ref": "\"Deploy step: deploy.publish\"",
       "phase": "deploy",
       "retry_count": 0,
       "score": 0,
-      "started_at": "2026-04-08T13:10:38.486851+00:00",
+      "started_at": "2026-04-08T14:07:31.411527+00:00",
       "status": "completed",
       "step_key": "deploy.publish",
-      "updated_at": "2026-04-08T13:10:38.879848+00:00",
+      "updated_at": "2026-04-08T14:07:32.501269+00:00",
       "verifier_score": 100,
       "verifier_status": "passed"
     },
     "elite_proof": {
       "agent_name": "Verifier",
-      "completed_at": "2026-04-08T13:10:38.347522+00:00",
-      "created_at": "2026-04-08T13:10:26.258897+00:00",
+      "completed_at": "2026-04-08T14:07:31.288747+00:00",
+      "created_at": "2026-04-08T14:07:21.497217+00:00",
       "depends_on_json": "[\"verification.security\"]",
       "error_details": null,
       "error_message": null,
-      "id": "af22c8ae-d67f-4391-9142-52e6172232f4",
-      "job_id": "ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd",
+      "id": "7c1bc35b-1525-4f21-a6ec-8117cf936a3d",
+      "job_id": "44fd5fdc-41c4-4ea9-9d6f-025637491a26",
       "order_index": 15,
       "output_files": null,
       "output_ref": "\"Verification gate: verification.elite_builder\"",
       "phase": "verification",
       "retry_count": 0,
       "score": 0,
-      "started_at": "2026-04-08T13:10:38.270194+00:00",
+      "started_at": "2026-04-08T14:07:31.202641+00:00",
       "status": "completed",
       "step_key": "verification.elite_builder",
-      "updated_at": "2026-04-08T13:10:38.347517+00:00",
+      "updated_at": "2026-04-08T14:07:31.288744+00:00",
       "verifier_score": 100,
       "verifier_status": "passed"
     },
     "preview_boot": {
       "agent_name": "Verifier",
-      "completed_at": "2026-04-08T13:10:37.818085+00:00",
-      "created_at": "2026-04-08T13:10:26.232080+00:00",
+      "completed_at": "2026-04-08T14:07:30.644221+00:00",
+      "created_at": "2026-04-08T14:07:21.474070+00:00",
       "depends_on_json": "[\"verification.compile\"]",
       "error_details": null,
       "error_message": null,
-      "id": "ec1ab7f6-ce93-4497-ab19-5a7fe4a14b69",
-      "job_id": "ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd",
+      "id": "caa25830-66be-450f-acd1-3ab1abe008e1",
+      "job_id": "44fd5fdc-41c4-4ea9-9d6f-025637491a26",
       "order_index": 13,
       "output_files": null,
       "output_ref": "\"Verification gate: verification.preview\"",
       "phase": "verification",
       "retry_count": 0,
       "score": 0,
-      "started_at": "2026-04-08T13:10:32.207170+00:00",
+      "started_at": "2026-04-08T14:07:26.054495+00:00",
       "status": "completed",
       "step_key": "verification.preview",
-      "updated_at": "2026-04-08T13:10:37.818080+00:00",
+      "updated_at": "2026-04-08T14:07:30.644216+00:00",
       "verifier_score": 100,
       "verifier_status": "passed"
     }
@@ -119,7 +119,7 @@
       "status": "PASS"
     },
     "generated_workspace_files": {
-      "evidence": "workspace_file_count=45",
+      "evidence": "workspace_file_count=44",
       "status": "PASS"
     },
     "live_llm_invocation": {
@@ -131,7 +131,7 @@
       "status": "PASS"
     },
     "plan_created": {
-      "evidence": "POST /api/orchestrator/plan -> 200, job_id=ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd, step_count=18",
+      "evidence": "POST /api/orchestrator/plan -> 200, job_id=44fd5fdc-41c4-4ea9-9d6f-025637491a26, step_count=18",
       "status": "PASS"
     },
     "preview_boot": {
@@ -143,7 +143,7 @@
       "status": "PASS"
     },
     "published_generated_app_url": {
-      "evidence": "GET /published/ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd/ -> 200",
+      "evidence": "GET /published/44fd5fdc-41c4-4ea9-9d6f-025637491a26/ -> 200",
       "status": "PASS"
     },
     "railway_health": {
@@ -163,8 +163,8 @@
       "This uses the same backend API calls the browser uses for prompt/plan/run.",
       "Auth tokens and secrets are redacted from proof artifacts."
     ],
-    "run_id": "1775653822-91abb94899",
+    "run_id": "1775657238-a95f656911",
     "schema": "crucibai.live_production_golden_path/v1",
-    "started_at": "2026-04-08T13:10:22.018134+00:00"
+    "started_at": "2026-04-08T14:07:18.102243+00:00"
   }
 }

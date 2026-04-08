@@ -1,0 +1,7 @@
+﻿git.exe : warning: in the working copy of 'scripts/full-systems-test.ps1', LF will be replaced by CRLF the next time
+Git touches it
+At C:\Users\benxp\OneDrive\Documents\New project\scripts\full-systems-test.ps1:124 char:19
++         -Script { & git diff --check }
++                   ~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError

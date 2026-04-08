@@ -1,7 +1,7 @@
 # CrucibAI Repeatability Benchmark
 
 - Version: `2026-04-08.repeatability.v1`
-- Generated at: `2026-04-08T13:30:21.708457+00:00`
+- Generated at: `2026-04-08T14:06:20.181906+00:00`
 - Prompt count: `50`
 - Passed count: `50`
 - Pass rate: `100.00%`

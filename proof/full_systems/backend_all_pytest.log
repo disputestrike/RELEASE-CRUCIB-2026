@@ -1,0 +1,87 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.13.7, pytest-8.4.1, pluggy-1.6.0
+benchmark: 5.1.0 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: C:\Users\benxp\OneDrive\Documents\New project\backend
+configfile: pytest.ini
+plugins: anyio-4.12.1, locust-2.41.3, asyncio-0.24.0, base-url-2.1.0, benchmark-5.1.0, cov-6.0.0, html-4.1.1, metadata-3.1.1, playwright-0.7.1, sugar-1.1.1, xdist-3.8.0
+asyncio: mode=Mode.AUTO, default_loop_scope=function
+collected 595 items
+
+backend\tests\test_admin.py .......                                      [  1%]
+backend\tests\test_admin_audit.py ....                                   [  1%]
+backend\tests\test_admin_security.py ..............                      [  4%]
+backend\tests\test_admin_workflows.py ......                             [  5%]
+backend\tests\test_agent_dag_golden.py ..                                [  5%]
+backend\tests\test_agent_orchestrator.py .....                           [  6%]
+backend\tests\test_agents.py ........................                    [ 10%]
+backend\tests\test_api_contract.py ...........                           [ 12%]
+backend\tests\test_api_full_coverage.py ....................             [ 15%]
+backend\tests\test_auth.py ..........                                    [ 17%]
+backend\tests\test_automation.py .......                                 [ 18%]
+backend\tests\test_behavior_verification.py .......                      [ 19%]
+backend\tests\test_builder_agent.py .....                                [ 20%]
+backend\tests\test_capability_notice.py .......                          [ 21%]
+backend\tests\test_chaos.py .........                                    [ 23%]
+backend\tests\test_comprehensive_47_checks.py .......................... [ 27%]
+.....................                                                    [ 31%]
+backend\tests\test_content_policy.py ...                                 [ 31%]
+backend\tests\test_credit_idempotency.py ...                             [ 32%]
+backend\tests\test_crucibai_api.py ..............................        [ 37%]
+backend\tests\test_data_integrity.py ...                                 [ 37%]
+backend\tests\test_dev_stub_llm.py ....                                  [ 38%]
+backend\tests\test_domain_packs.py .....                                 [ 39%]
+backend\tests\test_edge_cases.py ........                                [ 40%]
+backend\tests\test_elite_prompt_loader.py .....                          [ 41%]
+backend\tests\test_endpoint_mapping.py .....                             [ 42%]
+backend\tests\test_enforcement_layer.py ...........                      [ 44%]
+backend\tests\test_execution_authority_wiring.py .........               [ 45%]
+backend\tests\test_fixer_bounded_golden.py .                             [ 45%]
+backend\tests\test_fixer_deterministic.py ..                             [ 46%]
+backend\tests\test_gaps.py ...                                           [ 46%]
+backend\tests\test_golden_eval.py ..........                             [ 48%]
+backend\tests\test_idempotency_header_golden.py ...                      [ 48%]
+backend\tests\test_idor_job_access.py ......                             [ 49%]
+backend\tests\test_integration.py ............                           [ 51%]
+backend\tests\test_job_workspace.py ....                                 [ 52%]
+backend\tests\test_load.py ...                                           [ 52%]
+backend\tests\test_modules_unit.py ..................                    [ 55%]
+backend\tests\test_multitenancy_rls_live.py ..                           [ 56%]
+backend\tests\test_observability_correlation.py .                        [ 56%]
+backend\tests\test_observability_terraform_pack.py .......               [ 57%]
+backend\tests\test_orchestration_e2e.py ......                           [ 58%]
+backend\tests\test_phase2_security.py ...                                [ 59%]
+backend\tests\test_pipeline_crash_fix.py ..............                  [ 61%]
+backend\tests\test_pricing_alignment.py .....................            [ 65%]
+backend\tests\test_proof_bundle_integrity.py ..                          [ 65%]
+backend\tests\test_provider_readiness.py .....                           [ 66%]
+backend\tests\test_rate_limit_client_ip.py ..                            [ 66%]
+backend\tests\test_real_integration.py .........                         [ 68%]
+backend\tests\test_real_server_endpoints.py .........                    [ 69%]
+backend\tests\test_repeatability_benchmark.py ..                         [ 69%]
+backend\tests\test_rls_enforcement.py .......                            [ 71%]
+backend\tests\test_runtime_health.py ...                                 [ 71%]
+backend\tests\test_sandbox_executor_limits.py ....                       [ 72%]
+backend\tests\test_security.py ...                                       [ 72%]
+backend\tests\test_single_source_of_truth.py ..............              [ 75%]
+backend\tests\test_smoke.py ............................................ [ 82%]
+..............................                                           [ 87%]
+backend\tests\test_spec_guardian.py ............                         [ 89%]
+backend\tests\test_ssrf_prevention.py .....                              [ 90%]
+backend\tests\test_tenant_deploy_gate.py ....                            [ 91%]
+backend\tests\test_tier2.py ......                                       [ 92%]
+backend\tests\test_tool_agents.py ..........................             [ 96%]
+backend\tests\test_trust_platform_wiring.py ......                       [ 97%]
+backend\tests\test_user_journeys.py ..                                   [ 97%]
+backend\tests\test_verification_api_smoke.py ..                          [ 98%]
+backend\tests\test_verification_behavior_bundle.py ...                   [ 98%]
+backend\tests\test_verification_security.py ...                          [ 99%]
+backend\tests\test_verifier_deploy.py ..                                 [ 99%]
+backend\tests\test_webhook_flows.py ...                                  [100%]
+
+============================== warnings summary ===============================
+..\..\..\AppData\Local\Programs\Python\Python313\Lib\site-packages\starlette\formparsers.py:12
+  C:\Users\benxp\AppData\Local\Programs\Python\Python313\Lib\site-packages\starlette\formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================= 595 passed, 1 warning in 139.10s (0:02:19) ==================

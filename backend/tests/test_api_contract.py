@@ -35,15 +35,20 @@ class TestRootContract:
 
 
 class TestVoiceTranscribeContract:
-    """POST /api/voice/transcribe – contract (no file = 422, empty file = 400/503)."""
+    """POST /api/voice/transcribe - strict auth first, payload validation after auth."""
 
-    async def test_voice_transcribe_without_file_returns_422(self, app_client):
+    async def test_voice_transcribe_without_file_returns_401(self, app_client):
         r = await app_client.post("/api/voice/transcribe", timeout=10)
-        assert r.status_code in (422, 400)
+        assert r.status_code == 401
 
-    async def test_voice_transcribe_with_empty_file_returns_400_or_503(self, app_client):
+    async def test_voice_transcribe_with_empty_file_returns_401_without_auth(self, app_client):
         files = {"audio": ("empty.webm", b"", "audio/webm")}
         r = await app_client.post("/api/voice/transcribe", files=files, timeout=10)
+        assert r.status_code == 401
+
+    async def test_voice_transcribe_with_empty_file_returns_400_or_503_with_auth(self, app_client, auth_headers):
+        files = {"audio": ("empty.webm", b"", "audio/webm")}
+        r = await app_client.post("/api/voice/transcribe", files=files, headers=auth_headers, timeout=10)
         assert r.status_code in (400, 503, 500)
 
 

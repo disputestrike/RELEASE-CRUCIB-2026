@@ -1,0 +1,185 @@
+﻿
+==> Checking tools
+
+==> Checking backend syntax
+
+==> Running backend security and proof smoke
+============================= test session starts =============================
+platform win32 -- Python 3.13.7, pytest-8.4.1, pluggy-1.6.0
+benchmark: 5.1.0 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: C:\Users\benxp\OneDrive\Documents\New project\backend
+configfile: pytest.ini
+plugins: anyio-4.12.1, locust-2.41.3, asyncio-0.24.0, base-url-2.1.0, benchmark-5.1.0, cov-6.0.0, html-4.1.1, metadata-3.1.1, playwright-0.7.1, sugar-1.1.1, xdist-3.8.0
+asyncio: mode=Mode.AUTO, default_loop_scope=function
+collected 74 items / 25 deselected / 49 selected
+
+backend\tests\test_smoke.py ............................................ [ 89%]
+.....                                                                    [100%]
+
+============================== warnings summary ===============================
+tests/test_smoke.py::test_smoke_visual_edit_patches_owned_job_workspace
+  C:\Users\benxp\AppData\Local\Programs\Python\Python313\Lib\site-packages\starlette\formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================ 49 passed, 25 deselected, 1 warning in 29.73s ================
+
+==> Running late-stage pipeline failure proof tests
+============================= test session starts =============================
+platform win32 -- Python 3.13.7, pytest-8.4.1, pluggy-1.6.0
+benchmark: 5.1.0 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: C:\Users\benxp\OneDrive\Documents\New project\backend
+configfile: pytest.ini
+plugins: anyio-4.12.1, locust-2.41.3, asyncio-0.24.0, base-url-2.1.0, benchmark-5.1.0, cov-6.0.0, html-4.1.1, metadata-3.1.1, playwright-0.7.1, sugar-1.1.1, xdist-3.8.0
+asyncio: mode=Mode.AUTO, default_loop_scope=function
+collected 14 items
+
+backend\tests\test_pipeline_crash_fix.py ..............                  [100%]
+
+============================= 14 passed in 1.90s ==============================
+
+==> Running repeatability benchmark scorecard
+============================= test session starts =============================
+platform win32 -- Python 3.13.7, pytest-8.4.1, pluggy-1.6.0
+benchmark: 5.1.0 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: C:\Users\benxp\OneDrive\Documents\New project\backend
+configfile: pytest.ini
+plugins: anyio-4.12.1, locust-2.41.3, asyncio-0.24.0, base-url-2.1.0, benchmark-5.1.0, cov-6.0.0, html-4.1.1, metadata-3.1.1, playwright-0.7.1, sugar-1.1.1, xdist-3.8.0
+asyncio: mode=Mode.AUTO, default_loop_scope=function
+collected 2 items
+
+backend\tests\test_repeatability_benchmark.py ..                         [100%]
+
+============================== 2 passed in 5.68s ==============================
+{
+  "average_score": 100.0,
+  "blockers": [],
+  "output_dir": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1",
+  "pass_rate": 1.0,
+  "passed": true,
+  "prompt_count": 50,
+  "summary_sha256": "c155e79f6a385ac654f7a4720a8e84ceef4a4da27e10490b990b2ba732e84bbd"
+}
+
+==> Running Phase 2 route and websocket security audit
+============================= test session starts =============================
+platform win32 -- Python 3.13.7, pytest-8.4.1, pluggy-1.6.0
+benchmark: 5.1.0 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: C:\Users\benxp\OneDrive\Documents\New project\backend
+configfile: pytest.ini
+plugins: anyio-4.12.1, locust-2.41.3, asyncio-0.24.0, base-url-2.1.0, benchmark-5.1.0, cov-6.0.0, html-4.1.1, metadata-3.1.1, playwright-0.7.1, sugar-1.1.1, xdist-3.8.0
+asyncio: mode=Mode.AUTO, default_loop_scope=function
+collected 3 items
+
+backend\tests\test_phase2_security.py ...                                [100%]
+
+============================== 3 passed in 0.14s ==============================
+{
+  "passed": true,
+  "optional_route_count": 14,
+  "failures": 0
+}
+
+==> Running provider readiness tests
+============================= test session starts =============================
+platform win32 -- Python 3.13.7, pytest-8.4.1, pluggy-1.6.0
+benchmark: 5.1.0 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: C:\Users\benxp\OneDrive\Documents\New project\backend
+configfile: pytest.ini
+plugins: anyio-4.12.1, locust-2.41.3, asyncio-0.24.0, base-url-2.1.0, benchmark-5.1.0, cov-6.0.0, html-4.1.1, metadata-3.1.1, playwright-0.7.1, sugar-1.1.1, xdist-3.8.0
+asyncio: mode=Mode.AUTO, default_loop_scope=function
+collected 5 items
+
+backend\tests\test_provider_readiness.py .....                           [100%]
+
+============================== 5 passed in 0.10s ==============================
+
+==> Running automation bridge tests
+============================= test session starts =============================
+platform win32 -- Python 3.13.7, pytest-8.4.1, pluggy-1.6.0
+benchmark: 5.1.0 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: C:\Users\benxp\OneDrive\Documents\New project\backend
+configfile: pytest.ini
+plugins: anyio-4.12.1, locust-2.41.3, asyncio-0.24.0, base-url-2.1.0, benchmark-5.1.0, cov-6.0.0, html-4.1.1, metadata-3.1.1, playwright-0.7.1, sugar-1.1.1, xdist-3.8.0
+asyncio: mode=Mode.AUTO, default_loop_scope=function
+collected 7 items / 6 deselected / 1 selected
+
+backend\tests\test_automation.py .                                       [100%]
+
+======================= 1 passed, 6 deselected in 0.71s =======================
+
+==> Running LLM routing guard tests
+============================= test session starts =============================
+platform win32 -- Python 3.13.7, pytest-8.4.1, pluggy-1.6.0
+benchmark: 5.1.0 (defaults: timer=time.perf_counter disable_gc=False min_rounds=5 min_time=0.000005 max_time=1.0 calibration_precision=10 warmup=False warmup_iterations=100000)
+rootdir: C:\Users\benxp\OneDrive\Documents\New project\backend
+configfile: pytest.ini
+plugins: anyio-4.12.1, locust-2.41.3, asyncio-0.24.0, base-url-2.1.0, benchmark-5.1.0, cov-6.0.0, html-4.1.1, metadata-3.1.1, playwright-0.7.1, sugar-1.1.1, xdist-3.8.0
+asyncio: mode=Mode.AUTO, default_loop_scope=function
+collected 26 items / 18 deselected / 8 selected
+
+backend\tests\test_tool_agents.py ........                               [100%]
+
+====================== 8 passed, 18 deselected in 1.78s =======================
+
+==> Checking working tree
+## main...origin/main
+M  backend/tests/test_api_contract.py
+M  backend/tests/test_api_full_coverage.py
+M  backend/tests/test_crucibai_api.py
+M  backend/tests/test_execution_authority_wiring.py
+M  backend/tests/test_idor_job_access.py
+A  docs/FULL_SYSTEMS_TESTING.md
+M  docs/STATUS.md
+MM proof/benchmarks/repeatability_v1/PASS_FAIL.md
+MM proof/benchmarks/repeatability_v1/summary.json
+M  proof/frontend_runtime_gate/docker_frontend_build.log
+M  proof/frontend_runtime_gate/runtime_gate.json
+A  proof/full_systems/PASS_FAIL.md
+AM proof/full_systems/backend_all_pytest.log
+A  proof/full_systems/frontend_runtime_gate.log
+AM proof/full_systems/git_diff_check.log
+A  proof/full_systems/live_production_golden_path.log
+AM proof/full_systems/py_compile.log
+A  proof/full_systems/railway_readiness.log
+A  proof/full_systems/railway_verification/PASS_FAIL.md
+A  proof/full_systems/railway_verification/docker_container_health.json
+A  proof/full_systems/railway_verification/docker_container_logs.log
+A  proof/full_systems/railway_verification/docker_full_build.log
+A  proof/full_systems/railway_verification/health_check.json
+A  proof/full_systems/railway_verification/railway_readiness.json
+AM proof/full_systems/release_gate_backend.log
+A  proof/full_systems/summary.json
+M  proof/live_production_golden_path/01_health.json
+M  proof/live_production_golden_path/02_llm_health.json
+M  proof/live_production_golden_path/03_runtime_health.json
+M  proof/live_production_golden_path/04_register.json
+M  proof/live_production_golden_path/05_live_llm_chat.json
+M  proof/live_production_golden_path/06_orchestrator_plan.json
+M  proof/live_production_golden_path/07_run_auto.json
+M  proof/live_production_golden_path/PASS_FAIL.md
+M  proof/live_production_golden_path/final_events.json
+M  proof/live_production_golden_path/final_job.json
+M  proof/live_production_golden_path/final_proof.json
+M  proof/live_production_golden_path/final_published_app.json
+M  proof/live_production_golden_path/final_steps.json
+M  proof/live_production_golden_path/final_summary.json
+M  proof/live_production_golden_path/final_workspace_files.json
+M  proof/live_production_golden_path/metadata.json
+M  proof/live_production_golden_path/poll_001_events.json
+M  proof/live_production_golden_path/poll_001_job.json
+M  proof/live_production_golden_path/poll_001_steps.json
+M  proof/live_production_golden_path/poll_002_events.json
+M  proof/live_production_golden_path/poll_002_job.json
+M  proof/live_production_golden_path/poll_002_steps.json
+M  proof/live_production_golden_path/poll_003_events.json
+M  proof/live_production_golden_path/poll_003_job.json
+M  proof/live_production_golden_path/poll_003_steps.json
+M  proof/live_production_golden_path/poll_004_events.json
+M  proof/live_production_golden_path/poll_004_job.json
+M  proof/live_production_golden_path/poll_004_steps.json
+M  proof/live_production_golden_path/poll_log.jsonl
+M  proof/live_production_golden_path/trace.json
+AM scripts/full-systems-test.ps1
+
+Release gate completed.
