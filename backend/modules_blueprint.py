@@ -749,17 +749,13 @@ async def patch_session(session_id: str, body: SessionPatch, user: dict = Depend
 async def add_session_message(
     session_id: str,
     body: MessageAdd,
-    user: dict = Depends(_resolve_optional_user),
+    user: dict = Depends(_resolve_current_user),
 ):
-    """Add a message to a session (accepts authenticated or anonymous callers)."""
+    """Add a message to an owned session."""
     db = _db()
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready")
-    # Verify session exists — allow by session_id alone if no user (public widget)
-    if user:
-        session = await db.app_sessions.find_one({"id": session_id, "user_id": user["id"]})
-    else:
-        session = await db.app_sessions.find_one({"id": session_id})
+    session = await db.app_sessions.find_one({"id": session_id, "user_id": user["id"]})
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     if session.get("status") == "ended":

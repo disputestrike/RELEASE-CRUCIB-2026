@@ -55,9 +55,15 @@ try {
     }
     $env:CRUCIBAI_TEST = "1"
     & python -m pytest backend\tests\test_smoke.py `
-        -k "terminal or job_state or job_proof or run_auto or retry_step or app_db or git_sync or railway_deploy or agent_memory or agent_automation or agent_run_generic or agents_from_description or run_agent_action or health_llm or detect_frameworks or deploy" `
+        -k "phase2 or terminal or job_state or job_proof or run_auto or retry_step or app_db or git_sync or railway_deploy or agent_memory or agent_automation or agent_run_generic or agents_from_description or run_agent_action or health_llm or detect_frameworks or deploy" `
         -q
     Assert-LastExit "backend smoke"
+
+    Step "Running Phase 2 route and websocket security audit"
+    & python -m pytest backend\tests\test_phase2_security.py -q
+    Assert-LastExit "phase 2 security audit tests"
+    & python scripts\phase2-security-audit.py --fail-on-unclassified
+    Assert-LastExit "phase 2 security audit artifact generation"
 
     Step "Running provider readiness tests"
     & python -m pytest backend\tests\test_provider_readiness.py -q

@@ -994,6 +994,13 @@ async def get_optional_user(credentials: HTTPAuthorizationCredentials = Depends(
             return {"id": f"api_key_{api_key[:8]}", "token_balance": 999999, "credit_balance": 999999, "plan": "teams", "public_api": True}
     return None
 
+
+async def get_authenticated_or_api_user(user: Optional[dict] = Depends(get_optional_user)):
+    """Require either a signed-in user or a valid public API key for LLM/action routes."""
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication or API key required")
+    return user
+
 # ── Skill auto-detection triggers ──────────────────────────────────────────
 SKILL_TRIGGERS = {
     "web-app-builder": ["web app", "full-stack", "fullstack", "webapp", "build a platform", "react app", "node app", "api routes", "crud app", "portal", "browser app"],
@@ -1691,7 +1698,7 @@ Be concise and factual. Then offer to build something related if relevant.
 async def ai_chat(
     data: ChatMessage,
     request: Request,
-    user: dict = Depends(get_optional_user),
+    user: dict = Depends(get_authenticated_or_api_user),
 ):
     """Multi-model AI chat with auto-selection and fallback on failure. Requires sufficient credits (prepay)."""
     if user is not None and not user.get("public_api"):
@@ -1825,10 +1832,10 @@ async def ai_chat(
         raise HTTPException(status_code=500, detail=f"AI service error: {str(e)}")
 
 @api_router.get("/ai/chat/history/{session_id}")
-async def get_chat_history(session_id: str):
-    """Get chat history for a session"""
+async def get_chat_history(session_id: str, user: dict = Depends(get_current_user)):
+    """Get chat history for an owned session."""
     cursor = db.chat_history.find(
-        {"session_id": session_id}, 
+        {"session_id": session_id, "user_id": user["id"]},
         {"_id": 0}
     ).sort("created_at", 1)
     history = await cursor.to_list(100)
@@ -1844,7 +1851,7 @@ async def _stream_string_chunks(text: str, chunk_size: int = 8):
 async def ai_chat_stream(
     data: ChatMessage,
     request: Request,
-    user: dict = Depends(get_optional_user),
+    user: dict = Depends(get_authenticated_or_api_user),
 ):
     """Stream AI response in chunks (real-time code streaming). Requires sufficient credits."""
     if user and not user.get("public_api") and _user_credits(user) < MIN_CREDITS_FOR_LLM:
@@ -2050,7 +2057,7 @@ async def _stub_iterative_ndjson(data: ChatMessage, user):
 
 
 @api_router.post("/ai/build/iterative")
-async def ai_build_iterative(data: ChatMessage, user: dict = Depends(get_optional_user)):
+async def ai_build_iterative(data: ChatMessage, user: dict = Depends(get_authenticated_or_api_user)):
     """Multi-turn iterative build: 2-6 focused API calls → 15-30 complete files.
     Each pass generates one section (scaffold, components, pages) under 8192 tokens.
     Streams step_complete events so frontend can show files appearing in real time."""
@@ -2244,7 +2251,7 @@ async def ai_build_iterative(data: ChatMessage, user: dict = Depends(get_optiona
 
 
 @api_router.post("/ai/analyze")
-async def ai_analyze(data: DocumentProcess, user: dict = Depends(get_optional_user)):
+async def ai_analyze(data: DocumentProcess, user: dict = Depends(get_authenticated_or_api_user)):
     """Document analysis with AI (Anthropic/Cerebras only). Uses your Settings keys when set."""
     try:
         user_keys = await get_workspace_api_keys(user)
@@ -2270,7 +2277,7 @@ async def ai_analyze(data: DocumentProcess, user: dict = Depends(get_optional_us
 
 # ---------- CrucibAI for Docs / Slides / Sheets (C1–C3) ----------
 @api_router.post("/generate/doc")
-async def generate_doc(data: GenerateContentRequest, user: dict = Depends(get_optional_user)):
+async def generate_doc(data: GenerateContentRequest, user: dict = Depends(get_authenticated_or_api_user)):
     """Generate a structured document from a prompt (CrucibAI for Docs). Returns markdown or plain text."""
     prompt = (data.prompt or "").strip()
     if not prompt:
@@ -2297,7 +2304,7 @@ async def generate_doc(data: GenerateContentRequest, user: dict = Depends(get_op
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/generate/slides")
-async def generate_slides(data: GenerateContentRequest, user: dict = Depends(get_optional_user)):
+async def generate_slides(data: GenerateContentRequest, user: dict = Depends(get_authenticated_or_api_user)):
     """Generate slide content/outline from a prompt (CrucibAI for Slides). Returns markdown with slide breaks."""
     prompt = (data.prompt or "").strip()
     if not prompt:
@@ -2322,7 +2329,7 @@ async def generate_slides(data: GenerateContentRequest, user: dict = Depends(get
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/generate/sheets")
-async def generate_sheets(data: GenerateContentRequest, user: dict = Depends(get_optional_user)):
+async def generate_sheets(data: GenerateContentRequest, user: dict = Depends(get_authenticated_or_api_user)):
     """Generate tabular/spreadsheet-style data from a prompt (CrucibAI for Sheets). Returns CSV or JSON."""
     prompt = (data.prompt or "").strip()
     if not prompt:
@@ -2352,7 +2359,7 @@ async def generate_sheets(data: GenerateContentRequest, user: dict = Depends(get
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/rag/query")
-async def rag_query(data: RAGQuery, user: dict = Depends(get_optional_user)):
+async def rag_query(data: RAGQuery, user: dict = Depends(get_authenticated_or_api_user)):
     """RAG-style query with context. Uses your Settings keys when set."""
     try:
         user_keys = await get_workspace_api_keys(user)
@@ -2379,7 +2386,7 @@ async def rag_query(data: RAGQuery, user: dict = Depends(get_optional_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/search")
-async def hybrid_search(data: SearchQuery, user: dict = Depends(get_optional_user)):
+async def hybrid_search(data: SearchQuery, user: dict = Depends(get_authenticated_or_api_user)):
     """Hybrid search: AI-enhanced results. Uses your Settings keys when set."""
     try:
         user_keys = await get_workspace_api_keys(user)
@@ -2408,7 +2415,7 @@ async def hybrid_search(data: SearchQuery, user: dict = Depends(get_optional_use
 @api_router.post("/voice/transcribe")
 async def transcribe_voice(
     audio: UploadFile = File(..., description="Audio file (webm, mp3, wav, etc.)"),
-    user: dict = Depends(get_optional_user)
+    user: dict = Depends(get_authenticated_or_api_user)
 ):
     """Transcribe voice audio to text using OpenAI Whisper. Uses server-side OPENAI_API_KEY."""
     logger.info("Voice transcribe request received, filename=%s", getattr(audio, "filename", None))
@@ -2470,7 +2477,7 @@ async def transcribe_voice(
 async def analyze_file(
     file: UploadFile = File(...),
     analysis_type: str = Form("general"),
-    user: dict = Depends(get_optional_user)
+    user: dict = Depends(get_authenticated_or_api_user)
 ):
     """Analyze uploaded file (images, text, etc.) using AI. Uses your Settings keys when set."""
     try:
@@ -2530,7 +2537,7 @@ async def analyze_file(
 async def image_to_code(
     file: UploadFile = File(...),
     prompt: Optional[str] = Form(None),
-    user: dict = Depends(get_optional_user),
+    user: dict = Depends(get_authenticated_or_api_user),
 ):
     """Screenshot/image to React code using vision model."""
     if not file.content_type or not file.content_type.startswith("image/"):
@@ -2560,7 +2567,7 @@ async def image_to_code(
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/ai/validate-and-fix")
-async def validate_and_fix(data: ValidateAndFixBody, user: dict = Depends(get_optional_user)):
+async def validate_and_fix(data: ValidateAndFixBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Validate code with LLM; if issues found, run auto-fix and return fixed code. Uses your Settings keys when set."""
     try:
         user_keys = await get_workspace_api_keys(user)
@@ -3683,7 +3690,7 @@ async def get_agent_status(project_id: str, user: dict = Depends(get_current_use
 # ---------- Agent execution (real LLM/logic per agent) ----------
 
 @agents_router.post("/agents/run/planner")
-async def agent_planner(data: AgentPromptBody, user: dict = Depends(get_optional_user)):
+async def agent_planner(data: AgentPromptBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Planner: decomposes user request into executable tasks."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -3698,7 +3705,7 @@ async def agent_planner(data: AgentPromptBody, user: dict = Depends(get_optional
     return {"agent": "Planner", "result": response, "model_used": model_used}
 
 @agents_router.post("/agents/run/requirements-clarifier")
-async def agent_requirements_clarifier(data: AgentPromptBody, user: dict = Depends(get_optional_user)):
+async def agent_requirements_clarifier(data: AgentPromptBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Requirements Clarifier: asks clarifying questions."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -3713,7 +3720,7 @@ async def agent_requirements_clarifier(data: AgentPromptBody, user: dict = Depen
     return {"agent": "Requirements Clarifier", "result": response, "model_used": model_used}
 
 @agents_router.post("/agents/run/stack-selector")
-async def agent_stack_selector(data: AgentPromptBody, user: dict = Depends(get_optional_user)):
+async def agent_stack_selector(data: AgentPromptBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Stack Selector: recommends technology stack."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -3728,7 +3735,7 @@ async def agent_stack_selector(data: AgentPromptBody, user: dict = Depends(get_o
     return {"agent": "Stack Selector", "result": response, "model_used": model_used}
 
 @agents_router.post("/agents/run/backend-generate")
-async def agent_backend_generate(data: AgentPromptBody, user: dict = Depends(get_optional_user)):
+async def agent_backend_generate(data: AgentPromptBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Backend Generation: creates API/auth/business logic code."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -3745,7 +3752,7 @@ async def agent_backend_generate(data: AgentPromptBody, user: dict = Depends(get
     return {"agent": "Backend Generation", "code": code, "model_used": model_used}
 
 @agents_router.post("/agents/run/database-design")
-async def agent_database_design(data: AgentPromptBody, user: dict = Depends(get_optional_user)):
+async def agent_database_design(data: AgentPromptBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Database Agent: designs schema and migrations."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -3760,7 +3767,7 @@ async def agent_database_design(data: AgentPromptBody, user: dict = Depends(get_
     return {"agent": "Database Agent", "result": response, "model_used": model_used}
 
 @agents_router.post("/agents/run/api-integrate")
-async def agent_api_integrate(data: AgentPromptBody, user: dict = Depends(get_optional_user)):
+async def agent_api_integrate(data: AgentPromptBody, user: dict = Depends(get_authenticated_or_api_user)):
     """API Integration: generates code to integrate a third-party API."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -3776,7 +3783,7 @@ async def agent_api_integrate(data: AgentPromptBody, user: dict = Depends(get_op
     return {"agent": "API Integration", "code": code, "model_used": model_used}
 
 @agents_router.post("/agents/run/test-generate")
-async def agent_test_generate(data: AgentCodeBody, user: dict = Depends(get_optional_user)):
+async def agent_test_generate(data: AgentCodeBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Test Generation: writes test suite for given code."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -3793,7 +3800,7 @@ async def agent_test_generate(data: AgentCodeBody, user: dict = Depends(get_opti
     return {"agent": "Test Generation", "code": code, "model_used": model_used}
 
 @agents_router.post("/agents/run/image-generate")
-async def agent_image_generate(data: AgentPromptBody, user: dict = Depends(get_optional_user)):
+async def agent_image_generate(data: AgentPromptBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Image Generation: returns detailed image spec/prompt for visual creation (or calls DALL-E if available)."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -3808,7 +3815,7 @@ async def agent_image_generate(data: AgentPromptBody, user: dict = Depends(get_o
     return {"agent": "Image Generation", "result": response, "prompt_spec": response, "model_used": model_used}
 
 @agents_router.post("/agents/run/test-executor")
-async def agent_test_executor(data: AgentPromptBody, user: dict = Depends(get_optional_user)):
+async def agent_test_executor(data: AgentPromptBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Test Executor: returns how to run tests and validates test file presence."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -3823,7 +3830,7 @@ async def agent_test_executor(data: AgentPromptBody, user: dict = Depends(get_op
     return {"agent": "Test Executor", "result": response, "command_hint": "Run the command above in your project root.", "model_used": model_used}
 
 @agents_router.post("/agents/run/deploy")
-async def agent_deploy(data: AgentPromptBody, user: dict = Depends(get_optional_user)):
+async def agent_deploy(data: AgentPromptBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Deployment Agent: returns deploy instructions or triggers deploy."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -3858,7 +3865,7 @@ async def agent_memory_list(user: dict = Depends(get_current_user)):
     return {"agent": "Memory Agent", "items": items}
 
 @agents_router.post("/agents/run/export-pdf")
-async def agent_export_pdf(data: AgentExportPdfBody, user: dict = Depends(get_optional_user)):
+async def agent_export_pdf(data: AgentExportPdfBody, user: dict = Depends(get_authenticated_or_api_user)):
     """PDF Export: generates a PDF from title and content."""
     try:
         from reportlab.lib.pagesizes import letter
@@ -3883,7 +3890,7 @@ async def agent_export_pdf(data: AgentExportPdfBody, user: dict = Depends(get_op
         raise HTTPException(status_code=501, detail="reportlab not installed. pip install reportlab")
 
 @agents_router.post("/agents/run/export-excel")
-async def agent_export_excel(data: AgentExportExcelBody, user: dict = Depends(get_optional_user)):
+async def agent_export_excel(data: AgentExportExcelBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Excel Export: creates a spreadsheet from rows."""
     try:
         import openpyxl
@@ -3905,7 +3912,7 @@ async def agent_export_excel(data: AgentExportExcelBody, user: dict = Depends(ge
         raise HTTPException(status_code=501, detail="openpyxl not installed. pip install openpyxl")
 
 @agents_router.post("/agents/run/export-markdown")
-async def agent_export_markdown(data: AgentExportMarkdownBody, user: dict = Depends(get_optional_user)):
+async def agent_export_markdown(data: AgentExportMarkdownBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Markdown Export: returns a .md file from title and content (optional item 40)."""
     title = (data.title or "Export").strip()[:80]
     content = (data.content or "").strip()
@@ -3917,7 +3924,7 @@ async def agent_export_markdown(data: AgentExportMarkdownBody, user: dict = Depe
     )
 
 @agents_router.post("/agents/run/scrape")
-async def agent_scrape(data: AgentScrapeBody, user: dict = Depends(get_optional_user)):
+async def agent_scrape(data: AgentScrapeBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Scraping Agent: fetches URL and extracts main content with LLM. Uses your Settings keys when set."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -3961,7 +3968,7 @@ async def agent_automation_list(user: dict = Depends(get_current_user)):
 # ---------- New agents (Design, SEO, Content, etc.) ----------
 
 @agents_router.post("/agents/run/design")
-async def agent_design(data: AgentPromptBody, user: dict = Depends(get_optional_user)):
+async def agent_design(data: AgentPromptBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Design Agent: image placement spec (hero, feature_1, feature_2)."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -3970,7 +3977,7 @@ async def agent_design(data: AgentPromptBody, user: dict = Depends(get_optional_
     return {"agent": "Design Agent", "result": response, "model_used": model_used}
 
 @agents_router.post("/agents/run/layout")
-async def agent_layout(data: AgentPromptBody, user: dict = Depends(get_optional_user)):
+async def agent_layout(data: AgentPromptBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Layout Agent: inject image placeholders into frontend."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -3979,7 +3986,7 @@ async def agent_layout(data: AgentPromptBody, user: dict = Depends(get_optional_
     return {"agent": "Layout Agent", "result": response, "code": (response or "").strip().removeprefix("```").removesuffix("```").strip(), "model_used": model_used}
 
 @agents_router.post("/agents/run/seo")
-async def agent_seo(data: AgentPromptBody, user: dict = Depends(get_optional_user)):
+async def agent_seo(data: AgentPromptBody, user: dict = Depends(get_authenticated_or_api_user)):
     """SEO Agent: meta tags, OG, schema, sitemap, robots."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -3988,7 +3995,7 @@ async def agent_seo(data: AgentPromptBody, user: dict = Depends(get_optional_use
     return {"agent": "SEO Agent", "result": response, "model_used": model_used}
 
 @agents_router.post("/agents/run/content")
-async def agent_content(data: AgentPromptBody, user: dict = Depends(get_optional_user)):
+async def agent_content(data: AgentPromptBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Content Agent: landing copy (hero, features, CTA)."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -3997,7 +4004,7 @@ async def agent_content(data: AgentPromptBody, user: dict = Depends(get_optional
     return {"agent": "Content Agent", "result": response, "model_used": model_used}
 
 @agents_router.post("/agents/run/brand")
-async def agent_brand(data: AgentPromptBody, user: dict = Depends(get_optional_user)):
+async def agent_brand(data: AgentPromptBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Brand Agent: colors, fonts, tone."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -4006,7 +4013,7 @@ async def agent_brand(data: AgentPromptBody, user: dict = Depends(get_optional_u
     return {"agent": "Brand Agent", "result": response, "model_used": model_used}
 
 @agents_router.post("/agents/run/documentation")
-async def agent_documentation(data: AgentPromptBody, user: dict = Depends(get_optional_user)):
+async def agent_documentation(data: AgentPromptBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Documentation Agent: README sections."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -4015,7 +4022,7 @@ async def agent_documentation(data: AgentPromptBody, user: dict = Depends(get_op
     return {"agent": "Documentation Agent", "result": response, "model_used": model_used}
 
 @agents_router.post("/agents/run/validation")
-async def agent_validation(data: AgentPromptBody, user: dict = Depends(get_optional_user)):
+async def agent_validation(data: AgentPromptBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Validation Agent: form/API validation rules, Zod/Yup."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -4024,7 +4031,7 @@ async def agent_validation(data: AgentPromptBody, user: dict = Depends(get_optio
     return {"agent": "Validation Agent", "result": response, "model_used": model_used}
 
 @agents_router.post("/agents/run/auth-setup")
-async def agent_auth_setup(data: AgentPromptBody, user: dict = Depends(get_optional_user)):
+async def agent_auth_setup(data: AgentPromptBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Auth Setup Agent: JWT/OAuth2 flow."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -4033,7 +4040,7 @@ async def agent_auth_setup(data: AgentPromptBody, user: dict = Depends(get_optio
     return {"agent": "Auth Setup Agent", "result": response, "model_used": model_used}
 
 @agents_router.post("/agents/run/payment-setup")
-async def agent_payment_setup(data: AgentPromptBody, user: dict = Depends(get_optional_user)):
+async def agent_payment_setup(data: AgentPromptBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Payment Setup Agent: Stripe integration."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -4042,7 +4049,7 @@ async def agent_payment_setup(data: AgentPromptBody, user: dict = Depends(get_op
     return {"agent": "Payment Setup Agent", "result": response, "model_used": model_used}
 
 @agents_router.post("/agents/run/monitoring")
-async def agent_monitoring(data: AgentPromptBody, user: dict = Depends(get_optional_user)):
+async def agent_monitoring(data: AgentPromptBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Monitoring Agent: Sentry/analytics setup."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -4051,7 +4058,7 @@ async def agent_monitoring(data: AgentPromptBody, user: dict = Depends(get_optio
     return {"agent": "Monitoring Agent", "result": response, "model_used": model_used}
 
 @agents_router.post("/agents/run/accessibility")
-async def agent_accessibility(data: AgentPromptBody, user: dict = Depends(get_optional_user)):
+async def agent_accessibility(data: AgentPromptBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Accessibility Agent: a11y improvements."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -4060,7 +4067,7 @@ async def agent_accessibility(data: AgentPromptBody, user: dict = Depends(get_op
     return {"agent": "Accessibility Agent", "result": response, "model_used": model_used}
 
 @agents_router.post("/agents/run/devops")
-async def agent_devops(data: AgentPromptBody, user: dict = Depends(get_optional_user)):
+async def agent_devops(data: AgentPromptBody, user: dict = Depends(get_authenticated_or_api_user)):
     """DevOps Agent: CI/CD, Dockerfile."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -4069,7 +4076,7 @@ async def agent_devops(data: AgentPromptBody, user: dict = Depends(get_optional_
     return {"agent": "DevOps Agent", "result": response, "model_used": model_used}
 
 @agents_router.post("/agents/run/webhook")
-async def agent_webhook(data: AgentPromptBody, user: dict = Depends(get_optional_user)):
+async def agent_webhook(data: AgentPromptBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Webhook Agent: webhook endpoint design."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -4078,7 +4085,7 @@ async def agent_webhook(data: AgentPromptBody, user: dict = Depends(get_optional
     return {"agent": "Webhook Agent", "result": response, "model_used": model_used}
 
 @agents_router.post("/agents/run/email")
-async def agent_email(data: AgentPromptBody, user: dict = Depends(get_optional_user)):
+async def agent_email(data: AgentPromptBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Email Agent: transactional email setup."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -4087,7 +4094,7 @@ async def agent_email(data: AgentPromptBody, user: dict = Depends(get_optional_u
     return {"agent": "Email Agent", "result": response, "model_used": model_used}
 
 @agents_router.post("/agents/run/legal-compliance")
-async def agent_legal_compliance(data: AgentPromptBody, user: dict = Depends(get_optional_user)):
+async def agent_legal_compliance(data: AgentPromptBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Legal Compliance Agent: GDPR/CCPA hints."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -7452,7 +7459,7 @@ async def get_saved_prompts(user: dict = Depends(get_current_user)):
 # ==================== REFERENCE BUILD / EXPLAIN ERROR / SUGGEST NEXT ====================
 
 @projects_router.post("/build/from-reference")
-async def build_from_reference(data: ReferenceBuildBody, user: dict = Depends(get_optional_user)):
+async def build_from_reference(data: ReferenceBuildBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Use a URL or prompt as reference for build. Fetches URL content when provided."""
     context = ""
     if data.url:
@@ -7516,7 +7523,7 @@ async def quality_gate(data: QualityGateBody):
     return result
 
 @api_router.post("/ai/explain-error")
-async def explain_error(data: ExplainErrorBody, user: dict = Depends(get_optional_user)):
+async def explain_error(data: ExplainErrorBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Explain and optionally fix a runtime/syntax error. Uses your Settings keys when set."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -7533,7 +7540,7 @@ async def explain_error(data: ExplainErrorBody, user: dict = Depends(get_optiona
     return {"explanation": response[:1500], "fixed_code": fixed or data.code}
 
 @api_router.post("/ai/suggest-next")
-async def suggest_next(data: SuggestNextBody, user: dict = Depends(get_optional_user)):
+async def suggest_next(data: SuggestNextBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Suggest 2-3 next steps after a build. Uses your Settings keys when set."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -7553,7 +7560,7 @@ async def suggest_next(data: SuggestNextBody, user: dict = Depends(get_optional_
 # ==================== INJECT STRIPE / ENV / DUPLICATE / SHARE ====================
 
 @api_router.post("/ai/inject-stripe")
-async def inject_stripe(data: InjectStripeBody, user: dict = Depends(get_optional_user)):
+async def inject_stripe(data: InjectStripeBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Inject Stripe Checkout or subscription into React code. Uses your Settings keys when set."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -7564,7 +7571,7 @@ async def inject_stripe(data: InjectStripeBody, user: dict = Depends(get_optiona
     return {"code": code or data.code}
 
 @api_router.post("/ai/generate-readme")
-async def generate_readme(data: GenerateReadmeBody, user: dict = Depends(get_optional_user)):
+async def generate_readme(data: GenerateReadmeBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Generate a README.md from code and optional project name. Uses your Settings keys when set."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -7574,7 +7581,7 @@ async def generate_readme(data: GenerateReadmeBody, user: dict = Depends(get_opt
     return {"readme": (response or "").strip().removeprefix("```md").removeprefix("```").removesuffix("```").strip()}
 
 @api_router.post("/ai/generate-docs")
-async def generate_docs(data: GenerateDocsBody, user: dict = Depends(get_optional_user)):
+async def generate_docs(data: GenerateDocsBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Generate API or component docs from code. Uses your Settings keys when set."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -7584,7 +7591,7 @@ async def generate_docs(data: GenerateDocsBody, user: dict = Depends(get_optiona
     return {"docs": (response or "").strip().removeprefix("```md").removeprefix("```").removesuffix("```").strip()}
 
 @api_router.post("/ai/generate-faq-schema")
-async def generate_faq_schema(data: GenerateFaqSchemaBody, user: dict = Depends(get_optional_user)):
+async def generate_faq_schema(data: GenerateFaqSchemaBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Generate JSON-LD FAQPage schema from list of Q&A."""
     items = []
     for f in (data.faqs or []):
@@ -7691,7 +7698,7 @@ def _parse_security_checklist_summary(text: str) -> tuple[int, int]:
 
 
 @api_router.post("/ai/security-scan")
-async def security_scan(data: SecurityScanBody, user: dict = Depends(get_optional_user)):
+async def security_scan(data: SecurityScanBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Return a short security checklist for the provided files. Uses your Settings keys when set. If project_id is set and user is authenticated, store result on project for AgentMonitor."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -7719,7 +7726,7 @@ async def security_scan(data: SecurityScanBody, user: dict = Depends(get_optiona
     return {"report": response, "checklist": checklist, "passed": passed, "failed": failed}
 
 @api_router.post("/ai/optimize")
-async def optimize_code(data: OptimizeBody, user: dict = Depends(get_optional_user)):
+async def optimize_code(data: OptimizeBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Uses your Settings keys when set."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -7730,7 +7737,7 @@ async def optimize_code(data: OptimizeBody, user: dict = Depends(get_optional_us
     return {"code": code or data.code}
 
 @api_router.post("/ai/accessibility-check")
-async def accessibility_check(data: ValidateAndFixBody, user: dict = Depends(get_optional_user)):
+async def accessibility_check(data: ValidateAndFixBody, user: dict = Depends(get_authenticated_or_api_user)):
     """Uses your Settings keys when set."""
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
@@ -7740,7 +7747,7 @@ async def accessibility_check(data: ValidateAndFixBody, user: dict = Depends(get
     return {"report": response}
 
 @api_router.post("/ai/design-from-url")
-async def design_from_url(url: str = Form(...), user: dict = Depends(get_optional_user)):
+async def design_from_url(url: str = Form(...), user: dict = Depends(get_authenticated_or_api_user)):
     """Fetch image from URL and run image-to-code."""
     try:
         import httpx
@@ -9274,6 +9281,8 @@ async def terminal_execute(session_id: str, body: TerminalExecuteRequest, user: 
     if not _terminal_execution_allowed():
         raise HTTPException(status_code=403, detail="Terminal execution is disabled")
     result = await terminal_manager.execute(session_id, body.command, body.timeout or 60, user_id=user["id"])
+    if result.get("stderr") == "Session not found":
+        raise HTTPException(status_code=404, detail="Session not found")
     return result
 
 @api_router.delete("/terminal/{session_id}")

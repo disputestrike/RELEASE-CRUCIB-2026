@@ -408,6 +408,28 @@ async def test_smoke_terminal_execute_respects_disabled_env(app_client, auth_hea
     assert exec_r.status_code == 403
 
 
+async def test_smoke_terminal_execute_rejects_cross_user_session(app_client, auth_headers, monkeypatch):
+    """Terminal sessions are scoped to the owning user and hidden from other users."""
+    other_headers = await _register_smoke_headers(app_client)
+    project_id = await _create_smoke_project(app_client, auth_headers)
+    monkeypatch.setenv("CRUCIBAI_TERMINAL_ENABLED", "1")
+    create_r = await app_client.post(
+        "/api/terminal/create",
+        params={"project_id": project_id},
+        headers=auth_headers,
+        timeout=10,
+    )
+    assert create_r.status_code == 200
+    session_id = create_r.json().get("session_id")
+    exec_r = await app_client.post(
+        f"/api/terminal/{session_id}/execute",
+        json={"command": "echo should-not-run", "timeout": 10},
+        headers=other_headers,
+        timeout=15,
+    )
+    assert exec_r.status_code == 404
+
+
 async def test_smoke_git_branches_returns_200(app_client, auth_headers):
     """GET /api/git/branches returns 200 and branches list for an authenticated project workspace."""
     project_id = await _create_smoke_project(app_client, auth_headers)
@@ -553,6 +575,99 @@ async def test_smoke_agent_run_generic_requires_auth(app_client):
         timeout=10,
     )
     assert r.status_code == 401
+
+
+@pytest.mark.parametrize(
+    ("path", "payload"),
+    [
+        ("/api/ai/chat", {"message": "hello"}),
+        ("/api/ai/analyze", {"content": "hello", "task": "summarize"}),
+        ("/api/generate/doc", {"prompt": "write a launch plan"}),
+        ("/api/agents/run/planner", {"prompt": "plan a todo app"}),
+        ("/api/build/from-reference", {"prompt": "build from this reference"}),
+        ("/api/ai/generate-readme", {"code": "print('hi')", "project_name": "Demo"}),
+    ],
+)
+async def test_smoke_phase2_llm_action_routes_reject_anonymous(app_client, path, payload):
+    """Anonymous callers cannot spend server-side LLM/action capacity."""
+    r = await app_client.post(path, json=payload, timeout=10)
+    assert r.status_code == 401, f"{path} returned {r.status_code}: {r.text}"
+
+
+async def test_smoke_phase2_chat_history_requires_owner(app_client, auth_headers):
+    """Chat history is scoped to the authenticated user's session rows."""
+    import server
+
+    other_headers = await _register_smoke_headers(app_client)
+    own_user_id = _user_id_from_auth_headers(auth_headers)
+    other_user_id = _user_id_from_auth_headers(other_headers)
+    session_id = f"phase2-chat-{uuid.uuid4().hex[:8]}"
+    await server.db.chat_history.insert_one({
+        "id": str(uuid.uuid4()),
+        "session_id": session_id,
+        "user_id": other_user_id,
+        "message": "other secret",
+        "response": "other response",
+        "model": "test",
+        "tokens_used": 1,
+        "created_at": "2026-01-01T00:00:00+00:00",
+    })
+    await server.db.chat_history.insert_one({
+        "id": str(uuid.uuid4()),
+        "session_id": session_id,
+        "user_id": own_user_id,
+        "message": "own prompt",
+        "response": "own response",
+        "model": "test",
+        "tokens_used": 1,
+        "created_at": "2026-01-01T00:01:00+00:00",
+    })
+
+    anon = await app_client.get(f"/api/ai/chat/history/{session_id}", timeout=10)
+    assert anon.status_code == 401
+    own = await app_client.get(f"/api/ai/chat/history/{session_id}", headers=auth_headers, timeout=10)
+    assert own.status_code == 200
+    messages = [row["message"] for row in own.json().get("history", [])]
+    assert "own prompt" in messages
+    assert "other secret" not in messages
+
+
+async def test_smoke_phase2_blueprint_persona_rejects_cross_user_access(app_client, auth_headers):
+    """Blueprint persona routes filter by the owning user_id."""
+    other_headers = await _register_smoke_headers(app_client)
+    created = await app_client.post(
+        "/api/personas",
+        json={"name": "Other Persona", "description": "tenant private"},
+        headers=other_headers,
+        timeout=10,
+    )
+    assert created.status_code == 201, created.text
+    persona_id = created.json()["persona"]["id"]
+    get_r = await app_client.get(f"/api/personas/{persona_id}", headers=auth_headers, timeout=10)
+    assert get_r.status_code == 404
+    delete_r = await app_client.delete(f"/api/personas/{persona_id}", headers=auth_headers, timeout=10)
+    assert delete_r.status_code == 404
+
+
+async def test_smoke_phase2_blueprint_session_messages_require_owned_session(app_client, auth_headers):
+    """Blueprint session messages cannot be written anonymously or across users."""
+    other_headers = await _register_smoke_headers(app_client)
+    created = await app_client.post(
+        "/api/sessions",
+        json={"user_identifier": "other-user-widget"},
+        headers=other_headers,
+        timeout=10,
+    )
+    assert created.status_code == 201, created.text
+    session_id = created.json()["session"]["id"]
+    payload = {"role": "user", "content": "hello"}
+
+    anon = await app_client.post(f"/api/sessions/{session_id}/messages", json=payload, timeout=10)
+    assert anon.status_code == 401
+    cross = await app_client.post(f"/api/sessions/{session_id}/messages", json=payload, headers=auth_headers, timeout=10)
+    assert cross.status_code == 404
+    owned = await app_client.post(f"/api/sessions/{session_id}/messages", json=payload, headers=other_headers, timeout=10)
+    assert owned.status_code == 201
 
 
 async def test_smoke_agent_run_generic_unknown_agent_returns_404_for_user(app_client, auth_headers):

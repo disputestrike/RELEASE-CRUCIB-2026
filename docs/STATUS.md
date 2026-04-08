@@ -8,7 +8,7 @@ Last updated: 2026-04-08
 
 ## Current Objective
 
-Continue proving and hardening the golden-path wedge after `main` commit `ec06ffa`: CrucibAI as a unified outcome platform where app-building agents can also run inside user automations via the `run_agent` bridge.
+Continue phase-locked hardening and proof from `main` commit `8399d18`, preserving the unified outcome platform wedge while moving through the remaining phases in order.
 
 ## Confirmed Direction
 
@@ -33,7 +33,7 @@ Next implementation should continue from Phase 2/4 overlap, prioritizing runtime
 ## Known Risks
 
 - `backend/server.py` is too large and mixes too many domains.
-- Remaining optional-auth routes must be reviewed before public launch.
+- Terminal execution is scoped and launch-gated, but still needs a real per-user sandbox/container boundary before broad public exposure.
 - Fresh checkout setup requires dependency and environment bootstrapping.
 - The full test suite was not run in this checkout before foundation fixes because frontend dependencies and local database setup were not ready.
 
@@ -142,6 +142,15 @@ Tasks:
 - [x] Prove the full Railway-style Docker image builds and boots locally with `/api/health` 200.
 - [x] Add deterministic golden-path wiring proof artifacts under `proof/e2e_golden_path/`.
 - [x] Add `proof/END_TO_END_PROOF_REPORT.md` with the pass/fail matrix and remaining live-proof gaps.
+- [x] Add `get_authenticated_or_api_user` and require it for LLM/action routes that previously accepted anonymous optional auth.
+- [x] Preserve optional auth only for public/read-only catalog routes, anonymous-empty user panels, advisory estimate/history listings, marketplace, and conditional project-owner framework detection.
+- [x] Require authenticated owner access for chat history instead of reading by `session_id` alone.
+- [x] Require authenticated owner access before adding blueprint session messages; anonymous public-widget mutation is no longer accepted without owner auth.
+- [x] Add terminal cross-user execution denial that returns `404` for another user's session.
+- [x] Add Phase 2 runtime tests for anonymous LLM/action rejection, chat-history tenant scoping, blueprint persona isolation, blueprint session-message isolation, and terminal cross-user denial.
+- [x] Add source-audit tests for remaining optional-auth routes, websocket project-progress auth, and blueprint optional-auth usage.
+- [x] Add `scripts/phase2-security-audit.py` to generate reproducible route inventory and proof artifacts under `proof/phase2_security/`.
+- [x] Add the Phase 2 route/websocket audit to `scripts/release-gate.ps1`.
 
 ## Verification Log
 
@@ -192,13 +201,19 @@ Tasks:
 - `python scripts\generate-e2e-golden-path-proof.py` generated `proof\e2e_golden_path\` as production-faithful wiring proof with live LLM and browser screenshot explicitly marked `NOT_RUN`.
 - `.\scripts\verify-local.ps1` completed despite active Node `v24.14.0` by generating frontend runtime proof and skipping host frontend dependency checks.
 - `.\scripts\release-gate.ps1 -BackendOnly` passed after provider readiness additions: smoke 33 passed, 24 deselected; provider readiness 5 passed; automation bridge 1 passed, 6 deselected; tool agent guard 8 passed, 18 deselected.
+- `python -m py_compile backend\server.py backend\modules_blueprint.py scripts\phase2-security-audit.py` passed.
+- First Phase 2 pytest attempt failed before tests because the shell had a placeholder `DATABASE_URL` for user `username`; rerun used local Postgres/Redis env.
+- `python -m pytest backend\tests\test_smoke.py -k "phase2 or terminal" -q` passed with local Postgres/Redis env: 15 passed, 52 deselected.
+- `python -m pytest backend\tests\test_phase2_security.py -q` passed with local Postgres/Redis env: 3 passed.
+- `python scripts\phase2-security-audit.py --fail-on-unclassified` generated `proof\phase2_security\` and passed with 13 optional routes inventoried and 0 failures.
+- `.\scripts\release-gate.ps1 -BackendOnly` passed after Phase 2 audit additions: smoke 43 passed, 24 deselected; Phase 2 audit 3 passed; optional-auth audit 13 routes, 0 failures; provider readiness 5 passed; automation bridge 1 passed, 6 deselected; LLM routing guard 8 passed, 18 deselected.
 
 ## Next Milestone
 
-Phase 2: Execution Surface Hardening
+Phase 3: Backend Router Extraction
 
 Planned tasks:
 
-- Continue reviewing remaining optional-auth routes and classify them as public, authenticated, or admin-only.
-- Add tenant-isolation regression tests beyond smoke coverage where high-risk endpoints remain.
-- Decide whether terminal execution is removed, sandboxed, or admin-only for launch.
+- Extract coherent route modules from `backend/server.py` without changing public API behavior.
+- Keep Phase 2 terminal sandbox debt visible and decide launch policy before public exposure.
+- Preserve the release-gate and proof artifacts as the regression bar while extracting routers.

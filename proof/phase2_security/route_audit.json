@@ -1,0 +1,138 @@
+{
+  "entries": [
+    {
+      "classification": "safe as optional",
+      "file": "backend/server.py",
+      "function": "get_examples",
+      "line": 6687,
+      "method": "GET",
+      "path": "/examples",
+      "reason": "safe as optional: public example gallery",
+      "router": "api_router"
+    },
+    {
+      "classification": "safe as optional",
+      "file": "backend/server.py",
+      "function": "get_example",
+      "line": 6694,
+      "method": "GET",
+      "path": "/examples/{name}",
+      "reason": "safe as optional: public example detail",
+      "router": "api_router"
+    },
+    {
+      "classification": "safe as optional",
+      "file": "backend/server.py",
+      "function": "get_patterns",
+      "line": 6765,
+      "method": "GET",
+      "path": "/patterns",
+      "reason": "safe as optional: public reusable pattern catalog",
+      "router": "api_router"
+    },
+    {
+      "classification": "safe as optional",
+      "file": "backend/server.py",
+      "function": "get_prompt_templates",
+      "line": 7429,
+      "method": "GET",
+      "path": "/prompts/templates",
+      "reason": "safe as optional: public prompt templates",
+      "router": "api_router"
+    },
+    {
+      "classification": "safe as optional",
+      "file": "backend/server.py",
+      "function": "get_recent_prompts",
+      "line": 7433,
+      "method": "GET",
+      "path": "/prompts/recent",
+      "reason": "safe as optional: anonymous returns empty; authenticated reads own user_id",
+      "router": "api_router"
+    },
+    {
+      "classification": "safe as optional",
+      "file": "backend/server.py",
+      "function": "get_workspace_env",
+      "line": 7611,
+      "method": "GET",
+      "path": "/workspace/env",
+      "reason": "safe as optional: compatibility endpoint returns empty env only",
+      "router": "api_router"
+    },
+    {
+      "classification": "safe as optional",
+      "file": "backend/server.py",
+      "function": "get_templates",
+      "line": 7660,
+      "method": "GET",
+      "path": "/templates",
+      "reason": "safe as optional: public template gallery",
+      "router": "api_router"
+    },
+    {
+      "classification": "safe as optional",
+      "file": "backend/server.py",
+      "function": "get_agents_activity",
+      "line": 7788,
+      "method": "GET",
+      "path": "/agents/activity",
+      "reason": "safe as optional: anonymous returns empty; authenticated reads own user_id",
+      "router": "agents_router"
+    },
+    {
+      "classification": "safe as optional",
+      "file": "backend/server.py",
+      "function": "estimate_cost",
+      "line": 8243,
+      "method": "POST",
+      "path": "/orchestrator/estimate",
+      "reason": "safe as optional: advisory estimate, no persisted tenant data",
+      "router": "api_router"
+    },
+    {
+      "classification": "safe as optional",
+      "file": "backend/server.py",
+      "function": "list_orchestrator_build_jobs",
+      "line": 8563,
+      "method": "GET",
+      "path": "/orchestrator/build-jobs",
+      "reason": "safe as optional: anonymous returns empty; authenticated lists own jobs",
+      "router": "api_router"
+    },
+    {
+      "classification": "safe as optional",
+      "file": "backend/server.py",
+      "function": "trust_platform_capabilities",
+      "line": 8761,
+      "method": "GET",
+      "path": "/trust/platform-capabilities",
+      "reason": "safe as optional: public capability/status metadata",
+      "router": "api_router"
+    },
+    {
+      "classification": "safe as optional",
+      "file": "backend/server.py",
+      "function": "vibecoding_detect_frameworks",
+      "line": 9106,
+      "method": "POST",
+      "path": "/vibecoding/detect-frameworks",
+      "reason": "must require project ownership when project_id is supplied; code enforces auth and user_id lookup",
+      "router": "api_router"
+    },
+    {
+      "classification": "safe as optional",
+      "file": "backend/server.py",
+      "function": "get_marketplace_skills",
+      "line": 9459,
+      "method": "GET",
+      "path": "/skills/marketplace",
+      "reason": "safe as optional: public marketplace listing plus own user skills when authenticated",
+      "router": "api_router"
+    }
+  ],
+  "failures": [],
+  "optional_route_count": 13,
+  "passed": true,
+  "scope": "phase2_security_optional_auth_route_inventory"
+}
