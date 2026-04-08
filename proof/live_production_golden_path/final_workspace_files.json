@@ -1,19 +1,21 @@
 {
-  "finished_at": "2026-04-08T12:05:01.767559+00:00",
+  "finished_at": "2026-04-08T13:10:58.001844+00:00",
   "label": "final_workspace_files",
   "method": "GET",
   "ok": true,
-  "path": "/api/jobs/8c3273ef-297e-4953-80b2-78356036a34b/workspace/files",
+  "path": "/api/jobs/ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd/workspace/files",
   "request_body": null,
   "response": {
     "files": [
       ".crucibai/node_artifacts.jsonl",
       ".crucibai/preview/screenshot.png",
+      ".env.example",
       "Dockerfile",
       "PLAN.md",
       "README_BUILD.md",
       "backend/auth.py",
       "backend/main.py",
+      "components/ProductDashboard.vue",
       "db/migrations/000_crew_schema.sql",
       "db/migrations/001_schema.sql",
       "db/seeds/001_seed.sql",
@@ -28,12 +30,15 @@
       "docs/CRUCIB_BUILD_TARGET.md",
       "index.html",
       "main.py",
+      "models.py",
       "package-lock.json",
       "package.json",
       "proof/DELIVERY_CLASSIFICATION.md",
       "proof/ELITE_EXECUTION_DIRECTIVE.md",
       "proof/ENFORCEMENT_REPORT.json",
       "proof/ENFORCEMENT_REPORT.md",
+      "routes/products.py",
+      "routes/users.py",
       "src/App.jsx",
       "src/components/ErrorBoundary.jsx",
       "src/components/ShellLayout.jsx",
@@ -49,6 +54,6 @@
       "vite.config.js"
     ]
   },
-  "started_at": "2026-04-08T12:05:01.525735+00:00",
+  "started_at": "2026-04-08T13:10:57.684013+00:00",
   "status_code": 200
 }

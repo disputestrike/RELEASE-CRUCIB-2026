@@ -1,14 +1,14 @@
 {
-  "finished_at": "2026-04-08T12:05:01.523614+00:00",
+  "finished_at": "2026-04-08T13:10:57.681380+00:00",
   "label": "final_proof",
   "method": "GET",
   "ok": true,
-  "path": "/api/jobs/8c3273ef-297e-4953-80b2-78356036a34b/proof",
+  "path": "/api/jobs/ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd/proof",
   "request_body": null,
   "response": {
     "build_contract": {
       "blockers": [],
-      "bundle_sha256": "d761793d4c98478268ad0a7d74ea1968babcf70b7e68ef7725e064eeab32a8b7",
+      "bundle_sha256": "e9af708f0c608c0cf9f8bd77faeaa0cfd5488b61b424be80859f60cd20439607",
       "deploy_ready": true,
       "evidence": {
         "deploy": true,
@@ -17,7 +17,7 @@
         "tests": false,
         "verification": true
       },
-      "generated_at": "2026-04-08T12:05:01.840573+00:00",
+      "generated_at": "2026-04-08T13:10:58.095975+00:00",
       "goal": "Build a tiny production proof app: a Vite React single page product dashboard with reusable components, localStorage state, clear empty/loading/error states, a FastAPI health endpoint sketch if backend output is supported, and deploy readiness proof. Keep dependencies minimal and produce previewable files.",
       "golden_path": [
         "goal",
@@ -30,13 +30,13 @@
         "export_or_deploy",
         "continue"
       ],
-      "job_id": "8c3273ef-297e-4953-80b2-78356036a34b",
+      "job_id": "ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd",
       "mode": "auto",
-      "project_id": "ca0d32ff-433d-42d9-8f2a-2f9d6a92bf79",
+      "project_id": "131a93cb-bc31-4c5d-9ca8-e75804484b81",
       "scores": {
-        "production_readiness": 97.0,
+        "production_readiness": 100.0,
         "quality": 77.0,
-        "trust": 69.79
+        "trust": 70.01
       },
       "status": "completed",
       "step_completion": {
@@ -47,14 +47,14 @@
       "step_counts": {
         "completed": 18
       },
-      "user_id": "ca0d32ff-433d-42d9-8f2a-2f9d6a92bf79",
+      "user_id": "131a93cb-bc31-4c5d-9ca8-e75804484b81",
       "version": "2026-04-08.v1"
     },
     "bundle": {
       "database": [
         {
-          "created_at": "2026-04-08 12:04:33.956988+00:00",
-          "id": "a4e31f36-cbf2-4a88-83f9-1d5a64fc9091",
+          "created_at": "2026-04-08 13:10:30.091632+00:00",
+          "id": "6645cecb-68c1-429c-b030-62c5c4764918",
           "payload": {
             "kind": "migration_or_seed",
             "path": "db/migrations/001_schema.sql"
@@ -64,8 +64,8 @@
           "type": "db"
         },
         {
-          "created_at": "2026-04-08 12:04:34.874248+00:00",
-          "id": "72475060-1a8f-4f88-86d3-c31847a4a8a9",
+          "created_at": "2026-04-08 13:10:31.971337+00:00",
+          "id": "55173803-7e0d-4cab-bd7d-0b250017be87",
           "payload": {
             "kind": "migration_or_seed",
             "path": "db/seeds/001_seed.sql"
@@ -77,22 +77,22 @@
       ],
       "deploy": [
         {
-          "created_at": "2026-04-08 12:04:41.659921+00:00",
-          "id": "10f961db-4fae-4bff-b5c1-660a057dfc9f",
+          "created_at": "2026-04-08 13:10:38.875401+00:00",
+          "id": "921a5054-921c-40bd-8721-fe973701c0a7",
           "payload": {
-            "deploy_url": null,
-            "publish_mode": "readiness_only",
-            "verification_class": "presence"
+            "status": 200,
+            "url": "https://crucibai-production.up.railway.app/published/ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd/",
+            "verification_class": "experience"
           },
           "proof_type": "deploy",
-          "title": "Deploy publish recorded as readiness-only (no live URL configured)",
+          "title": "Deploy URL live: https://crucibai-production.up.railway.app/published/ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd/",
           "type": "deploy"
         }
       ],
       "files": [
         {
-          "created_at": "2026-04-08 12:04:33.544604+00:00",
-          "id": "5d91e493-c990-4b19-9596-455d701797b6",
+          "created_at": "2026-04-08 13:10:28.703010+00:00",
+          "id": "82a2726c-4cc7-400d-97af-058ecf2bb604",
           "payload": {
             "exists": true,
             "path": "package.json",
@@ -103,8 +103,8 @@
           "type": "file"
         },
         {
-          "created_at": "2026-04-08 12:04:33.560965+00:00",
-          "id": "dd987045-b799-4e04-9034-2d6375433918",
+          "created_at": "2026-04-08 13:10:28.720686+00:00",
+          "id": "a3fb50f3-1367-49d9-8b52-97bb4d8739ec",
           "payload": {
             "exists": true,
             "path": "index.html",
@@ -115,8 +115,8 @@
           "type": "file"
         },
         {
-          "created_at": "2026-04-08 12:04:33.569224+00:00",
-          "id": "97e24a63-196a-425e-a9f7-166088200510",
+          "created_at": "2026-04-08 13:10:28.726690+00:00",
+          "id": "b25d0170-f134-49fb-9d5f-19f52cc0cb29",
           "payload": {
             "exists": true,
             "path": "vite.config.js",
@@ -127,8 +127,8 @@
           "type": "file"
         },
         {
-          "created_at": "2026-04-08 12:04:33.585409+00:00",
-          "id": "6ab60678-52b2-4709-8fe7-88d702bfa921",
+          "created_at": "2026-04-08 13:10:28.731630+00:00",
+          "id": "e2a269b0-590a-4421-953d-e1d54c27b9af",
           "payload": {
             "exists": true,
             "path": "README_BUILD.md",
@@ -139,8 +139,8 @@
           "type": "file"
         },
         {
-          "created_at": "2026-04-08 12:04:33.593203+00:00",
-          "id": "76b383c6-f20f-4d18-a5e3-c0b21bb681e5",
+          "created_at": "2026-04-08 13:10:28.742645+00:00",
+          "id": "8c7980e5-a9bd-4dff-96a6-c96bce3c9e7e",
           "payload": {
             "exists": true,
             "path": "src/store/useAppStore.js",
@@ -151,8 +151,8 @@
           "type": "file"
         },
         {
-          "created_at": "2026-04-08 12:04:33.602121+00:00",
-          "id": "4e8487c4-d351-422d-b054-88bd0f2ce230",
+          "created_at": "2026-04-08 13:10:28.749159+00:00",
+          "id": "57b6a57a-e848-4ffe-800a-831947bf22aa",
           "payload": {
             "exists": true,
             "path": "src/context/AuthContext.jsx",
@@ -163,8 +163,8 @@
           "type": "file"
         },
         {
-          "created_at": "2026-04-08 12:04:33.613578+00:00",
-          "id": "cabbba37-acb4-49fa-8d76-9e3afcd7d19b",
+          "created_at": "2026-04-08 13:10:28.753990+00:00",
+          "id": "b597009a-0a50-489d-9a85-dfa9796f70de",
           "payload": {
             "exists": true,
             "path": "src/components/ErrorBoundary.jsx",
@@ -175,8 +175,8 @@
           "type": "file"
         },
         {
-          "created_at": "2026-04-08 12:04:33.621963+00:00",
-          "id": "0fe6ae6f-6696-46ca-bf03-8c3c96570b77",
+          "created_at": "2026-04-08 13:10:28.759343+00:00",
+          "id": "6385eed4-da78-46c2-85b8-2174aa4dc185",
           "payload": {
             "exists": true,
             "path": "src/components/ShellLayout.jsx",
@@ -187,8 +187,8 @@
           "type": "file"
         },
         {
-          "created_at": "2026-04-08 12:04:33.628604+00:00",
-          "id": "7e07f050-b38b-4dfe-9f23-cc42b2476d96",
+          "created_at": "2026-04-08 13:10:28.767974+00:00",
+          "id": "b82aec83-cb8e-4313-a919-bdc6b52316d8",
           "payload": {
             "exists": true,
             "path": "src/pages/HomePage.jsx",
@@ -199,8 +199,8 @@
           "type": "file"
         },
         {
-          "created_at": "2026-04-08 12:04:33.633211+00:00",
-          "id": "89cb5b5e-906a-4bed-a5b5-53a21a5c8bcc",
+          "created_at": "2026-04-08 13:10:28.775797+00:00",
+          "id": "ef63a2a8-922f-4d1d-879f-c4562c07a47c",
           "payload": {
             "exists": true,
             "path": "src/pages/LoginPage.jsx",
@@ -211,8 +211,8 @@
           "type": "file"
         },
         {
-          "created_at": "2026-04-08 12:04:33.641415+00:00",
-          "id": "123b3e6c-d086-4bec-982e-185fcff2c876",
+          "created_at": "2026-04-08 13:10:28.783010+00:00",
+          "id": "6bd0268b-a451-4a79-9118-8a512c52fc7d",
           "payload": {
             "exists": true,
             "path": "src/pages/DashboardPage.jsx",
@@ -223,8 +223,8 @@
           "type": "file"
         },
         {
-          "created_at": "2026-04-08 12:04:33.650440+00:00",
-          "id": "1072b79c-5614-4874-9dac-ff2194607be2",
+          "created_at": "2026-04-08 13:10:28.792117+00:00",
+          "id": "80fb5fcd-1ffa-451b-b717-537c91a5e6ca",
           "payload": {
             "exists": true,
             "path": "src/pages/TeamPage.jsx",
@@ -235,8 +235,8 @@
           "type": "file"
         },
         {
-          "created_at": "2026-04-08 12:04:33.655764+00:00",
-          "id": "d5f6d809-c903-447a-ad7a-2ca233343850",
+          "created_at": "2026-04-08 13:10:28.797481+00:00",
+          "id": "6e1353ff-5f92-46f3-9db1-62dbf410bb55",
           "payload": {
             "exists": true,
             "path": "src/App.jsx",
@@ -247,20 +247,8 @@
           "type": "file"
         },
         {
-          "created_at": "2026-04-08 12:04:33.656261+00:00",
-          "id": "2047bf06-6ea1-4a32-883e-7bd3213e8523",
-          "payload": {
-            "exists": true,
-            "path": "main.py",
-            "verification_class": "presence"
-          },
-          "proof_type": "file",
-          "title": "File exists: main.py",
-          "type": "file"
-        },
-        {
-          "created_at": "2026-04-08 12:04:33.660165+00:00",
-          "id": "eacfb4cc-41c4-4cef-a49c-5fd15d388454",
+          "created_at": "2026-04-08 13:10:28.803151+00:00",
+          "id": "2ef106c1-3dfb-4de2-bbfa-aba8d6016642",
           "payload": {
             "exists": true,
             "path": "src/main.jsx",
@@ -271,8 +259,8 @@
           "type": "file"
         },
         {
-          "created_at": "2026-04-08 12:04:33.667249+00:00",
-          "id": "f75fdb48-ac36-40df-87bf-154d19f84af0",
+          "created_at": "2026-04-08 13:10:28.808552+00:00",
+          "id": "56121978-9cd1-4c26-b28e-e0601475ac89",
           "payload": {
             "exists": true,
             "path": "src/index.js",
@@ -283,8 +271,8 @@
           "type": "file"
         },
         {
-          "created_at": "2026-04-08 12:04:33.671357+00:00",
-          "id": "a202d24f-768a-47fe-b7cf-c6fa8b97ef8c",
+          "created_at": "2026-04-08 13:10:28.818269+00:00",
+          "id": "eb3d76f6-9c68-43ab-adcd-da8f23850370",
           "payload": {
             "exists": true,
             "path": "src/styles/global.css",
@@ -295,8 +283,8 @@
           "type": "file"
         },
         {
-          "created_at": "2026-04-08 12:04:33.684973+00:00",
-          "id": "c3b000f0-2d25-4197-a941-d394fdc320b4",
+          "created_at": "2026-04-08 13:10:28.822956+00:00",
+          "id": "3d0a005a-175a-4ee9-bc81-28dd4c99e672",
           "payload": {
             "exists": true,
             "path": "docs/CRUCIB_BUILD_TARGET.md",
@@ -307,91 +295,56 @@
           "type": "file"
         },
         {
-          "created_at": "2026-04-08 12:04:33.912491+00:00",
-          "id": "614ad293-fbd2-4ff7-9fc9-f15c080eaf3f",
+          "created_at": "2026-04-08 13:10:29.318572+00:00",
+          "id": "91577ee2-38b6-4296-a8b8-4cf6aeae8d3d",
           "payload": {
             "exists": true,
-            "path": "src/pages/TeamPage.jsx",
+            "path": "main.py",
             "verification_class": "presence"
           },
           "proof_type": "file",
-          "title": "File exists: src/pages/TeamPage.jsx",
+          "title": "File exists: main.py",
           "type": "file"
         },
         {
-          "created_at": "2026-04-08 12:04:33.918657+00:00",
-          "id": "c866d9f3-c990-4fbd-ad8a-5526b9a110c4",
+          "created_at": "2026-04-08 13:10:29.331066+00:00",
+          "id": "e16a23e8-2277-441f-84d2-545795c82d60",
           "payload": {
             "exists": true,
-            "path": "src/styles/global.css",
+            "path": "models.py",
             "verification_class": "presence"
           },
           "proof_type": "file",
-          "title": "File exists: src/styles/global.css",
+          "title": "File exists: models.py",
           "type": "file"
         },
         {
-          "created_at": "2026-04-08 12:04:33.921316+00:00",
-          "id": "c775c3e3-20c2-4326-94c1-4f65356aaef5",
+          "created_at": "2026-04-08 13:10:29.349561+00:00",
+          "id": "9355d2e2-0ec5-40ec-ab00-e61f0b217466",
           "payload": {
             "exists": true,
-            "path": "src/App.jsx",
+            "path": "routes/users.py",
             "verification_class": "presence"
           },
           "proof_type": "file",
-          "title": "File exists: src/App.jsx",
+          "title": "File exists: routes/users.py",
           "type": "file"
         },
         {
-          "created_at": "2026-04-08 12:04:34.719803+00:00",
-          "id": "d02b2c83-e1d4-4fab-b9a1-a17a129334fc",
+          "created_at": "2026-04-08 13:10:29.364979+00:00",
+          "id": "cf35e34f-5761-4994-b6ad-9722e3985eb8",
           "payload": {
             "exists": true,
-            "path": "backend/main.py",
+            "path": ".env.example",
             "verification_class": "presence"
           },
           "proof_type": "file",
-          "title": "File exists: backend/main.py",
+          "title": "File exists: .env.example",
           "type": "file"
         },
         {
-          "created_at": "2026-04-08 12:04:34.896981+00:00",
-          "id": "5fc1f5c1-2c12-4290-b69a-12a3e402b41c",
-          "payload": {
-            "exists": true,
-            "path": "backend/auth.py",
-            "verification_class": "presence"
-          },
-          "proof_type": "file",
-          "title": "File exists: backend/auth.py",
-          "type": "file"
-        },
-        {
-          "created_at": "2026-04-08 12:04:40.621466+00:00",
-          "id": "33fdeba2-5463-4866-9d29-1ee9d4a73392",
-          "payload": {
-            "path": "src/App.jsx",
-            "verification_class": "presence"
-          },
-          "proof_type": "file",
-          "title": "Root app file: src/App.jsx",
-          "type": "file"
-        },
-        {
-          "created_at": "2026-04-08 12:04:41.297652+00:00",
-          "id": "c4c83b6d-b891-4a4e-a270-198fbb356174",
-          "payload": {
-            "elite_materialized": true,
-            "path": "proof/ELITE_EXECUTION_DIRECTIVE.md",
-            "verification_class": "presence"
-          },
-          "proof_type": "file",
-          "title": "Elite directive present",
-          "type": "file"
-        },
-        {
-          "created_at": "2026-04-08 12:04:41.531592+00:00",
-          "id": "582bd717-6be6-4f79-bf13-61a2d7283b2a",
+          "created_at": "2026-04-08 13:10:29.370040+00:00",
+          "id": "fa3ef3e2-9ba6-4a6e-b50e-6d2b5b05b1f9",
           "payload": {
             "exists": true,
             "path": "Dockerfile",
@@ -402,8 +355,163 @@
           "type": "file"
         },
         {
-          "created_at": "2026-04-08 12:04:41.539749+00:00",
-          "id": "79478693-9c68-48eb-9555-52a6bf5f16e1",
+          "created_at": "2026-04-08 13:10:29.492091+00:00",
+          "id": "294bcc42-1468-4a4d-9880-249996ff1f4e",
+          "payload": {
+            "exists": true,
+            "path": "src/pages/TeamPage.jsx",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: src/pages/TeamPage.jsx",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 13:10:29.504941+00:00",
+          "id": "bdb9335e-f3f2-4a12-8d43-04dba941278f",
+          "payload": {
+            "exists": true,
+            "path": "src/styles/global.css",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: src/styles/global.css",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 13:10:29.510020+00:00",
+          "id": "0b768866-20ac-4148-be9b-baa0a70c9cd5",
+          "payload": {
+            "exists": true,
+            "path": "src/App.jsx",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: src/App.jsx",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 13:10:31.782335+00:00",
+          "id": "f0054332-cf5e-4faa-945b-8897d03a3200",
+          "payload": {
+            "exists": true,
+            "path": "main.py",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: main.py",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 13:10:31.796315+00:00",
+          "id": "7e708205-1bea-425b-98a6-ca4698bde2d2",
+          "payload": {
+            "exists": true,
+            "path": "routes/products.py",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: routes/products.py",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 13:10:31.809385+00:00",
+          "id": "a208693b-ed7e-441a-8ae4-2907f17f1830",
+          "payload": {
+            "exists": true,
+            "path": "components/ProductDashboard.vue",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: components/ProductDashboard.vue",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 13:10:31.814454+00:00",
+          "id": "64f620ad-a744-4cce-a34b-1b73c60706b2",
+          "payload": {
+            "exists": true,
+            "path": ".env.example",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: .env.example",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 13:10:31.820902+00:00",
+          "id": "eb2b7b98-2d34-4a12-9250-847188b853bc",
+          "payload": {
+            "exists": true,
+            "path": "Dockerfile",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: Dockerfile",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 13:10:31.825939+00:00",
+          "id": "cfcd3a6c-10b5-415d-9141-97a6616766c8",
+          "payload": {
+            "exists": true,
+            "path": "backend/main.py",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: backend/main.py",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 13:10:31.999548+00:00",
+          "id": "976004dc-3f96-4aaa-af85-96f3f62994a9",
+          "payload": {
+            "exists": true,
+            "path": "backend/auth.py",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: backend/auth.py",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 13:10:37.782445+00:00",
+          "id": "3864f1c2-3f52-4cc2-8f8a-d500895f342a",
+          "payload": {
+            "path": "src/App.jsx",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "Root app file: src/App.jsx",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 13:10:38.295176+00:00",
+          "id": "0f1607a2-695a-44da-9ea4-a444d5363d60",
+          "payload": {
+            "elite_materialized": true,
+            "path": "proof/ELITE_EXECUTION_DIRECTIVE.md",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "Elite directive present",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 13:10:38.434685+00:00",
+          "id": "9431b62e-3f12-46de-a26d-4b26187d46ea",
+          "payload": {
+            "exists": true,
+            "path": "Dockerfile",
+            "verification_class": "presence"
+          },
+          "proof_type": "file",
+          "title": "File exists: Dockerfile",
+          "type": "file"
+        },
+        {
+          "created_at": "2026-04-08 13:10:38.439098+00:00",
+          "id": "5523faae-763f-48af-8fa2-daa828ee52ff",
           "payload": {
             "exists": true,
             "path": "deploy/PRODUCTION_SKETCH.md",
@@ -414,8 +522,8 @@
           "type": "file"
         },
         {
-          "created_at": "2026-04-08 12:04:41.546362+00:00",
-          "id": "4ace4a82-0a82-4273-9bfd-0024b9eaabca",
+          "created_at": "2026-04-08 13:10:38.444324+00:00",
+          "id": "d4194c38-9c1a-42c4-b44d-659aeb8cef21",
           "payload": {
             "exists": true,
             "path": "deploy/healthcheck.sh",
@@ -426,8 +534,8 @@
           "type": "file"
         },
         {
-          "created_at": "2026-04-08 12:04:41.653479+00:00",
-          "id": "e10bdc01-3511-426e-8bff-3fbbd03584ea",
+          "created_at": "2026-04-08 13:10:38.869759+00:00",
+          "id": "24dbc87c-ab15-474c-9d60-298dc4555185",
           "payload": {
             "exists": true,
             "path": "deploy/PUBLISH.md",
@@ -440,8 +548,8 @@
       ],
       "generic": [
         {
-          "created_at": "2026-04-08 12:04:32.174453+00:00",
-          "id": "2201329a-45ce-470d-8c67-2711fbc5f8a6",
+          "created_at": "2026-04-08 13:10:27.556655+00:00",
+          "id": "925ebf33-70a8-4b7d-889f-0b7d05c54931",
           "payload": {
             "output_preview": "None",
             "step_key": "planning.analyze"
@@ -451,8 +559,8 @@
           "type": "generic"
         },
         {
-          "created_at": "2026-04-08 12:04:32.280448+00:00",
-          "id": "19f81d07-a90c-4559-b244-56047ec36015",
+          "created_at": "2026-04-08 13:10:27.638161+00:00",
+          "id": "39cc6cd5-c558-47cf-a1a0-7d2ef7fabd07",
           "payload": {
             "output_preview": "None",
             "step_key": "planning.requirements"
@@ -462,8 +570,8 @@
           "type": "generic"
         },
         {
-          "created_at": "2026-04-08 12:04:34.910024+00:00",
-          "id": "9a3ca530-35a3-481a-adcc-6dd0fed467aa",
+          "created_at": "2026-04-08 13:10:32.011455+00:00",
+          "id": "0dc820ce-8e0a-4b9a-b475-3ed6ad445a85",
           "payload": {
             "auth_mode": "client_demo_stub",
             "source": "verifier_note",
@@ -474,8 +582,8 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:35.007728+00:00",
-          "id": "965200a2-e42c-49c3-a9d3-c0fa1b956fe3",
+          "created_at": "2026-04-08 13:10:32.089940+00:00",
+          "id": "fbae9402-97d0-4c26-96be-68edfa7a045e",
           "payload": {
             "output_preview": "None",
             "step_key": "implementation.delivery_manifest"
@@ -485,8 +593,8 @@
           "type": "generic"
         },
         {
-          "created_at": "2026-04-08 12:04:40.575876+00:00",
-          "id": "c107ddaa-6410-465f-acc0-47254b59aa58",
+          "created_at": "2026-04-08 13:10:37.750897+00:00",
+          "id": "068675f5-fbda-4376-92b3-f25fd78f1ddd",
           "payload": {
             "deps": [
               "react",
@@ -501,19 +609,19 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:40.586100+00:00",
-          "id": "c65b2a99-2058-4541-a028-e13f449c3d0f",
+          "created_at": "2026-04-08 13:10:37.756202+00:00",
+          "id": "264726a7-60e1-4a3c-83c3-f82ec78542ee",
           "payload": {
-            "path": "src/index.js",
+            "path": "src/main.jsx",
             "verification_class": "presence"
           },
           "proof_type": "verification",
-          "title": "Entry mount found: src/index.js",
+          "title": "Entry mount found: src/main.jsx",
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:40.591570+00:00",
-          "id": "53a90028-5df5-4f15-9247-6a05ca7c5ab4",
+          "created_at": "2026-04-08 13:10:37.763756+00:00",
+          "id": "b4111180-01fd-4e4e-b140-119bb02eb3b4",
           "payload": {
             "hint": "router",
             "verification_class": "presence"
@@ -523,8 +631,8 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:40.600597+00:00",
-          "id": "6b63d2df-e9f3-4740-bf1f-c739731fd376",
+          "created_at": "2026-04-08 13:10:37.768203+00:00",
+          "id": "fbc6f81c-dd44-43e2-8f1e-7f28e02a6084",
           "payload": {
             "verification_class": "presence"
           },
@@ -533,8 +641,8 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:40.607980+00:00",
-          "id": "0d324dd1-1cc2-4a32-b17b-f37b8e425ad5",
+          "created_at": "2026-04-08 13:10:37.772792+00:00",
+          "id": "418200e6-db39-4a77-b768-1c319ae84b25",
           "payload": {
             "storage": true,
             "verification_class": "presence",
@@ -545,8 +653,8 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:40.613668+00:00",
-          "id": "f941089c-e0ff-4af5-b441-48a9bd6c20d2",
+          "created_at": "2026-04-08 13:10:37.777027+00:00",
+          "id": "0d21006d-ea0e-46e7-8b3c-d28cfa91dea2",
           "payload": {
             "count": 2,
             "verification_class": "presence"
@@ -556,8 +664,8 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:40.626640+00:00",
-          "id": "6ddd2f42-22fe-4854-93c5-d3dfb1faaf72",
+          "created_at": "2026-04-08 13:10:37.786752+00:00",
+          "id": "5958ee99-82b0-4e37-8b6e-b82b296db144",
           "payload": {
             "exit": 0,
             "verification_class": "runtime"
@@ -567,8 +675,8 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:40.631893+00:00",
-          "id": "cd061e8a-2109-48a9-9f35-dfce09a68507",
+          "created_at": "2026-04-08 13:10:37.792543+00:00",
+          "id": "2badb169-a1c2-4ce8-b520-b096eccf3660",
           "payload": {
             "exit": 0,
             "verification_class": "runtime"
@@ -578,8 +686,8 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:40.639367+00:00",
-          "id": "4d200e9a-b2a0-4c1d-8e40-48382f560b49",
+          "created_at": "2026-04-08 13:10:37.796995+00:00",
+          "id": "abd5d29a-3671-46a2-9ce6-0184779954c9",
           "payload": {
             "root_len": 461,
             "verification_class": "experience"
@@ -589,8 +697,8 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:40.646212+00:00",
-          "id": "d74e5790-a0d9-47e1-92a3-9a34e160a886",
+          "created_at": "2026-04-08 13:10:37.801329+00:00",
+          "id": "b0f060dc-7920-45f8-be58-ff7e1e84e223",
           "payload": {
             "flow": "demo_auth",
             "verification_class": "experience"
@@ -600,13 +708,13 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:40.652254+00:00",
-          "id": "cb0aaa56-ff52-4063-a45b-c9f23a6a1859",
+          "created_at": "2026-04-08 13:10:37.809004+00:00",
+          "id": "ac62445e-1fa5-4bbb-811f-bfc0e73d9b38",
           "payload": {
-            "bytes": 24364,
+            "bytes": 23830,
             "kind": "preview_screenshot",
             "relative_path": ".crucibai/preview/screenshot.png",
-            "sha256_prefix": "88e35c039ed7ba82500f38aad2d4c4ce",
+            "sha256_prefix": "556f9d8447edc3bf3e2c95992e61182a",
             "verification_class": "experience"
           },
           "proof_type": "verification",
@@ -614,10 +722,10 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:40.657794+00:00",
-          "id": "bba22f47-600d-454c-8610-fd01d6eeede6",
+          "created_at": "2026-04-08 13:10:37.813565+00:00",
+          "id": "10accda0-bb68-4395-94ac-27c134a78458",
           "payload": {
-            "url": "http://127.0.0.1:58063/",
+            "url": "http://127.0.0.1:58213/",
             "verification_class": "experience"
           },
           "proof_type": "verification",
@@ -625,8 +733,8 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:41.111621+00:00",
-          "id": "433a2c11-44ae-47ae-a1da-136b9b11492b",
+          "created_at": "2026-04-08 13:10:38.176783+00:00",
+          "id": "f3c5baeb-c645-4ec4-bb25-18d595b51d87",
           "payload": {
             "check": "tenancy_sql_sketch",
             "verification_class": "runtime"
@@ -636,8 +744,8 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:41.128818+00:00",
-          "id": "c30fe80b-c0da-4e9b-98ff-3ef3c4172263",
+          "created_at": "2026-04-08 13:10:38.186173+00:00",
+          "id": "773fa913-bc3d-45c1-ad2f-5b894ca70985",
           "payload": {
             "check": "migrations_read",
             "verification_class": "presence"
@@ -647,8 +755,8 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:41.136835+00:00",
-          "id": "373231aa-39cd-4c06-9369-163fc8922bd8",
+          "created_at": "2026-04-08 13:10:38.191243+00:00",
+          "id": "c00225d8-ad63-4568-88c6-246aeeefeb6f",
           "payload": {
             "check": "cors_wildcard",
             "severity": "advisory",
@@ -659,8 +767,8 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:41.153419+00:00",
-          "id": "2385a035-775b-4db6-afef-fcb6effe49e2",
+          "created_at": "2026-04-08 13:10:38.206122+00:00",
+          "id": "e41550b3-25d4-4a89-ba4b-8dd3a62a1158",
           "payload": {
             "check": "package_json_present",
             "verification_class": "presence"
@@ -670,8 +778,8 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:41.165316+00:00",
-          "id": "c9323e81-8e3b-4b46-beca-7b354ca0e933",
+          "created_at": "2026-04-08 13:10:38.211869+00:00",
+          "id": "7ea82c7c-aab0-4692-b4a5-e86d7b841d45",
           "payload": {
             "check": "package_engines_missing",
             "severity": "advisory",
@@ -682,8 +790,8 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:41.176926+00:00",
-          "id": "18470572-cf2c-47e9-9ee1-4540e9036a59",
+          "created_at": "2026-04-08 13:10:38.217366+00:00",
+          "id": "7d6dacca-8e5b-4ca5-815e-1da0c0629ae5",
           "payload": {
             "check": "stripe_replay_skipped",
             "reason": "no_stripe_migration",
@@ -694,8 +802,8 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:41.187539+00:00",
-          "id": "e52a41e8-679b-4e06-b365-753b3ca37939",
+          "created_at": "2026-04-08 13:10:38.222981+00:00",
+          "id": "ce9d037c-4a85-47ff-906b-7062b5a7b081",
           "payload": {
             "check": "tenancy_isolation_proven",
             "verification_class": "runtime",
@@ -706,8 +814,8 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:41.194115+00:00",
-          "id": "8024e5b7-0db3-4230-879f-7de9409d358b",
+          "created_at": "2026-04-08 13:10:38.228817+00:00",
+          "id": "d598186c-2bdb-43b4-9092-29d5c53c5e3a",
           "payload": {
             "check": "rbac_smoke_skipped",
             "host_tests": "tests/test_admin_security.py",
@@ -718,8 +826,8 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:41.320811+00:00",
-          "id": "8c242d10-1e8f-4a01-9019-ea5a79b6c92c",
+          "created_at": "2026-04-08 13:10:38.300953+00:00",
+          "id": "fc49b638-f1ce-43f7-8ffc-4dd86c1e13fd",
           "payload": {
             "checks": "four_labels",
             "path": "proof/DELIVERY_CLASSIFICATION.md",
@@ -730,8 +838,8 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:41.332627+00:00",
-          "id": "81f7e783-55f1-4819-922e-656a26c0464e",
+          "created_at": "2026-04-08 13:10:38.305904+00:00",
+          "id": "a414e648-0b73-463d-8a58-84d46605112a",
           "payload": {
             "presence_and_runtime": true,
             "tags": [],
@@ -742,8 +850,8 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:41.339611+00:00",
-          "id": "76be2d1a-5c90-4df1-85a7-4bc7c63ffa0d",
+          "created_at": "2026-04-08 13:10:38.310710+00:00",
+          "id": "5ab74bf8-d96f-4500-a1a5-ec60680fe47a",
           "payload": {
             "check": "error_boundaries",
             "verification_class": "syntax"
@@ -753,8 +861,8 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:41.364973+00:00",
-          "id": "37425ad5-98d3-409e-8804-ccb5b175e154",
+          "created_at": "2026-04-08 13:10:38.316048+00:00",
+          "id": "b6d0d89b-cebd-44d2-9f24-b746ec05ced2",
           "payload": {
             "check": "console_clean",
             "verification_class": "syntax"
@@ -764,8 +872,8 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:41.375322+00:00",
-          "id": "2552f4a0-fcf9-46d3-afd7-75b519d4f1fd",
+          "created_at": "2026-04-08 13:10:38.320581+00:00",
+          "id": "3c34c481-7f5c-4370-8cb4-9151c13e5e49",
           "payload": {
             "check": "api_errors",
             "verification_class": "syntax"
@@ -775,8 +883,8 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:41.385304+00:00",
-          "id": "0659e0f8-21d4-4694-8fb0-815d6ad216b5",
+          "created_at": "2026-04-08 13:10:38.326080+00:00",
+          "id": "2e2b69c6-701c-44cf-a7fe-2a6ec0fecfa1",
           "payload": {
             "check": "sql_safety",
             "verification_class": "syntax"
@@ -786,8 +894,8 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:41.392809+00:00",
-          "id": "39b07360-5035-43fa-b4ff-b682c48af613",
+          "created_at": "2026-04-08 13:10:38.330702+00:00",
+          "id": "09152a41-b6da-4972-8029-b74f18c3e932",
           "payload": {
             "check": "authentication",
             "verification_class": "syntax"
@@ -797,8 +905,8 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:41.404100+00:00",
-          "id": "9d0e5d9d-b6aa-414c-88a9-91890759e90e",
+          "created_at": "2026-04-08 13:10:38.335056+00:00",
+          "id": "1adacf81-855a-47b3-b8b9-089c00382478",
           "payload": {
             "check": "secrets",
             "verification_class": "syntax"
@@ -808,8 +916,8 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:41.414550+00:00",
-          "id": "d556662b-74b1-4bfb-b112-bd64afe863c8",
+          "created_at": "2026-04-08 13:10:38.342257+00:00",
+          "id": "bd7f021c-defa-471e-b9b3-ded29b728a0a",
           "payload": {
             "check": "headers",
             "verification_class": "syntax"
@@ -819,8 +927,8 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:41.516456+00:00",
-          "id": "ddea7921-2d6d-4e7a-9923-432f0da733ca",
+          "created_at": "2026-04-08 13:10:38.418465+00:00",
+          "id": "1c5dfd28-b0e5-4460-8a37-ba16091a57ed",
           "payload": {
             "check": "tenant_context_gate_skipped_no_rls_migration"
           },
@@ -829,8 +937,8 @@
           "type": "verification"
         },
         {
-          "created_at": "2026-04-08 12:04:41.525415+00:00",
-          "id": "6995281b-8c32-4b28-a437-85a7256101a6",
+          "created_at": "2026-04-08 13:10:38.430330+00:00",
+          "id": "295d5bda-1e55-4c1a-b9e6-8406b7d2e518",
           "payload": {
             "clean": true,
             "gate": "credential_pattern_scan",
@@ -843,46 +951,114 @@
       ],
       "routes": [
         {
-          "created_at": "2026-04-08 12:04:34.702915+00:00",
-          "id": "b50dd8f9-ce91-43e5-9044-40b5e6c5351d",
+          "created_at": "2026-04-08 13:10:29.306129+00:00",
+          "id": "287867c1-5eda-48bf-b0d4-ad29f9d72d45",
           "payload": {
-            "description": "Health check",
+            "description": "Get all users",
             "method": "GET",
-            "path": "/health"
+            "path": "/api/users"
           },
           "proof_type": "route",
-          "title": "GET /health",
+          "title": "GET /api/users",
           "type": "route"
         },
         {
-          "created_at": "2026-04-08 12:04:34.713371+00:00",
-          "id": "e91fbe2a-aea5-45e1-be4f-f07d7d0ecce1",
+          "created_at": "2026-04-08 13:10:29.310989+00:00",
+          "id": "0dbdfc55-2925-4786-97cf-d282b2210f10",
           "payload": {
-            "description": "List demo items",
-            "method": "GET",
-            "path": "/api/items"
+            "description": "Create a new user",
+            "method": "POST",
+            "path": "/api/users"
           },
           "proof_type": "route",
-          "title": "GET /api/items",
+          "title": "POST /api/users",
           "type": "route"
         },
         {
-          "created_at": "2026-04-08 12:04:34.733429+00:00",
-          "id": "a4589b71-63c7-4200-a097-1d539c420d0f",
+          "created_at": "2026-04-08 13:10:31.777465+00:00",
+          "id": "ce7ec7ec-1187-41df-998e-b6cba8450061",
+          "payload": {
+            "description": "Get all products",
+            "method": "GET",
+            "path": "/api/products"
+          },
+          "proof_type": "route",
+          "title": "GET /api/products",
+          "type": "route"
+        },
+        {
+          "created_at": "2026-04-08 13:10:31.838672+00:00",
+          "id": "3cfd21e1-62fb-41fa-9df6-eeac918e1645",
           "payload": {
             "file": "main.py",
             "kind": "workspace_route_scan",
             "method": "GET",
-            "path": "/healthcheck",
+            "path": "/",
             "verification_class": "presence"
           },
           "proof_type": "route",
-          "title": "Declared in workspace: GET /healthcheck",
+          "title": "Declared in workspace: GET /",
           "type": "route"
         },
         {
-          "created_at": "2026-04-08 12:04:34.740518+00:00",
-          "id": "83b8e06a-28b0-409d-8596-1ec8ef794222",
+          "created_at": "2026-04-08 13:10:31.845511+00:00",
+          "id": "6fde8538-d416-4499-8346-71b9ef848c6f",
+          "payload": {
+            "file": "main.py",
+            "kind": "workspace_route_scan",
+            "method": "GET",
+            "path": "/health",
+            "verification_class": "presence"
+          },
+          "proof_type": "route",
+          "title": "Declared in workspace: GET /health",
+          "type": "route"
+        },
+        {
+          "created_at": "2026-04-08 13:10:31.850629+00:00",
+          "id": "b322b3cd-e197-4750-85c9-f520a5bb0d6a",
+          "payload": {
+            "file": "routes/users.py",
+            "kind": "workspace_route_scan",
+            "method": "GET",
+            "path": "/",
+            "verification_class": "presence"
+          },
+          "proof_type": "route",
+          "title": "Declared in workspace: GET /",
+          "type": "route"
+        },
+        {
+          "created_at": "2026-04-08 13:10:31.855952+00:00",
+          "id": "64ad39d9-ffcd-4ada-91fe-eadfd15747f9",
+          "payload": {
+            "file": "routes/users.py",
+            "kind": "workspace_route_scan",
+            "method": "POST",
+            "path": "/",
+            "verification_class": "presence"
+          },
+          "proof_type": "route",
+          "title": "Declared in workspace: POST /",
+          "type": "route"
+        },
+        {
+          "created_at": "2026-04-08 13:10:31.862613+00:00",
+          "id": "b0d2e95e-1c40-49f6-81fb-5b5844dbae69",
+          "payload": {
+            "file": "routes/products.py",
+            "kind": "workspace_route_scan",
+            "method": "GET",
+            "path": "/",
+            "verification_class": "presence"
+          },
+          "proof_type": "route",
+          "title": "Declared in workspace: GET /",
+          "type": "route"
+        },
+        {
+          "created_at": "2026-04-08 13:10:31.867324+00:00",
+          "id": "29980a44-2700-4c7d-b056-61bf1ac975f9",
           "payload": {
             "file": "backend/main.py",
             "kind": "workspace_route_scan",
@@ -895,22 +1071,22 @@
           "type": "route"
         },
         {
-          "created_at": "2026-04-08 12:04:34.746024+00:00",
-          "id": "f0b288c0-1dc2-4dca-84a6-81b4c50f6ab3",
+          "created_at": "2026-04-08 13:10:31.872265+00:00",
+          "id": "0ddec343-707c-45c4-bd42-57daa503a92a",
           "payload": {
             "file": "backend/main.py",
             "kind": "workspace_route_scan",
             "method": "GET",
-            "path": "/api/items",
+            "path": "/",
             "verification_class": "presence"
           },
           "proof_type": "route",
-          "title": "Declared in workspace: GET /api/items",
+          "title": "Declared in workspace: GET /",
           "type": "route"
         },
         {
-          "created_at": "2026-04-08 12:04:34.891595+00:00",
-          "id": "82342481-2699-4dad-895e-bfe4328722e6",
+          "created_at": "2026-04-08 13:10:31.992269+00:00",
+          "id": "49a1cbe3-9ad0-4c27-bace-ad36c60c3586",
           "payload": {
             "description": "Login (stub)",
             "method": "POST",
@@ -923,29 +1099,13 @@
       ],
       "verification": [
         {
-          "created_at": "2026-04-08 12:04:33.666344+00:00",
-          "id": "de72dae7-0b08-486f-8409-483adc239348",
-          "payload": {
-            "command": [
-              "/usr/local/bin/python3.11",
-              "-m",
-              "py_compile",
-              "/app/workspace/ca0d32ff-433d-42d9-8f2a-2f9d6a92bf79/main.py"
-            ],
-            "file": "main.py"
-          },
-          "proof_type": "compile",
-          "title": "Python syntax OK: main.py",
-          "type": "compile"
-        },
-        {
-          "created_at": "2026-04-08 12:04:33.689525+00:00",
-          "id": "b50cbf92-7d7e-48ec-9a63-9100335782c6",
+          "created_at": "2026-04-08 13:10:28.830317+00:00",
+          "id": "ca03056b-3a29-47dd-b84f-a7c35c023560",
           "payload": {
             "command": [
               "node",
               "--check",
-              "/app/workspace/ca0d32ff-433d-42d9-8f2a-2f9d6a92bf79/vite.config.js"
+              "/app/workspace/131a93cb-bc31-4c5d-9ca8-e75804484b81/vite.config.js"
             ],
             "file": "vite.config.js",
             "verification_class": "syntax"
@@ -955,13 +1115,13 @@
           "type": "compile"
         },
         {
-          "created_at": "2026-04-08 12:04:33.694492+00:00",
-          "id": "d59d9a9b-01cc-460b-a2d4-e03f39c10867",
+          "created_at": "2026-04-08 13:10:28.836279+00:00",
+          "id": "87346cf4-3e20-441f-af65-96fb57be9668",
           "payload": {
             "command": [
               "node",
               "--check",
-              "/app/workspace/ca0d32ff-433d-42d9-8f2a-2f9d6a92bf79/src/store/useAppStore.js"
+              "/app/workspace/131a93cb-bc31-4c5d-9ca8-e75804484b81/src/store/useAppStore.js"
             ],
             "file": "src/store/useAppStore.js",
             "verification_class": "syntax"
@@ -971,8 +1131,8 @@
           "type": "compile"
         },
         {
-          "created_at": "2026-04-08 12:04:33.699716+00:00",
-          "id": "f13c7b60-ed90-4626-a8cd-1ebd93d58ac3",
+          "created_at": "2026-04-08 13:10:28.841211+00:00",
+          "id": "9829e3cc-bf7b-4b96-8bb3-8b551ae9f062",
           "payload": {
             "file": "src/context/AuthContext.jsx",
             "verification_class": "presence"
@@ -982,8 +1142,8 @@
           "type": "compile"
         },
         {
-          "created_at": "2026-04-08 12:04:33.705592+00:00",
-          "id": "6ad77e6b-722c-4c1b-9a10-55b10eb822d6",
+          "created_at": "2026-04-08 13:10:28.848371+00:00",
+          "id": "e6f6b5b7-80de-4745-aab6-c0e2a37ec3dc",
           "payload": {
             "file": "src/components/ErrorBoundary.jsx",
             "verification_class": "presence"
@@ -993,8 +1153,8 @@
           "type": "compile"
         },
         {
-          "created_at": "2026-04-08 12:04:33.720872+00:00",
-          "id": "430ce79c-a1a4-44b3-91cc-f2ff0cfb5ea9",
+          "created_at": "2026-04-08 13:10:28.857346+00:00",
+          "id": "ce7821c9-bcc3-46e5-a727-05e1543f1cbd",
           "payload": {
             "file": "src/components/ShellLayout.jsx",
             "verification_class": "presence"
@@ -1004,8 +1164,8 @@
           "type": "compile"
         },
         {
-          "created_at": "2026-04-08 12:04:33.726412+00:00",
-          "id": "8b19da5b-8cbc-4576-8332-174d26af0d2c",
+          "created_at": "2026-04-08 13:10:28.866345+00:00",
+          "id": "8bd8682b-8314-4f69-a1a9-22c929209441",
           "payload": {
             "file": "src/pages/HomePage.jsx",
             "verification_class": "presence"
@@ -1015,8 +1175,8 @@
           "type": "compile"
         },
         {
-          "created_at": "2026-04-08 12:04:33.733158+00:00",
-          "id": "1fc2e96f-98b9-43cc-b31d-2165c6b18f0b",
+          "created_at": "2026-04-08 13:10:28.883179+00:00",
+          "id": "625ec5f6-bb5e-4223-aa7e-e221ee1097f8",
           "payload": {
             "file": "src/pages/LoginPage.jsx",
             "verification_class": "presence"
@@ -1026,8 +1186,8 @@
           "type": "compile"
         },
         {
-          "created_at": "2026-04-08 12:04:33.739713+00:00",
-          "id": "fbd304f6-cf00-495d-965f-70145ec14495",
+          "created_at": "2026-04-08 13:10:28.889145+00:00",
+          "id": "1ca37c1f-8cbb-423d-8577-89e84f41eff4",
           "payload": {
             "file": "src/pages/DashboardPage.jsx",
             "verification_class": "presence"
@@ -1037,8 +1197,8 @@
           "type": "compile"
         },
         {
-          "created_at": "2026-04-08 12:04:33.744589+00:00",
-          "id": "1f60c535-64e6-4830-bdac-85a70f6a0968",
+          "created_at": "2026-04-08 13:10:28.893847+00:00",
+          "id": "e3153515-cc2d-40a6-b470-c200bdf77530",
           "payload": {
             "file": "src/pages/TeamPage.jsx",
             "verification_class": "presence"
@@ -1048,8 +1208,8 @@
           "type": "compile"
         },
         {
-          "created_at": "2026-04-08 12:04:33.751775+00:00",
-          "id": "427d9874-1054-4a4a-9d38-d27e0ec5d0d3",
+          "created_at": "2026-04-08 13:10:28.898360+00:00",
+          "id": "5ea54ede-dd65-408b-bcb9-77385fda85c0",
           "payload": {
             "file": "src/App.jsx",
             "verification_class": "presence"
@@ -1059,8 +1219,8 @@
           "type": "compile"
         },
         {
-          "created_at": "2026-04-08 12:04:33.756159+00:00",
-          "id": "f319136f-abc3-4dd1-af94-bf716ec622b4",
+          "created_at": "2026-04-08 13:10:28.902949+00:00",
+          "id": "aa4a9ba7-f203-4ac6-96ea-82c21166fa57",
           "payload": {
             "file": "src/main.jsx",
             "verification_class": "presence"
@@ -1070,8 +1230,8 @@
           "type": "compile"
         },
         {
-          "created_at": "2026-04-08 12:04:33.761794+00:00",
-          "id": "bc00b25d-4f6a-4aab-9441-8bbe17bab869",
+          "created_at": "2026-04-08 13:10:28.908305+00:00",
+          "id": "a2d6e2e7-6299-4407-ab0b-445fe18407ca",
           "payload": {
             "file": "src/index.js",
             "verification_class": "syntax"
@@ -1081,8 +1241,56 @@
           "type": "compile"
         },
         {
-          "created_at": "2026-04-08 12:04:33.927487+00:00",
-          "id": "85c89723-dd3d-4445-9b00-bba43c3945bf",
+          "created_at": "2026-04-08 13:10:29.324424+00:00",
+          "id": "42f5a03b-f9a5-4e0e-83e0-db35fb92ef2a",
+          "payload": {
+            "command": [
+              "/usr/local/bin/python3.11",
+              "-m",
+              "py_compile",
+              "/app/workspace/131a93cb-bc31-4c5d-9ca8-e75804484b81/main.py"
+            ],
+            "file": "main.py"
+          },
+          "proof_type": "compile",
+          "title": "Python syntax OK: main.py",
+          "type": "compile"
+        },
+        {
+          "created_at": "2026-04-08 13:10:29.339426+00:00",
+          "id": "9f0686b1-b418-4afc-8564-2656c9785d74",
+          "payload": {
+            "command": [
+              "/usr/local/bin/python3.11",
+              "-m",
+              "py_compile",
+              "/app/workspace/131a93cb-bc31-4c5d-9ca8-e75804484b81/models.py"
+            ],
+            "file": "models.py"
+          },
+          "proof_type": "compile",
+          "title": "Python syntax OK: models.py",
+          "type": "compile"
+        },
+        {
+          "created_at": "2026-04-08 13:10:29.355694+00:00",
+          "id": "88cd4eb4-b1b7-42b8-84e2-7c06d297f8a7",
+          "payload": {
+            "command": [
+              "/usr/local/bin/python3.11",
+              "-m",
+              "py_compile",
+              "/app/workspace/131a93cb-bc31-4c5d-9ca8-e75804484b81/routes/users.py"
+            ],
+            "file": "routes/users.py"
+          },
+          "proof_type": "compile",
+          "title": "Python syntax OK: routes/users.py",
+          "type": "compile"
+        },
+        {
+          "created_at": "2026-04-08 13:10:29.518319+00:00",
+          "id": "6c90ea27-e512-4b3d-bc1a-128096e0e42d",
           "payload": {
             "file": "src/pages/TeamPage.jsx",
             "verification_class": "presence"
@@ -1092,8 +1300,8 @@
           "type": "compile"
         },
         {
-          "created_at": "2026-04-08 12:04:33.936379+00:00",
-          "id": "711429fc-32b9-46d2-b4ad-d71ecc8ba152",
+          "created_at": "2026-04-08 13:10:29.524531+00:00",
+          "id": "8e5bb40a-13fb-4c61-a048-4d9b59996285",
           "payload": {
             "file": "src/App.jsx",
             "verification_class": "presence"
@@ -1103,14 +1311,46 @@
           "type": "compile"
         },
         {
-          "created_at": "2026-04-08 12:04:34.725702+00:00",
-          "id": "0c5d42a1-317e-4dcc-aff6-1a9f5ed743c5",
+          "created_at": "2026-04-08 13:10:31.787347+00:00",
+          "id": "f2582b6b-a36d-4a00-a228-44188bf5d994",
           "payload": {
             "command": [
               "/usr/local/bin/python3.11",
               "-m",
               "py_compile",
-              "/app/workspace/ca0d32ff-433d-42d9-8f2a-2f9d6a92bf79/backend/main.py"
+              "/app/workspace/131a93cb-bc31-4c5d-9ca8-e75804484b81/main.py"
+            ],
+            "file": "main.py"
+          },
+          "proof_type": "compile",
+          "title": "Python syntax OK: main.py",
+          "type": "compile"
+        },
+        {
+          "created_at": "2026-04-08 13:10:31.801214+00:00",
+          "id": "af7fae86-10d7-4d9e-acda-e5a4810746b2",
+          "payload": {
+            "command": [
+              "/usr/local/bin/python3.11",
+              "-m",
+              "py_compile",
+              "/app/workspace/131a93cb-bc31-4c5d-9ca8-e75804484b81/routes/products.py"
+            ],
+            "file": "routes/products.py"
+          },
+          "proof_type": "compile",
+          "title": "Python syntax OK: routes/products.py",
+          "type": "compile"
+        },
+        {
+          "created_at": "2026-04-08 13:10:31.834183+00:00",
+          "id": "2d82999c-5f71-4149-8bf3-bf1ae188d12a",
+          "payload": {
+            "command": [
+              "/usr/local/bin/python3.11",
+              "-m",
+              "py_compile",
+              "/app/workspace/131a93cb-bc31-4c5d-9ca8-e75804484b81/backend/main.py"
             ],
             "file": "backend/main.py"
           },
@@ -1119,14 +1359,14 @@
           "type": "compile"
         },
         {
-          "created_at": "2026-04-08 12:04:34.904095+00:00",
-          "id": "629e8447-90a6-4a37-a784-8f9507eeb5a8",
+          "created_at": "2026-04-08 13:10:32.004706+00:00",
+          "id": "23f4e940-856a-4f08-a1ad-9154d6b37a62",
           "payload": {
             "command": [
               "/usr/local/bin/python3.11",
               "-m",
               "py_compile",
-              "/app/workspace/ca0d32ff-433d-42d9-8f2a-2f9d6a92bf79/backend/auth.py"
+              "/app/workspace/131a93cb-bc31-4c5d-9ca8-e75804484b81/backend/auth.py"
             ],
             "file": "backend/auth.py"
           },
@@ -1135,8 +1375,8 @@
           "type": "compile"
         },
         {
-          "created_at": "2026-04-08 12:04:35.089879+00:00",
-          "id": "e61260b0-6cc4-43d7-803b-c0fb2e404f4f",
+          "created_at": "2026-04-08 13:10:32.161107+00:00",
+          "id": "06aa0a31-4411-42aa-a724-a47b30ef305f",
           "payload": {
             "skipped": true
           },
@@ -1145,8 +1385,8 @@
           "type": "compile"
         },
         {
-          "created_at": "2026-04-08 12:04:35.243608+00:00",
-          "id": "794f2fde-ac92-4357-91f4-0ffa74289dd2",
+          "created_at": "2026-04-08 13:10:32.297010+00:00",
+          "id": "b46b95b9-5a58-4d8b-8135-8a8a47089c04",
           "payload": {
             "file": "backend/main.py",
             "method": "GET",
@@ -1158,21 +1398,21 @@
           "type": "api"
         },
         {
-          "created_at": "2026-04-08 12:04:35.252453+00:00",
-          "id": "0d95d456-d98e-4c40-bdc4-ce84e2f6d1c7",
+          "created_at": "2026-04-08 13:10:32.303852+00:00",
+          "id": "1d0fb88d-a008-4417-aae9-d5a7a2e285d7",
           "payload": {
             "file": "backend/main.py",
             "method": "GET",
-            "path": "/api/items",
+            "path": "/",
             "verification_class": "presence"
           },
           "proof_type": "api",
-          "title": "API smoke: declared GET /api/items",
+          "title": "API smoke: declared GET /",
           "type": "api"
         },
         {
-          "created_at": "2026-04-08 12:04:35.261411+00:00",
-          "id": "05743be9-d50f-4c1b-b496-743b992be867",
+          "created_at": "2026-04-08 13:10:32.309187+00:00",
+          "id": "1390bc52-e7c4-45da-be5c-16abc78a1f74",
           "payload": {
             "check": "health_endpoint",
             "verification_class": "runtime"
@@ -1182,8 +1422,8 @@
           "type": "api"
         },
         {
-          "created_at": "2026-04-08 12:04:35.281013+00:00",
-          "id": "72dfefac-e907-4213-b89c-23ab2d8e3cda",
+          "created_at": "2026-04-08 13:10:32.314868+00:00",
+          "id": "cca111c3-a1bf-46cc-832a-e5bd41bbd65a",
           "payload": {
             "file": "backend/main.py",
             "verification_class": "syntax"
@@ -1193,8 +1433,8 @@
           "type": "compile"
         },
         {
-          "created_at": "2026-04-08 12:04:35.289129+00:00",
-          "id": "58cb9068-0427-47b7-a583-57a2b9d4998f",
+          "created_at": "2026-04-08 13:10:32.320074+00:00",
+          "id": "1fc7e859-f8cd-4bc3-bb8b-5b9c2259fd4d",
           "payload": {
             "file": "backend/auth.py",
             "verification_class": "syntax"
@@ -1205,24 +1445,24 @@
         }
       ]
     },
-    "bundle_sha256": "d761793d4c98478268ad0a7d74ea1968babcf70b7e68ef7725e064eeab32a8b7",
+    "bundle_sha256": "e9af708f0c608c0cf9f8bd77faeaa0cfd5488b61b424be80859f60cd20439607",
     "category_counts": {
       "database": 2,
       "deploy": 1,
-      "files": 29,
+      "files": 38,
       "generic": 35,
-      "routes": 6,
-      "verification": 23
+      "routes": 11,
+      "verification": 27
     },
     "class_coverage": {
-      "experience": 0.5208333333333334,
+      "experience": 0.5482456140350876,
       "presence": 1.0,
-      "runtime": 0.7291666666666665,
-      "syntax": 1.0
+      "runtime": 0.6140350877192983,
+      "syntax": 0.9502923976608187
     },
-    "class_weighted_score": 74.79,
-    "job_id": "8c3273ef-297e-4953-80b2-78356036a34b",
-    "penalties_applied": 5,
+    "class_weighted_score": 70.01,
+    "job_id": "ad092a7d-2cc3-453d-a9ec-fb85cfe41fcd",
+    "penalties_applied": 0,
     "production_readiness_cap_note": "Capped heuristic only. Template RLS covers generated app_items; it does not certify your full data model, webhook idempotency, MFA, or infra.",
     "production_readiness_factors": [
       "no_test_proof_autorunner_template",
@@ -1231,18 +1471,19 @@
       "tenancy_smoke_live_isolation",
       "api_smoke_proof",
       "preview_screenshot",
+      "deploy_url_in_proof",
       "compile_checks",
       "route_proof_with_runtime_hint",
       "database_artifacts"
     ],
-    "production_readiness_score": 97.0,
+    "production_readiness_score": 100.0,
     "quality_score": 77.0,
     "scorecard": {
-      "honest_summary": "Pipeline quality (proof density): ~77. Trust-weighted evidence: ~70. Spec compliance vs stated goal: ~100%. Production readiness (heuristic): ~97. These are different axes; high pipeline score does not mean enterprise spec was met.",
+      "honest_summary": "Pipeline quality (proof density): ~77. Trust-weighted evidence: ~70. Spec compliance vs stated goal: ~100%. Production readiness (heuristic): ~100. These are different axes; high pipeline score does not mean enterprise spec was met.",
       "pipeline_quality_score": 77.0,
-      "production_readiness_score": 97.0,
+      "production_readiness_score": 100.0,
       "spec_compliance_percent": 100.0,
-      "trust_evidence_score": 69.8
+      "trust_evidence_score": 70.0
     },
     "spec_compliance_percent": 100.0,
     "spec_guard": {
@@ -1255,11 +1496,11 @@
       "violations": []
     },
     "success": true,
-    "total_proof_items": 96,
-    "trust_score": 69.79,
+    "total_proof_items": 114,
+    "trust_score": 70.01,
     "truth_status": {
       "claims_verified_only_with_proof": true,
-      "deploy_live_evidence": false,
+      "deploy_live_evidence": true,
       "preview_visual_evidence": true,
       "weights": {
         "experience": 0.3,
@@ -1269,14 +1510,14 @@
       }
     },
     "verification_class_counts": {
-      "experience": 4,
-      "presence": 59,
+      "experience": 5,
+      "presence": 71,
       "runtime": 7,
       "syntax": 13,
-      "unknown": 13
+      "unknown": 18
     },
-    "verification_proof_items": 23
+    "verification_proof_items": 27
   },
-  "started_at": "2026-04-08T12:05:01.118961+00:00",
+  "started_at": "2026-04-08T13:10:57.380505+00:00",
   "status_code": 200
 }

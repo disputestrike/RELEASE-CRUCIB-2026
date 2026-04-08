@@ -1,5 +1,5 @@
 {
-  "finished_at": "2026-04-08T12:04:27.612121+00:00",
+  "finished_at": "2026-04-08T13:10:22.708434+00:00",
   "label": "02_llm_health",
   "method": "GET",
   "ok": true,
@@ -38,7 +38,7 @@
         "one of ANTHROPIC_API_KEY, CEREBRAS_API_KEY, CEREBRAS_API_KEY_1..5, LLAMA_API_KEY"
       ]
     },
-    "generated_at": "2026-04-08T12:04:28.002236+00:00",
+    "generated_at": "2026-04-08T13:10:23.190500+00:00",
     "live_invocation": "not_run",
     "prompt_classification": "complex",
     "providers": {
@@ -87,6 +87,6 @@
     "status": "ready",
     "warnings": []
   },
-  "started_at": "2026-04-08T12:04:27.379030+00:00",
+  "started_at": "2026-04-08T13:10:22.486796+00:00",
   "status_code": 200
 }
