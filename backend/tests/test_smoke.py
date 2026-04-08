@@ -148,6 +148,7 @@ async def test_smoke_critical_endpoints_respond(app_client):
         ("/api/examples", "GET"),  # Landing + ExamplesGallery
         ("/api/trust/benchmark-summary", "GET"),
         ("/api/trust/security-posture", "GET"),
+        ("/api/trust/full-systems-summary", "GET"),
     ]
     for path, method in endpoints:
         if method == "GET":
@@ -528,6 +529,16 @@ async def test_smoke_terminal_execute_blocks_dangerous_commands(app_client, auth
     data = exec_r.json()
     assert data.get("returncode") == -1
     assert "terminal policy" in data.get("stderr", "")
+    audit_r = await app_client.get("/api/terminal/audit", headers=auth_headers, timeout=10)
+    assert audit_r.status_code == 200
+    events = audit_r.json().get("events") or []
+    assert any(event.get("blocked") is True and event.get("command") == "rm -rf /" for event in events)
+
+
+async def test_smoke_terminal_audit_requires_auth(app_client):
+    """Terminal audit trail is not public."""
+    r = await app_client.get("/api/terminal/audit", timeout=10)
+    assert r.status_code == 401
 
 
 async def test_smoke_terminal_execute_respects_disabled_env(app_client, auth_headers, monkeypatch):

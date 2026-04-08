@@ -7,7 +7,7 @@ import Logo from '../components/Logo';
 
 /**
  * OnboardingPage — Mode selection for new users.
- * Fullscreen, no sidebar/header/footer. Two cards: Builder (simple) or Developer.
+ * Fullscreen, no sidebar/header/footer. Three outcomes: build, improve code, or automate.
  */
 export default function OnboardingPage() {
   const navigate = useNavigate();
@@ -15,7 +15,8 @@ export default function OnboardingPage() {
   const [loading, setLoading] = useState(null);
   const [error, setError] = useState('');
 
-  const selectMode = async (mode) => {
+  const selectMode = async (card) => {
+    const mode = card.mode;
     setError('');
     setLoading(mode);
     const token = localStorage.getItem('token');
@@ -31,12 +32,12 @@ export default function OnboardingPage() {
       });
       localStorage.removeItem('crucibai_workspace_mode'); // clear fallback
       if (refreshUser) await refreshUser();
-      navigate('/app');
+      navigate('/app', { state: card.state || {} });
     } catch (err) {
       // Fallback: save locally and still go to dashboard so user isn't stuck
       localStorage.setItem('crucibai_workspace_mode', mode);
       if (refreshUser) await refreshUser();
-      navigate('/app');
+      navigate('/app', { state: card.state || {} });
     } finally {
       setLoading(null);
     }
@@ -46,14 +47,23 @@ export default function OnboardingPage() {
     {
       mode: 'simple',
       icon: User,
-      title: "I'm a Builder.",
-      subtitle: 'No code needed. Just describe what you want and we build it for you.',
+      title: 'Build new app',
+      subtitle: 'Describe the outcome, approve the plan, preview it, and publish.',
+      state: { newProject: true },
     },
     {
       mode: 'developer',
       icon: Code,
-      title: "I'm a Developer.",
-      subtitle: 'Full code editor, terminal, file control, and live preview.',
+      title: 'Improve existing code',
+      subtitle: 'Import files, inspect the diff, run proof, and keep full code ownership.',
+      state: { openImport: true },
+    },
+    {
+      mode: 'simple',
+      icon: User,
+      title: 'Automate workflow',
+      subtitle: 'Turn recurring work into an agent flow that can call the build AI.',
+      state: { suggestedPrompt: 'Create an automation that runs every weekday and uses the build agent to improve a project from new feedback.' },
     },
   ];
 
@@ -64,11 +74,13 @@ export default function OnboardingPage() {
         How do you want to use CrucibAI?
       </h1>
       <div className="flex flex-wrap justify-center gap-6 max-w-2xl">
-        {cards.map(({ mode, icon: Icon, title, subtitle }) => (
+        {cards.map((card) => {
+          const { mode, icon: Icon, title, subtitle } = card;
+          return (
           <button
-            key={mode}
+            key={title}
             type="button"
-            onClick={() => selectMode(mode)}
+            onClick={() => selectMode(card)}
             disabled={loading != null}
             className="w-full max-w-xs p-6 rounded-xl border border-gray-200 bg-white hover:border-orange-500 transition-all text-left flex flex-col items-start gap-4 disabled:opacity-70"
           >
@@ -81,7 +93,8 @@ export default function OnboardingPage() {
               <div className="w-5 h-5 border-2 border-gray-300 border-t-[#1A1A1A] rounded-full animate-spin" />
             ) : null}
           </button>
-        ))}
+          );
+        })}
       </div>
       {error && (
         <p className="mt-6 text-sm text-red-600">{error}</p>

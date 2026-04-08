@@ -9472,6 +9472,18 @@ async def terminal_close(session_id: str, user: dict = Depends(get_current_user)
         raise HTTPException(status_code=404, detail="Session not found")
     return {"status": "closed", "session_id": session_id}
 
+@api_router.get("/terminal/audit")
+async def terminal_audit(limit: int = Query(50, ge=1, le=100), user: dict = Depends(get_current_user)):
+    """Return the current user's terminal command audit trail."""
+    from terminal_integration import terminal_manager
+    return {
+        "events": terminal_manager.audit_events_for_user(user["id"], limit=limit),
+        "policy": {
+            "non_admin_production_default": "disabled",
+            "command_deny_policy": "enabled",
+        },
+    }
+
 # ==================== ECOSYSTEM ====================
 @api_router.get("/ecosystem/vscode/config")
 async def ecosystem_vscode_config():

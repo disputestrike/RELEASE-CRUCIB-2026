@@ -14,8 +14,10 @@ The gate writes proof under `proof/full_systems/` and fails on any required gate
 - Backend syntax compile for critical backend and proof scripts
 - Full backend pytest suite
 - Backend release gate
+- Golden-path UX source audit that checks onboarding, beta gating, visual edit, terminal audit, and public status/trust wiring
 - Frontend runtime gate using the supported Node 22 Docker path
 - Railway static readiness, full Docker build, local container health, and live `/api/health`
+- Fortune 100 public trust preflight against production-facing health, trust, benchmark, status, and security surfaces
 - Live production golden path against Railway:
   - health
   - LLM readiness

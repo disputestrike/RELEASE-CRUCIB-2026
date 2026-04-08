@@ -11,6 +11,7 @@ const SERVICES = [
   { name: 'Voice Input', description: 'Transcription service' },
   { name: 'Export & Deploy', description: 'ZIP, GitHub, Vercel' },
   { name: 'Benchmark Gate', description: '50-prompt repeatability scorecard' },
+  { name: 'Full Systems Gate', description: 'Backend, frontend, Railway, live golden path' },
   { name: 'Published Apps', description: 'Public generated-app URLs' },
   { name: 'Web App', description: 'crucibai-production.up.railway.app' },
 ];
@@ -45,11 +46,17 @@ export default function Status() {
       try {
         const res = await axios.get(`${API}/health`, { timeout: 5000 });
         const bench = await axios.get(`${API}/trust/benchmark-summary`, { timeout: 5000 }).catch(() => null);
+        const fullSystems = await axios.get(`${API}/trust/full-systems-summary`, { timeout: 5000 }).catch(() => null);
         const isUp = res.status === 200;
         const benchmarkReady = bench?.data?.status === 'ready';
+        const fullSystemsReady = fullSystems?.data?.status === 'ready';
         setStatuses(Object.fromEntries(SERVICES.map(s => [
           s.name,
-          s.name === 'Benchmark Gate' ? (benchmarkReady ? 'operational' : 'degraded') : (isUp ? 'operational' : 'degraded')
+          s.name === 'Benchmark Gate'
+            ? (benchmarkReady ? 'operational' : 'degraded')
+            : s.name === 'Full Systems Gate'
+              ? (fullSystemsReady ? 'operational' : 'degraded')
+              : (isUp ? 'operational' : 'degraded')
         ])));
         setLastChecked(new Date().toLocaleTimeString());
       } catch {

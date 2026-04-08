@@ -730,6 +730,17 @@
 .sidebar-engine-item:hover { background: var(--theme-border, rgba(255,255,255,0.06)); color: var(--theme-text, #e4e4e7); }
 .sidebar-engine-item.active { background: var(--theme-border, rgba(255,255,255,0.08)); color: var(--theme-text, #e4e4e7); }
 
+.sidebar-engine-beta {
+  margin-left: auto;
+  padding: 2px 6px;
+  border: 1px solid var(--theme-border, rgba(255,255,255,0.12));
+  border-radius: 999px;
+  color: var(--theme-muted, #a1a1aa);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
 /* ============================================
    TOKEN BALANCE
    ============================================ */

@@ -199,6 +199,16 @@ const QUICK_START_CHIPS = [
   { label: 'Import code', icon: Upload, prompt: null, action: 'import' },
 ];
 
+const GOLDEN_PATH_STEPS = [
+  'Prompt or import',
+  'Approve plan',
+  'Watch build',
+  'Review proof',
+  'Preview app',
+  'Publish URL',
+  'Continue improving',
+];
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -316,6 +326,13 @@ const Dashboard = () => {
     const { focusPrompt } = location.state || {};
     if (focusPrompt && inputRef.current) {
       inputRef.current.focus();
+    }
+    if (location.state?.suggestedPrompt) {
+      setPrompt(location.state.suggestedPrompt);
+      inputRef.current?.focus();
+    }
+    if (location.state?.openImport) {
+      setShowImportModal(true);
     }
   }, [location.state]);
 
@@ -773,6 +790,24 @@ const Dashboard = () => {
                     <chip.icon size={16} className="dashboard-chip-icon" />
                     <span>{chip.label}</span>
                   </button>
+                ))}
+              </div>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.24 }}
+              className="dashboard-golden-path-card"
+            >
+              <div className="dashboard-golden-path-copy">
+                <span className="dashboard-golden-path-eyebrow">Golden path</span>
+                <strong>Build, prove, preview, publish, then keep improving.</strong>
+              </div>
+              <div className="dashboard-golden-path-steps">
+                {GOLDEN_PATH_STEPS.map((step, index) => (
+                  <span key={step} className="dashboard-golden-path-step">
+                    <span>{index + 1}</span>{step}
+                  </span>
                 ))}
               </div>
             </motion.div>

@@ -11,6 +11,7 @@ import uuid
 import logging
 import os
 import shutil
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +95,24 @@ def _command_blocked_by_policy(command: str) -> bool:
 
 class TerminalManager:
     _sessions: Dict[str, TerminalSession] = {}
+    _audit_log: List[Dict[str, Any]] = []
+
+    def _record_audit(self, session: Optional[TerminalSession], command: str, result: Dict[str, Any]) -> None:
+        self._audit_log.append({
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "session_id": session.session_id if session else None,
+            "project_id": session.project_id if session else None,
+            "user_id": session.user_id if session else None,
+            "command": (command or "")[:200],
+            "returncode": result.get("returncode"),
+            "blocked": result.get("stderr") == "Command blocked by terminal policy",
+        })
+        if len(self._audit_log) > 500:
+            self._audit_log = self._audit_log[-500:]
+
+    def audit_events_for_user(self, user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+        events = [e for e in self._audit_log if e.get("user_id") == user_id]
+        return events[-max(1, min(limit, 100)):]
 
     async def create_terminal(self, project_path: str, shell: str = "/bin/bash", user_id: str = "", project_id: str = "") -> TerminalSession:
         session_id = str(uuid.uuid4())
@@ -122,12 +141,18 @@ class TerminalManager:
         if session.user_id != user_id:
             return {"returncode": -1, "stdout": "", "stderr": "Session not found"}
         if _command_blocked_by_policy(command):
-            return {"returncode": -1, "stdout": "", "stderr": "Command blocked by terminal policy"}
+            result = {"returncode": -1, "stdout": "", "stderr": "Command blocked by terminal policy"}
+            self._record_audit(session, command, result)
+            return result
         path = Path(session.project_path)
         if not path.exists():
-            return {"returncode": -1, "stdout": "", "stderr": "Project path does not exist"}
+            result = {"returncode": -1, "stdout": "", "stderr": "Project path does not exist"}
+            self._record_audit(session, command, result)
+            return result
         returncode, stdout, stderr = await asyncio.to_thread(_run_command_sync, path, session.shell, command, timeout)
-        return {"returncode": returncode, "stdout": stdout, "stderr": stderr}
+        result = {"returncode": returncode, "stdout": stdout, "stderr": stderr}
+        self._record_audit(session, command, result)
+        return result
 
 
 terminal_manager = TerminalManager()

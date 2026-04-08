@@ -5,45 +5,79 @@
 #1 DONE 0.1s
 
 #2 [internal] load metadata for docker.io/library/node:22-alpine
-#2 DONE 0.8s
+#2 DONE 1.4s
 
 #3 [internal] load .dockerignore
-#3 transferring context: 269B 0.0s done
-#3 DONE 0.1s
+#3 transferring context: 269B done
+#3 DONE 0.0s
 
 #4 [frontend 1/7] FROM docker.io/library/node:22-alpine@sha256:4d64b49e6c891c8fc821007cb1cdc6c0db7773110ac2c34bf2e6960adef62ed3
-#4 resolve docker.io/library/node:22-alpine@sha256:4d64b49e6c891c8fc821007cb1cdc6c0db7773110ac2c34bf2e6960adef62ed3 0.1s done
-#4 DONE 0.1s
+#4 resolve docker.io/library/node:22-alpine@sha256:4d64b49e6c891c8fc821007cb1cdc6c0db7773110ac2c34bf2e6960adef62ed3 0.0s done
+#4 DONE 0.0s
 
 #5 [internal] load build context
-#5 transferring context: 18.85kB 0.7s done
-#5 DONE 0.7s
+#5 transferring context: 162.54kB 0.8s done
+#5 DONE 1.0s
 
-#6 [frontend 5/7] RUN npm ci --omit=optional --legacy-peer-deps
+#6 [frontend 2/7] WORKDIR /app
 #6 CACHED
 
-#7 [frontend 6/7] COPY frontend/ ./
+#7 [frontend 3/7] COPY frontend/package.json frontend/package-lock.json frontend/.npmrc ./
 #7 CACHED
 
-#8 [frontend 2/7] WORKDIR /app
+#8 [frontend 4/7] COPY frontend/scripts ./scripts
 #8 CACHED
 
-#9 [frontend 3/7] COPY frontend/package.json frontend/package-lock.json frontend/.npmrc ./
+#9 [frontend 5/7] RUN npm ci --omit=optional --legacy-peer-deps
 #9 CACHED
 
-#10 [frontend 4/7] COPY frontend/scripts ./scripts
-#10 CACHED
+#10 [frontend 6/7] COPY frontend/ ./
+#10 DONE 0.8s
 
 #11 [frontend 7/7] RUN npm run build
-#11 CACHED
+#11 3.295 
+#11 3.295 > frontend@0.1.0 build
+#11 3.295 > cross-env DISABLE_ESLINT_PLUGIN=true craco build
+#11 3.295 
+#11 7.602 Creating an optimized production build...
+#11 106.5 Compiled successfully.
+#11 106.5 
+#11 106.5 File sizes after gzip:
+#11 106.5 
+#11 106.6   731.03 kB  build/static/js/main.9ac65832.js
+#11 106.6   41.43 kB   build/static/css/main.df67999e.css
+#11 106.6   26.57 kB   build/static/js/531.d8d55189.chunk.js
+#11 106.6   23.45 kB   build/static/js/967.d1fbc514.chunk.js
+#11 106.6   8.86 kB    build/static/js/550.1f9c4ac7.chunk.js
+#11 106.6   6.23 kB    build/static/js/55.3eaba4e4.chunk.js
+#11 106.6 
+#11 106.6 The bundle size is significantly larger than recommended.
+#11 106.6 Consider reducing it with code splitting: https://goo.gl/9VhYWB
+#11 106.6 You can also analyze the project dependencies: https://goo.gl/LeUzfb
+#11 106.6 
+#11 106.6 The project was built assuming it is hosted at /.
+#11 106.6 You can control this with the homepage field in your package.json.
+#11 106.6 
+#11 106.6 The build folder is ready to be deployed.
+#11 106.6 You may serve it with a static server:
+#11 106.6 
+#11 106.6   yarn global add serve
+#11 106.6   serve -s build
+#11 106.6 
+#11 106.6 Find out more about deployment here:
+#11 106.6 
+#11 106.6   https://cra.link/deployment
+#11 106.6 
+#11 DONE 107.7s
 
 #12 exporting to image
-#12 exporting layers 0.0s done
-#12 exporting manifest sha256:4a72af9534e2119f1f0d685e98c859c3e9fa7bdcda11ca31b4f14a13bab6ed1d done
-#12 exporting config sha256:6a68fd53f981c60b475ab110c1d0d3d9af9941ace1a1e67a73100e69cb2ef42d done
-#12 exporting attestation manifest sha256:1d6e972576f78ac9a63177e09e861ced8764e54378f24b667ee4899a37c82208 0.1s done
-#12 exporting manifest list sha256:f1b1d167a14b3e429b8e59db928c287f2b34da4d854ad2d38cc8dea34f12e1a1 0.0s done
-#12 naming to docker.io/library/crucibai-frontend-runtime-gate:latest
-#12 naming to docker.io/library/crucibai-frontend-runtime-gate:latest done
-#12 unpacking to docker.io/library/crucibai-frontend-runtime-gate:latest 0.0s done
-#12 DONE 0.3s
+#12 exporting layers
+#12 exporting layers 3.9s done
+#12 exporting manifest sha256:380cf332b32755c7af3f89b9da22eba016ca8c12f515d9b6fea3b3ed6c6be112 0.0s done
+#12 exporting config sha256:5e19437c9d84d95dd93fab36cdc00158b76416c1f50732d17a98b80f934dcac3 0.0s done
+#12 exporting attestation manifest sha256:1408223116aedb6e797e7d7d7d44f4f32455e03c27ddbc84f3163a36226544a2 0.1s done
+#12 exporting manifest list sha256:ae3979b7e06c4a1a583e98a27e69763accfd058e91990f27d1aadd4c067893e4 0.0s done
+#12 naming to docker.io/library/crucibai-frontend-runtime-gate:latest 0.0s done
+#12 unpacking to docker.io/library/crucibai-frontend-runtime-gate:latest
+#12 unpacking to docker.io/library/crucibai-frontend-runtime-gate:latest 2.4s done
+#12 DONE 6.6s

@@ -1,6 +1,6 @@
 ﻿{
-    "generated_at":  "2026-04-08T14:07:53.1271438Z",
-    "base_url":  "https://crucibai-production.up.railway.app",
+    "generated_at":  "2026-04-08T16:13:30.4748074Z",
+    "base_url":  null,
     "required_failures":  0,
     "results":  [
                     {
@@ -10,7 +10,7 @@
                         "exit_code":  0,
                         "command":  "git diff --check",
                         "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\git_diff_check.log",
-                        "duration_seconds":  0.45,
+                        "duration_seconds":  0.35,
                         "error":  null
                     },
                     {
@@ -20,7 +20,7 @@
                         "exit_code":  0,
                         "command":  "python -m py_compile critical backend/scripts",
                         "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\py_compile.log",
-                        "duration_seconds":  1.38,
+                        "duration_seconds":  0.97,
                         "error":  null
                     },
                     {
@@ -30,7 +30,7 @@
                         "exit_code":  0,
                         "command":  "python -m pytest backend\\tests -q --tb=short",
                         "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\backend_all_pytest.log",
-                        "duration_seconds":  145.94,
+                        "duration_seconds":  157.17,
                         "error":  null
                     },
                     {
@@ -40,7 +40,17 @@
                         "exit_code":  0,
                         "command":  ".\\scripts\\release-gate.ps1 -BackendOnly",
                         "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\release_gate_backend.log",
-                        "duration_seconds":  92.47,
+                        "duration_seconds":  78.63,
+                        "error":  null
+                    },
+                    {
+                        "name":  "Golden path UX source audit",
+                        "required":  true,
+                        "status":  "PASS",
+                        "exit_code":  0,
+                        "command":  "python scripts\\golden-path-ux-audit.py --proof-dir proof\\full_systems\\golden_path_ux",
+                        "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\golden_path_ux_audit.log",
+                        "duration_seconds":  0.26,
                         "error":  null
                     },
                     {
@@ -50,7 +60,7 @@
                         "exit_code":  0,
                         "command":  ".\\scripts\\frontend-runtime-gate.ps1 -RunDockerBuild",
                         "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\frontend_runtime_gate.log",
-                        "duration_seconds":  5.09,
+                        "duration_seconds":  121.15,
                         "error":  null
                     },
                     {
@@ -58,19 +68,9 @@
                         "required":  true,
                         "status":  "PASS",
                         "exit_code":  0,
-                        "command":  ".\\scripts\\verify-railway-readiness.ps1 -BaseUrl https://crucibai-production.up.railway.app -RunDockerBuild -RunContainerHealth",
+                        "command":  ".\\scripts\\verify-railway-readiness.ps1 -RunDockerBuild -RunContainerHealth",
                         "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\railway_readiness.log",
-                        "duration_seconds":  25.47,
-                        "error":  null
-                    },
-                    {
-                        "name":  "Live production golden path",
-                        "required":  true,
-                        "status":  "PASS",
-                        "exit_code":  0,
-                        "command":  "python scripts\\live-production-golden-path.py --base-url https://crucibai-production.up.railway.app --timeout-sec 1200 --poll-sec 8 --request-timeout-sec 90",
-                        "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\live_production_golden_path.log",
-                        "duration_seconds":  35.35,
+                        "duration_seconds":  25.29,
                         "error":  null
                     }
                 ]

@@ -30,6 +30,11 @@ def create_trust_router(root_dir: Path) -> APIRouter:
         root_dir / "proof" / "benchmarks" / "repeatability_v1",
         Path("/proof/benchmarks/repeatability_v1"),
     ]
+    full_systems_candidates = [
+        root_dir.parent / "proof" / "full_systems",
+        root_dir / "proof" / "full_systems",
+        Path("/proof/full_systems"),
+    ]
 
     @router.get("/trust/benchmark-summary")
     async def trust_benchmark_summary():
@@ -88,19 +93,65 @@ def create_trust_router(root_dir: Path) -> APIRouter:
             "tenant_isolation": "auth and project ownership enforced on workspace/job/helper routes",
             "terminal_policy": {
                 "status": "restricted",
-                "public_default": "disabled unless CRUCIBAI_TERMINAL_ENABLED explicitly allows it",
-                "boundary": "project-scoped with command deny policy; container sandbox remains launch debt before broad public exposure",
+                "public_default": "disabled for non-admin users in production",
+                "boundary": "project-scoped with command deny policy, in-memory audit trail, and strict production gate",
+                "sandbox_position": "generated-code execution uses the sandbox executor; interactive host terminal remains blocked for broad public exposure",
             },
             "proof_locations": [
                 "proof/phase2_security/",
                 "proof/pipeline_crash_fix/",
                 "proof/live_production_golden_path/",
                 "proof/benchmarks/",
+                "proof/full_systems/",
             ],
             "generated_app_publish": {
                 "mode": "in-platform public URL",
                 "route": "/published/{job_id}/",
                 "external_providers": "Vercel/Netlify/Railway adapters remain separate provider work",
+            },
+        }
+
+    @router.get("/trust/full-systems-summary")
+    async def trust_full_systems_summary():
+        """Public summary of the latest full systems gate proof."""
+        summary_path = _first_existing(path / "summary.json" for path in full_systems_candidates)
+        pass_fail_path = _first_existing(path / "PASS_FAIL.md" for path in full_systems_candidates)
+        if not summary_path:
+            return {
+                "status": "not_available",
+                "message": "Full systems gate proof has not been generated in this deployment.",
+                "required_failures": None,
+                "gates": [],
+                "proof": {"summary": "proof/full_systems/summary.json", "pass_fail": None},
+            }
+        try:
+            data = json.loads(summary_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            logger.warning("trust_full_systems_summary parse failed: %s", exc)
+            raise HTTPException(status_code=503, detail="Full systems proof summary unreadable")
+
+        results = data.get("results") or []
+        gates = []
+        if isinstance(results, list):
+            for item in results:
+                if not isinstance(item, dict):
+                    continue
+                gates.append({
+                    "name": item.get("name"),
+                    "required": bool(item.get("required")),
+                    "status": item.get("status"),
+                    "duration_seconds": item.get("duration_seconds"),
+                })
+        required_failures = data.get("required_failures")
+        return {
+            "status": "ready" if required_failures == 0 else "failing",
+            "generated_at": data.get("generated_at"),
+            "base_url": data.get("base_url"),
+            "required_failures": required_failures,
+            "gates": gates,
+            "proof": {
+                "summary": "proof/full_systems/summary.json",
+                "pass_fail": "proof/full_systems/PASS_FAIL.md" if pass_fail_path else None,
             },
         }
 

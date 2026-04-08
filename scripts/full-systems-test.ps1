@@ -150,7 +150,9 @@ try {
                 backend\proof\build_contract.py `
                 backend\proof\proof_service.py `
                 scripts\live-production-golden-path.py `
-                scripts\run-repeatability-benchmark.py
+                scripts\run-repeatability-benchmark.py `
+                scripts\golden-path-ux-audit.py `
+                scripts\fortune100-preflight.py
         }
 
     Invoke-Gate `
@@ -164,6 +166,12 @@ try {
         -Command ".\scripts\release-gate.ps1 -BackendOnly" `
         -LogName "release_gate_backend.log" `
         -Script { & .\scripts\release-gate.ps1 -BackendOnly }
+
+    Invoke-Gate `
+        -Name "Golden path UX source audit" `
+        -Command "python scripts\golden-path-ux-audit.py --proof-dir proof\full_systems\golden_path_ux" `
+        -LogName "golden_path_ux_audit.log" `
+        -Script { & python scripts\golden-path-ux-audit.py --proof-dir (Join-Path $ProofDir "golden_path_ux") }
 
     if (-not $SkipFrontendDocker) {
         Invoke-Gate `
@@ -204,6 +212,20 @@ try {
         }
 
     if (-not $SkipLive) {
+        Invoke-Gate `
+            -Name "Fortune 100 public trust preflight" `
+            -Command "python scripts\fortune100-preflight.py --base-url $BaseUrl --proof-dir proof\full_systems\fortune100_preflight" `
+            -LogName "fortune100_preflight.log" `
+            -Script {
+                & python scripts\fortune100-preflight.py --base-url $BaseUrl --proof-dir (Join-Path $ProofDir "fortune100_preflight")
+                $preflightExit = $LASTEXITCODE
+                $preflightMatrix = Join-Path $root (Join-Path $ProofDir "fortune100_preflight\PASS_FAIL.md")
+                if (Test-Path $preflightMatrix) {
+                    Get-Content -Path $preflightMatrix
+                }
+                $global:LASTEXITCODE = $preflightExit
+            }
+
         Invoke-Gate `
             -Name "Live production golden path" `
             -Command "python scripts\live-production-golden-path.py --base-url $BaseUrl --timeout-sec 1200 --poll-sec 8 --request-timeout-sec 90" `

@@ -18,12 +18,12 @@ import './Sidebar.css';
 /** Engine Room nav — module scope so filter memo deps stay stable */
 const ENGINE_ROOM_ITEMS = [
   { label: 'Skills', icon: Sparkles, href: '/app/skills' },
-  { label: 'Studio', icon: Bot, href: '/app/studio' },
-  { label: 'Knowledge', icon: BookOpen, href: '/app/knowledge' },
-  { label: 'Channels', icon: Radio, href: '/app/channels' },
-  { label: 'Sessions', icon: MessageSquare, href: '/app/sessions' },
-  { label: 'Commerce', icon: ShoppingBag, href: '/app/commerce' },
-  { label: 'Members', icon: Users, href: '/app/members' },
+  { label: 'Studio', icon: Bot, href: '/app/studio', beta: true },
+  { label: 'Knowledge', icon: BookOpen, href: '/app/knowledge', beta: true },
+  { label: 'Channels', icon: Radio, href: '/app/channels', beta: true },
+  { label: 'Sessions', icon: MessageSquare, href: '/app/sessions', beta: true },
+  { label: 'Commerce', icon: ShoppingBag, href: '/app/commerce', beta: true },
+  { label: 'Members', icon: Users, href: '/app/members', beta: true },
   { label: 'Credit Center', icon: Coins, href: '/app/tokens' },
   { label: 'Exports', icon: FileOutput, href: '/app/exports' },
   { label: 'Docs / Slides / Sheets', icon: FileText, href: '/app/generate' },
@@ -37,12 +37,12 @@ const ENGINE_ROOM_ITEMS = [
   { label: 'Add Payments', icon: CreditCard, href: '/app/payments-wizard' },
   { label: 'Audit Log', icon: ScrollText, href: '/app/audit-log' },
   { label: 'Model Manager', icon: BarChart3, href: '/app/models' },
-  { label: 'Fine-Tuning', icon: Zap, href: '/app/fine-tuning' },
-  { label: 'Safety Dashboard', icon: ShieldCheck, href: '/app/safety' },
+  { label: 'Fine-Tuning', icon: Zap, href: '/app/fine-tuning', beta: true },
+  { label: 'Safety Dashboard', icon: ShieldCheck, href: '/app/safety', beta: true },
   { label: 'Monitoring', icon: BarChart3, href: '/app/monitoring' },
   { label: 'Auto-Runner', icon: PlayCircle, href: '/app/workspace' },
-  { label: 'VibeCode', icon: Code, href: '/app/vibecode' },
-  { label: 'IDE', icon: Monitor, href: '/app/ide' },
+  { label: 'VibeCode', icon: Code, href: '/app/vibecode', beta: true },
+  { label: 'IDE', icon: Monitor, href: '/app/ide', beta: true },
 ];
 
 /**
@@ -652,6 +652,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
                 >
                   <item.icon size={14} />
                   <span>{item.label}</span>
+                  {item.beta && <span className="sidebar-engine-beta">Beta</span>}
                 </Link>
               ))}
             </div>
