@@ -74,6 +74,9 @@ Tasks:
 - [x] Add task ownership checks for GitHub sync and Railway deploy helpers.
 - [x] Add focused smoke coverage for Git sync/Railway deploy unowned task/project rejection.
 - [x] Commit and push the late-route registration and deploy ownership slice (`412141d`).
+- [x] Replace terminal command execution `shell=True` with explicit shell invocation using `shell=False`.
+- [x] Add focused smoke verification that scoped terminal execution still works on Windows.
+- [ ] Commit and push the terminal shell hardening slice.
 
 ## Verification Log
 
@@ -96,6 +99,8 @@ Tasks:
 - `python -m py_compile backend\server.py backend\modules_blueprint.py` passed.
 - `python -m pytest backend\tests\test_smoke.py -k "git_sync or railway_deploy or deploy or app_db" -q` passed with local Postgres/Redis env: 10 passed, 36 deselected.
 - `python -m pytest backend\tests\test_smoke.py -k "orchestrator_plan or create_job or run_auto or retry_step or agent_memory or agent_automation or app_db or cache_invalidate or detect_frameworks or deploy or git_sync or railway_deploy" -q` passed with local Postgres/Redis env: 23 passed, 23 deselected.
+- `python -m py_compile backend\terminal_integration.py backend\server.py` passed.
+- `python -m pytest backend\tests\test_smoke.py -k "terminal" -q` passed with local Postgres/Redis env: 3 passed, 43 deselected.
 - `.\scripts\verify-local.ps1` correctly failed on Node `v24.14.0`; the frontend declares Node `>=18 <=22`.
 
 ## Next Milestone
