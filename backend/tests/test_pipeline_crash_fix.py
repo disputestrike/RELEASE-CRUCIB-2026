@@ -239,6 +239,25 @@ async def test_live_frontend_output_gets_preview_contract_hardening(monkeypatch)
         assert preview["passed"] is True, preview.get("issues")
 
 
+def test_preview_contract_merge_removes_invalid_react_router_types_dependency():
+    from orchestration.executor import _merge_package_dependencies
+
+    existing = json.dumps(
+        {
+            "name": "thin-app",
+            "private": True,
+            "dependencies": {"react": "^18.2.0"},
+            "devDependencies": {"@types/react-router-dom": "6.2.1"},
+        }
+    )
+    fallback = json.dumps({"dependencies": {"zustand": "^4.5.0"}, "devDependencies": {}})
+
+    merged = json.loads(_merge_package_dependencies(existing, fallback))
+
+    assert "@types/react-router-dom" not in merged["devDependencies"]
+    assert merged["dependencies"]["zustand"] == "^4.5.0"
+
+
 @pytest.mark.asyncio
 async def test_fallback_scaffold_passes_preview_and_elite_gates(monkeypatch):
     monkeypatch.setenv("CRUCIBAI_SKIP_BROWSER_PREVIEW", "1")

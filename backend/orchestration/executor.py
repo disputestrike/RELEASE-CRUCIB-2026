@@ -331,6 +331,7 @@ def _merge_package_dependencies(existing_text: Optional[str], fallback_text: str
         merged.update(existing_pkg.get(section) or {})
         if section in ("dependencies", "devDependencies"):
             merged = {**(existing_pkg.get(section) or {}), **(fallback_pkg.get(section) or {})}
+            merged.pop("@types/react-router-dom", None)
         existing_pkg[section] = merged
 
     if not existing_pkg.get("type"):
