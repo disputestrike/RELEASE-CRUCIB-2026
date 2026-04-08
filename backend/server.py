@@ -8502,9 +8502,9 @@ async def run_auto(
                 },
             )
 
-        ws = (body.workspace_path or "").strip()
+        ws = ""
         pid = job.get("project_id")
-        if not ws and pid:
+        if pid:
             root = _project_workspace_path(pid).resolve()
             root.mkdir(parents=True, exist_ok=True)
             ws = str(root)

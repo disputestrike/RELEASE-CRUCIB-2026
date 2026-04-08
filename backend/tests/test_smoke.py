@@ -85,6 +85,24 @@ async def _create_failed_smoke_job_step(auth_headers):
     return job["id"], step["id"]
 
 
+async def _create_smoke_auto_job(auth_headers):
+    """Create a user-owned Auto-Runner job for execution-boundary smoke tests."""
+    from db_pg import get_pg_pool
+    from orchestration import runtime_state
+
+    pool = await get_pg_pool()
+    runtime_state.set_pool(pool)
+    user_id = _user_id_from_auth_headers(auth_headers)
+    project_id = f"smoke-project-{uuid.uuid4().hex[:8]}"
+    job = await runtime_state.create_job(
+        project_id=project_id,
+        mode="guided",
+        goal="Build a smoke app",
+        user_id=user_id,
+    )
+    return job["id"], project_id
+
+
 async def _register_smoke_headers(app_client):
     """Register another test user and return auth headers."""
     email = f"smoke-{uuid.uuid4().hex[:12]}@example.com"
@@ -494,6 +512,32 @@ async def test_smoke_retry_step_returns_200_for_owned_failed_step(app_client, au
     data = r.json()
     assert data.get("success") is True
     assert data.get("status") == "pending"
+
+
+async def test_smoke_run_auto_ignores_client_workspace_path(app_client, auth_headers, monkeypatch):
+    """POST /api/orchestrator/run-auto resolves workspace from job project_id, not request path."""
+    import server
+
+    captured = {}
+
+    async def fake_background(job_id, workspace_path):
+        captured["job_id"] = job_id
+        captured["workspace_path"] = workspace_path
+
+    monkeypatch.setattr(server, "_background_auto_runner_job", fake_background)
+    job_id, project_id = await _create_smoke_auto_job(auth_headers)
+    malicious = "C:\\Windows\\System32"
+    r = await app_client.post(
+        "/api/orchestrator/run-auto",
+        json={"job_id": job_id, "workspace_path": malicious},
+        headers=auth_headers,
+        timeout=20,
+    )
+    assert r.status_code == 200, r.text
+    assert captured.get("job_id") == job_id
+    assert captured.get("workspace_path")
+    assert malicious not in captured["workspace_path"]
+    assert project_id in captured["workspace_path"]
 
 
 async def test_smoke_app_db_schema_returns_200_for_owned_task(app_client, auth_headers):
