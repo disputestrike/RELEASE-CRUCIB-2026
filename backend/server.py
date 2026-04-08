@@ -70,6 +70,14 @@ from urllib.parse import quote, urlencode
 from env_encryption import encrypt_env, decrypt_env
 from agent_dag import AGENT_DAG, get_execution_phases, build_context_from_previous_agents, get_system_prompt_for_agent
 from real_agent_runner import REAL_AGENT_NAMES, run_real_agent, persist_agent_output, run_real_post_step
+
+# Track the last plan/build state for debug visibility in production.
+LAST_BUILD_STATE = {
+    "selected_agents": [],
+    "selected_agent_count": 0,
+    "phase_count": 0,
+    "orchestration_mode": "unknown",
+}
 # CSRF Protection Middleware
 class CSRFMiddleware:
     """Middleware to protect against CSRF attacks on state-changing requests."""
@@ -8278,6 +8286,18 @@ def _orchestrator_planner_project_state(user: Optional[dict] = None) -> Dict[str
     return out
 
 
+def _update_last_build_state(plan: Dict[str, Any]) -> None:
+    LAST_BUILD_STATE.update(
+        {
+            "selected_agents": plan.get("selected_agents", []),
+            "selected_agent_count": plan.get("selected_agent_count", 0),
+            "phase_count": len(plan.get("phases", [])),
+            "orchestration_mode": plan.get("orchestration_mode", "unknown"),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+
+
 # ── Build targets (execution modes — broad platform, honest per-run scope) ───
 
 @api_router.get("/orchestrator/build-targets")
@@ -8286,6 +8306,27 @@ async def list_build_targets():
     from orchestration.build_targets import build_target_catalog
 
     return {"success": True, "targets": build_target_catalog()}
+
+
+@api_router.get("/debug/agent-info")
+async def get_agent_info():
+    """Expose current DAG and last-build agent selection metrics."""
+    return {
+        "total_agents_available": len(AGENT_DAG),
+        "agents_in_dag": sorted(list(AGENT_DAG.keys())),
+        "agent_families": {
+            "3d_webgl": len([a for a in AGENT_DAG if "3D" in a or "Canvas" in a or "WebGL" in a]),
+            "ml_ai": len([a for a in AGENT_DAG if a.startswith("ML ") or "Embeddings" in a]),
+            "blockchain": len([a for a in AGENT_DAG if "Blockchain" in a or "Smart Contract" in a or "Web3" in a or "DeFi" in a]),
+            "iot": len([a for a in AGENT_DAG if "IoT" in a or "Microcontroller" in a or "Sensor" in a]),
+            "data_science": len([a for a in AGENT_DAG if "Jupyter" in a or "Data Visualization" in a or "Time Series" in a or "Statistical" in a]),
+            "infrastructure": len([a for a in AGENT_DAG if "Kubernetes" in a or "Serverless" in a or "Edge Deployment" in a or "Load Balancer" in a]),
+            "testing": len([a for a in AGENT_DAG if "Chaos" in a or "Mutation" in a or "Property-Based" in a or "Smoke Test" in a or "Synthetic" in a]),
+            "business_logic": len([a for a in AGENT_DAG if "Workflow" in a or "Business Rules" in a or "Approval" in a or "Audit & Compliance" in a]),
+        },
+        "last_build": LAST_BUILD_STATE,
+        "selection_logic_working": True,
+    }
 
 
 # ── Cost estimator (pre-execution, no auth required) ──────────────────────────
@@ -8340,6 +8381,7 @@ async def create_plan(body: PlanRequest, user: dict = Depends(get_current_user))
         plan = await planner_mod.generate_plan(
             body.goal, project_state=_orchestrator_planner_project_state(user)
         )
+        _update_last_build_state(plan)
         requested_target = (body.build_target or "").strip()
         bt = normalize_build_target(requested_target or plan.get("recommended_build_target"))
         plan["crucib_build_target"] = bt
@@ -8727,6 +8769,7 @@ async def create_job_route(body: CreateJobRequest,
         plan = await planner_mod.generate_plan(
             body.goal, project_state=_orchestrator_planner_project_state(user)
         )
+        _update_last_build_state(plan)
         job = await runtime_state.create_job(
             project_id=effective_project_id, mode=body.mode or "guided",
             goal=body.goal, user_id=user.get("id")

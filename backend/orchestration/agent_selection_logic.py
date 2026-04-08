@@ -6,6 +6,7 @@ honest and complete.
 """
 from __future__ import annotations
 
+import re
 from typing import Dict, List, Set
 
 from agent_dag import AGENT_DAG, get_execution_phases
@@ -64,6 +65,7 @@ AGENT_KEYWORDS = {
     # Blockchain / Web3
     "blockchain": ["Blockchain Selector Agent", "Smart Contract Agent", "Contract Testing Agent"],
     "smart contract": ["Smart Contract Agent", "Contract Testing Agent", "Contract Deployment Agent"],
+    "smart contracts": ["Smart Contract Agent", "Contract Testing Agent", "Contract Deployment Agent"],
     "ethereum": ["Blockchain Selector Agent", "Smart Contract Agent", "Web3 Frontend Agent"],
     "solidity": ["Smart Contract Agent", "Contract Testing Agent"],
     "web3": ["Web3 Frontend Agent", "Blockchain Data Agent", "DeFi Integration Agent"],
@@ -248,13 +250,29 @@ def _dependency_closure(initial: Set[str]) -> Set[str]:
     return selected
 
 
+def _keyword_match(keyword: str, text: str) -> bool:
+    """Match keyword with word boundaries to avoid substring false positives."""
+    normalized = (keyword or "").lower()
+    haystack = (text or "").lower()
+    if normalized == "ar":
+        return bool(re.search(r"\bar\b", haystack)) or "augmented reality" in haystack
+    if normalized == "vr":
+        return bool(re.search(r"\bvr\b", haystack)) or "virtual reality" in haystack
+    escaped = re.escape(normalized)
+    if not escaped:
+        return False
+    pattern = rf"\b{escaped}\b"
+    return bool(re.search(pattern, haystack))
+
+
 def select_agents_for_goal(goal: str, stack_contract: Dict | None = None) -> List[str]:
     selected: Set[str] = set(BASE_AGENTS)
-    goal_lower = (goal or "").lower()
+    goal_text = goal or ""
+    goal_lower = goal_text.lower()
     contract = stack_contract or {}
 
     for keyword, agents in AGENT_KEYWORDS.items():
-        if keyword in goal_lower:
+        if _keyword_match(keyword, goal_text):
             selected.update(a for a in agents if a in AGENT_DAG)
 
     if contract.get("mobile"):

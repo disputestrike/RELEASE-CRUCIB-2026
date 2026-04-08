@@ -19,7 +19,7 @@ from .trust.node_manifest import enrich_plan_with_node_manifests
 from .multiregion_terraform_sketch import multiregion_terraform_intent
 from .observability_workspace_pack import observability_intent as observability_goal_intent
 from .generation_contract import parse_generation_contract
-from .agent_selection_logic import select_agents_for_goal
+from .agent_selection_logic import _keyword_match, select_agents_for_goal
 from .spec_guardian import evaluate_goal_against_runner, merge_plan_risk_flags_into_report
 from .swarm_agent_runner import build_agent_swarm_phases, uses_agent_swarm
 
@@ -142,6 +142,32 @@ def _detect_spec_vs_runner_template_mismatch(goal: str, use_agent_swarm: bool = 
     return flags
 
 
+def _should_use_agent_selection(goal: str) -> bool:
+    """Route specialized prompts into the selected-agent swarm path."""
+    selection_triggers = [
+        "3d", "webgl", "three.js", "babylon", "cesium", "augmented reality", "virtual reality", "ar", "vr",
+        "ml", "machine learning", "tensorflow", "pytorch", "sklearn", "scikit-learn", "xgboost",
+        "recommendation", "neural network", "deep learning", "prediction",
+        "blockchain", "smart contract", "ethereum", "solidity", "web3", "crypto", "defi", "nft",
+        "token", "dapp", "polygon", "solana",
+        "iot", "arduino", "raspberry", "sensor", "mqtt", "ble", "bluetooth", "lora", "firmware", "embedded",
+        "jupyter", "notebook", "forecast", "time series", "statistical analysis", "data visualization",
+        "kubernetes", "k8s", "serverless", "lambda", "cloudflare", "istio", "docker", "container", "kafka", "rabbitmq", "redis",
+        "chaos", "mutation", "property-based", "e2e", "load test", "synthetic",
+        "workflow", "approval", "business rules", "scheduling",
+    ]
+    for trigger in selection_triggers:
+        if _keyword_match(trigger, goal):
+            logger.info("Agent selection triggered by keyword: %s", trigger)
+            return True
+    logger.info("Agent selection not triggered; using fixed_autorunner unless swarm markers apply")
+    return False
+
+
+def _uses_intelligent_orchestration(goal: str, stack_contract: Optional[Dict[str, Any]] = None) -> bool:
+    return _should_use_agent_selection(goal) or uses_agent_swarm(goal, stack_contract)
+
+
 def _detect_risk_flags(goal: str, project_state: Optional[Dict] = None,
                        stack_contract: Optional[Dict[str, Any]] = None) -> list:
     flags = []
@@ -153,7 +179,7 @@ def _detect_risk_flags(goal: str, project_state: Optional[Dict] = None,
     thresh = _goal_len_advisory_threshold(project_state)
     if thresh is not None and len(goal) > thresh:
         flags.append("goal_too_long_consider_splitting")
-    flags.extend(_detect_spec_vs_runner_template_mismatch(goal, uses_agent_swarm(goal, stack_contract)))
+    flags.extend(_detect_spec_vs_runner_template_mismatch(goal, _uses_intelligent_orchestration(goal, stack_contract)))
     return flags
 
 
@@ -161,7 +187,8 @@ def _architecture_outline(build_kind: str, integrations: list,
                           stack_contract: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Pre-code architecture brain (honest template — not generated from LLM)."""
     ints = list(integrations or [])
-    swarm_mode = uses_agent_swarm("", stack_contract)
+    goal_for_selection = (stack_contract or {}).get("goal") or ""
+    swarm_mode = _uses_intelligent_orchestration(goal_for_selection, stack_contract)
     data_notes = [
         "Demo items / user preferences (client storage + sketch API)",
     ]
@@ -218,7 +245,8 @@ def _architecture_outline(build_kind: str, integrations: list,
 def _build_phases(goal: str, build_kind: str, integrations: list,
                   stack_contract: Optional[Dict[str, Any]] = None,
                   selected_agents: Optional[list] = None) -> list:
-    if uses_agent_swarm(goal, stack_contract):
+    if _uses_intelligent_orchestration(goal, stack_contract):
+        logger.info("Routing to intelligent agent selection / swarm path")
         phases = build_agent_swarm_phases(goal, stack_contract, selected_agents=selected_agents)
         phases.append(
             {
@@ -423,12 +451,13 @@ async def generate_plan(goal: str,
     llm_call: optional async callable(prompt) -> str for AI-enhanced planning.
     """
     stack_contract = parse_generation_contract(goal)
+    stack_contract["goal"] = goal
     build_kind = _detect_build_kind(goal)
     integrations = _detect_integrations(goal)
     risk_flags = _detect_risk_flags(goal, project_state, stack_contract)
     selected_agents = (
         select_agents_for_goal(goal, stack_contract)
-        if uses_agent_swarm(goal, stack_contract)
+        if _uses_intelligent_orchestration(goal, stack_contract)
         else []
     )
     phases = _build_phases(goal, build_kind, integrations, stack_contract, selected_agents)
@@ -500,7 +529,7 @@ async def generate_plan(goal: str,
         acceptance_criteria.append(
             "Requested stack components are emitted as real files across application, services, tests, docs, and infrastructure.",
         )
-    if uses_agent_swarm(goal, stack_contract):
+    if _uses_intelligent_orchestration(goal, stack_contract):
         acceptance_criteria.append(
             "Complex requests route through the full AGENT_DAG swarm instead of pack/scaffold fallback.",
         )
@@ -539,7 +568,7 @@ async def generate_plan(goal: str,
         "stack_contract": stack_contract,
         "generation_mode": "full_system_builder" if stack_contract.get("requires_full_system_builder") else "targeted_pack",
         "recommended_build_target": recommended_target,
-        "orchestration_mode": "agent_swarm" if uses_agent_swarm(goal, stack_contract) else "fixed_autorunner",
+        "orchestration_mode": "agent_swarm" if _uses_intelligent_orchestration(goal, stack_contract) else "fixed_autorunner",
         "selected_agents": selected_agents,
         "selected_agent_count": len(selected_agents),
     }

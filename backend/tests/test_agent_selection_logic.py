@@ -1,5 +1,6 @@
 from agent_dag import AGENT_DAG
-from orchestration.agent_selection_logic import build_full_phases_from_dag, select_agents_for_goal
+from orchestration.agent_selection_logic import _keyword_match, build_full_phases_from_dag, select_agents_for_goal
+from orchestration.planner import _should_use_agent_selection
 
 
 FULL_SYSTEM_PROMPT = (
@@ -32,6 +33,19 @@ def test_select_agents_for_goal_expands_dependencies():
     assert "Contract Testing Agent" in agents
 
 
+def test_keyword_match_uses_word_boundaries():
+    assert _keyword_match("ar", "augmented reality")
+    assert not _keyword_match("ar", "smart contract")
+    assert _keyword_match("smart contract", "build ethereum smart contract")
+
+
+def test_blockchain_goal_does_not_pull_false_positive_3d_agent():
+    agents = set(select_agents_for_goal("Build Ethereum smart contract DeFi dApp"))
+
+    assert "Smart Contract Agent" in agents
+    assert "3D AR/VR Agent" not in agents
+
+
 def test_select_agents_for_helios_includes_business_and_compliance_agents():
     agents = set(select_agents_for_goal(HELIOS_PROMPT, {"requires_full_system_builder": True}))
 
@@ -54,8 +68,17 @@ def test_build_full_phases_from_dag_only_uses_selected_agents():
     assert "WebSocket Agent" in flat
 
 
+def test_should_use_agent_selection_routes_specialized_prompts():
+    assert _should_use_agent_selection("Build 3D product visualizer with Three.js")
+    assert _should_use_agent_selection("Build Ethereum smart contract DeFi dApp")
+    assert _should_use_agent_selection("Build ML recommendation engine with TensorFlow")
+    assert not _should_use_agent_selection("Build a simple todo app")
+
+
 def test_server_legacy_orchestration_registry_is_dag_backed():
     source = open("backend/server.py", "r", encoding="utf-8", errors="replace").read()
 
     assert "_token_budget_for_orchestration_agent" in source
     assert "for phase in get_execution_phases(AGENT_DAG)" in source
+    assert '/debug/agent-info' in source
+    assert 'LAST_BUILD_STATE' in source
