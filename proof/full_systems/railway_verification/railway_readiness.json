@@ -1,7 +1,7 @@
 ﻿{
-    "generated_at":  "2026-04-08T16:49:31.5395721Z",
+    "generated_at":  "2026-04-08T17:09:29.5041622Z",
     "static_readiness":  "passed",
-    "live_confirmation":  "passed",
+    "live_confirmation":  "not_run",
     "checks":  {
                    "railway_json_exists":  true,
                    "railway_uses_dockerfile":  true,
@@ -75,14 +75,14 @@
                              "health_output":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\railway_verification\\docker_container_health.json",
                              "health_url":  "http://127.0.0.1:18080/api/health",
                              "status":  "passed",
-                             "container_id":  "bcd3a8b0fa47e9d46db6a71ec30d4ca8961be2f492f9063f6969ee44fa1ddd6c",
+                             "container_id":  "e2fcbb8092024ed72b97f3f43edfa26017b0b86549ea544de57e3505b56004e9",
                              "image":  "crucibai-railway-readiness"
                          },
     "live":  {
-                 "url":  "https://crucibai-production.up.railway.app",
+                 "status":  "not_run",
+                 "url":  "",
                  "health_output":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\full_systems\\railway_verification\\health_check.json",
-                 "health_status_code":  200,
-                 "requested":  true,
-                 "status":  "passed"
+                 "health_status_code":  null,
+                 "requested":  false
              }
 }

@@ -26,6 +26,8 @@ export default function Security() {
             <li><strong className="text-[#1A1A1A]">HTTPS:</strong> Use HTTPS in production; we send Strict-Transport-Security so browsers enforce TLS.</li>
             <li><strong className="text-[#1A1A1A]">Database:</strong> PostgreSQL is the primary system of record; MongoDB references are treated as documentation drift.</li>
             <li><strong className="text-[#1A1A1A]">Terminal:</strong> Terminal access is project-scoped, command-audited, and launch-gated. Broad public host-shell exposure remains blocked until sandbox boundaries are complete.</li>
+            <li><strong className="text-[#1A1A1A]">Generated-code sandbox:</strong> Generated code uses the sandbox executor with timeout, output, file-size, memory, CPU, and process limits before public terminal exposure is considered.</li>
+            <li><strong className="text-[#1A1A1A]">Community templates:</strong> Launch templates are curated and moderation-gated before public listing.</li>
             <li><strong className="text-[#1A1A1A]">Payments:</strong> We use Stripe for payments. Card data is handled by Stripe; we do not store full card numbers.</li>
           </ul>
 

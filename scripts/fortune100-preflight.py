@@ -24,9 +24,13 @@ ENDPOINTS = [
     {"id": "benchmark_summary", "path": "/api/trust/benchmark-summary", "kind": "json"},
     {"id": "security_posture", "path": "/api/trust/security-posture", "kind": "json"},
     {"id": "full_systems_summary", "path": "/api/trust/full-systems-summary", "kind": "json"},
+    {"id": "community_templates", "path": "/api/community/templates", "kind": "json"},
+    {"id": "community_case_studies", "path": "/api/community/case-studies", "kind": "json"},
+    {"id": "community_moderation", "path": "/api/community/moderation-policy", "kind": "json"},
     {"id": "benchmarks_page", "path": "/benchmarks", "kind": "html"},
     {"id": "security_page", "path": "/security", "kind": "html"},
     {"id": "status_page", "path": "/status", "kind": "html"},
+    {"id": "templates_page", "path": "/templates", "kind": "html"},
 ]
 
 
@@ -103,6 +107,28 @@ def check_contract(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
         "terminal_public_host_shell_blocked",
         "disabled" in str(terminal_policy.get("public_default", "")).lower(),
         f"terminal public_default={terminal_policy.get('public_default')}",
+    )
+
+    sandbox_policy = security.get("sandbox_policy") or {}
+    add(
+        "generated_code_sandbox_policy_visible",
+        "sandbox" in str(sandbox_policy.get("generated_code", "")).lower()
+        and "disabled" in str(sandbox_policy.get("interactive_terminal", "")).lower(),
+        f"sandbox generated_code={sandbox_policy.get('generated_code')} interactive_terminal={sandbox_policy.get('interactive_terminal')}",
+    )
+
+    community = by_id.get("community_templates", {}).get("json") or {}
+    templates = community.get("templates") or []
+    moderation = by_id.get("community_moderation", {}).get("json") or {}
+    case_studies = by_id.get("community_case_studies", {}).get("json") or {}
+    add(
+        "community_templates_curated_and_remixable",
+        len(templates) >= 4
+        and all(item.get("moderation_status") == "approved" for item in templates if isinstance(item, dict))
+        and all(item.get("remix_endpoint") for item in templates if isinstance(item, dict))
+        and moderation.get("status") == "ready"
+        and len(case_studies.get("case_studies") or []) >= 3,
+        f"templates={len(templates)} moderation={moderation.get('status')} case_studies={len(case_studies.get('case_studies') or [])}",
     )
 
     durations = [record["duration_ms"] for record in records if isinstance(record.get("duration_ms"), (int, float))]

@@ -29,9 +29,14 @@ export default function TemplatesPublic() {
   const [templates, setTemplates] = useState(FALLBACK_TEMPLATES);
 
   useEffect(() => {
-    axios.get(`${API}/templates`, { timeout: 5000 })
+    axios.get(`${API}/community/templates`, { timeout: 5000 })
       .then((r) => { if (r.data?.templates?.length) setTemplates(r.data.templates); })
-      .catch((e) => logApiError('TemplatesPublic', e));
+      .catch((e) => {
+        logApiError('TemplatesPublic community', e);
+        axios.get(`${API}/templates`, { timeout: 5000 })
+          .then((r) => { if (r.data?.templates?.length) setTemplates(r.data.templates); })
+          .catch((err) => logApiError('TemplatesPublic fallback', err));
+      });
   }, []);
 
   const handleUse = () => {
@@ -63,7 +68,18 @@ export default function TemplatesPublic() {
                 </div>
                 <h2 className="font-semibold">{t.name}</h2>
               </div>
-              <p className="text-sm text-stone-500 mb-6">{t.description}</p>
+              <p className="text-sm text-stone-500 mb-4">{t.description}</p>
+              <div className="flex flex-wrap gap-2 mb-6">
+                {(t.tags || []).slice(0, 3).map((tag) => (
+                  <span key={tag} className="text-xs px-2 py-1 rounded bg-stone-100 text-stone-600">{tag}</span>
+                ))}
+                {typeof t.proof_score === 'number' && (
+                  <span className="text-xs px-2 py-1 rounded bg-green-50 text-green-700">{t.proof_score}/100 proof</span>
+                )}
+                {t.moderation_status && (
+                  <span className="text-xs px-2 py-1 rounded bg-stone-100 text-stone-600">{t.moderation_status}</span>
+                )}
+              </div>
               <button
                 onClick={handleUse}
                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-gray-1000/20 text-[#1A1A1A] hover:bg-gray-1000/30 transition"

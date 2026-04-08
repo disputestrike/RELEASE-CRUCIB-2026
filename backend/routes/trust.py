@@ -102,6 +102,16 @@ def create_trust_router(root_dir: Path) -> APIRouter:
                 "boundary": "project-scoped with command deny policy, in-memory audit trail, and strict production gate",
                 "sandbox_position": "generated-code execution uses the sandbox executor; interactive host terminal remains blocked for broad public exposure",
             },
+            "sandbox_policy": {
+                "generated_code": "process-level sandbox executor with timeout, output, file-size, memory, CPU, and process limits",
+                "interactive_terminal": "disabled for non-admin users in production",
+                "container_terminal": "not exposed to public users",
+            },
+            "community": {
+                "templates": "/api/community/templates",
+                "case_studies": "/api/community/case-studies",
+                "moderation_policy": "/api/community/moderation-policy",
+            },
             "proof_locations": [
                 "proof/phase2_security/",
                 "proof/pipeline_crash_fix/",

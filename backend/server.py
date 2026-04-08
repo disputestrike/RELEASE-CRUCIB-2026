@@ -10886,6 +10886,11 @@ try:
     app.include_router(create_trust_router(ROOT_DIR))
 except ImportError as exc:
     logger.warning("trust router unavailable: %s", exc)
+try:
+    from routes.community import create_community_router
+    app.include_router(create_community_router())
+except ImportError as exc:
+    logger.warning("community router unavailable: %s", exc)
 app.include_router(auth_router)
 app.include_router(projects_router)
 app.include_router(tools_router)

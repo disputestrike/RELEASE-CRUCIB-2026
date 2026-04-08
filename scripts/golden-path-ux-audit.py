@@ -58,8 +58,14 @@ def main() -> int:
         {
             "id": "security_terminal_trust",
             "file": ROOT / "frontend/src/pages/Security.jsx",
-            "markers": ["Terminal", "audit", "full systems"],
+            "markers": ["Terminal", "audit", "Generated-code sandbox", "Community templates", "full systems"],
             "requirement": "Security page discloses terminal policy and full-systems proof posture.",
+        },
+        {
+            "id": "public_templates_community_trust",
+            "file": ROOT / "frontend/src/pages/TemplatesPublic.jsx",
+            "markers": ["community/templates", "proof_score", "moderation_status"],
+            "requirement": "Public templates surface reads curated community templates with proof and moderation signals.",
         },
         {
             "id": "visual_edit_endpoint",
@@ -78,6 +84,12 @@ def main() -> int:
             "file": ROOT / "backend/routes/trust.py",
             "markers": ["/trust/full-systems-summary", "proof/full_systems/summary.json", "required_failures"],
             "requirement": "Public trust API exposes full-systems proof status without leaking secrets.",
+        },
+        {
+            "id": "community_router_extracted",
+            "file": ROOT / "backend/routes/community.py",
+            "markers": ["/templates", "/case-studies", "/moderation-policy", "remix_endpoint"],
+            "requirement": "Community/templates routes live outside the monolithic server router.",
         },
     ]
 

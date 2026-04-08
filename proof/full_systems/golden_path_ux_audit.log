@@ -1,8 +1,8 @@
 ﻿{
-  "generated_at": "2026-04-08T16:48:59.629678+00:00",
+  "generated_at": "2026-04-08T17:04:51.765460+00:00",
   "passed": true,
-  "passed_count": 8,
-  "total_count": 8,
+  "passed_count": 10,
+  "total_count": 10,
   "results": [
     {
       "id": "onboarding_three_outcomes",
@@ -40,6 +40,13 @@
       "missing": []
     },
     {
+      "id": "public_templates_community_trust",
+      "requirement": "Public templates surface reads curated community templates with proof and moderation signals.",
+      "file": "frontend\\src\\pages\\TemplatesPublic.jsx",
+      "passed": true,
+      "missing": []
+    },
+    {
       "id": "visual_edit_endpoint",
       "requirement": "Visual edit v1 has an owned workspace patch endpoint and undo snapshot.",
       "file": "backend\\server.py",
@@ -57,6 +64,13 @@
       "id": "trust_full_systems_endpoint",
       "requirement": "Public trust API exposes full-systems proof status without leaking secrets.",
       "file": "backend\\routes\\trust.py",
+      "passed": true,
+      "missing": []
+    },
+    {
+      "id": "community_router_extracted",
+      "requirement": "Community/templates routes live outside the monolithic server router.",
+      "file": "backend\\routes\\community.py",
       "passed": true,
       "missing": []
     }

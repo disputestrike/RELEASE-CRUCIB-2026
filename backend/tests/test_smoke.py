@@ -149,6 +149,9 @@ async def test_smoke_critical_endpoints_respond(app_client):
         ("/api/trust/benchmark-summary", "GET"),
         ("/api/trust/security-posture", "GET"),
         ("/api/trust/full-systems-summary", "GET"),
+        ("/api/community/templates", "GET"),
+        ("/api/community/case-studies", "GET"),
+        ("/api/community/moderation-policy", "GET"),
     ]
     for path, method in endpoints:
         if method == "GET":
@@ -272,6 +275,31 @@ async def test_smoke_template_remix_plan_and_remix(app_client, auth_headers):
     assert data["remix"] is True
     assert data["next_route"] == "/app/workspace"
     assert "src/App.jsx" in data["files"]
+
+
+async def test_smoke_public_community_templates_are_curated_and_remixable(app_client):
+    """Public template/community layer exposes only curated remixable templates."""
+    templates = await app_client.get("/api/community/templates", timeout=10)
+    assert templates.status_code == 200
+    data = templates.json()
+    assert data["status"] == "ready"
+    assert data["moderation"] == "curated_pre_publish"
+    items = data["templates"]
+    assert len(items) >= 4
+    assert all(item["moderation_status"] == "approved" for item in items)
+    assert all(item["remix_endpoint"] for item in items)
+
+    plan = await app_client.get("/api/community/templates/dashboard/remix-plan", timeout=10)
+    assert plan.status_code == 200
+    assert plan.json()["proof_score"] >= 90
+
+    moderation = await app_client.get("/api/community/moderation-policy", timeout=10)
+    assert moderation.status_code == 200
+    assert "secret scan" in moderation.json()["checks"]
+
+    cases = await app_client.get("/api/community/case-studies", timeout=10)
+    assert cases.status_code == 200
+    assert len(cases.json()["case_studies"]) >= 3
 
 
 async def test_smoke_health_with_retries(app_client):
