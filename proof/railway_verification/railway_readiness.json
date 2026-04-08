@@ -1,0 +1,87 @@
+﻿{
+    "generated_at":  "2026-04-08T10:28:33.3990026Z",
+    "static_readiness":  "passed",
+    "live_confirmation":  "not_run",
+    "checks":  {
+                   "railway_json_exists":  true,
+                   "railway_uses_dockerfile":  true,
+                   "railway_health_path_api_health":  true,
+                   "dockerfile_exists":  true,
+                   "dockerfile_frontend_node22":  true,
+                   "dockerfile_python311_runtime":  true,
+                   "dockerfile_static_frontend_copy":  true,
+                   "dockerfile_uvicorn_cmd_uses_port":  true,
+                   "dockerfile_healthcheck_api_health":  true,
+                   "procfile_uvicorn_fallback":  true
+               },
+    "required_env":  [
+                         "DATABASE_URL",
+                         "JWT_SECRET"
+                     ],
+    "optional_env":  [
+                         "REDIS_URL",
+                         "ANTHROPIC_API_KEY",
+                         "CEREBRAS_API_KEY",
+                         "FRONTEND_URL",
+                         "CORS_ORIGINS",
+                         "BACKEND_PUBLIC_URL"
+                     ],
+    "env_matrix":  {
+                       "FRONTEND_URL":  {
+                                            "set_in_current_shell":  false,
+                                            "required":  false
+                                        },
+                       "BACKEND_PUBLIC_URL":  {
+                                                  "set_in_current_shell":  false,
+                                                  "required":  false
+                                              },
+                       "CORS_ORIGINS":  {
+                                            "set_in_current_shell":  false,
+                                            "required":  false
+                                        },
+                       "REDIS_URL":  {
+                                         "set_in_current_shell":  false,
+                                         "required":  false
+                                     },
+                       "CEREBRAS_API_KEY":  {
+                                                "set_in_current_shell":  false,
+                                                "required":  false
+                                            },
+                       "ANTHROPIC_API_KEY":  {
+                                                 "set_in_current_shell":  false,
+                                                 "required":  false
+                                             },
+                       "JWT_SECRET":  {
+                                          "set_in_current_shell":  false,
+                                          "required":  true
+                                      },
+                       "DATABASE_URL":  {
+                                            "set_in_current_shell":  true,
+                                            "required":  true
+                                        }
+                   },
+    "docker_build":  {
+                         "command":  "docker build --progress=plain -t crucibai-railway-readiness .",
+                         "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\railway_verification\\docker_full_build.log",
+                         "status":  "passed",
+                         "requested":  true,
+                         "exit_code":  0
+                     },
+    "container_health":  {
+                             "log":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\railway_verification\\docker_container_logs.log",
+                             "requested":  true,
+                             "container_name":  "crucibai-railway-proof",
+                             "health_output":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\railway_verification\\docker_container_health.json",
+                             "health_url":  "http://127.0.0.1:18080/api/health",
+                             "status":  "passed",
+                             "container_id":  "dcf6f223fa66ceb8e29d9e0c129251debed22599881665fe466d0cf28bbcbf80",
+                             "image":  "crucibai-railway-readiness"
+                         },
+    "live":  {
+                 "status":  "not_run",
+                 "url":  "",
+                 "health_output":  "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\railway_verification\\health_check.json",
+                 "health_status_code":  null,
+                 "requested":  false
+             }
+}

@@ -1,48 +1,13 @@
 {
-  "name": "CrucibAI",
-  "description": "Enterprise-grade AI app builder with 123 specialized agents",
-  "services": [
-    {
-      "name": "backend",
-      "type": "nodejs",
-      "buildCommand": "npm install && npm run build",
-      "startCommand": "npm start",
-      "port": 3000,
-      "environment": {
-        "NODE_ENV": "production",
-        "LOG_LEVEL": "info"
-      }
-    },
-    {
-      "name": "frontend",
-      "type": "static",
-      "buildCommand": "cd frontend && npm install && npm run build",
-      "staticPath": "frontend/build",
-      "port": 3001
-    },
-    {
-      "name": "postgres",
-      "type": "postgres",
-      "version": "15",
-      "port": 5432
-    },
-    {
-      "name": "redis",
-      "type": "redis",
-      "version": "7",
-      "port": 6379
-    }
-  ],
-  "volumes": [
-    {
-      "name": "postgres-data",
-      "service": "postgres",
-      "path": "/var/lib/postgresql/data"
-    }
-  ],
-  "networking": {
-    "domain": "crucibai.railway.app",
-    "ssl": true,
-    "corsOrigins": ["https://crucibai.railway.app"]
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "Dockerfile"
+  },
+  "deploy": {
+    "healthcheckPath": "/api/health",
+    "healthcheckTimeout": 300,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 3
   }
 }

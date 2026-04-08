@@ -1,0 +1,10 @@
+{
+  "auth_required": true,
+  "body": {
+    "goal": "Build a simple task tracker with add, complete, and filter actions.",
+    "mode": "guided"
+  },
+  "method": "POST",
+  "path": "/api/orchestrator/plan",
+  "stage": "backend_request"
+}

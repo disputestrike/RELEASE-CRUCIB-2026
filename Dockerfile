@@ -3,7 +3,7 @@
 # Run:   docker run -p 8000:8000 -e DATABASE_URL=... -e JWT_SECRET=... crucibai
 
 # Stage 1: build frontend (same-origin API: REACT_APP_BACKEND_URL="" => /api)
-FROM node:20-alpine AS frontend
+FROM node:22-alpine AS frontend
 WORKDIR /app
 # Copy package files + scripts + .npmrc so postinstall and peer-deps work
 COPY frontend/package.json frontend/package-lock.json frontend/.npmrc ./

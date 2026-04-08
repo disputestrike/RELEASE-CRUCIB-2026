@@ -40,6 +40,7 @@ try {
         backend\server.py `
         backend\modules_blueprint.py `
         backend\terminal_integration.py `
+        backend\provider_readiness.py `
         backend\agents\frontend_agent.py `
         backend\proof\build_contract.py `
         backend\proof\proof_service.py
@@ -54,9 +55,13 @@ try {
     }
     $env:CRUCIBAI_TEST = "1"
     & python -m pytest backend\tests\test_smoke.py `
-        -k "terminal or job_state or job_proof or run_auto or retry_step or app_db or git_sync or railway_deploy or agent_memory or agent_automation or agent_run_generic or agents_from_description or run_agent_action or detect_frameworks or deploy" `
+        -k "terminal or job_state or job_proof or run_auto or retry_step or app_db or git_sync or railway_deploy or agent_memory or agent_automation or agent_run_generic or agents_from_description or run_agent_action or health_llm or detect_frameworks or deploy" `
         -q
     Assert-LastExit "backend smoke"
+
+    Step "Running provider readiness tests"
+    & python -m pytest backend\tests\test_provider_readiness.py -q
+    Assert-LastExit "provider readiness tests"
 
     Step "Running automation bridge tests"
     & python -m pytest backend\tests\test_automation.py -k "run_agent" -q

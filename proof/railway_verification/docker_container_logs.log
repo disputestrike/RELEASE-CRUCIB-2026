@@ -1,0 +1,31 @@
+2026-04-08 10:28:28,368 - server - INFO - Google OAuth Config - FRONTEND_URL: (use request host at redirect)
+2026-04-08 10:28:28,368 - server - INFO - Google OAuth Config - GOOGLE_CLIENT_ID: test.apps.googleuser...
+2026-04-08 10:28:28,368 - server - INFO - Google OAuth Config - GOOGLE_CLIENT_SECRET: SET
+2026-04-08 10:28:28,368 - server - INFO - Google OAuth Config - GOOGLE_REDIRECT_URI: (derive from BACKEND_PUBLIC_URL or request)
+2026-04-08 10:28:28,661 - server - INFO - ✅ Blueprint modules registered (Personas, Knowledge, Channels, Sessions, Safety, Workspace, Analytics, Commerce, AppDB)
+2026-04-08 10:28:28,662 - server - WARNING - CORS_ORIGINS was '*'; using explicit dev origins. Set CORS_ORIGINS to your frontend URL in production.
+INFO:     Started server process [7]
+INFO:     Waiting for application startup.
+2026-04-08 10:28:28,982 - db_pg - INFO - ✅ PostgreSQL pool created with JSONB codec
+2026-04-08 10:28:29,333 - db_pg - INFO - Migration 001_full_schema.sql: 62 ok, 4 skipped
+2026-04-08 10:28:29,368 - db_pg - INFO - Migration 002_add_speed_tier.sql: 4 ok, 3 skipped
+2026-04-08 10:28:29,601 - db_pg - INFO - Migration 003_auto_runner_tables.sql: 30 ok, 14 skipped
+2026-04-08 10:28:29,618 - db_pg - INFO - Migration 004_usage_log.sql: 4 ok, 0 skipped
+2026-04-08 10:28:29,734 - db_pg - INFO - Migration 005_fix_orchestration_tables.sql: 24 ok, 5 skipped
+2026-04-08 10:28:30,635 - db_pg - INFO - Migration 006_complete_schema.sql: 182 ok, 3 skipped
+2026-04-08 10:28:30,651 - db_pg - INFO - Migration postgres_monitoring_events.sql: 4 ok, 0 skipped
+2026-04-08 10:28:30,934 - db_pg - INFO - ensure_all_tables: 64 created/verified, 0 skipped
+2026-04-08 10:28:30,934 - server - INFO - PostgreSQL initialized as primary database
+2026-04-08 10:28:30,939 - automation_engine - INFO - Workflow 'Welcome Email on Signup' created: cdb00d09-9de8-4861-80e7-abfd33c2c69b
+2026-04-08 10:28:30,939 - automation_engine - INFO - Workflow 'Build Complete Notification' created: c706137d-8ca1-4feb-8b59-b6a14b8a9549
+2026-04-08 10:28:30,939 - automation_engine - INFO - Default workflows registered
+2026-04-08 10:28:30,939 - server - INFO - ✅ Automation engine initialized
+2026-04-08 10:28:31,230 - integrations.queue - INFO - ✅ Redis queue connected
+2026-04-08 10:28:31,232 - server - INFO - ✅ Job worker started (Redis=True)
+2026-04-08 10:28:31,243 - integrations.queue - INFO - ✅ Job worker started (backend=Redis)
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+2026-04-08 10:28:32,634 - middleware - INFO - [c7d1cc9b-dab6-4931-97ae-f69dfde88736] GET /api/health from 172.17.0.1
+2026-04-08 10:28:32,679 - middleware - INFO - [c7d1cc9b-dab6-4931-97ae-f69dfde88736] GET /api/health completed with 200 in 0.044s
+INFO: Optional features not configured: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PUBLISHABLE_KEY... - add to Railway vars when ready
+INFO:     172.17.0.1:43546 - "GET /api/health HTTP/1.1" 200 OK

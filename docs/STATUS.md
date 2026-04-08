@@ -132,6 +132,16 @@ Tasks:
 - [x] Add prompt-to-automation smoke coverage proving `/api/agents/from-description` can save a `run_agent` action from a natural-language description.
 - [x] Add the prompt-to-automation and automation `run_agent` bridge checks to the backend release gate.
 - [x] Add route-level smoke coverage proving a saved automation with a `run_agent` action can run and persist the agent output.
+- [x] Add provider readiness module and `/api/health/llm` readiness endpoint without exposing secret values.
+- [x] Add provider readiness tests and include them in the backend release gate.
+- [x] Pin Node 22 for repo/frontend/Docker runtime paths while preserving `frontend/package.json` engines (`>=18 <=22`).
+- [x] Add frontend runtime proof script and proof artifacts under `proof/frontend_runtime_gate/`.
+- [x] Prove the frontend Docker build under Node 22 succeeds.
+- [x] Convert `railway.json` to Dockerfile-based Railway deployment config with `/api/health` healthcheck.
+- [x] Add Railway readiness verifier and proof artifacts under `proof/railway_verification/`.
+- [x] Prove the full Railway-style Docker image builds and boots locally with `/api/health` 200.
+- [x] Add deterministic golden-path wiring proof artifacts under `proof/e2e_golden_path/`.
+- [x] Add `proof/END_TO_END_PROOF_REPORT.md` with the pass/fail matrix and remaining live-proof gaps.
 
 ## Verification Log
 
@@ -173,6 +183,15 @@ Tasks:
 - `.\scripts\release-gate.ps1 -BackendOnly` passed after adding automation bridge coverage: smoke 31 passed, 24 deselected; automation bridge 1 passed, 6 deselected; tool agent guard 8 passed, 18 deselected.
 - `python -m pytest backend\tests\test_smoke.py -k "agent_run_executes_run_agent_action" -q` passed with local Postgres/Redis env: 1 passed, 55 deselected.
 - `.\scripts\release-gate.ps1 -BackendOnly` passed after adding the route-level run-agent action smoke: smoke 32 passed, 24 deselected; automation bridge 1 passed, 6 deselected; tool agent guard 8 passed, 18 deselected.
+- `python -m py_compile backend\provider_readiness.py backend\server.py scripts\generate-e2e-golden-path-proof.py` passed.
+- PowerShell parser check passed for `scripts\frontend-runtime-gate.ps1`, `scripts\provider-preflight.ps1`, `scripts\verify-railway-readiness.ps1`, `scripts\verify-local.ps1`, `run-dev.ps1`, and `scripts\release-gate.ps1`.
+- `python -m pytest backend\tests\test_provider_readiness.py backend\tests\test_smoke.py -k "provider_readiness or health_llm" -q` passed with local Postgres/Redis env: 6 passed, 56 deselected.
+- `.\scripts\frontend-runtime-gate.ps1 -RunDockerBuild` generated `proof\frontend_runtime_gate\` and passed the Node 22 Docker frontend build.
+- `.\scripts\provider-preflight.ps1` generated `proof\provider_readiness\`; local shell had no live LLM provider keys, so status was `not_configured` and live invocation was `not_run`.
+- `.\scripts\verify-railway-readiness.ps1 -RunDockerBuild -RunContainerHealth` generated `proof\railway_verification\`; static config passed, full Docker image build passed, and local container health returned 200.
+- `python scripts\generate-e2e-golden-path-proof.py` generated `proof\e2e_golden_path\` as production-faithful wiring proof with live LLM and browser screenshot explicitly marked `NOT_RUN`.
+- `.\scripts\verify-local.ps1` completed despite active Node `v24.14.0` by generating frontend runtime proof and skipping host frontend dependency checks.
+- `.\scripts\release-gate.ps1 -BackendOnly` passed after provider readiness additions: smoke 33 passed, 24 deselected; provider readiness 5 passed; automation bridge 1 passed, 6 deselected; tool agent guard 8 passed, 18 deselected.
 
 ## Next Milestone
 

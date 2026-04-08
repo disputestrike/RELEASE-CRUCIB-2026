@@ -163,6 +163,7 @@ from dev_stub_llm import (
 )
 from credit_tracker import tracker
 from content_policy import screen_user_content
+from provider_readiness import build_provider_readiness
 
 # Monitoring & Metrics
 try:
@@ -7865,6 +7866,24 @@ async def health(deps: bool = Query(False, description="Check dependencies (DB);
     if check_deps:
         return await _health_readiness_response()
     return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
+
+
+@api_router.get("/health/llm")
+async def health_llm(
+    prompt: str = Query("Build a full-stack todo app with auth and deploy proof."),
+    agent_name: str = Query(""),
+    user_tier: str = Query("free"),
+    speed_selector: str = Query("lite"),
+    available_credits: int = Query(0, ge=0),
+):
+    """Provider readiness probe. Reports key presence/selection only; never returns secrets."""
+    return build_provider_readiness(
+        prompt=prompt,
+        agent_name=agent_name,
+        user_tier=user_tier,
+        speed_selector=speed_selector,
+        available_credits=available_credits,
+    )
 
 
 @api_router.get("/integrations/status")

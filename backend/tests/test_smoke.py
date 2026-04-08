@@ -170,6 +170,20 @@ async def test_smoke_health_with_retries(app_client):
     assert r.status_code == 200
 
 
+async def test_smoke_health_llm_preflight_returns_provider_contract(app_client):
+    """LLM readiness probe reports provider configuration without secret values."""
+    r = await app_client.get(
+        "/api/health/llm",
+        params={"prompt": "Build a full-stack todo app with deploy proof."},
+        timeout=10,
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["secret_values_included"] is False
+    assert "providers" in data
+    assert data["env_contract"]["providers"]["anthropic"]["key_env"] == "ANTHROPIC_API_KEY"
+
+
 async def test_smoke_health_response_time(app_client):
     """Health endpoint responds within acceptable time (e.g. 2s for CI variability)."""
     start = time.perf_counter()

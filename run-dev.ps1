@@ -43,7 +43,7 @@ $nodeVersionRaw = (& node --version).Trim()
 $nodeMajor = [int]($nodeVersionRaw.TrimStart("v").Split(".")[0])
 Write-Host "Node: $nodeVersionRaw"
 if ($nodeMajor -lt 18 -or $nodeMajor -gt 22) {
-    throw "Unsupported Node version. Use Node 20 or 22; frontend/package.json supports Node >=18 <=22."
+    throw "Unsupported Node version. Run 'nvm use' from the repo root (repo pins Node 22) or use Docker; frontend/package.json supports Node >=18 <=22."
 }
 
 Write-Step "Ensuring Postgres and Redis are available"

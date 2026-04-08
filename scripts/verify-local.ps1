@@ -27,8 +27,11 @@ Step "Checking Node version"
 $nodeVersionRaw = (& node --version).Trim()
 $nodeMajor = [int]($nodeVersionRaw.TrimStart("v").Split(".")[0])
 Write-Host "Node: $nodeVersionRaw"
+$frontendRuntimeSupported = $true
 if ($nodeMajor -lt 18 -or $nodeMajor -gt 22) {
-    throw "Unsupported Node version. frontend/package.json supports Node >=18 <=22; use Node 20 or 22."
+    $frontendRuntimeSupported = $false
+    & (Join-Path $root "scripts\frontend-runtime-gate.ps1")
+    Write-Warning "Active Node is unsupported for local frontend execution. Use 'nvm use' from the repo root, or run the Docker/GitHub Actions Node 22 path."
 }
 
 Step "Checking Python version"
@@ -36,10 +39,13 @@ Step "Checking Python version"
 
 Step "Checking frontend dependencies"
 $nodeModules = Join-Path $root "frontend\node_modules"
-if (-not (Test-Path $nodeModules)) {
+if (-not $frontendRuntimeSupported) {
+    Write-Warning "Skipping frontend/node_modules check because active Node is unsupported."
+} elseif (-not (Test-Path $nodeModules)) {
     throw "Missing frontend/node_modules. Run: cd frontend; npm install"
+} else {
+    Write-Host "frontend/node_modules found"
 }
-Write-Host "frontend/node_modules found"
 
 Step "Checking backend import in dev mode"
 $env:CRUCIBAI_DEV = "1"
