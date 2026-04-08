@@ -619,9 +619,9 @@ export default function WorkspaceManus() {
   }, [projectIdFromUrl, token, API, workspacePullKey]);
 
   useEffect(() => {
-    if (!projectIdFromUrl || !API) return;
+    if (!projectIdFromUrl || !API || !token) return;
     const wsBase = (API || "").replace(/^http/, "ws").replace(/\/api\/?$/, "");
-    const wsUrl = `${wsBase}/ws/projects/${projectIdFromUrl}/progress`;
+    const wsUrl = `${wsBase}/ws/projects/${projectIdFromUrl}/progress?token=${encodeURIComponent(token)}`;
     let ws;
     let reconnectTimeout;
     let reconnectAttempts = 0;

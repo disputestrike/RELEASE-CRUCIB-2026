@@ -1180,9 +1180,9 @@ root.render(<${compName} />);` };
   // Wire real build progress when opened with projectId (from AgentMonitor "Open in Workspace")
   // Phase 3: Auto-reconnect on disconnect with exponential backoff
   useEffect(() => {
-    if (!projectIdFromUrl || !API) return;
+    if (!projectIdFromUrl || !API || !token) return;
     const wsBase = (API || '').replace(/^http/, 'ws').replace(/\/api\/?$/, '');
-    const wsUrl = `${wsBase}/ws/projects/${projectIdFromUrl}/progress`;
+    const wsUrl = `${wsBase}/ws/projects/${projectIdFromUrl}/progress?token=${encodeURIComponent(token)}`;
     let ws;
     let reconnectTimeout;
     let reconnectAttempts = 0;
@@ -1279,7 +1279,7 @@ root.render(<${compName} />);` };
       clearTimeout(reconnectTimeout);
       try { if (ws) ws.close(); } catch (_) {}
     };
-  }, [projectIdFromUrl, API]);
+  }, [projectIdFromUrl, API, token]);
 
   // Wire GET /ai/chat/history so session history can be loaded (e.g. on "New Agent" we keep sessionId; history loads for current session)
   useEffect(() => {

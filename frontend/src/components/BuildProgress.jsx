@@ -23,7 +23,9 @@ export default function BuildProgress({ projectId, apiBaseUrl }) {
 
   useEffect(() => {
     if (!projectId || !apiBaseUrl) return;
-    const wsUrl = (apiBaseUrl || "").replace(/^http/, "ws") + `/ws/projects/${projectId}/progress`;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    const wsUrl = (apiBaseUrl || "").replace(/^http/, "ws") + `/ws/projects/${projectId}/progress?token=${encodeURIComponent(token)}`;
     let closed = false;
     try {
       const ws = new WebSocket(wsUrl);

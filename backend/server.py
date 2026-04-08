@@ -9536,10 +9536,32 @@ async def branding_badge():
 @app.websocket("/ws/projects/{project_id}/progress")
 async def websocket_project_progress(websocket: WebSocket, project_id: str):
     """Real-time build progress for AgentMonitor / BuildProgress UI."""
+    token = websocket.query_params.get("token") or websocket.query_params.get("access_token")
+    if not token or db is None:
+        await websocket.close(code=1008)
+        return
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        user = await db.users.find_one({"id": payload["user_id"]}, {"_id": 0})
+    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError, KeyError):
+        user = None
+    if not user or user.get("suspended"):
+        await websocket.close(code=1008)
+        return
+    project = await db.projects.find_one(
+        {"id": project_id, "user_id": user["id"]},
+        {"_id": 0, "status": 1, "current_phase": 1, "current_agent": 1, "progress_percent": 1, "tokens_used": 1},
+    )
+    if not project:
+        await websocket.close(code=1008)
+        return
     await websocket.accept()
     try:
         while True:
-            project = await db.projects.find_one({"id": project_id}, {"_id": 0, "status": 1, "current_phase": 1, "current_agent": 1, "progress_percent": 1, "tokens_used": 1})
+            project = await db.projects.find_one(
+                {"id": project_id, "user_id": user["id"]},
+                {"_id": 0, "status": 1, "current_phase": 1, "current_agent": 1, "progress_percent": 1, "tokens_used": 1},
+            )
             if project:
                 await websocket.send_json({
                     "phase": project.get("current_phase", 0),

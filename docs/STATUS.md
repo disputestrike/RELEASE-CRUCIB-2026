@@ -82,6 +82,9 @@ Tasks:
 - [x] Add `docs/LOCAL_RUNBOOK.md`.
 - [x] Validate PowerShell syntax for `run-dev.ps1` and `scripts/verify-local.ps1`.
 - [x] Commit and push the local bootstrap/runbook slice (`f90cf30`).
+- [x] Require a valid JWT and project ownership before accepting project progress websocket connections.
+- [x] Update frontend project progress websocket callers to pass encoded auth tokens.
+- [ ] Commit and push the websocket project progress auth slice.
 
 ## Verification Log
 
@@ -108,6 +111,7 @@ Tasks:
 - `python -m pytest backend\tests\test_smoke.py -k "terminal" -q` passed with local Postgres/Redis env: 3 passed, 43 deselected.
 - PowerShell parser check passed for `run-dev.ps1`.
 - PowerShell parser check passed for `scripts\verify-local.ps1`.
+- `python -m py_compile backend\server.py` passed after project progress websocket auth changes.
 - `.\scripts\verify-local.ps1` correctly failed on Node `v24.14.0`; the frontend declares Node `>=18 <=22`.
 
 ## Next Milestone

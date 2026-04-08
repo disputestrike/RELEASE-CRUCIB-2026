@@ -116,7 +116,7 @@ const AgentMonitor = () => {
     if (project?.status !== 'running') return;
 
     const wsBase = (API || '').replace(/^https?:/, (m) => m === 'https:' ? 'wss:' : 'ws:').replace(/\/api\/?$/, '');
-    const wsUrl = `${wsBase}/ws/projects/${id}/progress?token=${token}`;
+    const wsUrl = `${wsBase}/ws/projects/${id}/progress?token=${encodeURIComponent(token)}`;
     
     let ws;
     try {
