@@ -411,7 +411,7 @@ import { useAuth } from '../context/AuthContext';
 import { useAppStore } from '../store/useAppStore';
 
 const navItems = [
-  ['/', 'Mission'],
+  ['/', 'Home'],
   ['/dashboard', 'Command'],
   ['/crm', 'CRM'],
   ['/quotes', 'Quotes'],
