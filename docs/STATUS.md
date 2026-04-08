@@ -43,12 +43,19 @@ Tasks:
 - [x] Require authenticated project workspace resolution for git operations.
 - [x] Update IDE Git/Terminal panels to use bearer auth and `project_id`.
 - [x] Add focused smoke coverage for terminal/git auth and raw path rejection.
-- [ ] Commit the first execution-surface hardening slice.
+- [x] Commit the first execution-surface hardening slice (`02f2fff`).
+- [x] Require authentication and project ownership checks for IDE debug/lint/profiler routes.
+- [x] Bind debugger/profiler sessions to the authenticated user.
+- [x] Update IDE Debug/Lint/Profiler panels to send bearer auth.
+- [x] Add focused smoke coverage for IDE auth and ownership checks.
+- [ ] Commit the IDE execution-surface hardening slice.
 
 ## Verification Log
 
 - `python -m py_compile backend\server.py backend\terminal_integration.py` passed.
 - `python -m pytest backend\tests\test_smoke.py -k "git_status or terminal" -q` passed with `DATABASE_URL=postgresql://crucibai:crucibai@127.0.0.1:5434/crucibai` and `REDIS_URL=redis://127.0.0.1:6381/0`: 5 passed, 17 deselected.
+- `python -m py_compile backend\server.py backend\ide_features.py backend\terminal_integration.py` passed.
+- `python -m pytest backend\tests\test_smoke.py -k "ide_ or git_status or terminal" -q` passed with `DATABASE_URL=postgresql://crucibai:crucibai@127.0.0.1:5434/crucibai` and `REDIS_URL=redis://127.0.0.1:6381/0`: 10 passed, 16 deselected.
 - `.\scripts\verify-local.ps1` correctly failed on Node `v24.14.0`; the frontend declares Node `>=18 <=22`.
 
 ## Next Milestone

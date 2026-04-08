@@ -50,6 +50,7 @@ class LintIssue:
 class DebugSession:
     session_id: str
     project_id: str
+    user_id: str
     status: str = "active"
     breakpoints: List[BreakPoint] = field(default_factory=list)
     current_frame: Optional[StackFrame] = None
@@ -58,27 +59,39 @@ class DebugSession:
 class DebuggerManager:
     _sessions: Dict[str, DebugSession] = {}
 
-    async def start_debug_session(self, session_id: str, project_id: str) -> DebugSession:
-        s = DebugSession(session_id=session_id, project_id=project_id)
+    async def start_debug_session(self, session_id: str, project_id: str, user_id: str = "") -> DebugSession:
+        s = DebugSession(session_id=session_id, project_id=project_id, user_id=user_id)
         self._sessions[session_id] = s
         return s
 
-    async def set_breakpoint(self, session_id: str, bp: BreakPoint) -> BreakPoint:
+    async def set_breakpoint(self, session_id: str, bp: BreakPoint, user_id: str = "") -> BreakPoint:
         if session_id not in self._sessions:
             raise ValueError("Session not found")
-        self._sessions[session_id].breakpoints.append(bp)
+        session = self._sessions[session_id]
+        if session.user_id != user_id:
+            raise ValueError("Session not found")
+        session.breakpoints.append(bp)
         return bp
 
-    async def remove_breakpoint(self, session_id: str, breakpoint_id: str) -> None:
-        if session_id in self._sessions:
+    async def remove_breakpoint(self, session_id: str, breakpoint_id: str, user_id: str = "") -> None:
+        if session_id in self._sessions and self._sessions[session_id].user_id == user_id:
             self._sessions[session_id].breakpoints = [b for b in self._sessions[session_id].breakpoints if b.id != breakpoint_id]
+            return
+        raise ValueError("Session not found")
 
 
 class ProfilerManager:
-    async def start_profiler(self, session_id: str, project_id: str) -> Dict[str, Any]:
+    _sessions: Dict[str, Dict[str, str]] = {}
+
+    async def start_profiler(self, session_id: str, project_id: str, user_id: str = "") -> Dict[str, Any]:
+        self._sessions[session_id] = {"project_id": project_id, "user_id": user_id}
         return {"session_id": session_id, "project_id": project_id, "status": "running"}
 
-    async def stop_profiler(self, session_id: str) -> Dict[str, Any]:
+    async def stop_profiler(self, session_id: str, user_id: str = "") -> Dict[str, Any]:
+        session = self._sessions.get(session_id)
+        if not session or session.get("user_id") != user_id:
+            raise ValueError("Session not found")
+        del self._sessions[session_id]
         return {"session_id": session_id, "status": "stopped", "summary": {}}
 
 

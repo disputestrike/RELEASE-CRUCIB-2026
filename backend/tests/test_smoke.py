@@ -128,13 +128,71 @@ async def test_smoke_vibecoding_generate_returns_200(app_client):
     assert "code" in data
 
 
-async def test_smoke_ide_debug_start_returns_200(app_client):
-    """POST /api/ide/debug/start returns 200 (Phase 2)."""
-    r = await app_client.post("/api/ide/debug/start", params={"project_id": "test-project"}, timeout=10)
+async def test_smoke_ide_debug_start_returns_200(app_client, auth_headers):
+    """POST /api/ide/debug/start returns 200 for an authenticated project workspace."""
+    project_id = await _create_smoke_project(app_client, auth_headers)
+    r = await app_client.post(
+        "/api/ide/debug/start",
+        params={"project_id": project_id},
+        headers=auth_headers,
+        timeout=10,
+    )
     assert r.status_code == 200
     data = r.json()
     assert "session_id" in data
-    assert data.get("project_id") == "test-project"
+    assert data.get("project_id") == project_id
+
+
+async def test_smoke_ide_debug_start_requires_auth(app_client):
+    """POST /api/ide/debug/start requires auth."""
+    r = await app_client.post("/api/ide/debug/start", params={"project_id": "test-project"}, timeout=10)
+    assert r.status_code == 401
+
+
+async def test_smoke_ide_lint_returns_200(app_client, auth_headers):
+    """POST /api/ide/lint returns 200 for an authenticated project workspace."""
+    project_id = await _create_smoke_project(app_client, auth_headers)
+    r = await app_client.post(
+        "/api/ide/lint",
+        params={"project_id": project_id, "file_path": "src/App.js", "code": "const x = 1;"},
+        headers=auth_headers,
+        timeout=10,
+    )
+    assert r.status_code == 200
+    assert "issues" in r.json()
+
+
+async def test_smoke_ide_profiler_requires_owned_project(app_client, auth_headers):
+    """POST /api/ide/profiler/start rejects unknown or unowned projects."""
+    r = await app_client.post(
+        "/api/ide/profiler/start",
+        params={"project_id": "not-owned"},
+        headers=auth_headers,
+        timeout=10,
+    )
+    assert r.status_code == 404
+
+
+async def test_smoke_ide_profiler_start_stop_returns_200(app_client, auth_headers):
+    """POST /api/ide/profiler/start and stop are scoped to the authenticated user."""
+    project_id = await _create_smoke_project(app_client, auth_headers)
+    start = await app_client.post(
+        "/api/ide/profiler/start",
+        params={"project_id": project_id},
+        headers=auth_headers,
+        timeout=10,
+    )
+    assert start.status_code == 200
+    session_id = start.json().get("session_id")
+    assert session_id
+    stop = await app_client.post(
+        "/api/ide/profiler/stop",
+        params={"session_id": session_id},
+        headers=auth_headers,
+        timeout=10,
+    )
+    assert stop.status_code == 200
+    assert stop.json().get("status") == "stopped"
 
 
 async def test_smoke_git_status_returns_200(app_client, auth_headers):

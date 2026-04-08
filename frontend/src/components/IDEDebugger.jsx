@@ -1,10 +1,11 @@
 import { useState } from "react";
 import axios from "axios";
-import { API } from "../App";
+import { API, useAuth } from "../App";
 import { logApiError } from "../utils/apiError";
 
 export default function IDEDebugger() {
-  const [projectId, setProjectId] = useState("test-project");
+  const { token } = useAuth();
+  const [projectId, setProjectId] = useState("");
   const [sessionId, setSessionId] = useState(null);
   const [breakpoints, setBreakpoints] = useState([]);
   const [filePath, setFilePath] = useState("src/App.js");
@@ -15,8 +16,9 @@ export default function IDEDebugger() {
 
   const startSession = () => {
     setLoading(true);
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
     axios
-      .post(`${API}/ide/debug/start`, null, { params: { project_id: projectId } })
+      .post(`${API}/ide/debug/start`, null, { params: { project_id: projectId }, headers })
       .then((r) => {
         setSessionId(r.data.session_id);
         setBreakpoints([]);
@@ -28,13 +30,14 @@ export default function IDEDebugger() {
   const addBreakpoint = () => {
     if (!sessionId) return;
     setLoading(true);
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
     axios
       .post(`${API}/ide/debug/${sessionId}/breakpoint`, {
         file_path: filePath,
         line: Number(line) || 1,
         column: Number(column) || 0,
         condition: condition || undefined,
-      })
+      }, { headers })
       .then((r) => setBreakpoints((prev) => [...prev, { id: r.data.id, file_path: r.data.file_path, line: r.data.line, column: r.data.column, condition: r.data.condition }]))
       .catch((e) => logApiError("IDEDebugger add breakpoint", e))
       .finally(() => setLoading(false));
@@ -42,8 +45,9 @@ export default function IDEDebugger() {
 
   const removeBreakpoint = (breakpointId) => {
     if (!sessionId) return;
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
     axios
-      .delete(`${API}/ide/debug/${sessionId}/breakpoint/${breakpointId}`)
+      .delete(`${API}/ide/debug/${sessionId}/breakpoint/${breakpointId}`, { headers })
       .then(() => setBreakpoints((prev) => prev.filter((b) => b.id !== breakpointId)))
       .catch((e) => logApiError("IDEDebugger remove breakpoint", e));
   };
@@ -59,7 +63,7 @@ export default function IDEDebugger() {
         className="border border-gray-200 rounded px-3 py-2 text-sm w-full mb-2"
         placeholder="Project ID"
       />
-      <button type="button" onClick={startSession} disabled={loading} className="px-4 py-2 bg-[#1A1A1A] text-white rounded text-sm disabled:opacity-50 mb-4">
+      <button type="button" onClick={startSession} disabled={loading || !projectId.trim()} className="px-4 py-2 bg-[#1A1A1A] text-white rounded text-sm disabled:opacity-50 mb-4">
         {loading ? "Starting…" : "Start debug session"}
       </button>
       {sessionId && (
@@ -71,7 +75,7 @@ export default function IDEDebugger() {
             <input type="number" value={column} onChange={(e) => setColumn(e.target.value)} className="border border-gray-200 rounded px-3 py-2 text-sm" placeholder="Column" min={0} />
             <input type="text" value={condition} onChange={(e) => setCondition(e.target.value)} className="border border-gray-200 rounded px-3 py-2 text-sm col-span-2" placeholder="Condition (optional)" />
           </div>
-          <button type="button" onClick={addBreakpoint} disabled={loading} className="px-4 py-2 bg-[#1A1A1A] text-white rounded text-sm disabled:opacity-50 mb-3">
+          <button type="button" onClick={addBreakpoint} disabled={loading || !sessionId} className="px-4 py-2 bg-[#1A1A1A] text-white rounded text-sm disabled:opacity-50 mb-3">
             Add breakpoint
           </button>
           {breakpoints.length > 0 && (

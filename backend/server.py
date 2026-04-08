@@ -9071,47 +9071,59 @@ class IDEBreakpointRequest(BaseModel):
     condition: Optional[str] = None
 
 @api_router.post("/ide/debug/start")
-async def ide_debug_start(project_id: str = Query(...)):
+async def ide_debug_start(project_id: str = Query(...), user: dict = Depends(get_current_user)):
     """Start a debug session. Wired to DebuggerManager in ide_features.py."""
     from ide_features import debugger_manager
+    await _resolve_project_workspace_path_for_user(project_id, user)
     session_id = str(uuid.uuid4())
-    session = await debugger_manager.start_debug_session(session_id, project_id)
+    session = await debugger_manager.start_debug_session(session_id, project_id, user_id=user["id"])
     return {"session_id": session.session_id, "project_id": session.project_id, "status": session.status}
 
 @api_router.post("/ide/debug/{session_id}/breakpoint")
-async def ide_debug_set_breakpoint(session_id: str, body: IDEBreakpointRequest):
+async def ide_debug_set_breakpoint(session_id: str, body: IDEBreakpointRequest, user: dict = Depends(get_current_user)):
     """Set a breakpoint in a debug session."""
     from ide_features import debugger_manager, BreakPoint
     bp = BreakPoint(file_path=body.file_path, line=body.line, column=body.column, condition=body.condition)
-    result = await debugger_manager.set_breakpoint(session_id, bp)
+    try:
+        result = await debugger_manager.set_breakpoint(session_id, bp, user_id=user["id"])
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Session not found")
     return {"id": result.id, "file_path": result.file_path, "line": result.line, "column": result.column, "condition": result.condition, "enabled": result.enabled}
 
 @api_router.delete("/ide/debug/{session_id}/breakpoint/{breakpoint_id}")
-async def ide_debug_remove_breakpoint(session_id: str, breakpoint_id: str):
+async def ide_debug_remove_breakpoint(session_id: str, breakpoint_id: str, user: dict = Depends(get_current_user)):
     """Remove a breakpoint."""
     from ide_features import debugger_manager
-    await debugger_manager.remove_breakpoint(session_id, breakpoint_id)
+    try:
+        await debugger_manager.remove_breakpoint(session_id, breakpoint_id, user_id=user["id"])
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Session not found")
     return {"status": "removed"}
 
 @api_router.post("/ide/profiler/start")
-async def ide_profiler_start(project_id: str = Query(...)):
+async def ide_profiler_start(project_id: str = Query(...), user: dict = Depends(get_current_user)):
     """Start profiler session. Wired to ProfilerManager in ide_features.py."""
     from ide_features import profiler_manager
+    await _resolve_project_workspace_path_for_user(project_id, user)
     session_id = str(uuid.uuid4())
-    out = await profiler_manager.start_profiler(session_id, project_id)
+    out = await profiler_manager.start_profiler(session_id, project_id, user_id=user["id"])
     return out
 
 @api_router.post("/ide/profiler/stop")
-async def ide_profiler_stop(session_id: str = Query(...)):
+async def ide_profiler_stop(session_id: str = Query(...), user: dict = Depends(get_current_user)):
     """Stop profiler session."""
     from ide_features import profiler_manager
-    out = await profiler_manager.stop_profiler(session_id)
+    try:
+        out = await profiler_manager.stop_profiler(session_id, user_id=user["id"])
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Session not found")
     return out
 
 @api_router.post("/ide/lint")
-async def ide_lint(project_id: str = Query(...), file_path: Optional[str] = None, code: Optional[str] = None):
+async def ide_lint(project_id: str = Query(...), file_path: Optional[str] = None, code: Optional[str] = None, user: dict = Depends(get_current_user)):
     """Run linter (pyflakes for Python, node --check for JS/TS). Wired to LinterManager."""
     from ide_features import linter_manager
+    await _resolve_project_workspace_path_for_user(project_id, user)
     issues = await linter_manager.run_lint(project_id, file_path or "", code)
     return {"issues": [{"file_path": i.file_path, "line": i.line, "column": i.column, "message": i.message, "severity": i.severity} for i in issues]}
 

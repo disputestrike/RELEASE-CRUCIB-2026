@@ -1,10 +1,11 @@
 import { useState } from "react";
 import axios from "axios";
-import { API } from "../App";
+import { API, useAuth } from "../App";
 import { logApiError } from "../utils/apiError";
 
 export default function IDELinter() {
-  const [projectId, setProjectId] = useState("test-project");
+  const { token } = useAuth();
+  const [projectId, setProjectId] = useState("");
   const [filePath, setFilePath] = useState("");
   const [code, setCode] = useState("");
   const [issues, setIssues] = useState([]);
@@ -15,8 +16,9 @@ export default function IDELinter() {
     const params = { project_id: projectId };
     if (filePath) params.file_path = filePath;
     if (code) params.code = code.slice(0, 4000);
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
     axios
-      .post(`${API}/ide/lint`, null, { params })
+      .post(`${API}/ide/lint`, null, { params, headers })
       .then((r) => setIssues(r.data.issues || []))
       .catch((e) => {
         logApiError("IDELinter", e);
@@ -49,7 +51,7 @@ export default function IDELinter() {
         className="border border-gray-200 rounded px-3 py-2 text-sm w-full mb-2 font-mono min-h-[80px]"
         placeholder="Or paste code to lint (optional)"
       />
-      <button type="button" onClick={runLint} disabled={loading} className="px-4 py-2 bg-[#1A1A1A] text-white rounded text-sm disabled:opacity-50 mb-4">
+      <button type="button" onClick={runLint} disabled={loading || !projectId.trim()} className="px-4 py-2 bg-[#1A1A1A] text-white rounded text-sm disabled:opacity-50 mb-4">
         {loading ? "Running…" : "Run lint"}
       </button>
       {issues.length > 0 ? (
