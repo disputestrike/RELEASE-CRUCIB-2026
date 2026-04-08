@@ -8,7 +8,7 @@ import json
 import logging
 import os
 import time
-from typing import Dict, Any, Optional, Callable
+from typing import Dict, Any, Optional, Callable, List
 
 from .runtime_state import update_step_state, append_job_event, save_checkpoint
 from .event_bus import publish
@@ -20,6 +20,12 @@ from .fixer import (
 )
 from .self_repair import attempt_verification_self_repair, maybe_commit_workspace_repairs
 from .generated_app_template import build_frontend_file_set
+from .enterprise_command_pack import (
+    build_enterprise_backend_file_set,
+    build_enterprise_database_file_set,
+    enterprise_backend_routes,
+    enterprise_command_intent,
+)
 from .domain_packs import compliance_regulated_intent, multitenant_intent, stripe_intent
 from .compliance_sketch import build_compliance_sketch_markdown
 from .multiregion_terraform_sketch import (
@@ -310,6 +316,15 @@ def _read_text(base: str, rel: str) -> Optional[str]:
         return None
 
 
+def _write_file_set(workspace_path: str, file_set: List[tuple[str, str]]) -> List[str]:
+    written: List[str] = []
+    for rel, content in file_set:
+        w = _safe_write(workspace_path, rel, content)
+        if w:
+            written.append(w)
+    return written
+
+
 def _template_file_map(job: Dict[str, Any]) -> Dict[str, str]:
     return {rel: content for rel, content in build_frontend_file_set(job)}
 
@@ -445,32 +460,39 @@ async def handle_frontend_generate(step: Dict, job: Dict,
     logger.info(f"Job: {job_id}, Goal: {goal[:60] if goal else 'NONE'}, WS: {bool(workspace_path)}")
     
     try:
-        if workspace_path and goal:
+        from .plan_context import fetch_build_target_for_job
+        bt = await fetch_build_target_for_job(job_id)
+        job_augmented = {**job, "build_target": bt}
+
+        if workspace_path and goal and enterprise_command_intent(job_augmented):
+            logger.info("Enterprise frontend build selected for job %s", job_id)
+            out.extend(_write_file_set(workspace_path, build_frontend_file_set(job_augmented)))
+        elif workspace_path and goal:
             logger.info(f"Attempting FrontendAgent...")
             # STEP 1: Try to use FrontendAgent with LLM
             try:
                 from agents.frontend_agent import FrontendAgent
                 import json
-                
+
                 agent = FrontendAgent()
                 logger.info(f"Agent instantiated: {agent.name}")
-                
+
                 context = {
                     "user_prompt": goal,
                     "project_id": job_id,
                     "workspace_path": workspace_path,
                 }
-                
+
                 logger.info(f"Calling agent.execute() with context...")
                 result = await agent.execute(context)
-                
+
                 logger.info(f"Agent returned: type={type(result)}, keys={list(result.keys()) if isinstance(result, dict) else 'NOT_DICT'}")
-                
+
                 # Write generated files to workspace
                 if result and result.get("files"):
                     files_dict = result["files"]
                     logger.info(f"Files dict: type={type(files_dict)}, len={len(str(files_dict))}")
-                    
+
                     # Ensure files is a dict (might be nested JSON string)
                     if isinstance(files_dict, str):
                         logger.info(f"Files is string, parsing JSON...")
@@ -480,88 +502,57 @@ async def handle_frontend_generate(step: Dict, job: Dict,
                         except Exception as e:
                             logger.error(f"Could not parse files JSON: {e}")
                             files_dict = {}
-                    
+
                     if isinstance(files_dict, dict):
                         logger.info(f"Writing {len(files_dict)} files to disk...")
                         for file_path, content in files_dict.items():
-                            # Convert to string if needed
                             if isinstance(content, dict):
                                 content = json.dumps(content, indent=2)
                             elif content is None:
                                 content = ""
                             else:
                                 content = str(content)
-                            
+
                             logger.debug(f"Writing: {file_path} ({len(content)} bytes)")
-                            # Write file
                             w = _safe_write(workspace_path, file_path, content)
                             if w:
                                 out.append(w)
                                 logger.info(f"✓ Wrote: {file_path}")
                             else:
                                 logger.error(f"✗ Failed to write: {file_path}")
-                        
+
                         logger.info(f"✓ FrontendAgent wrote {len(out)} files total")
                     else:
                         logger.error(f"files not a dict: {type(files_dict)}")
                 else:
                     logger.error(f"No files in result! result={bool(result)}, files={bool(result.get('files') if result else False)}")
-                
+
             except Exception as e:
                 logger.exception(f"❌ FrontendAgent EXCEPTION: {e}")
                 import traceback
                 logger.error(f"Traceback: {traceback.format_exc()}")
-                
-                # Fallback to template files on error
-                logger.info(f"Falling back to stub files...")
-                from .plan_context import fetch_build_target_for_job
-                try:
-                    bt = await fetch_build_target_for_job(job_id)
-                    job_augmented = {**job, "build_target": bt}
-                    for rel, content in build_frontend_file_set(job_augmented):
-                        w = _safe_write(workspace_path, rel, content)
-                        if w:
-                            out.append(w)
-                    logger.info(f"✓ Fallback wrote {len(out)} stub files")
-                except Exception as e2:
-                    logger.exception(f"Fallback also failed: {e2}")
+
+                logger.info("Falling back to deterministic frontend file set...")
+                out.extend(_write_file_set(workspace_path, build_frontend_file_set(job_augmented)))
+                logger.info(f"✓ Fallback wrote {len(out)} frontend files")
             if workspace_path and not out:
-                logger.warning("FrontendAgent produced no files; writing deterministic preview scaffold")
-                try:
-                    from .plan_context import fetch_build_target_for_job
-                    bt = await fetch_build_target_for_job(job_id)
-                    job_augmented = {**job, "build_target": bt}
-                    for rel, content in build_frontend_file_set(job_augmented):
-                        w = _safe_write(workspace_path, rel, content)
-                        if w:
-                            out.append(w)
-                    logger.info("Frontend empty-output fallback wrote %s files", len(out))
-                except Exception as e2:
-                    logger.exception("Frontend empty-output fallback failed: %s", e2)
+                logger.warning("FrontendAgent produced no files; writing deterministic frontend build")
+                out.extend(_write_file_set(workspace_path, build_frontend_file_set(job_augmented)))
+                logger.info("Frontend empty-output fallback wrote %s files", len(out))
         else:
             logger.warning(f"Skipping agent: workspace_path={bool(workspace_path)}, goal={bool(goal)}")
-            # No workspace or goal - use stubs
-            from .plan_context import fetch_build_target_for_job
-            bt = await fetch_build_target_for_job(job.get("id") or "")
-            job_augmented = {**job, "build_target": bt}
-            for rel, content in build_frontend_file_set(job_augmented):
-                w = _safe_write(workspace_path, rel, content)
-                if w:
-                    out.append(w)
-    
+            if workspace_path:
+                out.extend(_write_file_set(workspace_path, build_frontend_file_set(job_augmented)))
+
     except Exception as e:
         logger.exception(f"❌ FrontendHandler CRITICAL: {e}")
-        # Last resort: stub files
         if workspace_path:
             try:
                 from .plan_context import fetch_build_target_for_job
                 bt = await fetch_build_target_for_job(job.get("id") or "")
                 job_augmented = {**job, "build_target": bt}
-                for rel, content in build_frontend_file_set(job_augmented):
-                    w = _safe_write(workspace_path, rel, content)
-                    if w:
-                        out.append(w)
-                logger.info(f"Last resort wrote {len(out)} files")
+                out.extend(_write_file_set(workspace_path, build_frontend_file_set(job_augmented)))
+                logger.info(f"Last resort wrote {len(out)} frontend files")
             except Exception:
                 logger.exception("Last resort fallback also failed")
 
@@ -677,6 +668,21 @@ async def handle_backend_route(step: Dict, job: Dict,
         }
 
     try:
+        if goal and enterprise_command_intent(job) and key in {"backend.models", "backend.routes", "backend.auth"}:
+            logger.info("Enterprise backend build selected for job %s step %s", job_id, key)
+            out_files.extend(_write_file_set(workspace_path, build_enterprise_backend_file_set(job, step_key=key)))
+            if key in {"backend.routes", "backend.auth"}:
+                hardened = _ensure_backend_elite_hardening(workspace_path)
+                if hardened and hardened not in out_files:
+                    out_files.append(hardened)
+            routes_added = enterprise_backend_routes()
+            return {
+                "output": f"Generated {len(out_files)} backend files: {key}",
+                "routes_added": routes_added,
+                "output_files": out_files,
+                "artifacts": [],
+            }
+
         if goal and key in ["backend.models", "backend.routes"]:
             # Try BackendAgent with LLM
             try:
@@ -878,6 +884,16 @@ async def handle_db_migration(step: Dict, job: Dict,
     tables: list = []
 
     if workspace_path:
+        if enterprise_command_intent(job):
+            logger.info("Enterprise database build selected for job %s step %s", job.get("id") or "", key)
+            out.extend(_write_file_set(workspace_path, build_enterprise_database_file_set(job, step_key=key)))
+            return {
+                "output": f"Migration step executed: {key}",
+                "tables_created": tables,
+                "output_files": out,
+                "artifacts": [],
+            }
+
         mt = multitenant_intent(job)
         st = stripe_intent(job)
         if key == "database.migration":

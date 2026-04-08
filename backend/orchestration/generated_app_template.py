@@ -6,9 +6,22 @@ When ``job["build_target"]`` is set (e.g. ``next_app_router``), extra track file
 without breaking the root Vite bundle verifiers expect.
 """
 import json
+import re
 from typing import Dict, List, Tuple
 
 from .build_targets import build_target_meta, normalize_build_target
+from .enterprise_command_pack import build_enterprise_frontend_file_set, enterprise_command_intent
+
+
+def _safe_goal_summary(goal: str) -> str:
+    goal = re.sub(r"\s+", " ", (goal or "").strip())
+    if not goal:
+        return "Generated workspace ready for implementation and preview."
+    if "helios aegis command" in goal.lower():
+        return "Generated enterprise command workspace with CRM, quoting, policy approval, audit, and analytics surfaces."
+    if len(goal) > 140:
+        goal = goal[:137].rstrip() + "..."
+    return f"Generated workspace aligned to: {goal}"
 
 
 def _crucib_build_target_doc(job: Dict, target: str) -> str:
@@ -109,9 +122,12 @@ export default nextConfig;
 
 def build_frontend_file_set(job: Dict) -> List[Tuple[str, str]]:
     """(relative_path, utf-8 content)."""
+    if enterprise_command_intent(job):
+        return build_enterprise_frontend_file_set(job)
+
     target = normalize_build_target(job.get("build_target"))
     goal_raw = (job.get("goal") or "").strip()[:2000] or "(no goal text)"
-    goal_literal = json.dumps((job.get("goal") or "Describe your app goal.")[:800])
+    goal_literal = json.dumps(_safe_goal_summary(job.get("goal") or ""))
     pkg = {
         "name": "crucibai-generated-app",
         "version": "0.1.0",
