@@ -1,12 +1,12 @@
 """
-Spec Guardian — compares user goal text to what the Auto-Runner can actually emit.
+Spec Guardian — compares user goals to what the current CrucibAI pipeline can prove.
 
 Modes (CRUCIBAI_SPEC_GUARD_MODE):
-- off:     no violations recorded (not recommended)
-- advisory: violations + compliance %; run always allowed (**default** — matches “show risks but still run”)
-- strict:  stack / tenancy / infra claims that the template cannot satisfy → blocks run (set explicitly for hard gates)
+- off: no violations recorded
+- advisory: warnings only, run allowed
+- strict: only explicit impossible/unsafe requests block
 
-This is Layer 1 "spec enforcement" — honest gatekeeping, not magic codegen.
+This is honest gatekeeping, not silent degradation.
 """
 from __future__ import annotations
 
@@ -18,13 +18,10 @@ from .multiregion_terraform_sketch import multiregion_terraform_intent
 
 
 RUNNER_TRUTH = (
-    "CrucibAI Auto-Runner emits a fixed scaffold: Vite + React (JS), Python FastAPI sketch, "
-    "SQL migration/seed files, template auth/store, verification gates. "
-    "For multitenant goals it emits PostgreSQL RLS on generated app_items (session GUC app.tenant_id) — "
-    "not schema-per-tenant or custom table graphs. "
-    "For observability keywords it adds deploy/observability stubs (OTel collector, Prometheus, Grafana) and docs. "
-    "For multi-region + cloud + Terraform-style goals it adds terraform/multiregion_sketch and aws/gcp/azure region stubs — not production VPC/DR. "
-    "It does not generate Next.js App Router, TypeScript Node services, Prisma/Drizzle projects, or BullMQ/Testcontainers/k6 harnesses from prompts."
+    "CrucibAI now has two build paths: deterministic packs for proven tracks and a direct full-system builder for complex prompts. "
+    "The direct builder may emit mixed-language workspaces spanning frontend, backend, data, infra, tests, and docs. "
+    "Verification depth still varies by stack: the web preview gate is deepest for browser-facing apps, while non-web or multi-service stacks may currently rely more on file/proof verification than full runtime execution. "
+    "Complex tenancy, compliance, infra, and vendor integrations should still be reviewed explicitly before production."
 )
 
 
@@ -71,25 +68,25 @@ def evaluate_goal_against_runner(goal: str, *, build_target: Optional[str] = Non
     ):
         add(
             "stack_nextjs_requested",
-            "Goal requests Next.js / NextAuth — runner template is Vite + React.",
-            "Use this scaffold as UI shell or narrow the goal; full Next.js codegen is not in this pipeline.",
-            strict_blocker=True,
+            "Goal requests Next.js / NextAuth — use the full-system builder path and verify the emitted workspace against the requested runtime.",
+            "Prefer build_target=full_system_generator when you want a real Next.js codebase instead of the default web scaffold.",
+            strict_blocker=False,
         )
     if ("typescript" in g or " typeScript" in (goal or "")) and any(
         x in g for x in ("fastify", "nestjs", "express", "node api", "openapi 3")
     ):
         add(
             "stack_ts_backend_requested",
-            "Goal requests a TypeScript Node API — runner emits Python FastAPI sketch only.",
-            "Port manually or extend runner with a TS stack pack (future).",
-            strict_blocker=True,
+            "Goal requests a TypeScript Node API — direct builder mode should generate the requested service stack rather than the default FastAPI pack.",
+            "Use the full-system builder path and verify generated service entrypoints, tests, and runtime docs.",
+            strict_blocker=False,
         )
     if "prisma" in g or "drizzle" in g:
         add(
             "orm_requested",
-            "Goal requests Prisma/Drizzle — runner writes plain SQL files only.",
-            "Add ORM in a follow-up project or custom pack.",
-            strict_blocker=True,
+            "Goal requests Prisma/Drizzle — ensure the run uses full-system builder mode so ORM files are generated explicitly.",
+            "Verifier should confirm the requested ORM package/config is present in the workspace.",
+            strict_blocker=False,
         )
     if any(
         k in g
@@ -105,18 +102,18 @@ def evaluate_goal_against_runner(goal: str, *, build_target: Optional[str] = Non
     ):
         add(
             "orm_js_requested",
-            "Goal requests a JS/TS ORM stack — runner emits Python + plain SQL only.",
-            "Use the generated SQL sketch or add a custom ORM pack.",
-            strict_blocker=True,
+            "Goal requests a JS/TS ORM stack — direct builder mode should emit that ORM explicitly, not silently convert to SQL sketches.",
+            "Treat missing ORM files as an execution failure, not a template success.",
+            strict_blocker=False,
         )
 
     # Enterprise / tenancy — template RLS is single-table; schema-per-tenant is not automated
     if "schema per tenant" in g or "schema-per-tenant" in g:
         add(
             "tenancy_schema_per_tenant",
-            "Goal requests schema-per-tenant isolation — runner uses shared-schema tenant_id + RLS on app_items only.",
-            "Add per-tenant schemas or databases outside this template.",
-            strict_blocker=True,
+            "Goal requests schema-per-tenant isolation — this is advanced and must be implemented explicitly, not assumed from shared-schema defaults.",
+            "Keep the run honest: generate the schema-per-tenant design or fail with an explicit gap.",
+            strict_blocker=False,
         )
     if any(
         k in g

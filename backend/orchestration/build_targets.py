@@ -15,6 +15,10 @@ _ALIASES = {
     "vite": "vite_react",
     "react": "vite_react",
     "web": "vite_react",
+    "full_system": "full_system_generator",
+    "fullsystem": "full_system_generator",
+    "multi_stack": "full_system_generator",
+    "generator": "full_system_generator",
     "next": "next_app_router",
     "nextjs": "next_app_router",
     "next.js": "next_app_router",
@@ -44,6 +48,7 @@ def build_target_catalog() -> List[Dict[str, Any]]:
 
 
 DISPLAY_ORDER = [
+    "full_system_generator",
     "vite_react",
     "next_app_router",
     "static_site",
@@ -52,6 +57,23 @@ DISPLAY_ORDER = [
 ]
 
 BUILD_TARGETS: Dict[str, Dict[str, Any]] = {
+    "full_system_generator": {
+        "id": "full_system_generator",
+        "label": "Full system generator",
+        "tagline": "Direct multi-stack build mode for complex prompts across frontend, backend, data, infra, tests, and docs.",
+        "guarantees": [
+            "Routes complex prompts through the full-system builder instead of the fixed scaffold path.",
+            "Can emit mixed-language workspaces when the prompt requests a broader stack.",
+            "Fails explicitly when generation cannot produce real files instead of silently downgrading to a scaffold.",
+        ],
+        "on_this_run": [
+            "Verifier depth still depends on the generated stack and what the runtime can execute inside this pipeline.",
+            "Generated files may span frontend/, backend/, infra/, tests/, and docs/ in one job.",
+        ],
+        "roadmap": [
+            "Deeper runtime verification per stack family instead of one web-first preview contract.",
+        ],
+    },
     "vite_react": {
         "id": "vite_react",
         "label": "Full-stack web (Vite + React)",

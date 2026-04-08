@@ -11,6 +11,7 @@ from typing import Any, Dict, Optional
 
 from agents.base_agent import BaseAgent, AgentValidationError
 from agents.registry import AgentRegistry
+from orchestration.generation_contract import parse_generation_contract
 
 logger = logging.getLogger(__name__)
 
@@ -31,17 +32,29 @@ def _load_elite_directive(workspace: str) -> str:
 
 def _parse_build_intent(goal: str) -> Dict[str, Any]:
     """Separate build instructions from content to display."""
+    contract = parse_generation_contract(goal)
     if "BLACK-BELT OMEGA GAUNTLET" in goal:
         return {
             "mode": "BUILD",
             "target": "Helios Aegis Command",
             "spec": goal,
+            "contract": contract,
             "instruction": (
                 "Implement the Helios Aegis Command platform per the Black-Belt Omega Gauntlet spec. "
                 "Output real code, not stubs. Enforce proof gates."
             ),
         }
-    return {"mode": "BUILD", "target": "unspecified", "spec": goal, "instruction": goal}
+    summary = "; ".join(contract.get("summary_lines") or []) or "Full system requested from prompt"
+    return {
+        "mode": "BUILD",
+        "target": contract.get("product_name") or "unspecified",
+        "spec": goal,
+        "contract": contract,
+        "instruction": (
+            "Generate a real integrated system that satisfies the requested stack and services. "
+            f"Requested stack summary: {summary}"
+        ),
+    }
 
 
 def _spec_echo_blocked(response: str) -> bool:
@@ -100,24 +113,36 @@ class BuilderAgent(BaseAgent):
 [EXECUTION MODE] {intent["mode"]}
 [TARGET PLATFORM] {intent["target"]}
 [BUILD INSTRUCTION] {intent["instruction"]}
+[STACK CONTRACT JSON]
+{json.dumps(intent.get("contract") or {}, indent=2)}
 
 [WORKSPACE] {workspace_path}
 [MANDATORY]
 - Output executable code, not stubs or placeholders
+- Generate real files for every requested stack component you can implement in this run
+- If the prompt asks for frontend, backend, data, infra, tests, and docs, emit all of them in one coherent file set
 - Enforce proof/ gates before proceeding
-- If you cannot implement a feature, output the exact code needed to complete it
+- If you cannot implement a requested feature, return status ❌ CRITICAL BLOCK with a precise reason instead of silently degrading
 - Never display the spec as content — implement it
+- Prefer real framework/runtime files over explanatory markdown
 
 [FAILURE CONDITIONS]
 - Displaying spec text in UI = ❌ CRITICAL BLOCK
 - Outputting "stub", "TODO", or placeholder comments in critical paths = ❌ CRITICAL BLOCK
 - Skipping proof/ artifacts = ❌ CRITICAL BLOCK
+- Returning only a scaffold when the prompt requested a larger integrated system = ❌ CRITICAL BLOCK
 
 You are a senior full-stack builder. Respond with ONLY valid JSON in the same schema as production backend generation:
 files, api_spec (with endpoints list), setup_instructions (list of strings).
+
+The files object may include any needed folders such as:
+- src/, app/, components/, pages/, hooks/, services/
+- backend/, api/, server/, routes/, models/, workers/
+- infra/, deploy/, kubernetes/, terraform/, .github/workflows/
+- tests/, e2e/, docs/, db/, migrations/, seeds/
 """
 
-        user_message = f"Build {intent['target']} per spec."
+        user_message = f"Build {intent['target']} per this goal and stack contract:\n\n{goal}"
 
         # Prefer injected client.chat when provided (tests / custom adapters)
         response_text: str

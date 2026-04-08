@@ -8303,12 +8303,14 @@ async def estimate_cost(
         plan = await planner_mod.generate_plan(
             body.goal, project_state=_orchestrator_planner_project_state(user)
         )
+        requested_target = (body.build_target or "").strip()
+        bt = normalize_build_target(requested_target or plan.get("recommended_build_target"))
         estimate = planner_mod.estimate_tokens(plan)
         return {
             "success": True,
             "estimate": estimate,
             "plan_summary": plan.get("summary", ""),
-            "build_target": normalize_build_target(body.build_target),
+            "build_target": bt,
         }
     except Exception as e:
         return {"success": False, "error": str(e), "estimate": {
@@ -8329,13 +8331,14 @@ async def create_plan(body: PlanRequest, user: dict = Depends(get_current_user))
         pool = await get_pg_pool()
         runtime_state.set_pool(pool)
 
-        bt = normalize_build_target(body.build_target)
         effective_project_id = await _resolve_job_project_id_for_user(body.project_id, user)
 
         # Generate plan
         plan = await planner_mod.generate_plan(
             body.goal, project_state=_orchestrator_planner_project_state(user)
         )
+        requested_target = (body.build_target or "").strip()
+        bt = normalize_build_target(requested_target or plan.get("recommended_build_target"))
         plan["crucib_build_target"] = bt
         estimate = planner_mod.estimate_tokens(plan)
 

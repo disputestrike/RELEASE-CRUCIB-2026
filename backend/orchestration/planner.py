@@ -18,6 +18,7 @@ from pricing_plans import CREDIT_PLANS
 from .trust.node_manifest import enrich_plan_with_node_manifests
 from .multiregion_terraform_sketch import multiregion_terraform_intent
 from .observability_workspace_pack import observability_intent as observability_goal_intent
+from .generation_contract import parse_generation_contract
 from .spec_guardian import evaluate_goal_against_runner, merge_plan_risk_flags_into_report
 
 logger = logging.getLogger(__name__)
@@ -313,6 +314,7 @@ async def generate_plan(goal: str,
     Generate a structured build plan for the given goal.
     llm_call: optional async callable(prompt) -> str for AI-enhanced planning.
     """
+    stack_contract = parse_generation_contract(goal)
     build_kind = _detect_build_kind(goal)
     integrations = _detect_integrations(goal)
     risk_flags = _detect_risk_flags(goal, project_state)
@@ -381,12 +383,27 @@ async def generate_plan(goal: str,
         acceptance_criteria.append(
             "Terraform multi-region sketch under terraform/ — run terraform fmt/validate and extend for VPC, data replication, DNS",
         )
+    if stack_contract.get("requires_full_system_builder"):
+        acceptance_criteria.append(
+            "Requested stack components are emitted as real files across application, services, tests, docs, and infrastructure.",
+        )
+    if stack_contract.get("queues"):
+        acceptance_criteria.append("Requested queue/worker technology is represented in generated worker or adapter files.")
+    if stack_contract.get("realtime"):
+        acceptance_criteria.append("Realtime client and server wiring is generated for the requested transport.")
+    if stack_contract.get("payments"):
+        acceptance_criteria.append("Payment flows include server handlers, configuration, and integration notes.")
 
     tier = os.environ.get("CRUCIB_QUALITY_TIER", "mvp").strip().lower()
     if tier not in ("prototype", "mvp", "production", "enterprise"):
         tier = "mvp"
 
-    spec_guard = merge_plan_risk_flags_into_report(risk_flags, evaluate_goal_against_runner(goal))
+    recommended_target = stack_contract.get("recommended_build_target")
+    spec_guard = merge_plan_risk_flags_into_report(
+        risk_flags,
+        evaluate_goal_against_runner(goal, build_target=recommended_target),
+        build_target=recommended_target,
+    )
 
     plan = {
         "goal": goal,
@@ -402,6 +419,9 @@ async def generate_plan(goal: str,
         "quality_tier": tier,
         "spec_guard": spec_guard,
         "architecture_outline": _architecture_outline(build_kind, integrations),
+        "stack_contract": stack_contract,
+        "generation_mode": "full_system_builder" if stack_contract.get("requires_full_system_builder") else "targeted_pack",
+        "recommended_build_target": recommended_target,
     }
 
     return enrich_plan_with_node_manifests(plan)

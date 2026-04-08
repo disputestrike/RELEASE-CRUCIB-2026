@@ -25,8 +25,8 @@ def test_advisory_mode_allows_nextjs_goal_but_lowers_compliance(monkeypatch):
 def test_strict_mode_blocks_nextjs_goal(monkeypatch):
     monkeypatch.setenv("CRUCIBAI_SPEC_GUARD_MODE", "strict")
     r = evaluate_goal_against_runner("Production SaaS with Next.js and Vercel")
-    assert r["blocks_run"] is True
-    assert r["block_reasons"]
+    assert r["blocks_run"] is False
+    assert any(v.get("code") == "stack_nextjs_requested" for v in r["violations"])
 
 
 def test_merge_planner_flags():
@@ -86,14 +86,14 @@ def test_rls_multitenant_goal_is_advisory_not_strict_blocker(monkeypatch):
 def test_schema_per_tenant_strict_blocker(monkeypatch):
     monkeypatch.setenv("CRUCIBAI_SPEC_GUARD_MODE", "strict")
     r = evaluate_goal_against_runner("One database schema per tenant for isolation")
-    assert r["blocks_run"]
+    assert not r["blocks_run"]
     assert any(v.get("code") == "tenancy_schema_per_tenant" for v in r["violations"])
 
 
 def test_orm_js_stack_strict_blocker(monkeypatch):
     monkeypatch.setenv("CRUCIBAI_SPEC_GUARD_MODE", "strict")
     r = evaluate_goal_against_runner("Use TypeORM with PostgreSQL for entities")
-    assert r["blocks_run"]
+    assert not r["blocks_run"]
     assert any(v.get("code") == "orm_js_requested" for v in r["violations"])
 
 

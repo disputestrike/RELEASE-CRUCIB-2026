@@ -26,6 +26,7 @@ from .enterprise_command_pack import (
     enterprise_backend_routes,
     enterprise_command_intent,
 )
+from .generation_contract import parse_generation_contract, requires_full_system_builder
 from .domain_packs import compliance_regulated_intent, multitenant_intent, stripe_intent
 from .compliance_sketch import build_compliance_sketch_markdown
 from .multiregion_terraform_sketch import (
@@ -325,6 +326,46 @@ def _write_file_set(workspace_path: str, file_set: List[tuple[str, str]]) -> Lis
     return written
 
 
+def _full_system_manifest_path(workspace_path: str) -> str:
+    return os.path.join(workspace_path, ".crucibai", "full_system_build.json")
+
+
+def _store_full_system_manifest(workspace_path: str, goal: str, result: Dict[str, Any]) -> None:
+    if not workspace_path:
+        return
+    manifest = {
+        "goal": goal,
+        "stack_contract": parse_generation_contract(goal),
+        "api_spec": result.get("api_spec") or {},
+        "setup_instructions": result.get("setup_instructions") or [],
+        "files": sorted((result.get("files") or {}).keys()),
+        "agent": result.get("_agent") or "BuilderAgent",
+        "build_target": result.get("_build_target"),
+    }
+    path = _full_system_manifest_path(workspace_path)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(manifest, fh, indent=2)
+
+
+def _load_full_system_manifest(workspace_path: str) -> Optional[Dict[str, Any]]:
+    path = _full_system_manifest_path(workspace_path)
+    if not os.path.isfile(path):
+        return None
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return json.load(fh)
+    except Exception:
+        return None
+
+
+def _full_system_output_files(workspace_path: str, prefixes: tuple[str, ...]) -> List[str]:
+    manifest = _load_full_system_manifest(workspace_path) or {}
+    files = manifest.get("files") or []
+    matched = [f for f in files if f.startswith(prefixes)]
+    return sorted(matched)
+
+
 def _template_file_map(job: Dict[str, Any]) -> Dict[str, str]:
     return {rel: content for rel, content in build_frontend_file_set(job)}
 
@@ -455,6 +496,7 @@ async def handle_frontend_generate(step: Dict, job: Dict,
     out: list = []
     job_id = job.get("id") or ""
     goal = job.get("goal", "").strip()
+    full_system_mode = False
     
     logger.info(f"=== FRONTEND HANDLER START ===")
     logger.info(f"Job: {job_id}, Goal: {goal[:60] if goal else 'NONE'}, WS: {bool(workspace_path)}")
@@ -463,11 +505,49 @@ async def handle_frontend_generate(step: Dict, job: Dict,
         from .plan_context import fetch_build_target_for_job
         bt = await fetch_build_target_for_job(job_id)
         job_augmented = {**job, "build_target": bt}
+        stack_contract = parse_generation_contract(goal)
 
-        if workspace_path and goal and enterprise_command_intent(job_augmented):
+        if workspace_path and goal and requires_full_system_builder(stack_contract) and not enterprise_command_intent(job_augmented):
+            full_system_mode = True
+            logger.info("Full-system builder selected for job %s", job_id)
+            from agents.builder_agent import BuilderAgent
+
+            agent = BuilderAgent()
+            result = await agent.execute(
+                {
+                    "goal": goal,
+                    "user_prompt": goal,
+                    "project_id": job_id,
+                    "workspace_path": workspace_path,
+                    "llm_model": job.get("llm_model") or "claude-3-5-haiku-20241022",
+                    "max_tokens": 12000,
+                }
+            )
+            if result.get("status") == "❌ CRITICAL BLOCK":
+                raise RuntimeError(f"full_system_generation_blocked: {result.get('reason') or 'builder reported critical block'}")
+            files_dict = result.get("files") or {}
+            if not isinstance(files_dict, dict) or not files_dict:
+                raise RuntimeError("full_system_generation_failed: builder returned no files")
+            built_set = []
+            for file_path, content in files_dict.items():
+                if isinstance(content, dict):
+                    content = json.dumps(content, indent=2)
+                elif content is None:
+                    content = ""
+                else:
+                    content = str(content)
+                w = _safe_write(workspace_path, file_path, content)
+                if w:
+                    built_set.append(w)
+            if not built_set:
+                raise RuntimeError("full_system_generation_failed: no files were written")
+            _store_full_system_manifest(workspace_path, goal, result)
+            out.extend(built_set)
+
+        if not out and workspace_path and goal and enterprise_command_intent(job_augmented):
             logger.info("Enterprise frontend build selected for job %s", job_id)
             out.extend(_write_file_set(workspace_path, build_frontend_file_set(job_augmented)))
-        elif workspace_path and goal:
+        elif not out and workspace_path and goal:
             logger.info(f"Attempting FrontendAgent...")
             # STEP 1: Try to use FrontendAgent with LLM
             try:
@@ -546,6 +626,8 @@ async def handle_frontend_generate(step: Dict, job: Dict,
 
     except Exception as e:
         logger.exception(f"❌ FrontendHandler CRITICAL: {e}")
+        if full_system_mode:
+            raise
         if workspace_path:
             try:
                 from .plan_context import fetch_build_target_for_job
@@ -556,7 +638,7 @@ async def handle_frontend_generate(step: Dict, job: Dict,
             except Exception:
                 logger.exception("Last resort fallback also failed")
 
-    if workspace_path and out:
+    if workspace_path and out and not _load_full_system_manifest(workspace_path):
         try:
             from .plan_context import fetch_build_target_for_job
             bt = await fetch_build_target_for_job(job.get("id") or "")
@@ -668,6 +750,22 @@ async def handle_backend_route(step: Dict, job: Dict,
         }
 
     try:
+        manifest = _load_full_system_manifest(workspace_path)
+        if manifest and requires_full_system_builder(manifest.get("stack_contract") or {}):
+            logger.info("Full-system manifest present for job %s step %s", job_id, key)
+            output_files = _full_system_output_files(workspace_path, ("backend/", "api/", "server/", "workers/", "tests/", "docs/", "infra/", ".github/"))
+            routes_added = (manifest.get("api_spec") or {}).get("endpoints", [])
+            if key in {"backend.routes", "backend.auth"}:
+                hardened = _ensure_backend_elite_hardening(workspace_path)
+                if hardened and hardened not in output_files:
+                    output_files.append(hardened)
+            return {
+                "output": f"Full-system build already generated backend assets for {key}",
+                "routes_added": routes_added,
+                "output_files": output_files,
+                "artifacts": [],
+            }
+
         if goal and enterprise_command_intent(job) and key in {"backend.models", "backend.routes", "backend.auth"}:
             logger.info("Enterprise backend build selected for job %s step %s", job_id, key)
             out_files.extend(_write_file_set(workspace_path, build_enterprise_backend_file_set(job, step_key=key)))
@@ -884,6 +982,16 @@ async def handle_db_migration(step: Dict, job: Dict,
     tables: list = []
 
     if workspace_path:
+        manifest = _load_full_system_manifest(workspace_path)
+        if manifest and requires_full_system_builder(manifest.get("stack_contract") or {}):
+            logger.info("Full-system manifest present for database step %s", key)
+            return {
+                "output": f"Migration step executed: {key}",
+                "tables_created": tables,
+                "output_files": _full_system_output_files(workspace_path, ("db/", "migrations/", "seeds/", "prisma/", "backend/")),
+                "artifacts": [],
+            }
+
         if enterprise_command_intent(job):
             logger.info("Enterprise database build selected for job %s step %s", job.get("id") or "", key)
             out.extend(_write_file_set(workspace_path, build_enterprise_database_file_set(job, step_key=key)))
