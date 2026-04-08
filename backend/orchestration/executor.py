@@ -310,6 +310,77 @@ def _read_text(base: str, rel: str) -> Optional[str]:
         return None
 
 
+def _template_file_map(job: Dict[str, Any]) -> Dict[str, str]:
+    return {rel: content for rel, content in build_frontend_file_set(job)}
+
+
+def _merge_package_dependencies(existing_text: Optional[str], fallback_text: str) -> str:
+    try:
+        fallback_pkg = json.loads(fallback_text)
+    except Exception:
+        return fallback_text
+    if not existing_text:
+        return json.dumps(fallback_pkg, indent=2)
+    try:
+        existing_pkg = json.loads(existing_text)
+    except Exception:
+        return json.dumps(fallback_pkg, indent=2)
+
+    for section in ("dependencies", "devDependencies", "scripts"):
+        merged = dict(fallback_pkg.get(section) or {})
+        merged.update(existing_pkg.get(section) or {})
+        if section in ("dependencies", "devDependencies"):
+            merged = {**(existing_pkg.get(section) or {}), **(fallback_pkg.get(section) or {})}
+        existing_pkg[section] = merged
+
+    if not existing_pkg.get("type"):
+        existing_pkg["type"] = fallback_pkg.get("type", "module")
+    return json.dumps(existing_pkg, indent=2)
+
+
+def _ensure_preview_contract_files(workspace_path: str, job: Dict[str, Any]) -> list[str]:
+    """
+    Overlay the minimum preview-contract files after a live model run without
+    clobbering existing app code.
+    """
+    if not workspace_path:
+        return []
+
+    template_map = _template_file_map(job)
+    written: list[str] = []
+
+    package_rel = "package.json"
+    package_text = _read_text(workspace_path, package_rel)
+    merged_package = _merge_package_dependencies(package_text, template_map[package_rel])
+    if merged_package != (package_text or ""):
+        if _safe_write(workspace_path, package_rel, merged_package):
+            written.append(package_rel)
+
+    required_paths = [
+        "src/store/useAppStore.js",
+        "src/context/AuthContext.jsx",
+        "src/components/ErrorBoundary.jsx",
+        "src/components/ShellLayout.jsx",
+        "src/pages/HomePage.jsx",
+        "src/pages/LoginPage.jsx",
+        "src/pages/DashboardPage.jsx",
+        "src/pages/TeamPage.jsx",
+        "src/styles/global.css",
+        "src/main.jsx",
+        "src/index.js",
+    ]
+    for rel in required_paths:
+        if not _read_text(workspace_path, rel):
+            if _safe_write(workspace_path, rel, template_map[rel]):
+                written.append(rel)
+
+    if not _read_text(workspace_path, "src/App.jsx") and not _read_text(workspace_path, "src/App.js"):
+        if _safe_write(workspace_path, "src/App.jsx", template_map["src/App.jsx"]):
+            written.append("src/App.jsx")
+
+    return written
+
+
 # ── Step handler registry ─────────────────────────────────────────────────────
 
 async def handle_planning_step(step: Dict, job: Dict,
@@ -492,6 +563,20 @@ async def handle_frontend_generate(step: Dict, job: Dict,
                 logger.info(f"Last resort wrote {len(out)} files")
             except Exception:
                 logger.exception("Last resort fallback also failed")
+
+    if workspace_path and out:
+        try:
+            from .plan_context import fetch_build_target_for_job
+            bt = await fetch_build_target_for_job(job.get("id") or "")
+            contract_job = {**job, "build_target": bt}
+            ensured = _ensure_preview_contract_files(workspace_path, contract_job)
+            for rel in ensured:
+                if rel not in out:
+                    out.append(rel)
+            if ensured:
+                logger.info("Frontend preview-contract hardening wrote %s files", len(ensured))
+        except Exception as e:
+            logger.exception("Preview-contract hardening failed: %s", e)
     
     logger.info(f"=== FRONTEND HANDLER END: {len(out)} files ===")
     

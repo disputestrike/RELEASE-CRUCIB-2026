@@ -191,6 +191,55 @@ async def test_frontend_empty_agent_output_falls_back_to_preview_scaffold(monkey
 
 
 @pytest.mark.asyncio
+async def test_live_frontend_output_gets_preview_contract_hardening(monkeypatch):
+    from agents.frontend_agent import FrontendAgent
+    import orchestration.plan_context as plan_context
+
+    async def thin_execute(self, context):
+        return {
+            "files": {
+                "package.json": json.dumps(
+                    {
+                        "name": "thin-app",
+                        "private": True,
+                        "version": "0.1.0",
+                        "type": "module",
+                        "scripts": {"dev": "vite", "build": "vite build", "preview": "vite preview"},
+                        "dependencies": {
+                            "react": "^18.2.0",
+                            "react-dom": "^18.2.0",
+                            "react-router-dom": "^6.22.0",
+                        },
+                        "devDependencies": {"vite": "^5.4.11", "@vitejs/plugin-react": "^4.3.4"},
+                    }
+                ),
+                "index.html": "<!doctype html><html><body><div id='root'></div><script type='module' src='/src/main.jsx'></script></body></html>",
+                "src/App.jsx": "export default function App(){ return <main><h1>Thin app</h1></main>; }",
+                "src/main.jsx": "import React from 'react'; import { createRoot } from 'react-dom/client'; import { MemoryRouter } from 'react-router-dom'; import App from './App.jsx'; createRoot(document.getElementById('root')).render(<MemoryRouter><App /></MemoryRouter>);",
+            }
+        }
+
+    async def fake_fetch_build_target(job_id):
+        return "vite_react"
+
+    monkeypatch.setattr(FrontendAgent, "execute", thin_execute)
+    monkeypatch.setattr(plan_context, "fetch_build_target_for_job", fake_fetch_build_target)
+    monkeypatch.setenv("CRUCIBAI_SKIP_BROWSER_PREVIEW", "1")
+
+    with tempfile.TemporaryDirectory() as d:
+        result = await handle_frontend_generate(
+            {"step_key": "frontend.scaffold"},
+            {"id": "job-thin-frontend", "goal": "Build a tiny product dashboard"},
+            d,
+        )
+
+        assert "src/components/ShellLayout.jsx" in result["output_files"]
+        assert "src/context/AuthContext.jsx" in result["output_files"]
+        preview = await verify_preview_workspace(d)
+        assert preview["passed"] is True, preview.get("issues")
+
+
+@pytest.mark.asyncio
 async def test_fallback_scaffold_passes_preview_and_elite_gates(monkeypatch):
     monkeypatch.setenv("CRUCIBAI_SKIP_BROWSER_PREVIEW", "1")
     monkeypatch.setenv("CRUCIBAI_ELITE_BUILDER_GATE", "strict")
