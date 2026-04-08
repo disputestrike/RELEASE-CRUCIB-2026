@@ -73,7 +73,7 @@ Tasks:
 - [x] Add task-specific app-db route to avoid project/task dynamic route collisions.
 - [x] Add task ownership checks for GitHub sync and Railway deploy helpers.
 - [x] Add focused smoke coverage for Git sync/Railway deploy unowned task/project rejection.
-- [ ] Commit and push the late-route registration and deploy ownership slice.
+- [x] Commit and push the late-route registration and deploy ownership slice (`412141d`).
 
 ## Verification Log
 
