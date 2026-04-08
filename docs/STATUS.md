@@ -8,15 +8,27 @@ Last updated: 2026-04-08
 
 ## Current Objective
 
-Continue Phase 2 execution-surface hardening on `main`, with every approved slice committed and pushed directly to GitHub.
+Paused before the next implementation pass. Resume from `main` commit `1020791` after release-gate/FrontendAgent prompt work, with every approved slice committed and pushed directly to GitHub.
 
 ## Confirmed Direction
 
 - PostgreSQL is the only primary database.
 - MongoDB references in primary docs and CI are treated as drift.
 - The golden path is prompt/import to plan, build, proof, preview, iterate, export/deploy.
+- CrucibAI's category wedge is the unified outcome platform: state the idea, build it, then automate it.
+- The differentiator to preserve while hardening is the `run_agent` bridge: the same AI that builds the app runs inside user automations.
 - Security hardening for terminal/git/workspace operations is required before public launch.
 - Work should be committed in small slices and pushed directly to `main` unless the owner says otherwise.
+
+## Resume Point
+
+Exact external reference requested by the owner, `/home/claude/CRUCIBAI_WHAT_IT_IS_COMPLETE.md`, was not present in this Windows workspace or WSL. Nearest repo references read:
+
+- `README.md`: "State the idea. We build it." and app-building AI inside automations.
+- `docs/CRUCIBAI_SOURCE_BIBLE.md`: `run_agent` bridge and competitive-position sections.
+- `docs/UNIQUE_COMPETITIVE_ADVANTAGE_AND_NEW_BIG_IDEA.md`: "The same AI that builds your app runs inside your automations."
+
+Next implementation should continue from Phase 2/4 overlap, prioritizing runtime risk plus the golden path: tenant isolation, backend router extraction, proof/preview/deploy recovery, and product-surface beta gating.
 
 ## Known Risks
 
@@ -113,7 +125,7 @@ Tasks:
 - [x] Verify FrontendAgent compiles and prompt size is materially lower.
 - [x] Commit and push the FrontendAgent prompt compaction slice (`8f4d895`).
 - [x] Add `backend\agents\frontend_agent.py` to the release-gate compile list.
-- [ ] Commit and push the release-gate compile coverage update.
+- [x] Commit and push the release-gate compile coverage update (`1020791`).
 
 ## Verification Log
 
