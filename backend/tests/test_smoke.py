@@ -594,6 +594,48 @@ async def test_smoke_agents_from_description_creates_run_agent_automation(app_cl
     assert data["actions"][0]["config"]["agent_name"] == "Content Agent"
 
 
+async def test_smoke_agent_run_executes_run_agent_action(app_client, auth_headers, monkeypatch):
+    """Manual automation runs execute saved run_agent actions and persist output."""
+    import server
+
+    calls = []
+
+    async def fake_llm_with_fallback(**kwargs):
+        calls.append(kwargs)
+        return ("Bridge run output", "test-model")
+
+    monkeypatch.setattr(server, "_call_llm_with_fallback", fake_llm_with_fallback)
+
+    create = {
+        "name": "Manual bridge proof",
+        "trigger": {"type": "webhook", "webhook_secret": "bridge-secret"},
+        "actions": [
+            {
+                "type": "run_agent",
+                "config": {
+                    "agent_name": "Content Agent",
+                    "prompt": "Summarize today's build proof.",
+                },
+            }
+        ],
+    }
+    created = await app_client.post("/api/agents", json=create, headers=auth_headers, timeout=10)
+    assert created.status_code in (200, 201), created.text
+    agent_id = created.json()["id"]
+
+    run = await app_client.post(f"/api/agents/{agent_id}/run", headers=auth_headers, timeout=20)
+    assert run.status_code == 200, run.text
+    assert run.json()["status"] == "success"
+    run_id = run.json()["run_id"]
+
+    detail = await app_client.get(f"/api/agents/runs/{run_id}", headers=auth_headers, timeout=10)
+    assert detail.status_code == 200, detail.text
+    output_summary = detail.json()["output_summary"]
+    assert output_summary["steps"][0]["output"]["result"] == "Bridge run output"
+    assert calls
+    assert calls[0]["message"] == "Summarize today's build proof."
+
+
 async def test_smoke_retry_step_rejects_unowned_job(app_client, auth_headers):
     """POST /api/jobs/{job_id}/retry-step/{step_id} rejects another user's job step."""
     other_headers = await _register_smoke_headers(app_client)

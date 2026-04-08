@@ -131,6 +131,7 @@ Tasks:
 - [x] Add executor coverage proving a `run_agent` automation action calls the app-building agent callback with substituted prior-step output.
 - [x] Add prompt-to-automation smoke coverage proving `/api/agents/from-description` can save a `run_agent` action from a natural-language description.
 - [x] Add the prompt-to-automation and automation `run_agent` bridge checks to the backend release gate.
+- [x] Add route-level smoke coverage proving a saved automation with a `run_agent` action can run and persist the agent output.
 
 ## Verification Log
 
@@ -170,6 +171,8 @@ Tasks:
 - `python -m pytest backend\tests\test_automation.py -k "run_agent" -q` passed with local Postgres/Redis env: 1 passed, 6 deselected.
 - `python -m pytest backend\tests\test_smoke.py -k "agent_run_generic or agents_from_description" -q` passed with local Postgres/Redis env: 3 passed, 52 deselected.
 - `.\scripts\release-gate.ps1 -BackendOnly` passed after adding automation bridge coverage: smoke 31 passed, 24 deselected; automation bridge 1 passed, 6 deselected; tool agent guard 8 passed, 18 deselected.
+- `python -m pytest backend\tests\test_smoke.py -k "agent_run_executes_run_agent_action" -q` passed with local Postgres/Redis env: 1 passed, 55 deselected.
+- `.\scripts\release-gate.ps1 -BackendOnly` passed after adding the route-level run-agent action smoke: smoke 32 passed, 24 deselected; automation bridge 1 passed, 6 deselected; tool agent guard 8 passed, 18 deselected.
 
 ## Next Milestone
 
