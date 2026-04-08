@@ -97,21 +97,38 @@ async def verify_elite_builder_workspace(
     job_goal: str = "",
 ) -> Dict[str, Any]:
     """
-    Elite builder verification with binary PASS/FAIL and explicit reason.
+    Elite builder verification with binary PASS/FAIL and explicit failure reasons.
     
-    DETERMINISTIC: Either PASS (score >=80) with proof, or FAIL with specific checks failed.
+    DETERMINISTIC: Either PASS (score >=80) with proof bundle, or FAIL with failed_checks list.
     
     Checks (10 total):
-    1. Elite directive present
-    2. Delivery classification complete
-    3. Critical feature proof depth
-    4. Error boundaries in code
-    5. Console.error/warn free
-    6. API error handling
-    7. SQL parameterization
-    8. Auth/RBAC present
-    9. No hardcoded secrets
-    10. Security headers
+    1. Elite directive present (proof/ELITE_EXECUTION_DIRECTIVE.md)
+    2. Delivery classification complete (proof/DELIVERY_CLASSIFICATION.md)
+    3. Critical feature proof depth (runtime/smoke/pytest evidence)
+    4. Error boundaries in code (React ErrorBoundary component)
+    5. Console.error/warn free (no debug logs in production)
+    6. API error handling (try-catch on all routes)
+    7. SQL parameterization (no f-string/format interpolation)
+    8. Authentication/RBAC present (AuthContext, useAuth, JWT, Depends)
+    9. No hardcoded secrets (no API keys, passwords in source)
+    10. Security headers configured (CSP, X-Frame-Options, HSTS, etc.)
+    
+    Scoring:
+    - >=80% (8/10 checks pass): PASS with proof bundle
+    - <80% (7/10 or fewer): FAIL with failed_checks list
+    
+    Returns:
+    {
+        "passed": bool,
+        "score": int (0-100, percent of checks passed),
+        "checks": [{"name": str, "passed": bool, "reason": str}],
+        "checks_passed": int,
+        "checks_total": int,
+        "failed_checks": [str],  # Names of failed checks (for agent regeneration)
+        "failure_reason": str or None,  # "elite_checks_failed" if not passed
+        "recommendation": str,  # Which checks to fix
+        "proof": [...]
+    }
     """
     mode = _gate_mode()
     proof: List[Dict[str, Any]] = []
@@ -249,6 +266,7 @@ async def verify_elite_builder_workspace(
     passed_checks = len([c for c in checks if c["passed"]])
     total_checks = len(checks)
     score = int((passed_checks / max(1, total_checks)) * 100)
+    failed_check_names = [c["name"] for c in checks if not c["passed"]]
     
     passed = score >= 80  # >=80% = PASS
     
@@ -261,13 +279,26 @@ async def verify_elite_builder_workspace(
                 verification_class="runtime",
             )
         )
-        return _result(True, score, [], proof)
+        result = _result(True, score, [], proof)
+        result["checks"] = checks
+        result["checks_passed"] = passed_checks
+        result["checks_total"] = total_checks
+        result["failed_checks"] = failed_check_names
+        result["failure_reason"] = None  # Advisory mode: no failure
+        return result
 
-    result = _result(passed, score, issues, proof)
+    result = _result(passed, score, issues if not passed else [], proof)
     result["checks"] = checks
     result["checks_passed"] = passed_checks
     result["checks_total"] = total_checks
-    result["failure_reason"] = None if passed else "elite_checks_failed"
+    result["failed_checks"] = failed_check_names
+    
+    if passed:
+        result["failure_reason"] = None
+    else:
+        result["failure_reason"] = "elite_checks_failed"
+        result["recommendation"] = f"Fix failed checks: {', '.join(failed_check_names)}"
+    
     return result
 
 
