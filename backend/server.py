@@ -5975,6 +5975,14 @@ async def _run_single_agent_with_context(
     )
     tokens_used = max(100, min(200000, (len(enhanced_message) + len(response or "")) * 2))
     out = (response or "").strip()
+    input_data = _agent_cache_input(agent_name, project_prompt, previous_outputs)
+    result: Dict[str, Any] = {
+        "output": out,
+        "tokens_used": tokens_used,
+        "status": "completed",
+        "result": out,
+        "code": out,
+    }
 
     # Image Generation: LLM returns JSON prompts -> Together.ai generates images
     if agent_name == "Image Generation" and generate_images_for_app and parse_image_prompts:
@@ -5983,60 +5991,34 @@ async def _run_single_agent_with_context(
             design_desc = enhanced_message[:1000] if enhanced_message else project_prompt[:500]
             images = await generate_images_for_app(design_desc, prompts_dict if prompts_dict else None)
             out = json.dumps(images) if images else out
-            result = {"output": out, "tokens_used": tokens_used, "status": "completed", "result": out, "code": out, "images": images}
-            result = await run_real_post_step(agent_name, project_id, previous_outputs, result)
-            persist_agent_output(project_id, agent_name, result)
-            try:
-                run_agent_real_behavior(agent_name, project_id, result, previous_outputs)
-            except Exception as e:
-                logger.warning("run_agent_real_behavior %s: %s", agent_name, e)
+            result = {
+                "output": out,
+                "tokens_used": tokens_used,
+                "status": "completed",
+                "result": out,
+                "code": out,
+                "images": images,
+            }
         except Exception as e:
             logger.error(f"Image generation failed: {e}")
             result = {"output": out, "tokens_used": tokens_used, "status": "completed", "result": out, "code": out}
-    
-    try:
-        agent_memory.record_execution(agent_name, {
-            "input": input_data,
-            "output": result,
-            "timestamp": datetime.now(),
-            "tokens_used": tokens_used
-        })
-    except Exception as e:
-        logger.error(f"Failed to record execution: {e}")
-    
-    # Store in vector memory
-    try:
-        await vector_store.store_execution(
-            agent_id=agent_name,
-            execution_data={
-                "input": input_data,
-                "output": result,
-                "agent": agent_name
-            }
-        )
-    except Exception as e:
-        logger.debug(f"Vector store unavailable: {e}")
-    
-    return result
-    # Video Generation: LLM returns JSON search queries -> Pexels finds videos
-    if agent_name == "Video Generation" and generate_videos_for_app and parse_video_queries:
+    elif agent_name == "Video Generation" and generate_videos_for_app and parse_video_queries:
         try:
             queries_dict = parse_video_queries(out)
             design_desc = enhanced_message[:1000] if enhanced_message else project_prompt[:500]
             videos = await generate_videos_for_app(design_desc, queries_dict if queries_dict else None)
             out = json.dumps(videos) if videos else out
-            result = {"output": out, "tokens_used": tokens_used, "status": "completed", "result": out, "code": out, "videos": videos}
-            result = await run_real_post_step(agent_name, project_id, previous_outputs, result)
-            persist_agent_output(project_id, agent_name, result)
-            try:
-                run_agent_real_behavior(agent_name, project_id, result, previous_outputs)
-            except Exception as e:
-                logger.warning("run_agent_real_behavior %s: %s", agent_name, e)
-            return result
+            result = {
+                "output": out,
+                "tokens_used": tokens_used,
+                "status": "completed",
+                "result": out,
+                "code": out,
+                "videos": videos,
+            }
         except Exception as e:
             logger.warning("Video generation agent failed: %s", e)
 
-    result = {"output": out, "tokens_used": tokens_used, "status": "completed", "result": out, "code": out}
     result = await run_real_post_step(agent_name, project_id, previous_outputs, result)
     persist_agent_output(project_id, agent_name, result)
     try:
@@ -6052,35 +6034,41 @@ async def _run_single_agent_with_context(
     except Exception:
         pass
 
-# --- AGENT LEARNING: Record execution for recursive learning ---
     try:
         memory = await _init_agent_learning()
         if memory:
             await memory.record_execution(
                 agent_name=agent_name,
-                input_data={"prompt": (enhanced_message or "")[:500], "project_id": project_id},
-                output={"result": (out or "")[:500], "tokens": tokens_used},
+                input_data={"prompt": input_data[:500], "project_id": project_id},
+                output={"result": (result.get("output") or result.get("result") or "")[:500], "tokens": tokens_used},
                 status=ExecutionStatus.SUCCESS if out and len(out) > 50 else ExecutionStatus.PARTIAL,
-                duration_ms=0,  # Could add timing if needed
-                metadata={"build_kind": build_kind or "web"}
+                duration_ms=0,
+                metadata={"build_kind": build_kind or "web"},
             )
-    except Exception as _learn_err:
-        logger.debug(f"Agent learning record failed (non-fatal): {_learn_err}")
-    
-    # --- VECTOR MEMORY: Store output for RAG ---
+    except Exception as e:
+        logger.debug("Agent learning record failed (non-fatal): %s", e)
+
     try:
         if _vector_memory.is_available():
             await _vector_memory.store_agent_output(
                 project_id=project_id,
                 agent_name=agent_name,
-                output=(out or "")[:2000],
+                output=(result.get("output") or result.get("result") or "")[:2000],
                 tokens_used=tokens_used,
             )
-    except Exception as _vec_err:
-        logger.debug(f"Vector memory store failed (non-fatal): {_vec_err}")
-    # --- END VECTOR MEMORY ---
+    except Exception as e:
+        logger.debug("Vector memory store failed (non-fatal): %s", e)
 
-    # --- END AGENT LEARNING ---
+    try:
+        if _pgvector_memory and getattr(_pgvector_memory, "is_available", lambda: False)():
+            await _pgvector_memory.store_agent_output(
+                project_id=project_id,
+                agent_name=agent_name,
+                output=(result.get("output") or result.get("result") or "")[:2000],
+                tokens_used=tokens_used,
+            )
+    except Exception as e:
+        logger.debug("PGVector memory store failed (non-fatal): %s", e)
 
     return result
 
