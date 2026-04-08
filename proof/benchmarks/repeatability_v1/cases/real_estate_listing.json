@@ -1,0 +1,118 @@
+{
+  "case": {
+    "build_target": "vite_react",
+    "category": "real_estate",
+    "goal": "Build a real estate listing app with property browsing, saved buyer notes, agent team page, dashboard, and export-ready files.",
+    "id": "real_estate_listing",
+    "required_terms": [
+      "real",
+      "estate",
+      "property",
+      "agent",
+      "export"
+    ],
+    "title": "Real estate listings"
+  },
+  "generated_files": [
+    "Dockerfile",
+    "README_BUILD.md",
+    "backend/main.py",
+    "deploy/PRODUCTION_SKETCH.md",
+    "deploy/PUBLISH.md",
+    "deploy/healthcheck.sh",
+    "docs/CRUCIB_BUILD_TARGET.md",
+    "index.html",
+    "package.json",
+    "proof/DELIVERY_CLASSIFICATION.md",
+    "proof/ELITE_EXECUTION_DIRECTIVE.md",
+    "src/App.jsx",
+    "src/components/ErrorBoundary.jsx",
+    "src/components/ShellLayout.jsx",
+    "src/context/AuthContext.jsx",
+    "src/index.js",
+    "src/main.jsx",
+    "src/pages/DashboardPage.jsx",
+    "src/pages/HomePage.jsx",
+    "src/pages/LoginPage.jsx",
+    "src/pages/TeamPage.jsx",
+    "src/store/useAppStore.js",
+    "src/styles/global.css",
+    "vite.config.js"
+  ],
+  "passed": true,
+  "score": 100.0,
+  "stages": {
+    "deploy_build": {
+      "detail": {
+        "failure_reason": null,
+        "issues": [],
+        "proof_count": 5
+      },
+      "name": "deploy_build",
+      "passed": true,
+      "score": 100.0
+    },
+    "deploy_publish": {
+      "detail": {
+        "failure_reason": null,
+        "issues": [],
+        "proof_count": 2,
+        "publish_mode": "readiness_only"
+      },
+      "name": "deploy_publish",
+      "passed": true,
+      "score": 100.0
+    },
+    "elite_proof": {
+      "detail": {
+        "failed_checks": [],
+        "failure_reason": null,
+        "issues": [],
+        "proof_count": 10
+      },
+      "name": "elite_proof",
+      "passed": true,
+      "score": 100.0
+    },
+    "generated_files": {
+      "detail": {
+        "generated_file_count": 24,
+        "missing": [],
+        "passed": true,
+        "required_count": 14
+      },
+      "name": "generated_files",
+      "passed": true,
+      "score": 100.0
+    },
+    "preview": {
+      "detail": {
+        "failure_reason": null,
+        "issues": [],
+        "mode": "static_plus_skipped_browser",
+        "proof_count": 8
+      },
+      "name": "preview",
+      "passed": true,
+      "score": 100.0
+    },
+    "prompt_coverage": {
+      "detail": {
+        "checked_file_count": 23,
+        "missing_terms": [],
+        "passed": true,
+        "required_terms": [
+          "real",
+          "estate",
+          "property",
+          "agent",
+          "export"
+        ]
+      },
+      "name": "prompt_coverage",
+      "passed": true,
+      "score": 100.0
+    }
+  },
+  "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\real_estate_listing"
+}

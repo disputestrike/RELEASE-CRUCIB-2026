@@ -1,6 +1,6 @@
 {
   "version": "2026-04-08.repeatability.v1",
-  "description": "Golden repeatability suite for CrucibAI prompt-to-app builds. These prompts cover the first ten app categories we need to win before expanding to 50.",
+  "description": "Golden repeatability suite for CrucibAI prompt-to-app builds. These prompts cover the first twenty-five app categories we need to win before expanding to 50.",
   "cases": [
     {
       "id": "saas_dashboard",
@@ -81,6 +81,126 @@
       "goal": "Build a conversion landing page for a product launch with sections, routing-safe preview, saved feedback notes, and export-ready files.",
       "build_target": "static_site",
       "required_terms": ["landing", "launch", "preview", "feedback", "export"]
+    },
+    {
+      "id": "project_management",
+      "category": "productivity",
+      "title": "Project management board",
+      "goal": "Build a project management board with tasks, team assignments, saved planning notes, dashboard routing, and deployment readiness.",
+      "build_target": "vite_react",
+      "required_terms": ["project", "tasks", "team", "planning", "deployment"]
+    },
+    {
+      "id": "learning_platform",
+      "category": "education",
+      "title": "Learning platform",
+      "goal": "Build a learning platform with course browsing, learner login, progress dashboard, saved study notes, and export-ready proof.",
+      "build_target": "vite_react",
+      "required_terms": ["learning", "course", "login", "progress", "proof"]
+    },
+    {
+      "id": "healthcare_intake",
+      "category": "healthcare",
+      "title": "Healthcare intake workflow",
+      "goal": "Build a healthcare intake workflow with patient intake notes, staff dashboard, privacy reminders, mocked auth, and compliance proof notes.",
+      "build_target": "vite_react",
+      "required_terms": ["healthcare", "intake", "patient", "privacy", "compliance"]
+    },
+    {
+      "id": "finance_budget",
+      "category": "finance",
+      "title": "Budget tracker",
+      "goal": "Build a finance budget tracker with expense categories, dashboard summary, saved notes, mocked account auth, and deployment proof.",
+      "build_target": "vite_react",
+      "required_terms": ["finance", "budget", "expense", "account", "deployment"]
+    },
+    {
+      "id": "restaurant_ordering",
+      "category": "food",
+      "title": "Restaurant ordering",
+      "goal": "Build a restaurant ordering app with menu browsing, order notes, customer login, team dashboard, and publish readiness.",
+      "build_target": "vite_react",
+      "required_terms": ["restaurant", "menu", "order", "customer", "publish"]
+    },
+    {
+      "id": "real_estate_listing",
+      "category": "real_estate",
+      "title": "Real estate listings",
+      "goal": "Build a real estate listing app with property browsing, saved buyer notes, agent team page, dashboard, and export-ready files.",
+      "build_target": "vite_react",
+      "required_terms": ["real", "estate", "property", "agent", "export"]
+    },
+    {
+      "id": "community_forum",
+      "category": "community",
+      "title": "Community forum",
+      "goal": "Build a community forum with member login, topic dashboard, saved moderation notes, team page, and deployment readiness.",
+      "build_target": "vite_react",
+      "required_terms": ["community", "forum", "member", "moderation", "deployment"]
+    },
+    {
+      "id": "event_management",
+      "category": "events",
+      "title": "Event management",
+      "goal": "Build an event management app with attendee notes, schedule dashboard, organizer team page, routing, and publish readiness.",
+      "build_target": "vite_react",
+      "required_terms": ["event", "attendee", "schedule", "organizer", "publish"]
+    },
+    {
+      "id": "support_ticketing",
+      "category": "support",
+      "title": "Support ticketing",
+      "goal": "Build a support ticketing tool with customer issues, agent dashboard, saved triage notes, login, and deployment proof.",
+      "build_target": "vite_react",
+      "required_terms": ["support", "ticketing", "customer", "triage", "proof"]
+    },
+    {
+      "id": "inventory_management",
+      "category": "operations",
+      "title": "Inventory management",
+      "goal": "Build an inventory management tool with stock dashboard, item notes, team routing, mocked auth, and deploy-ready artifacts.",
+      "build_target": "api_backend",
+      "required_terms": ["inventory", "stock", "item", "auth", "deploy"]
+    },
+    {
+      "id": "portfolio_site",
+      "category": "portfolio",
+      "title": "Portfolio site",
+      "goal": "Build a portfolio site with project sections, contact notes, preview-safe routing, export-ready files, and launch copy.",
+      "build_target": "static_site",
+      "required_terms": ["portfolio", "project", "contact", "export", "launch"]
+    },
+    {
+      "id": "nonprofit_donor",
+      "category": "nonprofit",
+      "title": "Nonprofit donor portal",
+      "goal": "Build a nonprofit donor portal with campaign dashboard, donor notes, mocked checkout, team page, and deployment readiness.",
+      "build_target": "vite_react",
+      "required_terms": ["nonprofit", "donor", "campaign", "checkout", "deployment"]
+    },
+    {
+      "id": "hr_onboarding",
+      "category": "hr",
+      "title": "HR onboarding",
+      "goal": "Build an HR onboarding portal with employee checklist notes, team dashboard, mocked login, policy reminders, and proof artifacts.",
+      "build_target": "vite_react",
+      "required_terms": ["hr", "onboarding", "employee", "policy", "proof"]
+    },
+    {
+      "id": "analytics_report",
+      "category": "analytics",
+      "title": "Analytics report builder",
+      "goal": "Build an analytics report builder with report dashboard, saved insight notes, team review flow, routing, and export readiness.",
+      "build_target": "vite_react",
+      "required_terms": ["analytics", "report", "insight", "review", "export"]
+    },
+    {
+      "id": "mobile_companion",
+      "category": "mobile",
+      "title": "Mobile companion sketch",
+      "goal": "Build a mobile companion sketch with responsive pages, login notes, dashboard routing, team preview, and deployment caveats.",
+      "build_target": "vite_react",
+      "required_terms": ["mobile", "responsive", "login", "preview", "deployment"]
     }
   ]
 }
