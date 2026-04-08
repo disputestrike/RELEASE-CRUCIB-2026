@@ -98,7 +98,10 @@ Tasks:
 - [x] Add an explicit `CRUCIBAI_TERMINAL_ENABLED` launch gate for terminal sessions and command execution.
 - [x] Keep terminal enabled for test/dev by default while disabled by default in production.
 - [x] Add focused smoke coverage for disabled terminal create/execute behavior.
-- [ ] Commit and push the terminal launch-gate slice.
+- [x] Commit and push the terminal launch-gate slice (`da1225b`).
+- [x] Replace stale Railway deployment guide with Postgres-only instructions.
+- [x] Replace stale backend deployment guide with Postgres-only instructions.
+- [ ] Commit and push the deployment docs cleanup slice.
 
 ## Verification Log
 
