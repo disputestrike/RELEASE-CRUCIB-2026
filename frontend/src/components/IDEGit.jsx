@@ -1,10 +1,10 @@
 import { useState } from "react";
 import axios from "axios";
-import { API } from "../App";
+import { API, useAuth } from "../App";
 import { logApiError } from "../utils/apiError";
 
 export default function IDEGit() {
-  const [repoPath, setRepoPath] = useState("/app");
+  const { token } = useAuth();
   const [projectId, setProjectId] = useState("");
   const [status, setStatus] = useState(null);
   const [branches, setBranches] = useState([]);
@@ -18,12 +18,13 @@ export default function IDEGit() {
   const [commitLoading, setCommitLoading] = useState(false);
   const [resolveLoading, setResolveLoading] = useState(false);
 
-  const params = () => (projectId ? { project_id: projectId } : { repo_path: repoPath });
+  const params = () => ({ project_id: projectId });
+  const authConfig = () => ({ params: params(), headers: token ? { Authorization: `Bearer ${token}` } : {} });
 
   const fetchStatus = () => {
     setLoading(true);
     axios
-      .get(`${API}/git/status`, { params: params() })
+      .get(`${API}/git/status`, authConfig())
       .then((r) => setStatus(r.data))
       .catch((e) => logApiError("IDEGit status", e))
       .finally(() => setLoading(false));
@@ -32,7 +33,7 @@ export default function IDEGit() {
   const fetchBranches = () => {
     setBranchLoading(true);
     axios
-      .get(`${API}/git/branches`, { params: params() })
+      .get(`${API}/git/branches`, authConfig())
       .then((r) => setBranches(r.data.branches || []))
       .catch((e) => {
         logApiError("IDEGit branches", e);
@@ -45,7 +46,7 @@ export default function IDEGit() {
     if (!mergeBranch) return;
     setMergeLoading(true);
     axios
-      .post(`${API}/git/merge`, null, { params: { ...params(), branch: mergeBranch } })
+      .post(`${API}/git/merge`, null, { params: { ...params(), branch: mergeBranch }, headers: token ? { Authorization: `Bearer ${token}` } : {} })
       .then((r) => {
         if (r.data.status === "ok") fetchStatus();
       })
@@ -57,7 +58,7 @@ export default function IDEGit() {
     if (!commitMessage.trim()) return;
     setCommitLoading(true);
     axios
-      .post(`${API}/git/commit`, { message: commitMessage.trim() }, { params: params() })
+      .post(`${API}/git/commit`, { message: commitMessage.trim() }, authConfig())
       .then((r) => {
         if (r.data.status === "ok") fetchStatus();
       })
@@ -69,7 +70,7 @@ export default function IDEGit() {
     if (!resolveFilePath.trim()) return;
     setResolveLoading(true);
     axios
-      .post(`${API}/git/resolve-conflict`, { file_path: resolveFilePath.trim(), resolution: resolveChoice }, { params: params() })
+      .post(`${API}/git/resolve-conflict`, { file_path: resolveFilePath.trim(), resolution: resolveChoice }, authConfig())
       .then((r) => {
         if (r.data.status === "ok") fetchStatus();
       })
@@ -80,25 +81,18 @@ export default function IDEGit() {
   return (
     <div className="p-6 max-w-2xl">
       <h2 className="text-lg font-medium text-[#1A1A1A] mb-2">Git</h2>
-      <p className="text-sm text-[#666] mb-4">Repository status, branches, merge, commit, and resolve conflicts. Use repo path or project ID.</p>
+      <p className="text-sm text-[#666] mb-4">Repository status, branches, merge, commit, and resolve conflicts for your authenticated project workspace.</p>
       <input
         type="text"
         value={projectId}
         onChange={(e) => setProjectId(e.target.value)}
         className="border border-gray-200 rounded px-3 py-2 text-sm w-full mb-2"
-        placeholder="Project ID (optional)"
+        placeholder="Project ID"
       />
-      <input
-        type="text"
-        value={repoPath}
-        onChange={(e) => setRepoPath(e.target.value)}
-        className="border border-gray-200 rounded px-3 py-2 text-sm w-full mb-2"
-        placeholder="Repo path (e.g. /app)"
-      />
-      <button type="button" onClick={fetchStatus} disabled={loading} className="px-4 py-2 bg-[#1A1A1A] text-white rounded text-sm disabled:opacity-50 mr-2 mb-2">
+      <button type="button" onClick={fetchStatus} disabled={loading || !projectId.trim()} className="px-4 py-2 bg-[#1A1A1A] text-white rounded text-sm disabled:opacity-50 mr-2 mb-2">
         {loading ? "Loading…" : "Get status"}
       </button>
-      <button type="button" onClick={fetchBranches} disabled={branchLoading} className="px-4 py-2 border border-gray-300 text-[#1A1A1A] rounded text-sm disabled:opacity-50 mb-2">
+      <button type="button" onClick={fetchBranches} disabled={branchLoading || !projectId.trim()} className="px-4 py-2 border border-gray-300 text-[#1A1A1A] rounded text-sm disabled:opacity-50 mb-2">
         {branchLoading ? "Loading…" : "List branches"}
       </button>
       {status && (

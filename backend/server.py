@@ -4964,7 +4964,7 @@ def _project_workspace_path(project_id: str) -> Path:
 
 
 async def _user_can_access_project_workspace(user_id: Optional[str], project_id: str) -> bool:
-    """Allow workspace I/O if Mongo project exists or user has an Auto-Runner job for this project."""
+    """Allow workspace I/O if a user-owned project or Auto-Runner job exists."""
     if not project_id or not user_id:
         return False
     project = await db.projects.find_one({"id": project_id, "user_id": user_id}, {"id": 1})
@@ -5001,6 +5001,21 @@ async def _resolve_workspace_project_for_job(job_id: str, user: dict) -> str:
     if not await _user_can_access_project_workspace(uid, pid):
         raise HTTPException(status_code=404, detail="Project not found")
     return str(pid)
+
+
+async def _resolve_project_workspace_path_for_user(project_id: Optional[str], user: dict) -> Path:
+    """Resolve a user-owned project workspace without trusting client-supplied server paths."""
+    if not project_id:
+        raise HTTPException(status_code=400, detail="project_id required")
+    if not await _user_can_access_project_workspace(user.get("id"), project_id):
+        raise HTTPException(status_code=404, detail="Project not found")
+    root = _project_workspace_path(project_id).resolve()
+    workspace_root = WORKSPACE_ROOT.resolve()
+    try:
+        root.relative_to(workspace_root)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Path outside workspace")
+    return root
 
 
 def _create_preview_token(project_id: str, user_id: str) -> str:
@@ -9102,30 +9117,18 @@ async def ide_lint(project_id: str = Query(...), file_path: Optional[str] = None
 
 # ==================== GIT ====================
 @api_router.get("/git/status")
-async def git_status(repo_path: str = Query(None), project_id: Optional[str] = Query(None), user: dict = Depends(get_optional_user)):
-    """Real git status. Pass repo_path (server path) or project_id (resolved when authenticated)."""
+async def git_status(project_id: Optional[str] = Query(None), user: dict = Depends(get_current_user)):
+    """Real git status for an authenticated project workspace."""
     from git_integration import git_manager
-    path = repo_path
-    if project_id and user and not path:
-        proj = await db.projects.find_one({"id": project_id, "user_id": user.get("id")})
-        if proj:
-            path = str(_project_workspace_path(project_id).resolve())
-    if not path:
-        raise HTTPException(status_code=400, detail="repo_path or project_id required")
-    status = await git_manager.get_status(path)
+    path = await _resolve_project_workspace_path_for_user(project_id, user)
+    status = await git_manager.get_status(str(path))
     return {"branch": status.branch, "ahead": status.ahead, "behind": status.behind, "modified": status.modified, "untracked": status.untracked, "staged": status.staged, "conflicted": status.conflicted, "is_repo": status.is_repo, "error": status.error}
 
 @api_router.post("/git/stage")
-async def git_stage(repo_path: str = Query(None), project_id: Optional[str] = Query(None), file_path: str = Query(...), user: dict = Depends(get_optional_user)):
+async def git_stage(project_id: Optional[str] = Query(None), file_path: str = Query(...), user: dict = Depends(get_current_user)):
     from git_integration import git_manager
-    path = repo_path
-    if project_id and user and not path:
-        proj = await db.projects.find_one({"id": project_id, "user_id": user.get("id")})
-        if proj:
-            path = str(_project_workspace_path(project_id).resolve())
-    if not path:
-        raise HTTPException(status_code=400, detail="repo_path or project_id required")
-    ok = await git_manager.stage_file(path, file_path)
+    path = await _resolve_project_workspace_path_for_user(project_id, user)
+    ok = await git_manager.stage_file(str(path), file_path)
     return {"status": "staged" if ok else "error"}
 
 class GitCommitRequest(BaseModel):
@@ -9133,47 +9136,29 @@ class GitCommitRequest(BaseModel):
     author: Optional[str] = None
 
 @api_router.post("/git/commit")
-async def git_commit(repo_path: str = Query(None), project_id: Optional[str] = Query(None), body: GitCommitRequest = None, user: dict = Depends(get_optional_user)):
-    """Real git commit. Pass repo_path or project_id (when authenticated)."""
+async def git_commit(project_id: Optional[str] = Query(None), body: GitCommitRequest = None, user: dict = Depends(get_current_user)):
+    """Real git commit for an authenticated project workspace."""
     from git_integration import git_manager
     if not body:
         raise HTTPException(status_code=400, detail="body required")
-    path = repo_path
-    if project_id and user and not path:
-        proj = await db.projects.find_one({"id": project_id, "user_id": user.get("id")})
-        if proj:
-            path = str(_project_workspace_path(project_id).resolve())
-    if not path:
-        raise HTTPException(status_code=400, detail="repo_path or project_id required")
-    ok = await git_manager.commit(path, body.message, body.author)
+    path = await _resolve_project_workspace_path_for_user(project_id, user)
+    ok = await git_manager.commit(str(path), body.message, body.author)
     return {"status": "ok" if ok else "error"}
 
 @api_router.get("/git/branches")
-async def git_branches(repo_path: str = Query(None), project_id: Optional[str] = Query(None), user: dict = Depends(get_optional_user)):
-    """List branches. Pass repo_path or project_id (when authenticated)."""
+async def git_branches(project_id: Optional[str] = Query(None), user: dict = Depends(get_current_user)):
+    """List branches for an authenticated project workspace."""
     from git_integration import git_manager
-    path = repo_path
-    if project_id and user and not path:
-        proj = await db.projects.find_one({"id": project_id, "user_id": user.get("id")})
-        if proj:
-            path = str(_project_workspace_path(project_id).resolve())
-    if not path:
-        raise HTTPException(status_code=400, detail="repo_path or project_id required")
-    branches = await git_manager.list_branches(path)
+    path = await _resolve_project_workspace_path_for_user(project_id, user)
+    branches = await git_manager.list_branches(str(path))
     return {"branches": branches}
 
 @api_router.post("/git/merge")
-async def git_merge(repo_path: str = Query(None), project_id: Optional[str] = Query(None), branch: str = Query(...), user: dict = Depends(get_optional_user)):
+async def git_merge(project_id: Optional[str] = Query(None), branch: str = Query(...), user: dict = Depends(get_current_user)):
     """Merge branch into current branch."""
     from git_integration import git_manager
-    path = repo_path
-    if project_id and user and not path:
-        proj = await db.projects.find_one({"id": project_id, "user_id": user.get("id")})
-        if proj:
-            path = str(_project_workspace_path(project_id).resolve())
-    if not path:
-        raise HTTPException(status_code=400, detail="repo_path or project_id required")
-    ok, msg = await git_manager.merge_branch(path, branch)
+    path = await _resolve_project_workspace_path_for_user(project_id, user)
+    ok, msg = await git_manager.merge_branch(str(path), branch)
     return {"status": "ok" if ok else "error", "message": msg}
 
 class GitResolveRequest(BaseModel):
@@ -9181,32 +9166,22 @@ class GitResolveRequest(BaseModel):
     resolution: str = "ours"  # ours | theirs
 
 @api_router.post("/git/resolve-conflict")
-async def git_resolve_conflict(repo_path: str = Query(None), project_id: Optional[str] = Query(None), body: GitResolveRequest = None, user: dict = Depends(get_optional_user)):
+async def git_resolve_conflict(project_id: Optional[str] = Query(None), body: GitResolveRequest = None, user: dict = Depends(get_current_user)):
     """Resolve conflict by checking out ours or theirs and staging."""
     from git_integration import git_manager
     if not body:
         raise HTTPException(status_code=400, detail="body required")
-    path = repo_path
-    if project_id and user and not path:
-        proj = await db.projects.find_one({"id": project_id, "user_id": user.get("id")})
-        if proj:
-            path = str(_project_workspace_path(project_id).resolve())
-    if not path:
-        raise HTTPException(status_code=400, detail="repo_path or project_id required")
-    ok = await git_manager.resolve_conflict(path, body.file_path, body.resolution)
+    path = await _resolve_project_workspace_path_for_user(project_id, user)
+    ok = await git_manager.resolve_conflict(str(path), body.file_path, body.resolution)
     return {"status": "ok" if ok else "error"}
 
 # ==================== TERMINAL ====================
 @api_router.post("/terminal/create")
-async def terminal_create(project_path: str = Query(...), project_id: Optional[str] = Query(None), shell: str = Query("/bin/bash"), user: dict = Depends(get_optional_user)):
-    """Create terminal session. Use project_path (server workspace path) or project_id (resolved server-side when authenticated)."""
+async def terminal_create(project_id: Optional[str] = Query(None), shell: str = Query("/bin/bash"), user: dict = Depends(get_current_user)):
+    """Create a terminal session for an authenticated project workspace."""
     from terminal_integration import terminal_manager
-    path = project_path
-    if project_id and user:
-        proj = await db.projects.find_one({"id": project_id, "user_id": user.get("id")})
-        if proj:
-            path = str(_project_workspace_path(project_id).resolve())
-    session = await terminal_manager.create_terminal(path, shell)
+    path = await _resolve_project_workspace_path_for_user(project_id, user)
+    session = await terminal_manager.create_terminal(str(path), shell, user_id=user["id"], project_id=project_id or "")
     return {"session_id": session.session_id, "project_path": session.project_path, "shell": session.shell, "columns": session.columns, "rows": session.rows}
 
 class TerminalExecuteRequest(BaseModel):
@@ -9214,16 +9189,18 @@ class TerminalExecuteRequest(BaseModel):
     timeout: Optional[int] = 60
 
 @api_router.post("/terminal/{session_id}/execute")
-async def terminal_execute(session_id: str, body: TerminalExecuteRequest):
+async def terminal_execute(session_id: str, body: TerminalExecuteRequest, user: dict = Depends(get_current_user)):
     """Execute command in the session's project path. Full implementation — runs real shell command."""
     from terminal_integration import terminal_manager
-    result = await terminal_manager.execute(session_id, body.command, body.timeout or 60)
+    result = await terminal_manager.execute(session_id, body.command, body.timeout or 60, user_id=user["id"])
     return result
 
 @api_router.delete("/terminal/{session_id}")
-async def terminal_close(session_id: str):
+async def terminal_close(session_id: str, user: dict = Depends(get_current_user)):
     from terminal_integration import terminal_manager
-    await terminal_manager.close_terminal(session_id)
+    closed = await terminal_manager.close_terminal(session_id, user_id=user["id"])
+    if not closed:
+        raise HTTPException(status_code=404, detail="Session not found")
     return {"status": "closed", "session_id": session_id}
 
 # ==================== ECOSYSTEM ====================

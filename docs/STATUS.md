@@ -28,7 +28,7 @@ Establish the Postgres-only foundation and execution tracking trail before chang
 
 ## Active Milestone
 
-Phase 1: Foundation and Safety
+Phase 2: Execution Surface Hardening
 
 Tasks:
 
@@ -38,7 +38,18 @@ Tasks:
 - [x] Update CI backend service from MongoDB to PostgreSQL/Redis.
 - [x] Add or update local verification workflow.
 - [x] Add ADR for workspace execution boundaries.
-- [ ] Commit the first foundation slice.
+- [x] Commit the first foundation slice (`ac8d205`).
+- [x] Require authentication for terminal create/execute/close.
+- [x] Require authenticated project workspace resolution for git operations.
+- [x] Update IDE Git/Terminal panels to use bearer auth and `project_id`.
+- [x] Add focused smoke coverage for terminal/git auth and raw path rejection.
+- [ ] Commit the first execution-surface hardening slice.
+
+## Verification Log
+
+- `python -m py_compile backend\server.py backend\terminal_integration.py` passed.
+- `python -m pytest backend\tests\test_smoke.py -k "git_status or terminal" -q` passed with `DATABASE_URL=postgresql://crucibai:crucibai@127.0.0.1:5434/crucibai` and `REDIS_URL=redis://127.0.0.1:6381/0`: 5 passed, 17 deselected.
+- `.\scripts\verify-local.ps1` correctly failed on Node `v24.14.0`; the frontend declares Node `>=18 <=22`.
 
 ## Next Milestone
 

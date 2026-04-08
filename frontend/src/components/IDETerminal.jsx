@@ -1,11 +1,11 @@
 import { useState } from "react";
 import axios from "axios";
-import { API } from "../App";
+import { API, useAuth } from "../App";
 import { logApiError } from "../utils/apiError";
 
 export default function IDETerminal() {
+  const { token } = useAuth();
   const [sessionId, setSessionId] = useState(null);
-  const [projectPath, setProjectPath] = useState("/app");
   const [projectId, setProjectId] = useState("");
   const [command, setCommand] = useState("dir");
   const [output, setOutput] = useState(null);
@@ -15,9 +15,10 @@ export default function IDETerminal() {
   const createSession = () => {
     setLoading(true);
     setOutput(null);
-    const params = projectId ? { project_id: projectId, shell: "/bin/bash" } : { project_path: projectPath, shell: "/bin/bash" };
+    const params = { project_id: projectId, shell: "/bin/bash" };
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
     axios
-      .post(`${API}/terminal/create`, null, { params })
+      .post(`${API}/terminal/create`, null, { params, headers })
       .then((r) => setSessionId(r.data.session_id))
       .catch((e) => logApiError("IDETerminal create", e))
       .finally(() => setLoading(false));
@@ -26,8 +27,9 @@ export default function IDETerminal() {
   const runCommand = () => {
     if (!sessionId) return;
     setExecLoading(true);
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
     axios
-      .post(`${API}/terminal/${sessionId}/execute`, { command, timeout: 30 })
+      .post(`${API}/terminal/${sessionId}/execute`, { command, timeout: 30 }, { headers })
       .then((r) => setOutput(r.data))
       .catch((e) => {
         logApiError("IDETerminal execute", e);
@@ -39,7 +41,7 @@ export default function IDETerminal() {
   return (
     <div className="p-6 max-w-2xl">
       <h2 className="text-lg font-medium text-[#1A1A1A] mb-2">Terminal (full implementation)</h2>
-      <p className="text-sm text-[#666] mb-4">Creates a session and runs commands in the project workspace. Use project_id (from URL) or project_path.</p>
+      <p className="text-sm text-[#666] mb-4">Creates a session and runs commands in your authenticated project workspace.</p>
       <input
         type="text"
         value={projectId}
@@ -47,14 +49,7 @@ export default function IDETerminal() {
         className="border border-gray-200 rounded px-3 py-2 text-sm w-full mb-2"
         placeholder="Project ID (optional — from /app/projects/ID)"
       />
-      <input
-        type="text"
-        value={projectPath}
-        onChange={(e) => setProjectPath(e.target.value)}
-        className="border border-gray-200 rounded px-3 py-2 text-sm w-full mb-2"
-        placeholder="Or project path (e.g. /app or server path)"
-      />
-      <button type="button" onClick={createSession} disabled={loading} className="px-4 py-2 bg-[#1A1A1A] text-white rounded text-sm disabled:opacity-50 mr-2">
+      <button type="button" onClick={createSession} disabled={loading || !projectId.trim()} className="px-4 py-2 bg-[#1A1A1A] text-white rounded text-sm disabled:opacity-50 mr-2">
         {loading ? "Creating…" : "Create session"}
       </button>
       {sessionId && (

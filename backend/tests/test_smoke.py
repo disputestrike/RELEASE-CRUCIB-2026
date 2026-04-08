@@ -3,7 +3,33 @@ Layer 9 – Post-deployment / smoke tests.
 Verifies app is up and critical endpoints respond (in-process via app_client).
 """
 import time
+import uuid
 import pytest
+
+
+async def _create_smoke_project(app_client, auth_headers):
+    """Create a user-owned project row and workspace for path-scoped smoke tests."""
+    import server
+
+    r = await app_client.post(
+        "/api/projects",
+        json={
+            "name": f"Smoke Project {uuid.uuid4().hex[:8]}",
+            "description": "Smoke test workspace",
+            "project_type": "fullstack",
+            "requirements": {"prompt": "smoke"},
+        },
+        headers=auth_headers,
+        timeout=15,
+    )
+    assert r.status_code in (200, 201), f"Project create failed: {r.status_code} {r.text}"
+    data = r.json()
+    project = data.get("project") or data
+    project_id = project["id"]
+    root = server._project_workspace_path(project_id)
+    root.mkdir(parents=True, exist_ok=True)
+    (root / "README.md").write_text("# Smoke Project\n", encoding="utf-8")
+    return project_id
 
 
 async def test_smoke_health_returns_200(app_client):
@@ -111,33 +137,68 @@ async def test_smoke_ide_debug_start_returns_200(app_client):
     assert data.get("project_id") == "test-project"
 
 
-async def test_smoke_git_status_returns_200(app_client):
-    """GET /api/git/status returns 200 (Phase 2)."""
-    r = await app_client.get("/api/git/status", params={"repo_path": "/tmp/repo"}, timeout=10)
+async def test_smoke_git_status_returns_200(app_client, auth_headers):
+    """GET /api/git/status returns 200 for an authenticated project workspace."""
+    project_id = await _create_smoke_project(app_client, auth_headers)
+    r = await app_client.get(
+        "/api/git/status",
+        params={"project_id": project_id},
+        headers=auth_headers,
+        timeout=10,
+    )
     assert r.status_code == 200
     data = r.json()
     assert "branch" in data
     assert "modified" in data
 
 
-async def test_smoke_terminal_create_returns_200(app_client):
-    """POST /api/terminal/create returns 200 (Phase 2)."""
-    r = await app_client.post("/api/terminal/create", params={"project_path": "/app"}, timeout=10)
+async def test_smoke_git_status_rejects_raw_repo_path(app_client, auth_headers):
+    """GET /api/git/status no longer accepts raw server paths."""
+    r = await app_client.get(
+        "/api/git/status",
+        params={"repo_path": "/tmp/repo"},
+        headers=auth_headers,
+        timeout=10,
+    )
+    assert r.status_code == 400
+
+
+async def test_smoke_terminal_create_returns_200(app_client, auth_headers):
+    """POST /api/terminal/create returns 200 for an authenticated project workspace."""
+    project_id = await _create_smoke_project(app_client, auth_headers)
+    r = await app_client.post(
+        "/api/terminal/create",
+        params={"project_id": project_id},
+        headers=auth_headers,
+        timeout=10,
+    )
     assert r.status_code == 200
     data = r.json()
     assert "session_id" in data
 
 
-async def test_smoke_terminal_execute_returns_result(app_client):
-    """Create session, POST /api/terminal/{id}/execute with a command; get returncode/stdout (full impl)."""
-    # Use "." so cwd exists (server's cwd is backend); on Windows use "echo hello", on Unix same
-    create_r = await app_client.post("/api/terminal/create", params={"project_path": "."}, timeout=10)
+async def test_smoke_terminal_create_requires_auth(app_client):
+    """POST /api/terminal/create requires auth."""
+    r = await app_client.post("/api/terminal/create", params={"project_id": "test-project"}, timeout=10)
+    assert r.status_code == 401
+
+
+async def test_smoke_terminal_execute_returns_result(app_client, auth_headers):
+    """Create session, POST /api/terminal/{id}/execute with a command; get returncode/stdout."""
+    project_id = await _create_smoke_project(app_client, auth_headers)
+    create_r = await app_client.post(
+        "/api/terminal/create",
+        params={"project_id": project_id},
+        headers=auth_headers,
+        timeout=10,
+    )
     assert create_r.status_code == 200
     session_id = create_r.json().get("session_id")
     assert session_id
     exec_r = await app_client.post(
         f"/api/terminal/{session_id}/execute",
         json={"command": "echo hello", "timeout": 10},
+        headers=auth_headers,
         timeout=15,
     )
     assert exec_r.status_code == 200
@@ -148,9 +209,15 @@ async def test_smoke_terminal_execute_returns_result(app_client):
     assert "hello" in data.get("stdout", "")
 
 
-async def test_smoke_git_branches_returns_200(app_client):
-    """GET /api/git/branches returns 200 and branches list."""
-    r = await app_client.get("/api/git/branches", params={"repo_path": "."}, timeout=10)
+async def test_smoke_git_branches_returns_200(app_client, auth_headers):
+    """GET /api/git/branches returns 200 and branches list for an authenticated project workspace."""
+    project_id = await _create_smoke_project(app_client, auth_headers)
+    r = await app_client.get(
+        "/api/git/branches",
+        params={"project_id": project_id},
+        headers=auth_headers,
+        timeout=10,
+    )
     assert r.status_code == 200
     data = r.json()
     assert "branches" in data
