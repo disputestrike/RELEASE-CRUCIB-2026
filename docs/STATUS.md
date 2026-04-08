@@ -233,7 +233,7 @@ Tasks:
 - `python scripts\generate-pipeline-crash-fix-proof.py` generated `proof\pipeline_crash_fix\` and passed all five PASS/FAIL checks: preview boot, elite/proof verification, deploy build, deploy publish, and background runner stability.
 - `.\scripts\release-gate.ps1 -BackendOnly` passed after late-stage pipeline crash fixes: smoke 44 passed, 24 deselected; pipeline crash fix 7 passed; Phase 2 audit 3 passed; optional-auth audit 13 routes, 0 failures; provider readiness 5 passed; automation bridge 1 passed, 6 deselected; LLM routing guard 8 passed, 18 deselected.
 - `python -m pytest backend\tests\test_smoke.py -k "visual_edit or template_remix or terminal_execute_blocks_dangerous_commands or critical_endpoints" -q` passed with local Postgres/Redis env: 5 passed, 68 deselected.
-- `.\scripts\release-gate.ps1 -BackendOnly` passed after Batch B UX/security work: smoke 48 passed, 25 deselected; pipeline crash fix 14 passed; repeatability benchmark 2 passed; Phase 2 audit 3 passed with 14 optional routes and 0 failures; provider readiness 5 passed; automation bridge 1 passed, 6 deselected; LLM routing guard 8 passed, 18 deselected.
+- `.\scripts\release-gate.ps1 -BackendOnly` passed after Batch B UX/security work: smoke 49 passed, 25 deselected; pipeline crash fix 14 passed; repeatability benchmark 2 passed; Phase 2 audit 3 passed with 14 optional routes and 0 failures; provider readiness 5 passed; automation bridge 1 passed, 6 deselected; LLM routing guard 8 passed, 18 deselected.
 - `.\scripts\frontend-runtime-gate.ps1 -RunDockerBuild` passed after completion-card and template-gallery changes; host Node remains v24.14.0, Docker Node 22 path remains green.
 
 ## Next Milestone

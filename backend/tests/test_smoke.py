@@ -469,6 +469,17 @@ async def test_smoke_terminal_create_respects_disabled_env(app_client, auth_head
     assert r.status_code == 403
 
 
+async def test_smoke_terminal_policy_blocks_non_admin_host_shell_in_production(monkeypatch):
+    """Enabling terminal explicitly is not enough for non-admin host shell in production."""
+    import server
+
+    monkeypatch.delenv("CRUCIBAI_TEST", raising=False)
+    monkeypatch.delenv("CRUCIBAI_DEV", raising=False)
+    monkeypatch.setenv("CRUCIBAI_TERMINAL_ENABLED", "1")
+
+    assert server._terminal_execution_allowed({"id": "user-1", "admin_role": None}) is False
+
+
 async def test_smoke_terminal_execute_returns_result(app_client, auth_headers):
     """Create session, POST /api/terminal/{id}/execute with a command; get returncode/stdout."""
     project_id = await _create_smoke_project(app_client, auth_headers)

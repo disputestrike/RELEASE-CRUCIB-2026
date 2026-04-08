@@ -6,7 +6,7 @@
 | Template gallery remix path | PASS | /api/templates/{template_id}/remix-plan and /api/templates/{template_id}/remix; smoke test |
 | Visual editing loop | PASS | /api/jobs/{job_id}/visual-edit patches owned workspace file and writes undo snapshot; smoke test |
 | Visual edit tenant isolation | PASS | cross-user visual edit returns 403; smoke test |
-| Terminal strict policy | PASS | dangerous command returns "Command blocked by terminal policy"; smoke test |
+| Terminal strict policy | PASS | dangerous command returns "Command blocked by terminal policy"; non-admin host shell remains blocked in production; smoke tests |
 | Golden completion public URL | PASS | BuildCompletionCard exposes /published/{job_id}/ when job is complete |
 | Backend release gate | PASS | proof/batch_b_ux_security/release_gate_backend.log |
 | Frontend supported-node gate | PASS | proof/frontend_runtime_gate/PASS_FAIL.md; Docker frontend build under Node 22 |

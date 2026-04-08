@@ -9421,18 +9421,28 @@ async def git_resolve_conflict(project_id: Optional[str] = Query(None), body: Gi
     return {"status": "ok" if ok else "error"}
 
 # ==================== TERMINAL ====================
-def _terminal_execution_allowed() -> bool:
+def _terminal_execution_allowed(user: Optional[dict] = None) -> bool:
+    role = (user or {}).get("admin_role")
+    is_admin = bool(role in ADMIN_ROLES or ((user or {}).get("id") in ADMIN_USER_IDS))
+    if is_admin:
+        return os.environ.get("CRUCIBAI_TERMINAL_ADMIN_ENABLED", "1").strip().lower() in ("1", "true", "yes", "on")
     raw = os.environ.get("CRUCIBAI_TERMINAL_ENABLED", "").strip().lower()
+    if raw in ("0", "false", "no", "off"):
+        return False
+    if os.environ.get("CRUCIBAI_TEST"):
+        return True
+    policy = os.environ.get("CRUCIBAI_TERMINAL_POLICY", "").strip().lower()
+    if policy == "host_dev":
+        return os.environ.get("CRUCIBAI_DEV", "").strip().lower() in ("1", "true", "yes")
     if raw:
-        return raw in ("1", "true", "yes", "on")
-    dev_mode = os.environ.get("CRUCIBAI_DEV", "").strip().lower() in ("1", "true", "yes")
-    return dev_mode or bool(os.environ.get("CRUCIBAI_TEST"))
+        return raw in ("1", "true", "yes", "on") and os.environ.get("CRUCIBAI_DEV", "").strip().lower() in ("1", "true", "yes")
+    return False
 
 
 @api_router.post("/terminal/create")
 async def terminal_create(project_id: Optional[str] = Query(None), shell: str = Query("/bin/bash"), user: dict = Depends(get_current_user)):
     """Create a terminal session for an authenticated project workspace."""
-    if not _terminal_execution_allowed():
+    if not _terminal_execution_allowed(user):
         raise HTTPException(status_code=403, detail="Terminal execution is disabled")
     from terminal_integration import terminal_manager
     path = await _resolve_project_workspace_path_for_user(project_id, user)
@@ -9447,7 +9457,7 @@ class TerminalExecuteRequest(BaseModel):
 async def terminal_execute(session_id: str, body: TerminalExecuteRequest, user: dict = Depends(get_current_user)):
     """Execute command in the session's project path. Full implementation — runs real shell command."""
     from terminal_integration import terminal_manager
-    if not _terminal_execution_allowed():
+    if not _terminal_execution_allowed(user):
         raise HTTPException(status_code=403, detail="Terminal execution is disabled")
     result = await terminal_manager.execute(session_id, body.command, body.timeout or 60, user_id=user["id"])
     if result.get("stderr") == "Session not found":
