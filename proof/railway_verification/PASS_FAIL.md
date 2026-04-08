@@ -12,4 +12,5 @@
 | procfile_uvicorn_fallback | PASS | static config |
 | Live health check | not_run | C:\Users\benxp\OneDrive\Documents\New project\proof\railway_verification\health_check.json |
 | Full Docker image build | passed | C:\Users\benxp\OneDrive\Documents\New project\proof\railway_verification\docker_full_build.log |
-| Local Railway image health check | passed | C:\Users\benxp\OneDrive\Documents\New project\proof\railway_verification\docker_container_health.json; C:\Users\benxp\OneDrive\Documents\New project\proof\railway_verification\docker_container_logs.log |
+| Benchmark proof packaged in image | passed | C:\Users\benxp\OneDrive\Documents\New project\proof\railway_verification\proof_packaging_check.txt |
+| Local Railway image health check | not_run | C:\Users\benxp\OneDrive\Documents\New project\proof\railway_verification\docker_container_health.json; C:\Users\benxp\OneDrive\Documents\New project\proof\railway_verification\docker_container_logs.log |
