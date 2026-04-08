@@ -1,22 +1,16 @@
-﻿git.exe : warning: in the working copy of 'backend/routes/trust.py', LF will be replaced by CRLF the next time Git
-touches it
+﻿git.exe : warning: in the working copy of 'proof/frontend_runtime_gate/docker_frontend_build.log', LF will be replaced
+by CRLF the next time Git touches it
 At C:\Users\benxp\OneDrive\Documents\New project\scripts\full-systems-test.ps1:135 char:19
 +         -Script { & git diff --check }
 +                   ~~~~~~~~~~~~~~~~~~
     + CategoryInfo          : NotSpecified: (warning: in the... Git touches it:String) [], RemoteException
     + FullyQualifiedErrorId : NativeCommandError
 
-warning: in the working copy of 'backend/server.py', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'backend/tests/test_smoke.py', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'docs/FULL_SYSTEMS_TESTING.md', LF will be replaced by CRLF the next time Git touches
-it
-warning: in the working copy of 'frontend/src/pages/Security.jsx', LF will be replaced by CRLF the next time Git
+warning: in the working copy of 'proof/full_systems/PASS_FAIL.md', LF will be replaced by CRLF the next time Git
 touches it
-warning: in the working copy of 'frontend/src/pages/TemplatesPublic.jsx', LF will be replaced by CRLF the next time
-Git touches it
-warning: in the working copy of 'scripts/fortune100-preflight.py', LF will be replaced by CRLF the next time Git
-touches it
-warning: in the working copy of 'scripts/full-systems-test.ps1', LF will be replaced by CRLF the next time Git touches
-it
-warning: in the working copy of 'scripts/golden-path-ux-audit.py', LF will be replaced by CRLF the next time Git
-touches it
+warning: in the working copy of 'proof/full_systems/railway_verification/PASS_FAIL.md', LF will be replaced by CRLF
+the next time Git touches it
+warning: in the working copy of 'proof/full_systems/railway_verification/docker_container_logs.log', LF will be
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 'proof/full_systems/railway_verification/docker_full_build.log', LF will be replaced
+by CRLF the next time Git touches it

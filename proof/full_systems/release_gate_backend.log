@@ -22,7 +22,7 @@ tests/test_smoke.py::test_smoke_visual_edit_patches_owned_job_workspace
     import multipart
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-================ 50 passed, 26 deselected, 1 warning in 58.18s ================
+================ 50 passed, 26 deselected, 1 warning in 27.04s ================
 
 ==> Running late-stage pipeline failure proof tests
 ============================= test session starts =============================
@@ -32,11 +32,11 @@ rootdir: C:\Users\benxp\OneDrive\Documents\New project\backend
 configfile: pytest.ini
 plugins: anyio-4.12.1, locust-2.41.3, asyncio-0.24.0, base-url-2.1.0, benchmark-5.1.0, cov-6.0.0, html-4.1.1, metadata-3.1.1, playwright-0.7.1, sugar-1.1.1, xdist-3.8.0
 asyncio: mode=Mode.AUTO, default_loop_scope=function
-collected 14 items
+collected 16 items
 
-backend\tests\test_pipeline_crash_fix.py ..............                  [100%]
+backend\tests\test_pipeline_crash_fix.py ................                [100%]
 
-============================= 14 passed in 2.44s ==============================
+============================= 16 passed in 1.77s ==============================
 
 ==> Running repeatability benchmark scorecard
 ============================= test session starts =============================
@@ -50,7 +50,7 @@ collected 2 items
 
 backend\tests\test_repeatability_benchmark.py ..                         [100%]
 
-============================= 2 passed in 11.06s ==============================
+============================== 2 passed in 5.24s ==============================
 {
   "average_score": 100.0,
   "blockers": [],
@@ -58,7 +58,7 @@ backend\tests\test_repeatability_benchmark.py ..                         [100%]
   "pass_rate": 1.0,
   "passed": true,
   "prompt_count": 50,
-  "summary_sha256": "66ba705a6b54105aa0d7dcead4d3d96395612f6a41371e814673594e81b1d010"
+  "summary_sha256": "88c866009aef8fe04e266e99840ead85070308e02163d6ad3ab5db3747f88cfa"
 }
 
 ==> Running Phase 2 route and websocket security audit
@@ -73,7 +73,7 @@ collected 3 items
 
 backend\tests\test_phase2_security.py ...                                [100%]
 
-============================== 3 passed in 0.29s ==============================
+============================== 3 passed in 0.14s ==============================
 {
   "passed": true,
   "optional_route_count": 14,
@@ -92,7 +92,7 @@ collected 5 items
 
 backend\tests\test_provider_readiness.py .....                           [100%]
 
-============================== 5 passed in 0.20s ==============================
+============================== 5 passed in 0.10s ==============================
 
 ==> Running automation bridge tests
 ============================= test session starts =============================
@@ -106,7 +106,7 @@ collected 7 items / 6 deselected / 1 selected
 
 backend\tests\test_automation.py .                                       [100%]
 
-======================= 1 passed, 6 deselected in 0.93s =======================
+======================= 1 passed, 6 deselected in 0.46s =======================
 
 ==> Running LLM routing guard tests
 ============================= test session starts =============================
@@ -120,25 +120,65 @@ collected 26 items / 18 deselected / 8 selected
 
 backend\tests\test_tool_agents.py ........                               [100%]
 
-====================== 8 passed, 18 deselected in 3.86s =======================
+====================== 8 passed, 18 deselected in 1.52s =======================
 
 ==> Checking working tree
 ## main...origin/main
- M backend/routes/trust.py
- M backend/server.py
- M backend/tests/test_smoke.py
- M docs/FULL_SYSTEMS_TESTING.md
- M frontend/src/pages/Security.jsx
- M frontend/src/pages/TemplatesPublic.jsx
  M proof/benchmarks/repeatability_v1/PASS_FAIL.md
  M proof/benchmarks/repeatability_v1/summary.json
+ M proof/frontend_runtime_gate/docker_frontend_build.log
+ M proof/frontend_runtime_gate/runtime_gate.json
+ M proof/full_systems/PASS_FAIL.md
  M proof/full_systems/backend_all_pytest.log
+ M proof/full_systems/fortune100_preflight.log
+ M proof/full_systems/fortune100_preflight/PASS_FAIL.md
+ M proof/full_systems/fortune100_preflight/requests.jsonl
+ M proof/full_systems/fortune100_preflight/summary.json
  M proof/full_systems/git_diff_check.log
+ M proof/full_systems/golden_path_ux/PASS_FAIL.md
+ M proof/full_systems/golden_path_ux/summary.json
+ M proof/full_systems/golden_path_ux_audit.log
+ M proof/full_systems/live_production_golden_path.log
+ M proof/full_systems/railway_verification/PASS_FAIL.md
+ M proof/full_systems/railway_verification/docker_container_health.json
+ M proof/full_systems/railway_verification/docker_container_logs.log
+ M proof/full_systems/railway_verification/docker_full_build.log
+ M proof/full_systems/railway_verification/health_check.json
+ M proof/full_systems/railway_verification/railway_readiness.json
  M proof/full_systems/release_gate_backend.log
- M scripts/fortune100-preflight.py
- M scripts/full-systems-test.ps1
- M scripts/golden-path-ux-audit.py
-?? backend/routes/community.py
-?? proof/final_10_10/
+ M proof/full_systems/summary.json
+ M proof/live_production_golden_path/01_health.json
+ M proof/live_production_golden_path/02_llm_health.json
+ M proof/live_production_golden_path/03_runtime_health.json
+ M proof/live_production_golden_path/04_register.json
+ M proof/live_production_golden_path/05_live_llm_chat.json
+ M proof/live_production_golden_path/06_orchestrator_plan.json
+ M proof/live_production_golden_path/07_run_auto.json
+ M proof/live_production_golden_path/PASS_FAIL.md
+ M proof/live_production_golden_path/final_events.json
+ M proof/live_production_golden_path/final_job.json
+ M proof/live_production_golden_path/final_proof.json
+ M proof/live_production_golden_path/final_published_app.json
+ M proof/live_production_golden_path/final_steps.json
+ M proof/live_production_golden_path/final_summary.json
+ M proof/live_production_golden_path/final_workspace_files.json
+ M proof/live_production_golden_path/metadata.json
+ M proof/live_production_golden_path/poll_001_events.json
+ M proof/live_production_golden_path/poll_001_job.json
+ M proof/live_production_golden_path/poll_001_steps.json
+ M proof/live_production_golden_path/poll_002_events.json
+ M proof/live_production_golden_path/poll_002_job.json
+ M proof/live_production_golden_path/poll_002_steps.json
+ M proof/live_production_golden_path/poll_003_events.json
+ M proof/live_production_golden_path/poll_003_job.json
+ M proof/live_production_golden_path/poll_003_steps.json
+ M proof/live_production_golden_path/poll_004_events.json
+ M proof/live_production_golden_path/poll_004_job.json
+ M proof/live_production_golden_path/poll_004_steps.json
+ M proof/live_production_golden_path/poll_005_events.json
+ M proof/live_production_golden_path/poll_005_job.json
+ M proof/live_production_golden_path/poll_005_steps.json
+ M proof/live_production_golden_path/poll_log.jsonl
+ M proof/live_production_golden_path/trace.json
 
 Release gate completed.

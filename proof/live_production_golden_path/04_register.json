@@ -1,21 +1,21 @@
 {
-  "finished_at": "2026-04-08T16:49:35.627401+00:00",
+  "finished_at": "2026-04-08T17:39:19.463198+00:00",
   "label": "04_register",
   "method": "POST",
   "ok": true,
   "path": "/api/auth/register",
   "request_body": {
-    "email": "codex-live-proof-1775666973-0519996f0d@example.com",
+    "email": "codex-live-proof-1775669957-9ac6e089cd@example.com",
     "name": "Codex Live Proof",
     "password": "<redacted>"
   },
   "response": {
     "token": "<redacted>",
     "user": {
-      "created_at": "2026-04-08T16:49:36.356227+00:00",
+      "created_at": "2026-04-08T17:39:20.265677+00:00",
       "credit_balance": 200,
-      "email": "codex-live-proof-1775666973-0519996f0d@example.com",
-      "id": "6fc0c271-bed1-4660-9a84-64843cef9238",
+      "email": "codex-live-proof-1775669957-9ac6e089cd@example.com",
+      "id": "e68b4011-2925-4daa-bf95-196da0621aec",
       "mfa_enabled": false,
       "mfa_secret": "<redacted>",
       "name": "Codex Live Proof",
@@ -24,6 +24,6 @@
       "token_balance": "<redacted>"
     }
   },
-  "started_at": "2026-04-08T16:49:35.048450+00:00",
+  "started_at": "2026-04-08T17:39:18.950801+00:00",
   "status_code": 200
 }

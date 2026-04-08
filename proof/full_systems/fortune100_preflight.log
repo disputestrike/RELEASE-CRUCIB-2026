@@ -1,5 +1,5 @@
 ﻿{
-  "generated_at": "2026-04-08T16:49:33.651024+00:00",
+  "generated_at": "2026-04-08T17:39:17.619614+00:00",
   "base_url": "https://crucibai-production.up.railway.app",
   "passed": true,
   "rounds": 2,
@@ -26,17 +26,27 @@
       "detail": "terminal public_default=disabled for non-admin users in production"
     },
     {
+      "name": "generated_code_sandbox_policy_visible",
+      "passed": true,
+      "detail": "sandbox generated_code=process-level sandbox executor with timeout, output, file-size, memory, CPU, and process limits interactive_terminal=disabled for non-admin users in production"
+    },
+    {
+      "name": "community_templates_curated_and_remixable",
+      "passed": true,
+      "detail": "templates=4 moderation=ready case_studies=3"
+    },
+    {
       "name": "readiness_p95_under_5000ms",
       "passed": true,
-      "detail": "p95_ms=886.82"
+      "detail": "p95_ms=1381.33"
     }
   ],
-  "request_count": 18,
+  "request_count": 26,
   "failed_requests": []
 }
 # Fortune 100 Public Readiness Preflight
 
-Generated: 2026-04-08T16:49:33.651024+00:00
+Generated: 2026-04-08T17:39:17.619614+00:00
 Base URL: https://crucibai-production.up.railway.app
 
 | Check | Status | Detail |
@@ -45,7 +55,9 @@ Base URL: https://crucibai-production.up.railway.app
 | benchmark_50_prompt_90_percent | PASS | benchmark status=ready prompt_count=50 pass_rate=1.0 |
 | full_systems_zero_required_failures | PASS | full_systems status=ready required_failures=0 |
 | terminal_public_host_shell_blocked | PASS | terminal public_default=disabled for non-admin users in production |
-| readiness_p95_under_5000ms | PASS | p95_ms=886.82 |
+| generated_code_sandbox_policy_visible | PASS | sandbox generated_code=process-level sandbox executor with timeout, output, file-size, memory, CPU, and process limits interactive_terminal=disabled for non-admin users in production |
+| community_templates_curated_and_remixable | PASS | templates=4 moderation=ready case_studies=3 |
+| readiness_p95_under_5000ms | PASS | p95_ms=1381.33 |
 
 Failed requests: 0
 Overall: PASS

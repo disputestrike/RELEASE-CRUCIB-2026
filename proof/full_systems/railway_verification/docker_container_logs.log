@@ -1,35 +1,32 @@
-2026-04-08 17:09:22,025 - server - INFO - Google OAuth Config - FRONTEND_URL: (use request host at redirect)
-2026-04-08 17:09:22,025 - server - INFO - Google OAuth Config - GOOGLE_CLIENT_ID: test.apps.googleuser...
-2026-04-08 17:09:22,025 - server - INFO - Google OAuth Config - GOOGLE_CLIENT_SECRET: SET
-2026-04-08 17:09:22,025 - server - INFO - Google OAuth Config - GOOGLE_REDIRECT_URI: (derive from BACKEND_PUBLIC_URL or request)
-2026-04-08 17:09:22,314 - server - INFO - ✅ Blueprint modules registered (Personas, Knowledge, Channels, Sessions, Safety, Workspace, Analytics, Commerce, AppDB)
-2026-04-08 17:09:22,317 - server - WARNING - CORS_ORIGINS was '*'; using explicit dev origins. Set CORS_ORIGINS to your frontend URL in production.
+2026-04-08 17:39:08,513 - server - INFO - Google OAuth Config - FRONTEND_URL: (use request host at redirect)
+2026-04-08 17:39:08,513 - server - INFO - Google OAuth Config - GOOGLE_CLIENT_ID: test.apps.googleuser...
+2026-04-08 17:39:08,513 - server - INFO - Google OAuth Config - GOOGLE_CLIENT_SECRET: SET
+2026-04-08 17:39:08,513 - server - INFO - Google OAuth Config - GOOGLE_REDIRECT_URI: (derive from BACKEND_PUBLIC_URL or request)
+2026-04-08 17:39:08,881 - server - INFO - ✅ Blueprint modules registered (Personas, Knowledge, Channels, Sessions, Safety, Workspace, Analytics, Commerce, AppDB)
+2026-04-08 17:39:08,883 - server - WARNING - CORS_ORIGINS was '*'; using explicit dev origins. Set CORS_ORIGINS to your frontend URL in production.
 INFO:     Started server process [7]
 INFO:     Waiting for application startup.
-2026-04-08 17:09:22,783 - db_pg - INFO - ✅ PostgreSQL pool created with JSONB codec
-2026-04-08 17:09:23,244 - db_pg - INFO - Migration 001_full_schema.sql: 62 ok, 4 skipped
-2026-04-08 17:09:23,295 - db_pg - INFO - Migration 002_add_speed_tier.sql: 4 ok, 3 skipped
-2026-04-08 17:09:23,553 - db_pg - INFO - Migration 003_auto_runner_tables.sql: 30 ok, 14 skipped
-2026-04-08 17:09:23,580 - db_pg - INFO - Migration 004_usage_log.sql: 4 ok, 0 skipped
-2026-04-08 17:09:23,768 - db_pg - INFO - Migration 005_fix_orchestration_tables.sql: 24 ok, 5 skipped
-2026-04-08 17:09:25,442 - db_pg - INFO - Migration 006_complete_schema.sql: 186 ok, 3 skipped
-2026-04-08 17:09:25,506 - db_pg - INFO - Migration 007_add_failure_reason.sql: 4 ok, 0 skipped
-2026-04-08 17:09:25,541 - db_pg - INFO - Migration postgres_monitoring_events.sql: 4 ok, 0 skipped
-2026-04-08 17:09:25,998 - db_pg - INFO - ensure_all_tables: 64 created/verified, 0 skipped
-2026-04-08 17:09:25,998 - server - INFO - PostgreSQL initialized as primary database
-2026-04-08 17:09:26,003 - automation_engine - INFO - Workflow 'Welcome Email on Signup' created: e4a807cb-9829-432e-ab39-8233906fa71a
-2026-04-08 17:09:26,003 - automation_engine - INFO - Workflow 'Build Complete Notification' created: e8ef1f4d-fc23-4509-96d2-83159155f543
-2026-04-08 17:09:26,004 - automation_engine - INFO - Default workflows registered
-2026-04-08 17:09:26,004 - server - INFO - ✅ Automation engine initialized
-2026-04-08 17:09:26,381 - integrations.queue - INFO - ✅ Redis queue connected
-2026-04-08 17:09:26,386 - server - INFO - ✅ Job worker started (Redis=True)
-2026-04-08 17:09:26,391 - integrations.queue - INFO - ✅ Job worker started (backend=Redis)
+2026-04-08 17:39:09,301 - db_pg - INFO - ✅ PostgreSQL pool created with JSONB codec
+2026-04-08 17:39:09,637 - db_pg - INFO - Migration 001_full_schema.sql: 62 ok, 4 skipped
+2026-04-08 17:39:09,675 - db_pg - INFO - Migration 002_add_speed_tier.sql: 4 ok, 3 skipped
+2026-04-08 17:39:09,887 - db_pg - INFO - Migration 003_auto_runner_tables.sql: 30 ok, 14 skipped
+2026-04-08 17:39:09,909 - db_pg - INFO - Migration 004_usage_log.sql: 4 ok, 0 skipped
+2026-04-08 17:39:10,048 - db_pg - INFO - Migration 005_fix_orchestration_tables.sql: 24 ok, 5 skipped
+2026-04-08 17:39:11,160 - db_pg - INFO - Migration 006_complete_schema.sql: 186 ok, 3 skipped
+2026-04-08 17:39:11,184 - db_pg - INFO - Migration 007_add_failure_reason.sql: 4 ok, 0 skipped
+2026-04-08 17:39:11,204 - db_pg - INFO - Migration postgres_monitoring_events.sql: 4 ok, 0 skipped
+2026-04-08 17:39:11,518 - db_pg - INFO - ensure_all_tables: 64 created/verified, 0 skipped
+2026-04-08 17:39:11,518 - server - INFO - PostgreSQL initialized as primary database
+2026-04-08 17:39:11,522 - automation_engine - INFO - Workflow 'Welcome Email on Signup' created: 847ec16b-85f3-4bee-bee4-c199eb83e4a2
+2026-04-08 17:39:11,523 - automation_engine - INFO - Workflow 'Build Complete Notification' created: 622bf07c-7edb-4d41-87a8-5ececffde211
+2026-04-08 17:39:11,523 - automation_engine - INFO - Default workflows registered
+2026-04-08 17:39:11,523 - server - INFO - ✅ Automation engine initialized
+2026-04-08 17:39:11,811 - integrations.queue - INFO - ✅ Redis queue connected
+2026-04-08 17:39:11,814 - server - INFO - ✅ Job worker started (Redis=True)
+2026-04-08 17:39:11,818 - integrations.queue - INFO - ✅ Job worker started (backend=Redis)
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-2026-04-08 17:09:28,413 - middleware - INFO - [41103ffb-c785-45da-9f19-64342bf583af] GET /api/health from 172.17.0.1
-2026-04-08 17:09:28,424 - middleware - INFO - [41103ffb-c785-45da-9f19-64342bf583af] GET /api/health completed with 200 in 0.011s
+2026-04-08 17:39:13,544 - middleware - INFO - [f2892058-db7a-492b-988f-11015413ff07] GET /api/health from 172.17.0.1
+2026-04-08 17:39:13,547 - middleware - INFO - [f2892058-db7a-492b-988f-11015413ff07] GET /api/health completed with 200 in 0.003s
 INFO: Optional features not configured: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PUBLISHABLE_KEY... - add to Railway vars when ready
-INFO:     172.17.0.1:34314 - "GET /api/health HTTP/1.1" 200 OK
-2026-04-08 17:09:28,464 - middleware - INFO - [b944b0cf-16f5-4fd6-b00d-ee0f252ceabb] GET /api/health from 127.0.0.1
-2026-04-08 17:09:28,468 - middleware - INFO - [b944b0cf-16f5-4fd6-b00d-ee0f252ceabb] GET /api/health completed with 200 in 0.003s
-INFO:     127.0.0.1:42756 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     172.17.0.1:46840 - "GET /api/health HTTP/1.1" 200 OK

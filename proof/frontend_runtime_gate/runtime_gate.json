@@ -13,7 +13,7 @@
                 "version":  "11.9.0",
                 "found":  true
             },
-    "generated_at":  "2026-04-08T17:08:23.3578760Z",
+    "generated_at":  "2026-04-08T17:38:47.6925811Z",
     "supported_execution_paths":  {
                                       "root_nvmrc":  "22",
                                       "frontend_nvmrc":  "22",

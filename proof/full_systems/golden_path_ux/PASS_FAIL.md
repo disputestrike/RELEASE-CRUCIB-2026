@@ -1,6 +1,6 @@
 # Golden Path UX Audit
 
-Generated: 2026-04-08T17:04:51.765460+00:00
+Generated: 2026-04-08T17:38:42.680183+00:00
 
 | Check | Status | File | Missing |
 |---|---|---|---|

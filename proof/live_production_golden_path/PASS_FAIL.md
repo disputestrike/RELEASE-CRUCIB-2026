@@ -1,8 +1,8 @@
 # Live Production Golden Path PASS/FAIL
 
-- Generated at: `2026-04-08T16:50:17.702613+00:00`
+- Generated at: `2026-04-08T17:39:53.731790+00:00`
 - Base URL: `https://crucibai-production.up.railway.app`
-- Job ID: `809560f2-bc0d-4f92-9ef6-d4fe43c72938`
+- Job ID: `e8aee254-3540-44ad-9a89-2b4a9c02ac32`
 
 | Requirement | Status | Evidence |
 | --- | --- | --- |
@@ -11,7 +11,7 @@
 | autorunner_runtime_health | PASS | GET /api/orchestrator/runtime-health -> 200, ok=True |
 | auth_register | PASS | POST /api/auth/register -> 200, token_present=True |
 | live_llm_invocation | PASS | POST /api/ai/chat -> 200, model_used=cerebras/llama3.1-8b |
-| plan_created | PASS | POST /api/orchestrator/plan -> 200, job_id=809560f2-bc0d-4f92-9ef6-d4fe43c72938, step_count=18 |
+| plan_created | PASS | POST /api/orchestrator/plan -> 200, job_id=e8aee254-3540-44ad-9a89-2b4a9c02ac32, step_count=18 |
 | run_auto_started | PASS | POST /api/orchestrator/run-auto -> 200, success=True |
 | preview_boot | PASS | verification.preview: completed |
 | elite_proof | PASS | verification.elite_builder: completed |
@@ -20,7 +20,7 @@
 | background_runner_stability | PASS | job_status=completed, phase=completed, background_crash_found=False |
 | proof_artifacts_available | PASS | proof_item_count=63 |
 | generated_workspace_files | PASS | workspace_file_count=44 |
-| published_generated_app_url | PASS | GET /published/809560f2-bc0d-4f92-9ef6-d4fe43c72938/ -> 200 |
+| published_generated_app_url | PASS | GET /published/e8aee254-3540-44ad-9a89-2b4a9c02ac32/ -> 200 |
 
 ## Blockers
 - None recorded.
