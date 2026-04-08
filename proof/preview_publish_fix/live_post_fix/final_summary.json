@@ -1,0 +1,174 @@
+{
+  "blockers": [],
+  "final_job_phase": "completed",
+  "final_job_status": "completed",
+  "job_id": "7b4cf12c-0903-4e68-8a07-8cf266f0001d",
+  "key_steps": {
+    "deploy_build": {
+      "agent_name": "Deployment Agent",
+      "completed_at": "2026-04-08T18:53:34.391572+00:00",
+      "created_at": "2026-04-08T18:53:18.218535+00:00",
+      "depends_on_json": "[\"verification.elite_builder\"]",
+      "error_details": null,
+      "error_message": null,
+      "id": "85615c96-2981-4e30-8c48-40e24cfa8386",
+      "job_id": "7b4cf12c-0903-4e68-8a07-8cf266f0001d",
+      "order_index": 16,
+      "output_files": null,
+      "output_ref": "\"Deploy step: deploy.build\"",
+      "phase": "deploy",
+      "retry_count": 0,
+      "score": 0,
+      "started_at": "2026-04-08T18:53:34.345812+00:00",
+      "status": "completed",
+      "step_key": "deploy.build",
+      "updated_at": "2026-04-08T18:53:34.391559+00:00",
+      "verifier_score": 100,
+      "verifier_status": "passed"
+    },
+    "deploy_publish": {
+      "agent_name": "Deployment Agent",
+      "completed_at": "2026-04-08T18:53:34.563969+00:00",
+      "created_at": "2026-04-08T18:53:18.226082+00:00",
+      "depends_on_json": "[\"deploy.build\"]",
+      "error_details": null,
+      "error_message": null,
+      "id": "e222cf62-7f53-4275-8ec4-d1a263654ccb",
+      "job_id": "7b4cf12c-0903-4e68-8a07-8cf266f0001d",
+      "order_index": 17,
+      "output_files": null,
+      "output_ref": "\"Deploy step: deploy.publish\"",
+      "phase": "deploy",
+      "retry_count": 0,
+      "score": 0,
+      "started_at": "2026-04-08T18:53:34.417023+00:00",
+      "status": "completed",
+      "step_key": "deploy.publish",
+      "updated_at": "2026-04-08T18:53:34.563960+00:00",
+      "verifier_score": 100,
+      "verifier_status": "passed"
+    },
+    "elite_proof": {
+      "agent_name": "Verifier",
+      "completed_at": "2026-04-08T18:53:34.325942+00:00",
+      "created_at": "2026-04-08T18:53:18.212911+00:00",
+      "depends_on_json": "[\"verification.security\"]",
+      "error_details": null,
+      "error_message": null,
+      "id": "12c32e71-143d-486c-b17a-16f997e23345",
+      "job_id": "7b4cf12c-0903-4e68-8a07-8cf266f0001d",
+      "order_index": 15,
+      "output_files": null,
+      "output_ref": "\"Verification gate: verification.elite_builder\"",
+      "phase": "verification",
+      "retry_count": 0,
+      "score": 0,
+      "started_at": "2026-04-08T18:53:34.283554+00:00",
+      "status": "completed",
+      "step_key": "verification.elite_builder",
+      "updated_at": "2026-04-08T18:53:34.325935+00:00",
+      "verifier_score": 100,
+      "verifier_status": "passed"
+    },
+    "preview_boot": {
+      "agent_name": "Verifier",
+      "completed_at": "2026-04-08T18:53:33.883102+00:00",
+      "created_at": "2026-04-08T18:53:18.200107+00:00",
+      "depends_on_json": "[\"verification.compile\"]",
+      "error_details": null,
+      "error_message": null,
+      "id": "7f40f71e-05c5-4371-b6d6-f34379bfffa4",
+      "job_id": "7b4cf12c-0903-4e68-8a07-8cf266f0001d",
+      "order_index": 13,
+      "output_files": null,
+      "output_ref": "\"Verification gate: verification.preview\"",
+      "phase": "verification",
+      "retry_count": 0,
+      "score": 0,
+      "started_at": "2026-04-08T18:53:23.686679+00:00",
+      "status": "completed",
+      "step_key": "verification.preview",
+      "updated_at": "2026-04-08T18:53:33.883090+00:00",
+      "verifier_score": 100,
+      "verifier_status": "passed"
+    }
+  },
+  "matrix": {
+    "auth_register": {
+      "evidence": "POST /api/auth/register -> 200, token_present=True",
+      "status": "PASS"
+    },
+    "autorunner_runtime_health": {
+      "evidence": "GET /api/orchestrator/runtime-health -> 200, ok=True",
+      "status": "PASS"
+    },
+    "background_runner_stability": {
+      "evidence": "job_status=completed, phase=completed, background_crash_found=False",
+      "status": "PASS"
+    },
+    "deploy_build": {
+      "evidence": "deploy.build: completed",
+      "status": "PASS"
+    },
+    "deploy_publish": {
+      "evidence": "deploy.publish: completed",
+      "status": "PASS"
+    },
+    "elite_proof": {
+      "evidence": "verification.elite_builder: completed",
+      "status": "PASS"
+    },
+    "generated_workspace_files": {
+      "evidence": "workspace_file_count=40",
+      "status": "PASS"
+    },
+    "live_llm_invocation": {
+      "evidence": "POST /api/ai/chat -> 200, model_used=cerebras/llama3.1-8b",
+      "status": "PASS"
+    },
+    "llm_readiness": {
+      "evidence": "GET /api/health/llm -> 200, status=ready",
+      "status": "PASS"
+    },
+    "plan_created": {
+      "evidence": "POST /api/orchestrator/plan -> 200, job_id=7b4cf12c-0903-4e68-8a07-8cf266f0001d, step_count=18",
+      "status": "PASS"
+    },
+    "preview_boot": {
+      "evidence": "verification.preview: completed",
+      "status": "PASS"
+    },
+    "proof_artifacts_available": {
+      "evidence": "proof_item_count=63",
+      "status": "PASS"
+    },
+    "published_assets_scoped": {
+      "evidence": "scoped_asset=/published/7b4cf12c-0903-4e68-8a07-8cf266f0001d/assets/index-D-wCuBv4.js, asset_status=200",
+      "status": "PASS"
+    },
+    "published_generated_app_url": {
+      "evidence": "GET /published/7b4cf12c-0903-4e68-8a07-8cf266f0001d/ -> 200",
+      "status": "PASS"
+    },
+    "railway_health": {
+      "evidence": "GET /api/health -> 200",
+      "status": "PASS"
+    },
+    "run_auto_started": {
+      "evidence": "POST /api/orchestrator/run-auto -> 200, success=True",
+      "status": "PASS"
+    }
+  },
+  "metadata": {
+    "base_url": "https://crucibai-production.up.railway.app",
+    "goal": "Build a tiny production proof app: a Vite React single page product dashboard with reusable components, localStorage state, clear empty/loading/error states, a FastAPI health endpoint sketch if backend output is supported, and deploy readiness proof. Keep dependencies minimal and produce previewable files.",
+    "mode": "fresh_live_replay",
+    "notes": [
+      "This uses the same backend API calls the browser uses for prompt/plan/run.",
+      "Auth tokens and secrets are redacted from proof artifacts."
+    ],
+    "run_id": "1775674393-3ec732aefb",
+    "schema": "crucibai.live_production_golden_path/v1",
+    "started_at": "2026-04-08T18:53:13.646589+00:00"
+  }
+}
