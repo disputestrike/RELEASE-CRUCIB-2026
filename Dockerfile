@@ -17,6 +17,7 @@ RUN npm run build
 
 # Stage 2: backend + serve frontend static
 FROM python:3.11-slim-bookworm
+RUN apt-get update && apt-get install -y nodejs npm curl && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 # curl: slim image has no curl — without it Docker HEALTHCHECK always fails (Railway marks service unhealthy).
