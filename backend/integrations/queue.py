@@ -42,6 +42,15 @@ _db_ref        = None  # set by init_queue_db()
 _worker_task   = None
 
 
+def get_queue() -> Dict[str, Any]:
+    """Return non-secret queue configuration/status for health reporting."""
+    return {
+        "backend": "redis" if _use_redis() else "postgres_fallback",
+        "redis_configured": _use_redis(),
+        "redis_connected": _redis_client is not None,
+    }
+
+
 def init_queue_db(db):
     """Call on startup with the db reference so queue can use PostgreSQL fallback."""
     global _db_ref

@@ -87,7 +87,11 @@ Tasks:
 - [x] Commit and push the websocket project progress auth slice (`8e0ac58`).
 - [x] Require project ownership for blueprint app-db schema provisioning when a `project_id` is supplied.
 - [x] Add focused smoke coverage for unowned blueprint app-db project rejection.
-- [ ] Commit and push the blueprint app-db ownership slice.
+- [x] Commit and push the blueprint app-db ownership slice (`ccb2e5a`).
+- [x] Require authenticated owner access for stateful job/proof/stream endpoints.
+- [x] Reject legacy unowned job records from stateful job/proof execution surfaces.
+- [x] Add focused smoke coverage for unauthenticated and cross-user job state access.
+- [ ] Commit and push the job state ownership slice.
 
 ## Verification Log
 

@@ -7886,9 +7886,9 @@ async def integrations_status():
 # ==================== JOB QUEUE ====================
 
 def _assert_job_owner_match(owner_id: Optional[str], user: Optional[dict]) -> None:
-    """If the job is owned, only that user may access it. No owner_id = guest / link-scoped job."""
+    """Stateful job access requires an authenticated owner match."""
     if not owner_id:
-        return
+        raise HTTPException(status_code=403, detail="Job owner required")
     uid = user.get("id") if user else None
     if not uid or uid != owner_id:
         raise HTTPException(status_code=403, detail="Not your job")
@@ -7908,7 +7908,7 @@ async def _get_task_for_user(task_id: str, user: dict) -> Optional[dict]:
 
 
 @api_router.get("/jobs/{job_id}")
-async def get_job(job_id: str, user: dict = Depends(get_optional_user)):
+async def get_job(job_id: str, user: dict = Depends(get_current_user)):
     """Queue async job (flat JSON) or Auto-Runner job from Postgres (`{ success, job }`)."""
     try:
         from integrations.queue import get_job_status
@@ -7934,7 +7934,7 @@ async def get_job(job_id: str, user: dict = Depends(get_optional_user)):
 
 
 @api_router.get("/jobs")
-async def list_jobs(user: dict = Depends(get_optional_user)):
+async def list_jobs(user: dict = Depends(get_current_user)):
     """List active/recent jobs for the current user.
     Used by frontend on reconnect to resume monitoring in-progress builds."""
     try:
@@ -7970,7 +7970,7 @@ async def list_jobs(user: dict = Depends(get_optional_user)):
 
 
 @api_router.post("/ai/build/async")
-async def ai_build_async(data: ChatMessage, user: dict = Depends(get_optional_user)):
+async def ai_build_async(data: ChatMessage, user: dict = Depends(get_current_user)):
     """
     Async iterative build — returns job_id immediately.
     Poll GET /api/jobs/{job_id} for progress and results.
@@ -8456,8 +8456,7 @@ async def run_auto(
         job = await runtime_state.get_job(body.job_id)
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
-        if job.get("user_id") and job["user_id"] != user.get("id"):
-            raise HTTPException(status_code=403, detail="Not your job")
+        _assert_job_owner_match(job.get("user_id"), user)
 
         preflight = await build_preflight_report()
         await append_job_event(
@@ -8591,7 +8590,7 @@ async def create_job_route(body: CreateJobRequest,
 
 
 @api_router.get("/jobs/{job_id}/steps")
-async def get_job_steps(job_id: str, user: dict = Depends(get_optional_user)):
+async def get_job_steps(job_id: str, user: dict = Depends(get_current_user)):
     """Get all steps for a job with their current status."""
     try:
         runtime_state, _, _, _, _ = _get_orchestration()
@@ -8611,7 +8610,7 @@ async def get_job_steps(job_id: str, user: dict = Depends(get_optional_user)):
 
 
 @api_router.get("/jobs/{job_id}/plan-draft")
-async def get_job_plan_draft(job_id: str, user: dict = Depends(get_optional_user)):
+async def get_job_plan_draft(job_id: str, user: dict = Depends(get_current_user)):
     """Latest stored plan JSON for a job (for resuming from history)."""
     try:
         runtime_state, _, _, _, _ = _get_orchestration()
@@ -8640,7 +8639,7 @@ async def get_job_plan_draft(job_id: str, user: dict = Depends(get_optional_user
 
 @api_router.get("/jobs/{job_id}/events")
 async def get_job_events(job_id: str, since_id: Optional[str] = None,
-                          user: dict = Depends(get_optional_user)):
+                          user: dict = Depends(get_current_user)):
     """Get job event log (for replay/history view)."""
     try:
         runtime_state, _, _, _, _ = _get_orchestration()
@@ -8666,7 +8665,7 @@ async def get_job_events(job_id: str, since_id: Optional[str] = None,
 
 
 @api_router.get("/jobs/{job_id}/proof")
-async def get_job_proof(job_id: str, user: dict = Depends(get_optional_user)):
+async def get_job_proof(job_id: str, user: dict = Depends(get_current_user)):
     """Get proof bundle for job (files, routes, DB, verification, deploy)."""
     try:
         runtime_state, _, _, _, ps_mod = _get_orchestration()
@@ -8744,7 +8743,7 @@ async def trust_platform_capabilities(user: dict = Depends(get_optional_user)):
 
 
 @api_router.get("/jobs/{job_id}/trust-report")
-async def get_job_trust_report(job_id: str, user: dict = Depends(get_optional_user)):
+async def get_job_trust_report(job_id: str, user: dict = Depends(get_current_user)):
     """Aggregated trust metrics + roadmap wiring snapshot for a job."""
     try:
         from orchestration.trust.roadmap_wiring import roadmap_wiring_status
@@ -8774,6 +8773,8 @@ async def get_job_trust_report(job_id: str, user: dict = Depends(get_optional_us
             "production_readiness_score": proof.get("production_readiness_score"),
             "scorecard": proof.get("scorecard"),
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -8890,7 +8891,7 @@ from fastapi.responses import StreamingResponse as _StreamingResponse
 import asyncio as _ac
 
 @api_router.get("/jobs/{job_id}/stream")
-async def stream_job_events(job_id: str, user: dict = Depends(get_optional_user)):
+async def stream_job_events(job_id: str, user: dict = Depends(get_current_user)):
     """
     Server-Sent Events stream for real-time job progress.
     Streams: job_started, step_started, step_completed, step_failed, job_completed, etc.

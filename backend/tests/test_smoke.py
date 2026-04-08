@@ -548,6 +548,53 @@ async def test_smoke_run_auto_ignores_client_workspace_path(app_client, auth_hea
     assert project_id in captured["workspace_path"]
 
 
+async def test_smoke_job_state_routes_require_auth(app_client, auth_headers):
+    """Stateful job/proof endpoints require an authenticated owner."""
+    job_id, _project_id = await _create_smoke_auto_job(auth_headers)
+    endpoints = [
+        ("GET", f"/api/jobs/{job_id}", None),
+        ("GET", "/api/jobs", None),
+        ("POST", "/api/ai/build/async", {"message": "Build a smoke app"}),
+        ("GET", f"/api/jobs/{job_id}/steps", None),
+        ("GET", f"/api/jobs/{job_id}/plan-draft", None),
+        ("GET", f"/api/jobs/{job_id}/events", None),
+        ("GET", f"/api/jobs/{job_id}/proof", None),
+        ("GET", f"/api/jobs/{job_id}/trust-report", None),
+        ("GET", f"/api/jobs/{job_id}/stream", None),
+    ]
+    for method, path, body in endpoints:
+        if method == "POST":
+            r = await app_client.post(path, json=body or {}, timeout=10)
+        else:
+            r = await app_client.get(path, timeout=10)
+        assert r.status_code == 401, f"{path} returned {r.status_code}: {r.text[:200]}"
+
+
+async def test_smoke_job_state_routes_reject_unowned_job(app_client, auth_headers):
+    """Stateful job/proof endpoints reject another user's job."""
+    other_headers = await _register_smoke_headers(app_client)
+    job_id, _project_id = await _create_smoke_auto_job(other_headers)
+    endpoints = [
+        f"/api/jobs/{job_id}",
+        f"/api/jobs/{job_id}/steps",
+        f"/api/jobs/{job_id}/plan-draft",
+        f"/api/jobs/{job_id}/events",
+        f"/api/jobs/{job_id}/proof",
+        f"/api/jobs/{job_id}/trust-report",
+        f"/api/jobs/{job_id}/stream",
+    ]
+    for path in endpoints:
+        r = await app_client.get(path, headers=auth_headers, timeout=10)
+        assert r.status_code == 403, f"{path} returned {r.status_code}: {r.text[:200]}"
+    run = await app_client.post(
+        "/api/orchestrator/run-auto",
+        json={"job_id": job_id, "workspace_path": "C:\\Windows\\System32"},
+        headers=auth_headers,
+        timeout=20,
+    )
+    assert run.status_code == 403
+
+
 async def test_smoke_orchestrator_plan_rejects_unowned_project(app_client, auth_headers):
     """POST /api/orchestrator/plan rejects a project_id owned by another user."""
     other_headers = await _register_smoke_headers(app_client)
