@@ -8,7 +8,7 @@ Last updated: 2026-04-08
 
 ## Current Objective
 
-Continue phase-locked hardening and proof from `main` commit `8399d18`, preserving the unified outcome platform wedge while moving through the remaining phases in order.
+Continue phase-locked hardening and proof from `main`, preserving the unified outcome platform wedge while moving through the remaining phases in order. Current execution focus: raise the core pipeline toward 10/10 by measuring repeatability across app categories instead of relying on a single happy-path proof.
 
 ## Confirmed Direction
 
@@ -29,6 +29,18 @@ Exact external reference requested by the owner, `/home/claude/CRUCIBAI_WHAT_IT_
 - `docs/UNIQUE_COMPETITIVE_ADVANTAGE_AND_NEW_BIG_IDEA.md`: "The same AI that builds your app runs inside your automations."
 
 Next implementation should continue from Phase 2/4 overlap, prioritizing runtime risk plus the golden path: tenant isolation, backend router extraction, proof/preview/deploy recovery, and product-surface beta gating.
+
+Latest completed golden-path proof:
+
+- Live Railway production replay completed `18/18` steps for job `8c3273ef-297e-4953-80b2-78356036a34b`.
+- Live LLM invocation, preview boot, elite proof, deploy build, deploy publish readiness, and background runner stability passed.
+- Evidence lives under `proof/live_production_golden_path/`.
+
+Latest active 10/10 scoring work:
+
+- `benchmarks/repeatability_prompts_v1.json` defines the first 10-prompt repeatability suite.
+- `scripts/run-repeatability-benchmark.py` produces a deterministic scorecard under `proof/benchmarks/repeatability_v1/`.
+- `scripts/release-gate.ps1` runs the repeatability tests and scorecard in backend-only mode.
 
 ## Known Risks
 
@@ -227,6 +239,7 @@ Phase 3: Backend Router Extraction
 
 Planned tasks:
 
+- Expand repeatability benchmark from 10 prompts to 25, then 50, while tracking live vs deterministic proof separately.
 - Extract coherent route modules from `backend/server.py` without changing public API behavior.
 - Keep Phase 2 terminal sandbox debt visible and decide launch policy before public exposure.
 - Preserve the release-gate and proof artifacts as the regression bar while extracting routers.

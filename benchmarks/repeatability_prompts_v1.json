@@ -1,0 +1,86 @@
+{
+  "version": "2026-04-08.repeatability.v1",
+  "description": "Golden repeatability suite for CrucibAI prompt-to-app builds. These prompts cover the first ten app categories we need to win before expanding to 50.",
+  "cases": [
+    {
+      "id": "saas_dashboard",
+      "category": "saas",
+      "title": "SaaS metrics dashboard",
+      "goal": "Build a SaaS analytics dashboard with login, team overview, KPI cards, saved notes, routing, and deployment readiness.",
+      "build_target": "vite_react",
+      "required_terms": ["dashboard", "login", "team", "routing", "deployment"]
+    },
+    {
+      "id": "marketplace",
+      "category": "marketplace",
+      "title": "Service marketplace",
+      "goal": "Build a service marketplace where customers can browse providers, save favorites, view a dashboard, and prepare for checkout integration.",
+      "build_target": "vite_react",
+      "required_terms": ["marketplace", "customers", "providers", "dashboard", "checkout"]
+    },
+    {
+      "id": "booking_app",
+      "category": "booking",
+      "title": "Booking workflow",
+      "goal": "Build a booking app for appointments with a public home page, demo auth, team calendar notes, and deployment proof.",
+      "build_target": "vite_react",
+      "required_terms": ["booking", "appointments", "auth", "calendar", "proof"]
+    },
+    {
+      "id": "crm_pipeline",
+      "category": "crm",
+      "title": "CRM pipeline",
+      "goal": "Build a lightweight CRM pipeline with contacts, deals dashboard, team page, persisted notes, and deploy-ready app files.",
+      "build_target": "vite_react",
+      "required_terms": ["crm", "contacts", "deals", "dashboard", "persisted"]
+    },
+    {
+      "id": "ai_chat",
+      "category": "ai",
+      "title": "AI chat workspace",
+      "goal": "Build an AI chat workspace with login, chat history notes, model status area, routing, and clear mocked provider notes.",
+      "build_target": "agent_workflow",
+      "required_terms": ["ai", "chat", "login", "model", "mocked"]
+    },
+    {
+      "id": "ecommerce_store",
+      "category": "commerce",
+      "title": "Ecommerce storefront",
+      "goal": "Build an ecommerce storefront with product browsing, cart readiness, checkout placeholder, dashboard, and deployment notes.",
+      "build_target": "vite_react",
+      "required_terms": ["ecommerce", "product", "cart", "checkout", "deployment"]
+    },
+    {
+      "id": "workflow_automation",
+      "category": "automation",
+      "title": "Workflow automation hub",
+      "goal": "Build a workflow automation hub where a user can describe a workflow, review a run_agent step, track status, and inspect proof.",
+      "build_target": "agent_workflow",
+      "required_terms": ["workflow", "automation", "run_agent", "status", "proof"]
+    },
+    {
+      "id": "bring_your_code_repair",
+      "category": "byoc",
+      "title": "Bring your code repair",
+      "goal": "Build a bring-your-code repair workspace with import instructions, issue triage dashboard, file review notes, and continue-improving flow.",
+      "build_target": "vite_react",
+      "required_terms": ["import", "triage", "file", "review", "continue"]
+    },
+    {
+      "id": "internal_tool",
+      "category": "internal",
+      "title": "Internal operations tool",
+      "goal": "Build an internal operations tool with auth, task dashboard, team page, persisted operations notes, and deployment readiness.",
+      "build_target": "vite_react",
+      "required_terms": ["internal", "operations", "auth", "task", "deployment"]
+    },
+    {
+      "id": "landing_page",
+      "category": "marketing",
+      "title": "Conversion landing page",
+      "goal": "Build a conversion landing page for a product launch with sections, routing-safe preview, saved feedback notes, and export-ready files.",
+      "build_target": "static_site",
+      "required_terms": ["landing", "launch", "preview", "feedback", "export"]
+    }
+  ]
+}

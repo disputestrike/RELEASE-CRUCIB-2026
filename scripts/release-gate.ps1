@@ -63,6 +63,12 @@ try {
     & python -m pytest backend\tests\test_pipeline_crash_fix.py -q
     Assert-LastExit "pipeline crash fix tests"
 
+    Step "Running repeatability benchmark scorecard"
+    & python -m pytest backend\tests\test_repeatability_benchmark.py -q
+    Assert-LastExit "repeatability benchmark tests"
+    & python scripts\run-repeatability-benchmark.py
+    Assert-LastExit "repeatability benchmark scorecard"
+
     Step "Running Phase 2 route and websocket security audit"
     & python -m pytest backend\tests\test_phase2_security.py -q
     Assert-LastExit "phase 2 security audit tests"

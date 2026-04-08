@@ -1,0 +1,1199 @@
+{
+  "average_score": 100.0,
+  "benchmark_version": "2026-04-08.repeatability.v1",
+  "blockers": [],
+  "generated_at": "2026-04-08T12:24:40.188928+00:00",
+  "pass_rate": 1.0,
+  "passed": true,
+  "passed_count": 10,
+  "preview_mode": "static_plus_skipped_browser",
+  "prompt_count": 10,
+  "results": [
+    {
+      "case": {
+        "build_target": "vite_react",
+        "category": "saas",
+        "goal": "Build a SaaS analytics dashboard with login, team overview, KPI cards, saved notes, routing, and deployment readiness.",
+        "id": "saas_dashboard",
+        "required_terms": [
+          "dashboard",
+          "login",
+          "team",
+          "routing",
+          "deployment"
+        ],
+        "title": "SaaS metrics dashboard"
+      },
+      "generated_files": [
+        "Dockerfile",
+        "README_BUILD.md",
+        "backend/main.py",
+        "deploy/PRODUCTION_SKETCH.md",
+        "deploy/PUBLISH.md",
+        "deploy/healthcheck.sh",
+        "docs/CRUCIB_BUILD_TARGET.md",
+        "index.html",
+        "package.json",
+        "proof/DELIVERY_CLASSIFICATION.md",
+        "proof/ELITE_EXECUTION_DIRECTIVE.md",
+        "src/App.jsx",
+        "src/components/ErrorBoundary.jsx",
+        "src/components/ShellLayout.jsx",
+        "src/context/AuthContext.jsx",
+        "src/index.js",
+        "src/main.jsx",
+        "src/pages/DashboardPage.jsx",
+        "src/pages/HomePage.jsx",
+        "src/pages/LoginPage.jsx",
+        "src/pages/TeamPage.jsx",
+        "src/store/useAppStore.js",
+        "src/styles/global.css",
+        "vite.config.js"
+      ],
+      "passed": true,
+      "score": 100.0,
+      "stages": {
+        "deploy_build": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 5
+          },
+          "name": "deploy_build",
+          "passed": true,
+          "score": 100.0
+        },
+        "deploy_publish": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 2,
+            "publish_mode": "readiness_only"
+          },
+          "name": "deploy_publish",
+          "passed": true,
+          "score": 100.0
+        },
+        "elite_proof": {
+          "detail": {
+            "failed_checks": [],
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 10
+          },
+          "name": "elite_proof",
+          "passed": true,
+          "score": 100.0
+        },
+        "generated_files": {
+          "detail": {
+            "generated_file_count": 24,
+            "missing": [],
+            "passed": true,
+            "required_count": 14
+          },
+          "name": "generated_files",
+          "passed": true,
+          "score": 100.0
+        },
+        "preview": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "mode": "static_plus_skipped_browser",
+            "proof_count": 8
+          },
+          "name": "preview",
+          "passed": true,
+          "score": 100.0
+        },
+        "prompt_coverage": {
+          "detail": {
+            "checked_file_count": 23,
+            "missing_terms": [],
+            "passed": true,
+            "required_terms": [
+              "dashboard",
+              "login",
+              "team",
+              "routing",
+              "deployment"
+            ]
+          },
+          "name": "prompt_coverage",
+          "passed": true,
+          "score": 100.0
+        }
+      },
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\saas_dashboard"
+    },
+    {
+      "case": {
+        "build_target": "vite_react",
+        "category": "marketplace",
+        "goal": "Build a service marketplace where customers can browse providers, save favorites, view a dashboard, and prepare for checkout integration.",
+        "id": "marketplace",
+        "required_terms": [
+          "marketplace",
+          "customers",
+          "providers",
+          "dashboard",
+          "checkout"
+        ],
+        "title": "Service marketplace"
+      },
+      "generated_files": [
+        "Dockerfile",
+        "README_BUILD.md",
+        "backend/main.py",
+        "deploy/PRODUCTION_SKETCH.md",
+        "deploy/PUBLISH.md",
+        "deploy/healthcheck.sh",
+        "docs/CRUCIB_BUILD_TARGET.md",
+        "index.html",
+        "package.json",
+        "proof/DELIVERY_CLASSIFICATION.md",
+        "proof/ELITE_EXECUTION_DIRECTIVE.md",
+        "src/App.jsx",
+        "src/components/ErrorBoundary.jsx",
+        "src/components/ShellLayout.jsx",
+        "src/context/AuthContext.jsx",
+        "src/index.js",
+        "src/main.jsx",
+        "src/pages/DashboardPage.jsx",
+        "src/pages/HomePage.jsx",
+        "src/pages/LoginPage.jsx",
+        "src/pages/TeamPage.jsx",
+        "src/store/useAppStore.js",
+        "src/styles/global.css",
+        "vite.config.js"
+      ],
+      "passed": true,
+      "score": 100.0,
+      "stages": {
+        "deploy_build": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 5
+          },
+          "name": "deploy_build",
+          "passed": true,
+          "score": 100.0
+        },
+        "deploy_publish": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 2,
+            "publish_mode": "readiness_only"
+          },
+          "name": "deploy_publish",
+          "passed": true,
+          "score": 100.0
+        },
+        "elite_proof": {
+          "detail": {
+            "failed_checks": [],
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 10
+          },
+          "name": "elite_proof",
+          "passed": true,
+          "score": 100.0
+        },
+        "generated_files": {
+          "detail": {
+            "generated_file_count": 24,
+            "missing": [],
+            "passed": true,
+            "required_count": 14
+          },
+          "name": "generated_files",
+          "passed": true,
+          "score": 100.0
+        },
+        "preview": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "mode": "static_plus_skipped_browser",
+            "proof_count": 8
+          },
+          "name": "preview",
+          "passed": true,
+          "score": 100.0
+        },
+        "prompt_coverage": {
+          "detail": {
+            "checked_file_count": 23,
+            "missing_terms": [],
+            "passed": true,
+            "required_terms": [
+              "marketplace",
+              "customers",
+              "providers",
+              "dashboard",
+              "checkout"
+            ]
+          },
+          "name": "prompt_coverage",
+          "passed": true,
+          "score": 100.0
+        }
+      },
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\marketplace"
+    },
+    {
+      "case": {
+        "build_target": "vite_react",
+        "category": "booking",
+        "goal": "Build a booking app for appointments with a public home page, demo auth, team calendar notes, and deployment proof.",
+        "id": "booking_app",
+        "required_terms": [
+          "booking",
+          "appointments",
+          "auth",
+          "calendar",
+          "proof"
+        ],
+        "title": "Booking workflow"
+      },
+      "generated_files": [
+        "Dockerfile",
+        "README_BUILD.md",
+        "backend/main.py",
+        "deploy/PRODUCTION_SKETCH.md",
+        "deploy/PUBLISH.md",
+        "deploy/healthcheck.sh",
+        "docs/CRUCIB_BUILD_TARGET.md",
+        "index.html",
+        "package.json",
+        "proof/DELIVERY_CLASSIFICATION.md",
+        "proof/ELITE_EXECUTION_DIRECTIVE.md",
+        "src/App.jsx",
+        "src/components/ErrorBoundary.jsx",
+        "src/components/ShellLayout.jsx",
+        "src/context/AuthContext.jsx",
+        "src/index.js",
+        "src/main.jsx",
+        "src/pages/DashboardPage.jsx",
+        "src/pages/HomePage.jsx",
+        "src/pages/LoginPage.jsx",
+        "src/pages/TeamPage.jsx",
+        "src/store/useAppStore.js",
+        "src/styles/global.css",
+        "vite.config.js"
+      ],
+      "passed": true,
+      "score": 100.0,
+      "stages": {
+        "deploy_build": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 5
+          },
+          "name": "deploy_build",
+          "passed": true,
+          "score": 100.0
+        },
+        "deploy_publish": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 2,
+            "publish_mode": "readiness_only"
+          },
+          "name": "deploy_publish",
+          "passed": true,
+          "score": 100.0
+        },
+        "elite_proof": {
+          "detail": {
+            "failed_checks": [],
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 10
+          },
+          "name": "elite_proof",
+          "passed": true,
+          "score": 100.0
+        },
+        "generated_files": {
+          "detail": {
+            "generated_file_count": 24,
+            "missing": [],
+            "passed": true,
+            "required_count": 14
+          },
+          "name": "generated_files",
+          "passed": true,
+          "score": 100.0
+        },
+        "preview": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "mode": "static_plus_skipped_browser",
+            "proof_count": 8
+          },
+          "name": "preview",
+          "passed": true,
+          "score": 100.0
+        },
+        "prompt_coverage": {
+          "detail": {
+            "checked_file_count": 23,
+            "missing_terms": [],
+            "passed": true,
+            "required_terms": [
+              "booking",
+              "appointments",
+              "auth",
+              "calendar",
+              "proof"
+            ]
+          },
+          "name": "prompt_coverage",
+          "passed": true,
+          "score": 100.0
+        }
+      },
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\booking_app"
+    },
+    {
+      "case": {
+        "build_target": "vite_react",
+        "category": "crm",
+        "goal": "Build a lightweight CRM pipeline with contacts, deals dashboard, team page, persisted notes, and deploy-ready app files.",
+        "id": "crm_pipeline",
+        "required_terms": [
+          "crm",
+          "contacts",
+          "deals",
+          "dashboard",
+          "persisted"
+        ],
+        "title": "CRM pipeline"
+      },
+      "generated_files": [
+        "Dockerfile",
+        "README_BUILD.md",
+        "backend/main.py",
+        "deploy/PRODUCTION_SKETCH.md",
+        "deploy/PUBLISH.md",
+        "deploy/healthcheck.sh",
+        "docs/CRUCIB_BUILD_TARGET.md",
+        "index.html",
+        "package.json",
+        "proof/DELIVERY_CLASSIFICATION.md",
+        "proof/ELITE_EXECUTION_DIRECTIVE.md",
+        "src/App.jsx",
+        "src/components/ErrorBoundary.jsx",
+        "src/components/ShellLayout.jsx",
+        "src/context/AuthContext.jsx",
+        "src/index.js",
+        "src/main.jsx",
+        "src/pages/DashboardPage.jsx",
+        "src/pages/HomePage.jsx",
+        "src/pages/LoginPage.jsx",
+        "src/pages/TeamPage.jsx",
+        "src/store/useAppStore.js",
+        "src/styles/global.css",
+        "vite.config.js"
+      ],
+      "passed": true,
+      "score": 100.0,
+      "stages": {
+        "deploy_build": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 5
+          },
+          "name": "deploy_build",
+          "passed": true,
+          "score": 100.0
+        },
+        "deploy_publish": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 2,
+            "publish_mode": "readiness_only"
+          },
+          "name": "deploy_publish",
+          "passed": true,
+          "score": 100.0
+        },
+        "elite_proof": {
+          "detail": {
+            "failed_checks": [],
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 10
+          },
+          "name": "elite_proof",
+          "passed": true,
+          "score": 100.0
+        },
+        "generated_files": {
+          "detail": {
+            "generated_file_count": 24,
+            "missing": [],
+            "passed": true,
+            "required_count": 14
+          },
+          "name": "generated_files",
+          "passed": true,
+          "score": 100.0
+        },
+        "preview": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "mode": "static_plus_skipped_browser",
+            "proof_count": 8
+          },
+          "name": "preview",
+          "passed": true,
+          "score": 100.0
+        },
+        "prompt_coverage": {
+          "detail": {
+            "checked_file_count": 23,
+            "missing_terms": [],
+            "passed": true,
+            "required_terms": [
+              "crm",
+              "contacts",
+              "deals",
+              "dashboard",
+              "persisted"
+            ]
+          },
+          "name": "prompt_coverage",
+          "passed": true,
+          "score": 100.0
+        }
+      },
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\crm_pipeline"
+    },
+    {
+      "case": {
+        "build_target": "agent_workflow",
+        "category": "ai",
+        "goal": "Build an AI chat workspace with login, chat history notes, model status area, routing, and clear mocked provider notes.",
+        "id": "ai_chat",
+        "required_terms": [
+          "ai",
+          "chat",
+          "login",
+          "model",
+          "mocked"
+        ],
+        "title": "AI chat workspace"
+      },
+      "generated_files": [
+        "Dockerfile",
+        "README_BUILD.md",
+        "backend/main.py",
+        "deploy/PRODUCTION_SKETCH.md",
+        "deploy/PUBLISH.md",
+        "deploy/healthcheck.sh",
+        "docs/CRUCIB_BUILD_TARGET.md",
+        "index.html",
+        "package.json",
+        "proof/DELIVERY_CLASSIFICATION.md",
+        "proof/ELITE_EXECUTION_DIRECTIVE.md",
+        "src/App.jsx",
+        "src/components/ErrorBoundary.jsx",
+        "src/components/ShellLayout.jsx",
+        "src/context/AuthContext.jsx",
+        "src/index.js",
+        "src/main.jsx",
+        "src/pages/DashboardPage.jsx",
+        "src/pages/HomePage.jsx",
+        "src/pages/LoginPage.jsx",
+        "src/pages/TeamPage.jsx",
+        "src/store/useAppStore.js",
+        "src/styles/global.css",
+        "vite.config.js"
+      ],
+      "passed": true,
+      "score": 100.0,
+      "stages": {
+        "deploy_build": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 5
+          },
+          "name": "deploy_build",
+          "passed": true,
+          "score": 100.0
+        },
+        "deploy_publish": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 2,
+            "publish_mode": "readiness_only"
+          },
+          "name": "deploy_publish",
+          "passed": true,
+          "score": 100.0
+        },
+        "elite_proof": {
+          "detail": {
+            "failed_checks": [],
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 10
+          },
+          "name": "elite_proof",
+          "passed": true,
+          "score": 100.0
+        },
+        "generated_files": {
+          "detail": {
+            "generated_file_count": 24,
+            "missing": [],
+            "passed": true,
+            "required_count": 14
+          },
+          "name": "generated_files",
+          "passed": true,
+          "score": 100.0
+        },
+        "preview": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "mode": "static_plus_skipped_browser",
+            "proof_count": 8
+          },
+          "name": "preview",
+          "passed": true,
+          "score": 100.0
+        },
+        "prompt_coverage": {
+          "detail": {
+            "checked_file_count": 23,
+            "missing_terms": [],
+            "passed": true,
+            "required_terms": [
+              "ai",
+              "chat",
+              "login",
+              "model",
+              "mocked"
+            ]
+          },
+          "name": "prompt_coverage",
+          "passed": true,
+          "score": 100.0
+        }
+      },
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\ai_chat"
+    },
+    {
+      "case": {
+        "build_target": "vite_react",
+        "category": "commerce",
+        "goal": "Build an ecommerce storefront with product browsing, cart readiness, checkout placeholder, dashboard, and deployment notes.",
+        "id": "ecommerce_store",
+        "required_terms": [
+          "ecommerce",
+          "product",
+          "cart",
+          "checkout",
+          "deployment"
+        ],
+        "title": "Ecommerce storefront"
+      },
+      "generated_files": [
+        "Dockerfile",
+        "README_BUILD.md",
+        "backend/main.py",
+        "deploy/PRODUCTION_SKETCH.md",
+        "deploy/PUBLISH.md",
+        "deploy/healthcheck.sh",
+        "docs/CRUCIB_BUILD_TARGET.md",
+        "index.html",
+        "package.json",
+        "proof/DELIVERY_CLASSIFICATION.md",
+        "proof/ELITE_EXECUTION_DIRECTIVE.md",
+        "src/App.jsx",
+        "src/components/ErrorBoundary.jsx",
+        "src/components/ShellLayout.jsx",
+        "src/context/AuthContext.jsx",
+        "src/index.js",
+        "src/main.jsx",
+        "src/pages/DashboardPage.jsx",
+        "src/pages/HomePage.jsx",
+        "src/pages/LoginPage.jsx",
+        "src/pages/TeamPage.jsx",
+        "src/store/useAppStore.js",
+        "src/styles/global.css",
+        "vite.config.js"
+      ],
+      "passed": true,
+      "score": 100.0,
+      "stages": {
+        "deploy_build": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 5
+          },
+          "name": "deploy_build",
+          "passed": true,
+          "score": 100.0
+        },
+        "deploy_publish": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 2,
+            "publish_mode": "readiness_only"
+          },
+          "name": "deploy_publish",
+          "passed": true,
+          "score": 100.0
+        },
+        "elite_proof": {
+          "detail": {
+            "failed_checks": [],
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 10
+          },
+          "name": "elite_proof",
+          "passed": true,
+          "score": 100.0
+        },
+        "generated_files": {
+          "detail": {
+            "generated_file_count": 24,
+            "missing": [],
+            "passed": true,
+            "required_count": 14
+          },
+          "name": "generated_files",
+          "passed": true,
+          "score": 100.0
+        },
+        "preview": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "mode": "static_plus_skipped_browser",
+            "proof_count": 8
+          },
+          "name": "preview",
+          "passed": true,
+          "score": 100.0
+        },
+        "prompt_coverage": {
+          "detail": {
+            "checked_file_count": 23,
+            "missing_terms": [],
+            "passed": true,
+            "required_terms": [
+              "ecommerce",
+              "product",
+              "cart",
+              "checkout",
+              "deployment"
+            ]
+          },
+          "name": "prompt_coverage",
+          "passed": true,
+          "score": 100.0
+        }
+      },
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\ecommerce_store"
+    },
+    {
+      "case": {
+        "build_target": "agent_workflow",
+        "category": "automation",
+        "goal": "Build a workflow automation hub where a user can describe a workflow, review a run_agent step, track status, and inspect proof.",
+        "id": "workflow_automation",
+        "required_terms": [
+          "workflow",
+          "automation",
+          "run_agent",
+          "status",
+          "proof"
+        ],
+        "title": "Workflow automation hub"
+      },
+      "generated_files": [
+        "Dockerfile",
+        "README_BUILD.md",
+        "backend/main.py",
+        "deploy/PRODUCTION_SKETCH.md",
+        "deploy/PUBLISH.md",
+        "deploy/healthcheck.sh",
+        "docs/CRUCIB_BUILD_TARGET.md",
+        "index.html",
+        "package.json",
+        "proof/DELIVERY_CLASSIFICATION.md",
+        "proof/ELITE_EXECUTION_DIRECTIVE.md",
+        "src/App.jsx",
+        "src/components/ErrorBoundary.jsx",
+        "src/components/ShellLayout.jsx",
+        "src/context/AuthContext.jsx",
+        "src/index.js",
+        "src/main.jsx",
+        "src/pages/DashboardPage.jsx",
+        "src/pages/HomePage.jsx",
+        "src/pages/LoginPage.jsx",
+        "src/pages/TeamPage.jsx",
+        "src/store/useAppStore.js",
+        "src/styles/global.css",
+        "vite.config.js"
+      ],
+      "passed": true,
+      "score": 100.0,
+      "stages": {
+        "deploy_build": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 5
+          },
+          "name": "deploy_build",
+          "passed": true,
+          "score": 100.0
+        },
+        "deploy_publish": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 2,
+            "publish_mode": "readiness_only"
+          },
+          "name": "deploy_publish",
+          "passed": true,
+          "score": 100.0
+        },
+        "elite_proof": {
+          "detail": {
+            "failed_checks": [],
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 10
+          },
+          "name": "elite_proof",
+          "passed": true,
+          "score": 100.0
+        },
+        "generated_files": {
+          "detail": {
+            "generated_file_count": 24,
+            "missing": [],
+            "passed": true,
+            "required_count": 14
+          },
+          "name": "generated_files",
+          "passed": true,
+          "score": 100.0
+        },
+        "preview": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "mode": "static_plus_skipped_browser",
+            "proof_count": 8
+          },
+          "name": "preview",
+          "passed": true,
+          "score": 100.0
+        },
+        "prompt_coverage": {
+          "detail": {
+            "checked_file_count": 23,
+            "missing_terms": [],
+            "passed": true,
+            "required_terms": [
+              "workflow",
+              "automation",
+              "run_agent",
+              "status",
+              "proof"
+            ]
+          },
+          "name": "prompt_coverage",
+          "passed": true,
+          "score": 100.0
+        }
+      },
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\workflow_automation"
+    },
+    {
+      "case": {
+        "build_target": "vite_react",
+        "category": "byoc",
+        "goal": "Build a bring-your-code repair workspace with import instructions, issue triage dashboard, file review notes, and continue-improving flow.",
+        "id": "bring_your_code_repair",
+        "required_terms": [
+          "import",
+          "triage",
+          "file",
+          "review",
+          "continue"
+        ],
+        "title": "Bring your code repair"
+      },
+      "generated_files": [
+        "Dockerfile",
+        "README_BUILD.md",
+        "backend/main.py",
+        "deploy/PRODUCTION_SKETCH.md",
+        "deploy/PUBLISH.md",
+        "deploy/healthcheck.sh",
+        "docs/CRUCIB_BUILD_TARGET.md",
+        "index.html",
+        "package.json",
+        "proof/DELIVERY_CLASSIFICATION.md",
+        "proof/ELITE_EXECUTION_DIRECTIVE.md",
+        "src/App.jsx",
+        "src/components/ErrorBoundary.jsx",
+        "src/components/ShellLayout.jsx",
+        "src/context/AuthContext.jsx",
+        "src/index.js",
+        "src/main.jsx",
+        "src/pages/DashboardPage.jsx",
+        "src/pages/HomePage.jsx",
+        "src/pages/LoginPage.jsx",
+        "src/pages/TeamPage.jsx",
+        "src/store/useAppStore.js",
+        "src/styles/global.css",
+        "vite.config.js"
+      ],
+      "passed": true,
+      "score": 100.0,
+      "stages": {
+        "deploy_build": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 5
+          },
+          "name": "deploy_build",
+          "passed": true,
+          "score": 100.0
+        },
+        "deploy_publish": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 2,
+            "publish_mode": "readiness_only"
+          },
+          "name": "deploy_publish",
+          "passed": true,
+          "score": 100.0
+        },
+        "elite_proof": {
+          "detail": {
+            "failed_checks": [],
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 10
+          },
+          "name": "elite_proof",
+          "passed": true,
+          "score": 100.0
+        },
+        "generated_files": {
+          "detail": {
+            "generated_file_count": 24,
+            "missing": [],
+            "passed": true,
+            "required_count": 14
+          },
+          "name": "generated_files",
+          "passed": true,
+          "score": 100.0
+        },
+        "preview": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "mode": "static_plus_skipped_browser",
+            "proof_count": 8
+          },
+          "name": "preview",
+          "passed": true,
+          "score": 100.0
+        },
+        "prompt_coverage": {
+          "detail": {
+            "checked_file_count": 23,
+            "missing_terms": [],
+            "passed": true,
+            "required_terms": [
+              "import",
+              "triage",
+              "file",
+              "review",
+              "continue"
+            ]
+          },
+          "name": "prompt_coverage",
+          "passed": true,
+          "score": 100.0
+        }
+      },
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\bring_your_code_repair"
+    },
+    {
+      "case": {
+        "build_target": "vite_react",
+        "category": "internal",
+        "goal": "Build an internal operations tool with auth, task dashboard, team page, persisted operations notes, and deployment readiness.",
+        "id": "internal_tool",
+        "required_terms": [
+          "internal",
+          "operations",
+          "auth",
+          "task",
+          "deployment"
+        ],
+        "title": "Internal operations tool"
+      },
+      "generated_files": [
+        "Dockerfile",
+        "README_BUILD.md",
+        "backend/main.py",
+        "deploy/PRODUCTION_SKETCH.md",
+        "deploy/PUBLISH.md",
+        "deploy/healthcheck.sh",
+        "docs/CRUCIB_BUILD_TARGET.md",
+        "index.html",
+        "package.json",
+        "proof/DELIVERY_CLASSIFICATION.md",
+        "proof/ELITE_EXECUTION_DIRECTIVE.md",
+        "src/App.jsx",
+        "src/components/ErrorBoundary.jsx",
+        "src/components/ShellLayout.jsx",
+        "src/context/AuthContext.jsx",
+        "src/index.js",
+        "src/main.jsx",
+        "src/pages/DashboardPage.jsx",
+        "src/pages/HomePage.jsx",
+        "src/pages/LoginPage.jsx",
+        "src/pages/TeamPage.jsx",
+        "src/store/useAppStore.js",
+        "src/styles/global.css",
+        "vite.config.js"
+      ],
+      "passed": true,
+      "score": 100.0,
+      "stages": {
+        "deploy_build": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 5
+          },
+          "name": "deploy_build",
+          "passed": true,
+          "score": 100.0
+        },
+        "deploy_publish": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 2,
+            "publish_mode": "readiness_only"
+          },
+          "name": "deploy_publish",
+          "passed": true,
+          "score": 100.0
+        },
+        "elite_proof": {
+          "detail": {
+            "failed_checks": [],
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 10
+          },
+          "name": "elite_proof",
+          "passed": true,
+          "score": 100.0
+        },
+        "generated_files": {
+          "detail": {
+            "generated_file_count": 24,
+            "missing": [],
+            "passed": true,
+            "required_count": 14
+          },
+          "name": "generated_files",
+          "passed": true,
+          "score": 100.0
+        },
+        "preview": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "mode": "static_plus_skipped_browser",
+            "proof_count": 8
+          },
+          "name": "preview",
+          "passed": true,
+          "score": 100.0
+        },
+        "prompt_coverage": {
+          "detail": {
+            "checked_file_count": 23,
+            "missing_terms": [],
+            "passed": true,
+            "required_terms": [
+              "internal",
+              "operations",
+              "auth",
+              "task",
+              "deployment"
+            ]
+          },
+          "name": "prompt_coverage",
+          "passed": true,
+          "score": 100.0
+        }
+      },
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\internal_tool"
+    },
+    {
+      "case": {
+        "build_target": "static_site",
+        "category": "marketing",
+        "goal": "Build a conversion landing page for a product launch with sections, routing-safe preview, saved feedback notes, and export-ready files.",
+        "id": "landing_page",
+        "required_terms": [
+          "landing",
+          "launch",
+          "preview",
+          "feedback",
+          "export"
+        ],
+        "title": "Conversion landing page"
+      },
+      "generated_files": [
+        "Dockerfile",
+        "README_BUILD.md",
+        "backend/main.py",
+        "deploy/PRODUCTION_SKETCH.md",
+        "deploy/PUBLISH.md",
+        "deploy/healthcheck.sh",
+        "docs/CRUCIB_BUILD_TARGET.md",
+        "index.html",
+        "package.json",
+        "proof/DELIVERY_CLASSIFICATION.md",
+        "proof/ELITE_EXECUTION_DIRECTIVE.md",
+        "src/App.jsx",
+        "src/components/ErrorBoundary.jsx",
+        "src/components/ShellLayout.jsx",
+        "src/context/AuthContext.jsx",
+        "src/index.js",
+        "src/main.jsx",
+        "src/pages/DashboardPage.jsx",
+        "src/pages/HomePage.jsx",
+        "src/pages/LoginPage.jsx",
+        "src/pages/TeamPage.jsx",
+        "src/store/useAppStore.js",
+        "src/styles/global.css",
+        "vite.config.js"
+      ],
+      "passed": true,
+      "score": 100.0,
+      "stages": {
+        "deploy_build": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 5
+          },
+          "name": "deploy_build",
+          "passed": true,
+          "score": 100.0
+        },
+        "deploy_publish": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 2,
+            "publish_mode": "readiness_only"
+          },
+          "name": "deploy_publish",
+          "passed": true,
+          "score": 100.0
+        },
+        "elite_proof": {
+          "detail": {
+            "failed_checks": [],
+            "failure_reason": null,
+            "issues": [],
+            "proof_count": 10
+          },
+          "name": "elite_proof",
+          "passed": true,
+          "score": 100.0
+        },
+        "generated_files": {
+          "detail": {
+            "generated_file_count": 24,
+            "missing": [],
+            "passed": true,
+            "required_count": 14
+          },
+          "name": "generated_files",
+          "passed": true,
+          "score": 100.0
+        },
+        "preview": {
+          "detail": {
+            "failure_reason": null,
+            "issues": [],
+            "mode": "static_plus_skipped_browser",
+            "proof_count": 8
+          },
+          "name": "preview",
+          "passed": true,
+          "score": 100.0
+        },
+        "prompt_coverage": {
+          "detail": {
+            "checked_file_count": 23,
+            "missing_terms": [],
+            "passed": true,
+            "required_terms": [
+              "landing",
+              "launch",
+              "preview",
+              "feedback",
+              "export"
+            ]
+          },
+          "name": "prompt_coverage",
+          "passed": true,
+          "score": 100.0
+        }
+      },
+      "workspace": "C:\\Users\\benxp\\OneDrive\\Documents\\New project\\proof\\benchmarks\\repeatability_v1\\workspaces\\landing_page"
+    }
+  ],
+  "suite_version": "2026-04-08.repeatability.v1",
+  "summary_sha256": "31907744eb5bef2e8ab597c5cca159cc413f6ab7c499deb1820e223f91f4db06",
+  "thresholds": {
+    "min_average_score": 90.0,
+    "min_pass_rate": 0.9
+  }
+}
