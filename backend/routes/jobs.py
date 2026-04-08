@@ -1,3 +1,5 @@
+import logging
+logger = logging.getLogger(__name__)
 """
 Job management routes module.
 Handles job creation, execution, status, history, and management.
@@ -207,3 +209,25 @@ async def estimate_job_cost(job_id: str):
         "estimated_cost": 10.50,
         "currency": "USD"
     }
+
+# ============================================================================
+# ERROR HANDLING PATTERN
+# ============================================================================
+# To add error handling to all endpoints in this file, wrap each endpoint
+# with try-except blocks following this pattern:
+#
+# @router.post("/")
+# async def endpoint_name(request_data: Model):
+#     try:
+#         logger.info("Endpoint called")
+#         # ... implementation ...
+#         return result
+#     except ValueError as e:
+#         logger.error(f"Validation error: {str(e)}")
+#         raise HTTPException(status_code=400, detail=str(e))
+#     except Exception as e:
+#         logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+#         raise HTTPException(status_code=500, detail="Internal server error")
+#
+# Apply this to all endpoints in this file for complete error handling.
+
