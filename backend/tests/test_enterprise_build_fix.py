@@ -42,6 +42,9 @@ def test_enterprise_frontend_template_builds_product_not_prompt_echo():
     assert "src/pages/PolicyPage.jsx" in files
     assert "src/pages/AnalyticsPage.jsx" in files
     assert "Helios Aegis Command" in files["src/pages/HomePage.jsx"]
+    assert "Display name" in files["src/pages/LoginPage.jsx"]
+    assert "Sign in (demo)" in files["src/pages/LoginPage.jsx"]
+    assert "Dashboard" in files["src/pages/DashboardPage.jsx"]
     assert "MASTER EXECUTION DIRECTIVE" not in files["src/pages/HomePage.jsx"]
     assert "You are an elite autonomous engineering" not in files["src/pages/HomePage.jsx"]
 

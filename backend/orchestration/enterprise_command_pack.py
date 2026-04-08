@@ -412,6 +412,7 @@ import { useAppStore } from '../store/useAppStore';
 
 const navItems = [
   ['/', 'Home'],
+  ['/login', 'Login'],
   ['/dashboard', 'Command'],
   ['/crm', 'CRM'],
   ['/quotes', 'Quotes'],
@@ -523,9 +524,9 @@ export default function LoginPage() {
       <div className="eyebrow">Demo auth</div>
       <h2>Operator access</h2>
       <p className="lead">Use the seeded org-admin session to inspect approvals, policy boundaries, and audit evidence.</p>
-      <input className="text-input" value={name} onChange={(event) => setName(event.target.value)} />
+      <input className="text-input" placeholder="Display name" value={name} onChange={(event) => setName(event.target.value)} />
       <div className="button-row">
-        <button className="primary-button" type="button" onClick={() => { login(name); navigate('/dashboard'); }}>Enter command center</button>
+        <button className="primary-button" type="button" onClick={() => { login(name); navigate('/dashboard'); }}>Sign in (demo)</button>
       </div>
     </section>
   );
@@ -547,6 +548,11 @@ export default function DashboardPage() {
 
   return (
     <div className="page-grid">
+      <section className="panel">
+        <div className="eyebrow">Operational overview</div>
+        <h2>Dashboard</h2>
+        <p className="subtle">Live command summary for approvals, integrations, and tenant-scoped delivery work.</p>
+      </section>
       <section className="metric-grid">{metrics.map((metric) => <MetricCard key={metric.label} {...metric} />)}</section>
       <section className="panel">
         <div className="eyebrow">Human approvals required</div>
