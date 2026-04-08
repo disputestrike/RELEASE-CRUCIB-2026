@@ -68,7 +68,7 @@ Tasks:
 - [x] Require project ownership before creating plans/jobs with a supplied `project_id`.
 - [x] Preserve 404/403 errors from plan/job creation instead of converting them to 500s.
 - [x] Add focused smoke coverage for owned and unowned plan/job creation.
-- [ ] Commit and push the plan/job project ownership slice.
+- [x] Commit and push the plan/job project ownership slice (`9d0b580`).
 
 ## Verification Log
 
