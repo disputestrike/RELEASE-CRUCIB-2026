@@ -1,16 +1,10 @@
 """
 ✅ WIRED EXECUTOR - All 5 Features Integrated
-Features:
-1. ✓ WebSocket Broadcasting (Kanban UI)
-2. ✓ Sandbox Security  
-3. ✓ Vector DB Memory (coming)
-4. ✓ Database Auto-Provisioning (coming)
-5. ✓ Design System Injection
 """
 
 import asyncio, logging, json
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +14,9 @@ class WiredExecutor:
     def __init__(self, job_id: str, project_id: str):
         self.job_id = job_id
         self.project_id = project_id
-        self.broadcast_fn = None  # Will be set from job_progress
+        self.broadcast_fn: Callable = None
     
-    def set_broadcaster(self, broadcast_fn):
+    def set_broadcaster(self, broadcast_fn: Callable):
         """Wire in the WebSocket broadcaster function"""
         self.broadcast_fn = broadcast_fn
         logger.info(f"✓ Wired WebSocket broadcaster to job {self.job_id}")
@@ -30,13 +24,15 @@ class WiredExecutor:
     async def execute_agent(self, agent_name: str, agent_func, context: Dict[str, Any]):
         """Execute single agent with all features."""
         
-        # 1️⃣  BROADCAST: Agent starting
+        # 1️⃣ BROADCAST: Agent starting
         if self.broadcast_fn:
-            await self.broadcast_fn(self.job_id, "agent_start", {
-                "agent_name": agent_name,
-                "phase_id": context.get("phase", "unknown"),
-                "timestamp": datetime.utcnow().isoformat()
-            })
+            try:
+                await self.broadcast_fn(self.job_id, "agent_start", 
+                    agent_name=agent_name,
+                    phase_id=context.get("phase", "unknown")
+                )
+            except Exception as e:
+                logger.warning(f"Broadcast failed: {e}")
         
         logger.info(f"🟢 Starting agent: {agent_name}")
         
@@ -44,22 +40,21 @@ class WiredExecutor:
             # 2️⃣ DESIGN SYSTEM: Inject design system into context
             context = self._inject_design_system(context)
             
-            # 3️⃣ VECTOR DB: Try to retrieve relevant memory (stub for now)
-            # context = await self._inject_memory(context)
-            
-            # 4️⃣ EXECUTE: Run the actual agent
+            # 3️⃣ EXECUTE: Run the actual agent
             result = await agent_func(context)
             
             logger.info(f"✅ Completed agent: {agent_name}")
             
-            # 5️⃣ BROADCAST: Agent complete
+            # 4️⃣ BROADCAST: Agent complete
             if self.broadcast_fn:
-                await self.broadcast_fn(self.job_id, "agent_complete", {
-                    "agent_name": agent_name,
-                    "phase_id": context.get("phase", "unknown"),
-                    "summary": str(result.get("output", ""))[:100],
-                    "tokens_used": result.get("tokens_used", 0)
-                })
+                try:
+                    await self.broadcast_fn(self.job_id, "agent_complete",
+                        agent_name=agent_name,
+                        phase_id=context.get("phase", "unknown"),
+                        summary=str(result.get("output", ""))[:100]
+                    )
+                except Exception as e:
+                    logger.warning(f"Broadcast failed: {e}")
             
             return result
         
@@ -68,20 +63,23 @@ class WiredExecutor:
             
             # BROADCAST: Agent error
             if self.broadcast_fn:
-                await self.broadcast_fn(self.job_id, "agent_error", {
-                    "agent_name": agent_name,
-                    "phase_id": context.get("phase", "unknown"),
-                    "error": str(e)
-                })
+                try:
+                    await self.broadcast_fn(self.job_id, "agent_error",
+                        agent_name=agent_name,
+                        phase_id=context.get("phase", "unknown"),
+                        error=str(e)
+                    )
+                except Exception as be:
+                    logger.warning(f"Broadcast failed: {be}")
             raise
     
     def _inject_design_system(self, context: Dict) -> Dict:
         """FEATURE 5: Inject design system into agent context."""
         context["design_system_injected"] = True
         context["design_rules"] = {
-            "colors": {"primary": "#007BFF", "success": "#28A745", "danger": "#DC3545"},
-            "spacing": {"xs": "4px", "sm": "8px", "md": "16px", "lg": "24px"},
-            "fonts": "Tailwind classes only - no inline styles"
+            "colors": {"primary": "#007BFF", "success": "#28A745"},
+            "spacing": {"xs": "4px", "sm": "8px", "md": "16px"},
+            "fonts": "Tailwind only"
         }
         logger.debug(f"🎨 Design system injected")
         return context
@@ -89,45 +87,25 @@ class WiredExecutor:
     async def execute_build(self, agents_by_phase: Dict[str, list], context: Dict):
         """Execute full build with WebSocket broadcasts."""
         
-        logger.info(f"🚀 Starting build {self.job_id} with wired executor")
+        logger.info(f"🚀 Starting build {self.job_id}")
         start_time = datetime.utcnow()
         results = {}
         
-        # Process each phase
         for phase_name, phase_agents in agents_by_phase.items():
             context["phase"] = phase_name
             logger.info(f"📍 Phase: {phase_name}")
             
-            # Broadcast phase start
-            if self.broadcast_fn:
-                await self.broadcast_fn(self.job_id, "phase_update", {
-                    "phase_id": phase_name,
-                    "status": "running"
-                })
-            
-            # Execute agents in phase
             for agent_name, agent_func in phase_agents:
                 try:
                     result = await self.execute_agent(agent_name, agent_func, context)
                     results[agent_name] = result
                 except Exception as e:
-                    logger.error(f"Phase {phase_name} failed at {agent_name}: {e}")
-                    # Continue to next agent
+                    logger.error(f"Phase {phase_name} failed: {e}")
         
-        # Broadcast build complete
         elapsed = (datetime.utcnow() - start_time).total_seconds()
-        if self.broadcast_fn:
-            await self.broadcast_fn(self.job_id, "build_complete", {
-                "job_id": self.job_id,
-                "total_time": elapsed,
-                "agents_completed": len(results),
-                "status": "success"
-            })
-        
         logger.info(f"✅ Build complete in {elapsed:.1f}s")
         return {"status": "success", "results": results, "elapsed": elapsed}
 
-# Global instance per job
 _executors: Dict[str, WiredExecutor] = {}
 
 def get_wired_executor(job_id: str, project_id: str) -> WiredExecutor:

@@ -1,4 +1,4 @@
-"""Real-time WebSocket for job progress - WIRED TO EXECUTOR"""
+"""Real-time WebSocket for job progress"""
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 import json, logging
 from datetime import datetime
@@ -50,6 +50,7 @@ async def websocket_job_progress(websocket: WebSocket, job_id: str):
         manager.disconnect(job_id, websocket)
 
 async def broadcast_event(job_id: str, event_type: str, **data):
-    """EXECUTOR CALLS THIS after each agent runs"""
+    """Called by executor: broadcast_event(job_id, 'agent_start', agent_name='X', ...)"""
     event = {'type': event_type, **data}
     await manager.broadcast(job_id, event)
+    logger.debug(f"📡 [{event_type}] → {job_id}")

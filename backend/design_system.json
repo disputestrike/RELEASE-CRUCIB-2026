@@ -1,4 +1,3 @@
-# backend/design_system.json
 {
   "name": "CrucibAI Design System",
   "version": "1.0.0",
@@ -7,50 +6,26 @@
     "primary": "#007BFF",
     "primary_dark": "#0056B3",
     "primary_light": "#E7F1FF",
-    "secondary": "#6C757D",
-    "secondary_dark": "#495057",
-    "secondary_light": "#E2E3E5",
     "success": "#28A745",
-    "success_dark": "#1E7E34",
-    "success_light": "#D4EDDA",
     "danger": "#DC3545",
-    "danger_dark": "#BD2130",
-    "danger_light": "#F8D7DA",
     "warning": "#FFC107",
-    "warning_dark": "#E0A800",
-    "warning_light": "#FFF3CD",
     "info": "#17A2B8",
-    "info_dark": "#0C5460",
-    "info_light": "#D1ECF1",
     "light": "#F8F9FA",
     "dark": "#343A40",
     "white": "#FFFFFF",
     "black": "#000000",
-    "gray_50": "#F9FAFB",
     "gray_100": "#F3F4F6",
     "gray_200": "#E5E7EB",
-    "gray_300": "#D1D5DB",
-    "gray_400": "#9CA3AF",
     "gray_500": "#6B7280",
-    "gray_600": "#4B5563",
-    "gray_700": "#374151",
-    "gray_800": "#1F2937",
-    "gray_900": "#111827",
-    "background": "#FFFFFF",
-    "surface": "#F8F9FA",
+    "text": "#212529",
     "border": "#E0E0E0",
-    "text": {
-      "primary": "#212529",
-      "secondary": "#6C757D",
-      "tertiary": "#9CA3AF",
-      "disabled": "#CED4DA",
-      "inverse": "#FFFFFF"
-    }
+    "background": "#FFFFFF",
+    "surface": "#F8F9FA"
   },
   "typography": {
     "fontFamily": {
-      "base": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
-      "mono": "'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace"
+      "base": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      "mono": "'Monaco', 'Menlo', monospace"
     },
     "fontSize": {
       "xs": "12px",
@@ -59,30 +34,14 @@
       "lg": "18px",
       "xl": "20px",
       "2xl": "24px",
-      "3xl": "32px",
-      "4xl": "40px"
+      "3xl": "32px"
     },
     "fontWeight": {
       "light": 300,
       "regular": 400,
       "medium": 500,
       "semibold": 600,
-      "bold": 700,
-      "extrabold": 800
-    },
-    "lineHeight": {
-      "tight": 1.25,
-      "snug": 1.375,
-      "normal": 1.5,
-      "relaxed": 1.625,
-      "loose": 2
-    },
-    "letterSpacing": {
-      "tighter": "-0.05em",
-      "tight": "-0.025em",
-      "normal": "0",
-      "wide": "0.025em",
-      "wider": "0.05em"
+      "bold": 700
     }
   },
   "spacing": {
@@ -93,15 +52,9 @@
     "4": "16px",
     "5": "20px",
     "6": "24px",
-    "7": "28px",
     "8": "32px",
-    "9": "36px",
     "10": "40px",
-    "12": "48px",
-    "14": "56px",
-    "16": "64px",
-    "20": "80px",
-    "24": "96px"
+    "12": "48px"
   },
   "borderRadius": {
     "none": "0",
@@ -111,19 +64,14 @@
     "lg": "8px",
     "xl": "12px",
     "2xl": "16px",
-    "3xl": "24px",
     "full": "9999px"
   },
   "shadows": {
-    "none": "none",
     "xs": "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
-    "sm": "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
-    "base": "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
-    "md": "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-    "lg": "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-    "xl": "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-    "2xl": "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-    "inner": "inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)"
+    "sm": "0 1px 3px 0 rgba(0, 0, 0, 0.1)",
+    "md": "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+    "lg": "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+    "xl": "0 20px 25px -5px rgba(0, 0, 0, 0.1)"
   },
   "components": {
     "button": {
@@ -133,81 +81,28 @@
         "padding": "12px 20px",
         "borderRadius": "6px",
         "fontSize": "16px",
-        "fontWeight": 600,
-        "border": "none",
-        "cursor": "pointer",
-        "transition": "all 0.2s",
-        "hover": {
-          "background": "#0056B3",
-          "boxShadow": "0 4px 6px -1px rgba(0, 123, 255, 0.3)"
-        },
-        "active": {
-          "background": "#003A7A"
-        },
-        "disabled": {
-          "background": "#CED4DA",
-          "cursor": "not-allowed",
-          "opacity": 0.6
-        }
+        "fontWeight": 600
       },
       "secondary": {
         "background": "#F8F9FA",
         "color": "#212529",
         "border": "1px solid #DEE2E6",
         "padding": "12px 20px",
-        "borderRadius": "6px",
-        "fontSize": "16px",
-        "fontWeight": 600,
-        "hover": {
-          "background": "#E9ECEF",
-          "borderColor": "#ADB5BD"
-        }
-      },
-      "danger": {
-        "background": "#DC3545",
-        "color": "#FFFFFF",
-        "padding": "12px 20px",
-        "borderRadius": "6px",
-        "hover": {
-          "background": "#BD2130"
-        }
+        "borderRadius": "6px"
       }
     },
     "input": {
       "padding": "12px 16px",
       "borderRadius": "6px",
       "border": "1px solid #DEE2E6",
-      "fontSize": "16px",
-      "fontFamily": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-      "transition": "all 0.2s",
-      "focus": {
-        "borderColor": "#007BFF",
-        "boxShadow": "0 0 0 3px rgba(0, 123, 255, 0.25)"
-      },
-      "disabled": {
-        "background": "#E9ECEF",
-        "cursor": "not-allowed"
-      }
+      "fontSize": "16px"
     },
     "card": {
       "background": "#FFFFFF",
       "border": "1px solid #DEE2E6",
       "borderRadius": "8px",
       "padding": "20px",
-      "boxShadow": "0 1px 3px 0 rgba(0, 0, 0, 0.1)"
-    },
-    "badge": {
-      "padding": "4px 12px",
-      "borderRadius": "999px",
-      "fontSize": "12px",
-      "fontWeight": 600,
-      "display": "inline-block"
-    },
-    "alert": {
-      "padding": "16px",
-      "borderRadius": "6px",
-      "border": "1px solid",
-      "marginBottom": "16px"
+      "boxShadow": "0 1px 3px rgba(0, 0, 0, 0.1)"
     }
   },
   "breakpoints": {
@@ -215,287 +110,6 @@
     "sm": "640px",
     "md": "768px",
     "lg": "1024px",
-    "xl": "1280px",
-    "2xl": "1536px"
-  },
-  "transitions": {
-    "fast": "150ms",
-    "base": "200ms",
-    "slow": "300ms"
-  },
-  "zIndex": {
-    "hide": -1,
-    "auto": "auto",
-    "base": 0,
-    "dropdown": 1000,
-    "sticky": 1020,
-    "fixed": 1030,
-    "modal": 1040,
-    "popover": 1050,
-    "tooltip": 1060
+    "xl": "1280px"
   }
 }
-
-# backend/prompts/design_system_injection.txt
-SYSTEM_DESIGN_INJECTION = """
-## UI Design System - MANDATORY COMPLIANCE
-
-You are generating user interface components for a professional web application.
-You MUST follow this design system exactly. No deviations allowed.
-
-### Color Palette (Use ONLY these colors)
-
-PRIMARY COLORS:
-- Primary Button: #007BFF (Tailwind: bg-blue-600)
-- Primary Hover: #0056B3 (Tailwind: hover:bg-blue-700)
-- Primary Light: #E7F1FF (Tailwind: bg-blue-50)
-
-TEXT COLORS:
-- Primary Text: #212529 (Tailwind: text-gray-900)
-- Secondary Text: #6C757D (Tailwind: text-gray-500)
-- Disabled Text: #CED4DA (Tailwind: text-gray-400)
-
-SEMANTIC COLORS:
-- Success: #28A745 (Tailwind: bg-green-600)
-- Danger: #DC3545 (Tailwind: bg-red-600)
-- Warning: #FFC107 (Tailwind: bg-yellow-400)
-- Info: #17A2B8 (Tailwind: bg-cyan-600)
-
-NEUTRAL:
-- Light Background: #F8F9FA (Tailwind: bg-gray-50)
-- White: #FFFFFF
-- Border: #DEE2E6 (Tailwind: border-gray-200)
-
-### Typography
-
-FONT FAMILY (Base):
--apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif
-
-FONT FAMILY (Monospace):
-'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace
-
-FONT SIZES:
-- xs: 12px (Tailwind: text-xs)
-- sm: 14px (Tailwind: text-sm)
-- base: 16px (Tailwind: text-base)
-- lg: 18px (Tailwind: text-lg)
-- xl: 20px (Tailwind: text-xl)
-- 2xl: 24px (Tailwind: text-2xl)
-- 3xl: 32px (Tailwind: text-3xl)
-
-FONT WEIGHTS:
-- Light: 300 (Tailwind: font-light)
-- Regular: 400 (Tailwind: font-normal)
-- Medium: 500 (Tailwind: font-medium)
-- Semibold: 600 (Tailwind: font-semibold)
-- Bold: 700 (Tailwind: font-bold)
-
-LINE HEIGHT:
-- Tight: 1.25 (Tailwind: leading-tight)
-- Normal: 1.5 (Tailwind: leading-normal)
-- Relaxed: 1.625 (Tailwind: leading-relaxed)
-
-### Spacing Scale (Use multiples of 4px)
-
-- xs: 4px (Tailwind: p-1, m-1)
-- sm: 8px (Tailwind: p-2, m-2)
-- base: 12px (Tailwind: p-3, m-3)
-- md: 16px (Tailwind: p-4, m-4)
-- lg: 24px (Tailwind: p-6, m-6)
-- xl: 32px (Tailwind: p-8, m-8)
-- 2xl: 48px (Tailwind: p-12, m-12)
-
-### Component Specifications
-
-#### PRIMARY BUTTON
-```jsx
-<button className="
-  bg-blue-600
-  text-white
-  px-5 py-3
-  rounded-lg
-  font-semibold
-  text-base
-  hover:bg-blue-700
-  active:bg-blue-800
-  disabled:bg-gray-300
-  disabled:cursor-not-allowed
-  transition-all duration-200
-">
-  Button Text
-</button>
-```
-
-#### SECONDARY BUTTON
-```jsx
-<button className="
-  bg-gray-50
-  text-gray-900
-  border border-gray-200
-  px-5 py-3
-  rounded-lg
-  font-semibold
-  hover:bg-gray-100
-  transition-all duration-200
-">
-  Secondary Button
-</button>
-```
-
-#### CARD
-```jsx
-<div className="
-  bg-white
-  border border-gray-200
-  rounded-lg
-  p-6
-  shadow-sm
-">
-  Card content
-</div>
-```
-
-#### INPUT FIELD
-```jsx
-<input
-  type="text"
-  className="
-    w-full
-    px-4 py-3
-    border border-gray-300
-    rounded-lg
-    font-base
-    focus:outline-none
-    focus:border-blue-600
-    focus:ring-2
-    focus:ring-blue-200
-    placeholder-gray-400
-    disabled:bg-gray-50
-    disabled:cursor-not-allowed
-  "
-  placeholder="Enter text..."
-/>
-```
-
-#### ALERT / NOTIFICATION
-```jsx
-<div className="
-  p-4
-  rounded-lg
-  border
-  border-blue-200
-  bg-blue-50
-  text-blue-900
-">
-  Alert message
-</div>
-```
-
-#### BADGE
-```jsx
-<span className="
-  inline-block
-  px-3 py-1
-  rounded-full
-  bg-blue-100
-  text-blue-900
-  text-xs
-  font-semibold
-">
-  Badge
-</span>
-```
-
-### Mandatory Rules
-
-1. ✅ ALWAYS use Tailwind utility classes - NEVER use inline styles
-2. ✅ ALWAYS use colors from the palette - NEVER use arbitrary colors
-3. ✅ ALWAYS use spacing from the scale - NEVER use magic numbers
-4. ✅ ALWAYS add hover states to interactive elements
-5. ✅ ALWAYS include focus states for accessibility
-6. ✅ ALWAYS test color contrast (WCAG AA minimum)
-7. ✅ ALWAYS use semantic HTML (button, input, nav, form, etc.)
-8. ✅ ALWAYS implement mobile-responsive design (Tailwind breakpoints)
-9. ✅ ALWAYS remove inline styles before commit
-10. ✅ NEVER use custom CSS files - only Tailwind
-
-### Accessibility Requirements
-
-- Minimum color contrast ratio: 4.5:1 for text on background
-- Button size: minimum 44x44px for touch targets
-- Focus indicators: Always visible (outline or ring)
-- Alt text: All images must have descriptive alt text
-- Semantic HTML: Use proper heading hierarchy, nav, main, etc.
-- ARIA labels: Add for icon-only buttons
-
-### Consistency Checklist
-
-Before submitting generated UI:
-- [ ] All text colors from palette
-- [ ] All button colors from palette
-- [ ] All spacing multiples of 4px
-- [ ] No inline styles (style={{...}})
-- [ ] No custom CSS files
-- [ ] All interactive elements have hover states
-- [ ] All inputs have focus states
-- [ ] Mobile responsive (tested at 320px, 768px, 1024px)
-- [ ] WCAG AA contrast ratio verified
-- [ ] Semantic HTML used throughout
-
-### Example: Complete Form Component
-
-```jsx
-export default function LoginForm() {
-  return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-md p-8 w-full max-w-md">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Sign In</h1>
-        
-        <form className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">
-              Email
-            </label>
-            <input
-              type="email"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg
-                focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
-              placeholder="you@example.com"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">
-              Password
-            </label>
-            <input
-              type="password"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg
-                focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-200"
-              placeholder="••••••••"
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold
-              hover:bg-blue-700 active:bg-blue-800 transition-all duration-200"
-          >
-            Sign In
-          </button>
-
-          <p className="text-center text-sm text-gray-600">
-            No account?{' '}
-            <a href="/signup" className="text-blue-600 hover:text-blue-700 font-medium">
-              Sign up
-            </a>
-          </p>
-        </form>
-      </div>
-    </div>
-  );
-}
-```
-
-This is your design mandate. All generated UIs MUST comply perfectly.
-"""
