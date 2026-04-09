@@ -306,28 +306,80 @@ def select_agents_for_goal(goal: str, stack_contract: Dict | None = None) -> Lis
     if contract.get("caches"):
         selected.update(a for a in ("Caching Agent", "Database Optimization Agent") if a in AGENT_DAG)
     if contract.get("payments"):
-        selected.update(a for a in ("Payment Setup Agent", "Stripe Subscription Agent") if a in AGENT_DAG)
+        selected.update(a for a in ("Payment Setup Agent", "Stripe Subscription Agent", "Stripe Integration Agent", "Subscription Management Agent") if a in AGENT_DAG)
     if contract.get("realtime"):
-        selected.update(a for a in ("WebSocket Agent",) if a in AGENT_DAG)
+        selected.update(a for a in ("WebSocket Agent", "Real-Time Collaboration Agent") if a in AGENT_DAG)
     if contract.get("vector_databases"):
-        selected.update(a for a in ("Embeddings/Vectorization Agent", "Recommendation Engine Agent") if a in AGENT_DAG)
+        selected.update(a for a in ("Embeddings/Vectorization Agent", "Recommendation Engine Agent", "RAG Agent") if a in AGENT_DAG)
 
     if any(word in goal_lower for word in ("design", "landing", "website", "ui", "ux")):
-        selected.update(a for a in ("Design Agent", "Layout Agent", "Brand Agent", "UX Auditor", "Dark Mode Agent", "Animation Agent") if a in AGENT_DAG)
+        selected.update(a for a in ("Design Agent", "Layout Agent", "Brand Agent", "UX Auditor", "Dark Mode Agent", "Animation Agent", "CSS Modern Standards Agent", "Typography System Agent", "Color Palette System Agent", "Responsive Breakpoints Agent") if a in AGENT_DAG)
 
     if any(word in goal_lower for word in ("content", "seo", "marketing", "landing", "blog")):
-        selected.update(a for a in ("Content Agent", "SEO Agent", "Image Generation") if a in AGENT_DAG)
+        selected.update(a for a in ("Content Agent", "SEO Agent", "Image Generation", "Image Optimization Agent", "Icon System Agent") if a in AGENT_DAG)
 
     if any(word in goal_lower for word in ("enterprise", "compliance", "hipaa", "soc2", "gdpr")):
-        selected.update(a for a in ("Legal Compliance Agent", "Audit Trail Agent", "Audit & Compliance Engine Agent", "Multi-tenant Agent", "RBAC Agent") if a in AGENT_DAG)
+        selected.update(a for a in ("Legal Compliance Agent", "Audit Trail Agent", "Audit & Compliance Engine Agent", "Multi-tenant Agent", "RBAC Agent", "Secret Management Agent", "CORS & Security Headers Agent", "Input Validation Agent", "Rate Limiting Agent") if a in AGENT_DAG)
 
     if any(word in goal_lower for word in ("scale", "kubernetes", "microservice", "distributed", "high-availability")):
-        selected.update(a for a in ("Kubernetes Advanced Agent", "Load Balancer Agent", "Message Queue Advanced Agent", "Database Optimization Agent", "Disaster Recovery Agent", "Monitoring Agent") if a in AGENT_DAG)
+        selected.update(a for a in ("Kubernetes Advanced Agent", "Load Balancer Agent", "Message Queue Advanced Agent", "Database Optimization Agent", "Disaster Recovery Agent", "Monitoring Agent", "Docker Setup Agent", "GitHub Actions CI Agent") if a in AGENT_DAG)
 
     if any(word in goal_lower for word in ("data", "analytics", "bigdata", "warehouse")):
-        selected.update(a for a in ("Data Quality Agent", "Data Visualization Agent", "Report Generation Agent", "Statistical Analysis Agent") if a in AGENT_DAG)
+        selected.update(a for a in ("Data Quality Agent", "Data Visualization Agent", "Report Generation Agent", "Statistical Analysis Agent", "Analytics Events Schema Agent", "Data Pipeline Agent", "Data Warehouse Agent") if a in AGENT_DAG)
 
-    selected.update(a for a in ("Code Review Agent", "Security Checker", "UX Auditor", "Performance Analyzer", "Deployment Agent", "Memory Agent") if a in AGENT_DAG)
+    # EXPANSION AGENTS - Add based on keywords
+    if any(word in goal_lower for word in ("build", "compile", "vite", "npm")):
+        selected.update(a for a in ("Build Validator Agent", "Dependency Conflict Resolver Agent", "Import Path Validator Agent", "Compilation Dry-Run Agent") if a in AGENT_DAG)
+    
+    if any(word in goal_lower for word in ("dark mode", "theme", "dark", "night")):
+        selected.update(a for a in ("Dark Mode Theme Agent", "Color Palette System Agent") if a in AGENT_DAG)
+    
+    if any(word in goal_lower for word in ("docker", "container", "kubernetes")):
+        selected.update(a for a in ("Docker Setup Agent",) if a in AGENT_DAG)
+    
+    if any(word in goal_lower for word in ("ci", "cd", "github", "actions", "workflow")):
+        selected.update(a for a in ("GitHub Actions CI Agent",) if a in AGENT_DAG)
+    
+    if any(word in goal_lower for word in ("test", "unit", "integration", "e2e", "end-to-end")):
+        selected.update(a for a in ("Unit Test Agent", "Integration Test Agent", "E2E Test Agent", "Performance Test Agent") if a in AGENT_DAG)
+    
+    if any(word in goal_lower for word in ("security", "scan", "vulnerability", "audit")):
+        selected.update(a for a in ("Security Scanning Agent", "Code Quality Gate Agent") if a in AGENT_DAG)
+    
+    if any(word in goal_lower for word in ("email", "template", "mjml")):
+        selected.update(a for a in ("Email Template Agent",) if a in AGENT_DAG)
+    
+    if any(word in goal_lower for word in ("sms", "push", "notification", "twilio")):
+        selected.update(a for a in ("SMS & Push Agent",) if a in AGENT_DAG)
+    
+    if any(word in goal_lower for word in ("api", "contract", "schema", "openapi")):
+        selected.update(a for a in ("API Contract Validator Agent", "API Documentation Generation Agent") if a in AGENT_DAG)
+    
+    if any(word in goal_lower for word in ("database", "schema", "migration", "sql")):
+        selected.update(a for a in ("Database Schema Validator Agent", "ORM Setup Agent") if a in AGENT_DAG)
+    
+    if any(word in goal_lower for word in ("search", "elasticsearch", "algolia")):
+        selected.update(a for a in ("Search Engine Agent",) if a in AGENT_DAG)
+    
+    if any(word in goal_lower for word in ("recommendation", "ml", "personalization")):
+        selected.update(a for a in ("Recommendation Engine Agent",) if a in AGENT_DAG)
+    
+    if any(word in goal_lower for word in ("file", "upload", "s3", "storage")):
+        selected.update(a for a in ("File Storage Agent",) if a in AGENT_DAG)
+    
+    if any(word in goal_lower for word in ("webhook", "event", "callback")):
+        selected.update(a for a in ("Webhook Management Agent",) if a in AGENT_DAG)
+    
+    if any(word in goal_lower for word in ("monitoring", "logging", "observability", "datadog", "sentry")):
+        selected.update(a for a in ("Monitoring & Logging Agent", "Lighthouse Performance Agent") if a in AGENT_DAG)
+    
+    if any(word in goal_lower for word in ("accessibility", "a11y", "wcag", "aria")):
+        selected.update(a for a in ("Accessibility Audit Agent",) if a in AGENT_DAG)
+    
+    if any(word in goal_lower for word in ("stripe", "payment", "billing", "checkout")):
+        selected.update(a for a in ("Stripe Integration Agent", "Subscription Management Agent") if a in AGENT_DAG)
+
+    selected.update(a for a in ("Code Review Agent", "Security Checker", "UX Auditor", "Performance Analyzer", "Deployment Agent", "Memory Agent", "Build Orchestrator Agent", "Deployment Safety Agent", "Quality Metrics Aggregator Agent") if a in AGENT_DAG)
     selected = _dependency_closure(selected)
     return sorted(selected)
 
