@@ -53,7 +53,7 @@ ARTIFACT_PATHS: Dict[str, str] = {
     "PDF Export": "docs/summary.pdf",
     "Excel Export": "docs/tracking.csv",
     "Markdown Export": "docs/summary.md",
-    "Layout Agent": "src/App.jsx",
+    "Layout Agent": "src/Layout.jsx",
     "SEO Agent": "public/robots.txt",
     "Content Agent": "content/copy.json",
     "Validation Agent": "validation/schema.json",

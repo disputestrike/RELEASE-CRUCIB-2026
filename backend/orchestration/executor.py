@@ -326,6 +326,34 @@ def _norm_rel(p: str) -> str:
     return p.replace("\\", "/").lstrip("/")
 
 
+_PROSE_STRIP_PREFIXES = (
+    "i ", "i'", "here ", "here'", "this ", "the following",
+    "appreciate", "certainly", "sure,", "below", "based on",
+    "as requested", "i have", "i'll", "let me", "of course",
+    "happy to", "glad to", "please find", "above is", "this is",
+    "the above", "note:", "note that", "in this", "we have",
+)
+_CODE_FILE_EXTS = {".jsx", ".tsx", ".js", ".ts", ".py", ".css", ".scss",
+                   ".json", ".yaml", ".yml", ".html", ".sh", ".sql"}
+
+
+def _strip_prose_preamble(content: str, rel: str) -> str:
+    """Remove LLM prose preamble lines from the top of code files before writing."""
+    ext = os.path.splitext(rel)[1].lower()
+    if ext not in _CODE_FILE_EXTS:
+        return content
+    lines = content.split("\n")
+    for i, line in enumerate(lines):
+        stripped = line.strip().lower()
+        if not stripped:
+            continue
+        if any(stripped.startswith(p) for p in _PROSE_STRIP_PREFIXES):
+            logger.warning("executor: stripped prose preamble line from %s: %r", rel, line[:80])
+            continue
+        return "\n".join(lines[i:])
+    return content
+
+
 def _safe_write(base: str, rel: str, content: str) -> Optional[str]:
     """Write UTF-8 text under workspace; returns normalized relative path or None."""
     if not base or not isinstance(base, str):
@@ -336,6 +364,7 @@ def _safe_write(base: str, rel: str, content: str) -> Optional[str]:
     if not full.startswith(root):
         logger.warning("executor: rejected path escape %s", rel)
         return None
+    content = _strip_prose_preamble(content, rel)
     parent = os.path.dirname(full)
     if parent:
         os.makedirs(parent, exist_ok=True)
