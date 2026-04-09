@@ -19,9 +19,10 @@ from .trust.node_manifest import enrich_plan_with_node_manifests
 from .multiregion_terraform_sketch import multiregion_terraform_intent
 from .observability_workspace_pack import observability_intent as observability_goal_intent
 from .generation_contract import parse_generation_contract
-from .agent_selection_logic import _keyword_match, select_agents_for_goal
+from .agent_selection_logic import explain_agent_selection, should_route_to_agent_selection
 from .spec_guardian import evaluate_goal_against_runner, merge_plan_risk_flags_into_report
 from .swarm_agent_runner import build_agent_swarm_phases, uses_agent_swarm
+from .controller_brain import build_plan_controller_summary
 
 logger = logging.getLogger(__name__)
 
@@ -142,73 +143,20 @@ def _detect_spec_vs_runner_template_mismatch(goal: str, use_agent_swarm: bool = 
     return flags
 
 
-def _should_use_agent_selection(goal: str) -> bool:
-    """Route specialized prompts into the selected-agent swarm path."""
-    selection_triggers = [
-        # Original triggers (keep for backwards compatibility)
-        "3d", "webgl", "three.js", "babylon", "cesium", "augmented reality", "virtual reality", "ar", "vr",
-        "ml", "machine learning", "tensorflow", "pytorch", "sklearn", "scikit-learn", "xgboost",
-        "recommendation", "neural network", "deep learning", "prediction",
-        "blockchain", "smart contract", "ethereum", "solidity", "web3", "crypto", "defi", "nft",
-        "token", "dapp", "polygon", "solana",
-        "iot", "arduino", "raspberry", "sensor", "mqtt", "ble", "bluetooth", "lora", "firmware", "embedded",
-        "jupyter", "notebook", "forecast", "time series", "statistical analysis", "data visualization",
-        "kubernetes", "k8s", "serverless", "lambda", "cloudflare", "istio", "docker", "container", "kafka", "rabbitmq", "redis",
-        "chaos", "mutation", "property-based", "e2e", "load test", "synthetic",
-        "workflow", "approval", "business rules", "scheduling",
-        
-        # EXPANSION AGENTS - Build Validation Layer
-        "build", "compile", "vite", "npm", "validation", "dependencies", "import", "dry-run",
-        
-        # EXPANSION AGENTS - Frontend Quality
-        "css", "styling", "typography", "font", "color", "palette", "theme", "responsive", "breakpoint",
-        "dark mode", "animation", "transition", "micro-interaction", "accessibility", "a11y", "wcag", "aria",
-        "image", "optimization", "webp", "compress", "icon", "svg",
-        
-        # EXPANSION AGENTS - API & Backend
-        "api", "contract", "schema", "openapi", "database", "migration", "sql", "orm", "sqlalchemy",
-        
-        # EXPANSION AGENTS - Infrastructure
-        "docker", "container", "ci", "cd", "github", "actions", "workflow", "environment", "config", "secrets",
-        "monitoring", "logging", "observability", "datadog", "sentry", "observ",
-        
-        # EXPANSION AGENTS - Testing
-        "unit", "test", "jest", "vitest", "integration", "e2e", "end-to-end", "playwright", "cypress", "performance",
-        "load", "stress", "benchmark",
-        
-        # EXPANSION AGENTS - Data & Analytics
-        "analytics", "events", "tracking", "pipeline", "etl", "warehouse", "snowflake", "bigquery", "redshift",
-        
-        # EXPANSION AGENTS - Security
-        "secret", "vault", "sensitive", "encryption", "cors", "security", "headers", "csp",
-        "validation", "sanitization", "input", "ratelimit", "throttle", "ddos",
-        
-        # EXPANSION AGENTS - Payment & Billing
-        "stripe", "payment", "billing", "checkout", "subscription", "pricing", "tiers",
-        
-        # EXPANSION AGENTS - Communication
-        "email", "template", "mjml", "sms", "push", "notification", "twilio",
-        
-        # EXPANSION AGENTS - Advanced Features
-        "realtime", "collaboration", "socket", "socket.io", "search", "elasticsearch", "algolia",
-        "file", "upload", "s3", "storage", "webhook", "event", "callback",
-        
-        # EXPANSION AGENTS - Content & Docs
-        "docs", "apidoc", "swagger", "adr", "architecture", "decision",
-        
-        # EXPANSION AGENTS - Quality Gates
-        "quality", "gate", "lint", "scan", "vulnerability", "lighthouse", "psi",
-    ]
-    for trigger in selection_triggers:
-        if _keyword_match(trigger, goal):
-            logger.info("Agent selection triggered by keyword: %s", trigger)
-            return True
+def _should_use_agent_selection(goal: str, stack_contract: Optional[Dict[str, Any]] = None) -> bool:
+    """Route to selected-agent swarm when the selector sees any specialized need."""
+    routed = should_route_to_agent_selection(goal, stack_contract)
+    if routed:
+        explanation = explain_agent_selection(goal, stack_contract)
+        matched = (explanation.get("matched_keywords") or [])[:5]
+        logger.info("Agent selection triggered by selector registry: %s", ", ".join(matched) or "specialized_rules")
+        return True
     logger.info("Agent selection not triggered; using fixed_autorunner unless swarm markers apply")
     return False
 
 
 def _uses_intelligent_orchestration(goal: str, stack_contract: Optional[Dict[str, Any]] = None) -> bool:
-    return _should_use_agent_selection(goal) or uses_agent_swarm(goal, stack_contract)
+    return _should_use_agent_selection(goal, stack_contract) or uses_agent_swarm(goal, stack_contract)
 
 
 def _detect_risk_flags(goal: str, project_state: Optional[Dict] = None,
@@ -281,6 +229,17 @@ def _architecture_outline(build_kind: str, integrations: list,
         "integrations_detected": list(integrations or []),
         "orchestration_mode": "agent_swarm" if swarm_mode else "fixed_autorunner",
     }
+
+
+def _controller_summary(goal: str, selected_agents: list, phases: list) -> Dict[str, Any]:
+    """Central controller metadata for the live planner output."""
+    selection_explanation = explain_agent_selection(goal, {})
+    return build_plan_controller_summary(
+        goal=goal,
+        phases=phases,
+        selected_agents=selected_agents,
+        selection_explanation=selection_explanation,
+    )
 
 
 # ── Phase builders ────────────────────────────────────────────────────────────
@@ -503,11 +462,8 @@ async def generate_plan(goal: str,
     build_kind = _detect_build_kind(goal)
     integrations = _detect_integrations(goal)
     risk_flags = _detect_risk_flags(goal, project_state, stack_contract)
-    selected_agents = (
-        select_agents_for_goal(goal, stack_contract)
-        if _uses_intelligent_orchestration(goal, stack_contract)
-        else []
-    )
+    selection_explanation = explain_agent_selection(goal, stack_contract) if _uses_intelligent_orchestration(goal, stack_contract) else {}
+    selected_agents = list(selection_explanation.get("selected_agents") or [])
     phases = _build_phases(goal, build_kind, integrations, stack_contract, selected_agents)
 
     # Count total steps
@@ -614,6 +570,8 @@ async def generate_plan(goal: str,
         "quality_tier": tier,
         "spec_guard": spec_guard,
         "architecture_outline": _architecture_outline(build_kind, integrations, stack_contract),
+        "controller_summary": _controller_summary(goal, selected_agents, phases),
+        "selection_explanation": selection_explanation,
         "stack_contract": stack_contract,
         "generation_mode": "full_system_builder" if stack_contract.get("requires_full_system_builder") else "targeted_pack",
         "recommended_build_target": recommended_target,

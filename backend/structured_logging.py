@@ -6,6 +6,7 @@ Provides JSON logging, request/response logging, and performance tracking
 import logging
 import json
 import time
+import os
 from typing import Optional, Dict, Any
 from datetime import datetime
 from functools import wraps
@@ -15,8 +16,17 @@ from pathlib import Path
 
 # ==================== SETUP ====================
 
-LOG_DIR = Path(__file__).parent / "logs"
-LOG_DIR.mkdir(exist_ok=True)
+_DEFAULT_LOG_DIR = Path(__file__).parent / "logs"
+LOG_DIR = Path(
+    (Path.cwd() / os.environ["CRUCIBAI_LOG_DIR"]).resolve()
+    if os.environ.get("CRUCIBAI_LOG_DIR")
+    else _DEFAULT_LOG_DIR
+)
+try:
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+except OSError:
+    LOG_DIR = _DEFAULT_LOG_DIR
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 # ==================== JSON LOGGER ====================
 
@@ -42,6 +52,10 @@ def setup_logger(name: str, level: int = logging.INFO) -> logging.Logger:
     """Setup a structured logger"""
     logger = logging.getLogger(name)
     logger.setLevel(level)
+    logger.propagate = False
+
+    if logger.handlers:
+        return logger
     
     # Console handler with JSON formatting
     console_handler = logging.StreamHandler()
@@ -50,13 +64,18 @@ def setup_logger(name: str, level: int = logging.INFO) -> logging.Logger:
     console_handler.setFormatter(console_formatter)
     
     # File handler with JSON formatting
-    file_handler = logging.FileHandler(LOG_DIR / f"{name}.log")
-    file_handler.setLevel(level)
-    file_formatter = JSONFormatter('%(timestamp)s %(level)s %(name)s %(message)s')
-    file_handler.setFormatter(console_formatter)
-    
     logger.addHandler(console_handler)
-    logger.addHandler(file_handler)
+
+    try:
+        file_handler = logging.FileHandler(LOG_DIR / f"{name}.log")
+        file_handler.setLevel(level)
+        file_handler.setFormatter(console_formatter)
+        logger.addHandler(file_handler)
+    except OSError:
+        logger.warning(
+            "structured_logging_file_handler_disabled",
+            extra={"logger_name": name, "log_dir": str(LOG_DIR)},
+        )
     
     return logger
 

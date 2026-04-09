@@ -117,6 +117,7 @@ export default function WorkspaceManus() {
   const [projectSandboxLogs, setProjectSandboxLogs] = useState([]);
   const [projectSandboxLoading, setProjectSandboxLoading] = useState(false);
   const [projectSandboxErr, setProjectSandboxErr] = useState(null);
+  const [currentJobId, setCurrentJobId] = useState(() => searchParams.get("jobId") || null);
   const [projectBuildProgress, setProjectBuildProgress] = useState({
     phase: 0,
     agent: "",
@@ -244,6 +245,43 @@ export default function WorkspaceManus() {
       .catch(() => setBuildHistoryList([]))
       .finally(() => setBuildHistoryLoading(false));
   }, [projectIdFromUrl, token, API]);
+
+  useEffect(() => {
+    const jobIdFromUrl = searchParams.get("jobId");
+    if (jobIdFromUrl) {
+      setCurrentJobId(jobIdFromUrl);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!token || !API) return;
+    const headers = { Authorization: `Bearer ${token}` };
+    axios
+      .get(`${API}/orchestrator/build-jobs?limit=25`, { headers })
+      .then((res) => {
+        const jobs = Array.isArray(res.data?.jobs) ? res.data.jobs : [];
+        if (jobs.length === 0) return;
+        const jobIdFromUrl = searchParams.get("jobId");
+        const normalizeStatus = (job) => String(job?.status || "").toLowerCase();
+        const timestamp = (job) => Date.parse(job?.updated_at || job?.created_at || 0) || 0;
+        const projectJobs = projectIdFromUrl
+          ? jobs.filter((job) => String(job?.project_id || job?.projectId || "") === String(projectIdFromUrl))
+          : jobs;
+        const sortNewest = (list) => [...list].sort((a, b) => timestamp(b) - timestamp(a));
+        const newestProjectJobs = sortNewest(projectJobs);
+        const newestJobs = sortNewest(jobs);
+        const preferred =
+          (jobIdFromUrl && jobs.find((job) => job.id === jobIdFromUrl)) ||
+          newestProjectJobs.find((job) => ["queued", "running", "verifying"].includes(normalizeStatus(job))) ||
+          newestProjectJobs[0] ||
+          newestJobs.find((job) => ["queued", "running", "verifying"].includes(normalizeStatus(job))) ||
+          newestJobs[0];
+        if (preferred?.id) {
+          setCurrentJobId(preferred.id);
+        }
+      })
+      .catch(() => {});
+  }, [token, API, projectIdFromUrl, buildHistoryList.length, isBuilding, searchParams]);
 
   useEffect(() => {
     if (!projectIdFromUrl || !token || !API) {
@@ -981,6 +1019,7 @@ export default function WorkspaceManus() {
     <WorkspaceProPanels
       activePanel={tab}
       projectIdFromUrl={projectIdFromUrl}
+      currentJobId={currentJobId}
       token={token}
       serverDbErr={serverDbErr}
       serverDbLoading={serverDbLoading}

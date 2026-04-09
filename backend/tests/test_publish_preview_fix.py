@@ -1,14 +1,19 @@
 from __future__ import annotations
 
+import shutil
+import uuid
+from pathlib import Path
+
+import pytest
 from fastapi.testclient import TestClient
 
 
-def _install_published_job(monkeypatch, tmp_path, *, job_id: str = "job-preview-123"):
+def _install_published_job(monkeypatch, workspace_root, *, job_id: str = "job-preview-123"):
     import server
     from orchestration import runtime_state
 
     project_id = "project-preview-123"
-    monkeypatch.setattr(server, "WORKSPACE_ROOT", tmp_path)
+    monkeypatch.setattr(server, "WORKSPACE_ROOT", workspace_root)
 
     root = server._project_workspace_path(project_id)
     (root / "dist" / "assets").mkdir(parents=True, exist_ok=True)
@@ -26,10 +31,20 @@ def _install_published_job(monkeypatch, tmp_path, *, job_id: str = "job-preview-
     return root, job_id
 
 
-def test_published_route_rewrites_assets_and_serves_job_bundle(monkeypatch, tmp_path):
+@pytest.fixture
+def workspace_root():
+    root = Path(__file__).resolve().parents[2] / ".tmp_pytest_manual" / f"published-{uuid.uuid4().hex}"
+    root.mkdir(parents=True, exist_ok=True)
+    try:
+        yield root
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def test_published_route_rewrites_assets_and_serves_job_bundle(monkeypatch, workspace_root):
     import server
 
-    root, job_id = _install_published_job(monkeypatch, tmp_path)
+    root, job_id = _install_published_job(monkeypatch, workspace_root)
     (root / "dist" / "index.html").write_text(
         """<!doctype html><html><head><script type="module" src="/assets/app.js"></script></head><body><div id="root"></div></body></html>""",
         encoding="utf-8",
@@ -47,10 +62,10 @@ def test_published_route_rewrites_assets_and_serves_job_bundle(monkeypatch, tmp_
     assert "published-preview-ok" in asset.text
 
 
-def test_published_route_missing_asset_returns_404(monkeypatch, tmp_path):
+def test_published_route_missing_asset_returns_404(monkeypatch, workspace_root):
     import server
 
-    root, job_id = _install_published_job(monkeypatch, tmp_path, job_id="job-missing-123")
+    root, job_id = _install_published_job(monkeypatch, workspace_root, job_id="job-missing-123")
     (root / "dist" / "index.html").write_text("<!doctype html><h1>Missing asset</h1>", encoding="utf-8")
 
     with TestClient(server.app) as client:
@@ -59,11 +74,11 @@ def test_published_route_missing_asset_returns_404(monkeypatch, tmp_path):
     assert response.status_code == 404
 
 
-def test_enrich_job_public_urls_sets_preview_and_deploy(monkeypatch, tmp_path):
+def test_enrich_job_public_urls_sets_preview_and_deploy(monkeypatch, workspace_root):
     import server
 
     monkeypatch.setenv("CRUCIBAI_PUBLIC_BASE_URL", "https://crucibai.example.com")
-    monkeypatch.setattr(server, "WORKSPACE_ROOT", tmp_path)
+    monkeypatch.setattr(server, "WORKSPACE_ROOT", workspace_root)
     project_id = "project-enrich-123"
     root = server._project_workspace_path(project_id)
     (root / "dist").mkdir(parents=True, exist_ok=True)

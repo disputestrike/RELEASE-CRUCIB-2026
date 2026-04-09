@@ -4,6 +4,7 @@ import {
   Layers,
 } from 'lucide-react';
 import CrucibAIComputer from '../CrucibAIComputer';
+import { KanbanBoard } from '../orchestration';
 import { normalizeWorkspacePath } from './pathUtils';
 
 /**
@@ -42,6 +43,7 @@ export default function WorkspaceProPanels({
   sandpackFiles,
   projectBuildProgress,
   currentPhase,
+  currentJobId,
 }) {
   return (
     <>
@@ -239,8 +241,16 @@ export default function WorkspaceProPanels({
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2)', borderColor: 'var(--theme-border)' }}>
             <div className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--theme-muted)' }}>DAG Orchestration</div>
-            <div className="text-xs mt-0.5" style={{ color: 'var(--theme-muted)' }}>122 agents · Kahn topological sort · parallel phases</div>
+            <div className="text-xs mt-0.5" style={{ color: 'var(--theme-muted)' }}>237 agents · dependency-aware selection · parallel swarm phases</div>
+            <div className="text-xs mt-1" style={{ color: 'var(--theme-muted)' }}>
+              {currentJobId ? `Live controller attached to job ${currentJobId}` : 'Waiting for a live orchestrator job.'}
+            </div>
           </div>
+          {currentJobId && (
+            <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--theme-border)', background: 'var(--theme-surface2)' }}>
+              <KanbanBoard jobId={currentJobId} />
+            </div>
+          )}
           {projectIdFromUrl && token && agentApiStatuses.length > 0 && (
             <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--theme-border)' }}>
               <div className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wider border-b" style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-muted)', background: 'rgba(0,0,0,0.12)' }}>
@@ -271,7 +281,7 @@ export default function WorkspaceProPanels({
               </div>
             </div>
           )}
-          {agentsActivity.length > 0 ? (
+          {!currentJobId && agentsActivity.length > 0 ? (
             <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--theme-border)' }}>
               {agentsActivity.map((a, i) => (
                 <div key={i} className="flex items-center gap-3 px-3 py-2.5 border-b last:border-b-0 text-xs" style={{ borderColor: 'var(--theme-border)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
@@ -287,7 +297,7 @@ export default function WorkspaceProPanels({
                 </div>
               ))}
             </div>
-          ) : (
+          ) : !currentJobId ? (
             <div className="space-y-1.5">
               {[
                 { name: 'Planner', desc: 'Intent parsing, task decomposition', phase: 'Planning', color: '#a78bfa' },
@@ -309,9 +319,9 @@ export default function WorkspaceProPanels({
                   <span className="ml-auto shrink-0 px-1.5 py-0.5 rounded text-[10px]" style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--theme-muted)' }}>{agent.phase}</span>
                 </div>
               ))}
-              <div className="text-center py-3 text-xs" style={{ color: 'var(--theme-muted)' }}>+ 113 more specialized agents</div>
+              <div className="text-center py-3 text-xs" style={{ color: 'var(--theme-muted)' }}>Specialized swarm coverage across frontend, backend, security, data, infra, and verification.</div>
             </div>
-          )}
+          ) : null}
         </div>
       )}
 

@@ -4,17 +4,24 @@
  * Updates via WebSocket as agents complete.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useWebSocket } from '../../hooks/useWebSocket';
+import React, { useState } from 'react';
 import { useJobProgress } from '../../hooks/useJobProgress';
 import PhaseGroup from './PhaseGroup';
 import LiveLog from './LiveLog';
-import AgentCard from './AgentCard';
 import ProgressBar from './ProgressBar';
 import styles from './orchestration.module.css';
 
 export default function KanbanBoard({ jobId }) {
-  const { phases, logs, isRunning, totalProgress, error } = useJobProgress(jobId);
+  const {
+    phases,
+    logs,
+    isRunning,
+    totalProgress,
+    controller,
+    currentPhase,
+    isConnected,
+    error,
+  } = useJobProgress(jobId);
   const [expandedPhase, setExpandedPhase] = useState(null);
   const [autoScroll, setAutoScroll] = useState(true);
 
@@ -49,11 +56,23 @@ export default function KanbanBoard({ jobId }) {
         <div className={styles.headerRight}>
           <div className={styles.status}>
             <span className={isRunning ? styles.statusRunning : styles.statusComplete}>
-              {isRunning ? '🟢 Running' : '✅ Complete'}
+              {isRunning ? 'Running' : 'Complete'}
             </span>
             <ProgressBar progress={totalProgress} />
             <span className={styles.progressText}>{totalProgress}%</span>
           </div>
+        </div>
+      </div>
+
+      <div className={styles.header}>
+        <div className={styles.headerLeft}>
+          <span className={styles.jobId}>Phase: {currentPhase || 'pending'}</span>
+        </div>
+        <div className={styles.headerRight}>
+          <span className={styles.jobId}>Socket: {isConnected ? 'connected' : 'reconnecting'}</span>
+          {controller?.status ? (
+            <span className={styles.jobId}>Controller: {controller.status}</span>
+          ) : null}
         </div>
       </div>
 

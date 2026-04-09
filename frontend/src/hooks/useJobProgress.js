@@ -1,288 +1,163 @@
-// frontend/src/hooks/useWebSocket.js
-/**
- * Custom React hook for WebSocket connection management.
- * Handles reconnection, message parsing, and cleanup.
- */
+import { useEffect, useMemo, useState } from 'react';
+import { useWebSocket } from './useWebSocket';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
-
-export function useWebSocket(url) {
-  const [lastMessage, setLastMessage] = useState(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [error, setError] = useState(null);
-  const ws = useRef(null);
-  const reconnectCount = useRef(0);
-  const maxReconnects = 5;
-
-  useEffect(() => {
-    const connectWebSocket = () => {
-      try {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}${url}`;
-        
-        ws.current = new WebSocket(wsUrl);
-
-        ws.current.onopen = () => {
-          setIsConnected(true);
-          setError(null);
-          reconnectCount.current = 0;
-          console.log(`Connected to ${url}`);
-        };
-
-        ws.current.onmessage = (event) => {
-          try {
-            const message = JSON.parse(event.data);
-            setLastMessage(message);
-          } catch (e) {
-            console.error('Failed to parse WebSocket message:', e);
-          }
-        };
-
-        ws.current.onerror = (error) => {
-          console.error('WebSocket error:', error);
-          setError('Connection error');
-        };
-
-        ws.current.onclose = () => {
-          setIsConnected(false);
-          console.log('WebSocket disconnected');
-          
-          // Attempt reconnection
-          if (reconnectCount.current < maxReconnects) {
-            reconnectCount.current += 1;
-            const delay = Math.min(1000 * Math.pow(2, reconnectCount.current), 10000);
-            console.log(`Reconnecting in ${delay}ms...`);
-            setTimeout(connectWebSocket, delay);
-          } else {
-            setError('Connection lost. Please refresh.');
-          }
-        };
-      } catch (e) {
-        console.error('WebSocket setup error:', e);
-        setError(e.message);
-      }
-    };
-
-    connectWebSocket();
-
-    return () => {
-      if (ws.current) {
-        ws.current.close();
-      }
-    };
-  }, [url]);
-
-  const sendMessage = useCallback((message) => {
-    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify(message));
-    }
-  }, []);
-
+function normalizeBootstrap(payload) {
   return {
-    lastMessage,
-    isConnected,
-    error,
-    sendMessage
+    phases: payload?.phases || [],
+    logs: payload?.logs || [],
+    isRunning: Boolean(payload?.is_running),
+    totalProgress: payload?.total_progress || 0,
+    controller: payload?.controller || null,
+    currentPhase: payload?.current_phase || null,
   };
 }
 
-// frontend/src/hooks/useJobProgress.js
-/**
- * Custom hook to manage job progress from WebSocket events.
- * Aggregates events into phases and logs.
- */
+function updateAgentStatus(phases, agentName, status, patch = {}) {
+  return (phases || []).map((phase) => ({
+    ...phase,
+    agents: (phase.agents || []).map((agent) =>
+      agent.name === agentName
+        ? { ...agent, status, ...patch }
+        : agent
+    ),
+  }));
+}
 
-import { useState, useEffect } from 'react';
-import { useWebSocket } from './useWebSocket';
+function appendLog(prevLogs, entry) {
+  return [...prevLogs, entry].slice(-200);
+}
 
 export function useJobProgress(jobId) {
   const [phases, setPhases] = useState(null);
   const [logs, setLogs] = useState([]);
-  const [isRunning, setIsRunning] = useState(true);
+  const [isRunning, setIsRunning] = useState(false);
   const [totalProgress, setTotalProgress] = useState(0);
+  const [controller, setController] = useState(null);
+  const [currentPhase, setCurrentPhase] = useState(null);
   const [error, setError] = useState(null);
 
-  const { lastMessage, isConnected } = useWebSocket(`/api/job/${jobId}/progress`);
+  const { lastMessage, isConnected, error: wsError } = useWebSocket(jobId ? `/api/job/${jobId}/progress` : null);
 
-  // Fetch initial state on mount
   useEffect(() => {
-    const fetchInitialState = async () => {
+    if (!jobId) {
+      setPhases(null);
+      setLogs([]);
+      setIsRunning(false);
+      setTotalProgress(0);
+      setController(null);
+      setCurrentPhase(null);
+      setError(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function fetchInitialState() {
       try {
         const response = await fetch(`/api/job/${jobId}/progress`);
-        if (response.ok) {
-          const data = await response.json();
-          setPhases(data.phases || []);
-          setTotalProgress(data.total_progress || 0);
-          setIsRunning(data.is_running || false);
+        if (!response.ok) {
+          throw new Error(`Progress bootstrap failed (${response.status})`);
         }
-      } catch (e) {
-        console.error('Failed to fetch initial progress:', e);
-        setError(e.message);
+        const data = await response.json();
+        if (cancelled) {
+          return;
+        }
+        const normalized = normalizeBootstrap(data);
+        setPhases(normalized.phases);
+        setLogs(normalized.logs);
+        setIsRunning(normalized.isRunning);
+        setTotalProgress(normalized.totalProgress);
+        setController(normalized.controller);
+        setCurrentPhase(normalized.currentPhase);
+        setError(null);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err?.message || 'Failed to load job progress');
+        }
       }
-    };
+    }
 
     fetchInitialState();
+    return () => {
+      cancelled = true;
+    };
   }, [jobId]);
 
-  // Handle WebSocket messages
   useEffect(() => {
-    if (!lastMessage) return;
+    if (!lastMessage) {
+      return;
+    }
 
-    const event = lastMessage;
+    if (lastMessage.type === 'bootstrap' && lastMessage.payload) {
+      const normalized = normalizeBootstrap(lastMessage.payload);
+      setPhases(normalized.phases);
+      setLogs(normalized.logs);
+      setIsRunning(normalized.isRunning);
+      setTotalProgress(normalized.totalProgress);
+      setController(normalized.controller);
+      setCurrentPhase(normalized.currentPhase);
+      return;
+    }
 
-    switch (event.type) {
-      case 'phase_update':
-        setPhases(prev => 
-          prev.map(p => 
-            p.id === event.phase_id 
-              ? {
-                  ...p,
-                  progress: event.progress || p.progress,
-                  status: event.status || p.status,
-                  completed: event.completed || p.completed,
-                  total: event.total || p.total
-                }
-              : p
-          )
-        );
-        setTotalProgress(event.progress || totalProgress);
-        break;
+    if (lastMessage.snapshot) {
+      const normalized = normalizeBootstrap(lastMessage.snapshot);
+      setPhases(normalized.phases);
+      setLogs(normalized.logs);
+      setIsRunning(normalized.isRunning);
+      setTotalProgress(normalized.totalProgress);
+      setController(normalized.controller);
+      setCurrentPhase(normalized.currentPhase);
+      setError(null);
+      return;
+    }
 
-      case 'agent_start':
-        setLogs(prev => [...prev, {
-          timestamp: new Date(event.timestamp),
-          type: 'start',
-          agent: event.agent_name,
-          phase: event.phase_id,
-          message: `Starting ${event.agent_name}...`,
-          level: 'info'
-        }]);
-        
-        // Update phase agent status
-        setPhases(prev =>
-          prev.map(p =>
-            p.id === event.phase_id
-              ? {
-                  ...p,
-                  agents: p.agents.map(a =>
-                    a.name === event.agent_name
-                      ? { ...a, status: 'running' }
-                      : a
-                  )
-                }
-              : p
-          )
-        );
-        break;
+    const payload = lastMessage.payload || {};
+    const timestamp = new Date().toISOString();
+    const agentName = payload.agent_name || payload.agent || payload.step_key || 'system';
 
-      case 'agent_progress':
-        setLogs(prev => [...prev, {
-          timestamp: new Date(event.timestamp),
-          type: 'progress',
-          agent: event.agent_name,
-          message: event.message || `${event.agent_name}: ${(event.progress || 0) * 100}%`,
-          level: 'info'
-        }]);
-        break;
+    if (lastMessage.type === 'step_started') {
+      setPhases((prev) => updateAgentStatus(prev, agentName, 'running'));
+      setLogs((prev) => appendLog(prev, { timestamp, type: 'step_started', agent: agentName, message: `${agentName} started`, level: 'info' }));
+      setIsRunning(true);
+      return;
+    }
 
-      case 'agent_complete':
-        setLogs(prev => [...prev, {
-          timestamp: new Date(event.timestamp),
-          type: 'complete',
-          agent: event.agent_name,
-          message: `✓ ${event.agent_name} completed`,
-          level: 'success'
-        }]);
+    if (lastMessage.type === 'step_completed') {
+      setPhases((prev) => updateAgentStatus(prev, agentName, 'complete', { output: payload.summary || payload.message || '' }));
+      setLogs((prev) => appendLog(prev, { timestamp, type: 'step_completed', agent: agentName, message: payload.message || `${agentName} completed`, level: 'success' }));
+      setTotalProgress((prev) => Math.min(100, prev + 2));
+      return;
+    }
 
-        // Update agent status in phases
-        setPhases(prev =>
-          prev.map(p =>
-            p.id === event.phase_id
-              ? {
-                  ...p,
-                  agents: p.agents.map(a =>
-                    a.name === event.agent_name
-                      ? { 
-                          ...a, 
-                          status: 'complete',
-                          output: event.summary
-                        }
-                      : a
-                  ),
-                  completed: (p.completed || 0) + 1,
-                  progress: Math.round(((p.completed || 0) + 1) / (p.total || 1) * 100)
-                }
-              : p
-          )
-        );
-        
-        setTotalProgress(event.progress || totalProgress);
-        break;
+    if (lastMessage.type === 'step_failed' || lastMessage.type === 'verification_attempt_failed') {
+      setPhases((prev) => updateAgentStatus(prev, agentName, 'error', { error: payload.error || payload.failure_reason || 'failed' }));
+      setLogs((prev) => appendLog(prev, { timestamp, type: lastMessage.type, agent: agentName, message: payload.error || payload.failure_reason || `${agentName} failed`, level: 'error' }));
+      return;
+    }
 
-      case 'agent_error':
-        setLogs(prev => [...prev, {
-          timestamp: new Date(event.timestamp),
-          type: 'error',
-          agent: event.agent_name,
-          message: `✗ ${event.agent_name}: ${event.error}`,
-          level: 'error'
-        }]);
-
-        // Update agent status
-        setPhases(prev =>
-          prev.map(p =>
-            p.id === event.phase_id
-              ? {
-                  ...p,
-                  agents: p.agents.map(a =>
-                    a.name === event.agent_name
-                      ? { 
-                          ...a, 
-                          status: 'error',
-                          error: event.error
-                        }
-                      : a
-                  )
-                }
-              : p
-          )
-        );
-        break;
-
-      case 'build_complete':
-        setLogs(prev => [...prev, {
-          timestamp: new Date(event.timestamp),
-          type: 'complete',
-          agent: 'build',
-          message: `✅ Build completed in ${event.total_time}s`,
-          level: 'success'
-        }]);
-        setIsRunning(false);
-        setTotalProgress(100);
-        break;
-
-      case 'build_error':
-        setLogs(prev => [...prev, {
-          timestamp: new Date(event.timestamp),
-          type: 'error',
-          agent: 'build',
-          message: `✗ Build failed: ${event.error}`,
-          level: 'error'
-        }]);
-        setIsRunning(false);
-        break;
-
-      default:
-        break;
+    if (lastMessage.type === 'job_completed' || lastMessage.type === 'job_failed') {
+      setIsRunning(false);
+      setTotalProgress(100);
+      setLogs((prev) => appendLog(prev, { timestamp, type: lastMessage.type, agent: 'build', message: payload.message || lastMessage.type.replace('_', ' '), level: lastMessage.type === 'job_completed' ? 'success' : 'error' }));
     }
   }, [lastMessage]);
 
-  return {
+  useEffect(() => {
+    if (wsError) {
+      setError(wsError);
+    }
+  }, [wsError]);
+
+  const summary = useMemo(() => ({
     phases,
     logs,
     isRunning,
     totalProgress,
-    error: error || (phases === null && isConnected ? null : error),
-    isConnected
-  };
+    controller,
+    currentPhase,
+    isConnected,
+    error,
+  }), [phases, logs, isRunning, totalProgress, controller, currentPhase, isConnected, error]);
+
+  return summary;
 }

@@ -118,13 +118,13 @@ class EgressFilter:
     def _contains_secret(cls, text: str) -> bool:
         """Detect common secret patterns."""
         patterns = [
-            r'sk-[A-Za-z0-9]{20,}',  # OpenAI API key
+            r'sk-[A-Za-z0-9_-]{8,}',  # OpenAI / generic secret-like key
             r'sk_[A-Za-z0-9_]+',  # Stripe/Supabase style
-            r'api[_-]?key["\s:=]+["\']?([A-Za-z0-9_-]{20,})',
+            r'api[_-]?key["\s:=]+["\']?(sk-[A-Za-z0-9_-]{6,}|[A-Za-z0-9_-]{6,})',
             r'password["\s:=]+["\']?(.{6,})',
             r'secret["\s:=]+["\']?(.{6,})',
-            r'token["\s:=]+["\']?([A-Za-z0-9_-]{20,})',
-            r'authorization["\s:=]+Bearer\s+([A-Za-z0-9_.-]+)',
+            r'token["\s:=]+["\']?([A-Za-z0-9_.-]{8,})',
+            r'authorization["\s:=]+Bearer\s+([A-Za-z0-9_.-]{8,})',
         ]
         
         for pattern in patterns:

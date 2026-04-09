@@ -10,6 +10,8 @@ from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 from datetime import datetime
 
+from anthropic_models import ANTHROPIC_SONNET_MODEL, normalize_anthropic_model
+
 logger = logging.getLogger(__name__)
 
 # Schema Models
@@ -50,6 +52,140 @@ class SchemaResponse(BaseModel):
     enums: Optional[Dict[str, List[str]]] = None  # Enum types
     extensions: List[str] = Field(default_factory=list)  # PostgreSQL extensions
 
+
+def heuristic_schema_from_requirements(requirements: str) -> SchemaResponse:
+    """
+    Deterministic schema sketch for live builds when we want schema planning
+    without depending on a remote LLM call.
+    """
+    goal = (requirements or "").lower()
+
+    def std_columns(*extra: ColumnDef) -> List[ColumnDef]:
+        return [
+            ColumnDef(name="id", type="uuid", primary_key=True),
+            *list(extra),
+            ColumnDef(name="created_at", type="timestamp", default="now()"),
+            ColumnDef(name="updated_at", type="timestamp", default="now()"),
+        ]
+
+    tables: List[TableDef] = []
+    tables.append(
+        TableDef(
+            name="app_records",
+            description="Default application records generated from the build goal",
+            columns=std_columns(
+                ColumnDef(name="title", type="text", required=True),
+                ColumnDef(name="status", type="text", required=False, default="'draft'"),
+                ColumnDef(name="metadata", type="jsonb", required=False, default="'{}'::jsonb"),
+            ),
+        )
+    )
+
+    if any(word in goal for word in ("account", "crm", "customer", "lead", "contact")):
+        tables.extend(
+            [
+                TableDef(
+                    name="accounts",
+                    description="Customer or tenant accounts",
+                    columns=std_columns(
+                        ColumnDef(name="name", type="text", required=True),
+                        ColumnDef(name="industry", type="text", required=False),
+                    ),
+                ),
+                TableDef(
+                    name="contacts",
+                    description="Contacts linked to accounts",
+                    columns=std_columns(
+                        ColumnDef(name="account_id", type="uuid", required=True, foreign_key="accounts(id)"),
+                        ColumnDef(name="email", type="text", required=True, unique=True),
+                        ColumnDef(name="full_name", type="text", required=True),
+                    ),
+                ),
+            ]
+        )
+
+    if any(word in goal for word in ("quote", "pricing", "invoice", "subscription", "billing")):
+        tables.extend(
+            [
+                TableDef(
+                    name="quotes",
+                    description="Pricing quotes and approval state",
+                    columns=std_columns(
+                        ColumnDef(name="account_id", type="uuid", required=False, foreign_key="accounts(id)"),
+                        ColumnDef(name="status", type="text", required=True, default="'draft'"),
+                        ColumnDef(name="total_amount_cents", type="integer", required=False, default="0"),
+                    ),
+                ),
+                TableDef(
+                    name="quote_line_items",
+                    description="Line items belonging to a quote",
+                    columns=std_columns(
+                        ColumnDef(name="quote_id", type="uuid", required=True, foreign_key="quotes(id)"),
+                        ColumnDef(name="label", type="text", required=True),
+                        ColumnDef(name="quantity", type="integer", required=True, default="1"),
+                        ColumnDef(name="unit_price_cents", type="integer", required=True, default="0"),
+                    ),
+                ),
+            ]
+        )
+
+    if any(word in goal for word in ("task", "workflow", "project", "schedule")):
+        tables.extend(
+            [
+                TableDef(
+                    name="projects",
+                    description="Projects or workflow containers",
+                    columns=std_columns(
+                        ColumnDef(name="name", type="text", required=True),
+                        ColumnDef(name="status", type="text", required=True, default="'planned'"),
+                    ),
+                ),
+                TableDef(
+                    name="tasks",
+                    description="Tasks linked to projects",
+                    columns=std_columns(
+                        ColumnDef(name="project_id", type="uuid", required=True, foreign_key="projects(id)"),
+                        ColumnDef(name="title", type="text", required=True),
+                        ColumnDef(name="priority", type="text", required=False, default="'normal'"),
+                    ),
+                ),
+            ]
+        )
+
+    if any(word in goal for word in ("audit", "policy", "compliance", "security")):
+        tables.extend(
+            [
+                TableDef(
+                    name="audit_events",
+                    description="Append-only audit events",
+                    columns=std_columns(
+                        ColumnDef(name="entity_type", type="text", required=True),
+                        ColumnDef(name="entity_id", type="uuid", required=False),
+                        ColumnDef(name="event_name", type="text", required=True),
+                        ColumnDef(name="payload", type="jsonb", required=False, default="'{}'::jsonb"),
+                    ),
+                ),
+                TableDef(
+                    name="policies",
+                    description="Policy rules or compliance controls",
+                    columns=std_columns(
+                        ColumnDef(name="name", type="text", required=True, unique=True),
+                        ColumnDef(name="status", type="text", required=True, default="'draft'"),
+                    ),
+                ),
+            ]
+        )
+
+    seen = set()
+    deduped_tables: List[TableDef] = []
+    for table in tables:
+        if table.name in seen:
+            continue
+        seen.add(table.name)
+        deduped_tables.append(table)
+
+    return SchemaResponse(tables=deduped_tables, extensions=["uuid-ossp"])
+
 class DatabaseArchitectAgent:
     """
     Analyzes requirements and generates database schemas.
@@ -58,7 +194,7 @@ class DatabaseArchitectAgent:
     
     def __init__(self, llm_client):
         self.llm = llm_client
-        self.model = "claude-opus-4-1"
+        self.model = normalize_anthropic_model(ANTHROPIC_SONNET_MODEL)
     
     async def execute(self, context: Dict) -> Dict:
         """

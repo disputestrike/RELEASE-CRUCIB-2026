@@ -257,7 +257,7 @@ class TestDatabaseAutoProvisioning:
     def test_sql_generation(self):
         """Test SQL DDL generation from schema."""
         from backend.agents.database_architect_agent import (
-            SchemaToSQL, TableDef, ColumnDef
+            SchemaResponse, SchemaToSQL, TableDef, ColumnDef
         )
         
         table = TableDef(
@@ -345,6 +345,8 @@ class TestIntegration:
     @pytest.mark.asyncio
     async def test_build_with_memory_and_security(self):
         """Test full build with memory + security + WebSocket."""
+        from backend.orchestration.executor_with_features import ExecutorWithFeatures
+
         mock_agent = AsyncMock()
         mock_agent.name = "Test Agent"
         mock_agent.execute.return_value = {

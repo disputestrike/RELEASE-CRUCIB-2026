@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+﻿import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import JSZip from 'jszip';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -85,8 +85,9 @@ import InlineAgentMonitor from '../components/InlineAgentMonitor';
 import ManusComputer from '../components/ManusComputer';
 import { CommandPalette } from '../components/AdvancedIDEUX';
 import { VibeCodingInput } from '../components/VibeCoding';
+import { KanbanBoard } from '../components/orchestration';
 
-/** Format message content — avoid [object Object] */
+/** Format message content â€” avoid [object Object] */
 function formatMsgContent(c) {
   if (c == null) return '';
   if (typeof c === 'string') return c;
@@ -96,7 +97,7 @@ function formatMsgContent(c) {
   return typeof c === 'object' ? JSON.stringify(c) : String(c);
 }
 
-/** Chat message — user on right, long messages with Show more */
+/** Chat message â€” user on right, long messages with Show more */
 function ChatMessage({ msg }) {
   const [expanded, setExpanded] = useState(false);
   const content = formatMsgContent(msg.content);
@@ -124,7 +125,7 @@ function ChatMessage({ msg }) {
   );
 }
 
-/** Compact collapsible build progress card — Manus-style step bar */
+/** Compact collapsible build progress card â€” Manus-style step bar */
 function BuildProgressCard({ expanded, onToggle, buildProgress, currentPhase, lastTokensUsed, projectBuildProgress, qualityScore, agentsActivityLength, children }) {
   const tokens = lastTokensUsed || projectBuildProgress?.tokens_used || 0;
   return (
@@ -136,9 +137,9 @@ function BuildProgressCard({ expanded, onToggle, buildProgress, currentPhase, la
       >
         <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--theme-text, #1A1A1A)' }} />
         <span className="text-sm font-medium text-gray-900 flex-1 truncate">
-          {currentPhase || 'Building...'} — {Math.round(buildProgress)}%
+          {currentPhase || 'Building...'} â€” {Math.round(buildProgress)}%
         </span>
-        <span className="text-xs text-gray-500 shrink-0">{agentsActivityLength || 0} agents · {(tokens / 1000).toFixed(0)}k tokens</span>
+        <span className="text-xs text-gray-500 shrink-0">{agentsActivityLength || 0} agents Â· {(tokens / 1000).toFixed(0)}k tokens</span>
         {qualityScore != null && <span className="text-xs text-gray-600 shrink-0">Quality: {qualityScore}%</span>}
         {expanded ? <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" /> : <ChevronRight className="w-4 h-4 text-gray-500 shrink-0" />}
       </button>
@@ -172,7 +173,7 @@ export default function App() {
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter, sans-serif' }}>
       <div style={{ textAlign: 'center', padding: '2rem' }}>
         <div style={{ width: 64, height: 64, background: '#3b82f6', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
-          <span style={{ fontSize: 28 }}>⚡</span>
+          <span style={{ fontSize: 28 }}>âš¡</span>
         </div>
         <h1 style={{ fontSize: '2.25rem', fontWeight: 700, color: '#f8fafc', marginBottom: '0.75rem', letterSpacing: '-0.02em' }}>
           Welcome to CrucibAI
@@ -181,7 +182,7 @@ export default function App() {
           Describe what you want to build in the chat
         </p>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '0.5rem 1rem', color: '#64748b', fontSize: '0.875rem' }}>
-          <span>💬</span> Type a prompt to get started
+          <span>ðŸ’¬</span> Type a prompt to get started
         </div>
       </div>
     </div>
@@ -336,7 +337,7 @@ const FileTree = ({ files, activeFile, onSelectFile, onAddFile, onAddFolder, onO
   );
 };
 
-// Console/Logs component (Terminal) — dark theme to match app
+// Console/Logs component (Terminal) â€” dark theme to match app
 const ConsolePanel = ({ logs, placeholder = "Terminal output will appear here. Run a build to see logs." }) => {
   const consoleRef = useRef(null);
 
@@ -366,7 +367,7 @@ const ConsolePanel = ({ logs, placeholder = "Terminal output will appear here. R
   );
 };
 
-// LLM Selector dropdown – Cursor-style: next to chat, opens upward
+// LLM Selector dropdown â€“ Cursor-style: next to chat, opens upward
 const ModelSelector = ({ selectedModel, onSelectModel, variant = 'default' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const isChat = variant === 'chat';
@@ -470,7 +471,7 @@ const VersionHistory = ({ versions, onRestore, currentVersion }) => {
   );
 };
 
-// Build History Panel (Item 17) — fetch prior builds from API, click to view in Agent Monitor
+// Build History Panel (Item 17) â€” fetch prior builds from API, click to view in Agent Monitor
 const BuildHistoryPanel = ({ buildHistory, projectId, loading }) => {
   if (loading) {
     return (
@@ -493,10 +494,10 @@ const BuildHistoryPanel = ({ buildHistory, projectId, loading }) => {
         <div key={i} className="p-3 rounded-lg border border-zinc-700/50 bg-zinc-800/30 hover:bg-zinc-800/50 transition">
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs text-zinc-400">
-              {entry.completed_at ? new Date(entry.completed_at).toLocaleString() : '—'}
+              {entry.completed_at ? new Date(entry.completed_at).toLocaleString() : 'â€”'}
             </span>
             <span className={`text-xs font-medium ${entry.status === 'completed' ? 'text-green-400' : 'text-amber-500'}`}>
-              {entry.status === 'completed' ? 'Completed' : (entry.status || '—')}
+              {entry.status === 'completed' ? 'Completed' : (entry.status || 'â€”')}
             </span>
           </div>
           {entry.quality_score != null && <p className="text-xs text-zinc-500">Quality: {Number(entry.quality_score).toFixed(0)}</p>}
@@ -515,7 +516,7 @@ const BuildHistoryPanel = ({ buildHistory, projectId, loading }) => {
   );
 };
 
-// ── PassesTab: loads real pass data from /api/passes/:taskId ────────────────
+// â”€â”€ PassesTab: loads real pass data from /api/passes/:taskId â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const PASS_COLORS = ['#a78bfa','#60a5fa','#34d399','#fb923c','#fbbf24','#f87171'];
 
 const PassesTab = ({ taskId, files, versions, token, API, liveSteps, isBuilding }) => {
@@ -556,7 +557,7 @@ const PassesTab = ({ taskId, files, versions, token, API, liveSteps, isBuilding 
       <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--theme-border)', background: 'var(--theme-surface2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <div>
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--theme-muted)' }}>Multi-Pass Build</div>
-          <div style={{ fontSize: 11, color: 'var(--theme-muted)', marginTop: 2 }}>{passes.length} passes · {totalFiles} files · {buildKind}</div>
+          <div style={{ fontSize: 11, color: 'var(--theme-muted)', marginTop: 2 }}>{passes.length} passes Â· {totalFiles} files Â· {buildKind}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {loading && <Loader2 style={{ width: 12, height: 12, color: 'var(--theme-muted)' }} className="animate-spin" />}
@@ -621,7 +622,7 @@ const PassesTab = ({ taskId, files, versions, token, API, liveSteps, isBuilding 
         {passes.length > 0 && !isBuilding && pct === 100 && (
           <div style={{ padding: '12px 14px', borderRadius: 10, border: '1px solid rgba(74,222,128,0.2)', background: 'rgba(74,222,128,0.05)', textAlign: 'center' }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#4ade80', marginBottom: 3 }}>Build Complete</div>
-            <div style={{ fontSize: 11, color: 'var(--theme-muted)' }}>{totalFiles} files · {versions.length} version{versions.length !== 1 ? 's' : ''} saved</div>
+            <div style={{ fontSize: 11, color: 'var(--theme-muted)' }}>{totalFiles} files Â· {versions.length} version{versions.length !== 1 ? 's' : ''} saved</div>
           </div>
         )}
       </div>
@@ -629,7 +630,7 @@ const PassesTab = ({ taskId, files, versions, token, API, liveSteps, isBuilding 
   );
 };
 
-// ── Skill auto-detection (mirrors backend SKILL_TRIGGERS) ───────────────────
+// â”€â”€ Skill auto-detection (mirrors backend SKILL_TRIGGERS) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const SKILL_TRIGGERS_JS = {
   'Web App Builder': ['web app', 'full-stack', 'webapp', 'react app', 'crud app', 'portal'],
   'Mobile App': ['mobile app', 'ios app', 'android app', 'react native', 'expo', 'phone app'],
@@ -661,9 +662,9 @@ const Workspace = () => {
   const [files, setFiles] = useState(DEFAULT_FILES);
   const [activeFile, setActiveFile] = useState('/App.js');
 
-  // Files safe to pass to Sandpack — exclude backend/test/config files.
+  // Files safe to pass to Sandpack â€” exclude backend/test/config files.
   // Sandpack React template expects /src/index.js and /src/App.js; map root-level App.js, index.js, styles.css into /src/ so preview runs.
-  // Also post-process: BrowserRouter → MemoryRouter, inject Tailwind CDN into styles.css.
+  // Also post-process: BrowserRouter â†’ MemoryRouter, inject Tailwind CDN into styles.css.
   const sandpackFiles = useMemo(() => {
     const EXCLUDED = /\.(test|spec)\.[jt]sx?$|Dockerfile|docker-compose|\.md$|\.sh$|\.ya?ml$|\.env|\.gitignore|server\.(js|ts)$|express|mongoose/i;
     const ALLOWED  = /\.(jsx?|tsx?|css|html|json)$/i;
@@ -678,7 +679,7 @@ const Workspace = () => {
     // Normalize root-level files to /src/ for Sandpack; handle both JS and TS
     const ROOT_TO_SRC = {
       '/App.js': '/src/App.js', '/App.jsx': '/src/App.jsx',
-      '/App.ts': '/src/App.js', '/App.tsx': '/src/App.jsx',  // transpile TS→JS path for Sandpack
+      '/App.ts': '/src/App.js', '/App.tsx': '/src/App.jsx',  // transpile TSâ†’JS path for Sandpack
       '/index.js': '/src/index.js', '/index.jsx': '/src/index.jsx',
       '/index.ts': '/src/index.js', '/index.tsx': '/src/index.jsx',
       '/styles.css': '/src/styles.css',
@@ -687,7 +688,7 @@ const Workspace = () => {
     const result = Object.fromEntries(
       filtered.map(([path, f]) => {
         const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-        // Map .tsx → .jsx, .ts → .js for Sandpack (it runs in JSX mode)
+        // Map .tsx â†’ .jsx, .ts â†’ .js for Sandpack (it runs in JSX mode)
         let sandpackPath = ROOT_TO_SRC[normalizedPath] || normalizedPath;
         sandpackPath = sandpackPath.replace(/\.tsx$/, '.jsx').replace(/(?<!\.d)\.ts$/, '.js');
         let code = f?.code || '';
@@ -699,7 +700,7 @@ const Workspace = () => {
         code = code.replace(/:\s*React\.FC<[^>]*>/g, '');
         code = code.replace(/:\s*[A-Z][A-Za-z]*(<[^>]*>)?\s*=/g, ' =');
         code = code.replace(/as\s+[A-Z][A-Za-z0-9_<>\[\]]*\b/g, '');
-        // BrowserRouter → MemoryRouter for Sandpack
+        // BrowserRouter â†’ MemoryRouter for Sandpack
         code = code
           .replace(/import\s*\{\s*BrowserRouter(\s*,\s*|\s+as\s+\w+\s*,?\s*)/g, 'import { MemoryRouter$1')
           .replace(/import\s*\{\s*([^}]*),?\s*BrowserRouter\s*,?\s*([^}]*)\}/g, (_, a, b) =>
@@ -785,10 +786,10 @@ root.render(<${compName} />);` };
   const [isBuilding, setIsBuilding] = useState(false);
   const buildAbortRef = useRef(null); // AbortController for cancelling active build
 
-  // Live build timeline — step_started + step_complete events
+  // Live build timeline â€” step_started + step_complete events
   const [liveSteps, setLiveSteps] = useState([]); // [{name, status:'pending'|'running'|'complete', filesCount, duration}]
 
-  // Resizable panes — persisted to localStorage
+  // Resizable panes â€” persisted to localStorage
   const [leftPanelWidth, setLeftPanelWidth] = useState(() => {
     const saved = localStorage.getItem('crucibai_left_panel_width');
     return saved ? parseInt(saved, 10) : 208;
@@ -923,7 +924,7 @@ root.render(<${compName} />);` };
   };
   const { addTask, updateTask, tasks: storeTasks } = useTaskStore();
 
-  // Section 06: parseMultiFileOutput — extract fenced code blocks with file paths
+  // Section 06: parseMultiFileOutput â€” extract fenced code blocks with file paths
   const parseMultiFileOutput = (responseText) => {
     const filePattern = /```(?:jsx?|tsx?|css|html)?:([\w./\-]+)\n([\s\S]*?)```/g;
     const parsedFiles = {};
@@ -971,14 +972,16 @@ root.render(<${compName} />);` };
   const [gitSyncPrivate, setGitSyncPrivate] = useState(true);
   const projectIdFromUrl = searchParams.get('projectId');
   const taskIdFromUrl = searchParams.get('taskId');
+  const jobIdFromUrl = searchParams.get('jobId');
   const [projectBuildProgress, setProjectBuildProgress] = useState({ phase: 0, agent: '', progress: 0, status: '', tokens_used: 0 });
+  const [currentJobId, setCurrentJobId] = useState(() => jobIdFromUrl || null);
   const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
   const zipInputRef = useRef(null);
   const chatInputRef = useRef(null);
   const chatEndRef = useRef(null);
 
-  // Zone 3: resize textarea 48px–120px, collapse on send
+  // Zone 3: resize textarea 48pxâ€“120px, collapse on send
   const resizeChatInput = useCallback(() => {
     const el = chatInputRef.current;
     if (!el) return;
@@ -999,7 +1002,7 @@ root.render(<${compName} />);` };
     axios.get(`${API}/build/phases`).then(r => setBuildPhases(r.data.phases || [])).catch(() => {});
   }, []);
 
-  // Task 2A: Two-step Sandpack remount — trigger filesReadyKey only after files are confirmed updated
+  // Task 2A: Two-step Sandpack remount â€” trigger filesReadyKey only after files are confirmed updated
   // Auto-correct activeFile when it doesn't exist in files (e.g., files are .tsx but activeFile is /App.js)
   useEffect(() => {
     if (Object.keys(files).length > 0 && !files[activeFile]) {
@@ -1012,7 +1015,7 @@ root.render(<${compName} />);` };
   }, [files]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    // Check for ANY app entry point — jsx, tsx, js, ts
+    // Check for ANY app entry point â€” jsx, tsx, js, ts
     const APP_KEYS = ['/src/App.jsx', '/App.jsx', '/src/App.js', '/App.js',
                       '/src/App.tsx', '/App.tsx', '/src/main.tsx', '/src/main.jsx',
                       '/src/index.tsx', '/index.tsx', '/src/index.js', '/index.js',
@@ -1033,7 +1036,7 @@ root.render(<${compName} />);` };
     prevFilesRef.current = files;
   }, [files]);
 
-  // ── Issue #4: Dashboard — fetch live task data when tab opens ──────────────
+  // â”€â”€ Issue #4: Dashboard â€” fetch live task data when tab opens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     if (activePanel !== 'dashboard' || !taskIdFromUrl || !token) return;
     axios.get(`${API}/tasks/${taskIdFromUrl}`, { headers: { Authorization: `Bearer ${token}` } })
@@ -1044,7 +1047,7 @@ root.render(<${compName} />);` };
       .catch(() => {});
   }, [activePanel, taskIdFromUrl, token, API]);
 
-  // ── Issue #5: Database — fetch live schema when tab opens ─────────────────
+  // â”€â”€ Issue #5: Database â€” fetch live schema when tab opens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     if (activePanel !== 'database' || !taskIdFromUrl || !token) return;
     axios.get(`${API}/app-db/task/${taskIdFromUrl}`, { headers: { Authorization: `Bearer ${token}` } })
@@ -1052,7 +1055,7 @@ root.render(<${compName} />);` };
       .catch(() => setAppDbSchema(null));
   }, [activePanel, taskIdFromUrl, token, API]);
 
-  // ── Issue #6: Agents — fetch live agent history when tab opens ───────────
+  // â”€â”€ Issue #6: Agents â€” fetch live agent history when tab opens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
     if (activePanel !== 'agents' || !taskIdFromUrl || !token) return;
     axios.get(`${API}/agents/activity?session_id=${taskIdFromUrl}`, { headers: { Authorization: `Bearer ${token}` } })
@@ -1085,7 +1088,41 @@ root.render(<${compName} />);` };
       .finally(() => setBuildHistoryLoading(false));
   }, [projectIdFromUrl, token, API]);
 
-  // Reconnect recovery — check for in-progress builds when workspace loads
+  useEffect(() => {
+    if (jobIdFromUrl) {
+      setCurrentJobId(jobIdFromUrl);
+    }
+  }, [jobIdFromUrl]);
+
+  useEffect(() => {
+    if (!token || !API) return;
+    const headers = { Authorization: `Bearer ${token}` };
+    axios.get(`${API}/orchestrator/build-jobs?limit=25`, { headers })
+      .then((res) => {
+        const jobs = Array.isArray(res.data?.jobs) ? res.data.jobs : [];
+        if (jobs.length === 0) return;
+        const normalizeStatus = (job) => String(job?.status || '').toLowerCase();
+        const timestamp = (job) => Date.parse(job?.updated_at || job?.created_at || 0) || 0;
+        const projectJobs = projectIdFromUrl
+          ? jobs.filter((job) => String(job?.project_id || job?.projectId || '') === String(projectIdFromUrl))
+          : jobs;
+        const sortNewest = (list) => [...list].sort((a, b) => timestamp(b) - timestamp(a));
+        const newestProjectJobs = sortNewest(projectJobs);
+        const newestJobs = sortNewest(jobs);
+        const preferred =
+          (jobIdFromUrl && jobs.find((job) => job.id === jobIdFromUrl)) ||
+          newestProjectJobs.find((job) => ['queued', 'running', 'verifying'].includes(normalizeStatus(job))) ||
+          newestProjectJobs[0] ||
+          newestJobs.find((job) => ['queued', 'running', 'verifying'].includes(normalizeStatus(job))) ||
+          newestJobs[0];
+        if (preferred?.id) {
+          setCurrentJobId(preferred.id);
+        }
+      })
+      .catch(() => {});
+  }, [token, API, projectIdFromUrl, jobIdFromUrl, buildHistoryList.length, isBuilding]);
+
+  // Reconnect recovery â€” check for in-progress builds when workspace loads
   useEffect(() => {
     if (!token || !API) return;
     axios.get(`${API}/jobs`, { headers: { Authorization: `Bearer ${token}` } })
@@ -1120,7 +1157,7 @@ root.render(<${compName} />);` };
         if (Object.keys(loaded).length > 0) {
           setFiles(loaded);
           setActiveFile(Object.keys(loaded).sort().find(k => k.includes('App')) || Object.keys(loaded).sort()[0]);
-          // Trigger Sandpack remount so preview loads — THE CRITICAL FIX for Q122
+          // Trigger Sandpack remount so preview loads â€” THE CRITICAL FIX for Q122
           setTimeout(() => {
             const vId = `task_${taskIdFromUrl}_${Date.now()}`;
             setCurrentVersion(vId);
@@ -1332,7 +1369,7 @@ root.render(<${compName} />);` };
     return () => window.removeEventListener('keydown', onKey);
   }, [navigate]);
 
-  // Restore existing task workspace when opening by taskId — load files + messages.
+  // Restore existing task workspace when opening by taskId â€” load files + messages.
   // Pre-fill input with task.prompt when task has no build yet so user can click Submit/Go to run.
   const taskRestoredRef = useRef(null);
   useEffect(() => {
@@ -1357,7 +1394,7 @@ root.render(<${compName} />);` };
     }
   }, [taskIdFromUrl, storeTasks]);
 
-  // Pending prompt from landing (user said "build me X" then signed up) — restore and start building
+  // Pending prompt from landing (user said "build me X" then signed up) â€” restore and start building
   const PENDING_PROMPT_KEY = 'crucibai_pending_prompt';
   const pendingPromptAppliedRef = useRef(false);
   useEffect(() => {
@@ -1391,7 +1428,7 @@ root.render(<${compName} />);` };
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // ── Async job polling (Q121 fix — build survives browser close) ──────────
+  // â”€â”€ Async job polling (Q121 fix â€” build survives browser close) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const pollJobStatus = async (jobId, sessionId) => {
     const maxPolls = 180;
     let polls = 0;
@@ -1445,7 +1482,7 @@ root.render(<${compName} />);` };
     setLogs(prev => [...prev, { message, type, time, agent }]);
   };
 
-  // ── Voice: Web Speech API (Chrome/Edge/Safari) or fallback to record + backend /voice/transcribe ──
+  // â”€â”€ Voice: Web Speech API (Chrome/Edge/Safari) or fallback to record + backend /voice/transcribe â”€â”€
   const speechRecognitionRef = useRef(null);
   const voiceChunksRef = useRef([]);
 
@@ -1457,7 +1494,7 @@ root.render(<${compName} />);` };
         testStream.getTracks().forEach(t => t.stop()); // just checking permission, stop immediately
       } catch (permErr) {
         const msg = permErr?.name === 'NotAllowedError'
-          ? 'Microphone blocked. Click the 🔒 icon in your browser address bar and allow microphone access, then refresh.'
+          ? 'Microphone blocked. Click the ðŸ”’ icon in your browser address bar and allow microphone access, then refresh.'
           : permErr?.name === 'NotFoundError'
           ? 'No microphone found. Plug in a microphone and try again.'
           : `Microphone error: ${permErr?.message}`;
@@ -1760,7 +1797,7 @@ root.render(<${compName} />);` };
         { id: 'validating', name: 'Validating' },
         { id: 'deployment', name: 'Deployment' }
       ];
-      // ── Detect if the request is for native code (C, Python, algorithm, CLI) ──
+      // â”€â”€ Detect if the request is for native code (C, Python, algorithm, CLI) â”€â”€
       const nativeLangMap = {
         python: /\bpython\b/i,
         c:      /\b(c\s+program|in\s+c\b|\.c\b|c\s+code|write\s+c\b)/i,
@@ -1780,7 +1817,7 @@ root.render(<${compName} />);` };
       const langExt = { python: 'py', c: 'c', cpp: 'cpp', bash: 'sh', java: 'java' };
       const ext = langExt[nativeLang] || 'c';
 
-      // ── Choose agent set based on request type ──
+      // â”€â”€ Choose agent set based on request type â”€â”€
       const agents = isNativeCode ? [
         { name: 'Planner',   delay: 200, phase: phaseLabels[0]?.name || 'Planning',   desc: `Analyzing ${nativeLang} requirements...` },
         { name: 'Coder',     delay: 350, phase: phaseLabels[1]?.name || 'Generating', desc: `Writing ${nativeLang} source code...` },
@@ -1812,7 +1849,7 @@ root.render(<${compName} />);` };
       }
       setCurrentPhase('');
 
-      // ── Build generation prompt ──
+      // â”€â”€ Build generation prompt â”€â”€
       let messageContent;
 
       if (isNativeCode) {
@@ -1820,11 +1857,11 @@ root.render(<${compName} />);` };
 
 Create a complete, working ${nativeLang} program for: "${prompt}"
 
-OUTPUT FORMAT — generate ONLY these files:
+OUTPUT FORMAT â€” generate ONLY these files:
 
 1. The main source file:
 \`\`\`${nativeLang}:/main.${ext}
-// complete ${nativeLang} source code here — NO placeholders
+// complete ${nativeLang} source code here â€” NO placeholders
 \`\`\`
 
 2. If more source files are needed, add them:
@@ -1845,21 +1882,21 @@ export default function App() {
       <div className="bg-gray-800 rounded-lg p-4 overflow-auto">
         <pre className="text-sm text-green-300 whitespace-pre-wrap">{SOURCE}</pre>
       </div>
-      <p className="mt-4 text-gray-400 text-sm">Click Run ▶ in the terminal below to execute this program.</p>
+      <p className="mt-4 text-gray-400 text-sm">Click Run â–¶ in the terminal below to execute this program.</p>
     </div>
   );
 }
 \`\`\`
 
 RULES:
-- Write COMPLETE, compilable/runnable code — no placeholders, no "// TODO"
+- Write COMPLETE, compilable/runnable code â€” no placeholders, no "// TODO"
 - Include all necessary headers/imports
 - Add comments explaining the algorithm
 - Handle edge cases`;
       } else {
         messageContent = `You are CrucibAI. Build a COMPLETE, PRODUCTION-QUALITY, MULTI-FILE React application for: "${prompt}"
 
-OUTPUT ALL FILES IN THIS EXACT ORDER — do not skip any:
+OUTPUT ALL FILES IN THIS EXACT ORDER â€” do not skip any:
 
 \`\`\`jsx:/App.js
 import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
@@ -1894,23 +1931,23 @@ export default function App() {
 \`\`\`
 
 \`\`\`jsx:/pages/Home.js
-/* Hero section, features grid, CTA — full content, NO placeholders */
+/* Hero section, features grid, CTA â€” full content, NO placeholders */
 \`\`\`
 
-Then add ALL other relevant pages (About, Services, Pricing, Contact, etc.) — one \`\`\`jsx:/pages/PageName.js\`\`\` block each.
+Then add ALL other relevant pages (About, Services, Pricing, Contact, etc.) â€” one \`\`\`jsx:/pages/PageName.js\`\`\` block each.
 
 RULES:
-- MemoryRouter only (NOT BrowserRouter — breaks in preview iframe)
+- MemoryRouter only (NOT BrowserRouter â€” breaks in preview iframe)
 - Tailwind CSS classes for ALL styling (loaded via CDN)
 - lucide-react for icons, framer-motion for animations
-- Real hardcoded data — NO "Lorem ipsum", NO placeholder text
+- Real hardcoded data â€” NO "Lorem ipsum", NO placeholder text
 - NO backend code, NO fetch(), NO require(), NO Node.js
-- COMPLETE code in every file — no "// TODO", no "// add here", no truncation
+- COMPLETE code in every file â€” no "// TODO", no "// add here", no truncation
 - Every component fully implemented with real content
 
 Allowed imports: react, react-router-dom, lucide-react, framer-motion, recharts, date-fns, clsx
 
-BUILD IT NOW — output every file completely:`;
+BUILD IT NOW â€” output every file completely:`;
       }
 
       if (imagesToSend.length > 0) {
@@ -1929,11 +1966,11 @@ BUILD IT NOW — output every file completely:`;
         messageContent += `\n\n- Include localStorage-based data persistence with full CRUD operations.`;
       }
 
-      // Clear stale default files before new build — Explorer should show ONLY built files
+      // Clear stale default files before new build â€” Explorer should show ONLY built files
       setFiles({});
       setExpandedFolders({});
 
-      // ── ITERATIVE BUILD (multi-turn, 15-30 files) ──────────────────
+      // â”€â”€ ITERATIVE BUILD (multi-turn, 15-30 files) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       const iterativeBuildKinds = ['fullstack','saas','landing','ai_agent','game','mobile'];
       const shouldUseIterative = !isNativeCode && !useImageToCode && !!token;
       // Detect build kind for preview routing
@@ -1976,7 +2013,7 @@ BUILD IT NOW — output every file completely:`;
                     if (exists) {
                       return prev.map(s => s.name === ev.step ? { ...s, status: 'running' } : s);
                     }
-                    // First time seeing steps — build full list
+                    // First time seeing steps â€” build full list
                     return prev.length === 0
                       ? [{ name: ev.step, status: 'running', stepNum: ev.step_num, total: ev.total_steps, desc: ev.desc || '' }]
                       : [...prev, { name: ev.step, status: 'running', stepNum: ev.step_num, total: ev.total_steps, desc: ev.desc || '' }];
@@ -1986,7 +2023,7 @@ BUILD IT NOW — output every file completely:`;
                 if (ev.type === 'step_complete') {
                   const stepFiles = ev.files || {};
                   const count = Object.keys(stepFiles).length;
-                  addLog(`✓ ${ev.step}: ${count} files generated`, 'success', ev.step);
+                  addLog(`âœ“ ${ev.step}: ${count} files generated`, 'success', ev.step);
                   setFiles(prev => ({ ...prev, ...Object.fromEntries(Object.entries(stepFiles).map(([k, v]) => [k, { code: v }])) }));
                   setBuildProgress(prev => Math.min(prev + Math.floor(80 / (ev.total_steps || 6)), 90));
                   // Mark step complete in live timeline
@@ -2027,7 +2064,7 @@ BUILD IT NOW — output every file completely:`;
             }
           }
         } catch (iterErr) {
-          addLog(`Iterative build failed: ${iterErr.message} — falling back to single call`, 'warn', 'deploy');
+          addLog(`Iterative build failed: ${iterErr.message} â€” falling back to single call`, 'warn', 'deploy');
           // Fall through to single-call path below
         }
         if (!isBuilding) return; // iterative build finished
@@ -2115,7 +2152,7 @@ BUILD IT NOW — output every file completely:`;
               if (obj.error) {
                 const errMsg = obj.error;
                 if (errMsg.includes('rate limit') || errMsg.includes('Rate limit') || errMsg.includes('RATE_LIMITED') || errMsg.includes('429')) {
-                  throw new Error('⏱ AI rate limit reached — wait 60 seconds and try again.');
+                  throw new Error('â± AI rate limit reached â€” wait 60 seconds and try again.');
                 }
                 throw new Error(errMsg);
               }
@@ -2172,7 +2209,7 @@ BUILD IT NOW — output every file completely:`;
                 } else {
                   setActivePanel('preview'); // AUTO-WIRE: switch to preview on build complete
                 }
-                // PHASE 7: Single task authority — update existing task or add new
+                // PHASE 7: Single task authority â€” update existing task or add new
                 if (taskIdFromUrl) {
                   const merged = { ...files, ...parsedFiles };
                   const finalMsgs = [{ role: 'user', content: prompt }, { role: 'assistant', content: 'Done! Your app is ready.', hasCode: true, planSuggestions: planSuggestions }];
@@ -2234,7 +2271,7 @@ BUILD IT NOW — output every file completely:`;
         const qgHdrs = token ? { Authorization: `Bearer ${token}` } : {};
         axios.post(`${API}/ai/quality-gate`, { code: mainCode, files: Object.keys(filesForQuality).length ? filesForQuality : undefined }, { headers: qgHdrs }).then(r => setQualityGateResult(r.data)).catch(() => setQualityGateResult(null));
         setActivePanel('preview'); // AUTO-WIRE: switch to preview on build complete
-        // PHASE 7: Single task authority — update existing task or add new
+        // PHASE 7: Single task authority â€” update existing task or add new
         if (taskIdFromUrl) {
           const finalMsgs = [{ role: 'user', content: prompt }, { role: 'assistant', content: 'Done! Your app is ready.', hasCode: true, planSuggestions }];
           const vId = `v_${Date.now()}`;
@@ -2282,7 +2319,7 @@ BUILD IT NOW — output every file completely:`;
       const isKeyError = error.response?.status === 401 || detail.toLowerCase().includes('api key') || detail.toLowerCase().includes('no api key') || (error.message && error.message.toLowerCase().includes('key'));
       let friendlyMessage;
       if (is429) {
-        friendlyMessage = '⏱ AI rate limit reached — wait 60 seconds and try again. This happens when too many builds run at once.';
+        friendlyMessage = 'â± AI rate limit reached â€” wait 60 seconds and try again. This happens when too many builds run at once.';
       } else if (is402) {
         friendlyMessage = detail || 'Insufficient tokens. Buy more in Token Center to keep building.';
       } else if (is404 || isHtmlError || (error.message && (error.message.includes('Cannot POST') || error.message.includes('<!DOCTYPE') || error.message.includes('status code 404')))) {
@@ -2466,7 +2503,7 @@ BUILD IT NOW — output every file completely:`;
     e.target.value = '';
   };
 
-  // Item 31 — Bring your code: ZIP upload → parse and setFiles()
+  // Item 31 â€” Bring your code: ZIP upload â†’ parse and setFiles()
   const handleZipUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !file.name.toLowerCase().endsWith('.zip')) {
@@ -2501,7 +2538,7 @@ BUILD IT NOW — output every file completely:`;
 
   const runCurrentCode = async () => {
     const code = files[activeFile]?.code ?? '';
-    if (!code.trim()) { addLog('No code to run — open a file first', 'warning', 'system'); return; }
+    if (!code.trim()) { addLog('No code to run â€” open a file first', 'warning', 'system'); return; }
     const lang = /\.py$/.test(activeFile) ? 'python'
                : /\.(c)$/.test(activeFile) ? 'c'
                : /\.cpp$/.test(activeFile) ? 'cpp'
@@ -2823,7 +2860,7 @@ BUILD IT NOW — output every file completely:`;
   return (
     <div className="workspace-root h-full min-h-0 flex flex-col overflow-hidden font-sans text-[13px] antialiased" style={{ background: 'var(--theme-bg, #111113)', color: 'var(--theme-text, #e4e4e7)' }}>
 
-      {/* ── Command Palette (Ctrl+K) ── */}
+      {/* â”€â”€ Command Palette (Ctrl+K) â”€â”€ */}
       {commandPaletteOpen && (
         <div className="fixed inset-0 z-[200] flex items-start justify-center pt-[15vh]" style={{ background: 'rgba(0,0,0,0.75)' }} onClick={() => setCommandPaletteOpen(false)}>
           <div className="w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border" style={{ background: 'var(--theme-surface, #1C1C1E)', borderColor: 'var(--theme-border, rgba(255,255,255,0.1))' }} onClick={e => e.stopPropagation()}>
@@ -2833,7 +2870,7 @@ BUILD IT NOW — output every file completely:`;
                 { id: 'newAgent', label: 'New chat (Ctrl+Shift+L)', icon: Plus },
                 { id: 'searchFiles', label: 'Open file (Ctrl+P)', icon: Search },
                 { id: 'terminal', label: 'Show Console', icon: Terminal },
-                { id: 'deploy', label: 'Deploy (ZIP → Vercel/Netlify)', icon: ExternalLink },
+                { id: 'deploy', label: 'Deploy (ZIP â†’ Vercel/Netlify)', icon: ExternalLink },
                 { id: 'export', label: 'Download code', icon: Download },
                 { id: 'github', label: 'Push to GitHub', icon: Github },
                 ...(lastError ? [{ id: 'autofix', label: 'Auto-fix errors', icon: RefreshCw }] : []),
@@ -2850,7 +2887,7 @@ BUILD IT NOW — output every file completely:`;
         </div>
       )}
 
-      {/* ── File Search (Ctrl+P) ── */}
+      {/* â”€â”€ File Search (Ctrl+P) â”€â”€ */}
       {fileSearchOpen && (
         <div className="fixed inset-0 z-[200] flex items-start justify-center pt-[20vh]" style={{ background: 'rgba(0,0,0,0.75)' }} onClick={() => setFileSearchOpen(false)}>
           <div className="w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border" style={{ background: 'var(--theme-surface, #1C1C1E)', borderColor: 'var(--theme-border, rgba(255,255,255,0.1))' }} onClick={e => e.stopPropagation()}>
@@ -2867,7 +2904,7 @@ BUILD IT NOW — output every file completely:`;
         </div>
       )}
 
-      {/* ── Header ── */}
+      {/* â”€â”€ Header â”€â”€ */}
       <header className="h-12 flex items-center px-4 gap-3 shrink-0 border-b" style={{ background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
         <button onClick={() => navigate('/app')} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #71717a)' }} title="Back">
           <ArrowLeft className="w-4 h-4" />
@@ -2971,18 +3008,18 @@ BUILD IT NOW — output every file completely:`;
         </div>
       </header>
 
-      {/* ── Token low banner ── */}
+      {/* â”€â”€ Token low banner â”€â”€ */}
       {user && user.token_balance === 0 && (
         <div className="shrink-0 px-4 py-2 flex items-center justify-between" style={{ background: 'var(--theme-surface2)', borderBottom: '1px solid var(--theme-border)' }}>
-          <span className="text-sm" style={{ color: 'var(--theme-accent)' }}>Out of tokens — get more to keep building.</span>
+          <span className="text-sm" style={{ color: 'var(--theme-accent)' }}>Out of tokens â€” get more to keep building.</span>
           <button onClick={() => navigate('/app/tokens')} className="text-sm font-medium underline" style={{ color: 'var(--theme-accent)' }}>Buy tokens</button>
         </div>
       )}
 
-      {/* ── Main 3-panel layout ── */}
+      {/* â”€â”€ Main 3-panel layout â”€â”€ */}
       <div className="flex-1 flex overflow-hidden">
 
-        {/* ── Left: File Explorer ── */}
+        {/* â”€â”€ Left: File Explorer â”€â”€ */}
         {leftSidebarOpen ? (
           <div className="flex flex-col shrink-0 border-r" style={{ width: leftPanelWidth, minWidth: 140, background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.07))' }}>
             <input ref={folderInputRef} type="file" webkitdirectory="" multiple onChange={handleFolderOpen} className="hidden" />
@@ -3002,7 +3039,7 @@ BUILD IT NOW — output every file completely:`;
                 {messages.find(m => m.role === 'user')?.content?.toString().slice(0, 30) || 'project'}
               </span>
             </div>
-            {/* File list — Manus-style nested tree (src/, public/, server/, shared/, etc.) */}
+            {/* File list â€” Manus-style nested tree (src/, public/, server/, shared/, etc.) */}
             <div className="flex-1 overflow-y-auto py-1">
               {(() => {
                 // Build nested tree from all file paths (any depth)
@@ -3113,7 +3150,7 @@ BUILD IT NOW — output every file completely:`;
                 {versions.slice(0, 4).map((v, i) => (
                   <button key={v.id} onClick={() => restoreVersion(v)} className="w-full flex items-center gap-2 py-1 text-left text-xs transition hover:bg-white/5 rounded px-1" style={{ color: currentVersion === v.id ? 'var(--theme-text, #e4e4e7)' : 'var(--theme-muted, #71717a)' }}>
                     <History className="w-3 h-3 shrink-0" />
-                    <span className="truncate">v{versions.length - i} — {v.time}</span>
+                    <span className="truncate">v{versions.length - i} â€” {v.time}</span>
                   </button>
                 ))}
               </div>
@@ -3130,7 +3167,7 @@ BUILD IT NOW — output every file completely:`;
           </div>
         )}
 
-        {/* ── Left/Center drag handle ── */}
+        {/* â”€â”€ Left/Center drag handle â”€â”€ */}
         {leftSidebarOpen && (
           <div
             onMouseDown={handleLeftDragStart}
@@ -3138,14 +3175,14 @@ BUILD IT NOW — output every file completely:`;
             style={{ width: 4, cursor: 'col-resize', background: 'transparent', flexShrink: 0, zIndex: 10, position: 'relative' }}
             onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.5)'}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            title="Drag to resize · Double-click to reset"
+            title="Drag to resize Â· Double-click to reset"
           />
         )}
 
-        {/* ── Center: Chat / Build Steps ── */}
+        {/* â”€â”€ Center: Chat / Build Steps â”€â”€ */}
         <div className="flex-1 flex flex-col min-w-0" style={{ background: 'var(--theme-bg, #111113)' }}>
 
-          {/* ── Manus-style task header ── */}
+          {/* â”€â”€ Manus-style task header â”€â”€ */}
           {(isBuilding || messages.length > 0) && (
             <div className="shrink-0 px-4 py-2.5 border-b flex items-center gap-3" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.08))', background: 'var(--theme-surface, #18181B)' }}>
               <div className="flex-1 min-w-0">
@@ -3161,7 +3198,7 @@ BUILD IT NOW — output every file completely:`;
                   ) : versions.length > 0 ? (
                     <>
                       <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#4ade80' }} />
-                      <span className="text-[11px]" style={{ color: 'var(--theme-muted)' }}>Complete · {Object.keys(files).length} files · v{versions.length}</span>
+                      <span className="text-[11px]" style={{ color: 'var(--theme-muted)' }}>Complete Â· {Object.keys(files).length} files Â· v{versions.length}</span>
                     </>
                   ) : null}
                 </div>
@@ -3174,7 +3211,7 @@ BUILD IT NOW — output every file completely:`;
               )}
               {/* Mode badge */}
               <div className="text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0" style={{ background: 'rgba(255,255,255,0.07)', color: 'var(--theme-muted)' }}>
-                {devMode ? '⚙ Pro' : '✦ Guided'}
+                {devMode ? 'âš™ Pro' : 'âœ¦ Guided'}
               </div>
             </div>
           )}
@@ -3188,7 +3225,7 @@ BUILD IT NOW — output every file completely:`;
               </div>
             )}
 
-            {/* ── Manus-style grouped execution cards ── */}
+            {/* â”€â”€ Manus-style grouped execution cards â”€â”€ */}
             {isBuilding && (
               <div className="space-y-2">
                 {/* Main progress card */}
@@ -3225,8 +3262,8 @@ BUILD IT NOW — output every file completely:`;
                           {a.name}
                         </span>
                         <span className="truncate opacity-60" style={{ color: 'var(--theme-muted, #3f3f46)' }}>{a.phase}</span>
-                        {a.status === 'done' && <span className="ml-auto shrink-0 text-[10px]" style={{ color: '#4ade80' }}>✓</span>}
-                        {a.status === 'running' && <span className="ml-auto shrink-0 text-[10px] animate-pulse" style={{ color: 'var(--theme-accent)' }}>●</span>}
+                        {a.status === 'done' && <span className="ml-auto shrink-0 text-[10px]" style={{ color: '#4ade80' }}>âœ“</span>}
+                        {a.status === 'running' && <span className="ml-auto shrink-0 text-[10px] animate-pulse" style={{ color: 'var(--theme-accent)' }}>â—</span>}
                       </div>
                     )) : (
                       /* Phase placeholders when no agent data yet */
@@ -3310,7 +3347,7 @@ BUILD IT NOW — output every file completely:`;
             <div ref={chatEndRef} />
           </div>
 
-          {/* ── Input bar ── */}
+          {/* â”€â”€ Input bar â”€â”€ */}
           <div className="px-4 pb-4 shrink-0">
             {/* Guided mode: Quick Build chips */}
             {!devMode && !isBuilding && versions.length === 0 && (
@@ -3366,7 +3403,7 @@ BUILD IT NOW — output every file completely:`;
                     disabled={isTranscribing}
                     className="p-1.5 rounded-lg transition hover:bg-white/10"
                     style={{ color: isRecording ? '#f87171' : 'var(--theme-muted, #52525b)' }}
-                    title={isTranscribing ? 'Transcribing...' : (isRecording ? 'Stop voice' : 'Voice input (dictate or record → transcribe)')}
+                    title={isTranscribing ? 'Transcribing...' : (isRecording ? 'Stop voice' : 'Voice input (dictate or record â†’ transcribe)')}
                   >
                     {isTranscribing ? <Loader2 className="w-4 h-4 animate-spin" /> : isRecording ? <MicOff className="w-4 h-4 animate-pulse" /> : <Mic className="w-4 h-4" />}
                   </button>
@@ -3438,7 +3475,7 @@ BUILD IT NOW — output every file completely:`;
           </div>
         </div>
 
-        {/* ── Center/Right drag handle ── */}
+        {/* â”€â”€ Center/Right drag handle â”€â”€ */}
         {rightSidebarOpen && (
           <div
             onMouseDown={handleRightDragStart}
@@ -3446,16 +3483,16 @@ BUILD IT NOW — output every file completely:`;
             style={{ width: 4, cursor: 'col-resize', background: 'transparent', flexShrink: 0, zIndex: 10 }}
             onMouseEnter={e => e.currentTarget.style.background = 'rgba(59,130,246,0.5)'}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            title="Drag to resize · Double-click to reset"
+            title="Drag to resize Â· Double-click to reset"
           />
         )}
-        {/* ── Right: Preview + Code Editor (collapsible) ── */}
+        {/* â”€â”€ Right: Preview + Code Editor (collapsible) â”€â”€ */}
         {rightSidebarOpen ? (
         <div className="workspace-right-panel flex flex-col shrink-0 border-l" style={{ position: 'relative', width: rightPanelWidth ? rightPanelWidth : '44%', minWidth: 280, background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
 
           {/* Manus-style tab bar */}
           <div className="h-10 flex items-center px-1 border-b shrink-0 gap-0.5" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.08))', position: 'relative', overflow: 'hidden' }}>
-            {/* Scrollable tabs — constrained to leave room for action icons */}
+            {/* Scrollable tabs â€” constrained to leave room for action icons */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 2, overflowX: 'auto', scrollbarWidth: 'none', paddingRight: 120, flex: 1 }}>
             {(devMode
               ? [
@@ -3553,7 +3590,7 @@ BUILD IT NOW — output every file completely:`;
                   <p style={{ fontSize: 12, color: 'var(--theme-muted)', margin: 0 }}>Follow these steps to create your app</p>
                 </div>
                 {[
-                  { step: 1, title: 'Describe your app', desc: 'Type what you want to build in the chat. Be as specific as you like — mention features, colors, or styles.', done: false },
+                  { step: 1, title: 'Describe your app', desc: 'Type what you want to build in the chat. Be as specific as you like â€” mention features, colors, or styles.', done: false },
                   { step: 2, title: 'Review the preview', desc: 'Your app will appear in the Preview tab as it builds. You can watch it come together in real time.', done: false },
                   { step: 3, title: 'Download or Deploy', desc: 'When you\u2019re happy with the result, download the code or click Deploy to publish it live.', done: false },
                 ].map(({ step, title, desc, done }) => (
@@ -3570,7 +3607,7 @@ BUILD IT NOW — output every file completely:`;
               </div>
             )}
 
-            {/* Preview — always mounted so Sandpack never loses files on tab switch */}
+            {/* Preview â€” always mounted so Sandpack never loses files on tab switch */}
             <div style={{ display: activePanel === 'preview' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
               {/* Show placeholder when no build yet */}
               {Object.keys(files).length <= 1 && !isBuilding ? (
@@ -3579,7 +3616,7 @@ BUILD IT NOW — output every file completely:`;
                   <p style={{ fontSize: 13 }}>Build something to see the preview</p>
                 </div>
               ) : Object.keys(files).length <= 1 && isBuilding ? (
-                /* ── BUILDING SKELETON — Manus-style live preview placeholder ── */
+                /* â”€â”€ BUILDING SKELETON â€” Manus-style live preview placeholder â”€â”€ */
                 <div style={{ flex: 1, background: 'var(--theme-bg)', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div style={{ height: 48, borderRadius: 8, background: 'rgba(255,255,255,0.04)', animation: 'pulse 1.5s ease-in-out infinite' }} />
                   <div style={{ display: 'flex', gap: 12, flex: 1 }}>
@@ -3593,12 +3630,12 @@ BUILD IT NOW — output every file completely:`;
                   <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--theme-muted)', paddingTop: 8 }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--theme-accent)', display: 'inline-block', animation: 'pulse 1s ease-in-out infinite' }} />
-                      Building your app — preview loads when complete
+                      Building your app â€” preview loads when complete
                     </span>
                   </div>
                 </div>
               ) : lastBuildKind === 'mobile' ? (
-                /* ── MOBILE PREVIEW: Expo Snack iframe ── */
+                /* â”€â”€ MOBILE PREVIEW: Expo Snack iframe â”€â”€ */
                 (() => {
                   const mobileCode = files['/App.tsx']?.code || files['/App.jsx']?.code || files['/App.js']?.code || '';
                   const snackUrl = mobileCode.length < 3000
@@ -3609,7 +3646,7 @@ BUILD IT NOW — output every file completely:`;
                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'var(--theme-bg)' }}>
                       <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--theme-border)', display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e' }} />
-                        <span style={{ fontSize: 11, color: 'var(--theme-muted)' }}>Mobile Preview — Expo Snack</span>
+                        <span style={{ fontSize: 11, color: 'var(--theme-muted)' }}>Mobile Preview â€” Expo Snack</span>
                         {mobileCode.length >= 3000 && (
                           <span style={{ fontSize: 10, color: '#fbbf24', background: 'rgba(251,191,36,0.1)', padding: '2px 6px', borderRadius: 4, marginLeft: 4 }}>App too large for inline preview</span>
                         )}
@@ -3619,7 +3656,7 @@ BUILD IT NOW — output every file completely:`;
                           rel="noopener noreferrer"
                           style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--theme-accent)', textDecoration: 'underline' }}
                         >
-                          Open in Expo Snack ↗
+                          Open in Expo Snack â†—
                         </a>
                       </div>
                       {mobileCode.length >= 3000 ? (
@@ -3738,10 +3775,10 @@ BUILD IT NOW — output every file completely:`;
               <BuildHistoryPanel buildHistory={buildHistoryList} projectId={projectIdFromUrl} loading={buildHistoryLoading} />
             )}
 
-            {/* ── Dashboard tab (Manus-style project ops) ── */}
+            {/* â”€â”€ Dashboard tab (Manus-style project ops) â”€â”€ */}
             {activePanel === 'dashboard' && (
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                {/* Project header — uses live dashboardData if available */}
+                {/* Project header â€” uses live dashboardData if available */}
                 <div className="rounded-xl p-4 border" style={{ background: 'var(--theme-surface2, #111)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -3819,7 +3856,7 @@ BUILD IT NOW — output every file completely:`;
                       {versions.slice(0, 5).map((v, i) => (
                         <button key={v.id} onClick={() => restoreVersion(v)} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs transition hover:bg-white/5 text-left" style={{ color: currentVersion === v.id ? 'var(--theme-text)' : 'var(--theme-muted)' }}>
                           <History className="w-3 h-3 shrink-0" />
-                          <span className="truncate">v{versions.length - i} — {v.prompt?.slice(0, 30) || 'Build'}</span>
+                          <span className="truncate">v{versions.length - i} â€” {v.prompt?.slice(0, 30) || 'Build'}</span>
                           <span className="ml-auto shrink-0 opacity-60">{v.time}</span>
                         </button>
                       ))}
@@ -3829,7 +3866,7 @@ BUILD IT NOW — output every file completely:`;
               </div>
             )}
 
-            {/* ── Database tab (Manus-style) ── */}
+            {/* â”€â”€ Database tab (Manus-style) â”€â”€ */}
             {activePanel === 'database' && (
               <div className="flex-1 overflow-y-auto p-4">
                 {/* Issue #5: Use live appDbSchema if available, fall back to local files */}
@@ -3903,14 +3940,17 @@ BUILD IT NOW — output every file completely:`;
               </div>
             )}
 
-            {/* ── Agent Graph tab — CrucibAI unique ── */}
+            {/* â”€â”€ Agent Graph tab â€” CrucibAI unique â”€â”€ */}
             {activePanel === 'agents' && (
               <div className="flex-1 overflow-y-auto" style={{ padding: 0 }}>
                 {/* Header strip */}
                 <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--theme-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--theme-surface2)' }}>
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--theme-text)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Live Execution</div>
-                    <div style={{ fontSize: 11, color: 'var(--theme-muted)', marginTop: 2 }}>122 agents · DAG · real-time</div>
+                    <div style={{ fontSize: 11, color: 'var(--theme-muted)', marginTop: 2 }}>237 agents · dependency-aware swarm · live controller</div>
+                    <div style={{ fontSize: 11, color: 'var(--theme-muted)', marginTop: 2 }}>
+                      {currentJobId ? `Attached to job ${currentJobId}` : 'Waiting for a live orchestrator job.'}
+                    </div>
                   </div>
                   {isBuilding && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', background: 'rgba(59,130,246,0.12)', borderRadius: 20, border: '1px solid rgba(59,130,246,0.25)' }}>
@@ -3923,14 +3963,16 @@ BUILD IT NOW — output every file completely:`;
                 {/* Active skill banner */}
                 {isBuilding && activeSkillName && (
                   <div style={{ padding: '8px 16px', background: 'rgba(59,130,246,0.08)', borderBottom: '1px solid rgba(59,130,246,0.15)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 12 }}>⚡</span>
+                    <span style={{ fontSize: 12 }}>âš¡</span>
                     <span style={{ fontSize: 11, color: 'var(--theme-muted)' }}>Skill:</span>
                     <span style={{ fontSize: 11, fontWeight: 600, color: '#93c5fd' }}>{activeSkillName}</span>
                   </div>
                 )}
 
-                {/* LIVE TIMELINE — shows step_started/step_complete events in real-time */}
-                {liveSteps.length > 0 ? (
+                {/* LIVE TIMELINE â€” shows step_started/step_complete events in real-time */}
+                {currentJobId ? (
+                  <KanbanBoard jobId={currentJobId} />
+                ) : liveSteps.length > 0 ? (
                   <div style={{ padding: '12px 16px' }}>
                     <div style={{ marginBottom: 12, fontSize: 11, color: 'var(--theme-muted)', display: 'flex', justifyContent: 'space-between' }}>
                       <span>Phase execution</span>
@@ -3974,7 +4016,7 @@ BUILD IT NOW — output every file completely:`;
                             {(step.desc || step.filesCount) && (
                               <div style={{ fontSize: 10, color: 'var(--theme-muted)', opacity: 0.7 }}>
                                 {step.status === 'complete' && step.filesCount ? `${step.filesCount} files` : (step.desc || '')}
-                                {step.status === 'complete' && step.durationMs ? ` · ${(step.durationMs/1000).toFixed(1)}s` : ''}
+                                {step.status === 'complete' && step.durationMs ? ` Â· ${(step.durationMs/1000).toFixed(1)}s` : ''}
                               </div>
                             )}
                           </div>
@@ -4021,7 +4063,7 @@ BUILD IT NOW — output every file completely:`;
                         </div>
                       ))}
                       <div style={{ textAlign: 'center', padding: '8px 0', fontSize: 10, color: 'var(--theme-muted)', opacity: 0.5 }}>
-                        + 116 specialized agents in 8 phases
+                        + selective specialist routing across all swarm families
                       </div>
                     </div>
                   </div>
@@ -4029,7 +4071,7 @@ BUILD IT NOW — output every file completely:`;
               </div>
             )}
 
-            {/* ── Pass History tab — CrucibAI unique ── */}
+            {/* â”€â”€ Pass History tab â€” CrucibAI unique â”€â”€ */}
             {activePanel === 'passes' && (
               <PassesTab
                 taskId={taskIdFromUrl}
@@ -4057,7 +4099,7 @@ BUILD IT NOW — output every file completely:`;
         )}
       </div>
 
-      {/* ── Deploy modal — Native one-click deploy ── */}
+      {/* â”€â”€ Deploy modal â€” Native one-click deploy â”€â”€ */}
       {showDeployModal && (
         <div
           className="fixed inset-0 z-[300] flex items-center justify-center"
@@ -4077,7 +4119,7 @@ BUILD IT NOW — output every file completely:`;
               <button
                 onClick={() => { setShowDeployModal(false); }}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-muted)', fontSize: 18, lineHeight: 1, padding: 4 }}
-              >×</button>
+              >Ã—</button>
             </div>
 
             {/* Checking state */}
@@ -4088,7 +4130,7 @@ BUILD IT NOW — output every file completely:`;
               </div>
             )}
 
-            {/* No Vercel token — show connect section */}
+            {/* No Vercel token â€” show connect section */}
             {deployHasToken === false && deployState === 'idle' && (
               <div>
                 <div style={{ padding: '16px', background: 'rgba(224,90,37,0.08)', borderRadius: 12, border: '1px solid rgba(224,90,37,0.25)', marginBottom: 16 }}>
@@ -4098,16 +4140,16 @@ BUILD IT NOW — output every file completely:`;
                     onClick={() => { setShowDeployModal(false); navigate('/app/settings', { state: { openTab: 'account' } }); }}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, background: 'var(--theme-accent)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
                   >
-                    Settings → Deploy Integrations
+                    Settings â†’ Deploy Integrations
                   </button>
                 </div>
                 <p style={{ fontSize: 12, color: 'var(--theme-muted)', marginBottom: 16 }}>Or download your code and deploy manually:</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <button onClick={() => { downloadCode(); setDeployZipDone(true); }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 16px', borderRadius: 8, background: 'transparent', border: '1px solid var(--theme-border)', color: 'var(--theme-text)', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
-                    <Download className="w-4 h-4" /> {deployZipDone ? 'Downloaded ✓' : 'Download ZIP'}
+                    <Download className="w-4 h-4" /> {deployZipDone ? 'Downloaded âœ“' : 'Download ZIP'}
                   </button>
                   <a href="https://vercel.com/new" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 16px', borderRadius: 8, background: '#000', color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 500 }}>
-                    Open Vercel →
+                    Open Vercel â†’
                   </a>
                   <a href="https://app.netlify.com/drop" target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 16px', borderRadius: 8, background: '#00AD9F', color: '#fff', textDecoration: 'none', fontSize: 13, fontWeight: 500 }}>
                     Netlify Drop
@@ -4116,7 +4158,7 @@ BUILD IT NOW — output every file completely:`;
               </div>
             )}
 
-            {/* Token exists — show one-click deploy button */}
+            {/* Token exists â€” show one-click deploy button */}
             {deployHasToken === true && deployState === 'idle' && (
               <div>
                 <p style={{ fontSize: 13, color: 'var(--theme-muted)', marginBottom: 16 }}>Your Vercel token is connected. Deploy your app with one click.</p>
@@ -4269,7 +4311,7 @@ BUILD IT NOW — output every file completely:`;
                       ))}
                     </div>
                     {customDomainResult.ssl && (
-                      <p style={{ fontSize: 11, color: 'var(--theme-muted)', marginTop: 6 }}>🔒 {customDomainResult.ssl}</p>
+                      <p style={{ fontSize: 11, color: 'var(--theme-muted)', marginTop: 6 }}>ðŸ”’ {customDomainResult.ssl}</p>
                     )}
                   </div>
                 )}
@@ -4297,7 +4339,7 @@ BUILD IT NOW — output every file completely:`;
               </div>
             )}
 
-            {/* Close button — only when not deploying */}
+            {/* Close button â€” only when not deploying */}
             {deployState !== 'deploying' && (
               <button
                 onClick={() => { setShowDeployModal(false); setDeployZipDone(false); setDeploySteps(null); }}
@@ -4311,7 +4353,7 @@ BUILD IT NOW — output every file completely:`;
         </div>
       )}
 
-      {/* ── GitHub Git Sync Modal ── */}
+      {/* â”€â”€ GitHub Git Sync Modal â”€â”€ */}
       {showGitSyncModal && (
         <div
           className="fixed inset-0 z-[300] flex items-center justify-center"
@@ -4329,7 +4371,7 @@ BUILD IT NOW — output every file completely:`;
                 <h3 className="text-lg font-semibold" style={{ color: 'var(--theme-text)', margin: 0 }}>Push to GitHub</h3>
               </div>
               {gitSyncState !== 'syncing' && (
-                <button onClick={() => setShowGitSyncModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-muted)', fontSize: 18, lineHeight: 1, padding: 4 }}>×</button>
+                <button onClick={() => setShowGitSyncModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-muted)', fontSize: 18, lineHeight: 1, padding: 4 }}>Ã—</button>
               )}
             </div>
 
@@ -4385,7 +4427,7 @@ BUILD IT NOW — output every file completely:`;
                   </button>
                   <p style={{ fontSize: 11, color: 'var(--theme-muted)', textAlign: 'center' }}>
                     No token? Add it in{' '}
-                    <button onClick={() => { setShowGitSyncModal(false); navigate('/app/settings', { state: { openTab: 'account' } }); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-accent)', fontSize: 11, padding: 0, textDecoration: 'underline' }}>Settings → Deploy integrations</button>
+                    <button onClick={() => { setShowGitSyncModal(false); navigate('/app/settings', { state: { openTab: 'account' } }); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-accent)', fontSize: 11, padding: 0, textDecoration: 'underline' }}>Settings â†’ Deploy integrations</button>
                   </p>
                 </div>
               </div>
@@ -4406,7 +4448,7 @@ BUILD IT NOW — output every file completely:`;
                     <CheckCircle2 className="w-4 h-4" style={{ color: '#4ade80', flexShrink: 0 }} />
                     <p style={{ fontSize: 14, fontWeight: 600, color: '#4ade80', margin: 0 }}>Pushed successfully!</p>
                   </div>
-                  <p style={{ fontSize: 12, color: 'var(--theme-muted)', marginBottom: 8 }}>{gitSyncResult.pushed_files} files pushed · {gitSyncResult.private ? 'Private' : 'Public'} repo</p>
+                  <p style={{ fontSize: 12, color: 'var(--theme-muted)', marginBottom: 8 }}>{gitSyncResult.pushed_files} files pushed Â· {gitSyncResult.private ? 'Private' : 'Public'} repo</p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'rgba(0,0,0,0.3)', borderRadius: 6 }}>
                     <code style={{ fontSize: 12, color: 'var(--theme-text)', flex: 1, wordBreak: 'break-all' }}>{gitSyncResult.repo_url}</code>
                     <button onClick={() => navigator.clipboard.writeText(gitSyncResult.repo_url || '')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--theme-muted)', padding: 4, flexShrink: 0 }} title="Copy URL">
@@ -4455,3 +4497,5 @@ BUILD IT NOW — output every file completely:`;
 };
 
 export default Workspace;
+
+

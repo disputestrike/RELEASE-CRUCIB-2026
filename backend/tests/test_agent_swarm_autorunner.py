@@ -1,4 +1,5 @@
-import tempfile
+import os
+import shutil
 
 import pytest
 
@@ -84,6 +85,12 @@ async def test_run_swarm_agent_step_rejects_core_fallback(monkeypatch):
     }
     job = {"id": "job-1", "project_id": "proj-1", "user_id": "user-1", "goal": FULL_SYSTEM_PROMPT}
 
-    with tempfile.TemporaryDirectory() as workspace:
+    workspace = "tmp_swarm_agent_fallback"
+    if os.path.isdir(workspace):
+        shutil.rmtree(workspace, ignore_errors=True)
+    os.makedirs(workspace, exist_ok=True)
+    try:
         with pytest.raises(RuntimeError, match="swarm_agent_failed:Frontend Generation"):
             await run_swarm_agent_step(step, job, workspace)
+    finally:
+        shutil.rmtree(workspace, ignore_errors=True)

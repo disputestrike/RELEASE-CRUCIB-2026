@@ -36,7 +36,7 @@ async def unsubscribe(job_id: str, queue: asyncio.Queue) -> None:
 async def publish(job_id: str, event_type: str,
                   payload: Optional[Dict[str, Any]] = None,
                   step_id: Optional[str] = None) -> None:
-    """Publish event to all in-memory subscribers (non-blocking)."""
+    """Publish event to all in-memory subscribers and mirror to WebSocket progress."""
     event = {
         "job_id": job_id,
         "step_id": step_id,
@@ -50,6 +50,12 @@ async def publish(job_id: str, event_type: str,
             q.put_nowait(event)
         except asyncio.QueueFull:
             logger.warning("event_bus: subscriber queue full for job %s", job_id)
+    try:
+        from api.routes.job_progress import broadcast_event as websocket_broadcast_event
+
+        await websocket_broadcast_event(job_id, event_type, step_id=step_id, payload=payload or {})
+    except Exception:
+        logger.debug("event_bus: websocket mirror unavailable for job %s", job_id)
 
 
 def publish_sync(job_id: str, event_type: str,

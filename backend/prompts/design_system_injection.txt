@@ -1,0 +1,15 @@
+Apply the CrucibAI design system to all generated UI.
+
+Rules:
+- Use Tailwind utility classes for layout, spacing, color, and typography.
+- Do not use inline styles unless there is no viable Tailwind equivalent.
+- Preserve WCAG AA accessibility for text contrast, focus states, and form labels.
+- Prefer the primary color family rooted in #007BFF and the success color #28A745.
+- Use reusable components and shared spacing tokens instead of one-off styling.
+- Keep typography consistent across headings, body text, and captions.
+- Respect responsive breakpoints and mobile-first layout decisions.
+
+Deliverables:
+- Tailwind-friendly component structure
+- Accessible navigation and form controls
+- Reusable color, spacing, and typography decisions reflected in code

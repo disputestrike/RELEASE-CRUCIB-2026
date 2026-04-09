@@ -22,6 +22,20 @@ BASE_AGENTS = [
     "File Tool Agent",
 ]
 
+DEFAULT_SUPPORT_AGENTS = [
+    "Code Review Agent",
+    "Security Checker",
+    "UX Auditor",
+    "Performance Analyzer",
+    "Deployment Agent",
+    "Memory Agent",
+    "Build Orchestrator Agent",
+    "Deployment Safety Agent",
+    "Quality Metrics Aggregator Agent",
+]
+
+ALWAYS_INCLUDED_AGENT_SET = frozenset(BASE_AGENTS + DEFAULT_SUPPORT_AGENTS)
+
 
 AGENT_KEYWORDS = {
     # 3D / rendering
@@ -285,103 +299,222 @@ def _keyword_match(keyword: str, text: str) -> bool:
     return bool(re.search(pattern, haystack))
 
 
-def select_agents_for_goal(goal: str, stack_contract: Dict | None = None) -> List[str]:
+def _record_rule_hit(
+    selected: Set[str],
+    matched_rules: List[str],
+    label: str,
+    agents: tuple[str, ...] | list[str],
+) -> None:
+    additions = [agent for agent in agents if agent in AGENT_DAG]
+    if not additions:
+        return
+    before = len(selected)
+    selected.update(additions)
+    if len(selected) != before:
+        matched_rules.append(label)
+
+
+def explain_agent_selection(goal: str, stack_contract: Dict | None = None) -> Dict[str, object]:
     selected: Set[str] = set(BASE_AGENTS)
     goal_text = goal or ""
     goal_lower = goal_text.lower()
     contract = stack_contract or {}
+    matched_keywords: List[str] = []
+    matched_rules: List[str] = []
 
     for keyword, agents in AGENT_KEYWORDS.items():
         if _keyword_match(keyword, goal_text):
-            selected.update(a for a in agents if a in AGENT_DAG)
+            _record_rule_hit(selected, matched_rules, f"keyword:{keyword}", agents)
+            matched_keywords.append(keyword)
 
     if contract.get("mobile"):
-        selected.update(a for a in ("Native Config Agent", "Store Prep Agent", "Mobile Responsive Agent") if a in AGENT_DAG)
+        _record_rule_hit(
+            selected,
+            matched_rules,
+            "contract:mobile",
+            ("Native Config Agent", "Store Prep Agent", "Mobile Responsive Agent"),
+        )
 
     if contract.get("requires_full_system_builder"):
-        selected.update(a for a in ("File Tool Agent", "Code Review Agent", "Security Checker", "UX Auditor", "Performance Analyzer", "Deployment Agent", "Memory Agent") if a in AGENT_DAG)
+        _record_rule_hit(
+            selected,
+            matched_rules,
+            "contract:full_system_builder",
+            ("File Tool Agent", "Code Review Agent", "Security Checker", "UX Auditor", "Performance Analyzer", "Deployment Agent", "Memory Agent"),
+        )
 
     if contract.get("queues"):
-        selected.update(a for a in ("Queue Agent", "Message Queue Advanced Agent") if a in AGENT_DAG)
+        _record_rule_hit(selected, matched_rules, "contract:queues", ("Queue Agent", "Message Queue Advanced Agent"))
     if contract.get("caches"):
-        selected.update(a for a in ("Caching Agent", "Database Optimization Agent") if a in AGENT_DAG)
+        _record_rule_hit(selected, matched_rules, "contract:caches", ("Caching Agent", "Database Optimization Agent"))
     if contract.get("payments"):
-        selected.update(a for a in ("Payment Setup Agent", "Stripe Subscription Agent", "Stripe Integration Agent", "Subscription Management Agent") if a in AGENT_DAG)
+        _record_rule_hit(
+            selected,
+            matched_rules,
+            "contract:payments",
+            ("Payment Setup Agent", "Stripe Subscription Agent", "Stripe Integration Agent", "Subscription Management Agent"),
+        )
     if contract.get("realtime"):
-        selected.update(a for a in ("WebSocket Agent", "Real-Time Collaboration Agent") if a in AGENT_DAG)
+        _record_rule_hit(selected, matched_rules, "contract:realtime", ("WebSocket Agent", "Real-Time Collaboration Agent"))
     if contract.get("vector_databases"):
-        selected.update(a for a in ("Embeddings/Vectorization Agent", "Recommendation Engine Agent", "RAG Agent") if a in AGENT_DAG)
+        _record_rule_hit(
+            selected,
+            matched_rules,
+            "contract:vector_databases",
+            ("Embeddings/Vectorization Agent", "Recommendation Engine Agent", "RAG Agent"),
+        )
 
     if any(word in goal_lower for word in ("design", "landing", "website", "ui", "ux")):
-        selected.update(a for a in ("Design Agent", "Layout Agent", "Brand Agent", "UX Auditor", "Dark Mode Agent", "Animation Agent", "CSS Modern Standards Agent", "Typography System Agent", "Color Palette System Agent", "Responsive Breakpoints Agent") if a in AGENT_DAG)
+        _record_rule_hit(
+            selected,
+            matched_rules,
+            "rule:design_surface",
+            ("Design Agent", "Layout Agent", "Brand Agent", "UX Auditor", "Dark Mode Agent", "Animation Agent", "CSS Modern Standards Agent", "Typography System Agent", "Color Palette System Agent", "Responsive Breakpoints Agent"),
+        )
 
     if any(word in goal_lower for word in ("content", "seo", "marketing", "landing", "blog")):
-        selected.update(a for a in ("Content Agent", "SEO Agent", "Image Generation", "Image Optimization Agent", "Icon System Agent") if a in AGENT_DAG)
+        _record_rule_hit(
+            selected,
+            matched_rules,
+            "rule:content_surface",
+            ("Content Agent", "SEO Agent", "Image Generation", "Image Optimization Agent", "Icon System Agent"),
+        )
 
     if any(word in goal_lower for word in ("enterprise", "compliance", "hipaa", "soc2", "gdpr")):
-        selected.update(a for a in ("Legal Compliance Agent", "Audit Trail Agent", "Audit & Compliance Engine Agent", "Multi-tenant Agent", "RBAC Agent", "Secret Management Agent", "CORS & Security Headers Agent", "Input Validation Agent", "Rate Limiting Agent") if a in AGENT_DAG)
+        _record_rule_hit(
+            selected,
+            matched_rules,
+            "rule:enterprise_compliance",
+            ("Legal Compliance Agent", "Audit Trail Agent", "Audit & Compliance Engine Agent", "Multi-tenant Agent", "RBAC Agent", "Secret Management Agent", "CORS & Security Headers Agent", "Input Validation Agent", "Rate Limiting Agent"),
+        )
 
     if any(word in goal_lower for word in ("scale", "kubernetes", "microservice", "distributed", "high-availability")):
-        selected.update(a for a in ("Kubernetes Advanced Agent", "Load Balancer Agent", "Message Queue Advanced Agent", "Database Optimization Agent", "Disaster Recovery Agent", "Monitoring Agent", "Docker Setup Agent", "GitHub Actions CI Agent") if a in AGENT_DAG)
+        _record_rule_hit(
+            selected,
+            matched_rules,
+            "rule:scale_infra",
+            ("Kubernetes Advanced Agent", "Load Balancer Agent", "Message Queue Advanced Agent", "Database Optimization Agent", "Disaster Recovery Agent", "Monitoring Agent", "Docker Setup Agent", "GitHub Actions CI Agent"),
+        )
 
     if any(word in goal_lower for word in ("data", "analytics", "bigdata", "warehouse")):
-        selected.update(a for a in ("Data Quality Agent", "Data Visualization Agent", "Report Generation Agent", "Statistical Analysis Agent", "Analytics Events Schema Agent", "Data Pipeline Agent", "Data Warehouse Agent") if a in AGENT_DAG)
+        _record_rule_hit(
+            selected,
+            matched_rules,
+            "rule:data_analytics",
+            ("Data Quality Agent", "Data Visualization Agent", "Report Generation Agent", "Statistical Analysis Agent", "Analytics Events Schema Agent", "Data Pipeline Agent", "Data Warehouse Agent"),
+        )
 
     # EXPANSION AGENTS - Add based on keywords
-    if any(word in goal_lower for word in ("build", "compile", "vite", "npm")):
-        selected.update(a for a in ("Build Validator Agent", "Dependency Conflict Resolver Agent", "Import Path Validator Agent", "Compilation Dry-Run Agent") if a in AGENT_DAG)
+    if any(word in goal_lower for word in ("compile", "vite", "npm", "dependency", "dependencies", "import path", "import validation")):
+        _record_rule_hit(selected, matched_rules, "rule:build_validation", ("Build Validator Agent", "Dependency Conflict Resolver Agent", "Import Path Validator Agent", "Compilation Dry-Run Agent"))
     
     if any(word in goal_lower for word in ("dark mode", "theme", "dark", "night")):
-        selected.update(a for a in ("Dark Mode Theme Agent", "Color Palette System Agent") if a in AGENT_DAG)
+        _record_rule_hit(selected, matched_rules, "rule:dark_mode", ("Dark Mode Theme Agent", "Color Palette System Agent"))
+
+    if any(word in goal_lower for word in ("animation", "transition", "motion", "micro-interaction")):
+        _record_rule_hit(selected, matched_rules, "rule:animation", ("Animation & Transitions Agent",))
+
+    if any(word in goal_lower for word in ("image optimization", "webp", "compress", "optimized image")):
+        _record_rule_hit(selected, matched_rules, "rule:image_optimization", ("Image Optimization Agent",))
+
+    if any(word in goal_lower for word in ("icon", "icons", "symbol", "svg sprite")):
+        _record_rule_hit(selected, matched_rules, "rule:icon_system", ("Icon System Agent",))
     
     if any(word in goal_lower for word in ("docker", "container", "kubernetes")):
-        selected.update(a for a in ("Docker Setup Agent",) if a in AGENT_DAG)
+        _record_rule_hit(selected, matched_rules, "rule:docker_setup", ("Docker Setup Agent",))
     
     if any(word in goal_lower for word in ("ci", "cd", "github", "actions", "workflow")):
-        selected.update(a for a in ("GitHub Actions CI Agent",) if a in AGENT_DAG)
+        _record_rule_hit(selected, matched_rules, "rule:ci_cd", ("GitHub Actions CI Agent",))
+
+    if any(word in goal_lower for word in ("env", "environment", "config", "configuration")):
+        _record_rule_hit(selected, matched_rules, "rule:environment_config", ("Environment Configuration Agent",))
     
     if any(word in goal_lower for word in ("test", "unit", "integration", "e2e", "end-to-end")):
-        selected.update(a for a in ("Unit Test Agent", "Integration Test Agent", "E2E Test Agent", "Performance Test Agent") if a in AGENT_DAG)
+        _record_rule_hit(selected, matched_rules, "rule:test_suite", ("Unit Test Agent", "Integration Test Agent", "E2E Test Agent", "Performance Test Agent"))
+
+    if any(word in goal_lower for word in ("performance", "load", "stress", "benchmark")):
+        _record_rule_hit(selected, matched_rules, "rule:performance", ("Performance Test Agent", "Lighthouse Performance Agent"))
     
     if any(word in goal_lower for word in ("security", "scan", "vulnerability", "audit")):
-        selected.update(a for a in ("Security Scanning Agent", "Code Quality Gate Agent") if a in AGENT_DAG)
+        _record_rule_hit(selected, matched_rules, "rule:security_scan", ("Security Scanning Agent", "Code Quality Gate Agent"))
+
+    if any(word in goal_lower for word in ("cors", "security headers", "csp", "hsts", "x-frame-options")):
+        _record_rule_hit(selected, matched_rules, "rule:security_headers", ("CORS & Security Headers Agent",))
+
+    if any(word in goal_lower for word in ("input validation", "request validation", "sanitize input", "sanitization")):
+        _record_rule_hit(selected, matched_rules, "rule:input_validation", ("Input Validation Agent",))
+
+    if any(word in goal_lower for word in ("rate limiting", "ratelimit", "throttle", "ddos")):
+        _record_rule_hit(selected, matched_rules, "rule:rate_limiting", ("Rate Limiting Agent",))
     
     if any(word in goal_lower for word in ("email", "template", "mjml")):
-        selected.update(a for a in ("Email Template Agent",) if a in AGENT_DAG)
+        _record_rule_hit(selected, matched_rules, "rule:email_templates", ("Email Template Agent",))
     
     if any(word in goal_lower for word in ("sms", "push", "notification", "twilio")):
-        selected.update(a for a in ("SMS & Push Agent",) if a in AGENT_DAG)
+        _record_rule_hit(selected, matched_rules, "rule:sms_push", ("SMS & Push Agent",))
     
     if any(word in goal_lower for word in ("api", "contract", "schema", "openapi")):
-        selected.update(a for a in ("API Contract Validator Agent", "API Documentation Generation Agent") if a in AGENT_DAG)
+        _record_rule_hit(selected, matched_rules, "rule:api_contract", ("API Contract Validator Agent", "API Documentation Generation Agent"))
     
     if any(word in goal_lower for word in ("database", "schema", "migration", "sql")):
-        selected.update(a for a in ("Database Schema Validator Agent", "ORM Setup Agent") if a in AGENT_DAG)
+        _record_rule_hit(selected, matched_rules, "rule:database_schema", ("Database Schema Validator Agent", "ORM Setup Agent"))
     
     if any(word in goal_lower for word in ("search", "elasticsearch", "algolia")):
-        selected.update(a for a in ("Search Engine Agent",) if a in AGENT_DAG)
+        _record_rule_hit(selected, matched_rules, "rule:search_engine", ("Search Engine Agent",))
     
     if any(word in goal_lower for word in ("recommendation", "ml", "personalization")):
-        selected.update(a for a in ("Recommendation Engine Agent",) if a in AGENT_DAG)
+        _record_rule_hit(selected, matched_rules, "rule:recommendation_engine", ("Recommendation Engine Agent",))
     
     if any(word in goal_lower for word in ("file", "upload", "s3", "storage")):
-        selected.update(a for a in ("File Storage Agent",) if a in AGENT_DAG)
+        _record_rule_hit(selected, matched_rules, "rule:file_storage", ("File Storage Agent",))
     
     if any(word in goal_lower for word in ("webhook", "event", "callback")):
-        selected.update(a for a in ("Webhook Management Agent",) if a in AGENT_DAG)
+        _record_rule_hit(selected, matched_rules, "rule:webhooks", ("Webhook Management Agent",))
     
     if any(word in goal_lower for word in ("monitoring", "logging", "observability", "datadog", "sentry")):
-        selected.update(a for a in ("Monitoring & Logging Agent", "Lighthouse Performance Agent") if a in AGENT_DAG)
+        _record_rule_hit(selected, matched_rules, "rule:observability", ("Monitoring & Logging Agent", "Lighthouse Performance Agent"))
+
+    if any(word in goal_lower for word in ("secret management", "vault", "key rotation", "secrets vault")):
+        _record_rule_hit(selected, matched_rules, "rule:secret_management", ("Secret Management Agent",))
     
     if any(word in goal_lower for word in ("accessibility", "a11y", "wcag", "aria")):
-        selected.update(a for a in ("Accessibility Audit Agent",) if a in AGENT_DAG)
+        _record_rule_hit(selected, matched_rules, "rule:accessibility", ("Accessibility Audit Agent",))
     
     if any(word in goal_lower for word in ("stripe", "payment", "billing", "checkout")):
-        selected.update(a for a in ("Stripe Integration Agent", "Subscription Management Agent") if a in AGENT_DAG)
+        _record_rule_hit(selected, matched_rules, "rule:payments", ("Stripe Integration Agent", "Subscription Management Agent"))
 
-    selected.update(a for a in ("Code Review Agent", "Security Checker", "UX Auditor", "Performance Analyzer", "Deployment Agent", "Memory Agent", "Build Orchestrator Agent", "Deployment Safety Agent", "Quality Metrics Aggregator Agent") if a in AGENT_DAG)
+    if any(word in goal_lower for word in ("realtime", "real-time", "collaboration", "shared presence", "socket.io", "websocket")):
+        _record_rule_hit(selected, matched_rules, "rule:realtime_collaboration", ("Real-Time Collaboration Agent",))
+
+    if any(word in goal_lower for word in ("adr", "architecture decision", "decision record", "technical decision")):
+        _record_rule_hit(selected, matched_rules, "rule:architecture_decisions", ("Architecture Decision Records Agent",))
+
+    _record_rule_hit(selected, matched_rules, "rule:default_support", DEFAULT_SUPPORT_AGENTS)
     selected = _dependency_closure(selected)
-    return sorted(selected)
+    selected_agents = sorted(selected)
+    specialized_agents = sorted(agent for agent in selected_agents if agent not in ALWAYS_INCLUDED_AGENT_SET)
+    return {
+        "selected_agents": selected_agents,
+        "selected_agent_count": len(selected_agents),
+        "matched_keywords": matched_keywords,
+        "matched_rules": matched_rules,
+        "specialized_agents": specialized_agents,
+        "specialized_agent_count": len(specialized_agents),
+    }
+
+
+def select_agents_for_goal(goal: str, stack_contract: Dict | None = None) -> List[str]:
+    return list(explain_agent_selection(goal, stack_contract).get("selected_agents") or [])
+
+
+def should_route_to_agent_selection(goal: str, stack_contract: Dict | None = None) -> bool:
+    contract = stack_contract or {}
+    if contract.get("requires_full_system_builder"):
+        return True
+    if contract.get("mobile") or contract.get("queues") or contract.get("caches") or contract.get("payments") or contract.get("realtime") or contract.get("vector_databases"):
+        return True
+    explanation = explain_agent_selection(goal, contract)
+    return int(explanation.get("specialized_agent_count") or 0) > 0
 
 
 def build_full_phases_from_dag(selected_agents: List[str], agent_dag: Dict) -> List[List[str]]:

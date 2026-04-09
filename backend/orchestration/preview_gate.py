@@ -86,6 +86,53 @@ async def verify_preview_workspace(workspace_path: str) -> Dict[str, Any]:
             "failure_reason": failure_reason,
         }
 
+    try:
+        from agents.preview_validator_agent import PreviewValidatorAgent
+
+        validator = PreviewValidatorAgent()
+        preflight = await validator.execute({"workspace_path": workspace_path})
+        critical_issues = list(preflight.get("critical_issues") or [])
+        warnings = list(preflight.get("warnings") or [])
+        if critical_issues:
+            failure_reason = failure_reason or "preview_preflight_failed"
+            for issue in critical_issues:
+                issue_text = issue.get("issue") or "preview preflight issue"
+                suggestion = issue.get("suggestion") or ""
+                issues.append(f"Preview preflight: {issue_text}{f' ({suggestion})' if suggestion else ''}")
+            proof.append(
+                _proof(
+                    "verification",
+                    "Preview preflight found blocking issues",
+                    {
+                        "critical_issue_count": len(critical_issues),
+                        "warning_count": len(warnings),
+                        "status": preflight.get("status"),
+                    },
+                    verification_class="runtime",
+                ),
+            )
+        else:
+            proof.append(
+                _proof(
+                    "verification",
+                    "Preview preflight passed",
+                    {
+                        "warning_count": len(warnings),
+                        "status": preflight.get("status"),
+                        "files_checked": preflight.get("total_files_checked"),
+                    },
+                    verification_class="runtime",
+                ),
+            )
+    except Exception as exc:
+        proof.append(
+            _proof(
+                "verification",
+                "Preview preflight unavailable",
+                {"error": str(exc)[:200]},
+            ),
+        )
+
     pkg_text = files.get("package.json", "")
     if not pkg_text.strip():
         failure_reason = "missing_package_json"

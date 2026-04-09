@@ -59,6 +59,7 @@ from .multitenancy_rls_sql import (
 from .verification_api_smoke import healthcheck_sh_script
 from .publish_urls import published_app_url
 from anthropic_models import ANTHROPIC_HAIKU_MODEL
+from agents.database_architect_agent import SchemaToSQL, heuristic_schema_from_requirements
 
 logger = logging.getLogger(__name__)
 
@@ -274,6 +275,41 @@ def append_node_artifact_record(workspace_path: str, record: Dict[str, Any]) -> 
             fh.write(json.dumps(record, default=str) + "\n")
     except OSError as e:
         logger.warning("append_node_artifact_record: %s", e)
+
+
+async def _store_step_memory_snapshot(
+    *,
+    project_id: str,
+    job_id: str,
+    step: Dict[str, Any],
+    result: Dict[str, Any],
+    verification: Dict[str, Any],
+) -> None:
+    """Persist a compact step summary into the memory layer when available."""
+    try:
+        from memory.service import get_memory_service
+
+        memory = await get_memory_service()
+        summary_parts = [
+            f"step_key={step.get('step_key', '')}",
+            f"agent={step.get('agent_name', '')}",
+            f"score={verification.get('score')}",
+            f"status=completed",
+            coerce_text_output(result.get("output") or result.get("result") or "", limit=1200),
+        ]
+        await memory.store_step_summary(
+            project_id=project_id,
+            job_id=job_id,
+            text="\n".join(part for part in summary_parts if part),
+            agent_name=step.get("agent_name") or "system",
+            phase=step.get("phase") or "unknown",
+            step_key=step.get("step_key") or "",
+            metadata={
+                "verification_score": str(verification.get("score") or 0),
+            },
+        )
+    except Exception as exc:
+        logger.debug("executor: memory snapshot skipped for %s: %s", step.get("step_key"), exc)
 
 
 def _step_deps(step: Dict[str, Any]) -> list:
@@ -1091,6 +1127,25 @@ async def handle_db_migration(step: Dict, job: Dict,
         mt = multitenant_intent(job)
         st = stripe_intent(job)
         if key == "database.migration":
+            try:
+                schema = heuristic_schema_from_requirements(job.get("goal") or "")
+                schema_payload = schema.model_dump(mode="json")
+                blueprint = _safe_write(
+                    workspace_path,
+                    "db/schema_blueprint.json",
+                    json.dumps(schema_payload, indent=2),
+                )
+                if blueprint:
+                    out.append(blueprint)
+                blueprint_sql = _safe_write(
+                    workspace_path,
+                    "db/migrations/000_schema_blueprint.sql",
+                    "\n\n".join(SchemaToSQL.generate_sql(schema)),
+                )
+                if blueprint_sql:
+                    out.append(blueprint_sql)
+            except Exception as exc:
+                logger.warning("Database schema blueprint generation skipped: %s", exc)
             sql = migration_001_app_schema_sql()
             w = _safe_write(workspace_path, "db/migrations/001_schema.sql", sql)
             if w:
@@ -1605,6 +1660,13 @@ async def execute_step(step: Dict[str, Any], job: Dict[str, Any],
                 "output_files": outs[:40],
                 "status": "completed",
             },
+        )
+        await _store_step_memory_snapshot(
+            project_id=str(job.get("project_id") or job_id),
+            job_id=job_id,
+            step=step,
+            result=result,
+            verification=vr,
         )
 
         return {"success": True, "result": result, "verification": vr}

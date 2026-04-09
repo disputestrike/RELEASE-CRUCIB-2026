@@ -79,6 +79,8 @@ LAST_BUILD_STATE = {
     "selected_agent_count": 0,
     "phase_count": 0,
     "orchestration_mode": "unknown",
+    "selection_explanation": {},
+    "controller_summary": {},
 }
 RECENT_AGENT_SELECTION_LOGS: list[str] = []
 # CSRF Protection Middleware
@@ -392,6 +394,16 @@ def emit_build_event(project_id: str, event_type: str, **kwargs: Any) -> None:
             loop.create_task(_persist())
         except RuntimeError:
             pass  # No event loop running (e.g. during import)
+    try:
+        async def _broadcast_progress() -> None:
+            from api.routes.job_progress import broadcast_event as websocket_broadcast_event
+
+            await websocket_broadcast_event(project_id, event_type, **kwargs)
+
+        loop = asyncio.get_running_loop()
+        loop.create_task(_broadcast_progress())
+    except Exception:
+        pass
 
 # ==================== MODELS ====================
 
@@ -8406,6 +8418,8 @@ def _update_last_build_state(plan: Dict[str, Any]) -> None:
             "selected_agent_count": selected_agent_count,
             "phase_count": phase_count,
             "orchestration_mode": orchestration_mode,
+            "selection_explanation": plan.get("selection_explanation") or {},
+            "controller_summary": plan.get("controller_summary") or {},
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     )
@@ -8889,8 +8903,12 @@ async def run_auto(
 
         background_tasks.add_task(_background_auto_runner_job, body.job_id, ws)
 
-        return {"success": True, "job_id": body.job_id,
-                "stream_url": f"/api/jobs/{body.job_id}/stream"}
+        return {
+            "success": True,
+            "job_id": body.job_id,
+            "stream_url": f"/api/jobs/{body.job_id}/stream",
+            "websocket_url": f"/api/job/{body.job_id}/progress",
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -8948,7 +8966,12 @@ async def create_job_route(body: CreateJobRequest,
                 agent_name=sd["agent_name"], phase=sd["phase"],
                 depends_on=sd["depends_on"], order_index=idx,
             )
-        return {"success": True, "job": job, "plan": plan}
+        return {
+            "success": True,
+            "job": job,
+            "plan": plan,
+            "websocket_url": f"/api/job/{job['id']}/progress",
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -9255,8 +9278,12 @@ async def resume_job_route(
             root.mkdir(parents=True, exist_ok=True)
             ws = str(root)
         background_tasks.add_task(_background_resume_auto_job, job_id, ws)
-        return {"success": True, "job_id": job_id,
-                "stream_url": f"/api/jobs/{job_id}/stream"}
+        return {
+            "success": True,
+            "job_id": job_id,
+            "stream_url": f"/api/jobs/{job_id}/stream",
+            "websocket_url": f"/api/job/{job_id}/progress",
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -11188,6 +11215,12 @@ try:
     app.include_router(monitoring_router)
 except ImportError:
     pass
+try:
+    from api.routes.job_progress import router as job_progress_router
+
+    app.include_router(job_progress_router)
+except ImportError as exc:
+    logger.warning("job progress router unavailable: %s", exc)
 try:
     from routes.trust import create_trust_router
     app.include_router(create_trust_router(ROOT_DIR))
