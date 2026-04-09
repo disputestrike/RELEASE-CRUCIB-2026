@@ -1,0 +1,104 @@
+# docker-compose.agent.yml
+# Secure agent sandbox with network isolation and resource limits
+
+version: '3.9'
+
+services:
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    
+    # Security: Non-root user
+    user: "1000:1000"
+    
+    # Security: Read-only root filesystem
+    read_only_root_filesystem: true
+    
+    # Security: No privilege escalation
+    security_opt:
+      - no-new-privileges:true
+    
+    # Security: Drop all Linux capabilities
+    cap_drop:
+      - ALL
+    
+    # Security: Add only essential capabilities if needed
+    # cap_add:
+    #   - NET_BIND_SERVICE
+    
+    # Resource Limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'           # Max 2 CPU cores
+          memory: 2G            # Max 2GB RAM
+        reservations:
+          cpus: '0.5'           # Reserve 0.5 CPU
+          memory: 512M          # Reserve 512MB RAM
+    
+    # Network Isolation
+    networks:
+      agent-network:
+        ipv4_address: 172.25.0.10
+    
+    # Environment Variables
+    environment:
+      # Whitelisted external services
+      - CRUCIBAI_API_KEY=${CRUCIBAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CEREBRAS_API_KEY=${CEREBRAS_API_KEY}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      
+      # Internal communication
+      - CRUCIBAI_METRICS_URL=http://metrics.crucibai.local:9090
+      - CRUCIBAI_LOGS_URL=http://logs.crucibai.local:5601
+      
+      # Security markers
+      - SANDBOX_JOB_ID=${JOB_ID}
+      - SANDBOX_SECURITY_LEVEL=strict
+      - SANDBOX_TIMEOUT_SECONDS=300
+      - NODE_ENV=production
+    
+    # Ephemeral volumes (reset on container stop)
+    volumes:
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 1G
+      - type: tmpfs
+        target: /home/crucibai
+        tmpfs:
+          size: 1G
+    
+    # No restart unless explicitly requested
+    restart_policy:
+      condition: none
+    
+    # Standard input/output
+    stdin_open: false
+    tty: false
+    
+    # Labels for monitoring
+    labels:
+      app: crucibai-agent
+      type: sandbox
+      version: "1.0"
+
+networks:
+  agent-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.25.0.0/16
+    driver_opts:
+      com.docker.network.bridge.name: crucibai-br0
+      # Enable network filtering
+      com.docker.network.bridge.enable_ip_masquerade: "true"
+      com.docker.network.bridge.enable_icc: "false"
+
+# Usage:
+# docker-compose -f docker-compose.agent.yml up
+# JOB_ID=my-job docker-compose -f docker-compose.agent.yml up
