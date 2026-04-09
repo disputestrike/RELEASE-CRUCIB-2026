@@ -20,9 +20,26 @@ async def test_job_progress_bootstrap_uses_runtime_state(monkeypatch):
             {"event_type": "step_started", "created_at": "2026-04-09T00:00:00+00:00", "payload": {"agent_name": "Frontend Generation"}}
         ]
 
+    class FakeMemoryService:
+        async def build_context_packet(self, **kwargs):
+            return {
+                "provider": "memory",
+                "project_id": "proj-1",
+                "job_id": kwargs.get("job_id"),
+                "phase": kwargs.get("phase"),
+                "query": kwargs.get("query"),
+                "relevant_memories": [{"id": "mem-1", "agent": "Planner", "text": "Plan summary"}],
+                "recent_memories": [{"id": "mem-2", "agent": "Frontend Generation", "text": "Built shell"}],
+                "token_usage": 42,
+            }
+
+    async def fake_get_memory_service():
+        return FakeMemoryService()
+
     monkeypatch.setattr(job_progress, "get_job", fake_get_job)
     monkeypatch.setattr(job_progress, "get_steps", fake_get_steps)
     monkeypatch.setattr(job_progress, "get_job_events", fake_get_events)
+    monkeypatch.setattr("memory.service.get_memory_service", fake_get_memory_service)
 
     payload = await job_progress.get_job_progress("job-123")
 
@@ -33,6 +50,9 @@ async def test_job_progress_bootstrap_uses_runtime_state(monkeypatch):
     assert payload["logs"][0]["agent"] == "Frontend Generation"
     assert payload["controller"]["active_agent_count"] == 1
     assert payload["controller"]["recommended_focus"] == "Watch Frontend Generation"
+    assert payload["memory"]["provider"] == "memory"
+    assert payload["memory"]["token_usage"] == 42
+    assert payload["memory"]["recent_memories"][0]["agent"] == "Frontend Generation"
 
 
 @pytest.mark.asyncio

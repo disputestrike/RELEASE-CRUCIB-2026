@@ -62,6 +62,15 @@ than legacy demo-only wiring.
     - next actions
     - blockers
     - repair plan
+- [job_progress.py](C:/Users/benxp/OneDrive/Documents/New%20project/backend/api/routes/job_progress.py)
+  - now includes scoped memory context in the live job payload
+- [useJobProgress.js](C:/Users/benxp/OneDrive/Documents/New%20project/frontend/src/hooks/useJobProgress.js)
+  - now hydrates memory payload into the live board
+- the live board now shows:
+  - project memory provider
+  - token usage
+  - recent memories
+  - relevant memories
 
 ## Local Verification
 
@@ -84,11 +93,7 @@ python -m pytest backend\tests\test_controller_brain.py backend\tests\test_runti
 
 Result:
 - `75 passed`
-- `1 warning`
-
-Warning honesty:
-- local Postgres was not reachable on `127.0.0.1:5434`
-- the test harness continued so non-database tests could run
+- no pytest warnings in this proof-band run
 
 ### Frontend proof band
 Command:
@@ -100,9 +105,7 @@ $env:CI='true'; npx craco test --runInBand
 Result:
 - `12 passed test suites`
 - `53 passed tests`
-
-Note:
-- React emitted `act(...)` warnings in one suite, but the suite passed
+- no React `act(...)` warnings in this run
 
 ## Production Spot Checks
 
@@ -203,6 +206,8 @@ What this pass did not prove end-to-end:
 - a fresh authenticated production build-job run through the full private job
   execution path
 - full external-service-backed database/infrastructure execution in local tests
+- the final blocker here is authenticated access to the private orchestrator
+  endpoints such as `/api/orchestrator/plan` and `/api/orchestrator/run-auto`
 
 That said, this is now a much stronger position to defend CrucibAI with
 evidence instead of aspiration.

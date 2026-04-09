@@ -3,6 +3,7 @@ Pytest fixtures and config for CrucibAI backend tests.
 PostgreSQL: defaults match repo docker-compose (host 5434). Session start brings up deps when possible.
 """
 import asyncio
+import logging
 import os
 import sys
 import tempfile
@@ -32,6 +33,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 _BACKEND_ROOT = Path(__file__).resolve().parents[1]
 _TEST_TEMP_ROOT = _REPO_ROOT / ".tmp_pytest_manual"
 _TEST_TEMP_ROOT.mkdir(parents=True, exist_ok=True)
+logger = logging.getLogger(__name__)
 
 
 class _RepoTemporaryDirectory:
@@ -159,8 +161,6 @@ class _FakeDb:
 
 def pytest_sessionstart(session):
     """Bring up local docker deps when not in GitHub Actions; CI uses service containers + DATABASE_URL."""
-    import warnings
-
     skip_compose = os.environ.get("GITHUB_ACTIONS", "").lower() == "true"
     compose = _REPO_ROOT / "docker-compose.yml"
     db_ready = False
@@ -187,10 +187,9 @@ def pytest_sessionstart(session):
             except OSError:
                 time.sleep(1)
         if not ok:
-            warnings.warn(
+            logger.warning(
                 "PostgreSQL not reachable on 127.0.0.1:5434 after 90s. "
-                "Continuing so non-database tests can run; database-backed fixtures will fail when used.",
-                RuntimeWarning,
+                "Continuing so non-database tests can run; database-backed fixtures will fail when used."
             )
     else:
         try:

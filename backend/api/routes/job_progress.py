@@ -87,6 +87,30 @@ async def _load_job_progress_payload(job_id: str) -> Dict[str, Any]:
     steps = await get_steps(job_id)
     events = await get_job_events(job_id, limit=250)
     controller = build_live_job_progress(job=job, steps=steps, events=events)
+    memory_payload: Dict[str, Any] | None = None
+    try:
+        from memory.service import get_memory_service
+
+        memory = await get_memory_service()
+        focus = str((controller.get("controller") or {}).get("recommended_focus") or "")
+        query = " | ".join(
+            part
+            for part in (
+                str(job.get("goal") or "")[:180],
+                focus,
+                str(controller.get("current_phase") or ""),
+            )
+            if part
+        )
+        memory_payload = await memory.build_context_packet(
+            project_id=str(job.get("project_id") or job.get("id") or ""),
+            job_id=str(job.get("id") or job_id),
+            phase=str(controller.get("current_phase") or "") or None,
+            query=query or "latest controller context",
+            top_k=5,
+        )
+    except Exception:
+        logger.debug("job-progress memory context unavailable for %s", job_id, exc_info=True)
     controller["logs"] = [
         {
             "timestamp": event.get("created_at"),
@@ -100,6 +124,16 @@ async def _load_job_progress_payload(job_id: str) -> Dict[str, Any]:
         }
         for event in events[-50:]
     ]
+    controller["memory"] = memory_payload or {
+        "provider": "unavailable",
+        "project_id": str(job.get("project_id") or job.get("id") or ""),
+        "job_id": str(job.get("id") or job_id),
+        "phase": controller.get("current_phase"),
+        "query": "",
+        "relevant_memories": [],
+        "recent_memories": [],
+        "token_usage": 0,
+    }
     return controller
 
 

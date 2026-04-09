@@ -147,6 +147,23 @@
   gap: 4px;
 }
 
+.memoryList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.memoryCard {
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+  background: #0f172a;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #cbd5e1;
+}
+
 .phaseGroup {
   border: 1px solid #1f2937;
   border-left: 4px solid #475569;

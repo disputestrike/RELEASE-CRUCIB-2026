@@ -19,6 +19,7 @@ export default function KanbanBoard({ jobId }) {
     totalProgress,
     controller,
     currentPhase,
+    memory,
     isConnected,
     error,
   } = useJobProgress(jobId);
@@ -136,6 +137,54 @@ export default function KanbanBoard({ jobId }) {
                 {(controller.repair_plan || []).map((step) => (
                   <span key={`${step.step_key}-${step.action}`} className={styles.tag}>
                     {step.agent_name}: {step.action}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {memory ? (
+        <section className={styles.controllerPanel}>
+          <div className={styles.controllerHeader}>
+            <strong>Project Memory</strong>
+            <span className={styles.controllerStatus}>{memory.provider || 'memory'}</span>
+          </div>
+          <div className={styles.controllerGrid}>
+            <div className={styles.controllerCard}>
+              <span className={styles.controllerLabel}>Token usage</span>
+              <strong>{memory.token_usage || 0}</strong>
+            </div>
+            <div className={styles.controllerCard}>
+              <span className={styles.controllerLabel}>Current phase context</span>
+              <strong>{memory.phase || 'all phases'}</strong>
+              {memory.query ? (
+                <span className={styles.controllerMeta}>{memory.query}</span>
+              ) : null}
+            </div>
+          </div>
+          {(memory.recent_memories || []).length > 0 ? (
+            <div className={styles.controllerListBlock}>
+              <span className={styles.controllerLabel}>Recent memories</span>
+              <div className={styles.memoryList}>
+                {(memory.recent_memories || []).map((item) => (
+                  <div key={item.id || `${item.agent}-${item.timestamp}`} className={styles.memoryCard}>
+                    <strong>{item.agent || 'system'}</strong>
+                    <span className={styles.controllerMeta}>{item.phase || 'unknown phase'}</span>
+                    <span>{item.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {(memory.relevant_memories || []).length > 0 ? (
+            <div className={styles.controllerListBlock}>
+              <span className={styles.controllerLabel}>Relevant memories</span>
+              <div className={styles.tagList}>
+                {(memory.relevant_memories || []).map((item) => (
+                  <span key={item.id || `${item.agent}-${item.timestamp}`} className={styles.tag}>
+                    {item.agent}: {item.text}
                   </span>
                 ))}
               </div>

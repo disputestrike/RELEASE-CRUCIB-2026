@@ -9,6 +9,7 @@ function normalizeBootstrap(payload) {
     totalProgress: payload?.total_progress || 0,
     controller: payload?.controller || null,
     currentPhase: payload?.current_phase || null,
+    memory: payload?.memory || null,
   };
 }
 
@@ -34,6 +35,7 @@ export function useJobProgress(jobId) {
   const [totalProgress, setTotalProgress] = useState(0);
   const [controller, setController] = useState(null);
   const [currentPhase, setCurrentPhase] = useState(null);
+  const [memory, setMemory] = useState(null);
   const [error, setError] = useState(null);
 
   const { lastMessage, isConnected, error: wsError } = useWebSocket(jobId ? `/api/job/${jobId}/progress` : null);
@@ -46,6 +48,7 @@ export function useJobProgress(jobId) {
       setTotalProgress(0);
       setController(null);
       setCurrentPhase(null);
+      setMemory(null);
       setError(null);
       return;
     }
@@ -69,6 +72,7 @@ export function useJobProgress(jobId) {
         setTotalProgress(normalized.totalProgress);
         setController(normalized.controller);
         setCurrentPhase(normalized.currentPhase);
+        setMemory(normalized.memory);
         setError(null);
       } catch (err) {
         if (!cancelled) {
@@ -96,6 +100,7 @@ export function useJobProgress(jobId) {
       setTotalProgress(normalized.totalProgress);
       setController(normalized.controller);
       setCurrentPhase(normalized.currentPhase);
+      setMemory(normalized.memory);
       return;
     }
 
@@ -107,6 +112,7 @@ export function useJobProgress(jobId) {
       setTotalProgress(normalized.totalProgress);
       setController(normalized.controller);
       setCurrentPhase(normalized.currentPhase);
+      setMemory(normalized.memory);
       setError(null);
       return;
     }
@@ -155,9 +161,10 @@ export function useJobProgress(jobId) {
     totalProgress,
     controller,
     currentPhase,
+    memory,
     isConnected,
     error,
-  }), [phases, logs, isRunning, totalProgress, controller, currentPhase, isConnected, error]);
+  }), [phases, logs, isRunning, totalProgress, controller, currentPhase, memory, isConnected, error]);
 
   return summary;
 }

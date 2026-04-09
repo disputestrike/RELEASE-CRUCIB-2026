@@ -41,3 +41,5 @@ def test_live_orchestration_board_is_mounted_in_workspace_surfaces():
     assert "Controller Brain" in kanban
     assert "Recommended focus" in kanban
     assert "Next actions" in kanban
+    assert "Project Memory" in kanban
+    assert "Recent memories" in kanban
