@@ -1,0 +1,30 @@
+C:\Users\benxp\OneDrive\Documents\New project\backend\anthropic_models.py:13:ANTHROPIC_HAIKU_MODEL = "claude-haiku-4-5-20251001"
+C:\Users\benxp\OneDrive\Documents\New project\backend\anthropic_models.py:15:ANTHROPIC_SONNET_MODEL = "claude-sonnet-4-6"
+C:\Users\benxp\OneDrive\Documents\New project\backend\test_suite.py:42:"model": "claude-haiku-4-5-20251001",
+C:\Users\benxp\OneDrive\Documents\New project\backend\test_suite.py:134:"model": "claude-haiku-4-5-20251001"
+C:\Users\benxp\OneDrive\Documents\New project\backend\test_suite.py:144:"model": "claude-haiku-4-5-20251001"
+C:\Users\benxp\OneDrive\Documents\New project\backend\agents\backend_agent.py:167:model="claude-haiku-4-5-20251001",
+C:\Users\benxp\OneDrive\Documents\New project\backend\agents\backend_agent.py:177:data["_model_used"] = "claude-haiku-4-5-20251001"
+C:\Users\benxp\OneDrive\Documents\New project\backend\agents\builder_agent.py:166:model=context.get("llm_model") or "claude-haiku-4-5-20251001",
+C:\Users\benxp\OneDrive\Documents\New project\backend\agents\database_agent.py:148:model="claude-haiku-4-5-20251001",
+C:\Users\benxp\OneDrive\Documents\New project\backend\agents\database_agent.py:158:data["_model_used"] = "claude-haiku-4-5-20251001"
+C:\Users\benxp\OneDrive\Documents\New project\backend\agents\deployment_agent.py:177:model="claude-haiku-4-5-20251001",
+C:\Users\benxp\OneDrive\Documents\New project\backend\agents\deployment_agent.py:187:data["_model_used"] = "claude-haiku-4-5-20251001"
+C:\Users\benxp\OneDrive\Documents\New project\backend\agents\design_agent.py:156:model="claude-haiku-4-5-20251001",
+C:\Users\benxp\OneDrive\Documents\New project\backend\agents\design_agent.py:166:data["_model_used"] = "claude-haiku-4-5-20251001"
+C:\Users\benxp\OneDrive\Documents\New project\backend\agents\documentation_agent.py:131:model="claude-haiku-4-5-20251001",
+C:\Users\benxp\OneDrive\Documents\New project\backend\agents\documentation_agent.py:141:data["_model_used"] = "claude-haiku-4-5-20251001"
+C:\Users\benxp\OneDrive\Documents\New project\backend\agents\frontend_agent.py:136:model="claude-haiku-4-5-20251001",
+C:\Users\benxp\OneDrive\Documents\New project\backend\agents\frontend_agent.py:146:data["_model_used"] = "claude-haiku-4-5-20251001"
+C:\Users\benxp\OneDrive\Documents\New project\backend\agents\planner_agent.py:130:model="claude-haiku-4-5-20251001",
+C:\Users\benxp\OneDrive\Documents\New project\backend\agents\planner_agent.py:140:data["_model_used"] = "claude-haiku-4-5-20251001"
+C:\Users\benxp\OneDrive\Documents\New project\backend\agents\security_agent.py:158:model="claude-haiku-4-5-20251001",
+C:\Users\benxp\OneDrive\Documents\New project\backend\agents\security_agent.py:168:data["_model_used"] = "claude-haiku-4-5-20251001"
+C:\Users\benxp\OneDrive\Documents\New project\backend\agents\stack_selector_agent.py:136:model="claude-haiku-4-5-20251001",
+C:\Users\benxp\OneDrive\Documents\New project\backend\agents\stack_selector_agent.py:146:data["_model_used"] = "claude-haiku-4-5-20251001"
+C:\Users\benxp\OneDrive\Documents\New project\backend\agents\test_generation_agent.py:135:model="claude-haiku-4-5-20251001",
+C:\Users\benxp\OneDrive\Documents\New project\backend\agents\test_generation_agent.py:145:data["_model_used"] = "claude-haiku-4-5-20251001"
+C:\Users\benxp\OneDrive\Documents\New project\backend\tests\test_crucibai_api.py:293:json={"message": "What is 2+2?", "model": "claude-haiku-4-5-20251001"},
+C:\Users\benxp\OneDrive\Documents\New project\backend\tests\test_orchestration_e2e.py:60:model_chain = [{"provider": "openai", "model": "claude-haiku-4-5-20251001"}]
+C:\Users\benxp\OneDrive\Documents\New project\backend\tests\test_orchestration_e2e.py:93:model_chain = [{"provider": "openai", "model": "claude-haiku-4-5-20251001"}]
+C:\Users\benxp\OneDrive\Documents\New project\backend\tests\test_tool_agents.py:45:model="claude-haiku-4-5-20251001",

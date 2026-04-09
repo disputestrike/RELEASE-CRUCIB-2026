@@ -5,6 +5,7 @@ Agent management routes module.
 Handles agent operations, DAG execution, and agent orchestration.
 """
 
+from anthropic_models import ANTHROPIC_SONNET_MODEL
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
@@ -88,7 +89,7 @@ async def get_agent_config(agent_name: str):
     
     return {
         "name": agent_name,
-        "model": "claude-3-5-sonnet",
+        "model": ANTHROPIC_SONNET_MODEL,
         "temperature": 0.7,
         "max_tokens": 4096,
         "system_prompt": "You are an expert code generator..."

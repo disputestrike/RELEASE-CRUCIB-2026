@@ -1,5 +1,5 @@
 """
-BuilderAgent — elite directive injected into LLM system context before generation.
+BuilderAgent - elite directive injected into LLM system context before generation.
 Uses workspace proof/ELITE_EXECUTION_DIRECTIVE.md + strict BUILD-mode system prompt.
 """
 from __future__ import annotations
@@ -74,7 +74,7 @@ class BuilderAgent(BaseAgent):
 
     Context:
         - workspace_path: str (required)
-        - goal or user_prompt: str — build spec / task text
+        - goal or user_prompt: str - build spec / task text
     """
 
     def validate_input(self, context: Dict[str, Any]) -> bool:
@@ -123,7 +123,7 @@ class BuilderAgent(BaseAgent):
 - If the prompt asks for frontend, backend, data, infra, tests, and docs, emit all of them in one coherent file set
 - Enforce proof/ gates before proceeding
 - If you cannot implement a requested feature, return status ❌ CRITICAL BLOCK with a precise reason instead of silently degrading
-- Never display the spec as content — implement it
+- Never display the spec as content - implement it
 - Prefer real framework/runtime files over explanatory markdown
 
 [FAILURE CONDITIONS]
@@ -163,7 +163,7 @@ The files object may include any needed folders such as:
             response_text, tokens = await self.call_llm(
                 user_prompt=user_message,
                 system_prompt=system_prompt,
-                model=context.get("llm_model") or "claude-3-5-haiku-20241022",
+                model=context.get("llm_model") or "claude-haiku-4-5-20251001",
                 temperature=0.1,
                 max_tokens=min(8000, int(context.get("max_tokens") or 8000)),
                 stream=context.get("stream", True),

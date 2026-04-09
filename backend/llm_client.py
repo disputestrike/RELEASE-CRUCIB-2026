@@ -9,6 +9,8 @@ import asyncio
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
 
+from anthropic_models import ANTHROPIC_SONNET_MODEL, normalize_anthropic_model
+
 logger = logging.getLogger(__name__)
 
 
@@ -28,7 +30,10 @@ def get_llm_config() -> Optional[LLMConfig]:
         # Try Claude first
         claude_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
         if claude_key:
-            model = os.environ.get("ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022")
+            model = normalize_anthropic_model(
+                os.environ.get("ANTHROPIC_MODEL"),
+                default=ANTHROPIC_SONNET_MODEL,
+            )
             return LLMConfig(
                 provider="anthropic",
                 api_key=claude_key,

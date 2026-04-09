@@ -1,4 +1,4 @@
-"""
+﻿"""
 SecurityAgent: Security audit, vulnerability scanning, and fixes.
 """
 from typing import Dict, Any
@@ -155,7 +155,7 @@ Quality expectations:
         response, tokens = await self.call_llm(
             user_prompt=user_prompt + context_info,
             system_prompt=system_prompt,
-            model="claude-3-5-haiku-20241022",
+            model="claude-haiku-4-5-20251001",
             temperature=0.7,
             max_tokens=2000
         )
@@ -165,7 +165,8 @@ Quality expectations:
         
         # Add metadata
         data["_tokens_used"] = tokens
-        data["_model_used"] = "claude-3-5-haiku-20241022"
+        data["_model_used"] = "claude-haiku-4-5-20251001"
         data["_agent"] = self.name
         
         return data
+

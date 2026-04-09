@@ -1,4 +1,4 @@
-"""
+﻿"""
 Tests for Phase 3 tool agents: Browser, File, API, Database, Deployment.
 """
 import pytest
@@ -42,7 +42,7 @@ async def test_base_agent_rejects_large_cerebras_prompt_without_anthropic(monkey
         await agent.call_llm(
             user_prompt=giant_prompt,
             system_prompt="You are a frontend builder.",
-            model="claude-3-5-haiku-20241022",
+            model="claude-haiku-4-5-20251001",
             max_tokens=6000,
         )
 
@@ -392,3 +392,4 @@ def test_agent_dag_has_tool_agents():
         assert agent_name in AGENT_DAG, f"Missing agent: {agent_name}"
         assert "depends_on" in AGENT_DAG[agent_name]
         assert "system_prompt" in AGENT_DAG[agent_name]
+

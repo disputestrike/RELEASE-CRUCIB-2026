@@ -2076,6 +2076,7 @@ async def _call_llm_for_schema(prompt: str, system: str) -> str:
     """Minimal LLM caller for schema generation. Tries Anthropic then Cerebras."""
     import httpx
     import os
+    from anthropic_models import ANTHROPIC_HAIKU_MODEL
 
     # Try Anthropic first
     anthropic_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
@@ -2085,7 +2086,7 @@ async def _call_llm_for_schema(prompt: str, system: str) -> str:
                 "https://api.anthropic.com/v1/messages",
                 headers={"x-api-key": anthropic_key, "anthropic-version": "2023-06-01"},
                 json={
-                    "model": "claude-3-5-haiku-20241022",
+                    "model": ANTHROPIC_HAIKU_MODEL,
                     "max_tokens": 4096,
                     "system": system,
                     "messages": [{"role": "user", "content": prompt}],

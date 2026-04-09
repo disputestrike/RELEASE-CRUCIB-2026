@@ -57,6 +57,7 @@ from .multitenancy_rls_sql import (
 )
 from .verification_api_smoke import healthcheck_sh_script
 from .publish_urls import published_app_url
+from anthropic_models import ANTHROPIC_HAIKU_MODEL
 
 logger = logging.getLogger(__name__)
 
@@ -521,7 +522,7 @@ async def handle_frontend_generate(step: Dict, job: Dict,
                     "user_prompt": goal,
                     "project_id": job_id,
                     "workspace_path": workspace_path,
-                    "llm_model": job.get("llm_model") or "claude-3-5-haiku-20241022",
+                    "llm_model": job.get("llm_model") or ANTHROPIC_HAIKU_MODEL,
                     "max_tokens": 12000,
                 }
             )

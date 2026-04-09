@@ -13,8 +13,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, MutableMapping
 
+from anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_model
 
-ANTHROPIC_MODEL_DEFAULT = "claude-3-5-haiku-20241022"
+ANTHROPIC_MODEL_DEFAULT = ANTHROPIC_HAIKU_MODEL
 CEREBRAS_MODEL_DEFAULT = "llama3.1-8b"
 LLAMA_MODEL_DEFAULT = "meta-llama/Llama-2-70b-chat-hf"
 CEREBRAS_KEY_ENV_NAMES = ["CEREBRAS_API_KEY"] + [f"CEREBRAS_API_KEY_{i}" for i in range(1, 6)]
@@ -119,7 +120,10 @@ def _provider_status(env: Mapping[str, str]) -> dict[str, Any]:
         "anthropic": {
             "configured": bool(anthropic_key),
             "missing_env": [] if anthropic_key else ["ANTHROPIC_API_KEY"],
-            "model": _env_value(env, "ANTHROPIC_MODEL") or ANTHROPIC_MODEL_DEFAULT,
+            "model": normalize_anthropic_model(
+                _env_value(env, "ANTHROPIC_MODEL"),
+                default=ANTHROPIC_MODEL_DEFAULT,
+            ),
             "disabled": _env_bool(env, "CRUCIBAI_DISABLE_ANTHROPIC"),
             "key_count": 1 if anthropic_key else 0,
         },

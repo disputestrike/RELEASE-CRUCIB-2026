@@ -1,5 +1,5 @@
 """
-CrucibAI API Tests – real app via AsyncClient (no mocks).
+CrucibAI API Tests � real app via AsyncClient (no mocks).
 Tests: Health, AI Chat, Auth, Tokens, Projects, Patterns, Build phases, Stripe.
 AI endpoints may return 503/500 when no API keys or missing LLM deps; tests accept 200, 503, 500.
 """
@@ -30,7 +30,7 @@ class TestHealthEndpoints:
 
 # DB-dependent tests run before AI tests (AI can leave event loop in a bad state).
 class TestAuthEndpoints:
-    """Auth – real DB; register, login, me."""
+    """Auth � real DB; register, login, me."""
 
     async def test_register_new_user(self, app_client):
         test_email = f"test_user_{int(time.time())}@example.com"
@@ -101,7 +101,7 @@ class TestAuthEndpoints:
 
 
 class TestTokenEndpoints:
-    """Tokens – bundles, history (auth required for some)."""
+    """Tokens � bundles, history (auth required for some)."""
 
     async def test_get_bundles(self, app_client):
         r = await app_client.get("/api/tokens/bundles")
@@ -201,7 +201,7 @@ class TestDashboardEndpoints:
 
 
 class TestProjectEndpoints:
-    """Projects – create (may 402 if low balance), list."""
+    """Projects � create (may 402 if low balance), list."""
 
     async def test_create_project(self, app_client):
         test_email = f"test_project_{int(time.time())}@example.com"
@@ -261,7 +261,7 @@ class TestBuildPhasesAndValidate:
             assert "valid" in data
 
 
-# When primary keys are absent, chat may fall back to Cerebras or other pools — model_used must still identify a real route.
+# When primary keys are absent, chat may fall back to Cerebras or other pools � model_used must still identify a real route.
 _AI_CHAT_MODEL_USED_MARKERS = (
     "claude",
     "anthropic",
@@ -274,7 +274,7 @@ _AI_CHAT_MODEL_USED_MARKERS = (
 
 
 class TestAIChatEndpoints:
-    """AI Chat – real endpoint; 200 when keys set, 503/500 when not."""
+    """AI Chat � real endpoint; 200 when keys set, 503/500 when not."""
 
     async def test_ai_chat_auto_model(self, app_client, auth_headers):
         r = await app_client.post("/api/ai/chat", json={"message": "Hello, test", "model": "auto"}, headers=auth_headers)
@@ -290,7 +290,7 @@ class TestAIChatEndpoints:
         """Explicit Anthropic-style id; server may still route to another pool (e.g. Cerebras)."""
         r = await app_client.post(
             "/api/ai/chat",
-            json={"message": "What is 2+2?", "model": "claude-3-5-haiku-20241022"},
+            json={"message": "What is 2+2?", "model": "claude-haiku-4-5-20251001"},
             headers=auth_headers,
         )
         assert r.status_code in AI_OK_STATUSES
@@ -330,7 +330,7 @@ class TestAIChatEndpoints:
 
 
 class TestAIAnalysisEndpoints:
-    """AI Analyze – 200, 503, or 500."""
+    """AI Analyze � 200, 503, or 500."""
 
     async def test_ai_analyze_summarize(self, app_client, auth_headers):
         r = await app_client.post("/api/ai/analyze", json={
@@ -356,7 +356,7 @@ class TestAIAnalysisEndpoints:
 
 
 class TestSearchEndpoint:
-    """Search – 200, 503, or 500."""
+    """Search � 200, 503, or 500."""
 
     async def test_hybrid_search(self, app_client, auth_headers):
         r = await app_client.post("/api/search", json={
@@ -408,7 +408,7 @@ class TestDeletionEndpoints:
 
 
 class TestStripeEndpoints:
-    """Stripe – 401/503 when not configured or no auth."""
+    """Stripe � 401/503 when not configured or no auth."""
 
     async def test_stripe_checkout_requires_auth(self, app_client):
         r = await app_client.post("/api/stripe/create-checkout-session", json={"bundle": "builder"})
@@ -421,3 +421,4 @@ class TestStripeEndpoints:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])
+

@@ -1,0 +1,28 @@
+C:\Users\benxp\OneDrive\Documents\New project\backend\anthropic_models.py:3:Anthropic retired Claude Haiku 3.5 (`claude-3-5-haiku-20241022`) and
+C:\Users\benxp\OneDrive\Documents\New project\backend\anthropic_models.py:19:"claude-3-5-haiku-20241022": ANTHROPIC_HAIKU_MODEL,
+C:\Users\benxp\OneDrive\Documents\New project\backend\anthropic_models.py:23:"claude-3-5-sonnet-20241022": ANTHROPIC_SONNET_MODEL,
+C:\Users\benxp\OneDrive\Documents\New project\backend\anthropic_models.py:25:"claude-3-7-sonnet-20250219": ANTHROPIC_SONNET_MODEL,
+C:\Users\benxp\OneDrive\Documents\New project\backend\server.py.backup_20260302_173607:540:"code": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
+C:\Users\benxp\OneDrive\Documents\New project\backend\server.py.backup_20260302_173607:541:"analysis": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
+C:\Users\benxp\OneDrive\Documents\New project\backend\server.py.backup_20260302_173607:542:"general": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
+C:\Users\benxp\OneDrive\Documents\New project\backend\server.py.backup_20260302_173607:543:"creative": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
+C:\Users\benxp\OneDrive\Documents\New project\backend\server.py.backup_20260302_173607:544:"fast": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"}
+C:\Users\benxp\OneDrive\Documents\New project\backend\server.py.backup_20260302_173607:549:{"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
+C:\Users\benxp\OneDrive\Documents\New project\backend\server.py.backup_20260302_173607:554:"haiku": [{"provider": "anthropic", "model": "claude-3-5-haiku-20241022"}],
+C:\Users\benxp\OneDrive\Documents\New project\backend\server.py.backup_20260302_173607:810:async def _call_anthropic_direct(prompt: str, system: str, model: str = "claude-3-5-haiku-20241022", api_key: Optional[str] = None) -> str:
+C:\Users\benxp\OneDrive\Documents\New project\backend\server.py.backup_20260302_173607:828:async def _call_cerebras_direct(prompt: str, system: str, model: str = "claude-3-5-haiku-20241022", api_key: Optional[str] = None) -> str:
+C:\Users\benxp\OneDrive\Documents\New project\backend\server.py.backup_20260302_173607:846:async def _call_anthropic_multimodal(content_blocks: List[Dict[str, Any]], system: str, model: str = "claude-3-5-haiku-20241022", api_key: Optional[str] = None) -> str:
+C:\Users\benxp\OneDrive\Documents\New project\backend\server.py.backup_20260302_173607:869:model=model or "claude-3-5-haiku-20241022",
+C:\Users\benxp\OneDrive\Documents\New project\backend\server.py.backup_20260302_173607:886:{"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
+C:\Users\benxp\OneDrive\Documents\New project\backend\server.py.backup_20260302_173607:916:provider, model = cfg.get("provider"), cfg.get("model", "claude-3-5-haiku-20241022")
+C:\Users\benxp\OneDrive\Documents\New project\backend\server.py.backup_20260302_173607:920:response = await _call_anthropic_multimodal(content_blocks, system_message, model=model or "claude-3-5-haiku-20241022", api_key=anthropic_key)
+C:\Users\benxp\OneDrive\Documents\New project\backend\server.py.backup_20260302_173607:922:response = await _call_anthropic_direct(message, system_message, model=model or "claude-3-5-haiku-20241022", api_key=anthropic_key)
+C:\Users\benxp\OneDrive\Documents\New project\backend\server.py.backup_20260302_173607:926:response = await _call_cerebras_direct(message, system_message, model=model or "claude-3-5-haiku-20241022", api_key=cerebras_key)
+C:\Users\benxp\OneDrive\Documents\New project\backend\server.py.backup_20260302_173607:1439:model="claude-3-5-haiku-20241022",
+C:\Users\benxp\OneDrive\Documents\New project\backend\server.py.backup_20260302_173607:1495:model="claude-3-5-haiku-20241022",
+C:\Users\benxp\OneDrive\Documents\New project\backend\server.py.backup_20260302_173607:5815:model="claude-3-5-haiku-20241022",
+C:\Users\benxp\OneDrive\Documents\New project\backend\tests\test_anthropic_model_fix.py:13:assert normalize_anthropic_model("claude-3-5-haiku-20241022") == ANTHROPIC_HAIKU_MODEL
+C:\Users\benxp\OneDrive\Documents\New project\backend\tests\test_anthropic_model_fix.py:17:assert normalize_anthropic_model("claude-3-5-sonnet-20241022") == ANTHROPIC_SONNET_MODEL
+C:\Users\benxp\OneDrive\Documents\New project\backend\tests\test_anthropic_model_fix.py:25:"ANTHROPIC_MODEL": "claude-3-5-haiku-20241022",
+C:\Users\benxp\OneDrive\Documents\New project\backend\tests\test_anthropic_model_fix.py:34:monkeypatch.setenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022")
+C:\Users\benxp\OneDrive\Documents\New project\backend\tests\test_anthropic_model_fix.py:81:model="claude-3-5-haiku-20241022",

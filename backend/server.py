@@ -67,6 +67,7 @@ import zipfile
 import io
 from urllib.parse import quote, urlencode
 
+from anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_model
 from env_encryption import encrypt_env, decrypt_env
 from agent_dag import AGENT_DAG, get_execution_phases, build_context_from_previous_agents, get_system_prompt_for_agent
 from real_agent_runner import REAL_AGENT_NAMES, run_real_agent, persist_agent_output, run_real_post_step
@@ -781,21 +782,21 @@ AGENT_DEFINITIONS = [
 # AI Model configurations: Cerebras (free) or Haiku (paid)
 # All tasks use Haiku for paid users, Cerebras for free tier
 MODEL_CONFIG = {
-    "code": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
-    "analysis": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
-    "general": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
-    "creative": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
-    "fast": {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"}
+    "code": {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
+    "analysis": {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
+    "general": {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
+    "creative": {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
+    "fast": {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL}
 }
 
 # Fallback chain: only Haiku (no fallback needed, single provider)
 MODEL_FALLBACK_CHAINS = [
-    {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
+    {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
 ]
 # Map user-facing model key -> chain (only Haiku)
 MODEL_CHAINS = {
     "auto": None,  # use MODEL_CONFIG + MODEL_FALLBACK_CHAINS
-    "haiku": [{"provider": "anthropic", "model": "claude-3-5-haiku-20241022"}],
+    "haiku": [{"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL}],
 }
 
 # ==================== HELPERS ====================
@@ -1119,12 +1120,12 @@ def _get_model_chain(model_key: str, message: str, effective_keys: Optional[Dict
                 # Cerebras first for fast tasks, Haiku fallback
                 chain = [
                     {"provider": "cerebras", "model": "llama3.1-8b"},
-                    {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
+                    {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
                 ]
             elif anthropic_key:
                 # Haiku first for complex tasks, Cerebras fallback
                 chain = [
-                    {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
+                    {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
                     {"provider": "cerebras", "model": "llama3.1-8b"},
                 ]
             elif cerebras_key:
@@ -1155,11 +1156,12 @@ def _effective_api_keys(user_keys: Dict[str, Optional[str]]) -> Dict[str, Option
     }
 
 
-async def _call_anthropic_direct(prompt: str, system: str, model: str = "claude-3-5-haiku-20241022", api_key: Optional[str] = None) -> str:
+async def _call_anthropic_direct(prompt: str, system: str, model: str = ANTHROPIC_HAIKU_MODEL, api_key: Optional[str] = None) -> str:
     """Call Anthropic API directly. Uses api_key or ANTHROPIC_API_KEY."""
     key = (api_key or "").strip() or ANTHROPIC_API_KEY
     if not key:
         raise ValueError("ANTHROPIC_API_KEY not set")
+    model = normalize_anthropic_model(model, default=ANTHROPIC_HAIKU_MODEL)
     import anthropic
     client = anthropic.AsyncAnthropic(api_key=key)
     msg = await client.messages.create(
@@ -1173,7 +1175,7 @@ async def _call_anthropic_direct(prompt: str, system: str, model: str = "claude-
 
 
 
-async def _call_cerebras_direct(prompt: str, system: str, model: str = "claude-3-5-haiku-20241022", api_key: Optional[str] = None) -> str:
+async def _call_cerebras_direct(prompt: str, system: str, model: str = "llama3.1-8b", api_key: Optional[str] = None) -> str:
     """Call Cerebras API directly (free tier fallback). Uses api_key or CEREBRAS_API_KEY."""
     key = (api_key or "").strip() or _get_cerebras_key() or os.environ.get("CEREBRAS_API_KEY")
     if not key:
@@ -1191,11 +1193,12 @@ async def _call_cerebras_direct(prompt: str, system: str, model: str = "claude-3
     return text.strip()
 
 
-async def _call_anthropic_multimodal(content_blocks: List[Dict[str, Any]], system: str, model: str = "claude-3-5-haiku-20241022", api_key: Optional[str] = None) -> str:
+async def _call_anthropic_multimodal(content_blocks: List[Dict[str, Any]], system: str, model: str = ANTHROPIC_HAIKU_MODEL, api_key: Optional[str] = None) -> str:
     """Call Anthropic with multimodal user content (text + image). Uses vision-capable model."""
     key = (api_key or "").strip() or ANTHROPIC_API_KEY
     if not key:
         raise ValueError("ANTHROPIC_API_KEY not set")
+    model = normalize_anthropic_model(model, default=ANTHROPIC_HAIKU_MODEL)
     import anthropic
     client = anthropic.AsyncAnthropic(api_key=key)
     # Convert OpenAI-format content blocks to Anthropic format
@@ -1214,7 +1217,7 @@ async def _call_anthropic_multimodal(content_blocks: List[Dict[str, Any]], syste
             else:
                 anthropic_content.append({"type": "text", "text": f"[Image: {url[:80]}...]"})
     msg = await client.messages.create(
-        model=model or "claude-3-5-haiku-20241022",
+        model=model or ANTHROPIC_HAIKU_MODEL,
         max_tokens=4096,
         system=system,
         messages=[{"role": "user", "content": anthropic_content}],
@@ -1231,7 +1234,7 @@ def _content_blocks_have_image(content_blocks: Optional[List[Dict[str, Any]]]) -
 
 # Vision-capable model: Haiku supports vision
 VISION_MODEL_CHAIN = [
-    {"provider": "anthropic", "model": "claude-3-5-haiku-20241022"},
+    {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
 ]
 
 
@@ -1335,13 +1338,14 @@ async def _call_cerebras_direct(
 async def _call_anthropic_direct(
     message: str,
     system_message: str,
-    model: str = "claude-3-5-haiku-20241022",
+    model: str = ANTHROPIC_HAIKU_MODEL,
     api_key: str = None,
 ) -> str:
     """Call Anthropic Claude Haiku."""
     import httpx
     if not api_key:
         raise ValueError("ANTHROPIC_API_KEY not set")
+    model = normalize_anthropic_model(model, default=ANTHROPIC_HAIKU_MODEL)
     
     try:
         async with httpx.AsyncClient() as client:
@@ -2514,7 +2518,7 @@ async def analyze_file(
                     raise ValueError("Anthropic key needed for image analysis. Add ANTHROPIC_API_KEY in Settings or .env.")
                 client = anthropic.Anthropic(api_key=anthropic_key)
                 resp = client.messages.create(
-                    model="claude-3-5-haiku-20241022",
+                    model=ANTHROPIC_HAIKU_MODEL,
                     max_tokens=1024,
                     system="You are an expert at analyzing UI and design. Describe what you see and provide design insights.",
                     messages=[
@@ -2570,7 +2574,7 @@ async def image_to_code(
         import anthropic
         client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
         resp = client.messages.create(
-            model="claude-3-5-haiku-20241022",
+            model=ANTHROPIC_HAIKU_MODEL,
             max_tokens=4096,
             system="You output only valid React/JSX code. No markdown code fences, no commentary.",
             messages=[
@@ -7932,7 +7936,7 @@ async def design_from_url(url: str = Form(...), user: dict = Depends(get_authent
         import anthropic
         client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
         resp = client.messages.create(
-            model="claude-3-5-haiku-20241022",
+            model=ANTHROPIC_HAIKU_MODEL,
             max_tokens=4096,
             system="Output only valid React/JSX code. No markdown.",
             messages=[
@@ -11202,4 +11206,5 @@ app.include_router(api_router)
 
 if _static_dir.exists():
     app.mount("/", SpaStaticFiles(directory=str(_static_dir), html=True), name="frontend")
+
 

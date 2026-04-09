@@ -11,13 +11,17 @@ import time
 import logging
 from anthropic import AsyncAnthropic
 from agent_recursive_learning import AgentMemory, PerformanceTracker, AdaptiveStrategy, ExecutionStatus
+from anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_model
 from llm_cerebras import invoke_cerebras, invoke_cerebras_stream
 
 logger = logging.getLogger(__name__)
 
 CEREBRAS_CONTEXT_TOKEN_LIMIT = int(os.environ.get("CEREBRAS_CONTEXT_TOKEN_LIMIT", "8192"))
 CEREBRAS_CONTEXT_SAFETY_MARGIN = int(os.environ.get("CEREBRAS_CONTEXT_SAFETY_MARGIN", "512"))
-ANTHROPIC_FALLBACK_MODEL = os.environ.get("ANTHROPIC_FALLBACK_MODEL", "claude-3-5-haiku-20241022")
+ANTHROPIC_FALLBACK_MODEL = normalize_anthropic_model(
+    os.environ.get("ANTHROPIC_FALLBACK_MODEL"),
+    default=ANTHROPIC_HAIKU_MODEL,
+)
 
 
 class AgentValidationError(Exception):
@@ -275,6 +279,7 @@ class BaseAgent(ABC):
         # Try Anthropic (Haiku) if key is available
         if model.startswith("claude-"):
             try:
+                model = normalize_anthropic_model(model, default=ANTHROPIC_FALLBACK_MODEL)
                 client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
                 response = await client.messages.create(
                     model=model,

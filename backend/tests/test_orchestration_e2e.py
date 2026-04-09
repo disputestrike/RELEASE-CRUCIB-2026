@@ -1,7 +1,7 @@
 """
 10/10 Roadmap: E2E tests for agent orchestration.
-- Full build with mocked LLM → quality score computed.
-- Agent failure recovery → fallback or skip.
+- Full build with mocked LLM ? quality score computed.
+- Agent failure recovery ? fallback or skip.
 No real API keys required for these tests (mocks used).
 """
 import os
@@ -57,7 +57,7 @@ async def test_agent_failure_recovery_returns_fallback_or_skip():
     project_prompt = "Build a todo app"
     previous_outputs = {}
     effective = {"openai": "sk-mock", "anthropic": None}
-    model_chain = [{"provider": "openai", "model": "claude-3-5-haiku-20241022"}]
+    model_chain = [{"provider": "openai", "model": "claude-haiku-4-5-20251001"}]
 
     with patch("server.db") as mock_db:
         mock_db.projects.update_one = AsyncMock()
@@ -90,7 +90,7 @@ async def test_high_agent_failure_returns_fallback():
     project_prompt = "Build a todo app"
     previous_outputs = {}
     effective = {"openai": "sk-mock", "anthropic": None}
-    model_chain = [{"provider": "openai", "model": "claude-3-5-haiku-20241022"}]
+    model_chain = [{"provider": "openai", "model": "claude-haiku-4-5-20251001"}]
 
     with patch("server.db") as mock_db:
         mock_db.projects.update_one = AsyncMock()
@@ -131,3 +131,4 @@ def test_context_truncation():
     out = build_context_from_previous_agents("Stack Selector", previous, "Build a todo app")
     assert "truncated" in out
     assert len(out) <= len("Build a todo app") + max_chars + 100
+

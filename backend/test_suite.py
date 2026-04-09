@@ -1,4 +1,4 @@
-"""
+﻿"""
 Comprehensive test suite for CrucibAI backend
 Includes unit tests, integration tests, and endpoint tests
 """
@@ -39,7 +39,7 @@ def sample_chat_message() -> Dict[str, Any]:
     """Sample chat message"""
     return {
         "message": "Hello, how can you help me?",
-        "model": "claude-3-5-haiku-20241022",
+        "model": "claude-haiku-4-5-20251001",
         "mode": "normal"
     }
 
@@ -74,7 +74,7 @@ class TestAuthentication:
 
     @pytest.mark.asyncio
     async def test_user_registration_invalid_email(self, client):
-        """Test registration with invalid email — FastAPI returns 422 for Pydantic or 400 for server, 503 if no DB"""
+        """Test registration with invalid email â€” FastAPI returns 422 for Pydantic or 400 for server, 503 if no DB"""
         response = await client.post("/api/auth/register", json={
             "email": "invalid-email",
             "password": "TestPassword123!",
@@ -128,20 +128,20 @@ class TestChat:
 
     @pytest.mark.asyncio
     async def test_chat_message_empty(self, client):
-        """Test sending empty chat message — must be rejected by validation"""
+        """Test sending empty chat message â€” must be rejected by validation"""
         response = await client.post("/api/ai/chat", json={
             "message": "",
-            "model": "claude-3-5-haiku-20241022"
+            "model": "claude-haiku-4-5-20251001"
         })
         # 422 = Pydantic min_length=1; 400 = custom check; 403 = CSRF (if not bypassed)
         assert response.status_code in [400, 403, 422]
 
     @pytest.mark.asyncio
     async def test_chat_message_too_long(self, client):
-        """Test sending very long chat message — must be rejected"""
+        """Test sending very long chat message â€” must be rejected"""
         response = await client.post("/api/ai/chat", json={
             "message": "x" * 50001,
-            "model": "claude-3-5-haiku-20241022"
+            "model": "claude-haiku-4-5-20251001"
         })
         # 422 = Pydantic max_length; 400 = custom; 403 = CSRF (if not bypassed)
         assert response.status_code in [400, 403, 422]
@@ -271,7 +271,7 @@ class TestSecurity:
     async def test_sql_injection_prevention(self, client):
         """Test SQL injection in query param doesn't crash server"""
         response = await client.get("/api/projects?search='; DROP TABLE projects; --")
-        # Should not return 500 — any other code is fine
+        # Should not return 500 â€” any other code is fine
         assert response.status_code != 500
 
     @pytest.mark.asyncio
@@ -282,7 +282,7 @@ class TestSecurity:
             "description": "Test XSS",
             "project_type": "web"
         })
-        # Should reject (400/422) or require auth (401) — never blindly store and 200
+        # Should reject (400/422) or require auth (401) â€” never blindly store and 200
         assert response.status_code in [400, 401, 422]
 
     @pytest.mark.asyncio
@@ -368,3 +368,4 @@ class TestValidation:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])
+

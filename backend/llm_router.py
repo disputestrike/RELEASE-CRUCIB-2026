@@ -16,6 +16,8 @@ import logging
 from typing import Tuple, Optional, Dict, Any
 from enum import Enum
 
+from anthropic_models import ANTHROPIC_HAIKU_MODEL
+
 logger = logging.getLogger(__name__)
 
 # LLM Configuration
@@ -53,7 +55,7 @@ CEREBRAS_API_KEY = _CEREBRAS_KEYS[0] if _CEREBRAS_KEYS else ""
 CEREBRAS_MODEL = "llama3.1-8b"
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
-HAIKU_MODEL = "claude-3-5-haiku-20241022"  # Upgraded: Oct 2024 cutoff vs old Mar 2024 cutoff
+HAIKU_MODEL = ANTHROPIC_HAIKU_MODEL
 
 class TaskComplexity(str, Enum):
     """Task complexity classification"""
@@ -227,8 +229,8 @@ class LLMRouter:
                 "provider": "cerebras",
             },
             "haiku": {
-                "name": "Claude 3.5 Haiku",
-                "cost_per_1m_tokens": 0.80,
+                "name": "Claude Haiku 4.5",
+                "cost_per_1m_tokens": 1.0,
                 "speed": "medium",
                 "quality": 9.0,
                 "provider": "anthropic",
