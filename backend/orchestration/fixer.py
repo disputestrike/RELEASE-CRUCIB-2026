@@ -23,12 +23,35 @@ FAILURE_TYPES = [
     "unknown",
 ]
 
-MAX_RETRIES = 3
+MAX_RETRIES = 8
 
 
 def classify_failure(step: Dict[str, Any],
-                     verification_result: Dict[str, Any]) -> str:
-    """Classify the failure type from verifier issues and step error_message."""
+                     verification_result: Dict[str, Any],
+                     error_log: Optional[str] = None) -> str:
+    """Classify the failure type using the diagnostic agent brain."""
+    try:
+        from .diagnostic_agent import diagnose
+        diagnosis = diagnose(step, verification_result, error_log)
+        failure_class = diagnosis.get("failure_class", "unknown")
+        # Map diagnostic classes to legacy fixer types
+        class_map = {
+            "prose_in_code": "syntax_error",
+            "jsx_syntax_error": "compile_error",
+            "missing_import": "compile_error",
+            "python_syntax": "syntax_error",
+            "missing_package_json": "missing_file",
+            "no_entry_point": "missing_file",
+            "db_migration": "db_error",
+            "railway_network": "integration_error",
+            "security_static": "verification_error",
+            "unknown": "unknown",
+        }
+        return class_map.get(failure_class, "unknown")
+    except Exception as e:
+        logger.warning("diagnostic_agent failed, falling back: %s", e)
+
+    # Fallback: original logic
     issues = " ".join(verification_result.get("issues", []))
     error_msg = step.get("error_message", "")
     combined = (issues + " " + error_msg).lower()
@@ -78,13 +101,22 @@ def classify_failure(step: Dict[str, Any],
 
 
 def build_retry_plan(failure_type: str, step: Dict[str, Any],
-                     verification_result: Dict[str, Any]) -> Dict[str, Any]:
+                     verification_result: Dict[str, Any],
+                     error_log: Optional[str] = None) -> Dict[str, Any]:
     """
     Return a structured retry plan with corrective actions.
-    The auto-runner uses this to decide what to repair before retrying.
+    Uses diagnostic_agent for precise root cause and targeted repair actions.
     """
     issues = verification_result.get("issues", [])
     step_key = step.get("step_key", "unknown")
+
+    # Get precise diagnosis from the brain
+    precise_diagnosis = None
+    try:
+        from .diagnostic_agent import diagnose
+        precise_diagnosis = diagnose(step, verification_result, error_log)
+    except Exception as e:
+        logger.warning("diagnostic_agent unavailable: %s", e)
 
     plans = {
         "syntax_error": {
@@ -162,14 +194,22 @@ def build_retry_plan(failure_type: str, step: Dict[str, Any],
     }
 
     plan = plans.get(failure_type, plans["unknown"])
+    retry_plan_actions = plan["actions"]
+    if precise_diagnosis and precise_diagnosis.get("repair_actions"):
+        retry_plan_actions = precise_diagnosis["repair_actions"]
+
     return {
         "failure_type": failure_type,
         "step_key": step_key,
         "issues": issues,
-        "retry_plan": plan["actions"],
+        "retry_plan": retry_plan_actions,
         "scope": plan["scope"],
         "can_auto_retry": step.get("retry_count", 0) < MAX_RETRIES,
         "retry_number": step.get("retry_count", 0) + 1,
+        "diagnosis": precise_diagnosis,
+        "fix_strategy": precise_diagnosis.get("fix_strategy") if precise_diagnosis else "conservative_patch",
+        "specific_file": precise_diagnosis.get("specific_file") if precise_diagnosis else None,
+        "specific_line": precise_diagnosis.get("specific_line") if precise_diagnosis else None,
     }
 
 

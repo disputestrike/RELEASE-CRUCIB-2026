@@ -329,7 +329,14 @@ def run_agent_real_behavior(
         try:
             state = load_state(project_id)
             log = state.get("tool_log", [])
-            log.append({"agent": agent_name, "output_preview": out_str[:500]})
+            log.append({
+                "agent": agent_name,
+                "output_preview": out_str[:500] if out_str and out_str != "None" else "",
+                "has_output": bool(out_str and out_str not in ("None", "")),
+            })
+            # Also store on result so verifier can pick it up
+            if isinstance(result, dict):
+                result["output_preview"] = out_str[:300] if out_str else ""
             update_state(project_id, {"tool_log": log[-100:]})
         except Exception as e:
             logger.warning("tool_log: %s", e)

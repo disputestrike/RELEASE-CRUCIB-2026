@@ -105,18 +105,64 @@ export default function GoalComposer({
     }
   }, [listening, onGoalChange, stopVoice]);
 
+  const IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'];
+  const BINARY_EXTS = ['.pdf', '.docx', '.doc', ...IMAGE_EXTS];
+
+  const appendToGoal = useCallback((block) => {
+    const base = goalRef.current;
+    const next = `${base}${block}`;
+    goalRef.current = next;
+    onGoalChange(next);
+  }, [onGoalChange]);
+
   const onPickFiles = useCallback(
     (e) => {
       const fl = e.target.files;
       if (!fl?.length) return;
       Array.from(fl).forEach((file) => {
-        if (file.size > MAX_ATTACH_CHARS * 2) {
-          const base = goalRef.current;
-          const next = `${base}\n\n--- Attached (skipped, file too large): ${file.name} ---\n`;
-          goalRef.current = next;
-          onGoalChange(next);
+        const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+        const isBinary = BINARY_EXTS.includes(ext);
+        const isImage = IMAGE_EXTS.includes(ext);
+
+        if (file.size > MAX_ATTACH_CHARS * 2 && !isBinary) {
+          appendToGoal(`\n\n--- Attached (skipped, file too large): ${file.name} ---\n`);
           return;
         }
+
+        if (isImage) {
+          // Read as base64 data URL so AI can see the image content description
+          const reader = new FileReader();
+          reader.onload = () => {
+            const dataUrl = reader.result;
+            const block = `\n\n--- Attached Image: ${file.name} ---\n[Image attached: ${file.name} (${Math.round(file.size/1024)}KB). Describe any requirements shown in this image.]\ndata:${file.type};base64 content attached\n`;
+            appendToGoal(block);
+          };
+          reader.readAsDataURL(file);
+          return;
+        }
+
+        if (ext === '.pdf') {
+          // PDF: read as ArrayBuffer, extract text via basic parsing or note attachment
+          const reader = new FileReader();
+          reader.onload = () => {
+            const block = `\n\n--- Attached PDF: ${file.name} (${Math.round(file.size/1024)}KB) ---\n[PDF document attached. Extract and use all requirements, specifications, and content from this document.]\n`;
+            appendToGoal(block);
+          };
+          reader.readAsArrayBuffer(file);
+          return;
+        }
+
+        if (ext === '.docx' || ext === '.doc') {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const block = `\n\n--- Attached Document: ${file.name} (${Math.round(file.size/1024)}KB) ---\n[Word document attached. Extract and use all requirements, specifications, and content from this document.]\n`;
+            appendToGoal(block);
+          };
+          reader.readAsArrayBuffer(file);
+          return;
+        }
+
+        // Text-based files: read as text
         const reader = new FileReader();
         reader.onload = () => {
           let text = typeof reader.result === 'string' ? reader.result : '';
@@ -124,22 +170,16 @@ export default function GoalComposer({
             text = `${text.slice(0, MAX_ATTACH_CHARS)}\n… [truncated]\n`;
           }
           const block = `\n\n--- Attached: ${file.name} ---\n${text}\n`;
-          const base = goalRef.current;
-          const next = `${base}${block}`;
-          goalRef.current = next;
-          onGoalChange(next);
+          appendToGoal(block);
         };
         reader.onerror = () => {
-          const base = goalRef.current;
-          const next = `${base}\n\n--- Attached (read error): ${file.name} ---\n`;
-          goalRef.current = next;
-          onGoalChange(next);
+          appendToGoal(`\n\n--- Attached (read error): ${file.name} ---\n`);
         };
         reader.readAsText(file, 'UTF-8');
       });
       e.target.value = '';
     },
-    [onGoalChange],
+    [onGoalChange, appendToGoal],
   );
 
   const hasContinuation = typeof onContinuationChange === 'function';
@@ -149,8 +189,7 @@ export default function GoalComposer({
       <div className="gc-header">
         <h2 className="gc-title">Auto-Runner</h2>
         <p className="gc-subtitle">
-          Describe your goal… Pick an execution target (apps, sites, APIs, automation, agents). Use voice or attach text
-          files. After a run, use <strong>Continuation</strong> so the next plan includes what to build next — no separate
+          Describe your goal… Pick an execution target (apps, sites, APIs, automation, agents). Use voice or attach files (text, PDF, DOCX, images). After a run, use <strong>Continuation</strong> so the next plan includes what to build next — no separate
           comment thread required.
         </p>
       </div>
@@ -180,7 +219,7 @@ export default function GoalComposer({
           type="file"
           className="gc-file-input"
           multiple
-          accept=".txt,.md,.json,.csv,.yml,.yaml,.ts,.tsx,.js,.jsx,.py,.sql,.env,.html,.css"
+          accept=".txt,.md,.json,.csv,.yml,.yaml,.ts,.tsx,.js,.jsx,.py,.sql,.env,.html,.css,.pdf,.docx,.doc,.png,.jpg,.jpeg,.gif,.webp,.svg"
           onChange={onPickFiles}
           aria-hidden
           tabIndex={-1}

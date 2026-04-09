@@ -1575,9 +1575,22 @@ async def execute_step(step: Dict[str, Any], job: Dict[str, Any],
             issues_list = vr.get("issues") or []
             if not issues_list:
                 break
-            st = {**step, "error_message": "; ".join(str(i) for i in issues_list)}
-            ftype = classify_failure(st, {"issues": issues_list})
-            plan = build_retry_plan(ftype, st, {"issues": issues_list})
+            st = {**step, "error_message": "; ".join(str(i) for i in issues_list),
+                  "max_retries": 8}
+            # Use diagnostic agent for precise root cause analysis
+            error_log = st.get("error_message", "")
+            ftype = classify_failure(st, {"issues": issues_list}, error_log=error_log)
+            plan = build_retry_plan(ftype, st, {"issues": issues_list}, error_log=error_log)
+            # Log diagnosis for observability
+            if plan.get("diagnosis"):
+                logger.info(
+                    "executor: diagnostic=%s strategy=%s file=%s line=%s retry=%d/8",
+                    plan["diagnosis"].get("failure_class"),
+                    plan.get("fix_strategy"),
+                    plan.get("specific_file"),
+                    plan.get("specific_line"),
+                    st.get("retry_count", 0),
+                )
             await apply_fix(step, plan)
             changed_paths = attempt_verification_self_repair(step_key, workspace_path or "", vr)
             repaired_output_files: list[str] = []

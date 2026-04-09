@@ -477,18 +477,14 @@ async def verify_compile_workspace(workspace_path: str, max_files: int = 28) -> 
     """Cross-cut syntax check for JS entrypoints (depth, not only declared output_files)."""
     issues: List[str] = []
     proof: List[Dict] = []
-    if skip_node_verify_env():
-        return _result(
-            True,
-            78,
-            [],
-            [
-                _proof_item(
-                    "compile",
-                    "Workspace JS syntax check skipped (CRUCIBAI_SKIP_NODE_VERIFY)",
-                    {"skipped": True},
-                ),
-            ],
+    # NOTE: CRUCIBAI_SKIP_NODE_VERIFY no longer skips verification entirely.
+    # We use esbuild (bundled with vite) for syntax checks instead of node --check
+    # so JSX files are validated even without a full Node environment.
+    _skip_warned = skip_node_verify_env()
+    if _skip_warned:
+        logger.warning(
+            "CRUCIBAI_SKIP_NODE_VERIFY is set but syntax checking is still active via esbuild fallback. "
+            "This env var no longer disables verification."
         )
     if not workspace_path or not os.path.isdir(workspace_path):
         return _result(False, 0, ["No workspace for compile verification"], [])
@@ -637,11 +633,22 @@ async def verify_step(step: Dict[str, Any], workspace_path: str = "",
         elif fn == verify_deploy_step:
             result = await fn(step, workspace_path or "")
         else:
-            # Generic: record that the step ran
+            # Generic: record that the step ran with real output preview
+            raw_output = (
+                step.get("output") or
+                step.get("result") or
+                step.get("output_ref") or
+                step.get("code") or
+                ""
+            )
+            if isinstance(raw_output, dict):
+                import json as _json
+                raw_output = _json.dumps(raw_output)
+            output_preview = str(raw_output)[:300] if raw_output else "None"
             result = _result(True, 85, [],
                              [_proof_item("generic", f"Step executed: {step_key}",
                                          {"step_key": step_key,
-                                          "output_preview": str(step.get("output_ref", ""))[:200]})])
+                                          "output_preview": output_preview})])
     except Exception as e:
         logger.exception("verifier error for step %s", step_key)
         result = _result(False, 0, [f"Verifier threw exception: {str(e)}"], [])
