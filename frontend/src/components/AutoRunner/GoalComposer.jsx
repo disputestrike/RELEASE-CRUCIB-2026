@@ -3,6 +3,7 @@
  * Voice (Web Speech API), text file attachments, continuation block for multi-phase goals.
  */
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
+import JSZip from 'jszip';
 import { Mic, MicOff, Paperclip } from 'lucide-react';
 import CostEstimator from './CostEstimator';
 import './GoalComposer.css';
@@ -10,6 +11,7 @@ import './GoalComposer.css';
 const QUICK_CHIPS = ['Build an app', 'Automate workflow', 'Fix project', 'Add a feature'];
 
 const MAX_ATTACH_CHARS = 120000;
+const MAX_IMAGE_DATA_CHARS = 48000;
 
 function smartTags(goal) {
   const g = goal.toLowerCase();
@@ -20,6 +22,75 @@ function smartTags(goal) {
   if (/railway|deploy|docker|kubernetes|ci\/cd/.test(g)) tags.push('Railway deploy');
   if (/test|jest|vitest|pytest/.test(g)) tags.push('Tests');
   return [...new Set(tags)];
+}
+
+export function truncateAttachmentText(text, limit = MAX_ATTACH_CHARS) {
+  if (!text) return '';
+  if (text.length <= limit) return text;
+  return `${text.slice(0, limit)}\n… [truncated]\n`;
+}
+
+function decodeXmlEntities(text) {
+  if (typeof window === 'undefined' || typeof DOMParser === 'undefined') {
+    return text;
+  }
+  const doc = new DOMParser().parseFromString(`<body>${text}</body>`, 'text/html');
+  return doc.documentElement.textContent || '';
+}
+
+export function extractPdfTextFromBuffer(buffer) {
+  try {
+    const bytes = new Uint8Array(buffer);
+    let raw = '';
+    for (let i = 0; i < bytes.length; i += 1) {
+      raw += String.fromCharCode(bytes[i]);
+    }
+    const matches = raw.match(/\((?:\\.|[^()])+\)/g) || [];
+    const chunks = matches
+      .map((match) =>
+        match
+          .slice(1, -1)
+          .replace(/\\n/g, ' ')
+          .replace(/\\r/g, ' ')
+          .replace(/\\t/g, ' ')
+          .replace(/\\\(/g, '(')
+          .replace(/\\\)/g, ')')
+          .replace(/\\\\/g, '\\')
+      )
+      .map((chunk) => chunk.replace(/[^\x20-\x7E]/g, ' ').replace(/\s+/g, ' ').trim())
+      .filter((chunk) => chunk.length >= 3);
+    return truncateAttachmentText(chunks.join('\n'));
+  } catch {
+    return '';
+  }
+}
+
+export async function extractDocxTextFromBuffer(buffer) {
+  try {
+    const zip = await JSZip.loadAsync(buffer);
+    const docXml = await zip.file('word/document.xml')?.async('string');
+    if (!docXml) return '';
+    const paragraphs = docXml
+      .split(/<\/w:p>/i)
+      .map((para) => decodeXmlEntities(para.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim())
+      .filter(Boolean);
+    return truncateAttachmentText(paragraphs.join('\n'));
+  } catch {
+    return '';
+  }
+}
+
+export function buildExtractedAttachmentBlock({ fileName, label, text, sizeKb }) {
+  const trimmed = (text || '').trim();
+  if (trimmed) {
+    return `\n\n--- Attached ${label}: ${fileName} (${sizeKb}KB) ---\n${trimmed}\n`;
+  }
+  return `\n\n--- Attached ${label}: ${fileName} (${sizeKb}KB) ---\n[Attached ${label.toLowerCase()} could not be fully extracted. Use any available metadata and ask follow-up questions if needed.]\n`;
+}
+
+export function buildImageAttachmentBlock({ fileName, mimeType, sizeKb, dataUrl }) {
+  const trimmedDataUrl = truncateAttachmentText(dataUrl || '', MAX_IMAGE_DATA_CHARS);
+  return `\n\n--- Attached Image: ${fileName} (${sizeKb}KB) ---\n[Image attached. Use this image as requirement context.]\nMIME: ${mimeType}\nDATA_URL:\n${trimmedDataUrl}\n`;
 }
 
 export default function GoalComposer({
@@ -123,6 +194,7 @@ export default function GoalComposer({
         const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
         const isBinary = BINARY_EXTS.includes(ext);
         const isImage = IMAGE_EXTS.includes(ext);
+        const sizeKb = Math.round(file.size / 1024);
 
         if (file.size > MAX_ATTACH_CHARS * 2 && !isBinary) {
           appendToGoal(`\n\n--- Attached (skipped, file too large): ${file.name} ---\n`);
@@ -130,23 +202,35 @@ export default function GoalComposer({
         }
 
         if (isImage) {
-          // Read as base64 data URL so AI can see the image content description
           const reader = new FileReader();
           reader.onload = () => {
-            const dataUrl = reader.result;
-            const block = `\n\n--- Attached Image: ${file.name} ---\n[Image attached: ${file.name} (${Math.round(file.size/1024)}KB). Describe any requirements shown in this image.]\ndata:${file.type};base64 content attached\n`;
-            appendToGoal(block);
+            const dataUrl = typeof reader.result === 'string' ? reader.result : '';
+            appendToGoal(
+              buildImageAttachmentBlock({
+                fileName: file.name,
+                mimeType: file.type || 'application/octet-stream',
+                sizeKb,
+                dataUrl,
+              }),
+            );
           };
           reader.readAsDataURL(file);
           return;
         }
 
         if (ext === '.pdf') {
-          // PDF: read as ArrayBuffer, extract text via basic parsing or note attachment
           const reader = new FileReader();
-          reader.onload = () => {
-            const block = `\n\n--- Attached PDF: ${file.name} (${Math.round(file.size/1024)}KB) ---\n[PDF document attached. Extract and use all requirements, specifications, and content from this document.]\n`;
-            appendToGoal(block);
+          reader.onload = async () => {
+            const buffer = reader.result;
+            const extractedText = buffer instanceof ArrayBuffer ? extractPdfTextFromBuffer(buffer) : '';
+            appendToGoal(
+              buildExtractedAttachmentBlock({
+                fileName: file.name,
+                label: 'PDF',
+                text: extractedText,
+                sizeKb,
+              }),
+            );
           };
           reader.readAsArrayBuffer(file);
           return;
@@ -154,9 +238,17 @@ export default function GoalComposer({
 
         if (ext === '.docx' || ext === '.doc') {
           const reader = new FileReader();
-          reader.onload = () => {
-            const block = `\n\n--- Attached Document: ${file.name} (${Math.round(file.size/1024)}KB) ---\n[Word document attached. Extract and use all requirements, specifications, and content from this document.]\n`;
-            appendToGoal(block);
+          reader.onload = async () => {
+            const buffer = reader.result;
+            const extractedText = buffer instanceof ArrayBuffer ? await extractDocxTextFromBuffer(buffer) : '';
+            appendToGoal(
+              buildExtractedAttachmentBlock({
+                fileName: file.name,
+                label: 'Document',
+                text: extractedText,
+                sizeKb,
+              }),
+            );
           };
           reader.readAsArrayBuffer(file);
           return;
@@ -166,9 +258,7 @@ export default function GoalComposer({
         const reader = new FileReader();
         reader.onload = () => {
           let text = typeof reader.result === 'string' ? reader.result : '';
-          if (text.length > MAX_ATTACH_CHARS) {
-            text = `${text.slice(0, MAX_ATTACH_CHARS)}\n… [truncated]\n`;
-          }
+          text = truncateAttachmentText(text);
           const block = `\n\n--- Attached: ${file.name} ---\n${text}\n`;
           appendToGoal(block);
         };

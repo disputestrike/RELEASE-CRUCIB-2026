@@ -1,5 +1,5 @@
 /**
- * FailureDrawer — failure details and recovery UI with before/after visualization.
+ * FailureDrawer — failure details and recovery UI.
  * Props: step, onRetry, onOpenCode, onPauseJob, onClose
  */
 import React, { useState } from 'react';
@@ -34,18 +34,8 @@ const RETRY_STRATEGIES = {
 const MAX_STEP_RETRIES = 8;
 const MAX_ATTEMPTS = MAX_STEP_RETRIES + 1; // 9 total attempts
 
-const BROKEN_CODE = `@app.post("/api/jobs")
-async def create_job(data: dict)
-    job = await db.create(data)`;
-
-const FIXED_CODE = `@app.post("/api/jobs")
-async def create_job(data: dict):
-    job = await db.create(data)
-+   return {"id": job.id, "status": "created"}`;
-
 export default function FailureDrawer({ step, onRetry, onOpenCode, onPauseJob, onClose }) {
-  const [retryState, setRetryState] = useState(null);
-  const [attempts, setAttempts] = useState([]);
+  const [retryTriggered, setRetryTriggered] = useState(false);
 
   if (!step) return null;
 
@@ -55,14 +45,13 @@ export default function FailureDrawer({ step, onRetry, onOpenCode, onPauseJob, o
   const outputFiles = step.output_files || [];
   const retryCount = step.retry_count || 0;
   const retryStrategy = RETRY_STRATEGIES[failureType] || RETRY_STRATEGIES.unknown;
+  const diagnosis = step.diagnosis || {};
+  const repairActions = diagnosis.repair_actions || step.retry_plan || [];
+  const fixStrategy = step.fix_strategy || diagnosis.fix_strategy || 'targeted_patch';
+  const canRetry = retryCount < MAX_STEP_RETRIES;
 
   const handleRetryAuto = () => {
-    setRetryState('in_progress');
-    setAttempts(prev => [...prev, { id: prev.length + 1, status: 'in_progress', time: new Date().toLocaleTimeString() }]);
-    setTimeout(() => {
-      setRetryState('recovered');
-      setAttempts(prev => prev.map((a, i) => i === prev.length - 1 ? { ...a, status: 'recovered' } : a));
-    }, 2000);
+    setRetryTriggered(true);
     onRetry?.(step);
   };
 
@@ -124,44 +113,40 @@ export default function FailureDrawer({ step, onRetry, onOpenCode, onPauseJob, o
           <span className="fd-retry-meta">({MAX_STEP_RETRIES} auto-retries max)</span>
         </div>
 
-        {/* Recovery section */}
-        {retryState && (
+        {(diagnosis.explanation || repairActions.length > 0 || retryTriggered) && (
           <div className="fd-recovery">
-            <div className="fd-recovery-header">RECOVERY ATTEMPT</div>
-            <div className="fd-recovery-label">Applying fix: rewrite_with_linter</div>
+            <div className="fd-recovery-header">RECOVERY PLAN</div>
+            <div className="fd-recovery-label">Fix strategy: {fixStrategy}</div>
 
-            <div className="fd-diff-before">
-              <span className="fd-diff-label">Before</span>
-              <pre className="fd-diff-code">{BROKEN_CODE}</pre>
-            </div>
+            {diagnosis.explanation && (
+              <pre className="fd-diff-code">{diagnosis.explanation}</pre>
+            )}
 
-            <div className="fd-diff-after">
-              <span className="fd-diff-label">After</span>
-              <pre className="fd-diff-code">{FIXED_CODE}</pre>
-            </div>
-
-            <div className="fd-diff-stat">+ 3 lines changed</div>
-
-            <div className={`fd-recovery-status fd-recovery-${retryState}`}>
-              {retryState === 'in_progress' && `Attempt 1 of ${MAX_ATTEMPTS} — In Progress (demo)`}
-              {retryState === 'recovered' && `Attempt 1 of ${MAX_ATTEMPTS} — Recovered (demo)`}
-              {retryState === 'exhausted' && `All ${MAX_ATTEMPTS} attempts exhausted`}
-            </div>
-
-            {/* Attempt timeline */}
-            {attempts.length > 0 && (
-              <div className="fd-attempts">
-                {attempts.map((a) => (
-                  <div key={a.id} className={`fd-attempt-dot fd-attempt-${a.status}`} title={`Attempt ${a.id}: ${a.status} at ${a.time}`} />
+            {repairActions.length > 0 && (
+              <div className="fd-repair-actions">
+                {repairActions.map((action, index) => (
+                  <div key={`${index}-${action}`} className="fd-repair-action">
+                    {index + 1}. {action}
+                  </div>
                 ))}
               </div>
+            )}
+
+            <div className={`fd-recovery-status ${canRetry ? 'fd-recovery-in_progress' : 'fd-recovery-exhausted'}`}>
+              {canRetry
+                ? `Next retry will be attempt ${Math.min(retryCount + 2, MAX_ATTEMPTS)} of ${MAX_ATTEMPTS}`
+                : `All ${MAX_ATTEMPTS} attempts exhausted`}
+            </div>
+
+            {retryTriggered && canRetry && (
+              <div className="fd-diff-stat">Retry requested — waiting for live execution result.</div>
             )}
           </div>
         )}
       </div>
 
       <div className="fd-actions">
-        <button className="fd-btn fd-btn-retry" onClick={handleRetryAuto}>
+        <button className="fd-btn fd-btn-retry" onClick={handleRetryAuto} disabled={!canRetry}>
           <RefreshCw size={12} /> Retry Automatically
         </button>
         <button className="fd-btn fd-btn-code" onClick={() => onOpenCode?.(step)}>

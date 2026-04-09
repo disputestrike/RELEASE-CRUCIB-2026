@@ -91,6 +91,24 @@ than legacy demo-only wiring.
 - [test_real_server_endpoints.py](C:/Users/benxp/OneDrive/Documents/New%20project/backend/tests/test_real_server_endpoints.py)
   - now proves the compact planner endpoint returns the reduced public proof payload instead of the full plan body
 
+### Preview and attachment hardening
+- [verifier.py](C:/Users/benxp/OneDrive/Documents/New%20project/backend/orchestration/verifier.py)
+  - now performs real JSX/TSX compile validation via `esbuild`
+  - detects prose preambles before they reach preview/build
+  - no longer reports `"None"` as generic output preview
+- [real_agent_runner.py](C:/Users/benxp/OneDrive/Documents/New%20project/backend/real_agent_runner.py)
+  - now passes explicit target filepaths through more sanitizer paths
+- [GoalComposer.jsx](C:/Users/benxp/OneDrive/Documents/New%20project/frontend/src/components/AutoRunner/GoalComposer.jsx)
+  - now extracts likely text from PDF attachments
+  - now extracts `word/document.xml` content from DOCX attachments
+  - now includes real image data URLs instead of placeholder strings
+- [FailureDrawer.jsx](C:/Users/benxp/OneDrive/Documents/New%20project/frontend/src/components/AutoRunner/FailureDrawer.jsx)
+  - now renders live diagnosis / repair actions instead of demo before/after code
+- added tests:
+  - [test_verifier_compile.py](C:/Users/benxp/OneDrive/Documents/New%20project/backend/tests/test_verifier_compile.py)
+  - [GoalComposer.test.jsx](C:/Users/benxp/OneDrive/Documents/New%20project/frontend/src/components/AutoRunner/GoalComposer.test.jsx)
+  - [FailureDrawer.test.jsx](C:/Users/benxp/OneDrive/Documents/New%20project/frontend/src/components/AutoRunner/FailureDrawer.test.jsx)
+
 ## Local Verification
 
 ### Syntax
@@ -111,7 +129,7 @@ python -m pytest backend\tests\test_controller_brain.py backend\tests\test_runti
 ```
 
 Result:
-- `77 passed`
+- `79 passed`
 - no pytest warnings in this proof-band run
 
 ### Frontend proof band
@@ -122,8 +140,8 @@ $env:CI='true'; npx craco test --runInBand
 ```
 
 Result:
-- `12 passed test suites`
-- `53 passed tests`
+- `14 passed test suites`
+- `58 passed tests`
 - no React `act(...)` warnings in this run
 
 ## Production Spot Checks

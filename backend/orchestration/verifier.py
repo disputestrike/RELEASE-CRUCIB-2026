@@ -8,11 +8,41 @@ import logging
 import os
 import re
 import sys
+import tempfile
 from typing import Dict, Any, List, Optional
 
 from .runtime_health import skip_node_verify_env
 
 logger = logging.getLogger(__name__)
+
+_PROSE_PREFIXES = (
+    "i ",
+    "i'",
+    "here ",
+    "here'",
+    "this ",
+    "the following",
+    "appreciate",
+    "certainly",
+    "sure,",
+    "below",
+    "based on",
+    "as requested",
+    "i have",
+    "i'll",
+    "let me",
+    "of course",
+    "happy to",
+    "glad to",
+    "please find",
+    "above is",
+    "this is",
+    "the above",
+    "note:",
+    "note that",
+    "in this",
+    "we have",
+)
 
 # FastAPI / Starlette-style decorators in generated workspaces
 _ROUTE_DECORATOR_RE = re.compile(
@@ -107,6 +137,139 @@ def _proof_item(
     return {"proof_type": proof_type, "title": title, "payload": p}
 
 
+def _first_meaningful_line(text: str) -> str:
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped:
+            return stripped
+    return ""
+
+
+def _detect_prose_preamble(text: str) -> Optional[str]:
+    first = _first_meaningful_line(text)
+    if not first:
+        return None
+    lowered = first.lower()
+    if any(lowered.startswith(prefix) for prefix in _PROSE_PREFIXES):
+        return first[:120]
+    return None
+
+
+def _looks_like_jsx_source(path: str, text: str) -> bool:
+    lowered = path.lower()
+    if lowered.endswith((".jsx", ".tsx")):
+        return True
+    if lowered.endswith(".js"):
+        return (
+            "React" in text
+            or "react" in text.lower()
+            or "</" in text
+            or "/>" in text
+            or "jsx" in text.lower()
+        )
+    return False
+
+
+def _npx_bin() -> str:
+    return "npx.cmd" if os.name == "nt" else "npx"
+
+
+async def _verify_frontend_source_file(full: str, rel: str, workspace_path: str) -> Dict[str, Any]:
+    issues: List[str] = []
+    proof: List[Dict[str, Any]] = []
+    try:
+        with open(full, encoding="utf-8", errors="replace") as fh:
+            text = fh.read()
+    except OSError as exc:
+        return _result(False, 20, [f"Could not read {rel}: {exc}"], [])
+
+    prose = _detect_prose_preamble(text)
+    if prose:
+        issues.append(f"Prose preamble detected in {rel}: {prose}")
+        return _result(False, 20, issues, proof)
+
+    uses_jsx = _looks_like_jsx_source(rel, text)
+    if uses_jsx:
+        ext = os.path.splitext(rel)[1].lower()
+        outfile = tempfile.NamedTemporaryFile(delete=False, suffix=".js")
+        outfile.close()
+        try:
+            cmd = [
+                _npx_bin(),
+                "esbuild",
+                full,
+                "--bundle",
+                "--platform=browser",
+                "--format=esm",
+                f"--outfile={outfile.name}",
+                "--log-level=error",
+            ]
+            if ext == ".jsx":
+                cmd.append("--loader:.jsx=jsx")
+            elif ext == ".tsx":
+                cmd.append("--loader:.tsx=tsx")
+            elif ext == ".ts":
+                cmd.append("--loader:.ts=ts")
+            elif ext == ".js" and uses_jsx:
+                cmd.append("--loader:.js=jsx")
+
+            result = await asyncio.create_subprocess_exec(
+                *cmd,
+                cwd=workspace_path,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            _, stderr = await asyncio.wait_for(result.communicate(), timeout=20)
+            if result.returncode != 0:
+                issues.append(f"esbuild failed {rel}: {stderr.decode(errors='replace')[:220]}")
+            else:
+                proof.append(
+                    _proof_item(
+                        "compile",
+                        f"esbuild OK: {rel}",
+                        {"file": rel, "command": cmd},
+                        verification_class="syntax",
+                    ),
+                )
+        except FileNotFoundError:
+            issues.append(f"npx/esbuild unavailable for JSX validation: {rel}")
+        except asyncio.TimeoutError:
+            issues.append(f"esbuild timed out for {rel}")
+        finally:
+            try:
+                os.unlink(outfile.name)
+            except OSError:
+                pass
+        return _result(len(issues) == 0, 100 if not issues else 35, issues, proof)
+
+    try:
+        result = await asyncio.create_subprocess_exec(
+            "node",
+            "--check",
+            full,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _, stderr = await asyncio.wait_for(result.communicate(), timeout=10)
+        if result.returncode != 0:
+            issues.append(f"Syntax error in {rel}: {stderr.decode(errors='replace')[:200]}")
+        else:
+            proof.append(
+                _proof_item(
+                    "compile",
+                    f"Syntax OK: {rel}",
+                    {"file": rel, "command": ["node", "--check", full]},
+                    verification_class="syntax",
+                ),
+            )
+    except FileNotFoundError:
+        issues.append("Node.js not found on PATH for syntax verification.")
+    except asyncio.TimeoutError:
+        issues.append(f"Node syntax check timed out for {rel}")
+
+    return _result(len(issues) == 0, 100 if not issues else 35, issues, proof)
+
+
 # ── Step-type verifiers ───────────────────────────────────────────────────────
 
 async def verify_frontend_step(step: Dict[str, Any],
@@ -134,62 +297,14 @@ async def verify_frontend_step(step: Dict[str, Any],
         else:
             issues.append(f"Expected file missing: {f}")
 
-    # Basic syntax check — Node cannot parse JSX; skip .jsx/.tsx and JSX-in-.js
+    # Syntax check with real JSX/TSX validation
     for f in output_files:
         full = os.path.join(workspace_path, f)
         if not full.endswith((".jsx", ".tsx", ".js", ".ts")) or not os.path.exists(full):
             continue
-        if full.endswith((".jsx", ".tsx")):
-            proof.append(
-                _proof_item(
-                    "compile",
-                    f"JSX source present: {f}",
-                    {"file": f},
-                    verification_class="presence",
-                )
-            )
-            continue
-        try:
-            with open(full, encoding="utf-8", errors="replace") as fh:
-                txt = fh.read()
-        except OSError:
-            continue
-        if "React" in txt and ("</" in txt or "/>" in txt):
-            proof.append(_proof_item(
-                "compile",
-                f"JSX in {f} (skipped node --check)",
-                {"file": f},
-                verification_class="syntax",
-            ))
-            continue
-        try:
-            result = await asyncio.create_subprocess_exec(
-                "node", "--check", full,
-                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
-            )
-            _, stderr = await asyncio.wait_for(result.communicate(), timeout=10)
-            if result.returncode != 0:
-                issues.append(f"Syntax error in {f}: {stderr.decode(errors='replace')[:200]}")
-            else:
-                proof.append(_proof_item(
-                    "compile", f"Syntax OK: {f}",
-                    {"file": f, "command": ["node", "--check", full]},
-                    verification_class="syntax",
-                ))
-        except FileNotFoundError:
-            if skip_node_verify_env():
-                proof.append(_proof_item(
-                    "compile",
-                    f"Skipped node --check (CRUCIBAI_SKIP_NODE_VERIFY): {f}",
-                    {"file": f, "skipped": True},
-                ))
-            else:
-                issues.append(
-                    "Node.js not found on PATH (needed for `node --check`). "
-                    "Install Node LTS or run preflight before Auto-Runner."
-                )
-        except asyncio.TimeoutError:
-            issues.append(f"Node syntax check timed out for {f}")
+        file_result = await _verify_frontend_source_file(full, f, workspace_path)
+        issues.extend(file_result["issues"])
+        proof.extend(file_result["proof"])
 
     score = 100 if not issues else max(40, 100 - len(issues) * 20)
     return _result(len(issues) == 0, score, issues, proof)
@@ -478,8 +593,7 @@ async def verify_compile_workspace(workspace_path: str, max_files: int = 28) -> 
     issues: List[str] = []
     proof: List[Dict] = []
     # NOTE: CRUCIBAI_SKIP_NODE_VERIFY no longer skips verification entirely.
-    # We use esbuild (bundled with vite) for syntax checks instead of node --check
-    # so JSX files are validated even without a full Node environment.
+    # We validate JSX/TSX using esbuild and JS/TS using node --check.
     _skip_warned = skip_node_verify_env()
     if _skip_warned:
         logger.warning(
@@ -495,36 +609,19 @@ async def verify_compile_workspace(workspace_path: str, max_files: int = 28) -> 
         for name in files:
             if checked >= max_files:
                 break
-            if not name.endswith(".js") or name.endswith(".test.js"):
+            if (
+                not name.endswith((".js", ".jsx", ".ts", ".tsx"))
+                or name.endswith((".test.js", ".test.jsx", ".spec.js", ".spec.jsx", ".test.ts", ".test.tsx"))
+            ):
                 continue
             full = os.path.join(root, name)
             rel = os.path.relpath(full, workspace_path).replace("\\", "/")
             if "node_modules" in rel:
                 continue
-            try:
-                result = await asyncio.create_subprocess_exec(
-                    "node", "--check", full,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                )
-                _, stderr = await asyncio.wait_for(result.communicate(), timeout=12)
-                checked += 1
-                if result.returncode != 0:
-                    issues.append(f"node --check failed {rel}: {stderr.decode(errors='replace')[:180]}")
-                else:
-                    proof.append(
-                        _proof_item(
-                            "compile",
-                            f"OK: {rel}",
-                            {"file": rel, "command": ["node", "--check", rel]},
-                            verification_class="syntax",
-                        ),
-                    )
-            except FileNotFoundError:
-                issues.append("Node not available for compile verification.")
-                return _result(False, 20, issues, proof)
-            except asyncio.TimeoutError:
-                issues.append(f"node --check timeout: {rel}")
+            file_result = await _verify_frontend_source_file(full, rel, workspace_path)
+            checked += 1
+            issues.extend(file_result["issues"])
+            proof.extend(file_result["proof"])
         if checked >= max_files:
             break
     score = 100 if not issues else max(25, 100 - len(issues) * 15)
@@ -644,7 +741,7 @@ async def verify_step(step: Dict[str, Any], workspace_path: str = "",
             if isinstance(raw_output, dict):
                 import json as _json
                 raw_output = _json.dumps(raw_output)
-            output_preview = str(raw_output)[:300] if raw_output else "None"
+            output_preview = str(raw_output)[:300] if raw_output else ""
             result = _result(True, 85, [],
                              [_proof_item("generic", f"Step executed: {step_key}",
                                          {"step_key": step_key,

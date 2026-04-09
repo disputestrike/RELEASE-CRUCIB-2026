@@ -190,7 +190,7 @@ async def _run_database_tool_agent(
     db_path = str(workspace / "app.db")
 
     db_agent = previous_outputs.get("Database Agent") or {}
-    schema = _extract_code(db_agent.get("output") or db_agent.get("result"))
+    schema = _extract_code(db_agent.get("output") or db_agent.get("result"), filepath="schema.sql")
     if not schema or not schema.strip():
         return {
             "output": "Real Database Tool Agent: no schema from Database Agent; skipped.",
@@ -290,7 +290,7 @@ async def _run_api_tool_agent(
     from tools.api_agent import APIAgent
     agent = APIAgent(llm_client=None, config={})
     api_out = previous_outputs.get("API Integration") or {}
-    out = _extract_code(api_out.get("output") or api_out.get("result"))
+    out = _extract_code(api_out.get("output") or api_out.get("result"), filepath="api/client.js")
     url: Optional[str] = None
     if out and "http" in out:
         for word in out.replace(",", " ").replace("\n", " ").split():

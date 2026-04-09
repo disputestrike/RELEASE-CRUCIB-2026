@@ -147,6 +147,10 @@
   transition: all var(--transition-ui);
 }
 .fd-btn:hover { background: var(--bg-3); }
+.fd-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 .fd-btn-retry {
   background: var(--bg-2);
@@ -228,6 +232,22 @@
   white-space: pre-wrap;
   margin: 0;
   line-height: 1.5;
+}
+
+.fd-repair-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fd-repair-action {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  background: var(--bg-1);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-sm);
+  padding: 8px;
 }
 
 .fd-diff-stat {
