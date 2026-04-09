@@ -1,7 +1,10 @@
 """
-Wiring smoke tests for the feature additions.
+Compatibility wiring smoke tests.
 
-These are valid pytest tests and can also be run directly with Python.
+These focus on the current authoritative runtime story:
+- job progress transport is importable
+- legacy compatibility shims delegate to the real planner/controller path
+- design system artifacts exist and are injected
 """
 
 from __future__ import annotations
@@ -19,27 +22,29 @@ async def _websocket_endpoint_check() -> None:
 
 
 async def _wired_executor_check() -> None:
-    from backend.api.routes.job_progress import broadcast_event
     from backend.orchestration.executor_wired import get_wired_executor
 
     executor = get_wired_executor("job-123", "proj-123")
-    executor.set_broadcaster(broadcast_event)
     context = executor._inject_design_system({})
     assert context.get("design_system_injected") is True
+    assert context["design_system"]["colors"]["primary"] == "#007BFF"
+    assert "Tailwind" in context["design_system_prompt"]
 
 
-def test_build_endpoint_imports() -> None:
-    from backend.routes_wired import build_wired, router
+async def _build_endpoint_check() -> None:
+    from backend.routes_wired import build_wired
 
-    assert callable(build_wired)
-    assert router is not None
+    result = await build_wired("Build realtime collaboration editor with sockets and rate limiting")
+    assert result["status"] == "success"
+    assert result["plan"]["orchestration_mode"] == "agent_swarm"
+    assert result["controller_summary"]["controller_mode"] == "selective_parallel_swarm"
 
 
 def test_sandbox_security() -> None:
     from backend.sandbox.egress_filter import EgressFilter
 
     assert EgressFilter.is_whitelisted("https://api.anthropic.com/v1/messages")
-    assert EgressFilter._contains_secret("sk-12345678901234567890")
+    assert EgressFilter._contains_secret("api_key: \"sk-abc123\"")
 
 
 def test_design_system_json() -> None:
@@ -58,11 +63,15 @@ def test_wired_executor() -> None:
     asyncio.run(_wired_executor_check())
 
 
+def test_build_endpoint_imports() -> None:
+    asyncio.run(_build_endpoint_check())
+
+
 def main() -> int:
     checks = [
         ("websocket endpoint", test_websocket_endpoint),
         ("wired executor", test_wired_executor),
-        ("build endpoint imports", test_build_endpoint_imports),
+        ("build endpoint", test_build_endpoint_imports),
         ("sandbox security", test_sandbox_security),
         ("design system json", test_design_system_json),
     ]

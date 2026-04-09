@@ -1,7 +1,8 @@
 """
-Integration smoke tests for the added feature modules.
+Integration smoke tests for the compatibility feature layer.
 
-These are valid pytest tests and can also be run directly with Python.
+These keep the original intent of the "all integrated" checks, but they now
+verify the live planner/controller/memory path instead of demo-only modules.
 """
 
 from __future__ import annotations
@@ -9,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
+from pathlib import Path
 
 
 async def _broadcast_check() -> None:
@@ -23,6 +25,7 @@ async def _design_injection_check() -> None:
     executor = WiredExecutor("design-test", "proj")
     context = executor._inject_design_system({})
     assert context.get("design_system_injected") is True
+    assert "Tailwind" in context["design_system_prompt"]
 
 
 async def _full_flow_check() -> None:
@@ -37,6 +40,19 @@ async def _full_flow_check() -> None:
 
     result = await executor.execute_agent("Test", agent, {"phase": "test"})
     assert result["output"] == "test"
+
+
+async def _build_endpoint_check() -> None:
+    from backend.routes_wired import build_wired
+
+    result = await build_wired(
+        "Build enterprise API with CORS, security headers, input validation, and rate limiting"
+    )
+    assert result["status"] == "success"
+    selected = set(result["plan"]["selected_agents"])
+    assert "CORS & Security Headers Agent" in selected
+    assert "Input Validation Agent" in selected
+    assert "Rate Limiting Agent" in selected
 
 
 def test_websocket_module() -> None:
@@ -73,6 +89,13 @@ def test_design_json() -> None:
     assert ds["colors"]["primary"] == "#007BFF"
 
 
+def test_prompt_artifact_exists() -> None:
+    path = Path("backend/prompts/design_system_injection.txt")
+    assert path.exists()
+    text = path.read_text(encoding="utf-8")
+    assert "WCAG" in text
+
+
 def test_design_injection() -> None:
     asyncio.run(_design_injection_check())
 
@@ -82,9 +105,7 @@ def test_full_flow() -> None:
 
 
 def test_build_endpoint_imports() -> None:
-    from backend.routes_wired import build_wired
-
-    assert callable(build_wired)
+    asyncio.run(_build_endpoint_check())
 
 
 def main() -> int:
@@ -95,9 +116,10 @@ def main() -> int:
         ("egress filter", test_egress_filter),
         ("secret detection", test_secret_detection),
         ("design json", test_design_json),
+        ("prompt artifact", test_prompt_artifact_exists),
         ("design injection", test_design_injection),
         ("full flow", test_full_flow),
-        ("build endpoint imports", test_build_endpoint_imports),
+        ("build endpoint", test_build_endpoint_imports),
     ]
     failures = []
     print("=" * 70)
