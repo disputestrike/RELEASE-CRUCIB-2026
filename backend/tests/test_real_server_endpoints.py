@@ -93,6 +93,65 @@ class TestRealAgentEndpoints:
 # PHASE 4: REAL METRICS TESTS
 # ============================================================================
 
+class TestPublicPlannerEndpoints:
+    """Test public planner verification endpoints."""
+
+    def test_public_build_summary_returns_compact_plan(self, client, monkeypatch):
+        """REAL TEST: /api/build/summary should return a trimmed public planner payload."""
+        import server
+
+        class FakePlanner:
+            @staticmethod
+            async def generate_plan(goal, project_state=None):
+                return {
+                    "goal": goal,
+                    "summary": "Compact plan summary",
+                    "orchestration_mode": "agent_swarm",
+                    "phase_count": 3,
+                    "phases": [["Planner"], ["Build Validator Agent", "Frontend Generation"], ["Security Checker"]],
+                    "selected_agent_count": 4,
+                    "selected_agents": [
+                        "Planner",
+                        "Build Validator Agent",
+                        "Frontend Generation",
+                        "Security Checker",
+                    ],
+                    "recommended_build_target": "vite_react",
+                    "selection_explanation": {
+                        "matched_keywords": ["build", "validator", "frontend", "security"],
+                    },
+                    "controller_summary": {
+                        "execution_strategy": "dependency_aware_parallelism",
+                        "parallel_phase_count": 3,
+                        "recommended_focus": "Watch Build Validator Agent",
+                        "next_actions": ["launch_parallel_specialists", "run_security_hardening_pass"],
+                        "replan_triggers": ["agent_failure", "verification_failure"],
+                        "memory_strategy": "scoped_project_job_phase_memory",
+                    },
+                    "missing_inputs": [],
+                    "risk_flags": [],
+                }
+
+        monkeypatch.setattr(server, "_get_orchestration", lambda: (None, None, FakePlanner, None, None))
+
+        response = client.post("/api/build/summary", json={"goal": "Build validated secure app"})
+
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        assert payload["success"] is True
+        plan = payload["plan"]
+        assert plan["orchestration_mode"] == "agent_swarm"
+        assert plan["selected_agent_count"] == 4
+        assert plan["phase_sizes"] == [1, 2, 1]
+        assert plan["selected_agents"] == [
+            "Planner",
+            "Build Validator Agent",
+            "Frontend Generation",
+            "Security Checker",
+        ]
+        assert "phases" not in plan
+        assert plan["controller_summary"]["recommended_focus"] == "Watch Build Validator Agent"
+
 class TestRealMetricsEndpoint:
     """Test actual metrics endpoint"""
     

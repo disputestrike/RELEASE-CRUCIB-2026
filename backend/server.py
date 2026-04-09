@@ -98,6 +98,7 @@ class CSRFMiddleware:
         "/api/contact",
         "/api/enterprise/contact",
         "/api/build",
+        "/api/build/summary",
         # Read-only style cost preview (no job persisted); Bearer still used when available
         "/api/orchestrator/estimate",
     }
@@ -8441,6 +8442,41 @@ def _update_last_build_state(plan: Dict[str, Any]) -> None:
     del RECENT_AGENT_SELECTION_LOGS[:-20]
 
 
+def _public_plan_summary(plan: Dict[str, Any], *, max_agents: int = 60) -> Dict[str, Any]:
+    selected_agents = list(plan.get("selected_agents") or [])
+    phases = list(plan.get("phases") or [])
+    controller_summary = dict(plan.get("controller_summary") or {})
+    selection_explanation = dict(plan.get("selection_explanation") or {})
+    matched_keywords = list(selection_explanation.get("matched_keywords") or [])
+
+    return {
+        "goal": plan.get("goal", ""),
+        "summary": plan.get("summary", ""),
+        "orchestration_mode": plan.get("orchestration_mode", "unknown"),
+        "phase_count": int(plan.get("phase_count") or len(phases)),
+        "selected_agent_count": int(plan.get("selected_agent_count") or len(selected_agents)),
+        "selected_agents": selected_agents[:max_agents],
+        "selected_agents_truncated": len(selected_agents) > max_agents,
+        "phase_sizes": [len(phase or []) for phase in phases],
+        "recommended_build_target": plan.get("recommended_build_target"),
+        "missing_inputs": list(plan.get("missing_inputs") or []),
+        "risk_flags": list(plan.get("risk_flags") or []),
+        "selection_explanation": {
+            **selection_explanation,
+            "matched_keywords": matched_keywords[:20],
+            "matched_keywords_truncated": len(matched_keywords) > 20,
+        },
+        "controller_summary": {
+            "execution_strategy": controller_summary.get("execution_strategy"),
+            "parallel_phase_count": controller_summary.get("parallel_phase_count"),
+            "recommended_focus": controller_summary.get("recommended_focus"),
+            "next_actions": list(controller_summary.get("next_actions") or [])[:8],
+            "replan_triggers": list(controller_summary.get("replan_triggers") or [])[:8],
+            "memory_strategy": controller_summary.get("memory_strategy"),
+        },
+    }
+
+
 # ── Build targets (execution modes — broad platform, honest per-run scope) ───
 
 @api_router.get("/orchestrator/build-targets")
@@ -8506,6 +8542,36 @@ async def public_build_plan(
         raise
     except Exception as e:
         logger.exception("public /build planning error")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/build/summary")
+async def public_build_plan_summary(
+    body: BuildGoalRequest,
+    user: Optional[dict] = Depends(get_optional_user),
+):
+    """
+    Compact public planner response for live verification and orchestration UI probes.
+
+    Returns the same real planner decision as /api/build, but trims the payload to the
+    minimum proof surface needed for production checks.
+    """
+    goal = (body.goal or "").strip()
+    if not goal:
+        raise HTTPException(status_code=400, detail="goal is required")
+    try:
+        _, _, planner_mod, _, _ = _get_orchestration()
+        plan = await planner_mod.generate_plan(
+            goal,
+            project_state=_orchestrator_planner_project_state(user),
+        )
+        plan["phase_count"] = int(plan.get("phase_count") or len(plan.get("phases", [])))
+        _update_last_build_state(plan)
+        return {"success": True, "plan": _public_plan_summary(plan)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("public /build/summary planning error")
         raise HTTPException(status_code=500, detail=str(e))
 
 

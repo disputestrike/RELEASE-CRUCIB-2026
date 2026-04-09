@@ -76,6 +76,21 @@ than legacy demo-only wiring.
 - [job_progress.py](C:/Users/benxp/OneDrive/Documents/New%20project/backend/api/routes/job_progress.py)
   - now truncates oversized log and memory payloads before returning JSON
 
+### Compact production proof path
+- [server.py](C:/Users/benxp/OneDrive/Documents/New%20project/backend/server.py)
+  - now exposes `/api/build/summary`
+  - uses the same real planner as `/api/build`
+  - trims output to:
+    - orchestration mode
+    - phase count / phase sizes
+    - selected agent count
+    - selected agents
+    - controller summary
+    - matched keywords
+  - this gives us a lighter-weight live verification lane for production probes
+- [test_real_server_endpoints.py](C:/Users/benxp/OneDrive/Documents/New%20project/backend/tests/test_real_server_endpoints.py)
+  - now proves the compact planner endpoint returns the reduced public proof payload instead of the full plan body
+
 ## Local Verification
 
 ### Syntax
@@ -96,7 +111,7 @@ python -m pytest backend\tests\test_controller_brain.py backend\tests\test_runti
 ```
 
 Result:
-- `76 passed`
+- `77 passed`
 - no pytest warnings in this proof-band run
 
 ### Frontend proof band
@@ -204,6 +219,7 @@ What this pass proves well:
 - controller/progress/runtime integration band
 - expansion-agent reachability from real prompts
 - preview/security/runtime verification band
+- compact public planner proof path
 - production planner health and specialized routing
 
 What this pass did not prove end-to-end:
