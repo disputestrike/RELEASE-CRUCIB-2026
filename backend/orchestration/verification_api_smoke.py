@@ -1,9 +1,9 @@
 """
-verification.api_smoke — static API contract sketch + optional live ping.
+verification.api_smoke - static API contract sketch + optional live ping.
 
-- Discovers FastAPI-style routes under backend/*.py
-- Requires GET /health on `app` (or any discovered router) for a pass
-- Runs py_compile on backend Python entrypoints when present
+- Discovers FastAPI-style routes under backend/, api/, and common root entrypoints
+- Requires GET /health on app (or any discovered router) for a pass
+- Runs py_compile on Python entrypoints when present
 - If CRUCIBAI_API_SMOKE_URL is set, GET that URL (e.g. http://127.0.0.1:8000/health)
 """
 from __future__ import annotations
@@ -45,9 +45,32 @@ def _vr(passed: bool, score: int, issues: List[str], proof: List[Dict[str, Any]]
     return {"passed": passed, "score": score, "issues": issues, "proof": proof}
 
 
+def _api_entry_candidates(workspace_path: str) -> List[str]:
+    candidates = [
+        "backend/main.py",
+        "backend/server.py",
+        "api/main.py",
+        "api/server.py",
+        "server.py",
+        "main.py",
+        "app.py",
+    ]
+    out: List[str] = []
+    for rel in candidates:
+        full = os.path.join(workspace_path, rel.replace("/", os.sep))
+        if os.path.isfile(full):
+            out.append(rel)
+    return out
+
+
 def _backend_routes(workspace_path: str) -> List[Dict[str, str]]:
-    all_r = _scan_workspace_for_route_declarations(workspace_path, max_files=36, max_matches=64)
-    return [r for r in all_r if r.get("file", "").startswith("backend/")]
+    all_r = _scan_workspace_for_route_declarations(workspace_path, max_files=48, max_matches=96)
+    return [
+        r
+        for r in all_r
+        if r.get("file", "").startswith(("backend/", "api/"))
+        or r.get("file", "") in {"server.py", "main.py", "app.py"}
+    ]
 
 
 async def verify_api_smoke_workspace(workspace_path: str) -> Dict[str, Any]:
@@ -57,9 +80,9 @@ async def verify_api_smoke_workspace(workspace_path: str) -> Dict[str, Any]:
     if not workspace_path or not os.path.isdir(workspace_path):
         return _vr(False, 0, ["No workspace for API smoke verification"], proof)
 
-    main_path = os.path.join(workspace_path, "backend", "main.py")
-    if not os.path.isfile(main_path):
-        issues.append("backend/main.py missing — cannot smoke-check API sketch")
+    entry_candidates = _api_entry_candidates(workspace_path)
+    if not entry_candidates:
+        issues.append("No API entrypoint found - expected backend/main.py, server.py, app.py, or api/main.py")
         return _vr(False, 35, issues, proof)
 
     routes = _backend_routes(workspace_path)
@@ -76,21 +99,23 @@ async def verify_api_smoke_workspace(workspace_path: str) -> Dict[str, Any]:
     paths_upper = {(x["method"].upper(), x["path"]) for x in routes}
     health_ok = ("GET", "/health") in paths_upper
     if not health_ok:
-        # Fallback: substring (decorator spacing variants)
-        try:
-            with open(main_path, encoding="utf-8", errors="replace") as fh:
-                main_txt = fh.read()
-        except OSError:
-            main_txt = ""
-        if '"/health"' in main_txt or "'/health'" in main_txt:
-            health_ok = True
-            proof.append(
-                _pi(
-                    "api",
-                    "API smoke: /health referenced in main.py",
-                    {"check": "health_path_literal"},
-                ),
-            )
+        for rel in entry_candidates:
+            full = os.path.join(workspace_path, rel.replace("/", os.sep))
+            try:
+                with open(full, encoding="utf-8", errors="replace") as fh:
+                    entry_txt = fh.read()
+            except OSError:
+                continue
+            if '"/health"' in entry_txt or "'/health'" in entry_txt:
+                health_ok = True
+                proof.append(
+                    _pi(
+                        "api",
+                        f"API smoke: /health referenced in {rel}",
+                        {"check": "health_path_literal", "file": rel},
+                    ),
+                )
+                break
     if health_ok:
         proof.append(
             _pi(
@@ -102,12 +127,11 @@ async def verify_api_smoke_workspace(workspace_path: str) -> Dict[str, Any]:
     else:
         issues.append("No GET /health route found in backend Python sources")
 
-    backend_files = [
-        "backend/main.py",
+    backend_files = list(dict.fromkeys(entry_candidates + [
         "backend/models.py",
         "backend/auth.py",
         "backend/stripe_routes.py",
-    ]
+    ]))
     for rel in backend_files:
         full = os.path.normpath(os.path.join(workspace_path, rel.replace("/", os.sep)))
         if not os.path.isfile(full):
@@ -143,7 +167,7 @@ async def verify_api_smoke_workspace(workspace_path: str) -> Dict[str, Any]:
                         proof.append(
                             _pi(
                                 "api",
-                                f"API smoke: live GET {ping_url} → {resp.status}",
+                                f"API smoke: live GET {ping_url} -> {resp.status}",
                                 {"url": ping_url, "status": resp.status, "body_len": len(body)},
                             ),
                         )
@@ -158,7 +182,7 @@ async def verify_api_smoke_workspace(workspace_path: str) -> Dict[str, Any]:
 
 def healthcheck_sh_script() -> str:
     return r"""#!/bin/sh
-# CrucibAI — minimal HTTP health probe (run from repo / CI after API is up)
+# CrucibAI - minimal HTTP health probe (run from repo / CI after API is up)
 set -e
 API_URL="${API_URL:-http://127.0.0.1:8000}"
 curl -sf "${API_URL}/health" >/dev/null

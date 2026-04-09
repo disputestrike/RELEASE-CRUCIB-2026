@@ -24,3 +24,23 @@ def test_healthcheck_script_contains_curl_health():
     s = healthcheck_sh_script()
     assert "/health" in s
     assert "curl" in s
+
+
+@pytest.mark.asyncio
+async def test_api_smoke_accepts_root_server_entrypoint():
+    with tempfile.TemporaryDirectory() as d:
+        with open(os.path.join(d, "server.py"), "w", encoding="utf-8") as f:
+            f.write(
+                """from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+"""
+            )
+        r = await verify_api_smoke_workspace(d)
+        assert r["passed"], r["issues"]
+        titles = " ".join(p["title"] for p in r["proof"]).lower()
+        assert "server.py" in titles

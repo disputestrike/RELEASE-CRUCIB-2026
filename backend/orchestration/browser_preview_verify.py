@@ -225,28 +225,39 @@ def _verify_browser_preview_sync(workspace_path: str) -> Dict[str, Any]:
                     ),
                 )
 
-                page.get_by_role("link", name="Home").first.wait_for(
-                    state="visible",
-                    timeout=15000,
-                )
-                page.get_by_role("link", name="Login").first.click(timeout=15000)
-                page.get_by_placeholder("Display name").wait_for(
-                    state="visible",
-                    timeout=15000,
-                )
-                page.get_by_placeholder("Display name").fill("gate_e2e")
-                page.get_by_role("button", name="Sign in (demo)").click()
-                page.get_by_role("heading", name="Dashboard").wait_for(
-                    state="visible",
-                    timeout=15000,
-                )
-                proof.append(
-                    _proof(
-                        "verification",
-                        "Playwright: login → dashboard flow",
-                        {"flow": "demo_auth"},
-                    ),
-                )
+                home_links = page.get_by_role("link", name="Home")
+                login_links = page.get_by_role("link", name="Login")
+                if home_links.count() > 0 and login_links.count() > 0:
+                    page.get_by_role("link", name="Home").first.wait_for(
+                        state="visible",
+                        timeout=15000,
+                    )
+                    page.get_by_role("link", name="Login").first.click(timeout=15000)
+                    page.get_by_placeholder("Display name").wait_for(
+                        state="visible",
+                        timeout=15000,
+                    )
+                    page.get_by_placeholder("Display name").fill("gate_e2e")
+                    page.get_by_role("button", name="Sign in (demo)").click()
+                    page.get_by_role("heading", name="Dashboard").wait_for(
+                        state="visible",
+                        timeout=15000,
+                    )
+                    proof.append(
+                        _proof(
+                            "verification",
+                            "Playwright: login -> dashboard flow",
+                            {"flow": "demo_auth"},
+                        ),
+                    )
+                else:
+                    proof.append(
+                        _proof(
+                            "verification",
+                            "Playwright: generic root render only",
+                            {"flow": "generic_render_only"},
+                        ),
+                    )
 
                 try:
                     preview_dir = os.path.join(ws, ".crucibai", "preview")

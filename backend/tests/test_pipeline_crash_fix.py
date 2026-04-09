@@ -18,6 +18,7 @@ from orchestration.executor import (
 from orchestration.generated_app_template import build_frontend_file_set
 from orchestration.preview_gate import verify_preview_workspace
 from orchestration.runtime_state import _coerce_json_text_updates
+from orchestration.verification_api_smoke import verify_api_smoke_workspace
 from orchestration.verifier import verify_deploy_step, verify_step
 
 
@@ -283,6 +284,49 @@ async def test_fallback_scaffold_passes_preview_and_elite_gates(monkeypatch):
 
         assert preview["passed"] is True, preview.get("issues")
         assert elite["passed"] is True, elite.get("issues")
+
+
+@pytest.mark.asyncio
+async def test_delivery_manifest_assembles_swarm_runtime_contract(monkeypatch):
+    monkeypatch.setenv("CRUCIBAI_SKIP_BROWSER_PREVIEW", "1")
+
+    job = {
+        "id": "job-swarm-contract",
+        "goal": "Build Helios Aegis Command with auth, API, tenant isolation, and analytics",
+        "build_target": "full_system_generator",
+    }
+    with tempfile.TemporaryDirectory() as d:
+        _safe_write(
+            d,
+            "src/App.jsx",
+            """export default function App() { return <main>Helios Aegis Command</main>; }""",
+        )
+        _safe_write(
+            d,
+            "server.py",
+            """from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+""",
+        )
+
+        result = await handle_delivery_manifest({"step_key": "implementation.delivery_manifest"}, job, d)
+
+        assert "package.json" in result["output_files"]
+        assert "index.html" in result["output_files"]
+        assert "vite.config.js" in result["output_files"]
+        assert "backend/main.py" in result["output_files"]
+        assert "deploy/healthcheck.sh" in result["output_files"]
+
+        preview = await verify_preview_workspace(d)
+        api_smoke = await verify_api_smoke_workspace(d)
+
+        assert preview["passed"] is True, preview.get("issues")
+        assert api_smoke["passed"] is True, api_smoke.get("issues")
 
 
 def test_job_state_structured_lists_are_json_text():

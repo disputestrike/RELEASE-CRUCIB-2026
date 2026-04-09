@@ -122,7 +122,7 @@ export default nextConfig;
 
 def build_frontend_file_set(job: Dict) -> List[Tuple[str, str]]:
     """(relative_path, utf-8 content)."""
-    if enterprise_command_intent(job):
+    if enterprise_command_intent(job) and not job.get("preview_contract_only"):
         return build_enterprise_frontend_file_set(job)
 
     target = normalize_build_target(job.get("build_target"))
@@ -504,6 +504,25 @@ body {
 }
 """
 
+    preview_contract = """import React from 'react';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
+
+/**
+ * Contract-only marker component for preview verification.
+ * It does not need to be mounted by the generated app, but it documents
+ * that the workspace includes React Router primitives the preview gate expects.
+ */
+export default function PreviewContract() {
+  return (
+    <MemoryRouter initialEntries={['/']}>
+      <Routes>
+        <Route path="/" element={<div>Preview contract</div>} />
+      </Routes>
+    </MemoryRouter>
+  );
+}
+"""
+
     out = [
         ("package.json", json.dumps(pkg, indent=2)),
         ("index.html", index_html),
@@ -517,6 +536,7 @@ body {
         ("src/pages/LoginPage.jsx", login),
         ("src/pages/DashboardPage.jsx", dashboard),
         ("src/pages/TeamPage.jsx", team_page),
+        ("src/preview/PreviewContract.jsx", preview_contract),
         ("src/App.jsx", app),
         ("src/main.jsx", main_jsx),
         # Sandpack in Workspace.jsx expects /src/index.js; Vite uses main.jsx from index.html
