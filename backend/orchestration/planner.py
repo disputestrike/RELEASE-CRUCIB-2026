@@ -145,6 +145,7 @@ def _detect_spec_vs_runner_template_mismatch(goal: str, use_agent_swarm: bool = 
 def _should_use_agent_selection(goal: str) -> bool:
     """Route specialized prompts into the selected-agent swarm path."""
     selection_triggers = [
+        # Original triggers (keep for backwards compatibility)
         "3d", "webgl", "three.js", "babylon", "cesium", "augmented reality", "virtual reality", "ar", "vr",
         "ml", "machine learning", "tensorflow", "pytorch", "sklearn", "scikit-learn", "xgboost",
         "recommendation", "neural network", "deep learning", "prediction",
@@ -155,6 +156,48 @@ def _should_use_agent_selection(goal: str) -> bool:
         "kubernetes", "k8s", "serverless", "lambda", "cloudflare", "istio", "docker", "container", "kafka", "rabbitmq", "redis",
         "chaos", "mutation", "property-based", "e2e", "load test", "synthetic",
         "workflow", "approval", "business rules", "scheduling",
+        
+        # EXPANSION AGENTS - Build Validation Layer
+        "build", "compile", "vite", "npm", "validation", "dependencies", "import", "dry-run",
+        
+        # EXPANSION AGENTS - Frontend Quality
+        "css", "styling", "typography", "font", "color", "palette", "theme", "responsive", "breakpoint",
+        "dark mode", "animation", "transition", "micro-interaction", "accessibility", "a11y", "wcag", "aria",
+        "image", "optimization", "webp", "compress", "icon", "svg",
+        
+        # EXPANSION AGENTS - API & Backend
+        "api", "contract", "schema", "openapi", "database", "migration", "sql", "orm", "sqlalchemy",
+        
+        # EXPANSION AGENTS - Infrastructure
+        "docker", "container", "ci", "cd", "github", "actions", "workflow", "environment", "config", "secrets",
+        "monitoring", "logging", "observability", "datadog", "sentry", "observ",
+        
+        # EXPANSION AGENTS - Testing
+        "unit", "test", "jest", "vitest", "integration", "e2e", "end-to-end", "playwright", "cypress", "performance",
+        "load", "stress", "benchmark",
+        
+        # EXPANSION AGENTS - Data & Analytics
+        "analytics", "events", "tracking", "pipeline", "etl", "warehouse", "snowflake", "bigquery", "redshift",
+        
+        # EXPANSION AGENTS - Security
+        "secret", "vault", "sensitive", "encryption", "cors", "security", "headers", "csp",
+        "validation", "sanitization", "input", "ratelimit", "throttle", "ddos",
+        
+        # EXPANSION AGENTS - Payment & Billing
+        "stripe", "payment", "billing", "checkout", "subscription", "pricing", "tiers",
+        
+        # EXPANSION AGENTS - Communication
+        "email", "template", "mjml", "sms", "push", "notification", "twilio",
+        
+        # EXPANSION AGENTS - Advanced Features
+        "realtime", "collaboration", "socket", "socket.io", "search", "elasticsearch", "algolia",
+        "file", "upload", "s3", "storage", "webhook", "event", "callback",
+        
+        # EXPANSION AGENTS - Content & Docs
+        "docs", "apidoc", "swagger", "adr", "architecture", "decision",
+        
+        # EXPANSION AGENTS - Quality Gates
+        "quality", "gate", "lint", "scan", "vulnerability", "lighthouse", "psi",
     ]
     for trigger in selection_triggers:
         if _keyword_match(trigger, goal):

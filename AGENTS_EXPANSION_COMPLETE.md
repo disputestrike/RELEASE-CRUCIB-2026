@@ -2,13 +2,33 @@
 
 ## OVERVIEW
 
-**Total Agents:** 171 (123 original + 48 new)
-**Execution Phases:** 8 (optimized DAG)
+**Total Agents:** 237 (191 original + 48 new)
+**Execution Phases:** 10 (optimized DAG)
 **Coverage:** Now handles 95%+ of software projects
 
 ---
 
-## AGENT BREAKDOWN BY CATEGORY
+## CRITICAL FIX: PLANNER ROUTING GATE
+
+All 237 agents now properly route through `_should_use_agent_selection()` in `planner.py`.
+
+The gate now includes ALL expansion agent keywords:
+- Build validation: "build", "compile", "vite", "npm", "dependencies", "import", "dry-run"
+- Frontend: "css", "typography", "dark mode", "animation", "accessibility", "image", "icon"
+- Backend: "api", "contract", "schema", "database", "migration", "orm"
+- Infrastructure: "docker", "ci", "cd", "github", "actions", "monitoring", "logging"
+- Testing: "unit", "test", "integration", "e2e", "performance", "load"
+- Data: "analytics", "pipeline", "warehouse"
+- Security: "secret", "vault", "cors", "validation", "ratelimit"
+- Payment: "stripe", "billing", "subscription"
+- Communication: "email", "sms", "push", "notification"
+- Advanced: "realtime", "search", "file", "webhook"
+
+**What this means:**
+- "Build a Vite React app" → Build Validator Agent fires ✅
+- "Add dark mode" → Dark Mode Theme Agent fires ✅
+- "Setup Docker" → Docker Setup Agent fires ✅
+- And all 48 expansion agents are now properly routed ✅
 
 ### 1. BUILD VALIDATION LAYER (4 Agents)
 
