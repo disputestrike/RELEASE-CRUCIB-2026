@@ -36,7 +36,34 @@ def _project_workspace(project_id: str) -> Path:
     return path
 
 
-def _extract_code(out: Any) -> str:
+_PROSE_PREFIXES = (
+    "i ", "i'", "here ", "here'", "this ", "the following",
+    "appreciate", "certainly", "sure,", "below", "based on",
+    "as requested", "i have", "i'll", "let me", "of course",
+    "happy to", "glad to", "please find", "above is", "this is",
+    "the above", "note:", "note that", "in this", "we have",
+)
+_CODE_EXTENSIONS = {".jsx", ".tsx", ".js", ".ts", ".py", ".css", ".scss",
+                    ".json", ".yaml", ".yml", ".html", ".sh", ".sql"}
+
+
+def _sanitize_prose_preamble(content: str, filepath: str = "") -> str:
+    """Strip LLM prose preamble lines from the top of code files."""
+    ext = os.path.splitext(filepath)[1].lower() if filepath else ""
+    if ext and ext not in _CODE_EXTENSIONS:
+        return content
+    lines = content.split("\n")
+    for i, line in enumerate(lines):
+        stripped = line.strip().lower()
+        if not stripped:
+            continue
+        if any(stripped.startswith(p) for p in _PROSE_PREFIXES):
+            continue
+        return "\n".join(lines[i:])
+    return content
+
+
+def _extract_code(out: Any, filepath: str = "") -> str:
     if out is None:
         return ""
     if isinstance(out, str):
@@ -47,10 +74,11 @@ def _extract_code(out: Any) -> str:
                 lines = lines[1:]
             if lines and lines[-1].strip() == "```":
                 lines = lines[:-1]
-            return "\n".join(lines)
-        return s
+            s = "\n".join(lines)
+        return _sanitize_prose_preamble(s, filepath)
     if isinstance(out, dict):
-        return out.get("output") or out.get("result") or out.get("code") or ""
+        raw = out.get("output") or out.get("result") or out.get("code") or ""
+        return _sanitize_prose_preamble(raw, filepath)
     return ""
 
 
@@ -67,7 +95,7 @@ async def _run_file_tool_agent(
 
     # Frontend
     fe = previous_outputs.get("Frontend Generation") or {}
-    fe_code = _extract_code(fe.get("output") or fe.get("result") or fe.get("code"))
+    fe_code = _extract_code(fe.get("output") or fe.get("result") or fe.get("code"), filepath="src/App.jsx")
     if fe_code:
         try:
             r = await agent.execute({"action": "mkdir", "path": "src"})
@@ -86,7 +114,7 @@ async def _run_file_tool_agent(
 
     # Backend
     be = previous_outputs.get("Backend Generation") or {}
-    be_code = _extract_code(be.get("output") or be.get("result") or be.get("code"))
+    be_code = _extract_code(be.get("output") or be.get("result") or be.get("code"), filepath="server.py")
     if be_code:
         try:
             r = await agent.execute({
@@ -103,7 +131,7 @@ async def _run_file_tool_agent(
 
     # Database schema
     db_agent = previous_outputs.get("Database Agent") or {}
-    db_code = _extract_code(db_agent.get("output") or db_agent.get("result"))
+    db_code = _extract_code(db_agent.get("output") or db_agent.get("result"), filepath="schema.sql")
     if db_code:
         try:
             r = await agent.execute({
@@ -120,7 +148,7 @@ async def _run_file_tool_agent(
 
     # Tests
     test_agent = previous_outputs.get("Test Generation") or {}
-    test_code = _extract_code(test_agent.get("output") or test_agent.get("result") or test_agent.get("code"))
+    test_code = _extract_code(test_agent.get("output") or test_agent.get("result") or test_agent.get("code"), filepath="tests/test_basic.py")
     if test_code:
         try:
             r = await agent.execute({"action": "mkdir", "path": "tests"})

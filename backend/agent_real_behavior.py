@@ -154,7 +154,38 @@ REAL_TOOL_AGENTS = frozenset({
 })
 
 
-def _extract_code_or_text(content: Any) -> str:
+_PROSE_PREFIXES = (
+    "i ", "i'", "here ", "here'", "this ", "the following",
+    "appreciate", "certainly", "sure,", "below", "based on",
+    "as requested", "i have", "i'll", "let me", "of course",
+    "happy to", "glad to", "please find", "above is", "this is",
+    "the above", "note:", "note that", "in this", "we have",
+)
+
+_CODE_EXTENSIONS = {".jsx", ".tsx", ".js", ".ts", ".py", ".css", ".scss", ".json", ".yaml", ".yml", ".html", ".sh"}
+
+
+def _sanitize_prose_preamble(content: str, filepath: str = "") -> str:
+    """Strip LLM prose preamble from code files (e.g. 'I appreciate...' at line 1)."""
+    ext = ""
+    if filepath:
+        import os as _os
+        ext = _os.path.splitext(filepath)[1].lower()
+    if ext not in _CODE_EXTENSIONS:
+        return content
+    lines = content.split("\n")
+    for i, line in enumerate(lines):
+        stripped = line.strip().lower()
+        if not stripped:
+            continue
+        if any(stripped.startswith(p) for p in _PROSE_PREFIXES):
+            continue
+        # Found first real code line
+        return "\n".join(lines[i:])
+    return content
+
+
+def _extract_code_or_text(content: Any, filepath: str = "") -> str:
     if content is None:
         return ""
     s = (content if isinstance(content, str) else str(content)).strip()
@@ -164,8 +195,8 @@ def _extract_code_or_text(content: Any) -> str:
             lines = lines[1:]
         if lines and lines[-1].strip() == "```":
             lines = lines[:-1]
-        return "\n".join(lines)
-    return s
+        s = "\n".join(lines)
+    return _sanitize_prose_preamble(s, filepath)
 
 
 def _parse_json_safe(text: str) -> Optional[Dict]:
@@ -251,7 +282,7 @@ def run_agent_real_behavior(
     # 4) Artifact writers: write content to workspace file
     if agent_name in ARTIFACT_PATHS:
         path = ARTIFACT_PATHS[agent_name]
-        content = _extract_code_or_text(out_str)
+        content = _extract_code_or_text(out_str, filepath=path)
         if not content and agent_name in ("PDF Export", "Excel Export"):
             content = out_str
         if content:
