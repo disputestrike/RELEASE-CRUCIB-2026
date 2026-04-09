@@ -98,3 +98,60 @@ async def test_broadcast_event_includes_live_snapshot(monkeypatch):
     assert sent["message"]["type"] == "step_completed"
     assert sent["message"]["snapshot"]["job_id"] == "job-123"
     assert sent["message"]["snapshot"]["phases"][0]["id"] == "planning"
+
+
+@pytest.mark.asyncio
+async def test_job_progress_truncates_large_log_and_memory_payloads(monkeypatch):
+    async def fake_get_job(job_id):
+        return {"id": job_id, "status": "running", "goal": "Build giant payload test"}
+
+    async def fake_get_steps(job_id):
+        return [
+            {
+                "id": "1",
+                "step_key": "agents.security_checker",
+                "agent_name": "Security Checker",
+                "phase": "agents.phase_01",
+                "status": "failed",
+                "order_index": 1,
+                "error_message": "X" * 500,
+            }
+        ]
+
+    async def fake_get_events(job_id, limit=250):
+        return [
+            {
+                "event_type": "step_failed",
+                "created_at": "2026-04-09T00:00:00+00:00",
+                "payload": {"agent_name": "Security Checker", "error": "Y" * 500},
+            }
+        ]
+
+    class FakeMemoryService:
+        async def build_context_packet(self, **kwargs):
+            return {
+                "provider": "memory",
+                "project_id": "proj-1",
+                "job_id": kwargs.get("job_id"),
+                "phase": kwargs.get("phase"),
+                "query": "Q" * 500,
+                "relevant_memories": [{"id": "mem-1", "agent": "Planner", "text": "R" * 500}],
+                "recent_memories": [{"id": "mem-2", "agent": "Planner", "text": "S" * 500}],
+                "token_usage": 99,
+            }
+
+    async def fake_get_memory_service():
+        return FakeMemoryService()
+
+    monkeypatch.setattr(job_progress, "get_job", fake_get_job)
+    monkeypatch.setattr(job_progress, "get_steps", fake_get_steps)
+    monkeypatch.setattr(job_progress, "get_job_events", fake_get_events)
+    monkeypatch.setattr("memory.service.get_memory_service", fake_get_memory_service)
+
+    payload = await job_progress.get_job_progress("job-oversized")
+
+    assert len(payload["logs"][0]["message"]) <= 220
+    assert len(payload["controller"]["blockers"][0]["error"]) <= 180
+    assert len(payload["memory"]["query"]) <= 180
+    assert len(payload["memory"]["relevant_memories"][0]["text"]) <= 160
+    assert len(payload["memory"]["recent_memories"][0]["text"]) <= 160

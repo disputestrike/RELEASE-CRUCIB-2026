@@ -71,6 +71,10 @@ than legacy demo-only wiring.
   - token usage
   - recent memories
   - relevant memories
+- [controller_brain.py](C:/Users/benxp/OneDrive/Documents/New%20project/backend/orchestration/controller_brain.py)
+  - now truncates oversized blocker/error text for safer live payloads
+- [job_progress.py](C:/Users/benxp/OneDrive/Documents/New%20project/backend/api/routes/job_progress.py)
+  - now truncates oversized log and memory payloads before returning JSON
 
 ## Local Verification
 
@@ -92,7 +96,7 @@ python -m pytest backend\tests\test_controller_brain.py backend\tests\test_runti
 ```
 
 Result:
-- `75 passed`
+- `76 passed`
 - no pytest warnings in this proof-band run
 
 ### Frontend proof band

@@ -12,6 +12,13 @@ from collections import OrderedDict
 from typing import Any, Dict, List
 
 
+def _truncate_text(value: Any, limit: int = 220) -> str:
+    text = str(value or "")
+    if len(text) <= limit:
+        return text
+    return f"{text[: max(0, limit - 3)]}..."
+
+
 def _phase_steps(phase: Dict[str, Any]) -> List[Dict[str, Any]]:
     return list(phase.get("steps") or [])
 
@@ -105,7 +112,7 @@ def _normalize_agent_row(step: Dict[str, Any]) -> Dict[str, Any]:
         "name": step.get("agent_name") or step.get("step_key") or "Agent",
         "status": step.get("status") or "pending",
         "progress": _step_progress(step),
-        "error": step.get("error_message") or "",
+        "error": _truncate_text(step.get("error_message") or "", limit=180),
         "started_at": step.get("started_at"),
         "completed_at": step.get("completed_at"),
         "phase": step.get("phase") or "unassigned",
@@ -127,11 +134,11 @@ def _event_message(event: Dict[str, Any]) -> str:
     payload = event.get("payload") or {}
     event_type = event.get("event_type") or event.get("type") or "event"
     if payload.get("message"):
-        return str(payload["message"])
+        return _truncate_text(payload["message"], limit=240)
     if payload.get("error"):
-        return str(payload["error"])
+        return _truncate_text(payload["error"], limit=240)
     if payload.get("failure_reason"):
-        return str(payload["failure_reason"])
+        return _truncate_text(payload["failure_reason"], limit=240)
     if payload.get("agent_name"):
         return f"{payload['agent_name']} {event_type}"
     if payload.get("step_key"):
@@ -225,7 +232,7 @@ def build_live_job_progress(
         {
             "step_key": step.get("step_key"),
             "agent_name": step.get("agent_name"),
-            "error": step.get("error_message") or "blocked",
+            "error": _truncate_text(step.get("error_message") or "blocked", limit=180),
         }
         for step in steps or []
         if str(step.get("status") or "").lower() in ("failed", "blocked")

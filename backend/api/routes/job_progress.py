@@ -51,6 +51,13 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
+def _truncate_text(value: Any, limit: int = 220) -> str:
+    text = str(value or "")
+    if len(text) <= limit:
+        return text
+    return f"{text[: max(0, limit - 3)]}..."
+
+
 def _event_level(event: Dict[str, Any]) -> str:
     payload = event.get("payload") or {}
     if payload.get("error") or payload.get("failure_reason"):
@@ -119,11 +126,30 @@ async def _load_job_progress_payload(job_id: str) -> Dict[str, Any]:
             or (event.get("payload") or {}).get("agent")
             or (event.get("payload") or {}).get("step_key")
             or "system",
-            "message": _event_message(event),
+            "message": _truncate_text(_event_message(event), limit=220),
             "level": _event_level(event),
         }
         for event in events[-50:]
     ]
+    if memory_payload:
+        memory_payload = {
+            **memory_payload,
+            "query": _truncate_text(memory_payload.get("query") or "", limit=180),
+            "relevant_memories": [
+                {
+                    **item,
+                    "text": _truncate_text(item.get("text") or "", limit=160),
+                }
+                for item in (memory_payload.get("relevant_memories") or [])[:4]
+            ],
+            "recent_memories": [
+                {
+                    **item,
+                    "text": _truncate_text(item.get("text") or "", limit=160),
+                }
+                for item in (memory_payload.get("recent_memories") or [])[:4]
+            ],
+        }
     controller["memory"] = memory_payload or {
         "provider": "unavailable",
         "project_id": str(job.get("project_id") or job.get("id") or ""),
