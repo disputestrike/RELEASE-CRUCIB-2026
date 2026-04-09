@@ -16,7 +16,7 @@ import os
 import sys
 import types
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -54,14 +54,11 @@ class _InMemoryIndex:
         include_metadata: bool = False,
         filter: Optional[Dict] = None,
     ) -> Dict:
-        project_id = ((filter or {}).get("project_id") or {}).get("$eq")
-        memory_types = ((filter or {}).get("type") or {}).get("$in")
+        filter = filter or {}
         matches = []
         for vid, payload in self.vectors.items():
             metadata = payload.get("metadata") or {}
-            if project_id and metadata.get("project_id") != project_id:
-                continue
-            if memory_types and metadata.get("type") not in memory_types:
+            if not _metadata_matches_filter(metadata, filter):
                 continue
             matches.append(
                 {
@@ -76,6 +73,21 @@ class _InMemoryIndex:
     def delete(self, ids: List[str]) -> None:
         for vid in ids:
             self.vectors.pop(vid, None)
+
+
+def _metadata_matches_filter(metadata: Dict[str, Any], filter_spec: Optional[Dict[str, Any]]) -> bool:
+    if not filter_spec:
+        return True
+    for key, condition in (filter_spec or {}).items():
+        value = metadata.get(key)
+        if isinstance(condition, dict):
+            if "$eq" in condition and value != condition["$eq"]:
+                return False
+            if "$in" in condition and value not in condition["$in"]:
+                return False
+        elif value != condition:
+            return False
+    return True
 
 
 try:
@@ -218,17 +230,24 @@ class VectorMemory:
         query: str,
         top_k: int = 5,
         memory_types: Optional[List[str]] = None,
+        metadata_filters: Optional[Dict[str, Any]] = None,
     ) -> List[Dict]:
         try:
             query_embedding = await self._embed_text(query)
+            filter_spec: Dict[str, Any] = {
+                "project_id": {"$eq": project_id},
+            }
+            if memory_types:
+                filter_spec["type"] = {"$in": memory_types}
+            for key, value in (metadata_filters or {}).items():
+                if value is None:
+                    continue
+                filter_spec[key] = {"$eq": value}
             results = self.index.query(
                 vector=query_embedding,
                 top_k=top_k,
                 include_metadata=True,
-                filter={
-                    "project_id": {"$eq": project_id},
-                    **({"type": {"$in": memory_types}} if memory_types else {}),
-                },
+                filter=filter_spec,
             )
             if inspect.isawaitable(results):
                 results = await results
@@ -252,13 +271,75 @@ class VectorMemory:
             logger.warning("VectorMemory retrieve_context failed: %s", exc)
             return []
 
-    async def count_project_tokens(self, project_id: str) -> int:
+    async def list_recent_context(
+        self,
+        project_id: str,
+        *,
+        limit: int = 10,
+        memory_types: Optional[List[str]] = None,
+        metadata_filters: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict]:
         try:
+            filter_spec: Dict[str, Any] = {
+                "project_id": {"$eq": project_id},
+            }
+            if memory_types:
+                filter_spec["type"] = {"$in": memory_types}
+            for key, value in (metadata_filters or {}).items():
+                if value is None:
+                    continue
+                filter_spec[key] = {"$eq": value}
             results = self.index.query(
                 vector=[0.0] * self.embedding_dimension,
                 top_k=10000,
                 include_metadata=True,
-                filter={"project_id": {"$eq": project_id}},
+                filter=filter_spec,
+            )
+            if inspect.isawaitable(results):
+                results = await results
+            matches = list(results.get("matches", []))
+            matches.sort(
+                key=lambda match: str((match.get("metadata") or {}).get("timestamp") or ""),
+                reverse=True,
+            )
+            recent = []
+            for match in matches[:limit]:
+                meta = match.get("metadata") or {}
+                recent.append(
+                    {
+                        "id": match.get("id"),
+                        "text": meta.get("text", ""),
+                        "type": meta.get("type", ""),
+                        "agent": meta.get("agent", ""),
+                        "phase": meta.get("phase", ""),
+                        "job_id": meta.get("job_id", ""),
+                        "step_key": meta.get("step_key", ""),
+                        "timestamp": meta.get("timestamp", ""),
+                        "tokens": int(meta.get("tokens", 0)),
+                    }
+                )
+            return recent
+        except Exception as exc:
+            logger.warning("VectorMemory list_recent_context failed: %s", exc)
+            return []
+
+    async def count_project_tokens(
+        self,
+        project_id: str,
+        *,
+        metadata_filters: Optional[Dict[str, Any]] = None,
+    ) -> int:
+        try:
+            filter_spec: Dict[str, Any] = {"project_id": {"$eq": project_id}}
+            for key, value in (metadata_filters or {}).items():
+                if value is None:
+                    continue
+                filter_spec[key] = {"$eq": value}
+            results = self.index.query(
+                vector=[0.0] * self.embedding_dimension,
+                top_k=10000,
+                include_metadata=True,
+                filter=filter_spec,
             )
             if inspect.isawaitable(results):
                 results = await results
@@ -319,3 +400,8 @@ async def store_memory(project_id: str, text: str, memory_type: str, **kwargs) -
 async def retrieve_memory(project_id: str, query: str, **kwargs) -> List[Dict]:
     vm = await get_vector_memory()
     return await vm.retrieve_context(project_id, query, **kwargs)
+
+
+async def list_recent_memory(project_id: str, **kwargs) -> List[Dict]:
+    vm = await get_vector_memory()
+    return await vm.list_recent_context(project_id, **kwargs)

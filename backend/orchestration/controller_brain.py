@@ -12,6 +12,43 @@ from collections import OrderedDict
 from typing import Any, Dict, List
 
 
+def _phase_steps(phase: Dict[str, Any]) -> List[Dict[str, Any]]:
+    return list(phase.get("steps") or [])
+
+
+def _phase_parallel_groups(phases: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    groups: List[Dict[str, Any]] = []
+    for phase in phases or []:
+        steps = _phase_steps(phase)
+        if len(steps) <= 1:
+            continue
+        groups.append(
+            {
+                "phase": phase.get("key") or phase.get("label") or "phase",
+                "label": phase.get("label") or phase.get("key") or "phase",
+                "step_count": len(steps),
+                "agents": [
+                    step.get("agent")
+                    or step.get("name")
+                    or step.get("key")
+                    or "Agent"
+                    for step in steps[:8]
+                ],
+            }
+        )
+    return groups[:8]
+
+
+def _build_plan_next_actions(selected_agents: List[str], phases: List[Dict[str, Any]]) -> List[str]:
+    if not selected_agents:
+        return ["scaffold_primary_pack", "compile_preview_bundle", "verify_core_routes"]
+
+    actions = ["launch_parallel_specialists", "synthesize_phase_outputs", "run_verification_gates"]
+    if any(len(_phase_steps(phase)) > 1 for phase in phases or []):
+        actions.insert(1, "continue_dependency_aware_parallelism")
+    return actions
+
+
 def build_plan_controller_summary(
     *,
     goal: str,
@@ -21,6 +58,8 @@ def build_plan_controller_summary(
 ) -> Dict[str, Any]:
     explanation = selection_explanation or {}
     phase_labels = [phase.get("label") or phase.get("key") or "phase" for phase in phases[:12]]
+    parallel_groups = _phase_parallel_groups(phases)
+    specialized_agents = list(explanation.get("specialized_agents") or [])[:12]
     return {
         "controller_mode": "selective_parallel_swarm" if selected_agents else "fixed_autorunner",
         "goal_excerpt": (goal or "")[:180],
@@ -32,6 +71,17 @@ def build_plan_controller_summary(
         "has_parallel_phases": any(len((phase.get("steps") or [])) > 1 for phase in phases),
         "recovery_strategy": "verification_repair_and_retry",
         "synthesis_strategy": "phase_summary_then_verify",
+        "execution_strategy": "dependency_aware_parallelism" if parallel_groups else "sequenced_execution",
+        "parallel_groups": parallel_groups,
+        "recommended_focus": specialized_agents or list(selected_agents or [])[:8],
+        "synthesis_checkpoints": phase_labels[-3:] if len(phase_labels) >= 3 else phase_labels,
+        "replan_triggers": [
+            "verification failure",
+            "agent blocker detected",
+            "missing runtime artifact",
+        ],
+        "next_actions": _build_plan_next_actions(selected_agents, phases),
+        "memory_strategy": "scoped_project_job_phase_memory",
     }
 
 
@@ -89,6 +139,47 @@ def _event_message(event: Dict[str, Any]) -> str:
     return event_type.replace("_", " ")
 
 
+def _derive_recovery_plan(blockers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    plan: List[Dict[str, Any]] = []
+    for blocker in blockers[:6]:
+        error_text = str(blocker.get("error") or "").lower()
+        agent_text = str(blocker.get("agent_name") or blocker.get("step_key") or "").lower()
+        if any(word in error_text for word in ("preview", "vite", "compile", "import")):
+            action = "run_build_validator_and_preview_repair"
+        elif any(word in error_text for word in ("security", "cors", "headers", "validation")) or any(
+            word in agent_text for word in ("security", "cors", "headers", "validation", "rate limiting")
+        ):
+            action = "run_security_hardening_pass"
+        elif any(word in error_text for word in ("timeout", "retry")):
+            action = "retry_with_repair_context"
+        else:
+            action = "inspect_blocker_and_resume"
+        plan.append(
+            {
+                "step_key": blocker.get("step_key"),
+                "agent_name": blocker.get("agent_name"),
+                "action": action,
+            }
+        )
+    return plan
+
+
+def _derive_recommended_focus(
+    *,
+    blockers: List[Dict[str, Any]],
+    active_agents: List[str],
+    queued_agents: List[str],
+) -> str:
+    if blockers:
+        lead = blockers[0]
+        return f"Unblock {lead.get('agent_name') or lead.get('step_key')}"
+    if active_agents:
+        return f"Watch {' + '.join(active_agents[:3])}"
+    if queued_agents:
+        return f"Advance {queued_agents[0]}"
+    return "Await new work"
+
+
 def build_live_job_progress(
     *,
     job: Dict[str, Any] | None,
@@ -120,6 +211,16 @@ def build_live_job_progress(
     total_steps = len(steps or [])
     completed_steps = sum(1 for step in steps or [] if str(step.get("status") or "").lower() in ("completed", "skipped"))
     total_progress = round((completed_steps / total_steps) * 100) if total_steps else 0
+    active_agents = [
+        step.get("agent_name") or step.get("step_key") or "Agent"
+        for step in steps or []
+        if str(step.get("status") or "").lower() in ("running", "verifying", "retrying")
+    ]
+    queued_agents = [
+        step.get("agent_name") or step.get("step_key") or "Agent"
+        for step in steps or []
+        if str(step.get("status") or "").lower() in ("queued", "pending")
+    ]
     blockers = [
         {
             "step_key": step.get("step_key"),
@@ -131,6 +232,8 @@ def build_live_job_progress(
     ]
     current_phase = next((phase["id"] for phase in phases if phase["status"] in ("running", "error")), phases[-1]["id"] if phases else None)
     is_running = str((job or {}).get("status") or "").lower() not in ("completed", "failed", "cancelled") and total_steps > 0
+    parallel_phases = [phase for phase in phases if len(phase.get("agents") or []) > 1]
+    repair_plan = _derive_recovery_plan(blockers)
 
     if blockers:
         next_actions = ["repair_failed_steps", "rerun_verification", "resume_from_checkpoint"]
@@ -173,5 +276,28 @@ def build_live_job_progress(
             "blockers": blockers[:12],
             "completed_steps": completed_steps,
             "total_steps": total_steps,
+            "active_agents": active_agents[:12],
+            "active_agent_count": len(active_agents),
+            "queued_agents": queued_agents[:12],
+            "queued_agent_count": len(queued_agents),
+            "recommended_focus": _derive_recommended_focus(
+                blockers=blockers,
+                active_agents=active_agents,
+                queued_agents=queued_agents,
+            ),
+            "repair_plan": repair_plan,
+            "parallel_phase_count": len(parallel_phases),
+            "parallel_phases": [
+                {
+                    "id": phase["id"],
+                    "agent_count": len(phase.get("agents") or []),
+                    "active_agents": [
+                        agent.get("name")
+                        for agent in (phase.get("agents") or [])
+                        if str(agent.get("status") or "").lower() in ("running", "verifying", "retrying")
+                    ][:6],
+                }
+                for phase in parallel_phases[:6]
+            ],
         },
     }

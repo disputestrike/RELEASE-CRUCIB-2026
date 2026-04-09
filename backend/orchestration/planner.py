@@ -580,7 +580,34 @@ async def generate_plan(goal: str,
         "selected_agent_count": len(selected_agents),
     }
 
-    return enrich_plan_with_node_manifests(plan)
+    enriched_plan = enrich_plan_with_node_manifests(plan)
+
+    try:
+        from memory.service import get_memory_service
+
+        memory = await get_memory_service()
+        controller_summary = enriched_plan.get("controller_summary") or {}
+        await memory.store_controller_checkpoint(
+            project_id=str((project_state or {}).get("project_id") or ""),
+            job_id=str((project_state or {}).get("job_id") or "planner-preview"),
+            text=(
+                f"goal={goal[:200]}\n"
+                f"mode={controller_summary.get('controller_mode', 'unknown')}\n"
+                f"selected_agents={controller_summary.get('selected_agent_count', 0)}\n"
+                f"focus={', '.join(controller_summary.get('recommended_focus') or [])}\n"
+                f"next_actions={', '.join(controller_summary.get('next_actions') or [])}"
+            ),
+            phase="planning",
+            checkpoint_type="plan_summary",
+            metadata={
+                "orchestration_mode": enriched_plan.get("orchestration_mode"),
+                "phase_count": str(enriched_plan.get("phase_count") or 0),
+            },
+        )
+    except Exception:
+        logger.debug("planner: controller checkpoint memory skipped", exc_info=True)
+
+    return enriched_plan
 
 
 def estimate_tokens(plan: Dict[str, Any]) -> Dict[str, Any]:

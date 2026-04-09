@@ -61,6 +61,92 @@
   gap: 12px;
 }
 
+.controllerPanel {
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+  background: #111827;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.controllerHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.controllerStatus {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #93c5fd;
+}
+
+.controllerGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.controllerCard {
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+  padding: 12px;
+  background: #0f172a;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.controllerLabel {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.controllerMeta {
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+.controllerListBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tagList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+.blockerList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.blockerCard {
+  border: 1px solid rgba(220, 38, 38, 0.25);
+  background: rgba(127, 29, 29, 0.18);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .phaseGroup {
   border: 1px solid #1f2937;
   border-left: 4px solid #475569;

@@ -22,6 +22,10 @@ def test_build_plan_controller_summary_exposes_selection_reasons():
     assert summary["specialized_agent_count"] == 3
     assert "socket.io" in summary["matched_keywords"]
     assert summary["has_parallel_phases"] is True
+    assert summary["execution_strategy"] == "dependency_aware_parallelism"
+    assert summary["parallel_groups"][0]["step_count"] == 2
+    assert "launch_parallel_specialists" in summary["next_actions"]
+    assert summary["memory_strategy"] == "scoped_project_job_phase_memory"
 
 
 def test_live_job_progress_derives_phases_and_blockers():
@@ -43,3 +47,6 @@ def test_live_job_progress_derives_phases_and_blockers():
     assert payload["controller"]["blocker_count"] == 1
     assert payload["phases"][1]["status"] == "error"
     assert payload["logs"][-1]["level"] == "error"
+    assert payload["controller"]["active_agent_count"] == 1
+    assert payload["controller"]["recommended_focus"] == "Unblock Security Checker"
+    assert payload["controller"]["repair_plan"][0]["action"] == "run_security_hardening_pass"

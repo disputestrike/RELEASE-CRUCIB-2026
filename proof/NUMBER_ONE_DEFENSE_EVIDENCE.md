@@ -31,6 +31,38 @@ than legacy demo-only wiring.
 - added [backend/tests/test_expansion_agent_reachability.py](C:/Users/benxp/OneDrive/Documents/New%20project/backend/tests/test_expansion_agent_reachability.py)
   - proves real prompts select the newer expansion agents
 
+### Controller brain completion pass
+- [controller_brain.py](C:/Users/benxp/OneDrive/Documents/New%20project/backend/orchestration/controller_brain.py)
+  - now exposes:
+    - execution strategy
+    - parallel groups
+    - recommended focus
+    - replan triggers
+    - live active/queued agents
+    - repair plans for blockers
+- [planner.py](C:/Users/benxp/OneDrive/Documents/New%20project/backend/orchestration/planner.py)
+  - now stores controller checkpoints into the memory layer during plan generation
+
+### Scoped memory architecture pass
+- [vector_db.py](C:/Users/benxp/OneDrive/Documents/New%20project/backend/memory/vector_db.py)
+  - supports metadata-scoped retrieval and recent-memory listing
+- [service.py](C:/Users/benxp/OneDrive/Documents/New%20project/backend/memory/service.py)
+  - now supports:
+    - step summaries
+    - controller checkpoints
+    - job-scoped retrieval
+    - context packets with recent + relevant memory and token usage
+
+### Product-surface improvement
+- [KanbanBoard.jsx](C:/Users/benxp/OneDrive/Documents/New%20project/frontend/src/components/orchestration/KanbanBoard.jsx)
+  - now renders controller-brain state directly:
+    - recommended focus
+    - active agents
+    - queued agents
+    - next actions
+    - blockers
+    - repair plan
+
 ## Local Verification
 
 ### Syntax
@@ -51,7 +83,7 @@ python -m pytest backend\tests\test_controller_brain.py backend\tests\test_runti
 ```
 
 Result:
-- `73 passed`
+- `75 passed`
 - `1 warning`
 
 Warning honesty:
@@ -149,9 +181,11 @@ Specialized agents selected included:
 
 1. The deployed production DAG is live at **237 agents**
 2. The live planner is selecting newer expansion agents from real prompts
-3. The controller summary and swarm metadata are present in production
-4. The repo no longer needs the legacy "wired" files to tell a separate runtime story
-5. The local backend + frontend verification bands are green
+3. The controller is no longer just a status summary; it now emits focus, repair, and parallel-execution guidance
+4. Memory is now a scoped runtime service, not just a raw vector store wrapper
+5. The live orchestration UI surfaces controller guidance directly
+6. The repo no longer needs the legacy "wired" files to tell a separate runtime story
+7. The local backend + frontend verification bands are green
 
 ## Honest Boundary
 

@@ -31,6 +31,8 @@ async def test_job_progress_bootstrap_uses_runtime_state(monkeypatch):
     assert payload["phases"][0]["id"] == "planning"
     assert payload["phases"][1]["id"] == "agents.phase_01"
     assert payload["logs"][0]["agent"] == "Frontend Generation"
+    assert payload["controller"]["active_agent_count"] == 1
+    assert payload["controller"]["recommended_focus"] == "Watch Frontend Generation"
 
 
 @pytest.mark.asyncio

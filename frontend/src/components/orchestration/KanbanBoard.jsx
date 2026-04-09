@@ -76,6 +76,74 @@ export default function KanbanBoard({ jobId }) {
         </div>
       </div>
 
+      {controller ? (
+        <section className={styles.controllerPanel}>
+          <div className={styles.controllerHeader}>
+            <strong>Controller Brain</strong>
+            <span className={styles.controllerStatus}>{controller.status || 'idle'}</span>
+          </div>
+          <div className={styles.controllerGrid}>
+            <div className={styles.controllerCard}>
+              <span className={styles.controllerLabel}>Recommended focus</span>
+              <strong>{controller.recommended_focus || 'Await new work'}</strong>
+            </div>
+            <div className={styles.controllerCard}>
+              <span className={styles.controllerLabel}>Active agents</span>
+              <strong>{controller.active_agent_count || 0}</strong>
+              {(controller.active_agents || []).length > 0 ? (
+                <span className={styles.controllerMeta}>{controller.active_agents.join(', ')}</span>
+              ) : null}
+            </div>
+            <div className={styles.controllerCard}>
+              <span className={styles.controllerLabel}>Queued agents</span>
+              <strong>{controller.queued_agent_count || 0}</strong>
+              {(controller.queued_agents || []).length > 0 ? (
+                <span className={styles.controllerMeta}>{controller.queued_agents.join(', ')}</span>
+              ) : null}
+            </div>
+            <div className={styles.controllerCard}>
+              <span className={styles.controllerLabel}>Parallel phases</span>
+              <strong>{controller.parallel_phase_count || 0}</strong>
+            </div>
+          </div>
+          {(controller.next_actions || []).length > 0 ? (
+            <div className={styles.controllerListBlock}>
+              <span className={styles.controllerLabel}>Next actions</span>
+              <div className={styles.tagList}>
+                {(controller.next_actions || []).map((action) => (
+                  <span key={action} className={styles.tag}>{action}</span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {(controller.blockers || []).length > 0 ? (
+            <div className={styles.controllerListBlock}>
+              <span className={styles.controllerLabel}>Blockers</span>
+              <div className={styles.blockerList}>
+                {(controller.blockers || []).map((blocker) => (
+                  <div key={blocker.step_key || blocker.agent_name} className={styles.blockerCard}>
+                    <strong>{blocker.agent_name || blocker.step_key}</strong>
+                    <span>{blocker.error}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {(controller.repair_plan || []).length > 0 ? (
+            <div className={styles.controllerListBlock}>
+              <span className={styles.controllerLabel}>Repair plan</span>
+              <div className={styles.tagList}>
+                {(controller.repair_plan || []).map((step) => (
+                  <span key={`${step.step_key}-${step.action}`} className={styles.tag}>
+                    {step.agent_name}: {step.action}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
       {/* Phases Grid */}
       <div className={styles.phasesContainer}>
         {phases.length === 0 ? (
