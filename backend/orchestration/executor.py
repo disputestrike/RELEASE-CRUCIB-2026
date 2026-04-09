@@ -670,6 +670,24 @@ async def handle_frontend_generate(step: Dict, job: Dict,
                                 logger.error(f"✗ Failed to write: {file_path}")
 
                         logger.info(f"✓ FrontendAgent wrote {len(out)} files total")
+
+                        logger.info(f"✓ FrontendAgent wrote {len(out)} files total")
+                        
+                        # FIX 4: VALIDATION - Verify files actually wrote to disk
+                        if out:
+                            logger.info(f"✅ Successfully wrote {len(out)} frontend files")
+                            import os
+                            for file_path in out[:5]:  # Log first 5
+                                full_path = os.path.join(workspace_path, file_path)
+                                if os.path.exists(full_path):
+                                    size = os.path.getsize(full_path)
+                                    logger.info(f"   ✓ Verified: {file_path} ({size} bytes)")
+                                else:
+                                    logger.error(f"   ✗ FILE NOT FOUND: {file_path}")
+                        else:
+                            logger.error(f"❌ FrontendAgent wrote NO files to disk!")
+                            raise Exception("Frontend step produced no output_files on disk")
+
                     else:
                         logger.error(f"files not a dict: {type(files_dict)}")
                 else:

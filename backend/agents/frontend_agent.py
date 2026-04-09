@@ -138,8 +138,24 @@ Hard requirements:
             max_tokens=6000
         )
         
+        # DEBUG: Log raw response before parsing
+        logger.info(f"RAW LLM RESPONSE ({len(response)} chars): {response[:300]}...")
+        
         # Parse JSON response
         data = self.parse_json_response(response)
+        
+        # DEBUG: Log parsed result
+        logger.info(f"PARSED RESULT: files={len(data.get('files', {}))}, structure={bool(data.get('structure'))}")
+        
+        # EXPLICIT VALIDATION
+        if not data:
+            raise AgentValidationError(f"{self.name}: parse_json_response returned empty result")
+        
+        if not data.get("files"):
+            raise AgentValidationError(f"{self.name}: No files in parsed JSON: {list(data.keys())}")
+        
+        if not isinstance(data["files"], dict) or len(data["files"]) == 0:
+            raise AgentValidationError(f"{self.name}: files is not a non-empty dict")
         
         # Add metadata
         data["_tokens_used"] = tokens
