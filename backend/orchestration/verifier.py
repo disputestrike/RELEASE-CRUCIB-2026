@@ -8,7 +8,6 @@ import logging
 import os
 import re
 import sys
-import tempfile
 from typing import Dict, Any, List, Optional
 
 from .runtime_health import skip_node_verify_env
@@ -188,82 +187,53 @@ async def _verify_frontend_source_file(full: str, rel: str, workspace_path: str)
         issues.append(f"Prose preamble detected in {rel}: {prose}")
         return _result(False, 20, issues, proof)
 
+    ext = os.path.splitext(rel)[1].lower()
     uses_jsx = _looks_like_jsx_source(rel, text)
-    if uses_jsx:
-        ext = os.path.splitext(rel)[1].lower()
-        outfile = tempfile.NamedTemporaryFile(delete=False, suffix=".js")
-        outfile.close()
-        try:
-            cmd = [
-                _npx_bin(),
-                "esbuild",
-                full,
-                "--format=esm",
-                f"--outfile={outfile.name}",
-                "--log-level=error",
-            ]
-            if ext == ".jsx":
-                cmd.append("--loader:.jsx=jsx")
-            elif ext == ".tsx":
-                cmd.append("--loader:.tsx=tsx")
-            elif ext == ".ts":
-                cmd.append("--loader:.ts=ts")
-            elif ext == ".js" and uses_jsx:
-                cmd.append("--loader:.js=jsx")
-
-            result = await asyncio.create_subprocess_exec(
-                *cmd,
-                cwd=workspace_path,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            _, stderr = await asyncio.wait_for(result.communicate(), timeout=20)
-            if result.returncode != 0:
-                issues.append(f"esbuild failed {rel}: {stderr.decode(errors='replace')[:220]}")
-            else:
-                proof.append(
-                    _proof_item(
-                        "compile",
-                        f"esbuild OK: {rel}",
-                        {"file": rel, "command": cmd},
-                        verification_class="syntax",
-                    ),
-                )
-        except FileNotFoundError:
-            issues.append(f"npx/esbuild unavailable for JSX validation: {rel}")
-        except asyncio.TimeoutError:
-            issues.append(f"esbuild timed out for {rel}")
-        finally:
-            try:
-                os.unlink(outfile.name)
-            except OSError:
-                pass
-        return _result(len(issues) == 0, 100 if not issues else 35, issues, proof)
+    loader = "js"
+    if ext == ".jsx":
+        loader = "jsx"
+    elif ext == ".tsx":
+        loader = "tsx"
+    elif ext == ".ts":
+        loader = "ts"
+    elif ext == ".js" and uses_jsx:
+        loader = "jsx"
 
     try:
+        cmd = [
+            _npx_bin(),
+            "esbuild",
+            "--format=esm",
+            f"--loader={loader}",
+            f"--sourcefile={rel}",
+            "--log-level=error",
+        ]
         result = await asyncio.create_subprocess_exec(
-            "node",
-            "--check",
-            full,
+            *cmd,
+            cwd=workspace_path,
+            stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        _, stderr = await asyncio.wait_for(result.communicate(), timeout=10)
+        _, stderr = await asyncio.wait_for(
+            result.communicate(text.encode("utf-8")),
+            timeout=20,
+        )
         if result.returncode != 0:
-            issues.append(f"Syntax error in {rel}: {stderr.decode(errors='replace')[:200]}")
+            issues.append(f"esbuild failed {rel}: {stderr.decode(errors='replace')[:220]}")
         else:
             proof.append(
                 _proof_item(
                     "compile",
-                    f"Syntax OK: {rel}",
-                    {"file": rel, "command": ["node", "--check", full]},
+                    f"esbuild OK: {rel}",
+                    {"file": rel, "command": cmd, "mode": "stdin_transform"},
                     verification_class="syntax",
                 ),
             )
     except FileNotFoundError:
-        issues.append("Node.js not found on PATH for syntax verification.")
+        issues.append(f"npx/esbuild unavailable for syntax validation: {rel}")
     except asyncio.TimeoutError:
-        issues.append(f"Node syntax check timed out for {rel}")
+        issues.append(f"esbuild timed out for {rel}")
 
     return _result(len(issues) == 0, 100 if not issues else 35, issues, proof)
 

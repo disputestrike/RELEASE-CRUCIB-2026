@@ -33,7 +33,7 @@ async def test_verify_compile_workspace_uses_esbuild_for_jsx(monkeypatch):
     class FakeProcess:
         returncode = 0
 
-        async def communicate(self):
+        async def communicate(self, _input=None):
             return (b"", b"")
 
     async def fake_exec(*cmd, **kwargs):
@@ -67,7 +67,7 @@ async def test_verify_compile_workspace_does_not_require_installed_packages(monk
     class FakeProcess:
         returncode = 0
 
-        async def communicate(self):
+        async def communicate(self, _input=None):
             return (b"", b"")
 
     async def fake_exec(*cmd, **kwargs):
