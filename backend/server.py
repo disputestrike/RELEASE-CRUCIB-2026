@@ -11303,6 +11303,14 @@ app.include_router(tools_router)
 app.include_router(agents_router)
 app.include_router(api_router)
 
+# Domain routers (extracted from server.py for maintainability)
+try:
+    from routes.workspace import router as workspace_router
+    app.include_router(workspace_router)
+    logger.info("workspace router registered")
+except Exception as _e:
+    logger.warning("workspace router not loaded: %s", _e)
+
 if _static_dir.exists():
     app.mount("/", SpaStaticFiles(directory=str(_static_dir), html=True), name="frontend")
 

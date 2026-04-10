@@ -51,13 +51,27 @@ Latest active 10/10 scoring work:
 
 ## Active Milestone
 
-Phase 2: Execution Surface Hardening
+Phase 3: Golden Build Loop
 
 Tasks:
 
+### Phase 2 (Complete)
 - [x] Create a dedicated working branch.
 - [x] Add execution plan and status tracking docs.
 - [x] Update docs to say Postgres-only in primary setup/deploy paths.
+- [x] Terminal routes require auth — raw project_path rejected.
+- [x] Git routes scoped to authenticated project_id workspaces.
+- [x] Security smoke tests confirm tenant boundary.
+
+### Phase 3 (In Progress)
+- [x] Smart LLM model routing — large tasks route to Anthropic, small tasks to Cerebras.
+- [x] Cerebras 8K token guard — warns and auto-falls back to Anthropic.
+- [x] Workspace router extracted from server.py (routes/workspace.py).
+- [x] Golden path smoke test suite (tests/test_golden_path.py).
+- [x] Workspace isolation test — confirms User A cannot access User B.
+- [ ] Dashboard/Agents/Database tabs wired to live backend data.
+- [ ] Iteration loop — let users say "fix X" and re-run just that agent.
+- [ ] Bring Your Code — import from paste/ZIP/Git with AI analysis.
 - [x] Update CI backend service from MongoDB to PostgreSQL/Redis.
 - [x] Add or update local verification workflow.
 - [x] Add ADR for workspace execution boundaries.

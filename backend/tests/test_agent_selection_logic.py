@@ -84,7 +84,17 @@ def test_should_use_agent_selection_routes_specialized_prompts():
 
 
 def test_server_legacy_orchestration_registry_is_dag_backed():
-    source = open("backend/server.py", "r", encoding="utf-8", errors="replace").read()
+    import pathlib
+    # Resolve from this test file's location: tests/ -> backend/ -> server.py
+    server_path = pathlib.Path(__file__).parent.parent / "server.py"
+    if not server_path.exists():
+        # Fallback: try relative paths for different working directories
+        for candidate in ["server.py", "backend/server.py", "../server.py"]:
+            p = pathlib.Path(candidate)
+            if p.exists():
+                server_path = p
+                break
+    source = server_path.read_text(encoding="utf-8", errors="replace")
 
     assert "_token_budget_for_orchestration_agent" in source
     assert "for phase in get_execution_phases(AGENT_DAG)" in source

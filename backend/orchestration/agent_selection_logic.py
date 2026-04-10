@@ -364,7 +364,12 @@ def explain_agent_selection(goal: str, stack_contract: Dict | None = None) -> Di
             ("Embeddings/Vectorization Agent", "Recommendation Engine Agent", "RAG Agent"),
         )
 
-    if any(word in goal_lower for word in ("design", "landing", "website", "ui", "ux")):
+    # Use word-boundary check for short tokens ("ui", "ux") to avoid
+    # matching substrings like "ui" inside "build" or "ux" inside "luxury"
+    _design_words_long = ("design", "landing", "website")
+    _design_words_short = ("ui", "ux")
+    if (any(w in goal_lower for w in _design_words_long) or
+            any(re.search(r'\b' + w + r'\b', goal_lower) for w in _design_words_short)):
         _record_rule_hit(
             selected,
             matched_rules,
@@ -508,13 +513,29 @@ def select_agents_for_goal(goal: str, stack_contract: Dict | None = None) -> Lis
 
 
 def should_route_to_agent_selection(goal: str, stack_contract: Dict | None = None) -> bool:
+    """
+    Route to selected-agent swarm only when the goal has KEYWORD matches
+    that indicate specialized agents are needed.
+
+    We use matched_keywords + matched_rules (minus the always-applied default_support rule)
+    as the signal — NOT specialized_agent_count, because dependency closure can inflate
+    that number even for simple goals.
+    """
     contract = stack_contract or {}
     if contract.get("requires_full_system_builder"):
         return True
     if contract.get("mobile") or contract.get("queues") or contract.get("caches") or contract.get("payments") or contract.get("realtime") or contract.get("vector_databases"):
         return True
     explanation = explain_agent_selection(goal, contract)
-    return int(explanation.get("specialized_agent_count") or 0) > 0
+    # Only route if actual keywords or non-trivial rules fired.
+    # Design/content surface rules alone are not enough — they fire on nearly every app.
+    COSMETIC_ONLY_RULES = {"rule:design_surface", "rule:content_surface", "rule:default_support"}
+    meaningful_rules = [
+        r for r in (explanation.get("matched_rules") or [])
+        if r not in COSMETIC_ONLY_RULES
+    ]
+    has_keywords = bool(explanation.get("matched_keywords"))
+    return has_keywords or len(meaningful_rules) > 0
 
 
 def build_full_phases_from_dag(selected_agents: List[str], agent_dag: Dict) -> List[List[str]]:
