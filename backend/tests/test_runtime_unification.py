@@ -75,7 +75,9 @@ async def test_preview_gate_includes_preflight_feedback(monkeypatch):
 
 
 def test_server_mounts_job_progress_router():
-    source = open("backend/server.py", "r", encoding="utf-8", errors="replace").read()
+    import pathlib
+    _server = pathlib.Path(__file__).resolve().parents[1] / "server.py"
+    source = _server.read_text(encoding="utf-8", errors="replace")
 
     assert "job_progress_router" in source
     assert 'websocket_url": f"/api/job/' in source

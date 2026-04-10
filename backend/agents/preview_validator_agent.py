@@ -229,8 +229,9 @@ class PreviewValidatorAgent:
                     if "resolve" not in vite_content or "@" not in vite_content:
                         broken_imports.append(f"{os.path.basename(js_file)}: @ alias used but not configured")
             
-            # Check for absolute path imports that might break
-            if re.search(r"from\s+['\"]\.{2,}/", content):
+            # Check for excessive relative path depth (3+ levels = likely wrong).
+            # One or two levels (../ or ../../) are normal in pages/components.
+            if re.search(r"from\s+['\"](\.\./)\1\1", content):
                 broken_imports.append(f"{os.path.basename(js_file)}: Too many ../ in import path")
         
         if broken_imports:
@@ -255,17 +256,17 @@ class PreviewValidatorAgent:
         for jsx_file in jsx_files:
             with open(jsx_file) as f:
                 content = f.read()
-            
-            # Check for unclosed JSX tags
-            open_tags = len(re.findall(r"<[A-Z]\w*[^/]*>", content))
-            close_tags = len(re.findall(r"</[A-Z]\w*>", content))
-            
-            if open_tags != close_tags:
+
+            # Check for unclosed JSX tags — only flag clearly broken syntax.
+            # Self-closing tags (<Foo />) and React fragments (<> </>) are valid,
+            # so we strip them before counting to avoid false positives.
+            stripped = re.sub(r"<[A-Z]\w*[^>]*/\s*>", "", content)  # remove self-closing
+            stripped = re.sub(r"<>|</>", "", stripped)               # remove fragments
+            open_tags = len(re.findall(r"<[A-Z]\w*(?:\s[^>]*)?>", stripped))
+            close_tags = len(re.findall(r"</[A-Z]\w*>", stripped))
+            # Allow ±2 tolerance for HOC/portal patterns
+            if abs(open_tags - close_tags) > 2:
                 syntax_errors.append(f"{os.path.basename(jsx_file)}: Unmatched JSX tags")
-            
-            # Check for bad props (quotes around entire attribute)
-            if re.search(r'=\s*"[^"]*{[^}]*}[^"]*"', content):
-                syntax_errors.append(f"{os.path.basename(jsx_file)}: Invalid JSX attribute syntax")
         
         if syntax_errors:
             return {

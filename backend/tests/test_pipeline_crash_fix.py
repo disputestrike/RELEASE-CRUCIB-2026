@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 import os
 import tempfile
 
@@ -345,10 +346,15 @@ def test_job_state_structured_lists_are_json_text():
     assert json.loads(updates["failure_details"])["reason"] == "late_stage_failure"
 
 
+def _repo_root() -> Path:
+    """Return repo root regardless of test runner working directory."""
+    return Path(__file__).resolve().parents[2]
+
+
 def test_browser_preview_installs_dev_dependencies_for_vite():
     from pathlib import Path
 
-    source = Path("backend/orchestration/browser_preview_verify.py").read_text(encoding="utf-8")
+    source = (_repo_root() / "backend/orchestration/browser_preview_verify.py").read_text(encoding="utf-8")
 
     assert '"--include=dev"' in source
     assert '"install", "--include=dev", "--no-fund", "--no-audit"' in source
@@ -357,8 +363,8 @@ def test_browser_preview_installs_dev_dependencies_for_vite():
 def test_production_image_installs_playwright_chromium():
     from pathlib import Path
 
-    dockerfile = Path("Dockerfile").read_text(encoding="utf-8")
-    preflight = Path("backend/orchestration/preflight_report.py").read_text(encoding="utf-8")
+    dockerfile = (_repo_root() / "Dockerfile").read_text(encoding="utf-8")
+    preflight = (_repo_root() / "backend/orchestration/preflight_report.py").read_text(encoding="utf-8")
 
     assert "python -m playwright install --with-deps chromium" in dockerfile
     assert '"id": "playwright_chromium"' in preflight
