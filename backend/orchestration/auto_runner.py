@@ -120,6 +120,31 @@ async def run_job_to_completion(job_id: str,
         await append_job_event(job_id, "job_started",
                                {"mode": job.get("mode"), "goal": job.get("goal", "")})
 
+        # ── Pre-build intelligence briefing ────────────────────────────────────
+        # Ensure brain memory tables exist
+        try:
+            from .brain_intelligence import ensure_brain_tables, get_prebuild_intelligence
+            await ensure_brain_tables()
+            goal_text = (job.get("goal") or "").strip()
+            if goal_text:
+                briefing = await get_prebuild_intelligence(goal_text)
+                if briefing.get("intelligence_available"):
+                    await append_job_event(job_id, "brain_prebuild_briefing", briefing)
+                    await publish(job_id, "brain_prebuild_briefing", {
+                        "similar_builds": briefing.get("similar_builds_found", 0),
+                        "predicted_failures": len(briefing.get("predicted_failures", [])),
+                        "agents_to_watch": briefing.get("agents_to_watch", [])[:5],
+                    })
+                    import logging as _log
+                    _log.getLogger(__name__).info(
+                        "auto_runner: prebuild briefing — %d similar builds, %d predictions",
+                        briefing.get("similar_builds_found", 0),
+                        len(briefing.get("predicted_failures", [])),
+                    )
+        except Exception as _be:
+            import logging as _log
+            _log.getLogger(__name__).warning("auto_runner: prebuild briefing failed: %s", _be)
+
         from .execution_authority import attach_elite_context_to_job, elite_job_metadata
 
         attach_elite_context_to_job(job, workspace_path or "")
@@ -380,6 +405,39 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
     failed_steps = [s for s in steps if s["status"] == "failed"]
     blocked_steps = [s for s in steps if s["status"] == "blocked"]
     completed_steps = [s for s in steps if s["status"] == "completed"]
+
+    # ── Post-build learning — store outcome so future builds benefit ─────────
+    try:
+        from .brain_intelligence import record_build_outcome
+        total = len(steps)
+        completion_pct = (len(completed_steps) / max(1, total)) * 100
+        goal_text = (job.get("goal") or "").strip()
+        if goal_text:
+            await record_build_outcome(
+                goal=goal_text,
+                job_id=job_id,
+                step_completion_pct=completion_pct,
+                quality_score=round(completion_pct),
+                failed_steps=[
+                    {"step_key": s.get("step_key", ""),
+                     "error_message": str(s.get("error_message") or "")[:300],
+                     "brain_strategy": str(s.get("brain_strategy") or ""),
+                     "brain_explanation": str(s.get("brain_explanation") or ""),
+                     "files_repaired": s.get("files_repaired") or [],
+                     "retry_count": s.get("retry_count") or 0,
+                     "was_eventually_fixed": False}
+                    for s in failed_steps
+                ],
+                completed_steps=[s.get("step_key", "") for s in completed_steps],
+                repairs_applied=[
+                    {"step_key": s.get("step_key", ""),
+                     "strategy": str(s.get("brain_strategy") or "")}
+                    for s in steps if s.get("brain_strategy")
+                ],
+            )
+    except Exception as _le:
+        import logging as _log
+        _log.getLogger(__name__).warning("auto_runner: post-build learning failed: %s", _le)
     failed_step_details = [
         {
             "step_key": s.get("step_key"),

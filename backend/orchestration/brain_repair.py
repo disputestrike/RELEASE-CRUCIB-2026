@@ -49,6 +49,11 @@ async def run_full_brain_repair(
         get_downstream_impact,
         llm_repair_callback,
     )
+    from .brain_intelligence import (
+        recall_best_fix,
+        remember_fix,
+        search_error_solution,
+    )
     from agents.code_repair_agent import CodeRepairAgent
 
     logger.info(
@@ -68,6 +73,16 @@ async def run_full_brain_repair(
         len(diagnosis.get("findings", [])),
         diagnosis.get("affected_files", [])[:3],
     )
+
+    # ── Memory recall: have we seen this error before? ────────────────────────
+    memory_hit = await recall_best_fix(error_message, step_key)
+    if memory_hit:
+        logger.info(
+            "brain: MEMORY HIT — known fix: %s (success_rate=%.0f%% from %d past builds)",
+            memory_hit.get("fix_type"),
+            memory_hit.get("success_rate", 0) * 100,
+            memory_hit.get("success_count", 0),
+        )
 
     # ── Layer 2: Deterministic self-repair ────────────────────────────────────
     repair_result = await apply_self_repair(
@@ -129,6 +144,29 @@ async def run_full_brain_repair(
                     llm_repairs.append({"fixed": True, "files": repaired, "method": "code_repair_agent_llm"})
                     logger.info("brain: CodeRepairAgent+LLM fixed %s", repaired)
 
+    # ── Web search for unknown errors ────────────────────────────────────────
+    web_search_result = None
+    if retry_count >= 1 and not (repair_result.get("fixed_count", 0) > 0 or
+                                  any(r.get("fixed") for r in llm_repairs)):
+        # Nothing fixed it yet — search the web for solutions
+        ext_map = {
+            ".jsx": "React JSX", ".tsx": "TypeScript React", ".py": "Python FastAPI",
+            ".js": "JavaScript", ".json": "JSON",
+        }
+        lang = ""
+        if diagnosis.get("affected_files"):
+            import os as _os
+            ext = _os.path.splitext(diagnosis["affected_files"][0])[1].lower()
+            lang = ext_map.get(ext, "")
+        logger.info("brain: searching web for solution (retry=%d)", retry_count)
+        web_search_result = await search_error_solution(
+            error_message=error_message,
+            step_key=step_key,
+            language=lang,
+        )
+        if web_search_result:
+            logger.info("brain: web search found solution (%d chars)", len(web_search_result))
+
     # Causal chain analysis — understand what else will break
     if retry_count >= 1:
         try:
@@ -184,13 +222,27 @@ async def run_full_brain_repair(
         param_mutations.get("strategy"),
     )
 
+    # ── Store this attempt in memory ─────────────────────────────────────────
+    strategy = param_mutations.get("strategy", "unknown")
+    await remember_fix(
+        error_message=error_message,
+        step_key=step_key,
+        fix_type=strategy,
+        fix_description=param_mutations.get("explanation", ""),
+        success=total_fixed > 0,
+        retry_count=retry_count,
+        files_repaired=all_repaired_files,
+    )
+
     return {
         "diagnosis": diagnosis,
         "repairs_applied": repair_result,
         "llm_repairs": llm_repairs,
         "causal_analysis": causal_analysis,
+        "memory_hit": memory_hit,
+        "web_search_result": web_search_result,
         "mutations": param_mutations.get("mutations", {}),
-        "strategy": param_mutations.get("strategy", "unknown"),
+        "strategy": strategy,
         "explanation": param_mutations.get("explanation", ""),
         "workspace_fixed": total_fixed > 0,
         "files_repaired": all_repaired_files,
