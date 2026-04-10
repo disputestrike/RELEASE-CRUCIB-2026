@@ -25,6 +25,7 @@ from .dag_engine import (
 from .executor import execute_step
 from .verifier import verify_step
 from .fixer import classify_failure, build_retry_plan, apply_fix, MAX_RETRIES
+from .brain_repair import apply_targeted_repair
 from .event_bus import publish
 from .planner import generate_plan
 from .runtime_health import is_infrastructure_failure
@@ -322,6 +323,25 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
                     vstub = {"issues": v_issues if v_issues else ([err_txt] if err_txt else [])}
                     ftype = classify_failure({**step, "error_message": err_txt}, vstub)
                     rplan = build_retry_plan(ftype, {**step, "error_message": err_txt}, vstub)
+
+                    # ── BRAIN REPAIR: actually change something before retrying ──
+                    repair = await apply_targeted_repair(
+                        step=step,
+                        error_message=err_txt,
+                        retry_count=retry_count,
+                        workspace_path=workspace_path or "",
+                        job=job,
+                    )
+                    # Merge repair mutations into the step state so the next
+                    # execution reads them and behaves differently
+                    step_mutations = {
+                        "retry_count": retry_count + 1,
+                        "error_message": err_txt,
+                        "brain_strategy": repair["strategy"],
+                        "brain_explanation": repair["explanation"],
+                        **repair["mutations"],
+                    }
+
                     await append_job_event(
                         job_id,
                         "fixer_retry_queued",
@@ -333,23 +353,25 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
                             "issues": failure_context.get("issues", []),
                             "failed_checks": failure_context.get("failed_checks", []),
                             "retry_plan_actions": rplan.get("retry_plan", []),
+                            "brain_strategy": repair["strategy"],
+                            "brain_explanation": repair["explanation"],
+                            "brain_mutations": list(repair["mutations"].keys()),
                             "attempt_next": retry_count + 1,
                         },
                         step_id=step["id"],
                     )
                     await apply_fix({**step, "error_message": err_txt}, rplan)
-                    # Queue retry (reset to pending)
+                    # Queue retry with mutations applied
                     from .runtime_state import update_step_state
-                    await update_step_state(step["id"], "pending", {
-                        "retry_count": retry_count + 1,
-                        "error_message": err_txt,
-                    })
+                    await update_step_state(step["id"], "pending", step_mutations)
                     await publish(job_id, "step_retrying",
                                   {"step_key": step["step_key"],
                                    "attempt": retry_count + 1,
                                    "error": err_txt,
                                    "failure_reason": failure_context.get("failure_reason"),
-                                   "stage": failure_context.get("stage")})
+                                   "stage": failure_context.get("stage"),
+                                   "brain_strategy": repair["strategy"],
+                                   "brain_explanation": repair["explanation"]})
 
     # Finalize job
     steps = await get_steps(job_id)

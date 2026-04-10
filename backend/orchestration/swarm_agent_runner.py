@@ -11,7 +11,7 @@ import os
 import re
 from typing import Any, Dict, List
 
-from agent_dag import AGENT_DAG, get_execution_phases
+from agent_dag import AGENT_DAG, get_execution_phases, _AGENT_RELEVANT_DEPS
 from agent_resilience import get_criticality
 
 from .agent_selection_logic import build_full_phases_from_dag, select_agents_for_goal
@@ -237,6 +237,56 @@ async def run_swarm_agent_step(step: Dict[str, Any], job: Dict[str, Any], worksp
     previous_outputs = await _load_previous_agent_outputs(job_id, step)
     before = _workspace_file_snapshot(workspace_path)
 
+    # Read brain repair mutations from step state
+    use_minimal_context = step.get("use_minimal_context", False)
+    context_reduce_factor = step.get("context_reduce_factor", None)
+    force_model = step.get("force_model", None)
+    enforce_code_only = step.get("enforce_code_only", False)
+    prepend_instruction = step.get("prepend_system_instruction", "")
+    retry_count_for_brain = step.get("retry_count", 0)
+
+    # Apply context reduction if brain said so
+    if use_minimal_context or context_reduce_factor is not None:
+        factor = float(context_reduce_factor) if context_reduce_factor is not None else 0.3
+        # Rebuild previous_outputs with reduced context
+        relevant = _AGENT_RELEVANT_DEPS.get(agent_name, list(previous_outputs.keys()))
+        reduced_outputs = {}
+        total = 0
+        max_total = max(0, int(15000 * factor))
+        for dep in relevant:
+            if total >= max_total and max_total > 0:
+                break
+            if dep in previous_outputs:
+                out = previous_outputs[dep]
+                raw = out.get("output") or out.get("result") or out.get("code") or ""
+                if isinstance(raw, str) and raw.strip():
+                    per = int(3000 * factor) if factor > 0 else 0
+                    reduced_outputs[dep] = {**out, "output": raw[:per]}
+                    total += per
+        if factor <= 0.0:
+            reduced_outputs = {}  # Zero context
+        previous_outputs = reduced_outputs
+        logger.info(
+            "brain_repair: %s retry=%d strategy=reduce_context factor=%.1f "
+            "outputs=%d total_chars=%d",
+            agent_name, retry_count_for_brain, factor, len(previous_outputs), total,
+        )
+
+    # If brain said switch model, set env for this call
+    if force_model == "cerebras":
+        os.environ["CRUCIBAI_FORCE_CEREBRAS"] = "1"
+        logger.info("brain_repair: %s retry=%d forcing Cerebras", agent_name, retry_count_for_brain)
+    else:
+        os.environ.pop("CRUCIBAI_FORCE_CEREBRAS", None)
+
+    # If brain wants code-only enforcement, modify project_prompt
+    if enforce_code_only or prepend_instruction:
+        prefix = prepend_instruction or (
+            "CRITICAL: Output ONLY valid code. Start with the first line of code. "
+            "No explanation, no preamble."
+        )
+        project_prompt = f"[SYSTEM CONSTRAINT] {prefix}\n\n{project_prompt}"
+
     result = await _run_server_swarm_agent(
         project_id=project_id,
         user_id=user_id,
@@ -245,6 +295,9 @@ async def run_swarm_agent_step(step: Dict[str, Any], job: Dict[str, Any], worksp
         build_kind=build_kind,
         previous_outputs=previous_outputs,
     )
+
+    # Clean up forced model env
+    os.environ.pop("CRUCIBAI_FORCE_CEREBRAS", None)
 
     status = str(result.get("status") or "").lower()
     if status in ("failed", "failed_with_fallback", "skipped"):
