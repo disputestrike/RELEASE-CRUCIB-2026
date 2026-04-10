@@ -57,3 +57,40 @@ async def test_verify_compile_workspace_uses_esbuild_for_jsx(monkeypatch):
         assert result["passed"] is True, result["issues"]
         assert calls, "expected esbuild subprocess invocation"
         assert any("esbuild" in " ".join(call[0]) for call in calls)
+        assert all("--bundle" not in call[0] for call in calls)
+
+
+@pytest.mark.asyncio
+async def test_verify_compile_workspace_does_not_require_installed_packages(monkeypatch):
+    calls = []
+
+    class FakeProcess:
+        returncode = 0
+
+        async def communicate(self):
+            return (b"", b"")
+
+    async def fake_exec(*cmd, **kwargs):
+        calls.append((cmd, kwargs))
+        return FakeProcess()
+
+    with tempfile.TemporaryDirectory() as d:
+        src = os.path.join(d, "src")
+        os.makedirs(src, exist_ok=True)
+        with open(os.path.join(src, "App.jsx"), "w", encoding="utf-8") as fh:
+            fh.write(
+                """import React from 'react';
+import { BrowserRouter } from 'react-router-dom';
+
+export default function App() {
+  return <BrowserRouter><div>Hello</div></BrowserRouter>;
+}
+"""
+            )
+
+        monkeypatch.setattr("orchestration.verifier.asyncio.create_subprocess_exec", fake_exec)
+        result = await verify_compile_workspace(d)
+
+        assert result["passed"] is True, result["issues"]
+        assert calls
+        assert all("--bundle" not in call[0] for call in calls)

@@ -198,8 +198,6 @@ async def _verify_frontend_source_file(full: str, rel: str, workspace_path: str)
                 _npx_bin(),
                 "esbuild",
                 full,
-                "--bundle",
-                "--platform=browser",
                 "--format=esm",
                 f"--outfile={outfile.name}",
                 "--log-level=error",

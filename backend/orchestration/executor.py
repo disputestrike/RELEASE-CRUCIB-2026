@@ -7,6 +7,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 import time
 import textwrap
 from typing import Dict, Any, Optional, Callable, List
@@ -335,6 +336,44 @@ _PROSE_STRIP_PREFIXES = (
 )
 _CODE_FILE_EXTS = {".jsx", ".tsx", ".js", ".ts", ".py", ".css", ".scss",
                    ".json", ".yaml", ".yml", ".html", ".sh", ".sql"}
+_FENCE_ONLY_RE = re.compile(r"^\s*```[a-zA-Z0-9_+-]*\s*$")
+_FENCE_RE = re.compile(r"```(?P<lang>[a-zA-Z0-9_+-]*)\s*\n(?P<body>.*?)```", re.DOTALL)
+_LANGUAGE_HINTS = {
+    ".jsx": {"jsx", "javascript", "js", "tsx", "typescript", "react"},
+    ".tsx": {"tsx", "typescript", "ts", "jsx", "react"},
+    ".js": {"javascript", "js", "jsx"},
+    ".ts": {"typescript", "ts", "tsx"},
+    ".py": {"python", "py"},
+    ".json": {"json"},
+    ".css": {"css", "scss"},
+    ".scss": {"scss", "css"},
+    ".html": {"html"},
+    ".sh": {"sh", "bash", "shell"},
+    ".sql": {"sql"},
+    ".yaml": {"yaml", "yml"},
+    ".yml": {"yaml", "yml"},
+}
+
+
+def _strip_fence_lines(content: str) -> str:
+    return "\n".join(line for line in content.splitlines() if not _FENCE_ONLY_RE.match(line))
+
+
+def _extract_best_fenced_block(content: str, rel: str) -> str:
+    blocks = []
+    for match in _FENCE_RE.finditer(content or ""):
+        lang = (match.group("lang") or "").strip().lower()
+        body = (match.group("body") or "").strip("\n")
+        if body:
+            blocks.append((lang, body))
+    if not blocks:
+        return content
+    ext = os.path.splitext(rel)[1].lower()
+    hints = _LANGUAGE_HINTS.get(ext, set())
+    for lang, body in blocks:
+        if lang in hints:
+            return body
+    return blocks[0][1]
 
 
 def _strip_prose_preamble(content: str, rel: str) -> str:
@@ -342,6 +381,8 @@ def _strip_prose_preamble(content: str, rel: str) -> str:
     ext = os.path.splitext(rel)[1].lower()
     if ext not in _CODE_FILE_EXTS:
         return content
+    content = _extract_best_fenced_block(content, rel)
+    content = _strip_fence_lines(content)
     lines = content.split("\n")
     for i, line in enumerate(lines):
         stripped = line.strip().lower()

@@ -5,6 +5,7 @@ Called after each agent run so every agent has a verifiable effect (state, file,
 import json
 import logging
 import re
+import os
 from typing import Any, Dict, List, Optional
 
 from project_state import load_state, update_state
@@ -163,16 +164,54 @@ _PROSE_PREFIXES = (
 )
 
 _CODE_EXTENSIONS = {".jsx", ".tsx", ".js", ".ts", ".py", ".css", ".scss", ".json", ".yaml", ".yml", ".html", ".sh"}
+_FENCE_RE = re.compile(r"```(?P<lang>[a-zA-Z0-9_+-]*)\s*\n(?P<body>.*?)```", re.DOTALL)
+_FENCE_ONLY_RE = re.compile(r"^\s*```[a-zA-Z0-9_+-]*\s*$")
+_LANGUAGE_HINTS = {
+    ".jsx": {"jsx", "javascript", "js", "tsx", "typescript", "react"},
+    ".tsx": {"tsx", "typescript", "ts", "jsx", "react"},
+    ".js": {"javascript", "js", "jsx"},
+    ".ts": {"typescript", "ts", "tsx"},
+    ".py": {"python", "py"},
+    ".json": {"json"},
+    ".css": {"css", "scss"},
+    ".scss": {"scss", "css"},
+    ".html": {"html"},
+    ".sh": {"sh", "bash", "shell"},
+    ".yaml": {"yaml", "yml"},
+    ".yml": {"yaml", "yml"},
+}
+
+
+def _strip_fence_lines(text: str) -> str:
+    return "\n".join(line for line in text.splitlines() if not _FENCE_ONLY_RE.match(line))
+
+
+def _extract_best_fenced_block(content: str, filepath: str = "") -> str:
+    blocks = []
+    for match in _FENCE_RE.finditer(content or ""):
+        lang = (match.group("lang") or "").strip().lower()
+        body = (match.group("body") or "").strip("\n")
+        if body:
+            blocks.append((lang, body))
+    if not blocks:
+        return content
+    ext = os.path.splitext(filepath)[1].lower() if filepath else ""
+    hints = _LANGUAGE_HINTS.get(ext, set())
+    for lang, body in blocks:
+        if lang in hints:
+            return body
+    return blocks[0][1]
 
 
 def _sanitize_prose_preamble(content: str, filepath: str = "") -> str:
     """Strip LLM prose preamble from code files (e.g. 'I appreciate...' at line 1)."""
     ext = ""
     if filepath:
-        import os as _os
-        ext = _os.path.splitext(filepath)[1].lower()
+        ext = os.path.splitext(filepath)[1].lower()
     if ext not in _CODE_EXTENSIONS:
         return content
+    content = _extract_best_fenced_block(content, filepath)
+    content = _strip_fence_lines(content)
     lines = content.split("\n")
     for i, line in enumerate(lines):
         stripped = line.strip().lower()
@@ -189,13 +228,6 @@ def _extract_code_or_text(content: Any, filepath: str = "") -> str:
     if content is None:
         return ""
     s = (content if isinstance(content, str) else str(content)).strip()
-    if s.startswith("```"):
-        lines = s.split("\n")
-        if lines[0].startswith("```"):
-            lines = lines[1:]
-        if lines and lines[-1].strip() == "```":
-            lines = lines[:-1]
-        s = "\n".join(lines)
     return _sanitize_prose_preamble(s, filepath)
 
 
