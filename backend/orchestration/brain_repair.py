@@ -30,29 +30,38 @@ async def run_full_brain_repair(
     job: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
-    Full brain repair — three layers:
-    1. Read workspace files to diagnose root cause
-    2. Apply self-repair (write actual code fixes to disk)
-    3. Return parameter mutations for the next LLM call
+    Full brain repair — four layers matching how I (Claude) think:
 
-    This is the difference between a brain that reads and writes code
-    vs one that just changes LLM parameters.
+    1. Read workspace files to diagnose root cause (workspace_reader)
+    2. Apply self-repair — write deterministic code fixes to disk (self_repair)
+    3. If deterministic repair wasn't enough — call Claude to write novel fixes (llm_code_repair)
+    4. Return parameter mutations for the next LLM call (apply_targeted_repair)
+
+    Layers 1+2 = what a linter does.
+    Layer 3 = what a developer does.
+    Layer 4 = what a DevOps engineer does (adjust how the agent runs).
     """
     from .workspace_reader import diagnose_workspace
     from .self_repair import apply_self_repair
+    from .llm_code_repair import (
+        repair_file_with_llm,
+        analyse_failure_with_llm,
+        get_downstream_impact,
+        llm_repair_callback,
+    )
+    from agents.code_repair_agent import CodeRepairAgent
 
     logger.info(
         "brain: full repair start step=%s retry=%d error=%s",
-        step_key, retry_count, error_message[:100],
+        step_key, retry_count, error_message[:120],
     )
 
-    # Layer 1: Read the workspace
+    # ── Layer 1: Read workspace ───────────────────────────────────────────────
     diagnosis = diagnose_workspace(
         workspace_path=workspace_path,
         failed_step_key=step_key,
         error_message=error_message,
     )
-
     logger.info(
         "brain: diagnosis root_cause=%s findings=%d affected=%s",
         diagnosis.get("root_cause"),
@@ -60,21 +69,95 @@ async def run_full_brain_repair(
         diagnosis.get("affected_files", [])[:3],
     )
 
-    # Layer 2: Write actual code fixes to disk
+    # ── Layer 2: Deterministic self-repair ────────────────────────────────────
     repair_result = await apply_self_repair(
         workspace_path=workspace_path,
         diagnosis=diagnosis,
         step_key=step_key,
         error_message=error_message,
     )
-
     logger.info(
-        "brain: self_repair fixed=%d repairs=%s",
+        "brain: deterministic repair fixed=%d repairs=%s",
         repair_result.get("fixed_count", 0),
         [r.get("type") for r in repair_result.get("repairs", [])],
     )
 
-    # Layer 3: Get parameter mutations for the LLM call
+    # ── Layer 3: LLM repair for files that deterministic couldn't fix ─────────
+    llm_repairs: List[Dict[str, Any]] = []
+    causal_analysis: Dict[str, Any] = {}
+
+    critical_unfixed = [
+        f for f in diagnosis.get("critical_findings", [])
+        if f.get("file") and f.get("file") not in [
+            r.get("file") for r in repair_result.get("repairs", []) if r.get("fixed")
+        ]
+        and not f.get("file", "").startswith("proof_bundle")
+    ]
+
+    # Only call LLM for repair on retry 1+ (retry 0 = first attempt, no LLM needed yet)
+    if retry_count >= 1 and critical_unfixed and workspace_path and os.path.isdir(workspace_path):
+        for finding in critical_unfixed[:3]:  # Max 3 LLM repair calls per retry
+            rel_path = finding.get("file", "")
+            if not rel_path:
+                continue
+            logger.info("brain: calling LLM to repair %s (retry=%d)", rel_path, retry_count)
+            llm_result = await repair_file_with_llm(
+                workspace_path=workspace_path,
+                rel_path=rel_path,
+                error_message=error_message,
+                diagnosis=diagnosis,
+            )
+            llm_repairs.append(llm_result)
+            if llm_result.get("fixed"):
+                logger.info("brain: LLM fixed %s", rel_path)
+
+        # Also run CodeRepairAgent with LLM callback on Python/JSON files
+        if workspace_path:
+            affected_files = diagnosis.get("affected_files", [])
+            py_json_files = [
+                f for f in affected_files
+                if f.endswith((".py", ".json", ".yaml", ".yml"))
+            ]
+            if py_json_files:
+                repaired = await CodeRepairAgent.repair_workspace_files(
+                    workspace_path,
+                    py_json_files,
+                    verification_issues=[error_message] if error_message else [],
+                    llm_repair=llm_repair_callback,
+                )
+                if repaired:
+                    llm_repairs.append({"fixed": True, "files": repaired, "method": "code_repair_agent_llm"})
+                    logger.info("brain: CodeRepairAgent+LLM fixed %s", repaired)
+
+    # Causal chain analysis — understand what else will break
+    if retry_count >= 1:
+        try:
+            from .workspace_reader import list_workspace_files, read_workspace_file
+            snapshot = {}
+            if workspace_path and os.path.isdir(workspace_path):
+                for rel in list_workspace_files(workspace_path)[:25]:
+                    content = read_workspace_file(workspace_path, rel)
+                    if content:
+                        snapshot[rel] = content.strip().split("\n")[0][:80]
+            causal_analysis = await analyse_failure_with_llm(
+                failed_step_key=step_key,
+                error_message=error_message,
+                workspace_snapshot=snapshot,
+            )
+            logger.info(
+                "brain: causal analysis root=%s downstream=%s confidence=%s",
+                causal_analysis.get("root_cause", "")[:80],
+                causal_analysis.get("downstream_blocked", [])[:3],
+                causal_analysis.get("confidence"),
+            )
+        except Exception as e:
+            logger.warning("brain: causal analysis failed: %s", e)
+            causal_analysis = {
+                "downstream_blocked": get_downstream_impact(step_key),
+                "source": "static_fallback",
+            }
+
+    # ── Layer 4: Parameter mutations for next LLM call ────────────────────────
     param_mutations = await apply_targeted_repair(
         step={"step_key": step_key},
         error_message=error_message,
@@ -83,18 +166,35 @@ async def run_full_brain_repair(
         job=job,
     )
 
-    # Merge all three layers
+    # Compute total fixes
+    det_fixed = repair_result.get("fixed_count", 0)
+    llm_fixed = sum(1 for r in llm_repairs if r.get("fixed"))
+    total_fixed = det_fixed + llm_fixed
+
+    all_repaired_files = [
+        r.get("file") for r in repair_result.get("repairs", []) if r.get("fixed")
+    ] + [
+        r.get("file") for r in llm_repairs if r.get("fixed") and r.get("file")
+    ]
+
+    logger.info(
+        "brain: repair complete det=%d llm=%d total=%d files=%s strategy=%s",
+        det_fixed, llm_fixed, total_fixed,
+        all_repaired_files[:3],
+        param_mutations.get("strategy"),
+    )
+
     return {
         "diagnosis": diagnosis,
         "repairs_applied": repair_result,
+        "llm_repairs": llm_repairs,
+        "causal_analysis": causal_analysis,
         "mutations": param_mutations.get("mutations", {}),
         "strategy": param_mutations.get("strategy", "unknown"),
         "explanation": param_mutations.get("explanation", ""),
-        "workspace_fixed": repair_result.get("fixed_count", 0) > 0,
-        "files_repaired": [
-            r.get("file") for r in repair_result.get("repairs", [])
-            if r.get("fixed")
-        ],
+        "workspace_fixed": total_fixed > 0,
+        "files_repaired": all_repaired_files,
+        "downstream_at_risk": causal_analysis.get("downstream_blocked", []),
     }
 
 

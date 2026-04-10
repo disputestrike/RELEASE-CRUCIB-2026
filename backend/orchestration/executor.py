@@ -1637,10 +1637,16 @@ async def execute_step(step: Dict[str, Any], job: Dict[str, Any],
             repaired_output_files: list[str] = []
             if workspace_path and ftype in {"syntax_error", "compile_error", "runtime_error"}:
                 candidate_files = list(dict.fromkeys((result.get("output_files") or []) + changed_paths))
+                # Use LLM repair callback so CodeRepairAgent can fix novel bugs
+                try:
+                    from .llm_code_repair import llm_repair_callback as _llm_cb
+                except Exception:
+                    _llm_cb = None
                 repaired_output_files = await CodeRepairAgent.repair_workspace_files(
                     workspace_path or "",
                     candidate_files,
                     verification_issues=issues_list,
+                    llm_repair=_llm_cb,
                 )
                 if repaired_output_files:
                     await append_job_event(

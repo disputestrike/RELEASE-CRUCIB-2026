@@ -18,8 +18,11 @@ logger = logging.getLogger(__name__)
 # Re-export old helpers so existing imports still work
 try:
     from .self_repair_old import attempt_verification_self_repair  # noqa: F401
+    from .self_repair_old import maybe_commit_workspace_repairs  # noqa: F401
 except ImportError:
     def attempt_verification_self_repair(*args, **kwargs):
+        return []
+    def maybe_commit_workspace_repairs(*args, **kwargs):
         return []
 
 # ── Safe file writing ──────────────────────────────────────────────────────────
