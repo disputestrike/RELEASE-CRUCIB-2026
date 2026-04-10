@@ -397,7 +397,7 @@ def _build_phases(goal: str, build_kind: str, integrations: list,
                 {"key": "implementation.delivery_manifest", "agent": "Delivery",
                  "name": "Delivery classification",
                  "description": "Write proof/DELIVERY_CLASSIFICATION.md (Implemented/Mocked/Stubbed/Unverified)",
-                 "depends_on": ["database.seed"]},
+                 "depends_on": []},
             ]
         },
         {
@@ -406,8 +406,7 @@ def _build_phases(goal: str, build_kind: str, integrations: list,
             "steps": [
                 {"key": "verification.compile", "agent": "Verifier",
                  "name": "Compile check", "description": "Verify frontend and backend compile cleanly",
-                 "depends_on": ["frontend.routing", "backend.auth", "database.migration",
-                                "implementation.delivery_manifest"]},
+                 "depends_on": ["implementation.delivery_manifest"]},
                 {"key": "verification.api_smoke", "agent": "Verifier",
                  "name": "API smoke test", "description": "Hit key endpoints, check responses",
                  "depends_on": ["verification.compile"]},
