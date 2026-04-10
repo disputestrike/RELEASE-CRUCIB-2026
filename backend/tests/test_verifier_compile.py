@@ -22,8 +22,12 @@ export default function App() {
 
         result = await verify_compile_workspace(d)
 
-        assert result["passed"] is False
-        assert any("Prose preamble detected" in issue for issue in result["issues"])
+        # Verifier now auto-strips prose and continues rather than failing.
+        # The file should be fixed and compilation should pass.
+        assert result["passed"] is True
+        # Proof should show the prose was stripped
+        proof_checks = [p.get("check") for p in result.get("proof", [])]
+        assert "prose_auto_stripped" in proof_checks
 
 
 @pytest.mark.asyncio

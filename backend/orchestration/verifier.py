@@ -144,6 +144,27 @@ def _first_meaningful_line(text: str) -> str:
     return ""
 
 
+PROSE_PREFIXES_VERIFIER = (
+    "i ", "i'", "here ", "here'", "appreciate", "certainly", "sure,",
+    "below", "based on", "as requested", "i have", "i'll", "let me",
+    "of course", "happy to", "glad to", "please find", "the following",
+    "above is", "this is", "note:", "note that", "in this", "we have",
+    "the code", "the following code", "the component",
+)
+
+def _strip_prose_lines(text: str) -> str:
+    """Strip LLM prose lines from the top of a code file."""
+    lines = text.split("\n")
+    for i, line in enumerate(lines):
+        stripped = line.strip().lower()
+        if not stripped:
+            continue
+        if any(stripped.startswith(p) for p in PROSE_PREFIXES_VERIFIER):
+            continue
+        return "\n".join(lines[i:])
+    return text
+
+
 def _detect_prose_preamble(text: str) -> Optional[str]:
     first = _first_meaningful_line(text)
     if not first:
@@ -184,8 +205,24 @@ async def _verify_frontend_source_file(full: str, rel: str, workspace_path: str)
 
     prose = _detect_prose_preamble(text)
     if prose:
-        issues.append(f"Prose preamble detected in {rel}: {prose}")
-        return _result(False, 20, issues, proof)
+        # Strip the prose and rewrite the file so verification can continue
+        # This is the #1 recurring failure — LLM writes English before code
+        cleaned = _strip_prose_lines(text)
+        if cleaned.strip() and cleaned != text:
+            try:
+                with open(full, "w", encoding="utf-8") as fh:
+                    fh.write(cleaned)
+                text = cleaned
+                proof.append({"check": "prose_auto_stripped", "payload": {
+                    "file": rel, "stripped_line": prose[:80]
+                }})
+                logger.info("verifier: auto-stripped prose from %s: %s", rel, prose[:60])
+            except OSError:
+                issues.append(f"Prose preamble detected in {rel}: {prose}")
+                return _result(False, 20, issues, proof)
+        else:
+            issues.append(f"Prose preamble detected in {rel}: {prose}")
+            return _result(False, 20, issues, proof)
 
     ext = os.path.splitext(rel)[1].lower()
     uses_jsx = _looks_like_jsx_source(rel, text)
