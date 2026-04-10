@@ -15,6 +15,89 @@ logger = logging.getLogger(__name__)
 
 # ── Repair actions ─────────────────────────────────────────────────────────────
 
+
+import logging
+import os
+import re
+from typing import Any, Dict, List, Optional
+
+
+async def run_full_brain_repair(
+    workspace_path: str,
+    step_key: str,
+    error_message: str,
+    retry_count: int,
+    job: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Full brain repair — three layers:
+    1. Read workspace files to diagnose root cause
+    2. Apply self-repair (write actual code fixes to disk)
+    3. Return parameter mutations for the next LLM call
+
+    This is the difference between a brain that reads and writes code
+    vs one that just changes LLM parameters.
+    """
+    from .workspace_reader import diagnose_workspace
+    from .self_repair import apply_self_repair
+
+    logger.info(
+        "brain: full repair start step=%s retry=%d error=%s",
+        step_key, retry_count, error_message[:100],
+    )
+
+    # Layer 1: Read the workspace
+    diagnosis = diagnose_workspace(
+        workspace_path=workspace_path,
+        failed_step_key=step_key,
+        error_message=error_message,
+    )
+
+    logger.info(
+        "brain: diagnosis root_cause=%s findings=%d affected=%s",
+        diagnosis.get("root_cause"),
+        len(diagnosis.get("findings", [])),
+        diagnosis.get("affected_files", [])[:3],
+    )
+
+    # Layer 2: Write actual code fixes to disk
+    repair_result = await apply_self_repair(
+        workspace_path=workspace_path,
+        diagnosis=diagnosis,
+        step_key=step_key,
+        error_message=error_message,
+    )
+
+    logger.info(
+        "brain: self_repair fixed=%d repairs=%s",
+        repair_result.get("fixed_count", 0),
+        [r.get("type") for r in repair_result.get("repairs", [])],
+    )
+
+    # Layer 3: Get parameter mutations for the LLM call
+    param_mutations = await apply_targeted_repair(
+        step={"step_key": step_key},
+        error_message=error_message,
+        retry_count=retry_count,
+        workspace_path=workspace_path,
+        job=job,
+    )
+
+    # Merge all three layers
+    return {
+        "diagnosis": diagnosis,
+        "repairs_applied": repair_result,
+        "mutations": param_mutations.get("mutations", {}),
+        "strategy": param_mutations.get("strategy", "unknown"),
+        "explanation": param_mutations.get("explanation", ""),
+        "workspace_fixed": repair_result.get("fixed_count", 0) > 0,
+        "files_repaired": [
+            r.get("file") for r in repair_result.get("repairs", [])
+            if r.get("fixed")
+        ],
+    }
+
+
 async def apply_targeted_repair(
     step: Dict[str, Any],
     error_message: str,

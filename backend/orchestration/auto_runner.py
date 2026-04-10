@@ -25,7 +25,7 @@ from .dag_engine import (
 from .executor import execute_step
 from .verifier import verify_step
 from .fixer import classify_failure, build_retry_plan, apply_fix, MAX_RETRIES
-from .brain_repair import apply_targeted_repair
+from .brain_repair import apply_targeted_repair, run_full_brain_repair
 from .event_bus import publish
 from .planner import generate_plan
 from .runtime_health import is_infrastructure_failure
@@ -324,12 +324,12 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
                     ftype = classify_failure({**step, "error_message": err_txt}, vstub)
                     rplan = build_retry_plan(ftype, {**step, "error_message": err_txt}, vstub)
 
-                    # ── BRAIN REPAIR: actually change something before retrying ──
-                    repair = await apply_targeted_repair(
-                        step=step,
+                    # ── BRAIN REPAIR: read workspace, fix code, mutate params ──
+                    repair = await run_full_brain_repair(
+                        workspace_path=workspace_path or "",
+                        step_key=step.get("step_key", ""),
                         error_message=err_txt,
                         retry_count=retry_count,
-                        workspace_path=workspace_path or "",
                         job=job,
                     )
                     # Merge repair mutations into the step state so the next
@@ -337,9 +337,11 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
                     step_mutations = {
                         "retry_count": retry_count + 1,
                         "error_message": err_txt,
-                        "brain_strategy": repair["strategy"],
-                        "brain_explanation": repair["explanation"],
-                        **repair["mutations"],
+                        "brain_strategy": repair.get("strategy", "unknown"),
+                        "brain_explanation": repair.get("explanation", ""),
+                        "workspace_fixed": repair.get("workspace_fixed", False),
+                        "files_repaired": repair.get("files_repaired", []),
+                        **repair.get("mutations", {}),
                     }
 
                     await append_job_event(
