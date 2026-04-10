@@ -141,9 +141,11 @@ ROOT_CAUSE_GRAPH = {
     ],
     "agents.frontend_generation": [
         ("src/App.jsx",      "jsx_syntax",    "regenerate_frontend"),
+        ("src/main.jsx",     "text_exists",   "regenerate_entry_point"),
     ],
     "agents.backend_generation": [
         ("server.py",        "python_syntax", "regenerate_backend"),
+        ("requirements.txt", "text_exists",   "regenerate_requirements"),
     ],
 }
 
@@ -248,6 +250,8 @@ def diagnose_workspace(
                 recommended_fix = fix_hint
 
     # 2. Scan ALL code files for prose preamble (the #1 recurring issue)
+    # Prose overrides other root causes — it's almost always the real problem
+    prose_found = False
     all_files = list_workspace_files(workspace_path)
     for rel in all_files:
         ext = os.path.splitext(rel)[1].lower()
@@ -270,9 +274,11 @@ def diagnose_workspace(
             })
             if rel not in affected_files:
                 affected_files.append(rel)
-            if root_cause is None:
-                root_cause = "prose_in_code"
-                recommended_fix = "strip_prose_and_regenerate"
+            prose_found = True
+    # Prose overrides earlier root_cause — it's the #1 issue
+    if prose_found:
+        root_cause = "prose_in_code"
+        recommended_fix = "strip_prose_and_regenerate"
 
     # 3. Check proof bundle for systemic issues
     if proof_bundle:
