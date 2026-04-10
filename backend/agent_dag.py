@@ -293,8 +293,8 @@ AGENT_DAG: Dict[str, Dict[str, Any]] = {
 
 
 # Max chars of previous output to inject (avoid token overflow)
-CONTEXT_MAX_CHARS = 2000
-CONTEXT_MAX_CHARS_OPTIMIZED = 1200
+CONTEXT_MAX_CHARS = 3000
+CONTEXT_MAX_CHARS_OPTIMIZED = 1500
 
 # Shorter system prompts when USE_TOKEN_OPTIMIZED_PROMPTS=1 (~10–12K vs ~20K tokens per build)
 OPTIMIZED_SYSTEM_PROMPTS: Dict[str, str] = {
@@ -481,19 +481,69 @@ def get_execution_phases(dag: Dict[str, Dict[str, Any]]) -> List[List[str]]:
     return phases
 
 
+
+# Direct dependencies for each agent — only include outputs the agent actually needs.
+# This keeps Anthropic request sizes small and prevents 400 errors on large builds.
+_AGENT_RELEVANT_DEPS: Dict[str, List[str]] = {
+    "Database Agent": ["Backend Generation", "Stack Selector"],
+    "Test Generation": ["Backend Generation", "Frontend Generation"],
+    "Security Checker": ["Backend Generation", "Frontend Generation"],
+    "Deployment Agent": ["Backend Generation", "Stack Selector"],
+    "WebSocket Agent": ["Backend Generation"],
+    "API Documentation Agent": ["Backend Generation"],
+    "Code Review Agent": ["Backend Generation", "Frontend Generation"],
+    "Multi-tenant Agent": ["Database Agent", "Backend Generation"],
+    "ORM Setup Agent": ["Database Agent", "Backend Generation"],
+    "Database Schema Validator Agent": ["Database Agent", "Backend Generation"],
+    "Data Pipeline Agent": ["Database Agent", "Backend Generation"],
+    "Data Warehouse Agent": ["Database Agent", "Backend Generation"],
+    "ML Data Pipeline Agent": ["Database Agent", "Stack Selector"],
+    "Database Optimization Agent": ["Database Agent"],
+    "E2E Test Agent": ["Frontend Generation", "Backend Generation"],
+    "Load Test Agent": ["Backend Generation"],
+    "Performance Analyzer": ["Backend Generation", "Frontend Generation"],
+}
+
 def build_context_from_previous_agents(
     current_agent: str,
     previous_outputs: Dict[str, Dict[str, Any]],
     project_prompt: str,
 ) -> str:
-    """Build enhanced prompt with previous agents' outputs. Truncates to get_context_max_chars() per output."""
+    """Build context for an agent from relevant previous outputs.
+
+    Uses a targeted dependency map for known agents so only the outputs
+    that agent actually needs are included. Falls back to all outputs
+    with a total cap of 15K chars to prevent Anthropic 400 errors.
+    """
     max_chars = get_context_max_chars()
     parts = [project_prompt]
-    for agent_name, data in previous_outputs.items():
-        out = data.get("output") or data.get("result") or data.get("code") or ""
-        if isinstance(out, str) and out.strip():
-            snippet = out.strip()[:max_chars]
-            if len(out.strip()) > max_chars:
-                snippet += "\n... (truncated)"
-            parts.append(f"--- Output from {agent_name} ---\n{snippet}")
+
+    relevant = _AGENT_RELEVANT_DEPS.get(current_agent)
+    if relevant:
+        # Targeted: only include outputs this agent depends on
+        for agent_name in relevant:
+            data = previous_outputs.get(agent_name)
+            if not data:
+                continue
+            out = data.get("output") or data.get("result") or data.get("code") or ""
+            if isinstance(out, str) and out.strip():
+                snippet = out.strip()[:max_chars]
+                if len(out.strip()) > max_chars:
+                    snippet += "\n... (truncated)"
+                parts.append(f"--- Output from {agent_name} ---\n{snippet}")
+    else:
+        # General: include all outputs but cap total context at 15K chars
+        total = 0
+        max_total = 15000
+        for agent_name, data in previous_outputs.items():
+            if total >= max_total:
+                break
+            out = data.get("output") or data.get("result") or data.get("code") or ""
+            if isinstance(out, str) and out.strip():
+                snippet = out.strip()[:max_chars]
+                if len(out.strip()) > max_chars:
+                    snippet += "\n... (truncated)"
+                parts.append(f"--- Output from {agent_name} ---\n{snippet}")
+                total += len(snippet)
+
     return "\n\n".join(parts)

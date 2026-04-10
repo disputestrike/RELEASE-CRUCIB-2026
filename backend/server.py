@@ -1377,7 +1377,19 @@ async def _call_anthropic_direct(
                 timeout=120,
             )
             if response.status_code != 200:
-                logger.warning(f"Anthropic API error: {response.text}")
+                err_body = response.text[:500]
+                logger.warning("Anthropic API error %s: %s", response.status_code, err_body)
+                # 400 with context too long → raise a specific error the retry loop can classify
+                if response.status_code == 400:
+                    try:
+                        err_json = response.json()
+                        err_type = (err_json.get("error") or {}).get("type", "")
+                        err_msg = (err_json.get("error") or {}).get("message", err_body)
+                    except Exception:
+                        err_type, err_msg = "", err_body
+                    raise Exception(
+                        f"Anthropic API returned 400 ({err_type}): {err_msg[:300]}"
+                    )
                 raise Exception(f"Anthropic API returned {response.status_code}")
             
             data = response.json()
