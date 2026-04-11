@@ -145,7 +145,7 @@
 
 | # | Change | Where |
 |---|--------|--------|
-| 53 | **Push to CrucibAI repo** — Push uses **crucibai** remote (`https://github.com/disputestrike/CrucibAI.git`). `git push crucibai main` succeeds. Origin (mandeepsinghgill/crucib) not used for push. | Git remotes |
+| 53 | **Git remote** — `origin` is `https://github.com/disputestrike/CrucibAI.git` only; `git push origin main` is the canonical push. | Git remotes |
 | 54 | **Commits** — (1) Full builds, build types, docs, theme, pricing, contact/get-help, Docker, migrations (37 files). (2) RATE_RANK_HONEST. (3) Align rate/rank with full codebase (9.5, #1). | Git history |
 
 ---
@@ -154,7 +154,7 @@
 
 | # | Change | Where |
 |---|--------|--------|
-| 55 | **Rating aligned with full codebase** — RATE_RANK_HONEST updated to ~9.5/10, #1 in Top 20; explained why earlier “honest” pass was lower (over-weighted operational caveats); noted DB on Railway, crucibai push. | `docs/RATE_RANK_HONEST.md` |
+| 55 | **Rating aligned with full codebase** — RATE_RANK_HONEST updated to ~9.5/10, #1 in Top 20; explained why earlier “honest” pass was lower (over-weighted operational caveats); noted DB on Railway, push to disputestrike/CrucibAI. | `docs/RATE_RANK_HONEST.md` |
 
 ---
 

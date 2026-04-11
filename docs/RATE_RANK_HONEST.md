@@ -72,7 +72,7 @@
 - **Over-weighted gaps:** I emphasized “tests need DB,” “push failed,” “OAuth issues” and scored operational readiness and reliability lower, which pulled the average down.
 - **Didn’t re-ground in full code:** The codebase already had (and still has) full orchestration, Critic+Truth, fallback on every critical path, pricing tests, and full router split. RATE_RANK_CURRENT.md was built from that. I didn’t re-check that evidence when writing the first “honest” pass.
 - **DB:** Database is on Railway in production, so “DB unavailable” is a local/env case, not a product gap for deployed use.
-- **Push:** The correct remote is **crucibai** (disputestrike/CrucibAI). Pushing to **crucibai** (not origin) is now successful.
+- **Push:** `origin` points at **https://github.com/disputestrike/CrucibAI**; `git push origin main` is the canonical workflow.
 
 ---
 
