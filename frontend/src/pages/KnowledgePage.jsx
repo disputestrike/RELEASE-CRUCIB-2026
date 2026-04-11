@@ -12,7 +12,7 @@ const T = {
   border:  'rgba(255,255,255,0.12)',
   text:    'var(--theme-text)',
   muted:   'var(--theme-muted)',
-  accent:  '#E05A25',
+  accent:  '#1A1A1A',
   success: '#10b981',
   danger:  '#ef4444',
   input:   'var(--theme-input, rgba(255,255,255,0.06))',
@@ -22,7 +22,7 @@ const DOC_TYPES = ['FAQ', 'Policy', 'Product Info', 'Custom'];
 
 const statusConfig = {
   indexed: { icon: CheckCircle, color: '#10b981', label: 'Indexed' },
-  pending: { icon: Clock, color: '#f59e0b', label: 'Pending' },
+  pending: { icon: Clock, color: '#737373', label: 'Pending' },
   error:   { icon: AlertCircle, color: '#ef4444', label: 'Error' },
 };
 
@@ -150,7 +150,7 @@ export default function KnowledgePage() {
     }
   };
 
-  const typeColors = { FAQ: '#3b82f6', Policy: '#8b5cf6', 'Product Info': '#10b981', Custom: '#f59e0b', url: '#E05A25' };
+  const typeColors = { FAQ: '#404040', Policy: '#525252', 'Product Info': '#737373', Custom: '#A3A3A3', url: '#1A1A1A' };
 
   return (
     <div style={{ minHeight: '100vh', background: T.bg, color: T.text }}>

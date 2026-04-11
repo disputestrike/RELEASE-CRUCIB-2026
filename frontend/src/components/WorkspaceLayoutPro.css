@@ -4,9 +4,9 @@
   /* Color Palette - Professional & Modern */
   --color-primary: #2563eb;        /* Blue */
   --color-secondary: #1e40af;      /* Dark Blue */
-  --color-accent: #f97316;         /* Orange */
+  --color-accent: #1A1A1A;          /* Neutral primary (no orange) */
   --color-success: #16a34a;        /* Green */
-  --color-warning: #ea580c;        /* Orange-Red */
+  --color-warning: #737373;        /* Neutral (no orange) */
   --color-error: #dc2626;          /* Red */
   
   /* Neutrals */

@@ -8,11 +8,11 @@ import { X, Plus, Pencil, Trash2, Sparkles, Check } from 'lucide-react';
 const SYSTEM_SKILLS = [
   { name: 'web-app-builder', icon: '🌐', color: '#3b82f6', category: 'build', display_name: 'Web App', short_desc: 'Full-stack React + Node.js with auth, database, and API', trigger_prompt: 'Build a full-stack web app with user authentication, dashboard, and REST API' },
   { name: 'mobile-app-builder', icon: '📱', color: '#8b5cf6', category: 'build', display_name: 'Mobile App', short_desc: 'React Native with Expo — iOS and Android ready', trigger_prompt: 'Build a mobile app with navigation, screens, and local storage' },
-  { name: 'saas-mvp-builder', icon: '💳', color: '#f59e0b', category: 'build', display_name: 'SaaS MVP', short_desc: 'Auth, Stripe billing, user dashboard, multi-tenant', trigger_prompt: 'Build a SaaS MVP with Stripe billing, user auth, and admin dashboard' },
+  { name: 'saas-mvp-builder', icon: '💳', color: '#525252', category: 'build', display_name: 'SaaS MVP', short_desc: 'Auth, Stripe billing, user dashboard, multi-tenant', trigger_prompt: 'Build a SaaS MVP with Stripe billing, user auth, and admin dashboard' },
   { name: 'ecommerce-builder', icon: '🛒', color: '#10b981', category: 'build', display_name: 'E-Commerce', short_desc: 'Product catalog, cart, Stripe checkout, order management', trigger_prompt: 'Build an e-commerce store with product catalog, cart, and Stripe checkout' },
   { name: 'ai-chatbot-builder', icon: '🤖', color: '#ec4899', category: 'build', display_name: 'AI Chatbot', short_desc: 'Multi-agent chat, knowledge base, streaming, embeddable widget', trigger_prompt: 'Build an AI chatbot with multi-agent support and document knowledge base' },
   { name: 'landing-page-builder', icon: '🏠', color: '#06b6d4', category: 'build', display_name: 'Landing Page', short_desc: 'Hero, features, pricing, testimonials, FAQ, email waitlist', trigger_prompt: 'Build a landing page with hero, features grid, pricing table, and FAQ' },
-  { name: 'automation-builder', icon: '⚡', color: '#f97316', category: 'automate', display_name: 'Automation', short_desc: 'Scheduled agents, webhooks, AI-powered workflows', trigger_prompt: 'Build an automation that runs daily and sends results to Slack or email' },
+  { name: 'automation-builder', icon: '⚡', color: '#525252', category: 'automate', display_name: 'Automation', short_desc: 'Scheduled agents, webhooks, AI-powered workflows', trigger_prompt: 'Build an automation that runs daily and sends results to Slack or email' },
   { name: 'internal-tool-builder', icon: '🛠️', color: '#64748b', category: 'build', display_name: 'Internal Tool', short_desc: 'Admin tables, forms, CRUD, approval workflows', trigger_prompt: 'Build an internal admin tool with data tables, forms, and user roles' },
   { name: 'data-dashboard-builder', icon: '📊', color: '#6366f1', category: 'build', display_name: 'Data Dashboard', short_desc: 'Interactive charts, KPI cards, filters, analytics', trigger_prompt: 'Build a data analytics dashboard with charts and KPI cards' },
   { name: 'custom-user-skill', icon: '✨', color: '#a855f7', category: 'custom', display_name: 'Custom Skill', short_desc: 'Define your own building patterns and AI instructions', trigger_prompt: '' },
@@ -21,7 +21,7 @@ const SYSTEM_SKILLS = [
 const CATEGORY_LABELS = { build: 'Build', automate: 'Automate', custom: 'Custom' };
 const CATEGORY_COLORS = {
   build: { bg: 'rgba(59,130,246,0.12)', text: '#3b82f6' },
-  automate: { bg: 'rgba(249,115,22,0.12)', text: '#f97316' },
+  automate: { bg: 'rgba(64,64,64,0.12)', text: '#404040' },
   custom: { bg: 'rgba(168,85,247,0.12)', text: '#a855f7' },
 };
 

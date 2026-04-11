@@ -55,7 +55,7 @@ export default function MonitoringDashboard() {
         Events are stored in PostgreSQL when <code className="bg-gray-100 px-1">DATABASE_URL</code> is set.
       </p>
       {message && (
-        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 mb-4">{message}</p>
+        <p className="text-sm text-neutral-800 bg-neutral-100 border border-neutral-200 rounded p-2 mb-4">{message}</p>
       )}
       <button
         type="button"

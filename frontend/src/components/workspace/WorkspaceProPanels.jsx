@@ -265,10 +265,10 @@ export default function WorkspaceProPanels({
                   return (
                     <div key={`${name}-${i}`} className="flex items-center gap-3 px-3 py-2 border-b last:border-b-0 text-xs" style={{ borderColor: 'var(--theme-border)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
                       <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{
-                        background: done ? 'rgba(74,222,128,0.15)' : running ? 'rgba(251,146,60,0.15)' : 'rgba(255,255,255,0.05)',
+                        background: done ? 'rgba(74,222,128,0.15)' : running ? 'rgba(163,163,163,0.2)' : 'rgba(255,255,255,0.05)',
                       }}>
                         {done ? <span style={{ color: '#4ade80', fontSize: 9 }}>✓</span>
-                          : running ? <Loader2 className="w-2.5 h-2.5 animate-spin" style={{ color: '#fb923c' }} />
+                          : running ? <Loader2 className="w-2.5 h-2.5 animate-spin" style={{ color: '#d4d4d4' }} />
                           : <span style={{ color: 'var(--theme-muted)', fontSize: 9 }}>○</span>}
                       </div>
                       <span className="font-medium truncate min-w-0" style={{ color: 'var(--theme-text)' }}>{name}</span>
@@ -286,13 +286,13 @@ export default function WorkspaceProPanels({
               {agentsActivity.map((a, i) => (
                 <div key={i} className="flex items-center gap-3 px-3 py-2.5 border-b last:border-b-0 text-xs" style={{ borderColor: 'var(--theme-border)', background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
                   <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{
-                    background: a.status === 'done' ? 'rgba(74,222,128,0.15)' : a.status === 'running' ? 'rgba(251,146,60,0.15)' : 'rgba(255,255,255,0.05)',
+                    background: a.status === 'done' ? 'rgba(74,222,128,0.15)' : a.status === 'running' ? 'rgba(163,163,163,0.2)' : 'rgba(255,255,255,0.05)',
                   }}>
                     {a.status === 'done' ? <span style={{ color: '#4ade80', fontSize: 9 }}>✓</span>
-                      : a.status === 'running' ? <Loader2 className="w-2.5 h-2.5 animate-spin" style={{ color: '#fb923c' }} />
+                      : a.status === 'running' ? <Loader2 className="w-2.5 h-2.5 animate-spin" style={{ color: '#d4d4d4' }} />
                       : <span style={{ color: 'var(--theme-muted)', fontSize: 9 }}>○</span>}
                   </div>
-                  <span className="font-medium truncate" style={{ color: a.status === 'done' ? '#86efac' : a.status === 'running' ? '#fb923c' : 'var(--theme-muted)' }}>{a.name}</span>
+                  <span className="font-medium truncate" style={{ color: a.status === 'done' ? '#86efac' : a.status === 'running' ? '#d4d4d4' : 'var(--theme-muted)' }}>{a.name}</span>
                   <span className="ml-auto shrink-0 opacity-60" style={{ color: 'var(--theme-muted)' }}>{a.phase}</span>
                 </div>
               ))}
@@ -300,15 +300,15 @@ export default function WorkspaceProPanels({
           ) : !currentJobId ? (
             <div className="space-y-1.5">
               {[
-                { name: 'Planner', desc: 'Intent parsing, task decomposition', phase: 'Planning', color: '#a78bfa' },
-                { name: 'Architect', desc: 'System design, component structure', phase: 'Architecture', color: '#60a5fa' },
-                { name: 'Frontend', desc: 'UI components, pages, styling', phase: 'Generation', color: '#34d399' },
-                { name: 'Backend', desc: 'API routes, services, middleware', phase: 'Generation', color: '#34d399' },
-                { name: 'Database', desc: 'Schema, migrations, ORM', phase: 'Generation', color: '#34d399' },
-                { name: 'Styling', desc: 'Tailwind, CSS, theming', phase: 'Generation', color: '#f472b6' },
-                { name: 'Logic', desc: 'Business logic, state management', phase: 'Generation', color: '#fb923c' },
-                { name: 'Validator', desc: 'Syntax checking, type safety', phase: 'Validation', color: '#fbbf24' },
-                { name: 'Optimizer', desc: 'Bundle optimization, deployment config', phase: 'Deploy', color: '#f87171' },
+                { name: 'Planner', desc: 'Intent parsing, task decomposition', phase: 'Planning', color: '#737373' },
+                { name: 'Architect', desc: 'System design, component structure', phase: 'Architecture', color: '#6b7280' },
+                { name: 'Frontend', desc: 'UI components, pages, styling', phase: 'Generation', color: '#a3a3a3' },
+                { name: 'Backend', desc: 'API routes, services, middleware', phase: 'Generation', color: '#9ca3af' },
+                { name: 'Database', desc: 'Schema, migrations, ORM', phase: 'Generation', color: '#a1a1aa' },
+                { name: 'Styling', desc: 'Tailwind, CSS, theming', phase: 'Generation', color: '#78716c' },
+                { name: 'Logic', desc: 'Business logic, state management', phase: 'Generation', color: '#525252' },
+                { name: 'Validator', desc: 'Syntax checking, type safety', phase: 'Validation', color: '#57534e' },
+                { name: 'Optimizer', desc: 'Bundle optimization, deployment config', phase: 'Deploy', color: '#44403c' },
               ].map((agent, i) => (
                 <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid var(--theme-border)' }}>
                   <div className="w-2 h-2 rounded-full shrink-0" style={{ background: agent.color }} />
@@ -352,12 +352,12 @@ export default function WorkspaceProPanels({
           {versions.length > 0 ? (
             <div className="space-y-2">
               {[
-                { pass: 'Pass 1', label: 'Static Foundation', desc: '11 config files injected: tsconfig, vite, package.json, docker-compose, CI/CD', color: '#a78bfa' },
-                { pass: 'Pass 2', label: 'Architecture', desc: 'System design, shared types, API contracts, folder structure', color: '#60a5fa' },
-                { pass: 'Pass 3', label: 'Frontend Generation', desc: 'React components, pages, routing, state management', color: '#34d399' },
-                { pass: 'Pass 4', label: 'Backend Generation', desc: 'Express routes, middleware, services, DB schema', color: '#fb923c' },
-                { pass: 'Pass 5', label: 'Integration', desc: 'Frontend ↔ backend wiring, shared types, API client', color: '#fbbf24' },
-                { pass: 'Pass 6', label: 'Finalization', desc: 'README, docs, deployment config, optimization', color: '#f87171' },
+                { pass: 'Pass 1', label: 'Static Foundation', desc: '11 config files injected: tsconfig, vite, package.json, docker-compose, CI/CD', color: '#737373' },
+                { pass: 'Pass 2', label: 'Architecture', desc: 'System design, shared types, API contracts, folder structure', color: '#6b7280' },
+                { pass: 'Pass 3', label: 'Frontend Generation', desc: 'React components, pages, routing, state management', color: '#a3a3a3' },
+                { pass: 'Pass 4', label: 'Backend Generation', desc: 'Express routes, middleware, services, DB schema', color: '#525252' },
+                { pass: 'Pass 5', label: 'Integration', desc: 'Frontend ↔ backend wiring, shared types, API client', color: '#78716c' },
+                { pass: 'Pass 6', label: 'Finalization', desc: 'README, docs, deployment config, optimization', color: '#44403c' },
               ].map((p, i) => (
                 <div key={i} className="rounded-xl p-3.5 border" style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'var(--theme-border)' }}>
                   <div className="flex items-center gap-2.5 mb-1.5">

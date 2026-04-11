@@ -105,7 +105,7 @@
 .status-green { color: #16a34a; }
 [data-theme="dark"] .status-green { color: #86efac; }
 .status-amber { color: var(--theme-text); }
-[data-theme="dark"] .status-amber { color: #fbbf24; }
+[data-theme="dark"] .status-amber { color: var(--theme-muted, #a1a1aa); }
 .status-gray { color: var(--theme-muted); }
 
 .status-retry {

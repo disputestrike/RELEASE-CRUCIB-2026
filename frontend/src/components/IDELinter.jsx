@@ -58,7 +58,7 @@ export default function IDELinter() {
         <ul className="border border-gray-200 rounded bg-white divide-y divide-gray-100">
           {issues.map((issue, i) => (
             <li key={i} className="px-3 py-2 text-sm">
-              <span className={`font-medium ${issue.severity === "error" ? "text-red-600" : issue.severity === "warning" ? "text-amber-600" : "text-[#666]"}`}>{issue.severity}</span>{" "}
+              <span className={`font-medium ${issue.severity === "error" ? "text-red-600" : issue.severity === "warning" ? "text-neutral-600" : "text-[#666]"}`}>{issue.severity}</span>{" "}
               {issue.file_path && `${issue.file_path}:`}{issue.line}:{issue.column} — {issue.message}
             </li>
           ))}

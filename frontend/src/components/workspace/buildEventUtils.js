@@ -21,7 +21,7 @@ export function getBuildEventPresentation(ev) {
     build_completed: { Icon: failed ? X : Rocket, color: failed ? '#f87171' : '#4ade80', title: failed ? 'Build failed' : 'Build completed' },
     checkpoint_restored: { Icon: RotateCcw, color: '#a78bfa', title: 'Checkpoint restored' },
     phase_started: { Icon: GitBranch, color: '#38bdf8', title: 'Phase' },
-    agent_started: { Icon: Cpu, color: '#fb923c', title: 'Agent started' },
+    agent_started: { Icon: Cpu, color: '#a3a3a3', title: 'Agent started' },
     agent_completed: { Icon: Check, color: '#86efac', title: 'Agent completed' },
     agent_skipped: { Icon: ChevronRight, color: 'var(--theme-muted)', title: 'Agent skipped' },
     quality_check_started: { Icon: ShieldCheck, color: '#c084fc', title: 'Quality check' },

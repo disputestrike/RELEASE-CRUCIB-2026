@@ -26,7 +26,7 @@ export default function BuildHistoryPanel({ buildHistory, projectId, loading }) 
             <span className="text-xs text-zinc-400">
               {entry.completed_at ? new Date(entry.completed_at).toLocaleString() : '—'}
             </span>
-            <span className={`text-xs font-medium ${entry.status === 'completed' ? 'text-green-400' : 'text-amber-500'}`}>
+            <span className={`text-xs font-medium ${entry.status === 'completed' ? 'text-green-400' : 'text-neutral-400'}`}>
               {entry.status === 'completed' ? 'Completed' : (entry.status || '—')}
             </span>
           </div>

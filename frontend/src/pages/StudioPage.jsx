@@ -12,7 +12,7 @@ const T = {
   border:  'rgba(255,255,255,0.12)',
   text:    'var(--theme-text)',
   muted:   'var(--theme-muted)',
-  accent:  '#E05A25',
+  accent:  '#1A1A1A',
   success: '#10b981',
   danger:  '#ef4444',
   input:   'var(--theme-input, rgba(255,255,255,0.06))',
@@ -40,7 +40,7 @@ const Badge = ({ children, color }) => (
 );
 
 const toneColor = (tone) => {
-  const map = { Professional: '#3b82f6', Friendly: '#10b981', Casual: '#f59e0b', Expert: '#8b5cf6', Custom: '#E05A25' };
+  const map = { Professional: '#404040', Friendly: '#525252', Casual: '#737373', Expert: '#A3A3A3', Custom: '#1A1A1A' };
   return map[tone] || T.accent;
 };
 

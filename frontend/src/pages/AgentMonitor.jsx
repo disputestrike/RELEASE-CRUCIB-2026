@@ -413,7 +413,7 @@ const AgentMonitor = () => {
                 }
               }}
               disabled={publishExampleLoading}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-50 hover:bg-amber-100 rounded-lg font-medium transition border border-amber-200 text-amber-800 disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-neutral-100 hover:bg-neutral-200 rounded-lg font-medium transition border border-neutral-200 text-neutral-800 disabled:opacity-50"
             >
               <Star className="w-4 h-4" />
               {publishExampleLoading ? 'Publishing…' : 'Publish as example'}
@@ -452,7 +452,7 @@ const AgentMonitor = () => {
                 <span className="text-[#666666]">
                   {entry.completed_at ? new Date(entry.completed_at).toLocaleString() : '—'}
                 </span>
-                <span className={`font-medium ${entry.status === 'completed' ? 'text-[#1A1A1A]' : 'text-amber-600'}`}>
+                <span className={`font-medium ${entry.status === 'completed' ? 'text-[#1A1A1A]' : 'text-neutral-600'}`}>
                   {entry.status === 'completed' ? 'Completed' : (entry.status || '—')}
                 </span>
                 {entry.quality_score != null && (
@@ -662,13 +662,13 @@ const AgentMonitor = () => {
                     <h4 className="text-[#666666] font-medium mb-1">Reports</h4>
                     <div className="space-y-2 max-h-40 overflow-y-auto">
                       {projectState.security_report && (
-                        <p className="text-gray-300 text-xs"><strong className="text-amber-400">Security:</strong> {String(projectState.security_report).slice(0, 200)}…</p>
+                        <p className="text-gray-300 text-xs"><strong className="text-neutral-400">Security:</strong> {String(projectState.security_report).slice(0, 200)}…</p>
                       )}
                       {projectState.ux_report && (
                         <p className="text-[#666666] text-xs"><strong className="text-[#1A1A1A]">UX:</strong> {String(projectState.ux_report).slice(0, 200)}…</p>
                       )}
                       {projectState.performance_report && (
-                        <p className="text-gray-300 text-xs"><strong className="text-green-400">Perf:</strong> {String(projectState.performance_report).slice(0, 200)}…</p>
+                        <p className="text-gray-300 text-xs"><strong className="text-neutral-400">Perf:</strong> {String(projectState.performance_report).slice(0, 200)}…</p>
                       )}
                     </div>
                   </div>

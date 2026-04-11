@@ -12,12 +12,12 @@ const SAFETY_CHECKS = [
 
 const STATUS_CONFIG = {
   passed: { icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50 border-green-100', label: 'Passed' },
-  warning: { icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-100', label: 'Needs attention' },
+  warning: { icon: AlertTriangle, color: 'text-neutral-700', bg: 'bg-neutral-100 border-neutral-200', label: 'Needs attention' },
   failed: { icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50 border-red-100', label: 'Failed' },
 };
 
-const SCORE_COLOR = (score) => score >= 95 ? 'text-green-600' : score >= 85 ? 'text-amber-600' : 'text-red-600';
-const BAR_COLOR = (score) => score >= 95 ? 'bg-green-500' : score >= 85 ? 'bg-amber-500' : 'bg-red-500';
+const SCORE_COLOR = (score) => score >= 95 ? 'text-green-600' : score >= 85 ? 'text-neutral-600' : 'text-red-600';
+const BAR_COLOR = (score) => score >= 95 ? 'bg-green-500' : score >= 85 ? 'bg-neutral-500' : 'bg-red-500';
 
 export default function SafetyDashboard() {
   const [running, setRunning] = useState(null);

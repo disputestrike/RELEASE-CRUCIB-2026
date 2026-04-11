@@ -60,7 +60,7 @@ const ENTRIES = [
     version: '2.1',
     date: 'February 20, 2026',
     tag: 'Infrastructure',
-    tagColor: '#f59e0b',
+    tagColor: '#737373',
     items: [
       'Deployed to Railway — live at crucibai-production.up.railway.app',
       'PostgreSQL via asyncpg — full relational database with pgvector memory',

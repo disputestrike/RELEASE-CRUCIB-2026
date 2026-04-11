@@ -12,18 +12,18 @@ const T = {
   border:  'rgba(255,255,255,0.12)',
   text:    'var(--theme-text)',
   muted:   'var(--theme-muted)',
-  accent:  '#E05A25',
+  accent:  '#1A1A1A',
   success: '#10b981',
   danger:  '#ef4444',
   info:    '#3b82f6',
-  warn:    '#f59e0b',
+  warn:    '#737373',
   input:   'var(--theme-input, rgba(255,255,255,0.06))',
 };
 
 const ROLES = ['owner', 'admin', 'editor', 'viewer'];
 
 const roleConfig = {
-  owner:  { color: '#f59e0b', label: 'Owner',  icon: Crown },
+  owner:  { color: '#525252', label: 'Owner',  icon: Crown },
   admin:  { color: '#8b5cf6', label: 'Admin',  icon: Shield },
   editor: { color: '#3b82f6', label: 'Editor', icon: Edit2 },
   viewer: { color: T.muted,   label: 'Viewer', icon: Users },
@@ -41,7 +41,7 @@ const RoleBadge = ({ role }) => {
 
 const Avatar = ({ name, email, size = 36 }) => {
   const initial = (name || email || '?').charAt(0).toUpperCase();
-  const colors = ['#E05A25', '#3b82f6', '#8b5cf6', '#10b981', '#f59e0b'];
+  const colors = ['#1A1A1A', '#404040', '#737373', '#A3A3A3', '#D4D4D4'];
   const idx = (name || email || '').charCodeAt(0) % colors.length;
   return (
     <div style={{ width: size, height: size, borderRadius: '50%', background: colors[idx], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.38, fontWeight: 700, color: '#fff', flexShrink: 0 }}>

@@ -15,11 +15,11 @@ const T = {
   border:  'rgba(255,255,255,0.12)',
   text:    'var(--theme-text)',
   muted:   'var(--theme-muted)',
-  accent:  '#E05A25',
+  accent:  '#1A1A1A',
   success: '#10b981',
   danger:  '#ef4444',
   info:    '#3b82f6',
-  warn:    '#f59e0b',
+  warn:    '#737373',
   input:   'var(--theme-input, rgba(255,255,255,0.06))',
 };
 

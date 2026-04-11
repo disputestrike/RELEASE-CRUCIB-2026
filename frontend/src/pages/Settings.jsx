@@ -15,14 +15,15 @@ import { ENGINE_ROOM_ITEMS } from '../config/engineRoomNav';
 
 // Design tokens — matches dark sidebar/workspace exactly
 // T uses CSS variables so theme switching works automatically
+/* Neutrals only: primary controls use black/gray. Reserve red (danger) for delete account + destructive confirm. */
 const T = {
   bg:      'var(--theme-bg)',
   surface: 'var(--theme-surface)',
   border:  'var(--theme-border-vis)',
   text:    'var(--theme-text)',
   muted:   'var(--theme-muted)',
-  accent:  '#E05A25',
-  accentH: '#c94d1e',
+  accent:  '#1A1A1A',
+  accentH: '#000000',
   success: '#10b981',
   danger:  '#ef4444',
   input:   'var(--theme-input)',
@@ -107,7 +108,7 @@ const Row = ({ label, desc, children }) => (
 
 const Msg = ({ type, text }) => {
   if (!text) return null;
-  const c = { success: T.success, error: T.danger, info: '#3b82f6' }[type] || T.danger;
+  const c = { success: T.success, error: T.danger, info: '#737373' }[type] || T.danger;
   const Icon = type === 'success' ? CheckCircle : XCircle;
   return (
     <div style={{ display: 'flex', gap: 8, padding: '10px 14px', borderRadius: 8, background: `${c}18`, border: `1px solid ${c}40`, marginBottom: 14 }}>
@@ -161,7 +162,7 @@ const Settings = () => {
     text:    'var(--theme-text)',
     muted:   'var(--theme-muted)',
     input:   'var(--theme-input)',
-    accent:  '#E05A25',
+    accent:  '#1A1A1A',
   };
 
   // Account
@@ -334,7 +335,7 @@ const Settings = () => {
           {TABS.map(t => {
             const active = tab === t.id;
             return (
-              <button key={t.id} onClick={() => setTab(t.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 8, border: 'none', background: active ? 'rgba(255,255,255,0.07)' : 'none', color: active ? T.text : T.muted, fontSize: 13, fontWeight: active ? 600 : 400, cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s', borderLeft: `2px solid ${active ? T.accent : 'transparent'}` }}>
+              <button key={t.id} onClick={() => setTab(t.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 8, border: 'none', background: active ? 'rgba(255,255,255,0.07)' : 'none', color: active ? T.text : T.muted, fontSize: 13, fontWeight: active ? 600 : 400, cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s', borderLeft: `2px solid ${active ? 'var(--theme-text)' : 'transparent'}` }}>
                 <t.icon size={14} />{t.label}
               </button>
             );
@@ -351,7 +352,7 @@ const Settings = () => {
             <Card>
               <SectionTitle>Profile</SectionTitle>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20, padding: '14px', background: T.input, borderRadius: 10 }}>
-                <div style={{ width: 52, height: 52, borderRadius: '50%', background: T.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{(user?.name?.[0] || 'G').toUpperCase()}</div>
+                <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#3D3D3D', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, color: '#fff', flexShrink: 0 }}>{(user?.name?.[0] || 'G').toUpperCase()}</div>
                 <div>
                   <p style={{ fontSize: 14, fontWeight: 600, color: T.text }}>{user?.name || 'Guest'}</p>
                   <p style={{ fontSize: 12, color: T.muted }}>{user?.email || '—'}</p>
@@ -370,10 +371,10 @@ const Settings = () => {
               <SectionTitle>Deploy integrations</SectionTitle>
               <p style={{ fontSize: 13, color: T.muted, marginBottom: 8 }}>Connect Vercel or Netlify to deploy builds directly from the workspace without downloading a ZIP.</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 16, padding: '10px 12px', background: T.input, borderRadius: 8, border: `1px solid rgba(255,255,255,0.1)` }}>
-                <p style={{ fontSize: 12, color: T.muted, margin: 0 }}>Get your Vercel token at <a href="https://vercel.com/account/tokens" target="_blank" rel="noopener noreferrer" style={{ color: T.accent, textDecoration: 'underline' }}>vercel.com/account/tokens</a></p>
-                <p style={{ fontSize: 12, color: T.muted, margin: 0 }}>Get your Netlify token at <a href="https://app.netlify.com/user/applications#personal-access-tokens" target="_blank" rel="noopener noreferrer" style={{ color: T.accent, textDecoration: 'underline' }}>app.netlify.com/user/applications</a></p>
-                <p style={{ fontSize: 12, color: T.muted, margin: 0 }}>Get your GitHub token at <a href="https://github.com/settings/tokens/new?scopes=repo&description=CrucibAI+Git+Sync" target="_blank" rel="noopener noreferrer" style={{ color: T.accent, textDecoration: 'underline' }}>github.com/settings/tokens</a> (select <code>repo</code> scope)</p>
-                <p style={{ fontSize: 12, color: T.muted, margin: 0 }}>Get your Railway token at <a href="https://railway.app/account/tokens" target="_blank" rel="noopener noreferrer" style={{ color: T.accent, textDecoration: 'underline' }}>railway.app/account/tokens</a></p>
+                <p style={{ fontSize: 12, color: T.muted, margin: 0 }}>Get your Vercel token at <a href="https://vercel.com/account/tokens" target="_blank" rel="noopener noreferrer" style={{ color: T.text, textDecoration: 'underline' }}>vercel.com/account/tokens</a></p>
+                <p style={{ fontSize: 12, color: T.muted, margin: 0 }}>Get your Netlify token at <a href="https://app.netlify.com/user/applications#personal-access-tokens" target="_blank" rel="noopener noreferrer" style={{ color: T.text, textDecoration: 'underline' }}>app.netlify.com/user/applications</a></p>
+                <p style={{ fontSize: 12, color: T.muted, margin: 0 }}>Get your GitHub token at <a href="https://github.com/settings/tokens/new?scopes=repo&description=CrucibAI+Git+Sync" target="_blank" rel="noopener noreferrer" style={{ color: T.text, textDecoration: 'underline' }}>github.com/settings/tokens</a> (select <code>repo</code> scope)</p>
+                <p style={{ fontSize: 12, color: T.muted, margin: 0 }}>Get your Railway token at <a href="https://railway.app/account/tokens" target="_blank" rel="noopener noreferrer" style={{ color: T.text, textDecoration: 'underline' }}>railway.app/account/tokens</a></p>
               </div>
               <Msg type={dMsg?.type} text={dMsg?.text} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
@@ -462,7 +463,7 @@ const Settings = () => {
               <SectionTitle>Credits & Usage</SectionTitle>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
                 {[
-                  { label: 'Credits remaining', value: credits.toLocaleString(), color: credits > 100 ? T.success : T.danger },
+                  { label: 'Credits remaining', value: credits.toLocaleString(), color: T.text },
                   { label: 'Credits used', value: (usage?.credits_used || 0).toLocaleString(), color: T.text },
                   { label: 'Current plan', value: (user?.plan || 'Free').charAt(0).toUpperCase() + (user?.plan || 'free').slice(1), color: T.text },
                 ].map(item => (
@@ -473,7 +474,7 @@ const Settings = () => {
                 ))}
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
-                <Link to="/app/tokens" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 18px', borderRadius: 8, background: T.accent, color: '#fff', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}><Zap size={13} /> Buy credits</Link>
+                <Link to="/app/tokens" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 18px', borderRadius: 8, background: T.input, color: T.text, fontSize: 13, fontWeight: 600, textDecoration: 'none', border: `1.5px solid rgba(255,255,255,0.15)` }}><Zap size={13} /> Buy credits</Link>
                 <Link to="/pricing" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 18px', borderRadius: 8, background: T.input, color: T.text, fontSize: 13, fontWeight: 600, textDecoration: 'none', border: `1.5px solid rgba(255,255,255,0.15)` }}><FileText size={13} /> View plans</Link>
               </div>
             </Card>
@@ -484,7 +485,7 @@ const Settings = () => {
                   <CreditCard size={18} style={{ color: T.muted }} />
                   <div><p style={{ fontSize: 13, fontWeight: 500, color: T.text }}>No payment method on file</p><p style={{ fontSize: 12, color: T.muted }}>Credits are prepaid and never expire</p></div>
                 </div>
-                <Link to="/app/tokens" style={{ fontSize: 13, color: T.accent, textDecoration: 'none', fontWeight: 500 }}>Add card →</Link>
+                <Link to="/app/tokens" style={{ fontSize: 13, color: T.text, textDecoration: 'underline', fontWeight: 500 }}>Add card →</Link>
               </div>
             </Card>
           </motion.div>
@@ -536,7 +537,7 @@ const Settings = () => {
             <Card>
               <SectionTitle>Data retention</SectionTitle>
               <p style={{ fontSize: 13, color: T.muted, marginBottom: 12 }}>Build logs and chat history are kept for 90 days. Projects are kept indefinitely until you delete them.</p>
-              <Link to="/privacy" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: T.accent, textDecoration: 'none' }}>Read our privacy policy <ExternalLink size={12} /></Link>
+              <Link to="/privacy" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: T.text, textDecoration: 'underline' }}>Read our privacy policy <ExternalLink size={12} /></Link>
             </Card>
             <Card>
               <SectionTitle>Help</SectionTitle>
@@ -568,8 +569,8 @@ const Settings = () => {
                       style={{
                         display: 'flex', alignItems: 'center', gap: 14,
                         padding: '14px 16px', borderRadius: 10, cursor: 'pointer',
-                        background: active ? `${T.accent}18` : T.input,
-                        border: `2px solid ${active ? T.accent : 'rgba(255,255,255,0.14)'}`,
+                        background: active ? 'rgba(255,255,255,0.08)' : T.input,
+                        border: `2px solid ${active ? 'var(--theme-text)' : 'rgba(255,255,255,0.14)'}`,
                         textAlign: 'left', transition: 'all 0.15s',
                       }}
                     >
@@ -584,11 +585,11 @@ const Settings = () => {
                       {/* Selection indicator */}
                       <div style={{
                         width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
-                        border: `2px solid ${active ? T.accent : 'rgba(255,255,255,0.2)'}`,
-                        background: active ? T.accent : 'transparent',
+                        border: `2px solid ${active ? (opt.id === 'dark' ? '#E5E5E5' : '#1A1A1A') : 'rgba(255,255,255,0.2)'}`,
+                        background: active ? (opt.id === 'dark' ? '#E5E5E5' : '#1A1A1A') : 'transparent',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                       }}>
-                        {active && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff' }} />}
+                        {active && <div style={{ width: 8, height: 8, borderRadius: '50%', background: opt.id === 'dark' ? '#1A1A1A' : '#fff' }} />}
                       </div>
                     </button>
                   );
@@ -637,7 +638,7 @@ const Settings = () => {
                   >
                     <item.icon size={16} style={{ color: T.muted, flexShrink: 0 }} />
                     <span style={{ flex: 1 }}>{item.label}</span>
-                    {item.beta && <span style={{ fontSize: 10, fontWeight: 600, color: T.accent }}>Beta</span>}
+                    {item.beta && <span style={{ fontSize: 10, fontWeight: 600, color: T.muted, border: `1px solid ${T.border}`, padding: '2px 6px', borderRadius: 4 }}>Beta</span>}
                     <ChevronRight size={14} style={{ color: T.muted, opacity: 0.5 }} />
                   </Link>
                 ))}

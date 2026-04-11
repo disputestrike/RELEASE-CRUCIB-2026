@@ -657,15 +657,15 @@
   padding: 10px;
   border: none;
   border-radius: 8px;
-  background: rgba(224, 90, 37, 0.12);
-  color: #fb923c;
+  background: rgba(64, 64, 64, 0.1);
+  color: #525252;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .dashboard-more-menu-footer:hover {
-  background: rgba(224, 90, 37, 0.2);
+  background: rgba(64, 64, 64, 0.16);
 }
 
 .dashboard-chips {

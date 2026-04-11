@@ -82,7 +82,7 @@ export default function OnboardingPage() {
             type="button"
             onClick={() => selectMode(card)}
             disabled={loading != null}
-            className="w-full max-w-xs p-6 rounded-xl border border-gray-200 bg-white hover:border-orange-500 transition-all text-left flex flex-col items-start gap-4 disabled:opacity-70"
+            className="w-full max-w-xs p-6 rounded-xl border border-gray-200 bg-white hover:border-neutral-400 transition-all text-left flex flex-col items-start gap-4 disabled:opacity-70"
           >
             <Icon className="w-10 h-10 text-[#1A1A1A]" />
             <div>

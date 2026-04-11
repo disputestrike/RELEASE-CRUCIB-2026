@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import JSZip from 'jszip';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -496,7 +496,7 @@ const BuildHistoryPanel = ({ buildHistory, projectId, loading }) => {
             <span className="text-xs text-zinc-400">
               {entry.completed_at ? new Date(entry.completed_at).toLocaleString() : 'â€”'}
             </span>
-            <span className={`text-xs font-medium ${entry.status === 'completed' ? 'text-green-400' : 'text-amber-500'}`}>
+            <span className={`text-xs font-medium ${entry.status === 'completed' ? 'text-green-400' : 'text-neutral-400'}`}>
               {entry.status === 'completed' ? 'Completed' : (entry.status || 'â€”')}
             </span>
           </div>
@@ -517,7 +517,7 @@ const BuildHistoryPanel = ({ buildHistory, projectId, loading }) => {
 };
 
 // â”€â”€ PassesTab: loads real pass data from /api/passes/:taskId â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const PASS_COLORS = ['#a78bfa','#60a5fa','#34d399','#fb923c','#fbbf24','#f87171'];
+const PASS_COLORS = ['#525252', '#737373', '#a3a3a3', '#d4d4d4', '#404040', '#6b7280'];
 
 const PassesTab = ({ taskId, files, versions, token, API, liveSteps, isBuilding }) => {
   const [passData, setPassData] = useState(null);
@@ -3258,7 +3258,7 @@ BUILD IT NOW â€” output every file completely:`;
                         ) : (
                           <div className="w-4 h-4 rounded-full border shrink-0" style={{ borderColor: 'rgba(255,255,255,0.12)' }} />
                         )}
-                        <span className="font-medium" style={{ color: a.status === 'done' ? '#86efac' : a.status === 'running' ? '#fb923c' : 'var(--theme-muted, #52525b)' }}>
+                        <span className="font-medium" style={{ color: a.status === 'done' ? '#86efac' : a.status === 'running' ? '#d4d4d4' : 'var(--theme-muted, #52525b)' }}>
                           {a.name}
                         </span>
                         <span className="truncate opacity-60" style={{ color: 'var(--theme-muted, #3f3f46)' }}>{a.phase}</span>
@@ -3272,7 +3272,7 @@ BUILD IT NOW â€” output every file completely:`;
                           <div className="w-4 h-4 flex items-center justify-center shrink-0">
                             {i === 0 ? <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--theme-accent)' }} /> : <div className="w-3 h-3 rounded-full border" style={{ borderColor: 'rgba(255,255,255,0.12)' }} />}
                           </div>
-                          <span style={{ color: i === 0 ? '#fb923c' : 'var(--theme-muted, #52525b)' }}>{name}</span>
+                          <span style={{ color: i === 0 ? '#d4d4d4' : 'var(--theme-muted, #52525b)' }}>{name}</span>
                           <span className="opacity-50 text-[10px]" style={{ color: 'var(--theme-muted)' }}>
                             {i === 0 ? 'Planning' : i <= 2 ? 'Generating' : i === 5 ? 'Validating' : 'Queued'}
                           </span>
@@ -3829,7 +3829,7 @@ BUILD IT NOW â€” output every file completely:`;
                     <div className="flex items-center gap-3">
                       <div className="text-3xl font-bold" style={{ color: qualityGateResult.score >= 70 ? '#86efac' : '#fbbf24' }}>{qualityGateResult.score}%</div>
                       <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'var(--theme-input)' }}>
-                        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${qualityGateResult.score}%`, background: qualityGateResult.score >= 70 ? '#4ade80' : '#f59e0b' }} />
+                        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${qualityGateResult.score}%`, background: qualityGateResult.score >= 70 ? '#4ade80' : '#737373' }} />
                       </div>
                     </div>
                   </div>

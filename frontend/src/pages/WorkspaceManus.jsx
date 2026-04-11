@@ -1307,7 +1307,7 @@ export default function WorkspaceManus() {
                     <span className="ml-2 font-medium">{buildTimelineEvents.length}</span>
                   </div>
                 </div>
-                {buildEventsErr && <div className="text-xs mt-2 text-amber-300">{buildEventsErr}</div>}
+                {buildEventsErr && <div className="text-xs mt-2 text-neutral-400">{buildEventsErr}</div>}
               </div>
               <div className="rounded-xl p-4 border" style={{ background: "var(--theme-surface2)", borderColor: "var(--theme-border)" }}>
                 <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: "var(--theme-muted)" }}>

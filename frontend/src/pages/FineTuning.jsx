@@ -10,7 +10,7 @@ const DEMO_JOBS = [
 const STATUS_STYLES = {
   completed: { icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50', label: 'Completed' },
   running: { icon: Play, color: 'text-blue-600', bg: 'bg-blue-50', label: 'Training...' },
-  queued: { icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', label: 'Queued' },
+  queued: { icon: Clock, color: 'text-neutral-600', bg: 'bg-neutral-100', label: 'Queued' },
   failed: { icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50', label: 'Failed' },
 };
 
@@ -134,7 +134,7 @@ export default function FineTuning() {
               rows={2} placeholder="What is this fine-tuned model for?" />
           </div>
 
-          <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-800 leading-relaxed">
+          <div className="p-4 bg-neutral-100 border border-neutral-200 rounded-xl text-xs text-neutral-800 leading-relaxed">
             <strong>Before starting:</strong> Fine-tuning uses your API keys (Anthropic or OpenAI). Make sure they are configured in <strong>Settings → Env Variables</strong>. Training typically takes 30–90 minutes and consumes API credits from your provider account, not CrucibAI credits.
           </div>
 

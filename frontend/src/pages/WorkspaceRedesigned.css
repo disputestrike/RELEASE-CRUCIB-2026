@@ -354,7 +354,7 @@
 }
 
 .send-btn:hover:not(:disabled) {
-  background: #E05A25;
+  background: #1A1A1A;
   transform: translateY(-1px);
 }
 

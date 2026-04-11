@@ -199,7 +199,7 @@ const AdminAnalytics = () => {
           <button
             type="button"
             onClick={() => setMode('weekly')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${mode === 'weekly' ? 'bg-orange-600 text-[#1A1A1A]' : 'bg-white/10 text-[#666666] hover:text-[#1A1A1A]'}`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium ${mode === 'weekly' ? 'bg-neutral-300 text-[#1A1A1A]' : 'bg-white/10 text-[#666666] hover:text-[#1A1A1A]'}`}
           >
             Weekly
           </button>
@@ -258,7 +258,7 @@ const AdminAnalytics = () => {
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="w-10 h-10 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-10 h-10 border-2 border-neutral-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : mode === 'daily' ? (
         <div className="rounded-xl border border-black/10 overflow-hidden">

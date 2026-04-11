@@ -80,7 +80,7 @@ export default function AdminLegal() {
                   <button onClick={() => handleReview(r.id, 'false_positive')} className="flex items-center gap-1 px-3 py-1.5 rounded bg-green-600 hover:bg-green-700 text-sm">
                     <CheckCircle className="w-4 h-4" /> False positive
                   </button>
-                  <button onClick={() => handleReview(r.id, 'confirmed')} className="flex items-center gap-1 px-3 py-1.5 rounded bg-amber-600 hover:bg-amber-700 text-sm">
+                  <button onClick={() => handleReview(r.id, 'confirmed')} className="flex items-center gap-1 px-3 py-1.5 rounded bg-neutral-700 hover:bg-neutral-800 text-white text-sm">
                     <ShieldAlert className="w-4 h-4" /> Confirm
                   </button>
                   <button onClick={() => handleReview(r.id, 'escalated')} className="flex items-center gap-1 px-3 py-1.5 rounded bg-red-600 hover:bg-red-700 text-sm">

@@ -42,8 +42,8 @@ const MODELS = [
     speed: 'Ultra Fast',
     quality: 'Good',
     best_for: 'Simple tasks, formatting, quick fixes',
-    color: 'bg-amber-50 border-amber-200 text-amber-800',
-    badge: 'bg-amber-100 text-amber-700',
+    color: 'bg-neutral-100 border-neutral-200 text-neutral-800',
+    badge: 'bg-neutral-200 text-neutral-700',
   },
 ];
 

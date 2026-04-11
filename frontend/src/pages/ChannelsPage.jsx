@@ -12,7 +12,7 @@ const T = {
   border:  'rgba(255,255,255,0.12)',
   text:    'var(--theme-text)',
   muted:   'var(--theme-muted)',
-  accent:  '#E05A25',
+  accent:  '#1A1A1A',
   success: '#10b981',
   danger:  '#ef4444',
   info:    '#3b82f6',
@@ -23,7 +23,7 @@ const CHANNEL_TYPES = [
   { id: 'web_widget', label: 'Web Chat Widget', icon: Globe, color: '#3b82f6', description: 'Embed a chat widget on your website' },
   { id: 'slack', label: 'Slack Bot', icon: Zap, color: '#4a154b', description: 'Connect your AI to a Slack workspace' },
   { id: 'whatsapp', label: 'WhatsApp', icon: Smartphone, color: '#25D366', description: 'Reach customers on WhatsApp via Twilio' },
-  { id: 'api_webhook', label: 'API / Webhook', icon: Webhook, color: '#f59e0b', description: 'POST messages directly to the API endpoint' },
+  { id: 'api_webhook', label: 'API / Webhook', icon: Webhook, color: '#737373', description: 'POST messages directly to the API endpoint' },
 ];
 
 const Inp = ({ value, onChange, placeholder, type = 'text', readOnly }) => (
@@ -60,7 +60,7 @@ const CodeBlock = ({ code }) => {
 const widgetEmbedCode = (cfg) => `<script>
   window.CrucibConfig = {
     title: "${cfg.title || 'Chat with us'}",
-    color: "${cfg.color || '#E05A25'}",
+    color: "${cfg.color || '#1A1A1A'}",
     position: "${cfg.position || 'bottom-right'}"
   };
 </script>
@@ -77,7 +77,7 @@ export default function ChannelsPage() {
   const [testing, setTesting] = useState(null);
 
   // Form state per type
-  const [webForm, setWebForm] = useState({ title: 'Chat with us', color: '#E05A25', position: 'bottom-right' });
+  const [webForm, setWebForm] = useState({ title: 'Chat with us', color: '#1A1A1A', position: 'bottom-right' });
   const [slackForm, setSlackForm] = useState({ webhook_url: '' });
   const [waForm, setWaForm] = useState({ account_sid: '', auth_token: '', phone: '' });
   const [saving, setSaving] = useState(false);
@@ -128,7 +128,7 @@ export default function ChannelsPage() {
   const statusIcon = (status) => {
     if (status === 'active') return <CheckCircle size={14} style={{ color: T.success }} />;
     if (status === 'error') return <AlertCircle size={14} style={{ color: T.danger }} />;
-    return <Clock size={14} style={{ color: '#f59e0b' }} />;
+    return <Clock size={14} style={{ color: '#737373' }} />;
   };
 
   return (
@@ -136,7 +136,7 @@ export default function ChannelsPage() {
       {/* Header */}
       <div style={{ padding: '28px 32px 0', display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(245,158,11,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Radio size={20} style={{ color: '#f59e0b' }} />
+          <Radio size={20} style={{ color: '#737373' }} />
         </div>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Channels</h1>
@@ -195,7 +195,7 @@ export default function ChannelsPage() {
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <input type="color" value={webForm.color} onChange={e => setWebForm(p => ({ ...p, color: e.target.value }))}
                       style={{ width: 40, height: 36, borderRadius: 6, border: `1px solid ${T.border}`, padding: 2, background: T.input, cursor: 'pointer' }} />
-                    <Inp value={webForm.color} onChange={e => setWebForm(p => ({ ...p, color: e.target.value }))} placeholder="#E05A25" />
+                    <Inp value={webForm.color} onChange={e => setWebForm(p => ({ ...p, color: e.target.value }))} placeholder="#1A1A1A" />
                   </div>
                 </Fld>
                 <Fld label="Position">

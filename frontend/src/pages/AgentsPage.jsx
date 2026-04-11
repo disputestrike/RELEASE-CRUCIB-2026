@@ -185,7 +185,7 @@ export default function AgentsPage() {
                   </button>
                 </div>
                 {rotateModal && (
-                  <div className="p-3 rounded bg-amber-50 border border-amber-200 text-sm text-[#1A1A1A]">
+                  <div className="p-3 rounded bg-neutral-100 border border-neutral-200 text-sm text-[#1A1A1A]">
                     <p className="font-medium mb-1">New secret — copy and save; shown once.</p>
                     <p className="text-xs text-[#666666] mb-1">Secret: <code className="bg-white/80 px-1 rounded">{rotateModal.secret}</code></p>
                     <div className="flex items-center gap-2">

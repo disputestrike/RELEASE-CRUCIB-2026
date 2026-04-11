@@ -23,7 +23,7 @@ const INCIDENTS = [
 function StatusBadge({ status }) {
   const configs = {
     operational: { color: '#10b981', bg: '#f0fdf4', label: 'Operational' },
-    degraded: { color: '#f59e0b', bg: '#fffbeb', label: 'Degraded' },
+    degraded: { color: '#525252', bg: '#f5f5f5', label: 'Degraded' },
     outage: { color: '#ef4444', bg: '#fef2f2', label: 'Outage' },
     checking: { color: '#9ca3af', bg: '#f9fafb', label: 'Checking...' },
   };
@@ -77,14 +77,14 @@ export default function Status() {
       <div className="max-w-3xl mx-auto px-6 py-24">
 
         {/* Overall status */}
-        <div className={`p-6 rounded-2xl mb-12 text-center ${allOperational ? 'bg-green-50 border border-green-100' : 'bg-amber-50 border border-amber-100'}`}>
+        <div className={`p-6 rounded-2xl mb-12 text-center ${allOperational ? 'bg-green-50 border border-green-100' : 'bg-neutral-100 border border-neutral-200'}`}>
           <div className="flex items-center justify-center gap-3 mb-2">
-            <div className={`w-3 h-3 rounded-full ${allOperational ? 'bg-green-500' : 'bg-amber-500'}`} style={{ animation: 'pulse 2s infinite' }} />
-            <h1 className={`text-xl font-semibold ${allOperational ? 'text-green-800' : 'text-amber-800'}`}>
+            <div className={`w-3 h-3 rounded-full ${allOperational ? 'bg-green-500' : 'bg-neutral-500'}`} style={{ animation: 'pulse 2s infinite' }} />
+            <h1 className={`text-xl font-semibold ${allOperational ? 'text-green-800' : 'text-neutral-800'}`}>
               {allOperational ? 'All systems operational' : 'Some systems degraded'}
             </h1>
           </div>
-          <p className={`text-sm ${allOperational ? 'text-green-600' : 'text-amber-600'}`}>
+          <p className={`text-sm ${allOperational ? 'text-green-600' : 'text-neutral-600'}`}>
             {lastChecked ? `Last checked: ${lastChecked}` : 'Checking services...'}
             {' · '}30-day uptime: {uptime}
           </p>

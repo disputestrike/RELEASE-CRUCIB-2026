@@ -99,7 +99,7 @@ export default function IDEGit() {
         <div className="mt-3 p-3 border border-gray-200 rounded bg-white text-sm">
           <p><strong>Branch:</strong> {status.branch}</p>
           <p>Modified: {status.modified?.length ?? 0}, Staged: {status.staged?.length ?? 0}, Untracked: {status.untracked?.length ?? 0}</p>
-          {status.conflicted?.length > 0 && <p className="text-amber-600">Conflicted: {status.conflicted.join(", ")}</p>}
+          {status.conflicted?.length > 0 && <p className="text-neutral-600">Conflicted: {status.conflicted.join(", ")}</p>}
           {status.error && <p className="text-red-600">{status.error}</p>}
         </div>
       )}
