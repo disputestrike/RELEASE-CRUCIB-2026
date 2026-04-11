@@ -36,6 +36,9 @@
   max-height: 100%;
   padding: 0;
   overflow: hidden;
+  /* CRITICAL: base .dashboard-redesigned uses align/justify center — that centers the whole chat column */
+  align-items: stretch;
+  justify-content: flex-start;
 }
 
 .home-messages {
