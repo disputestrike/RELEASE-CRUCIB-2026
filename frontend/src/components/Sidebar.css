@@ -90,9 +90,7 @@
 .sidebar.sidebar--collapsed .sidebar-nav,
 .sidebar.sidebar--collapsed .sidebar-section,
 .sidebar.sidebar--collapsed .sidebar-spacer,
-.sidebar.sidebar--collapsed .sidebar-bottom,
 .sidebar.sidebar--collapsed .sidebar-engine-room,
-.sidebar.sidebar--collapsed .sidebar-token-balance,
 .sidebar.sidebar--collapsed .sidebar-footer {
   display: none !important;
 }
@@ -366,7 +364,12 @@
 
 .sidebar-section-action:hover { background: var(--theme-border, rgba(255,255,255,0.08)); color: var(--theme-text, #e4e4e7); }
 
-.sidebar-section-tasks { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.sidebar-section-tasks {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
 
 .sidebar-section-items {
   display: flex;
@@ -379,7 +382,9 @@
 }
 
 .sidebar-section-items-scroll {
-  max-height: 320px;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
   overflow-y: auto;
   overflow-x: visible;
 }
@@ -633,22 +638,7 @@
    SPACER
    ============================================ */
 
-.sidebar-spacer { flex: 1; min-height: 8px; }
-
-/* ============================================
-   BOTTOM SECTION — Engine, Credit, Settings (Manus-like)
-   ============================================ */
-
-/* Manus-style: clearly separated footer — not “all together” with content above */
-.sidebar-bottom {
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--theme-border);
-  padding-bottom: 8px;
-}
+/* Spacer removed — History section flex-grows; credits moved to Layout top bar */
 
 .sidebar-collapsed-account-wrap {
   position: relative;
@@ -742,40 +732,14 @@
 }
 
 /* ============================================
-   TOKEN BALANCE
-   ============================================ */
-
-.sidebar-token-balance {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 8px 12px;
-  padding: 10px 12px;
-  background: var(--theme-border, rgba(255,255,255,0.06));
-  border: 1px solid var(--theme-border, rgba(255,255,255,0.08));
-  border-radius: 8px;
-  text-decoration: none;
-  color: var(--theme-text, #e4e4e7);
-  transition: all 150ms ease;
-  flex-shrink: 0;
-}
-
-.sidebar-token-balance:hover {
-  border-color: rgba(255, 255, 255, 0.15);
-  background: var(--theme-border, rgba(255,255,255,0.08));
-}
-
-.sidebar-token-icon { color: var(--theme-text, #e4e4e7); }
-.sidebar-token-amount { font-size: 16px; font-weight: 700; color: var(--theme-text, #e4e4e7); }
-.sidebar-token-label { font-size: 12px; color: var(--theme-muted, #a1a1aa); }
-
-/* ============================================
    FOOTER — Account area (dropdown trigger)
    ============================================ */
 
 .sidebar-footer {
   flex-shrink: 0;
-  padding: 8px 12px 12px;
+  margin-top: auto;
+  padding: 12px 12px 12px;
+  border-top: 1px solid var(--theme-border);
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -961,7 +925,6 @@
 
 @media (max-width: 640px) {
   .sidebar { width: 100%; }
-  .sidebar-section-items-scroll { max-height: 180px; }
 }
 
 /* Create: New + chevron (minimal IA) */

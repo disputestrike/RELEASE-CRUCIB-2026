@@ -358,7 +358,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
 
   return (
     <div className={`sidebar ${collapsed ? 'sidebar--collapsed' : ''}`}>
-      {/* Collapsed strip — Manus-like: top nav, then spacer, then bottom (Engine, Credit, Settings, Account) */}
+      {/* Collapsed strip — Manus-like: top nav, spacer, account (credits live in app header) */}
       <div className="sidebar-collapsed-strip">
         <div className="sidebar-collapsed-top">
           <button
@@ -394,9 +394,6 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
         </div>
         <div className="sidebar-collapsed-spacer" aria-hidden="true" />
         <div className="sidebar-collapsed-bottom">
-          <Link to="/app/tokens" className="sidebar-collapsed-icon" title="Credit Center" aria-label="Credit Center">
-            <Coins size={20} />
-          </Link>
           <div className="sidebar-collapsed-account-wrap" ref={collapsedAccountRef}>
             <button
               type="button"
@@ -591,9 +588,6 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
       </div>
       )}
 
-      {/* Spacer — pushes History up, keeps credits at bottom */}
-      <div className="sidebar-spacer" />
-
       {/* Delete confirmation — over right pane */}
       {deleteConfirmTask && (
         <div className="sidebar-delete-overlay" onClick={() => setDeleteConfirmTask(null)}>
@@ -608,18 +602,6 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
           </div>
         </div>
       )}
-
-      <div className="sidebar-bottom">
-        <Link to="/app/tokens" className="sidebar-token-balance" title="Credit Center">
-          <Coins size={16} className="sidebar-token-icon" />
-          <span className="sidebar-token-amount">
-            {user != null
-              ? (user.credit_balance ?? Math.floor((user.token_balance ?? 0) / 1000) ?? 0).toLocaleString()
-              : '—'}
-          </span>
-          <span className="sidebar-token-label">credits</span>
-        </Link>
-      </div>
 
       {/* Footer — account trigger with dropdown (Logout, etc.) */}
       <div className="sidebar-footer" ref={accountMenuRef}>

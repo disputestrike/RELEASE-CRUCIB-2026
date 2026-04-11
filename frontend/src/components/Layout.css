@@ -26,6 +26,41 @@
 }
 .layout-mobile-menu-btn:hover { background: var(--theme-surface2); }
 
+.layout-mobile-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.layout-mobile-credits {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  text-decoration: none;
+  color: var(--theme-text);
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--theme-border);
+  background: var(--theme-surface2, rgba(0, 0, 0, 0.04));
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.layout-mobile-credits:hover {
+  background: var(--theme-border);
+  border-color: var(--theme-text);
+}
+
+.layout-mobile-credits-icon {
+  color: var(--theme-muted);
+  flex-shrink: 0;
+}
+
+.layout-mobile-credits-value {
+  font-variant-numeric: tabular-nums;
+}
+
 .layout-mobile-overlay {
   position: fixed; top: 48px; left: 0; bottom: 0; width: 280px;
   z-index: 55;
@@ -44,11 +79,46 @@
 /* Top bar — theme-aware border (visible in both light and dark) */
 .layout-topbar {
   display: flex; align-items: center; justify-content: flex-end;
-  padding: 8px 16px;
+  padding: 8px 20px;
   border-bottom: 1px solid var(--theme-border);
   background: var(--theme-surface);
   color: var(--theme-text);
   flex-shrink: 0;
+}
+
+@media (max-width: 1024px) {
+  .layout-topbar {
+    display: none;
+  }
+}
+
+.layout-topbar-credits {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  text-decoration: none;
+  color: var(--theme-text);
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid var(--theme-border);
+  background: var(--theme-bg);
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.layout-topbar-credits:hover {
+  border-color: var(--theme-text);
+  background: var(--theme-surface2, rgba(0, 0, 0, 0.04));
+}
+
+.layout-topbar-credits-icon {
+  color: var(--theme-muted);
+  flex-shrink: 0;
+}
+
+.layout-topbar-credits-value {
+  font-variant-numeric: tabular-nums;
 }
 
 .layout-panel-toggle {

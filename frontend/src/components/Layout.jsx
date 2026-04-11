@@ -6,7 +6,7 @@ import { useTaskStore } from '../stores/useTaskStore';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Sparkles } from 'lucide-react';
 import Layout3Column from './Layout3Column';
 import Logo from './Logo';
 import './Layout.css';
@@ -93,6 +93,11 @@ const Layout = () => {
     navigate('/');
   };
 
+  const creditsAmount =
+    user != null
+      ? (user.credit_balance ?? Math.floor((user.token_balance ?? 0) / 1000) ?? 0).toLocaleString()
+      : '—';
+
   // Sidebar content (receives collapse state for collapsed strip + account menu)
   const sidebarContent = (
     <Sidebar
@@ -129,7 +134,13 @@ const Layout = () => {
   // Main content
   const mainContent = (
     <div className="layout-main-wrapper">
-      {/* Right panel toggle removed — workspace manages its own preview panel */}
+      {/* Credits — top right (Manus-style); frees sidebar history space */}
+      <div className="layout-topbar" role="region" aria-label="Credits">
+        <Link to="/app/tokens" className="layout-topbar-credits" title="Credits & Billing">
+          <Sparkles size={16} className="layout-topbar-credits-icon" aria-hidden />
+          <span className="layout-topbar-credits-value">{creditsAmount}</span>
+        </Link>
+      </div>
 
       {user?.internal_team && (
         <div className="layout-internal-banner">
@@ -178,9 +189,15 @@ const Layout = () => {
       {/* Mobile Header */}
       <header className="layout-mobile-header-bar">
         <Logo variant="full" height={28} href="/app" className="layout-mobile-logo" showTagline={false} />
-        <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="layout-mobile-menu-btn" aria-label="Toggle menu">
-          {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
+        <div className="layout-mobile-header-actions">
+          <Link to="/app/tokens" className="layout-mobile-credits" title="Credits & Billing">
+            <Sparkles size={16} className="layout-mobile-credits-icon" aria-hidden />
+            <span className="layout-mobile-credits-value">{creditsAmount}</span>
+          </Link>
+          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="layout-mobile-menu-btn" aria-label="Toggle menu">
+            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
       </header>
 
       {/* Mobile Menu Overlay */}
