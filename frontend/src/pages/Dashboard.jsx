@@ -285,8 +285,8 @@ const Dashboard = () => {
     const el = inputRef.current;
     if (!el) return;
     const inChat = chatMessages.length > 0;
-    const maxPx = inChat ? 168 : 240;
-    const minPx = inChat ? 40 : 28;
+    const maxPx = inChat ? 140 : 240;
+    const minPx = inChat ? 36 : 28;
     el.style.height = 'auto';
     el.style.height = `${Math.min(Math.max(el.scrollHeight, minPx), maxPx)}px`;
   }, [prompt, chatMessages.length]);

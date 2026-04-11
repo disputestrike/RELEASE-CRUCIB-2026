@@ -46,15 +46,13 @@
   justify-content: flex-start;
   align-items: center;
   gap: 40px;
-  scrollbar-width: thin;
-  scrollbar-color: var(--theme-border, rgba(255, 255, 255, 0.2)) transparent;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 .home-messages::-webkit-scrollbar {
-  width: 8px;
-}
-.home-messages::-webkit-scrollbar-thumb {
-  background: var(--theme-border, rgba(255, 255, 255, 0.15));
-  border-radius: 4px;
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 /* Empty home: center hero in remaining space above scroll */
@@ -68,38 +66,46 @@
   min-height: min(560px, 72vh);
 }
 
-/* Chat: scrollable transcript; bubbles align L/R within full-width row */
+/* Chat: full-width transcript — user at far right, assistant at far left (Manus-style lanes) */
 .home-messages.has-chat {
   justify-content: flex-start;
   align-items: stretch;
-  padding-left: 56px;
-  padding-right: 56px;
+  padding-left: 28px;
+  padding-right: 28px;
   gap: 0;
 }
 
 @media (max-width: 1024px) {
   .home-messages.has-chat {
-    padding-left: 24px;
-    padding-right: 24px;
+    padding-left: 20px;
+    padding-right: 20px;
   }
 }
 
 @media (max-width: 640px) {
   .home-messages.has-chat {
-    padding-left: 12px;
-    padding-right: 12px;
+    padding-left: 14px;
+    padding-right: 14px;
   }
 }
 
 .home-input-bar {
   flex-shrink: 0;
   width: 100%;
-  padding: 12px 24px 16px;
+  padding: 10px 20px 14px;
   background: var(--theme-bg, #111113);
   border-top: 1px solid var(--theme-border, rgba(255, 255, 255, 0.12));
   display: flex;
   justify-content: stretch;
   align-items: flex-end;
+}
+
+/* Chat mode: no extra rule above composer — one surface with page */
+.home-input-bar--chat {
+  border-top: none;
+  background: var(--theme-bg);
+  padding-top: 8px;
+  padding-bottom: 12px;
 }
 
 .home-prompt-wrapper {
@@ -109,17 +115,19 @@
   padding: 0 24px;
 }
 
-/* Chat mode: input and thread — Manus-scale width (matches workspace composer token intent) */
+/* Chat composer: slightly narrower pill so transcript has more visual room */
 .home-input-bar--chat .home-prompt-wrapper {
-  max-width: min(1120px, calc(100vw - 48px));
+  max-width: min(640px, calc(100vw - 32px));
   margin-left: auto;
   margin-right: auto;
+  padding-left: 0;
+  padding-right: 0;
 }
 
 /* Chat mode — compact composer; grows with text up to max, then scrolls */
 .dashboard-prompt-form--chat .dashboard-prompt-container--stacked .dashboard-prompt-input {
-  min-height: 44px;
-  max-height: 168px;
+  min-height: 40px;
+  max-height: 140px;
 }
 
 .dashboard-prompt-inline {
@@ -193,7 +201,7 @@
 
 .dashboard-prompt-form--chat {
   align-items: stretch;
-  max-width: min(720px, 100%);
+  max-width: min(640px, calc(100% - 8px));
   margin-left: auto;
   margin-right: auto;
 }
@@ -214,13 +222,26 @@
 }
 
 .dashboard-prompt-container--chat {
-  min-height: 72px;
-  padding: 10px 14px 8px;
+  min-height: 64px;
+  padding: 8px 12px 6px;
+  box-shadow: none;
+  border-color: var(--theme-border);
+}
+
+.dashboard-prompt-form--chat .dashboard-prompt-footer {
+  border-top: none;
+  margin-top: 8px;
+  padding-top: 8px;
 }
 
 .dashboard-prompt-container:focus-within {
   border-color: var(--theme-border-focus, #a1a1aa);
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25), 0 0 0 2px rgba(255, 255, 255, 0.12);
+}
+
+.dashboard-prompt-form--chat .dashboard-prompt-container--chat:focus-within {
+  border-color: var(--theme-border-vis, var(--theme-border));
+  box-shadow: none;
 }
 
 .dashboard-prompt-input {
@@ -456,15 +477,22 @@
    ============================================ */
 
 .dashboard-chat-thread {
+  --chat-bubble-max: min(40rem, calc(50vw - 48px));
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 22px;
   width: 100%;
-  max-width: min(720px, 100%);
-  margin: 0 auto;
-  padding: 8px 0 24px;
+  max-width: none;
+  margin: 0;
+  padding: 4px 0 16px;
   align-self: stretch;
   box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .dashboard-chat-thread {
+    --chat-bubble-max: min(40rem, calc(100% - 8px));
+  }
 }
 
 .dashboard-chat-msg {
@@ -488,8 +516,9 @@
   align-items: center;
   gap: 6px;
   margin-bottom: 4px;
-  width: 100%;
-  max-width: 85%;
+  width: auto;
+  max-width: var(--chat-bubble-max, min(40rem, calc(50vw - 48px)));
+  align-self: flex-start;
 }
 
 .dashboard-chat-identifier span,
@@ -503,11 +532,11 @@
   display: none;
 }
 
-/* Approved: 16-20px horizontal, 12-16px vertical */
+/* Bubbles: capped width per side so lanes stay separated (never meet in the middle) */
 .dashboard-chat-bubble {
-  max-width: 85%;
-  padding: 14px 18px;
-  border-radius: 12px;
+  max-width: var(--chat-bubble-max, min(40rem, calc(50vw - 48px)));
+  padding: 12px 16px;
+  border-radius: 14px;
   font-size: 14px;
   line-height: 1.45;
   font-family: 'DM Sans', sans-serif;
@@ -518,26 +547,35 @@
 
 .dashboard-chat-bubble.user {
   background: var(--theme-input, #27272a);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid transparent;
   color: var(--theme-text, #e4e4e7);
-  border-bottom-right-radius: 4px;
-  padding: 14px 18px;
+  border-bottom-right-radius: 6px;
+  padding: 12px 16px;
   width: fit-content;
-  max-width: 85%;
+  max-width: var(--chat-bubble-max, min(40rem, calc(50vw - 48px)));
+}
+
+[data-theme="light"] .dashboard-chat-bubble.user {
+  background: var(--theme-surface2, #f0f0ee);
 }
 
 .dashboard-chat-bubble.assistant {
   background: var(--theme-surface, #18181B);
-  border: 1px solid var(--theme-border, rgba(255,255,255,0.08));
+  border: 1px solid transparent;
   color: var(--chat-text, var(--theme-text, #e4e4e7));
-  border-bottom-left-radius: 4px;
-  padding: 14px 18px;
+  border-bottom-left-radius: 6px;
+  padding: 12px 16px;
+}
+
+[data-theme="light"] .dashboard-chat-bubble.assistant {
+  background: var(--theme-surface, #ffffff);
 }
 
 /* Start Building — CTA when build intent detected */
 .dashboard-chat-build-offer {
   margin-top: 6px;
-  max-width: 85%;
+  max-width: var(--chat-bubble-max, min(40rem, calc(50vw - 48px)));
+  align-self: flex-start;
 }
 
 .dashboard-chat-start-building-btn {
@@ -566,7 +604,7 @@
   align-items: center;
   gap: 4px;
   margin-top: 4px;
-  max-width: 85%;
+  max-width: var(--chat-bubble-max, min(40rem, calc(50vw - 48px)));
 }
 
 .dashboard-chat-actions.user {

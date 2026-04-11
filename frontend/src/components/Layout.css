@@ -159,6 +159,11 @@
 
 .layout-page-content--fullbleed { padding: 0; overflow: hidden; }
 
+/* Dashboard home: seamless with chat surface (no boxed band above footer) */
+.layout-page-content--dash-home {
+  padding-bottom: 0;
+}
+
 /* Footer */
 .layout-footer {
   display: flex; align-items: center; justify-content: space-between;
@@ -190,6 +195,12 @@
   text-decoration: none; transition: color 150ms ease;
 }
 .layout-footer-links a:hover { color: var(--theme-text); text-decoration: underline; }
+
+.layout-footer--dash-home {
+  border-top-color: transparent;
+  background: var(--theme-bg);
+}
+
 /* Light theme: ensure footer text is always legible (dark on light) */
 [data-theme="light"] .layout-footer {
   color: #374151;

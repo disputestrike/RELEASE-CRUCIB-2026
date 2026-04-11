@@ -27,6 +27,8 @@ import OnboardingTour from './OnboardingTour';
 const Layout = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  /** Dashboard home (`/app`) — Manus-like: hide heavy footer rule so chat feels open */
+  const isAppHomeDashboard = location.pathname === '/app' || location.pathname === '/app/';
   const { user, logout, token, refreshUser } = useAuth();
   const { sidebarOpen, setSidebarOpen, toggleSidebar } = useLayoutStore();
   const { tasks: storeTasks } = useTaskStore();
@@ -148,7 +150,9 @@ const Layout = () => {
         </div>
       )}
 
-      <div className={`layout-page-content ${isWorkspaceView ? 'layout-page-content--fullbleed' : ''}`}>
+      <div
+        className={`layout-page-content ${isWorkspaceView ? 'layout-page-content--fullbleed' : ''} ${isAppHomeDashboard ? 'layout-page-content--dash-home' : ''}`}
+      >
         <Outlet context={{
           setPreviewContent,
           setCodeContent,
@@ -162,7 +166,7 @@ const Layout = () => {
       </div>
 
       {/* Footer */}
-      <footer className="layout-footer">
+      <footer className={`layout-footer ${isAppHomeDashboard ? 'layout-footer--dash-home' : ''}`}>
         <span className="layout-footer-status">
           {backendOk === true && <span className="status-green">● Connected</span>}
           {backendOk === false && (
