@@ -51,6 +51,20 @@ function formatChatContent(content) {
   return String(content);
 }
 
+function genMessageId() {
+  return `msg_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+}
+
+/** Ensure every message has a stable id (and optional reaction) for UI + persistence. */
+function normalizeMessagesForStore(msgs) {
+  if (!Array.isArray(msgs)) return [];
+  return msgs.map((m) => ({
+    ...m,
+    id: typeof m?.id === 'string' && m.id ? m.id : genMessageId(),
+    ...(m?.reaction === 'up' || m?.reaction === 'down' ? { reaction: m.reaction } : {}),
+  }));
+}
+
 /** Prior turns for API: all messages before the latest user line (exclusive). */
 function buildPriorTurnsFromMessages(msgs) {
   if (!Array.isArray(msgs) || msgs.length < 2) return [];
@@ -58,6 +72,36 @@ function buildPriorTurnsFromMessages(msgs) {
     role: m.role === 'assistant' ? 'assistant' : 'user',
     content: formatChatContent(m.content),
   }));
+}
+
+function lastUserContentBeforeIndex(messages, assistantIndex) {
+  for (let j = assistantIndex - 1; j >= 0; j -= 1) {
+    if (messages[j]?.role === 'user') return formatChatContent(messages[j].content);
+  }
+  return '';
+}
+
+const USER_WANTS_CODE_RE = /\b(code|snippet|implement(ation)?|jsx|tsx|python|java(script)?|typescript|react\s+component|write\s+(a\s+)?function|show\s+(me\s+)?(the\s+)?code|npm\s+install|example\s+code|paste\s+(the\s+)?code)\b/i;
+
+function userRequestedCodeBlock(userText) {
+  if (!userText || typeof userText !== 'string') return false;
+  if (USER_WANTS_CODE_RE.test(userText)) return true;
+  if (/```/.test(userText)) return true;
+  return false;
+}
+
+/** Display-only cleanup when the model still emits markdown/code in prose answers. */
+function sanitizeAssistantDisplay(raw, allowCodeFences) {
+  if (raw == null || typeof raw !== 'string') return '';
+  let t = raw;
+  if (!allowCodeFences) {
+    t = t.replace(/```[\w.-]*\n[\s\S]*?```/g, '\n\n');
+    t = t.replace(/```[\s\S]*?```/g, '\n\n');
+  }
+  t = t.replace(/\*\*([^*]+)\*\*/g, '$1');
+  t = t.replace(/(^|[\s>])\*([^*\n]+)\*(?=[\s<]|$)/gm, '$1$2');
+  t = t.replace(/^\s*\*\s+(.+)$/gm, '• $1');
+  return t.replace(/\n{3,}/g, '\n\n').trim();
 }
 
 function isDefinitelyChat(prompt) {
@@ -181,8 +225,6 @@ const Dashboard = () => {
   // Chat state for conversational (non-build) messages
   const [chatMessages, setChatMessages] = useState([]);
   const [chatLoading, setChatLoading] = useState(false);
-  /** assistant message index -> 'up' | 'down' */
-  const [msgReactions, setMsgReactions] = useState({});
   const [conversationStarted, setConversationStarted] = useState(false);
   const [audioStream, setAudioStream] = useState(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -259,7 +301,7 @@ const Dashboard = () => {
       const task = storeTasks?.find(t => t.id === chatTaskId);
       const msgs = task?.messages;
       if (msgs && Array.isArray(msgs) && msgs.length > 0) {
-        setChatMessages(msgs);
+        setChatMessages(normalizeMessagesForStore(msgs));
         setConversationStarted(true);
       }
       // If task has no messages yet (mid-send), keep in-memory chat — never clear optimistic turns
@@ -440,11 +482,13 @@ const Dashboard = () => {
             ? 'webhook-triggered'
             : 'scheduled';
         setChatMessages(prev => [...prev, {
+          id: genMessageId(),
           role: 'assistant',
           content: `✅ Agent created — ${schedule}. You can manage it in the Agents page.`
         }]);
       } catch (err) {
         setChatMessages(prev => [...prev, {
+          id: genMessageId(),
           role: 'assistant',
           content: err.response?.data?.detail || err.message || 'Could not create agent. Try again or create from the Agents page.'
         }]);
@@ -463,7 +507,7 @@ const Dashboard = () => {
         prompt: userPrompt,
         status: 'completed',
         type: 'chat',
-        messages: [userMsg],
+        messages: normalizeMessagesForStore([userMsg]),
         ...(pidFromUrl ? { linkedProjectId: pidFromUrl } : {}),
       });
     if (!existingTaskId) {
@@ -493,12 +537,13 @@ const Dashboard = () => {
       const backendUnavailable = "Backend not available. Start the CrucibAI backend to use AI (see BACKEND_SETUP.md). You can still try \"Build me a landing page\" — it will open the Workspace; the build will need the backend running.";
       const fallback = is404 ? backendUnavailable : "Chat failed. For AI replies, run the backend (e.g. from CrucibAI) with Ollama. See BACKEND_SETUP.md.";
       const assistantMsg = {
+        id: genMessageId(),
         role: 'assistant',
         content: (typeof detail === 'string' && detail && !is404) ? detail : (err.message?.includes('404') ? backendUnavailable : (err.message || fallback))
       };
       let afterAssistantErr;
       setChatMessages((prev) => {
-        afterAssistantErr = [...prev, assistantMsg];
+        afterAssistantErr = normalizeMessagesForStore([...prev, assistantMsg]);
         return afterAssistantErr;
       });
       if (afterAssistantErr) updateTask(taskId, { messages: afterAssistantErr, prompt: userPrompt });
@@ -717,24 +762,24 @@ const Dashboard = () => {
     if (!userPrev || userPrev.role !== 'user') return;
     const taskId = chatTaskIdRef.current;
     if (!taskId) return;
-    const kept = chatMessages.slice(0, assistantIndex);
+    const kept = normalizeMessagesForStore(chatMessages.slice(0, assistantIndex));
     const userText = formatChatContent(userPrev.content);
     const priorTurns = buildPriorTurnsFromMessages(kept);
-    setMsgReactions({});
     stickToBottomRef.current = true;
     setChatMessages(kept);
+    updateTask(taskId, { messages: kept, prompt: userText });
     setChatLoading(true);
     requestAnimationFrame(() => scrollTranscriptToBottom('instant'));
     try {
       const reply = await requestAssistantReply(taskId, userText, priorTurns, [])
         || 'No response from model. Try again.';
-      const after = [...kept, { role: 'assistant', content: reply }];
+      const after = normalizeMessagesForStore([...kept, { id: genMessageId(), role: 'assistant', content: reply }]);
       setChatMessages(after);
       updateTask(taskId, { messages: after, prompt: userText });
     } catch (err) {
       const detail = err.response?.data?.detail;
       const fallback = (typeof detail === 'string' && detail) ? detail : (err.message || 'Regenerate failed. Try again.');
-      const after = [...kept, { role: 'assistant', content: fallback }];
+      const after = normalizeMessagesForStore([...kept, { id: genMessageId(), role: 'assistant', content: fallback }]);
       setChatMessages(after);
       updateTask(taskId, { messages: after, prompt: userText });
     } finally {
@@ -742,30 +787,44 @@ const Dashboard = () => {
     }
   };
 
-  const handleShareAssistant = (i) => {
+  const handleShareAssistant = async (i) => {
     const text = formatChatContent(chatMessages[i]?.content);
     const base = `${window.location.origin}/app`;
     const tid = chatTaskIdRef.current;
     const url = tid ? `${base}?chatTaskId=${encodeURIComponent(tid)}` : base;
     const payload = text ? `${text}\n\n—\n${url}` : url;
+    const done = () => setActionFeedback({ type: 'share', index: i, role: 'assistant' });
     if (navigator.share) {
-      navigator.share({ title: 'CrucibAI', text: payload }).catch(() => {
-        navigator.clipboard?.writeText(payload).then(() => setActionFeedback({ type: 'share', index: i, role: 'assistant' }));
-      });
-    } else {
-      navigator.clipboard?.writeText(payload).then(() => setActionFeedback({ type: 'share', index: i, role: 'assistant' }));
+      try {
+        await navigator.share({ title: 'CrucibAI', text: payload });
+        done();
+        return;
+      } catch (e) {
+        if (e && e.name === 'AbortError') return;
+      }
     }
+    try {
+      await navigator.clipboard.writeText(payload);
+      done();
+    } catch (_) {}
   };
 
   const toggleMsgReaction = (i, dir) => {
-    setMsgReactions((prev) => {
-      const cur = prev[i];
-      const next = cur === dir ? null : dir;
-      const copy = { ...prev };
-      if (next == null) delete copy[i];
-      else copy[i] = next;
-      return copy;
+    const taskId = chatTaskIdRef.current;
+    if (!taskId) return;
+    let nextMessages;
+    setChatMessages((prev) => {
+      const msg = prev[i];
+      if (!msg || msg.role !== 'assistant') return prev;
+      const cur = msg.reaction;
+      const nextVal = cur === dir ? undefined : dir;
+      const nextMsg = { ...msg };
+      if (nextVal === undefined) delete nextMsg.reaction;
+      else nextMsg.reaction = nextVal;
+      nextMessages = prev.map((m, idx) => (idx === i ? nextMsg : m));
+      return nextMessages;
     });
+    if (nextMessages) updateTask(taskId, { messages: nextMessages });
   };
 
   const handleStartBuilding = (buildOffer) => {
@@ -1056,9 +1115,14 @@ const Dashboard = () => {
           <div className="dashboard-chat-shell">
             <div className="dashboard-chat-inner">
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="dashboard-chat-thread">
-              {chatMessages.map((msg, i) => (
+              {chatMessages.map((msg, i) => {
+                const userAskedCode = msg.role === 'assistant' && userRequestedCodeBlock(lastUserContentBeforeIndex(chatMessages, i));
+                const bubbleText = msg.role === 'assistant'
+                  ? sanitizeAssistantDisplay(formatChatContent(msg.content), userAskedCode)
+                  : formatChatContent(msg.content);
+                return (
                 <div
-                  key={i}
+                  key={msg.id || `row-${i}`}
                   className={`dashboard-chat-row ${msg.role === 'user' ? 'dashboard-chat-row--user' : 'dashboard-chat-row--assistant'}`}
                 >
                   <div className="dashboard-chat-cluster">
@@ -1069,7 +1133,7 @@ const Dashboard = () => {
                       </div>
                     )}
                     <div className={`dashboard-chat-bubble ${msg.role}`}>
-                      {formatChatContent(msg.content)}
+                      {bubbleText}
                     </div>
                     {msg.buildOffer && (
                       <div className="dashboard-chat-build-offer">
@@ -1091,20 +1155,20 @@ const Dashboard = () => {
                         </button>
                         <button
                           type="button"
-                          className={`dashboard-chat-action${msgReactions[i] === 'up' ? ' dashboard-chat-action--active' : ''}`}
+                          className={`dashboard-chat-action${msg.reaction === 'up' ? ' dashboard-chat-action--active' : ''}`}
                           title="Helpful"
                           aria-label="Thumbs up"
-                          aria-pressed={msgReactions[i] === 'up'}
+                          aria-pressed={msg.reaction === 'up'}
                           onClick={() => toggleMsgReaction(i, 'up')}
                         >
                           <ThumbsUp size={14} />
                         </button>
                         <button
                           type="button"
-                          className={`dashboard-chat-action${msgReactions[i] === 'down' ? ' dashboard-chat-action--active' : ''}`}
+                          className={`dashboard-chat-action${msg.reaction === 'down' ? ' dashboard-chat-action--active' : ''}`}
                           title="Not helpful"
                           aria-label="Thumbs down"
-                          aria-pressed={msgReactions[i] === 'down'}
+                          aria-pressed={msg.reaction === 'down'}
                           onClick={() => toggleMsgReaction(i, 'down')}
                         >
                           <ThumbsDown size={14} />
@@ -1148,7 +1212,8 @@ const Dashboard = () => {
                     )}
                   </div>
                 </div>
-              ))}
+                );
+              })}
               {chatLoading && (
                 <div className="dashboard-chat-row dashboard-chat-row--assistant">
                   <div className="dashboard-chat-cluster">
