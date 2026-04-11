@@ -4,7 +4,7 @@
   border: 1px solid var(--border-1);
   border-radius: var(--radius-lg);
   padding: 24px;
-  max-width: 640px;
+  max-width: var(--uw-composer-max-width, min(920px, calc(100vw - 96px)));
   width: 100%;
   margin: 0 auto;
   font-family: 'Inter', system-ui, sans-serif;

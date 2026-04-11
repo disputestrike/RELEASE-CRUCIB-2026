@@ -310,6 +310,13 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.arp-center-pane::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .arp-execution-area {

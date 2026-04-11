@@ -131,16 +131,6 @@ const QUICK_START_CHIPS = [
 /** First row on home (Manus-style); Import + templates live under “More”. */
 const HOME_PRIMARY_CHIPS = QUICK_START_CHIPS.slice(0, 4);
 
-const GOLDEN_PATH_STEPS = [
-  'Prompt or import',
-  'Approve plan',
-  'Watch build',
-  'Review proof',
-  'Preview app',
-  'Publish URL',
-  'Continue improving',
-];
-
 const Dashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -158,7 +148,6 @@ const Dashboard = () => {
   const [gitUrl, setGitUrl] = useState('');
   const [importLoading, setImportLoading] = useState(false);
   const [importError, setImportError] = useState(null);
-  const [showGoldenPathModal, setShowGoldenPathModal] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const moreMenuRef = useRef(null);
   // Chat state for conversational (non-build) messages
@@ -687,23 +676,30 @@ const Dashboard = () => {
           className="dashboard-prompt-input"
           rows={1}
         />
-        <div className="dashboard-prompt-actions">
-          <div className="dashboard-model-badge" title="Auto-selects best model">
-            <Sparkles size={14} />
-          </div>
-          <button type="button" onClick={() => fileInputRef.current?.click()} className="dashboard-prompt-btn" title="Attach file">
-            <Paperclip size={18} />
-          </button>
-          <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.txt,.md,.zip,audio/*,.js,.jsx,.ts,.tsx,.css,.html,.json,.py" onChange={handleFileSelect} className="hidden" />
-          {isRecording ? (
-            <VoiceWaveform stream={audioStream} onStop={stopRecording} onConfirm={confirmRecording} isRecording={isRecording} />
-          ) : (
-            <button type="button" onClick={isTranscribing ? undefined : startRecording} disabled={isTranscribing} className={`dashboard-prompt-btn ${isRecording ? 'recording' : ''}`} title={isTranscribing ? 'Transcribing...' : 'Voice input (9 languages)'}>
-              {isTranscribing ? <Loader2 size={18} className="animate-spin" /> : <Mic size={18} />}
+        <div className="dashboard-prompt-footer">
+          <div className="dashboard-prompt-footer-tools">
+            <div className="dashboard-model-badge" title="Auto-selects best model">
+              <Sparkles size={14} />
+            </div>
+            <button type="button" onClick={() => fileInputRef.current?.click()} className="dashboard-prompt-btn" title="Attach file">
+              <Paperclip size={18} />
             </button>
-          )}
-          <button type="submit" disabled={(!prompt.trim() && !attachedFiles.length) || chatLoading} className="dashboard-prompt-submit" title="Send">
-            {chatLoading ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} />}
+            <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.txt,.md,.zip,audio/*,.js,.jsx,.ts,.tsx,.css,.html,.json,.py" onChange={handleFileSelect} className="hidden" />
+            {isRecording ? (
+              <VoiceWaveform stream={audioStream} onStop={stopRecording} onConfirm={confirmRecording} isRecording={isRecording} />
+            ) : (
+              <button type="button" onClick={isTranscribing ? undefined : startRecording} disabled={isTranscribing} className={`dashboard-prompt-btn ${isRecording ? 'recording' : ''}`} title={isTranscribing ? 'Transcribing...' : 'Voice input (9 languages)'}>
+                {isTranscribing ? <Loader2 size={18} className="animate-spin" /> : <Mic size={18} />}
+              </button>
+            )}
+          </div>
+          <button
+            type="submit"
+            disabled={(!prompt.trim() && !attachedFiles.length) || chatLoading}
+            className={`dashboard-prompt-submit ${!chatLoading && (prompt.trim() || attachedFiles.length) ? 'dashboard-prompt-submit--ready' : ''}`}
+            title="Send"
+          >
+            {chatLoading ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} strokeWidth={2.25} />}
           </button>
         </div>
         {actionFeedback?.type === 'mic_error' && (
@@ -740,7 +736,6 @@ const Dashboard = () => {
               {inputForm}
             </motion.div>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.15 }} className="dashboard-chips" ref={moreMenuRef}>
-              <span className="dashboard-chips-label">Quick start</span>
               <div className="dashboard-chips-row">
                 <div className="dashboard-chips-grid">
                   {HOME_PRIMARY_CHIPS.map((chip) => (
@@ -807,11 +802,6 @@ const Dashboard = () => {
                   )}
                 </div>
               </div>
-            </motion.div>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.35, delay: 0.2 }} className="dashboard-how-builds-wrap">
-              <button type="button" className="dashboard-how-builds-work" onClick={() => setShowGoldenPathModal(true)}>
-                How builds work
-              </button>
             </motion.div>
             </div>
 
@@ -1068,42 +1058,6 @@ const Dashboard = () => {
                   {importLoading ? 'Importing...' : 'Import'}
                 </button>
               </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showGoldenPathModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="dashboard-modal-overlay"
-            onClick={() => setShowGoldenPathModal(false)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="dashboard-modal dashboard-modal--golden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="dashboard-modal-header">
-                <h2>How CrucibAI builds</h2>
-                <button type="button" onClick={() => setShowGoldenPathModal(false)} className="dashboard-modal-close">
-                  <X size={20} />
-                </button>
-              </div>
-              <p className="dashboard-golden-modal-lead">Build, prove, preview, publish, then keep improving.</p>
-              <ol className="dashboard-golden-modal-steps">
-                {GOLDEN_PATH_STEPS.map((step, index) => (
-                  <li key={step}>
-                    <span className="dashboard-golden-modal-step-num">{index + 1}</span>
-                    {step}
-                  </li>
-                ))}
-              </ol>
             </motion.div>
           </motion.div>
         )}

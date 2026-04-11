@@ -11,9 +11,9 @@
 | # | Requirement | Verify |
 |---|----------------|--------|
 | H1 | Golden path **card removed** from default home | Open `/app` (no chat). No large “Golden path” bordered card. |
-| H2 | Golden path content available via **“How builds work”** | Click link → modal opens with 7 steps; overlay click or X closes. |
+| H2 | (Removed) ~~“How builds work”~~ — link and modal removed per product decision | — |
 | H3 | **No** full-width “What can I build?” **grid** on home | No 5-column skill cards on home. |
-| H4 | **Quick start** shows **4** primary chips only | Visible: Build website, Develop app, Design UI, SaaS MVP. |
+| H4 | Primary chips row **without** “Quick start” label | Chips row only; no uppercase label above chips. |
 | H5 | **More** menu contains Import + all **SKILLS** starters + gallery CTA | Open More → Import code; template rows; footer “Browse templates & gallery” → `/app/templates`. |
 | H6 | **Spacing / measure**: calmer vertical rhythm, narrower column | Content column max-width ~560px; increased gaps in `.home-messages`. |
 | H7 | **Typography**: headline reads stronger | Greeting uses heavier weight / adjusted size (see `.dashboard-greeting-sub`). |

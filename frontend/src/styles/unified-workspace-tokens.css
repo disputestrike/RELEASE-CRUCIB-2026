@@ -43,6 +43,9 @@
   --radius-md: 10px;
   --radius-lg: 12px;
   --transition-ui: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Main prompt / plan column — Manus-scale wide composer (was ~640px). */
+  --uw-composer-max-width: min(920px, calc(100vw - 96px));
 }
 
 .uw-root .arp-breadcrumb {
@@ -106,14 +109,15 @@
 
 .uw-root .iterative-strip textarea {
   width: 100%;
-  min-height: 72px;
+  min-height: 100px;
   resize: vertical;
   border-radius: var(--radius-sm);
   border: 1px solid var(--uw-border-subtle);
   background: var(--uw-bg-root);
   color: var(--text-primary);
-  padding: 10px 12px;
-  font-size: 13px;
+  padding: 14px 16px;
+  font-size: 15px;
+  line-height: 1.5;
   font-family: inherit;
 }
 

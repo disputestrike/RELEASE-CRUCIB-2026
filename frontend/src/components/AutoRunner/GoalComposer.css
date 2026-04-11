@@ -1,6 +1,6 @@
 /* ── GoalComposer ─────────────────────────────────────────────────── */
 .goal-composer {
-  max-width: 640px;
+  max-width: var(--uw-composer-max-width, min(920px, calc(100vw - 96px)));
   width: 100%;
   margin: 0 auto;
   display: flex;
@@ -28,13 +28,6 @@
   line-height: 1.5;
 }
 
-.gc-input-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-}
-
 .gc-file-input {
   position: absolute;
   width: 0;
@@ -43,35 +36,63 @@
   pointer-events: none;
 }
 
-.gc-tool-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  background: var(--bg-2);
+/* One field + footer row (Manus-style) */
+.gc-composer-shell {
   border: 1px solid var(--border-1);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: all var(--transition-ui);
+  border-radius: var(--radius-lg);
+  background: var(--bg-1);
+  overflow: hidden;
+  transition: border-color var(--transition-ui);
 }
 
-.gc-tool-btn:hover:not(:disabled) {
-  background: var(--bg-3);
-  color: var(--text-strong);
+.gc-composer-shell:focus-within {
   border-color: var(--border-2);
 }
 
-.gc-tool-btn:disabled {
-  opacity: 0.45;
+.gc-composer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px 10px;
+  border-top: 1px solid var(--border-1);
+}
+
+.gc-composer-footer-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.gc-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--transition-ui), color var(--transition-ui);
+}
+
+.gc-icon-btn:hover:not(:disabled) {
+  background: var(--bg-2);
+  color: var(--text-strong);
+}
+
+.gc-icon-btn:disabled {
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
-.gc-tool-btn-active {
-  border-color: var(--state-info, #38bdf8);
+.gc-icon-btn-active {
   color: var(--state-info, #38bdf8);
+  background: rgba(56, 189, 248, 0.08);
 }
 
 .gc-continuation {
@@ -115,22 +136,29 @@
 
 .gc-input {
   width: 100%;
-  background: var(--bg-1);
-  border: 1px solid var(--border-1);
-  border-radius: var(--radius-lg);
-  color: var(--text-primary);
-  font-size: 14px;
-  font-family: 'Inter', system-ui, sans-serif;
-  padding: 18px;
-  resize: vertical;
   box-sizing: border-box;
-  line-height: 1.6;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-family: 'Inter', system-ui, sans-serif;
+  padding: 18px 20px 12px;
+  resize: none;
+  line-height: 1.55;
   transition: border-color var(--transition-ui);
-  min-height: 120px;
+  min-height: 152px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.gc-input::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 .gc-input:focus {
   outline: none;
-  border-color: var(--border-2);
 }
 .gc-input::placeholder {
   color: var(--text-muted);
@@ -291,24 +319,46 @@
   overflow: hidden;
 }
 
-/* Submit button */
-.gc-submit {
-  width: 100%;
-  padding: 12px;
-  background: var(--bg-2);
+/* Send — muted until goal + session; then dark fill + light arrow (Manus-like) */
+.gc-submit-send {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
   border: 1px solid var(--border-1);
-  border-radius: var(--radius-sm);
-  color: var(--text-strong);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all var(--transition-ui);
-}
-.gc-submit:hover:not(:disabled) {
-  background: var(--bg-3);
-  border-color: var(--border-2);
-}
-.gc-submit:disabled {
-  opacity: 0.4;
+  background: transparent;
+  color: var(--text-muted);
   cursor: not-allowed;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.gc-submit-send:disabled {
+  opacity: 1;
+}
+
+.gc-submit-send--ready:not(:disabled) {
+  background: #27272a;
+  border-color: #3f3f46;
+  color: #fafafa;
+  cursor: pointer;
+}
+
+.gc-submit-send--ready:not(:disabled):hover {
+  background: #3f3f46;
+  border-color: #52525b;
+  transform: scale(1.04);
+}
+
+.gc-submit-spin {
+  animation: gc-spin 0.9s linear infinite;
+  color: var(--text-muted);
+}
+
+@keyframes gc-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

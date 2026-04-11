@@ -4,7 +4,7 @@
  */
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import JSZip from 'jszip';
-import { Mic, MicOff, Paperclip } from 'lucide-react';
+import { Mic, MicOff, Paperclip, ArrowRight, Loader2 } from 'lucide-react';
 import CostEstimator from './CostEstimator';
 import './GoalComposer.css';
 
@@ -303,47 +303,59 @@ export default function GoalComposer({
         </div>
       )}
 
-      <div className="gc-input-toolbar">
-        <input
-          ref={fileRef}
-          type="file"
-          className="gc-file-input"
-          multiple
-          accept=".txt,.md,.json,.csv,.yml,.yaml,.ts,.tsx,.js,.jsx,.py,.sql,.env,.html,.css,.pdf,.docx,.doc,.png,.jpg,.jpeg,.gif,.webp,.svg"
-          onChange={onPickFiles}
-          aria-hidden
-          tabIndex={-1}
-        />
-        <button
-          type="button"
-          className="gc-tool-btn"
-          onClick={() => fileRef.current?.click()}
-          disabled={loading}
-          title="Attach text-based files (content appended to goal)"
-        >
-          <Paperclip size={18} strokeWidth={2} />
-          <span>Attach</span>
-        </button>
-        <button
-          type="button"
-          className={`gc-tool-btn ${listening ? 'gc-tool-btn-active' : ''}`}
-          onClick={toggleVoice}
-          disabled={loading}
-          title={listening ? 'Stop voice' : 'Speak your goal (Chrome / Edge)'}
-        >
-          {listening ? <MicOff size={18} strokeWidth={2} /> : <Mic size={18} strokeWidth={2} />}
-          <span>{listening ? 'Stop' : 'Voice'}</span>
-        </button>
-      </div>
       {voiceError && <div className="gc-hint gc-hint-warn">{voiceError}</div>}
 
-      <textarea
-        className="gc-input"
-        placeholder="e.g. Build a proof-validation microservice with REST API, database persistence, tests, and deploy to Railway."
-        value={goal}
-        onChange={(e) => onGoalChange(e.target.value)}
-        rows={5}
-      />
+      <div className="gc-composer-shell">
+        <textarea
+          className="gc-input"
+          placeholder="e.g. Build a proof-validation microservice with REST API, database persistence, tests, and deploy to Railway."
+          value={goal}
+          onChange={(e) => onGoalChange(e.target.value)}
+          rows={5}
+        />
+        <div className="gc-composer-footer">
+          <div className="gc-composer-footer-tools">
+            <input
+              ref={fileRef}
+              type="file"
+              className="gc-file-input"
+              multiple
+              accept=".txt,.md,.json,.csv,.yml,.yaml,.ts,.tsx,.js,.jsx,.py,.sql,.env,.html,.css,.pdf,.docx,.doc,.png,.jpg,.jpeg,.gif,.webp,.svg"
+              onChange={onPickFiles}
+              aria-hidden
+              tabIndex={-1}
+            />
+            <button
+              type="button"
+              className="gc-icon-btn"
+              onClick={() => fileRef.current?.click()}
+              disabled={loading}
+              title="Attach files (appended to goal)"
+            >
+              <Paperclip size={20} strokeWidth={2} />
+            </button>
+            <button
+              type="button"
+              className={`gc-icon-btn ${listening ? 'gc-icon-btn-active' : ''}`}
+              onClick={toggleVoice}
+              disabled={loading}
+              title={listening ? 'Stop voice' : 'Voice input (Chrome / Edge)'}
+            >
+              {listening ? <MicOff size={20} strokeWidth={2} /> : <Mic size={20} strokeWidth={2} />}
+            </button>
+          </div>
+          <button
+            type="button"
+            className={`gc-submit-send ${!loading && goal.trim() && token && !authLoading ? 'gc-submit-send--ready' : ''}`}
+            onClick={onSubmit}
+            disabled={loading || !goal.trim() || authLoading || !token}
+            title="Generate plan"
+            aria-label="Generate plan"
+          >
+            {loading ? <Loader2 size={22} strokeWidth={2} className="gc-submit-spin" /> : <ArrowRight size={22} strokeWidth={2.25} />}
+          </button>
+        </div>
+      </div>
 
       {hasContinuation && (
         <div className="gc-continuation">
@@ -410,15 +422,6 @@ export default function GoalComposer({
       )}
 
       {error && <div className="gc-error">{error}</div>}
-
-      <button
-        type="button"
-        className="gc-submit"
-        onClick={onSubmit}
-        disabled={loading || !goal.trim() || authLoading || !token}
-      >
-        {loading ? 'Generating plan...' : 'Generate Plan'}
-      </button>
     </div>
   );
 }
