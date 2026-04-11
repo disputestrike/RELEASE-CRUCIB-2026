@@ -80,7 +80,7 @@ export const ExampleLayout = () => {
         <div className="content-card">
           <h2>Features</h2>
           <ul>
-            <li>115 AI agents</li>
+            <li>Agent swarm &amp; sub-agents</li>
             <li>Real-time preview</li>
             <li>Code generation</li>
             <li>One-click deployment</li>

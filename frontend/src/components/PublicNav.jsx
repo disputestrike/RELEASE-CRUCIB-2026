@@ -1,6 +1,8 @@
+import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
 import Logo from './Logo';
+import SolutionsNavDropdown from './SolutionsNavDropdown';
 
 export default function PublicNav() {
   const navigate = useNavigate();
@@ -15,10 +17,11 @@ export default function PublicNav() {
       <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
         <Logo variant="full" height={32} href="/" className="shrink-0" />
         <div className="flex items-center gap-6">
-          <Link to="/features" className={`${linkClass} hidden sm:flex`}>Features</Link>
+          <div className="hidden sm:flex items-center">
+            <SolutionsNavDropdown />
+          </div>
           <Link to="/pricing" className={`${linkClass} hidden sm:flex`}>Pricing</Link>
           <Link to="/our-projects" className={`${linkClass} hidden sm:flex`}>Our Project</Link>
-          <Link to="/blog" className={`${linkClass} hidden sm:flex`}>Blog</Link>
           {user ? (
             <>
               <Link to="/app" className="px-4 py-2 bg-black text-white text-sm font-medium rounded-full hover:bg-black/90 transition">Dashboard</Link>

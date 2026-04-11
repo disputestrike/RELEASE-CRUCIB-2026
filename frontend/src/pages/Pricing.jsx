@@ -23,7 +23,7 @@ const PLAN_FEATURES = {
     '2 full apps — frontend + backend + database + auth',
     'OR 4 landing pages — fully designed, SEO-ready',
     'Live preview · export ZIP · push to GitHub',
-    '126-agent swarm · voice input · templates',
+    'Agent swarm & sub-agents · voice input · templates',
     'No credit card required',
   ],
   builder: [
@@ -31,7 +31,7 @@ const PLAN_FEATURES = {
     'OR 10 landing pages · OR 3 mobile apps',
     'Every app: frontend · backend · DB · auth · Stripe payments',
     'Mobile: Expo project + App Store & Play Store guide',
-    'Voice input · image-to-code · 126-agent swarm',
+    'Voice input · image-to-code · agent swarm',
   ],
   pro: [
     '10 complete production apps per month',
@@ -239,7 +239,7 @@ export default function Pricing() {
             <ul className="text-sm text-[#1A1A1A] space-y-1">
               <li>• Every build includes frontend + backend + database + auth + Stripe payments — not just a frontend.</li>
               <li>• Mobile apps with Apple App Store &amp; Google Play submission guide — no other builder does this.</li>
-              <li>• 126-agent swarm, fully linear pricing — same $0.03/credit whether you buy 100 or 10,000.</li>
+              <li>• A swarm of agents and sub-agents, fully linear pricing — same $0.03/credit whether you buy 100 or 10,000.</li>
             </ul>
           </div>
           <p className="text-sm text-kimi-muted mt-4">50 credits ≈ 1 landing page · 100 credits ≈ 1 full app · 150 credits ≈ 1 mobile app.</p>
@@ -259,7 +259,7 @@ export default function Pricing() {
                 <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> 2 full apps — frontend + backend + database + auth</li>
                 <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> OR 4 landing pages — designed, SEO-ready, exportable</li>
                 <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> Live preview · export to ZIP · push to GitHub</li>
-                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> 126-agent swarm · voice input · templates &amp; prompts</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-[#1A1A1A] shrink-0" /> Agent swarm &amp; sub-agents · voice input · templates &amp; prompts</li>
               </ul>
             </div>
             <div className="shrink-0">

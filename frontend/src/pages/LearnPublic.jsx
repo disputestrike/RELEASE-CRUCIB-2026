@@ -19,7 +19,7 @@ const faqsExtra = [
   { q: 'How do I get help or report a bug?', a: 'Use the Documentation and Support links in the footer. For bugs, include steps to reproduce and your environment (browser, OS).' },
   { q: 'Can I build mobile apps?', a: 'Yes. We support Expo + App Store submission pack. Describe your mobile app; we build it.' },
   { q: 'What browsers are supported?', a: 'We recommend Chrome, Firefox, or Edge. Safari is supported; voice input may have limitations on some browsers.' },
-  { q: 'How does CrucibAI compare to Kimi?', a: 'Kimi excels at long-context chat and research. CrucibAI is Inevitable AI for app creation: plan-first builds, 120-agent swarm, design-to-code, and one workspace from idea to export. Use CrucibAI when you want inevitable outcomes — ship software, not just promises.' }
+  { q: 'How does CrucibAI compare to Kimi?', a: 'Kimi excels at long-context chat and research. CrucibAI is Inevitable AI for app creation: plan-first builds, a swarm of agents and sub-agents, design-to-code, and one workspace from idea to export. Use CrucibAI when you want inevitable outcomes — ship software, not just promises.' }
 ];
 
 const sections = [
@@ -28,7 +28,7 @@ const sections = [
   { id: 'at', icon: Zap, title: 'Use @ and / in chat', body: 'Type @ to add context (e.g. @App.js). Type / for commands like /fix or /explain. The command palette (Ctrl+K) lists all actions.' },
   { id: 'templates', icon: Palette, title: 'Templates and prompts', body: 'Use the Prompt Library and Templates to start from proven patterns. Save your own prompts for reuse. Patterns save tokens for auth, payments, APIs.' },
   { id: 'agents', icon: Zap, title: 'Create automations', body: 'The same AI that builds your app runs inside your automations. Describe what you want — daily digest, lead finder, inbox summarizer — we create the agent. Use run_agent to call our swarm from your automation.' },
-  { id: 'swarm', icon: Zap, title: '120-agent swarm', body: 'Planning, frontend, backend, database, styling, testing, security, deployment — each phase handled by dedicated agents. AgentMonitor shows per-phase status, token usage, and logs.' },
+  { id: 'swarm', icon: Zap, title: 'Agent swarm & sub-agents', body: 'Planning, frontend, backend, database, styling, testing, security, deployment — each phase handled by dedicated agents and sub-agents. AgentMonitor shows per-phase status, token usage, and logs.' },
   { id: 'export', icon: Code, title: 'Export and deploy', body: 'Export to ZIP or push to GitHub. Deploy to Vercel or Netlify in one click. For mobile: Expo plus App Store and Google Play submission pack. You own the code.' },
   { id: 'security', icon: Shield, title: 'Security and quality', body: 'Use Auto-fix when you see errors. Run Security scan and Accessibility check from the workspace or API. Quality score per build. 188 tests passing.' },
   { id: 'ide', icon: Code, title: 'IDE extensions', body: 'VS Code, JetBrains, Sublime, and Vim. Code from your editor with the same AI. Command palette and shortcuts for power users.' },

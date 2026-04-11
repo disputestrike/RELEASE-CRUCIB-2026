@@ -41,7 +41,7 @@ const API_SECTIONS = [
     id: 'ai',
     title: 'AI & Orchestration',
     icon: Layers,
-    description: 'Chat, build, and orchestrate the 120-agent swarm.',
+    description: 'Chat, build, and orchestrate the agent swarm.',
     endpoints: [
       { method: 'POST', path: '/api/ai/chat', desc: 'Send a chat message (streaming SSE)', body: '{ "message": "...", "session_id": "...", "mode": "build" }', response: 'SSE stream of agent responses' },
       { method: 'POST', path: '/api/ai/build', desc: 'Trigger full orchestration build', body: '{ "prompt": "Build a todo app", "project_type": "fullstack" }', response: '{ "build_id": "...", "status": "running" }' },
@@ -313,7 +313,7 @@ export default function DocsPage() {
         {/* Footer CTA */}
         <div className="mt-16 text-center p-8 rounded-2xl border border-zinc-800 bg-zinc-900/50">
           <h3 className="text-xl font-bold mb-2">Ready to build?</h3>
-          <p className="text-zinc-500 mb-4">Start using the CrucibAI API to build apps with 120 agents.</p>
+          <p className="text-zinc-500 mb-4">Start using the CrucibAI API to build apps with our agent swarm.</p>
           <div className="flex items-center justify-center gap-3">
             <button
               onClick={() => navigate('/app/workspace')}

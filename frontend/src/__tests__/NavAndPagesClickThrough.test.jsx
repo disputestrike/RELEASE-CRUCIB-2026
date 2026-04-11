@@ -1,10 +1,12 @@
+/** @jest-environment jsdom */
+import '@testing-library/jest-dom';
 /**
  * Nav & Pages click-through verification.
- * Evidence: Nav has Features, Pricing, Our Project, Blog, Log in, Sign up, Get Started.
- * No Prompts, Templates, Documentation in nav. All links go to correct routes. Both pages pass.
+ * Evidence: Nav has Our solution (dropdown), Pricing, Our Project, Log in, Sign up, Get Started.
+ * No Prompts, Templates, Documentation in nav. Blog removed from primary nav. All links go to correct routes.
  */
 import React from 'react';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import LandingPage from '../pages/LandingPage';
 import PublicNav from '../components/PublicNav';
@@ -27,10 +29,10 @@ describe('Nav and pages — link and click-through verification', () => {
     mockNavigate.mockClear();
   });
 
-  const requiredNavLinkPaths = ['/features', '/pricing', '/our-projects', '/blog'];
-  const forbiddenInNav = ['/prompts', '/templates', '/learn'];
+  const requiredNavLinkPaths = ['/pricing', '/our-projects'];
+  const forbiddenInNav = ['/prompts', '/templates', '/learn', '/blog'];
 
-  it('LandingPage: nav contains required links (Features, Pricing, Our Projects, Blog) and no Prompts/Templates/Documentation', () => {
+  it('LandingPage: nav contains Our solution, Pricing, Our Projects (no Blog / Features in bar) and no Prompts/Templates/Documentation', () => {
     render(
       <MemoryRouter>
         <LandingPage />
@@ -46,6 +48,7 @@ describe('Nav and pages — link and click-through verification', () => {
     forbiddenInNav.forEach((path) => {
       expect(hrefs.filter((h) => h === path || h.startsWith(path + '?'))).toHaveLength(0);
     });
+    expect(screen.getByRole('button', { name: /our solution/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /log in/i })).toHaveAttribute('href', '/auth');
     expect(screen.getByRole('link', { name: /sign up/i })).toHaveAttribute('href', '/auth?mode=register');
     expect(screen.getByRole('button', { name: /get started/i })).toBeInTheDocument();
@@ -80,7 +83,7 @@ describe('Nav and pages — link and click-through verification', () => {
     expect(screen.getByText('Legal')).toBeInTheDocument();
   });
 
-  it('LandingPage: footer has Features, Pricing, Blog, Privacy, Terms links', () => {
+  it('LandingPage: footer has Our solution, Pricing, Privacy, Terms links (no Blog in footer)', () => {
     render(
       <MemoryRouter>
         <LandingPage />
@@ -90,36 +93,39 @@ describe('Nav and pages — link and click-through verification', () => {
     expect(footer).toBeInTheDocument();
     const links = footer.querySelectorAll('a[href]');
     const hrefs = Array.from(links).map((a) => a.getAttribute('href'));
-    expect(hrefs).toContain('/features');
+    expect(hrefs).toContain('/our-projects#solutions');
     expect(hrefs).toContain('/pricing');
-    expect(hrefs).toContain('/blog');
+    expect(hrefs).not.toContain('/blog');
     expect(hrefs).toContain('/privacy');
     expect(hrefs).toContain('/terms');
   });
 
-  it('OurProjectsPage source: nav has required links and page has full-content sections (file check)', () => {
+  it('OurProjectsPage source: nav has Our solution dropdown wiring and story anchors', () => {
     const fs = require('fs');
     const path = require('path');
     const src = fs.readFileSync(path.join(__dirname, '../pages/OurProjectsPage.jsx'), 'utf8');
-    expect(src).toMatch(/to="\/features"/);
+    expect(src).toMatch(/SolutionsNavDropdown/);
     expect(src).toMatch(/to="\/pricing"/);
     expect(src).toMatch(/to="\/our-projects"/);
-    expect(src).toMatch(/to="\/blog"/);
+    expect(src).not.toMatch(/to="\/blog"/);
+    expect(src).toMatch(/id="solutions"/);
+    expect(src).toMatch(/id="solution-founders"/);
+    expect(src).toMatch(/id="use-case-poc"/);
     expect(src).toMatch(/One AI\. Two superpowers/);
     expect(src).toMatch(/No black boxes/);
     expect(src).toMatch(/Monday to Friday\. One platform/);
   });
 
-  it('PublicNav: has Features, Pricing, Our Project, Blog, Sign In, Get Started', () => {
+  it('PublicNav: has Our solution, Pricing, Our Project, Sign In, Get Started (no Blog)', () => {
     render(
       <MemoryRouter>
         <PublicNav />
       </MemoryRouter>
     );
-    expect(screen.getByRole('link', { name: /features/i })).toHaveAttribute('href', '/features');
+    expect(screen.getByRole('button', { name: /our solution/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /pricing/i })).toHaveAttribute('href', '/pricing');
     expect(screen.getByRole('link', { name: /our project/i })).toHaveAttribute('href', '/our-projects');
-    expect(screen.getByRole('link', { name: /blog/i })).toHaveAttribute('href', '/blog');
+    expect(screen.queryByRole('link', { name: /^blog$/i })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /log in/i })).toHaveAttribute('href', '/auth');
     expect(screen.getByRole('link', { name: /sign up/i })).toHaveAttribute('href', '/auth?mode=register');
     expect(screen.getByRole('button', { name: /get started/i })).toBeInTheDocument();

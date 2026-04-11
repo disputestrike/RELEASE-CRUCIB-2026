@@ -459,7 +459,7 @@ const AuthPage = () => {
           <p className="text-gray-500 text-lg mb-10 leading-relaxed">
             {isLogin
               ? 'Your projects, agents, and builds are waiting.'
-              : '120 AI agents plan, build, test, and deploy your app — while you watch every step.'}
+              : 'A swarm of agents and sub-agents plans, builds, tests, and deploys your app — while you watch every step.'}
           </p>
 
           {/* Benefits */}
@@ -488,7 +488,7 @@ const AuthPage = () => {
           {/* Stats row */}
           <div className="grid grid-cols-3 gap-6">
             {[
-              { value: '120', label: 'AI agents' },
+              { value: 'Swarm', label: 'Agents & sub-agents' },
               { value: '99.2%', label: 'Success rate' },
               { value: '<72h', label: 'Delivery' },
             ].map((stat, i) => (

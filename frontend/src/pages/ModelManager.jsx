@@ -156,7 +156,7 @@ export default function ModelManager() {
           <div>
             <p className="text-sm font-medium text-blue-900 mb-1">How CrucibAI routing works</p>
             <p className="text-xs text-blue-700 leading-relaxed">
-              Each of CrucibAI's 123 agents is classified by task complexity: Critical (architecture, security, database design) → Claude Sonnet. Moderate (component generation, API integration) → Claude Haiku or Llama 70B. Simple (formatting, style changes, comments) → Cerebras Llama. This hybrid approach gives you Claude-quality output on the decisions that matter, at 40-60% lower cost than using Claude for everything.
+              Each agent in CrucibAI&apos;s swarm is classified by task complexity: Critical (architecture, security, database design) → Claude Sonnet. Moderate (component generation, API integration) → Claude Haiku or Llama 70B. Simple (formatting, style changes, comments) → Cerebras Llama. This hybrid approach gives you Claude-quality output on the decisions that matter, at 40-60% lower cost than using Claude for everything.
             </p>
           </div>
         </div>

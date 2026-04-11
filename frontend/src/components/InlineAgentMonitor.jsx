@@ -9,7 +9,7 @@ import './InlineAgentMonitor.css';
 /**
  * InlineAgentMonitor — Shows agent activity inline in the center panel during BUILD state
  * 
- * This is the differentiator: no competitor shows 120+ agents working live.
+ * This is the differentiator: full visibility into the agent swarm working live.
  * Displays:
  *   - Overall progress bar with phase name
  *   - Agent grid organized by layer (Planning, Execution, Validation, Deployment)

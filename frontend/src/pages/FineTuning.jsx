@@ -158,7 +158,7 @@ export default function FineTuning() {
             <div className="grid grid-cols-3 gap-4 text-center">
               <div><p className="text-lg font-semibold text-gray-900">12,400</p><p className="text-xs text-gray-500">Training samples</p></div>
               <div><p className="text-lg font-semibold text-gray-900">94.1%</p><p className="text-xs text-gray-500">Quality score avg</p></div>
-              <div><p className="text-lg font-semibold text-gray-900">123</p><p className="text-xs text-gray-500">Agent types covered</p></div>
+              <div><p className="text-lg font-semibold text-gray-900">Broad</p><p className="text-xs text-gray-500">Agent &amp; sub-agent roles</p></div>
             </div>
             <button className="mt-3 text-xs text-blue-600 hover:underline flex items-center gap-1">
               <FileText className="w-3 h-3" /> Export as JSONL for fine-tuning

@@ -35,7 +35,7 @@ export default function PublicFooter() {
           <div>
             <div className="text-xs text-kimi-muted uppercase tracking-wider mb-4">Product</div>
             <ul className="space-y-3 text-sm">
-              <li><Link to="/features" className="text-kimi-muted hover:text-kimi-text transition">Features</Link></li>
+              <li><Link to="/our-projects#solutions" className="text-kimi-muted hover:text-kimi-text transition">Our solution</Link></li>
               <li><Link to="/pricing" className="text-kimi-muted hover:text-kimi-text transition">Pricing</Link></li>
               <li><Link to="/templates" className="text-kimi-muted hover:text-kimi-text transition">Templates</Link></li>
               <li><Link to="/patterns" className="text-kimi-muted hover:text-kimi-text transition">Patterns</Link></li>
@@ -47,7 +47,6 @@ export default function PublicFooter() {
             <ul className="space-y-3 text-sm">
               <li><Link to="/get-help" className="text-kimi-muted hover:text-kimi-text transition">Get help</Link></li>
               <li><Link to="/contact" className="text-kimi-muted hover:text-kimi-text transition">Contact us</Link></li>
-              <li><Link to="/blog" className="text-kimi-muted hover:text-kimi-text transition">Blog</Link></li>
               <li><Link to="/changelog" className="text-kimi-muted hover:text-kimi-text transition">Changelog</Link></li>
               <li><Link to="/status" className="text-kimi-muted hover:text-kimi-text transition">Status</Link></li>
               <li><Link to="/learn" className="text-kimi-muted hover:text-kimi-text transition">Learn</Link></li>

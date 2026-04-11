@@ -18,8 +18,8 @@ const outcomeSections = [
   },
   {
     icon: Zap,
-    title: '120-Agent Swarm',
-    desc: 'Planning, frontend, backend, database, styling, testing, security, deployment — each phase handled by dedicated agents. They run in parallel for speed. AgentMonitor shows per-phase, per-agent status, token usage, and logs. Quality score per build. Phase retry when needed. Full transparency: every step, every artifact.',
+    title: 'Agent swarm & sub-agents',
+    desc: 'Planning, frontend, backend, database, styling, testing, security, deployment — each phase handled by dedicated agents and sub-agents. They run in parallel for speed. AgentMonitor shows per-phase, per-agent status, token usage, and logs. Quality score per build. Phase retry when needed. Full transparency: every step, every artifact.',
   },
   {
     icon: Download,
@@ -49,12 +49,12 @@ export default function Features() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
           <span className="text-xs uppercase tracking-wider text-kimi-muted">Benefits</span>
           <h1 className="text-kimi-section font-bold text-kimi-text mt-2 mb-4">Why your outcome is inevitable</h1>
-          <p className="text-kimi-muted max-w-xl mx-auto">The same AI that builds your app runs inside your automations. Web, mobile, agents — one platform. 120-agent swarm, 99.2% success, full transparency. Not promises — measured.</p>
+          <p className="text-kimi-muted max-w-xl mx-auto">The same AI that builds your app runs inside your automations. Web, mobile, agents — one platform. A swarm of agents and sub-agents, 99.2% success, full transparency. Not promises — measured.</p>
         </motion.div>
         {/* Proof strip */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 py-4 px-4 rounded-xl border border-white/10 bg-kimi-bg-card mb-16">
           <span className="flex items-center gap-2 text-sm text-kimi-muted">
-            <span className="w-2 h-2 rounded-full bg-kimi-accent animate-pulse" /> 120-agent swarm
+            <span className="w-2 h-2 rounded-full bg-kimi-accent animate-pulse" /> Swarm of agents &amp; sub-agents
           </span>
           <span className="text-sm text-kimi-muted">99.2% success</span>
           <span className="text-sm text-kimi-muted">Full transparency</span>

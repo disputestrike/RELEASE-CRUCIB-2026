@@ -8009,9 +8009,9 @@ async def brand_config():
     """Read-only brand proof stats for landing/hero. No model or provider names."""
     return {
         "tagline": "Inevitable AI",
-        "agent_count": 123,
+        "agent_count": None,
         "success_rate": "99.2%",
-        "proof_strip": ["123-agent swarm", "99.2% success", "Typically under 72 hours", "Full transparency", "Minimal supervision"],
+        "proof_strip": ["Swarm of agents & sub-agents", "99.2% success", "Typically under 72 hours", "Full transparency", "Minimal supervision"],
         "cta_primary": "Make It Inevitable",
     }
 

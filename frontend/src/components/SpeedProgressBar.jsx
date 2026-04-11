@@ -16,7 +16,7 @@ export default function SpeedProgressBar({ speedTier, progress, isBuilding }) {
       bgColor: 'bg-orange-100'
     },
     max: {
-      label: 'Max Mode — Haiku full swarm — all 123 agents',
+      label: 'Max Mode — Haiku full agent swarm',
       flames: 3,
       color: 'text-red-500',
       bgColor: 'bg-red-100'

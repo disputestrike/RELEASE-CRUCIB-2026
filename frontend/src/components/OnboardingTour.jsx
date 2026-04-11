@@ -23,7 +23,7 @@ const TOUR_STEPS = [
   {
     id: 'workspace',
     title: 'The Workspace',
-    description: 'Describe what you want to build. Our 120-agent swarm handles planning, code generation, testing, and deployment — all in one place.',
+    description: 'Describe what you want to build. Our swarm of agents and sub-agents handles planning, code generation, testing, and deployment — all in one place.',
     icon: MessageSquare,
     target: null,
     position: 'center',
@@ -39,8 +39,8 @@ const TOUR_STEPS = [
   },
   {
     id: 'agents',
-    title: '120 Agents Working For You',
-    description: 'Each build uses specialized agents — Frontend, Backend, Database, Security, Testing, Deployment — all orchestrated in a DAG pipeline.',
+    title: 'Swarm of agents & sub-agents',
+    description: 'Each build uses specialized agents and sub-agents — Frontend, Backend, Database, Security, Testing, Deployment — all orchestrated in a DAG pipeline.',
     icon: Layers,
     target: null,
     position: 'center',

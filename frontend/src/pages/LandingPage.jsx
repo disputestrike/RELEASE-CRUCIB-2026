@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, ArrowRight, Menu, X, Paperclip, Image, FileText, Mic, MicOff } from 'lucide-react';
@@ -7,6 +7,7 @@ import axios from 'axios';
 import { logApiError } from '../utils/apiError';
 import Logo from '../components/Logo';
 import SuggestionChips from '../components/SuggestionChips';
+import SolutionsNavDropdown, { SOLUTION_LINKS, USE_CASE_LINKS } from '../components/SolutionsNavDropdown';
 
 const PENDING_PROMPT_KEY = 'crucibai_pending_prompt';
 const MAX_PROMPT_IN_URL = 1500;
@@ -178,10 +179,9 @@ const LandingPage = () => {
         <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
           <Logo variant="full" height={32} href="/" className="shrink-0" />
           <div className="hidden md:flex items-center gap-6">
-            <Link to="/features" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Features</Link>
+            <SolutionsNavDropdown />
             <Link to="/pricing" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Pricing</Link>
             <Link to="/our-projects" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Our Project</Link>
-            <Link to="/blog" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Blog</Link>
             <Link to="/auth" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Log in</Link>
             <Link to="/auth?mode=register" className="px-4 py-2 rounded-full bg-black text-white text-sm font-medium hover:bg-black/90 transition">Sign up</Link>
             <button
@@ -202,10 +202,20 @@ const LandingPage = () => {
         {mobileMenuOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-kimi-bg pt-20 px-6 pb-8 overflow-y-auto md:hidden">
             <div className="flex flex-col gap-6 text-kimi-text min-h-min">
-              <Link to="/features" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Features</Link>
+              <p className="text-xs font-semibold uppercase tracking-wider text-kimi-muted">Our solution — who it&apos;s for</p>
+              <div className="flex flex-col gap-2 pl-1 border-l border-gray-200">
+                {SOLUTION_LINKS.map((item) => (
+                  <Link key={item.to} to={item.to} className="text-base text-kimi-muted hover:text-kimi-text" onClick={() => setMobileMenuOpen(false)}>{item.label}</Link>
+                ))}
+              </div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-kimi-muted">Use cases</p>
+              <div className="flex flex-col gap-2 pl-1 border-l border-gray-200">
+                {USE_CASE_LINKS.map((item) => (
+                  <Link key={item.to} to={item.to} className="text-base text-kimi-muted hover:text-kimi-text" onClick={() => setMobileMenuOpen(false)}>{item.label}</Link>
+                ))}
+              </div>
               <Link to="/pricing" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Pricing</Link>
               <Link to="/our-projects" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Our Project</Link>
-              <Link to="/blog" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Blog</Link>
               <Link to="/auth" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Log in</Link>
               <Link to="/auth?mode=register" className="w-full py-3 bg-black text-white rounded-lg font-medium text-center mt-2" onClick={() => setMobileMenuOpen(false)}>Sign up</Link>
               <button onClick={() => { navigate('/app'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-gray-900 rounded-lg font-medium">Dashboard</button>
@@ -220,12 +230,9 @@ const LandingPage = () => {
       {/* Hero — softer typography, smaller input, suggestion chips (Manus-style) */}
       <section className="flex-1 min-h-0 overflow-y-auto pt-32 pb-16 px-6">
         <div className="max-w-[780px] mx-auto">
-          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-[2.5rem] font-semibold tracking-tight text-[#1a1a1a] mb-2 text-center">
+          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-[2.5rem] font-semibold tracking-tight text-[#1a1a1a] mb-6 text-center">
             What can I do for you?
           </motion.h1>
-          <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-center text-sm text-gray-500 mb-6">
-            126-agent swarm · web + mobile + App Store · full stack in minutes
-          </motion.p>
           <div className="landing-input-wrap rounded-2xl overflow-hidden bg-white border border-[#d1d5db] shadow-[0_1px_3px_rgba(0,0,0,0.05)] focus-within:border-[#3b82f6] focus-within:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] transition-all max-w-[720px] mx-auto">
             {messages.length > 0 && (
               <div className="max-h-48 overflow-y-auto p-4 space-y-3">
@@ -293,13 +300,8 @@ const LandingPage = () => {
       {/* CTA — single line, last thing visible on first screen */}
       <section className="mt-auto shrink-0 py-10 px-6 border-t border-gray-200">
         <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-xl md:text-2xl font-semibold text-[#111827] mb-3">Your idea is inevitable.</h2>
-          <div className="flex items-center justify-center gap-6 text-xs text-gray-400">
-            <span>✦ 126 specialized agents</span>
-            <span>✦ Web · Mobile · App Store</span>
-            <span>✦ Deploy in minutes</span>
-            <span>✦ Free to start</span>
-          </div>
+          <h2 className="text-xl md:text-2xl font-semibold text-[#111827] mb-2">Your idea is inevitable.</h2>
+          <p className="text-sm text-gray-500">Plan, build, and ship — web, mobile, and automation in one workspace.</p>
         </div>
       </section>
       </div>
@@ -320,7 +322,7 @@ const LandingPage = () => {
             <div>
               <div className="text-xs text-kimi-muted uppercase tracking-wider mb-4">Product</div>
               <ul className="space-y-3 text-sm">
-                <li><Link to="/features" className="text-kimi-muted hover:text-kimi-text transition">Features</Link></li>
+                <li><Link to="/our-projects#solutions" className="text-kimi-muted hover:text-kimi-text transition">Our solution</Link></li>
                 <li><Link to="/pricing" className="text-kimi-muted hover:text-kimi-text transition">Pricing</Link></li>
                 <li><Link to="/templates" className="text-kimi-muted hover:text-kimi-text transition">Templates</Link></li>
                 <li><Link to="/patterns" className="text-kimi-muted hover:text-kimi-text transition">Patterns</Link></li>
@@ -330,7 +332,6 @@ const LandingPage = () => {
             <div>
               <div className="text-xs text-kimi-muted uppercase tracking-wider mb-4">Resources</div>
               <ul className="space-y-3 text-sm">
-                <li><Link to="/blog" className="text-kimi-muted hover:text-kimi-text transition">Blog</Link></li>
                 <li><Link to="/learn" className="text-kimi-muted hover:text-kimi-text transition">Learn</Link></li>
                 <li><Link to="/shortcuts" className="text-kimi-muted hover:text-kimi-text transition">Shortcuts</Link></li>
                 <li><Link to="/benchmarks" className="text-kimi-muted hover:text-kimi-text transition">Benchmarks</Link></li>

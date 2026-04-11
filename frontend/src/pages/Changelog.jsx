@@ -75,7 +75,7 @@ const ENTRIES = [
     tag: 'Launch',
     tagColor: '#8b5cf6',
     items: [
-      '126-agent DAG — every agent has a defined role, dependencies, and system prompt',
+      'Agent swarm DAG — every agent has a defined role, dependencies, and system prompt',
       'LLM router — intelligently routes tasks across Cerebras (fast), Llama 70B (free), and Claude Haiku (quality)',
       'Stripe payments — 5 pricing tiers with annual discount and custom credit slider',
       'MFA, Google OAuth, JWT auth — production-grade security from day one',
