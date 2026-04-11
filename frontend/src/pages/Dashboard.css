@@ -398,16 +398,25 @@
 }
 
 .dashboard-prompt-submit--ready:not(:disabled) {
-  background: #27272a;
-  border-color: #3f3f46;
+  background: #171717;
+  border-color: #262626;
   color: #fafafa;
   cursor: pointer;
 }
 
 .dashboard-prompt-submit--ready:not(:disabled):hover {
-  background: #3f3f46;
-  border-color: #52525b;
-  transform: scale(1.04);
+  background: #0a0a0a;
+  border-color: #404040;
+  transform: scale(1.03);
+}
+
+/* Sending: keep dark circle + spinner (disabled but not faded) */
+.dashboard-prompt-submit--busy:disabled {
+  background: #171717;
+  border-color: #262626;
+  color: #fafafa;
+  cursor: wait;
+  opacity: 1;
 }
 
 /* Model badge */

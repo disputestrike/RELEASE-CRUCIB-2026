@@ -172,6 +172,11 @@ const LandingPage = () => {
     startBuild(hasInput || 'Convert image to code', filesToSend?.length ? filesToSend : null);
   };
 
+  /** Send enabled when there is text or image/audio attachment (matches submit disabled logic). */
+  const hasLandingSendContent =
+    Boolean(input.trim()) ||
+    attachedFiles.some((f) => f.type?.startsWith('image/') || f.type?.startsWith('audio/'));
+
   return (
     <div className="marketing-page bg-kimi-bg text-kimi-text grid-pattern-kimi">
       {/* Navigation — 6 items only */}
@@ -236,7 +241,7 @@ const LandingPage = () => {
           <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-[2.5rem] font-semibold tracking-tight text-[#1a1a1a] mb-6 text-center">
             What can I do for you?
           </motion.h1>
-          <div className="landing-input-wrap rounded-2xl overflow-hidden bg-white border border-[#d1d5db] shadow-[0_1px_3px_rgba(0,0,0,0.05)] focus-within:border-[#3b82f6] focus-within:shadow-[0_0_0_3px_rgba(59,130,246,0.1)] transition-all max-w-[720px] mx-auto">
+          <div className="landing-input-wrap rounded-2xl overflow-hidden bg-white border border-[#d1d5db] shadow-[0_1px_3px_rgba(0,0,0,0.05)] focus-within:border-[#a3a3a3] focus-within:shadow-[0_0_0_3px_rgba(0,0,0,0.06)] transition-all max-w-[720px] mx-auto">
             {messages.length > 0 && (
               <div className="max-h-48 overflow-y-auto p-4 space-y-3">
                 {messages.map((msg, i) => (
@@ -279,8 +284,19 @@ const LandingPage = () => {
                       <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition shrink-0" title="Attach file">
                         <Paperclip className="w-5 h-5" />
                       </button>
-                      <button type="submit" disabled={(!input.trim() && !attachedFiles.some(f => f.type?.startsWith('image/') || f.type?.startsWith('audio/'))) || isBuilding} className="p-2 rounded-lg bg-[#3b82f6] text-white hover:bg-[#2563eb] disabled:opacity-40 disabled:cursor-not-allowed transition shrink-0" title="Send">
-                        {isBuilding ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" />}
+                      <button
+                        type="submit"
+                        disabled={!hasLandingSendContent || isBuilding}
+                        className={`p-2 rounded-full shrink-0 transition ${
+                          isBuilding
+                            ? 'bg-neutral-800 text-white cursor-wait'
+                            : hasLandingSendContent
+                              ? 'bg-neutral-900 text-white hover:bg-black shadow-sm'
+                              : 'bg-neutral-100 text-neutral-400 border border-neutral-200 cursor-not-allowed'
+                        }`}
+                        title={isBuilding ? 'Starting…' : 'Send'}
+                      >
+                        {isBuilding ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowRight className="w-5 h-5" strokeWidth={2} />}
                       </button>
                     </div>
                   </div>

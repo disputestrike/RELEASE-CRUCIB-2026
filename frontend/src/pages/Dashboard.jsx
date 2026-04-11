@@ -924,8 +924,12 @@ const Dashboard = () => {
             <button
               type="submit"
               disabled={(!prompt.trim() && !attachedFiles.length) || chatLoading}
-              className={`dashboard-prompt-submit ${!chatLoading && (prompt.trim() || attachedFiles.length) ? 'dashboard-prompt-submit--ready' : ''}`}
-              title="Send"
+              className={`dashboard-prompt-submit ${
+                prompt.trim() || attachedFiles.length
+                  ? (chatLoading ? 'dashboard-prompt-submit--busy' : 'dashboard-prompt-submit--ready')
+                  : ''
+              }`}
+              title={chatLoading ? 'Sending…' : 'Send'}
             >
               {chatLoading ? <Loader2 size={16} className="animate-spin" /> : <ArrowUp size={16} strokeWidth={2.25} />}
             </button>
