@@ -3,8 +3,9 @@
  * Voice (Web Speech API), text file attachments, continuation block for multi-phase goals.
  */
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import JSZip from 'jszip';
-import { Mic, MicOff, Paperclip, ArrowRight, Loader2 } from 'lucide-react';
+import { Mic, MicOff, Paperclip, Plus, ArrowUp, Loader2, Globe, Monitor } from 'lucide-react';
 import CostEstimator from './CostEstimator';
 import './GoalComposer.css';
 
@@ -109,6 +110,7 @@ export default function GoalComposer({
   continuationNotes = '',
   onContinuationChange,
 }) {
+  const navigate = useNavigate();
   const tags = useMemo(() => (goal.length >= 12 ? smartTags(goal) : []), [goal]);
   const fileRef = useRef(null);
   const goalRef = useRef(goal);
@@ -314,7 +316,7 @@ export default function GoalComposer({
           rows={5}
         />
         <div className="gc-composer-footer">
-          <div className="gc-composer-footer-tools">
+          <div className="gc-composer-footer-left" aria-label="Add context">
             <input
               ref={fileRef}
               type="file"
@@ -330,10 +332,33 @@ export default function GoalComposer({
               className="gc-icon-btn"
               onClick={() => fileRef.current?.click()}
               disabled={loading}
+              title="Add files"
+            >
+              <Plus size={20} strokeWidth={2} />
+            </button>
+            <button
+              type="button"
+              className="gc-icon-btn"
+              onClick={() => fileRef.current?.click()}
+              disabled={loading}
               title="Attach files (appended to goal)"
             >
               <Paperclip size={20} strokeWidth={2} />
             </button>
+            <button
+              type="button"
+              className="gc-icon-btn"
+              disabled={loading}
+              title="Open workspace"
+              onClick={() => navigate({ pathname: '/app/workspace' })}
+            >
+              <Monitor size={20} strokeWidth={2} />
+            </button>
+          </div>
+          <div className="gc-composer-footer-right" aria-label="Send options">
+            <Link to="/app/templates" className="gc-icon-btn gc-icon-btn--link" title="Templates & gallery">
+              <Globe size={20} strokeWidth={2} />
+            </Link>
             <button
               type="button"
               className={`gc-icon-btn ${listening ? 'gc-icon-btn-active' : ''}`}
@@ -343,17 +368,17 @@ export default function GoalComposer({
             >
               {listening ? <MicOff size={20} strokeWidth={2} /> : <Mic size={20} strokeWidth={2} />}
             </button>
+            <button
+              type="button"
+              className={`gc-submit-send ${!loading && goal.trim() && token && !authLoading ? 'gc-submit-send--ready' : ''}`}
+              onClick={onSubmit}
+              disabled={loading || !goal.trim() || authLoading || !token}
+              title="Generate plan"
+              aria-label="Generate plan"
+            >
+              {loading ? <Loader2 size={22} strokeWidth={2} className="gc-submit-spin" /> : <ArrowUp size={22} strokeWidth={2.25} />}
+            </button>
           </div>
-          <button
-            type="button"
-            className={`gc-submit-send ${!loading && goal.trim() && token && !authLoading ? 'gc-submit-send--ready' : ''}`}
-            onClick={onSubmit}
-            disabled={loading || !goal.trim() || authLoading || !token}
-            title="Generate plan"
-            aria-label="Generate plan"
-          >
-            {loading ? <Loader2 size={22} strokeWidth={2} className="gc-submit-spin" /> : <ArrowRight size={22} strokeWidth={2.25} />}
-          </button>
         </div>
       </div>
 

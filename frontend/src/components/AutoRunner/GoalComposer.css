@@ -58,11 +58,23 @@
   border-top: 1px solid var(--border-1);
 }
 
-.gc-composer-footer-tools {
+.gc-composer-footer-left,
+.gc-composer-footer-right {
   display: flex;
   align-items: center;
   gap: 4px;
-  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.gc-composer-footer-right {
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.gc-icon-btn--link {
+  text-decoration: none;
+  color: inherit;
+  box-sizing: border-box;
 }
 
 .gc-icon-btn {

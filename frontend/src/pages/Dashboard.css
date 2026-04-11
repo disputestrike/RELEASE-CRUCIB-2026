@@ -262,12 +262,33 @@
   flex-shrink: 0;
 }
 
-.dashboard-prompt-footer-tools {
+/* Manus-style: inputs / attach / workspace on the left; browse, voice, send on the right */
+.dashboard-prompt-footer-left,
+.dashboard-prompt-footer-right {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 4px;
   min-width: 0;
+}
+
+.dashboard-prompt-footer-right {
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.dashboard-prompt-footer-right--recording {
+  gap: 8px;
+}
+
+.dashboard-prompt-footer-wave-wrap {
+  flex: 1;
+  min-width: 0;
+  max-width: min(360px, 55vw);
+}
+
+.dashboard-prompt-btn--link {
+  text-decoration: none;
+  color: inherit;
 }
 
 .dashboard-prompt-btn {

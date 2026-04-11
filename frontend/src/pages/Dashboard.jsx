@@ -4,8 +4,8 @@ import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-do
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Mic, MicOff, Paperclip, Loader2,
-  Sparkles, ArrowRight, Upload, X, Github,
-  Layout, Code, Zap, Globe,
+  Sparkles, ArrowRight, ArrowUp, Upload, X, Github,
+  Layout, Code, Zap, Globe, Monitor,
   Copy, Check, Pencil, Play, CheckCircle, Clock, AlertCircle,
   BarChart3, ExternalLink, ChevronDown,
 } from 'lucide-react';
@@ -677,30 +677,45 @@ const Dashboard = () => {
           rows={1}
         />
         <div className="dashboard-prompt-footer">
-          <div className="dashboard-prompt-footer-tools">
+          <div className="dashboard-prompt-footer-left" aria-label="Add context">
             <div className="dashboard-model-badge" title="Auto-selects best model">
               <Sparkles size={14} />
             </div>
             <button type="button" onClick={() => fileInputRef.current?.click()} className="dashboard-prompt-btn" title="Attach file">
               <Paperclip size={18} />
             </button>
+            <button
+              type="button"
+              className="dashboard-prompt-btn"
+              title="Open workspace"
+              onClick={() => navigate({ pathname: '/app/workspace' })}
+            >
+              <Monitor size={18} />
+            </button>
             <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.txt,.md,.zip,audio/*,.js,.jsx,.ts,.tsx,.css,.html,.json,.py" onChange={handleFileSelect} className="hidden" />
+          </div>
+          <div className={`dashboard-prompt-footer-right ${isRecording ? 'dashboard-prompt-footer-right--recording' : ''}`} aria-label="Send options">
+            <Link to="/app/templates" className="dashboard-prompt-btn dashboard-prompt-btn--link" title="Templates & gallery">
+              <Globe size={18} />
+            </Link>
             {isRecording ? (
-              <VoiceWaveform stream={audioStream} onStop={stopRecording} onConfirm={confirmRecording} isRecording={isRecording} />
+              <div className="dashboard-prompt-footer-wave-wrap">
+                <VoiceWaveform stream={audioStream} onStop={stopRecording} onConfirm={confirmRecording} isRecording={isRecording} />
+              </div>
             ) : (
               <button type="button" onClick={isTranscribing ? undefined : startRecording} disabled={isTranscribing} className={`dashboard-prompt-btn ${isRecording ? 'recording' : ''}`} title={isTranscribing ? 'Transcribing...' : 'Voice input (9 languages)'}>
                 {isTranscribing ? <Loader2 size={18} className="animate-spin" /> : <Mic size={18} />}
               </button>
             )}
+            <button
+              type="submit"
+              disabled={(!prompt.trim() && !attachedFiles.length) || chatLoading}
+              className={`dashboard-prompt-submit ${!chatLoading && (prompt.trim() || attachedFiles.length) ? 'dashboard-prompt-submit--ready' : ''}`}
+              title="Send"
+            >
+              {chatLoading ? <Loader2 size={18} className="animate-spin" /> : <ArrowUp size={18} strokeWidth={2.25} />}
+            </button>
           </div>
-          <button
-            type="submit"
-            disabled={(!prompt.trim() && !attachedFiles.length) || chatLoading}
-            className={`dashboard-prompt-submit ${!chatLoading && (prompt.trim() || attachedFiles.length) ? 'dashboard-prompt-submit--ready' : ''}`}
-            title="Send"
-          >
-            {chatLoading ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} strokeWidth={2.25} />}
-          </button>
         </div>
         {actionFeedback?.type === 'mic_error' && (
           <div style={{ marginTop: '8px', padding: '8px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', fontSize: '12px', color: '#b91c1c', lineHeight: '1.5' }}>
