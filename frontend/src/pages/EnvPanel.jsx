@@ -52,8 +52,8 @@ export default function EnvPanel() {
     <div className="min-h-screen bg-[#FAFAF8] text-[#1A1A1A] p-6">
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center gap-3 mb-8">
-          <div className="p-3 rounded-xl bg-zinc-800">
-            <Key className="w-8 h-8 text-orange-400" />
+          <div className="p-3 rounded-xl bg-[#E5E5E5] border border-black/10">
+            <Key className="w-8 h-8 text-[#1A1A1A]" />
           </div>
           <div>
             <h1 className="text-2xl font-bold">Workspace env</h1>
@@ -62,10 +62,10 @@ export default function EnvPanel() {
         </div>
         <div className="space-y-3 mb-6">
           {Object.entries(env).map(([k, v]) => (
-            <div key={k} className="flex items-center gap-3 p-3 rounded-lg bg-zinc-900 border border-zinc-800">
-              <span className="font-mono text-sm text-zinc-300">{k}</span>
-              <span className="flex-1 truncate text-zinc-500 text-sm">{v ? '••••••' : '(empty)'}</span>
-              <button onClick={() => removeVar(k)} className="p-1.5 text-zinc-500 hover:text-[#666666]">
+            <div key={k} className="flex items-center gap-3 p-3 rounded-lg bg-[#F5F5F4] border border-black/10">
+              <span className="font-mono text-sm text-[#1A1A1A]">{k}</span>
+              <span className="flex-1 truncate text-[#666666] text-sm">{v ? '••••••' : '(empty)'}</span>
+              <button type="button" onClick={() => removeVar(k)} className="p-1.5 text-[#666666] hover:text-[#1A1A1A]">
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
@@ -76,13 +76,13 @@ export default function EnvPanel() {
             value={newKey}
             onChange={(e) => setNewKey(e.target.value)}
             placeholder="KEY"
-            className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-[#1A1A1A] placeholder-zinc-500"
+            className="flex-1 px-3 py-2 rounded-lg bg-white border border-black/10 text-[#1A1A1A] placeholder-[#888888]"
           />
           <input
             value={newVal}
             onChange={(e) => setNewVal(e.target.value)}
             placeholder="value"
-            className="flex-1 px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-[#1A1A1A] placeholder-zinc-500"
+            className="flex-1 px-3 py-2 rounded-lg bg-white border border-black/10 text-[#1A1A1A] placeholder-[#888888]"
           />
           <button
             onClick={addVar}

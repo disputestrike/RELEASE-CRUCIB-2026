@@ -465,7 +465,7 @@ root.render(
                   <button
                     type="submit"
                     disabled={!prompt.trim() || isBuilding}
-                    className="w-full py-4 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-[#1A1A1A] rounded-xl font-medium text-lg transition flex items-center justify-center gap-2"
+                    className="w-full py-4 bg-[#1A1A1A] hover:bg-black disabled:bg-gray-200 disabled:text-[#666666] text-white disabled:cursor-not-allowed rounded-xl font-medium text-lg transition flex items-center justify-center gap-2"
                     data-testid="builder-start-btn"
                   >
                     {isBuilding ? (
@@ -623,7 +623,7 @@ root.render(
                   <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[85%] p-3 rounded-xl text-sm ${
                       msg.role === 'user' 
-                        ? 'bg-gray-900 text-[#1A1A1A]' 
+                        ? 'bg-[#E5E5E5] text-[#1A1A1A] border border-black/10' 
                         : 'bg-gray-100 text-gray-800'
                     }`}>
                       <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -644,7 +644,7 @@ root.render(
                   <button
                     type="submit"
                     disabled={!chatInput.trim()}
-                    className="px-3 py-2 bg-gray-900 text-[#1A1A1A] rounded-lg disabled:bg-gray-300"
+                    className="px-3 py-2 bg-[#1A1A1A] text-white rounded-lg disabled:bg-gray-300 disabled:text-[#666666]"
                   >
                     <Send className="w-4 h-4" />
                   </button>
@@ -657,9 +657,9 @@ root.render(
 
       {/* Console */}
       {buildPhase !== 'idle' && (
-        <div className="h-36 bg-gray-900 text-[#1A1A1A] flex flex-col flex-shrink-0">
-          <div className="h-8 border-b border-gray-700 flex items-center px-3 bg-gray-800">
-            <span className="text-xs text-[#666666] flex items-center gap-2">
+        <div className="h-36 bg-[#1A1A1A] text-[#E5E5E5] flex flex-col flex-shrink-0">
+          <div className="h-8 border-b border-white/10 flex items-center px-3 bg-black/30">
+            <span className="text-xs text-[#A3A3A3] flex items-center gap-2">
               <Terminal className="w-3 h-3" />
               Console
             </span>
@@ -667,12 +667,12 @@ root.render(
           <div className="flex-1 overflow-y-auto p-2 font-mono text-xs">
             {logs.map((log, i) => (
               <div key={i} className={`py-0.5 ${
-                log.type === 'error' ? 'text-[#666666]' :
-                log.type === 'success' ? 'text-[#1A1A1A]' :
-                log.type === 'agent' ? 'text-[#666666]' :
-                'text-gray-300'
+                log.type === 'error' ? 'text-[#A3A3A3]' :
+                log.type === 'success' ? 'text-white' :
+                log.type === 'agent' ? 'text-[#A3A3A3]' :
+                'text-[#D4D4D4]'
               }`}>
-                <span className="text-gray-500">[{log.timestamp}]</span> {log.message}
+                <span className="text-[#737373]">[{log.timestamp}]</span> {log.message}
               </div>
             ))}
             <div ref={logsEndRef} />

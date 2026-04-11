@@ -261,7 +261,7 @@ export const VoiceInput = ({
           transition-all duration-200
           ${isRecording 
             ? 'bg-gray-500 hover:bg-gray-600 text-[#1A1A1A] animate-pulse' 
-            : 'bg-gray-200 hover:bg-black text-[#1A1A1A]'
+            : 'bg-gray-200 hover:bg-neutral-300 text-[#1A1A1A]'
           }
           ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
         `}

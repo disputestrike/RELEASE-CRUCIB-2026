@@ -100,11 +100,11 @@ const ProjectBuilder = () => {
               <div className={`w-8 h-8 rounded-full flex items-center justify-center font-medium transition-all ${
                 step > s ? 'bg-[#3D3D3D] text-white' :
                 step === s ? 'bg-[#1A1A1A] text-white' :
-                'bg-white/10 text-gray-500'
+                'bg-[#E5E5E5] text-[#666666]'
               }`}>
                 {step > s ? <Check className="w-4 h-4" /> : s}
               </div>
-              {s < 3 && <div className={`w-12 h-0.5 ${step > s ? 'bg-[#3D3D3D]' : 'bg-white/10'}`}></div>}
+              {s < 3 && <div className={`w-12 h-0.5 ${step > s ? 'bg-[#3D3D3D]' : 'bg-[#E5E5E5]'}`}></div>}
             </div>
           ))}
         </div>
@@ -119,7 +119,7 @@ const ProjectBuilder = () => {
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
         >
-          <h1 className="text-3xl font-bold mb-2">What would you like to build?</h1>
+          <h1 className="text-3xl font-bold mb-2 text-[#1A1A1A]">What would you like to build?</h1>
           <p className="text-[#666666] mb-8">Select the type of project you want to create.</p>
           
           <div className="grid md:grid-cols-2 gap-4">
@@ -129,8 +129,8 @@ const ProjectBuilder = () => {
                 onClick={() => setFormData({ ...formData, project_type: type.id })}
                 className={`p-6 rounded-xl border text-left transition-all ${
                   formData.project_type === type.id
-                    ? 'bg-[#F5F5F4] border-black/15'
-                    : 'bg-[#0a0a0a] border-white/10 hover:border-white/20'
+                    ? 'bg-[#F3F1ED] border-black/20'
+                    : 'bg-[#F5F5F4] border-black/10 hover:border-black/20'
                 }`}
                 data-testid={`project-type-${type.id}`}
               >
@@ -143,8 +143,8 @@ const ProjectBuilder = () => {
                     }`} />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold mb-1">{type.name}</h3>
-                    <p className="text-sm text-gray-500 mb-2">{type.desc}</p>
+                    <h3 className="font-semibold mb-1 text-[#1A1A1A]">{type.name}</h3>
+                    <p className="text-sm text-[#666666] mb-2">{type.desc}</p>
                     <div className="flex items-center gap-2 text-xs">
                       <Zap className="w-3 h-3 text-[#666666]" />
                       <span className="text-[#666666]">~{(type.tokens / 1000).toFixed(0)}K tokens</span>
@@ -285,34 +285,34 @@ const ProjectBuilder = () => {
             </div>
           )}
 
-          <div className="p-6 bg-[#0a0a0a] rounded-xl border border-white/10 space-y-6">
+          <div className="p-6 bg-[#F5F5F4] rounded-xl border border-black/10 space-y-6">
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-[#F3F1ED] rounded-lg flex items-center justify-center">
+              <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center border border-black/10">
                 {selectedType && <selectedType.icon className="w-6 h-6 text-[#1A1A1A]" />}
               </div>
               <div>
-                <h3 className="text-xl font-semibold">{formData.name}</h3>
+                <h3 className="text-xl font-semibold text-[#1A1A1A]">{formData.name}</h3>
                 <p className="text-[#666666]">{selectedType?.name}</p>
               </div>
             </div>
             
-            <div className="border-t border-white/10 pt-4">
-              <h4 className="text-sm font-medium text-gray-500 mb-2">Description</h4>
-              <p className="text-gray-300">{formData.description}</p>
+            <div className="border-t border-black/10 pt-4">
+              <h4 className="text-sm font-medium text-[#666666] mb-2">Description</h4>
+              <p className="text-[#1A1A1A]">{formData.description}</p>
             </div>
             
-            <div className="grid md:grid-cols-3 gap-4 border-t border-white/10 pt-4">
+            <div className="grid md:grid-cols-3 gap-4 border-t border-black/10 pt-4">
               <div>
-                <h4 className="text-sm font-medium text-gray-500 mb-1">Styling</h4>
-                <p className="capitalize">{formData.requirements.styling || 'Default'}</p>
+                <h4 className="text-sm font-medium text-[#666666] mb-1">Styling</h4>
+                <p className="capitalize text-[#1A1A1A]">{formData.requirements.styling || 'Default'}</p>
               </div>
               <div>
-                <h4 className="text-sm font-medium text-gray-500 mb-1">Deployment</h4>
-                <p className="capitalize">{formData.requirements.deployment}</p>
+                <h4 className="text-sm font-medium text-[#666666] mb-1">Deployment</h4>
+                <p className="capitalize text-[#1A1A1A]">{formData.requirements.deployment}</p>
               </div>
               <div>
-                <h4 className="text-sm font-medium text-gray-500 mb-1">Features</h4>
-                <p>
+                <h4 className="text-sm font-medium text-[#666666] mb-1">Features</h4>
+                <p className="text-[#1A1A1A]">
                   {formData.requirements.auth && 'Auth, '}
                   {formData.requirements.database && 'Database'}
                   {!formData.requirements.auth && !formData.requirements.database && 'Basic'}
@@ -321,15 +321,15 @@ const ProjectBuilder = () => {
             </div>
 
             {/* Item 29: Quick build — preview in ~2 min */}
-            <label className="flex items-start gap-3 p-4 bg-[#0a0a0a] border border-white/10 rounded-lg cursor-pointer hover:border-white/20 transition">
+            <label className="flex items-start gap-3 p-4 bg-white border border-black/10 rounded-lg cursor-pointer hover:border-black/20 transition">
               <input
                 type="checkbox"
                 checked={!!formData.quick_build}
                 onChange={(e) => setFormData({ ...formData, quick_build: e.target.checked })}
-                className="mt-1 w-4 h-4 rounded border-white/20 bg-white/5 text-[#1A1A1A] focus:ring-black/10"
+                className="mt-1 w-4 h-4 rounded border-black/20 text-[#1A1A1A] focus:ring-black/10"
               />
               <div>
-                <p className="font-medium text-gray-300">Quick build</p>
+                <p className="font-medium text-[#1A1A1A]">Quick build</p>
                 <p className="text-sm text-[#666666]">Get a preview in ~2 minutes (runs planning + first generation phase only). You can run a full build later from the project.</p>
               </div>
             </label>
