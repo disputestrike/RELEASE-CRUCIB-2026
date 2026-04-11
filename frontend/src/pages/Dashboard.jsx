@@ -285,8 +285,8 @@ const Dashboard = () => {
     const el = inputRef.current;
     if (!el) return;
     const inChat = chatMessages.length > 0;
-    const maxPx = inChat ? 140 : 240;
-    const minPx = inChat ? 36 : 28;
+    const maxPx = inChat ? 160 : 240;
+    const minPx = inChat ? 44 : 28;
     el.style.height = 'auto';
     el.style.height = `${Math.min(Math.max(el.scrollHeight, minPx), maxPx)}px`;
   }, [prompt, chatMessages.length]);
@@ -933,54 +933,63 @@ const Dashboard = () => {
           </div>
         )}
         {hasChat && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="dashboard-chat-thread">
-            {chatMessages.map((msg, i) => (
-              <div key={i} className={`dashboard-chat-msg ${msg.role}`}>
-                {msg.role === 'assistant' && (
-                  <div className="dashboard-chat-identifier">
-                    <Logo href={null} showTagline={false} height={18} className="dashboard-chat-logo" />
+          <div className="dashboard-chat-container">
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="dashboard-chat-thread">
+              {chatMessages.map((msg, i) => (
+                <div
+                  key={i}
+                  className={`dashboard-chat-row ${msg.role === 'user' ? 'dashboard-chat-row--user' : 'dashboard-chat-row--assistant'}`}
+                >
+                  <div className="dashboard-chat-cluster">
+                    {msg.role === 'assistant' && (
+                      <div className="dashboard-chat-identifier">
+                        <Logo href={null} showTagline={false} height={18} className="dashboard-chat-logo" />
+                      </div>
+                    )}
+                    <div className={`dashboard-chat-bubble ${msg.role}`}>
+                      {formatChatContent(msg.content)}
+                    </div>
+                    {msg.buildOffer && (
+                      <div className="dashboard-chat-build-offer">
+                        <button type="button" onClick={() => handleStartBuilding(msg.buildOffer)} className="dashboard-chat-start-building-btn">
+                          Start Building →
+                        </button>
+                      </div>
+                    )}
+                    <div className="dashboard-chat-actions">
+                      <button
+                        type="button"
+                        onClick={() => handleCopyMessage(i)}
+                        className="dashboard-chat-action"
+                        title={actionFeedback?.type === 'copy' && actionFeedback?.index === i ? 'Copied!' : 'Copy'}
+                        aria-label={actionFeedback?.type === 'copy' && actionFeedback?.index === i ? 'Copied!' : 'Copy'}
+                      >
+                        {actionFeedback?.type === 'copy' && actionFeedback?.index === i ? <Check size={14} /> : <Copy size={14} />}
+                      </button>
+                      {msg.role === 'user' && (
+                        <button type="button" onClick={() => handleEditMessage(msg.content)} className="dashboard-chat-action" title="Edit" aria-label="Edit">
+                          <Pencil size={14} />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                )}
-                <div className={`dashboard-chat-bubble ${msg.role}`}>
-                  {formatChatContent(msg.content)}
                 </div>
-                {msg.buildOffer && (
-                  <div className="dashboard-chat-build-offer">
-                    <button type="button" onClick={() => handleStartBuilding(msg.buildOffer)} className="dashboard-chat-start-building-btn">
-                      Start Building →
-                    </button>
+              ))}
+              {chatLoading && (
+                <div className="dashboard-chat-row dashboard-chat-row--assistant">
+                  <div className="dashboard-chat-cluster">
+                    <div className="dashboard-chat-identifier">
+                      <Logo href={null} showTagline={false} height={18} className="dashboard-chat-logo" />
+                    </div>
+                    <div className="dashboard-chat-bubble assistant">
+                      <Loader2 size={16} className="animate-spin" style={{ display: 'inline-block' }} aria-hidden />
+                      <span style={{ marginLeft: 8 }}>Thinking...</span>
+                    </div>
                   </div>
-                )}
-                <div className={`dashboard-chat-actions ${msg.role}`}>
-                  <button
-                    type="button"
-                    onClick={() => handleCopyMessage(i)}
-                    className="dashboard-chat-action"
-                    title={actionFeedback?.type === 'copy' && actionFeedback?.index === i ? 'Copied!' : 'Copy'}
-                    aria-label={actionFeedback?.type === 'copy' && actionFeedback?.index === i ? 'Copied!' : 'Copy'}
-                  >
-                    {actionFeedback?.type === 'copy' && actionFeedback?.index === i ? <Check size={14} /> : <Copy size={14} />}
-                  </button>
-                  {msg.role === 'user' && (
-                    <button type="button" onClick={() => handleEditMessage(msg.content)} className="dashboard-chat-action" title="Edit" aria-label="Edit">
-                      <Pencil size={14} />
-                    </button>
-                  )}
                 </div>
-              </div>
-            ))}
-            {chatLoading && (
-              <div className="dashboard-chat-msg assistant">
-                <div className="dashboard-chat-identifier">
-                  <Logo href={null} showTagline={false} height={18} className="dashboard-chat-logo" />
-                </div>
-                <div className="dashboard-chat-bubble assistant">
-                  <Loader2 size={16} className="animate-spin" style={{ display: 'inline-block' }} />
-                  <span style={{ marginLeft: 8 }}>Thinking...</span>
-                </div>
-              </div>
-            )}
-          </motion.div>
+              )}
+            </motion.div>
+          </div>
         )}
         <div ref={messagesEndRef} />
       </div>

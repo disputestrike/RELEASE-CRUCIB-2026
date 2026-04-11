@@ -118,6 +118,17 @@
   flex-direction: column;
 }
 
+/* Dashboard /app: hide main-column scrollbar chrome (feels like a “grid line”) */
+.layout-shell--dash-home .layout-main-content {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.layout-shell--dash-home .layout-main-content::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 /* Right Panel — same tone as main canvas */
 .layout-right-panel {
   width: 420px;

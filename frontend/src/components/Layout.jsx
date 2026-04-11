@@ -227,7 +227,7 @@ const Layout = () => {
         onToggleSidebar={toggleSidebar}
         setSidebarOpen={setSidebarOpen}
         hideSidebarToggle={isWorkspaceView}
-        className={isWorkspaceView ? 'sidebar-hidden' : ''}
+        className={[isWorkspaceView ? 'sidebar-hidden' : '', isAppHomeDashboard ? 'layout-shell--dash-home' : ''].filter(Boolean).join(' ')}
       />
 
       {/* Onboarding Tour for first-time users */}

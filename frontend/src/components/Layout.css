@@ -76,12 +76,12 @@
   background: var(--theme-bg);
 }
 
-/* Top bar — theme-aware border (visible in both light and dark) */
+/* Top bar — no hairline under credits (Manus-like; avoids “grid line” under 200) */
 .layout-topbar {
   display: flex; align-items: center; justify-content: flex-end;
   padding: 8px 20px;
-  border-bottom: 1px solid var(--theme-border);
-  background: var(--theme-surface);
+  border-bottom: none;
+  background: var(--theme-bg);
   color: var(--theme-text);
   flex-shrink: 0;
 }
@@ -159,9 +159,24 @@
 
 .layout-page-content--fullbleed { padding: 0; overflow: hidden; }
 
-/* Dashboard home: seamless with chat surface (no boxed band above footer) */
+/* Dashboard home: full main width — no double padding “choking” the chat column */
 .layout-page-content--dash-home {
-  padding-bottom: 0;
+  padding: 0;
+}
+@media (max-width: 1024px) {
+  .layout-page-content--dash-home {
+    padding-top: 72px;
+  }
+}
+@media (max-width: 640px) {
+  .layout-page-content--dash-home {
+    padding-top: 60px;
+  }
+}
+
+.layout-page-content--dash-home > * {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 /* Footer */
