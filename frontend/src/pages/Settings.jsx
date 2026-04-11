@@ -5,12 +5,13 @@ import {
   Save, Check, Key, ExternalLink, Zap,
   HelpCircle, FileText, Settings as SettingsIcon,
   Copy, AlertCircle, Database, Download,
-  Eye, EyeOff, CheckCircle, XCircle
+  Eye, EyeOff, CheckCircle, XCircle, Wrench, ChevronRight,
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth, API } from '../App';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';
+import { ENGINE_ROOM_ITEMS } from '../config/engineRoomNav';
 
 // Design tokens — matches dark sidebar/workspace exactly
 // T uses CSS variables so theme switching works automatically
@@ -124,6 +125,7 @@ const TABS = [
   { id: 'notifications', label: 'Notifications',     icon: Bell },
   { id: 'data',          label: 'Data & Privacy',    icon: Database },
   { id: 'general',       label: 'General',           icon: SettingsIcon },
+  { id: 'engine',        label: 'Engine room',       icon: Wrench },
 ];
 
 // ── Main ───────────────────────────────────────────────────────────────────
@@ -131,8 +133,16 @@ const Settings = () => {
   const { user, token, refreshUser, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [tab, setTab] = useState(location.state?.openTab || 'account');
+  const [tab, setTab] = useState(() => {
+    const t = location.state?.openTab;
+    return TABS.some((x) => x.id === t) ? t : 'account';
+  });
   const h = token ? { Authorization: `Bearer ${token}` } : {};
+
+  useEffect(() => {
+    const t = location.state?.openTab;
+    if (t && TABS.some((x) => x.id === t)) setTab(t);
+  }, [location.state, location.key]);
 
   // Theme system — real working toggle
   const [theme, setTheme] = useState(() => localStorage.getItem('crucibai-theme') || 'dark');
@@ -601,6 +611,37 @@ const Settings = () => {
                 <option value="en">English</option>
               </select>
               <p style={{ fontSize: 12, color: T.muted, marginTop: 8 }}>More languages coming soon.</p>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* ENGINE ROOM — power-user links (moved from sidebar) */}
+        {tab === 'engine' && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+            <Card>
+              <SectionTitle>Engine room</SectionTitle>
+              <p style={{ fontSize: 13, color: T.muted, marginBottom: 16 }}>
+                Advanced tools, integrations, and internal routes. Same destinations as before; they now live here to keep the home sidebar calm.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {ENGINE_ROOM_ITEMS.map((item) => (
+                  <Link
+                    key={item.href}
+                    to={item.href}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '10px 12px', borderRadius: 8, textDecoration: 'none',
+                      color: T.text, fontSize: 13, background: T.input,
+                      border: '1px solid rgba(255,255,255,0.08)',
+                    }}
+                  >
+                    <item.icon size={16} style={{ color: T.muted, flexShrink: 0 }} />
+                    <span style={{ flex: 1 }}>{item.label}</span>
+                    {item.beta && <span style={{ fontSize: 10, fontWeight: 600, color: T.accent }}>Beta</span>}
+                    <ChevronRight size={14} style={{ color: T.muted, opacity: 0.5 }} />
+                  </Link>
+                ))}
+              </div>
             </Card>
           </motion.div>
         )}

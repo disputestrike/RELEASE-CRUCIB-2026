@@ -964,6 +964,98 @@
   .sidebar-section-items-scroll { max-height: 180px; }
 }
 
+/* Create: New + chevron (minimal IA) */
+.sidebar-nav-section--create {
+  position: relative;
+}
+.sidebar-create-row {
+  display: flex;
+  align-items: stretch;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--theme-border, #27272a);
+  background: var(--theme-input, #18181b);
+}
+.sidebar-create-main {
+  flex: 1;
+  border: none !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+}
+.sidebar-create-chevron {
+  width: 36px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--theme-border, #27272a);
+  color: var(--theme-muted, #a1a1aa);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.sidebar-create-chevron:hover,
+.sidebar-create-chevron.open {
+  color: var(--theme-text, #e4e4e7);
+  background: rgba(255, 255, 255, 0.04);
+}
+.sidebar-create-popover {
+  margin-top: 6px;
+  padding: 6px;
+  border-radius: 8px;
+  border: 1px solid var(--theme-border, #27272a);
+  background: var(--theme-surface, #18181b);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sidebar-create-popover-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--theme-text, #e4e4e7);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+.sidebar-create-popover-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Library accordion */
+.sidebar-library-toggle {
+  width: 100%;
+  justify-content: flex-start;
+}
+.sidebar-library-chevron {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--theme-muted);
+  transition: transform 0.2s ease;
+}
+.sidebar-library-chevron.rotated {
+  transform: rotate(90deg);
+}
+.sidebar-library-nested {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0 8px 8px;
+  border-left: 2px solid rgba(224, 90, 37, 0.35);
+  margin-left: 10px;
+}
+.sidebar-nav-item--nested {
+  padding-left: 10px !important;
+  font-size: 13px;
+}
+
 /* ============================================
    NOTIFICATION BELL
    ============================================ */

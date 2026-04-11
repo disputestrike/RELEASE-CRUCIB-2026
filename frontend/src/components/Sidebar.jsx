@@ -1,62 +1,23 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTaskStore } from '../stores/useTaskStore';
 import {
   Plus, Search, Library, FolderOpen, FolderPlus, CheckCircle, Clock,
-  MessageCircle, Zap, AlertCircle, LogOut, ChevronRight,
-  FileOutput, FileText, LayoutGrid, BookOpen, Key, Keyboard,
-  CreditCard, ScrollText, BarChart3, Wrench, HelpCircle, Coins,
+  MessageCircle, Zap, AlertCircle, LogOut, ChevronRight, ChevronDown,
+  FileText, LayoutGrid, BookOpen, HelpCircle, Coins,
   X, MoreHorizontal, ExternalLink, Pencil, Share2,
-  Trash2, FolderInput, Star, Settings, ShieldCheck, Code, Monitor,
+  Trash2, FolderInput, Star, Settings,
   PanelLeftClose, PanelLeftOpen, History, Home,
-  Bot, Radio, MessageSquare, ShoppingBag, Users, Sparkles, PlayCircle,
 } from 'lucide-react';
 import Logo from './Logo';
 import './Sidebar.css';
 
-/** Engine Room nav — module scope so filter memo deps stay stable */
-const ENGINE_ROOM_ITEMS = [
-  { label: 'Skills', icon: Sparkles, href: '/app/skills' },
-  { label: 'Studio', icon: Bot, href: '/app/studio', beta: true },
-  { label: 'Knowledge', icon: BookOpen, href: '/app/knowledge', beta: true },
-  { label: 'Channels', icon: Radio, href: '/app/channels', beta: true },
-  { label: 'Sessions', icon: MessageSquare, href: '/app/sessions', beta: true },
-  { label: 'Commerce', icon: ShoppingBag, href: '/app/commerce', beta: true },
-  { label: 'Members', icon: Users, href: '/app/members', beta: true },
-  { label: 'Credit Center', icon: Coins, href: '/app/tokens' },
-  { label: 'Exports', icon: FileOutput, href: '/app/exports' },
-  { label: 'Docs / Slides / Sheets', icon: FileText, href: '/app/generate' },
-  { label: 'Patterns', icon: Library, href: '/app/patterns' },
-  { label: 'Templates', icon: LayoutGrid, href: '/app/templates' },
-  { label: 'Prompt Library', icon: BookOpen, href: '/app/prompts' },
-  { label: 'Learn', icon: HelpCircle, href: '/app/learn' },
-  { label: 'Env', icon: Key, href: '/app/env' },
-  { label: 'Shortcuts', icon: Keyboard, href: '/app/shortcuts' },
-  { label: 'Benchmarks', icon: BarChart3, href: '/benchmarks' },
-  { label: 'Add Payments', icon: CreditCard, href: '/app/payments-wizard' },
-  { label: 'Audit Log', icon: ScrollText, href: '/app/audit-log' },
-  { label: 'Model Manager', icon: BarChart3, href: '/app/models' },
-  { label: 'Fine-Tuning', icon: Zap, href: '/app/fine-tuning', beta: true },
-  { label: 'Safety Dashboard', icon: ShieldCheck, href: '/app/safety', beta: true },
-  { label: 'Monitoring', icon: BarChart3, href: '/app/monitoring' },
-  { label: 'Auto-Runner', icon: PlayCircle, href: '/app/workspace' },
-  { label: 'VibeCode', icon: Code, href: '/app/vibecode', beta: true },
-  { label: 'IDE', icon: Monitor, href: '/app/ide', beta: true },
-];
-
 /**
- * Sidebar Component (Left Navigation) — Redesigned
- * 
- * SPEC: Reduce from 18 items to 4 pinned:
- *   1. Home (→ prompt-first dashboard)
- *   2. New Task (→ /app/workspace)
- *   3. Agents (→ /app/agents)
- *   4. Settings (→ /app/settings)
- * 
- * Below pinned: All Tasks list with status icons
- * Engine Room: collapsed by default, power-user tools
- * Footer: Token balance + user avatar + logout
+ * Sidebar — minimal primary nav (Manus-style density).
+ * Create: New + menu (task / project). Work: Home, Agents. Library: Prompts / Learn / Patterns.
+ * History: only when there is at least one task or project.
+ * Engine room: moved to Settings → Engine room (linked from account menus).
  */
 
 export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], sidebarOpen = true, onToggleSidebar }) => {
@@ -64,8 +25,12 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
-  const [engineRoomOpen, setEngineRoomOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(() =>
+    /^\/app\/(prompts|learn|patterns)(\/|$)/.test(location.pathname || '')
+  );
+  const createMenuRef = useRef(null);
   const [menuTaskId, setMenuTaskId] = useState(null);
   const [renameTaskId, setRenameTaskId] = useState(null);
   const [renameValue, setRenameValue] = useState('');
@@ -94,6 +59,19 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     document.addEventListener('click', close);
     return () => document.removeEventListener('click', close);
   }, []);
+
+  useEffect(() => {
+    if (/^\/app\/(prompts|learn|patterns)(\/|$)/.test(location.pathname || '')) setLibraryOpen(true);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!createMenuOpen) return;
+    const onDoc = (e) => {
+      if (createMenuRef.current && !createMenuRef.current.contains(e.target)) setCreateMenuOpen(false);
+    };
+    document.addEventListener('click', onDoc);
+    return () => document.removeEventListener('click', onDoc);
+  }, [createMenuOpen]);
 
   const isActive = (path) => location.pathname === path;
   const isActivePrefix = (path) => location.pathname.startsWith(path);
@@ -254,12 +232,6 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     return () => document.removeEventListener('click', close);
   }, []);
 
-  const filteredEngineItems = useMemo(() => {
-    if (!searchQuery) return ENGINE_ROOM_ITEMS;
-    const q = searchQuery.toLowerCase();
-    return ENGINE_ROOM_ITEMS.filter(item => item.label.toLowerCase().includes(q));
-  }, [searchQuery]);
-
   // Keyboard shortcut: Ctrl+K for search
   useEffect(() => {
     const handler = (e) => {
@@ -398,31 +370,15 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
           >
             <PanelLeftOpen size={20} />
           </button>
-          {createNav.map((item) => {
-            const isAppHome = item.exact && item.href === '/app';
-            return isAppHome ? (
-              <button
-                key={item.label}
-                type="button"
-                onClick={() => navigate('/app', { state: item.state || { newAgent: Date.now() } })}
-                className="sidebar-collapsed-icon"
-                title={item.label}
-                aria-label={item.label}
-              >
-                <item.icon size={20} />
-              </button>
-            ) : (
-              <Link
-                key={item.href}
-                to={item.href}
-                className="sidebar-collapsed-icon"
-                title={item.label}
-                aria-label={item.label}
-              >
-                <item.icon size={20} />
-              </Link>
-            );
-          })}
+          <button
+            type="button"
+            onClick={() => navigate('/app', { state: { newAgent: Date.now() } })}
+            className="sidebar-collapsed-icon"
+            title="New task"
+            aria-label="New task"
+          >
+            <Plus size={20} />
+          </button>
           <Link to="/app" className="sidebar-collapsed-icon" title="Home" aria-label="Home">
             <Home size={20} />
           </Link>
@@ -438,9 +394,6 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
         </div>
         <div className="sidebar-collapsed-spacer" aria-hidden="true" />
         <div className="sidebar-collapsed-bottom">
-          <button type="button" className="sidebar-collapsed-icon" onClick={onToggleSidebar} title="Engine Room" aria-label="Engine Room">
-            <Wrench size={20} />
-          </button>
           <Link to="/app/tokens" className="sidebar-collapsed-icon" title="Credit Center" aria-label="Credit Center">
             <Coins size={20} />
           </Link>
@@ -458,6 +411,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
             {accountMenuOpen && (
               <div className="sidebar-account-menu sidebar-account-menu--dropup" role="menu">
                 <Link to="/app/settings" role="menuitem" onClick={() => setAccountMenuOpen(false)}><Settings size={16} /> Settings</Link>
+                <Link to="/app/settings" state={{ openTab: 'engine' }} role="menuitem" onClick={() => setAccountMenuOpen(false)}><LayoutGrid size={16} /> Engine room</Link>
                 <Link to="/app/tokens" role="menuitem" onClick={() => setAccountMenuOpen(false)}><Coins size={16} /> Credits & Billing</Link>
                 <Link to="/pricing" role="menuitem" onClick={() => setAccountMenuOpen(false)}><Zap size={16} /> Upgrade plan</Link>
                 <div className="sidebar-account-menu-divider" />
@@ -510,31 +464,39 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
       {/* Grouped navigation — Create / Work / Knowledge (Engine Room stays secondary, below) */}
       <nav className="sidebar-nav" aria-label="Primary">
         <div className="sidebar-nav-group-label">Create</div>
-        <div className="sidebar-nav-section">
-          {createNav.map((item) => {
-            const active = item.exact ? isActive(item.href) : isActivePrefix(item.href);
-            const isAppHome = item.href === '/app' && item.exact;
-            return isAppHome ? (
-              <button
-                key={item.label}
-                type="button"
-                onClick={() => navigate('/app', { state: item.state || { newAgent: Date.now() } })}
-                className={`sidebar-nav-item ${active ? 'active' : ''}`}
-              >
-                <item.icon size={18} className="sidebar-nav-icon" />
-                <span className="sidebar-nav-label">{item.label}</span>
+        <div className="sidebar-nav-section sidebar-nav-section--create" ref={createMenuRef}>
+          <div className="sidebar-create-row">
+            <button
+              type="button"
+              onClick={() => navigate('/app', { state: { newAgent: Date.now() } })}
+              className={`sidebar-nav-item sidebar-create-main ${isActive('/app') ? 'active' : ''}`}
+            >
+              <Plus size={18} className="sidebar-nav-icon" />
+              <span className="sidebar-nav-label">New</span>
+            </button>
+            <button
+              type="button"
+              className={`sidebar-create-chevron ${createMenuOpen ? 'open' : ''}`}
+              aria-label="More create options"
+              aria-expanded={createMenuOpen}
+              onClick={(e) => {
+                e.stopPropagation();
+                setCreateMenuOpen((o) => !o);
+              }}
+            >
+              <ChevronDown size={16} />
+            </button>
+          </div>
+          {createMenuOpen && (
+            <div className="sidebar-create-popover" role="menu">
+              <button type="button" role="menuitem" className="sidebar-create-popover-item" onClick={() => { navigate('/app', { state: { newAgent: Date.now() } }); setCreateMenuOpen(false); }}>
+                <Plus size={14} /> New task
               </button>
-            ) : (
-              <Link
-                key={item.href}
-                to={item.href}
-                className={`sidebar-nav-item ${active ? 'active' : ''}`}
-              >
-                <item.icon size={18} className="sidebar-nav-icon" />
-                <span className="sidebar-nav-label">{item.label}</span>
-              </Link>
-            );
-          })}
+              <button type="button" role="menuitem" className="sidebar-create-popover-item" onClick={() => { navigate('/app', { state: { newProject: true } }); setCreateMenuOpen(false); }}>
+                <FolderPlus size={14} /> New project
+              </button>
+            </div>
+          )}
         </div>
         <div className="sidebar-nav-group-label">Work</div>
         <div className="sidebar-nav-section">
@@ -547,24 +509,39 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
             <span className="sidebar-nav-label">Agents</span>
           </Link>
         </div>
-        <div className="sidebar-nav-group-label">Knowledge</div>
+        <div className="sidebar-nav-group-label">Library</div>
         <div className="sidebar-nav-section">
-          <Link to="/app/prompts" className={`sidebar-nav-item ${isActivePrefix('/app/prompts') ? 'active' : ''}`}>
-            <BookOpen size={18} className="sidebar-nav-icon" />
-            <span className="sidebar-nav-label">Prompts</span>
-          </Link>
-          <Link to="/app/learn" className={`sidebar-nav-item ${isActivePrefix('/app/learn') ? 'active' : ''}`}>
-            <HelpCircle size={18} className="sidebar-nav-icon" />
-            <span className="sidebar-nav-label">Learn</span>
-          </Link>
-          <Link to="/app/patterns" className={`sidebar-nav-item ${isActivePrefix('/app/patterns') ? 'active' : ''}`}>
+          <button
+            type="button"
+            className={`sidebar-nav-item sidebar-library-toggle ${libraryOpen ? 'open' : ''}`}
+            onClick={() => setLibraryOpen((o) => !o)}
+            aria-expanded={libraryOpen}
+          >
             <Library size={18} className="sidebar-nav-icon" />
-            <span className="sidebar-nav-label">Patterns</span>
-          </Link>
+            <span className="sidebar-nav-label">Prompts, Learn &amp; Patterns</span>
+            <ChevronRight size={16} className={`sidebar-library-chevron ${libraryOpen ? 'rotated' : ''}`} />
+          </button>
+          {libraryOpen && (
+            <div className="sidebar-library-nested">
+              <Link to="/app/prompts" className={`sidebar-nav-item sidebar-nav-item--nested ${isActivePrefix('/app/prompts') ? 'active' : ''}`} onClick={() => setLibraryOpen(true)}>
+                <BookOpen size={16} className="sidebar-nav-icon" />
+                <span className="sidebar-nav-label">Prompts</span>
+              </Link>
+              <Link to="/app/learn" className={`sidebar-nav-item sidebar-nav-item--nested ${isActivePrefix('/app/learn') ? 'active' : ''}`} onClick={() => setLibraryOpen(true)}>
+                <HelpCircle size={16} className="sidebar-nav-icon" />
+                <span className="sidebar-nav-label">Learn</span>
+              </Link>
+              <Link to="/app/patterns" className={`sidebar-nav-item sidebar-nav-item--nested ${isActivePrefix('/app/patterns') ? 'active' : ''}`} onClick={() => setLibraryOpen(true)}>
+                <Library size={16} className="sidebar-nav-icon" />
+                <span className="sidebar-nav-label">Patterns</span>
+              </Link>
+            </div>
+          )}
         </div>
       </nav>
 
-      {/* History Section — Today / Earlier, scrollable, context menu */}
+      {/* History — only when there is at least one task or project */}
+      {listItems.length > 0 && (
       <div className="sidebar-section sidebar-section-tasks">
         <div className="sidebar-section-header">
           <h3 className="sidebar-section-title">History</h3>
@@ -612,8 +589,9 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
           )}
         </div>
       </div>
+      )}
 
-      {/* Spacer — pushes History up, keeps Engine/Credits/Settings at bottom */}
+      {/* Spacer — pushes History up, keeps credits at bottom */}
       <div className="sidebar-spacer" />
 
       {/* Delete confirmation — over right pane */}
@@ -631,33 +609,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
         </div>
       )}
 
-      {/* Bottom section: Engine Room + Credits only (Settings is in Guest dropdown) */}
       <div className="sidebar-bottom">
-        <div className="sidebar-engine-room">
-          <button
-            className={`sidebar-engine-toggle ${engineRoomOpen ? 'open' : ''}`}
-            onClick={() => setEngineRoomOpen(!engineRoomOpen)}
-          >
-            <Wrench size={16} />
-            <span>Engine Room</span>
-            <ChevronRight size={16} className={`sidebar-engine-chevron ${engineRoomOpen ? 'rotated' : ''}`} />
-          </button>
-          {engineRoomOpen && (
-            <div className="sidebar-engine-items">
-              {filteredEngineItems.map((item) => (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  className={`sidebar-engine-item ${isActive(item.href) ? 'active' : ''}`}
-                >
-                  <item.icon size={14} />
-                  <span>{item.label}</span>
-                  {item.beta && <span className="sidebar-engine-beta">Beta</span>}
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
         <Link to="/app/tokens" className="sidebar-token-balance" title="Credit Center">
           <Coins size={16} className="sidebar-token-icon" />
           <span className="sidebar-token-amount">
@@ -696,6 +648,14 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
               onClick={() => setAccountMenuOpen(false)}
             >
               <Settings size={16} /> Settings
+            </Link>
+            <Link
+              to="/app/settings"
+              state={{ openTab: 'engine' }}
+              role="menuitem"
+              onClick={() => setAccountMenuOpen(false)}
+            >
+              <LayoutGrid size={16} /> Engine room
             </Link>
             <Link
               to="/app/tokens"

@@ -38,12 +38,12 @@
 .home-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 24px 40px;
+  padding: 32px 48px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 24px;
+  gap: 40px;
 }
 
 /* Approved spacing: 50-60px from left/right of main chat area */
@@ -114,9 +114,20 @@
 
 .dashboard-prompt-inline {
   width: 100%;
-  max-width: 680px;
+  max-width: 560px;
   display: flex;
   justify-content: center;
+}
+
+/* Minimal home column (Manus-like measure) */
+.dashboard-home-column {
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
 }
 
 /* Hero content container — centered, wider prompt (760px) */
@@ -154,9 +165,10 @@
 
 .dashboard-greeting-sub {
   display: block;
-  font-weight: 400;
-  color: var(--theme-muted, #a1a1aa);
-  font-size: clamp(1.5rem, 4vw, 2.25rem);
+  font-weight: 500;
+  color: var(--theme-text, #e4e4e7);
+  font-size: clamp(1.65rem, 4.2vw, 2.35rem);
+  letter-spacing: -0.03em;
   text-align: center;
 }
 
@@ -508,6 +520,167 @@
 }
 
 /* Quick Start Chips */
+.dashboard-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  justify-content: center;
+}
+
+.dashboard-more-wrap {
+  position: relative;
+}
+
+.dashboard-chip-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dashboard-chip-more-chevron {
+  opacity: 0.85;
+}
+
+.dashboard-more-menu {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 240px;
+  max-height: min(70vh, 420px);
+  overflow-y: auto;
+  padding: 8px;
+  border-radius: 12px;
+  background: var(--theme-surface, #18181b);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.dashboard-more-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--theme-text, #e4e4e7);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dashboard-more-menu-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.dashboard-more-menu-item-skill {
+  font-size: 12px;
+}
+
+.dashboard-more-skill-emoji {
+  font-size: 16px;
+  width: 22px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.dashboard-more-menu-divider {
+  height: 1px;
+  margin: 6px 0;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.dashboard-more-menu-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 4px;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(224, 90, 37, 0.12);
+  color: #fb923c;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dashboard-more-menu-footer:hover {
+  background: rgba(224, 90, 37, 0.2);
+}
+
+.dashboard-how-builds-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: -8px;
+}
+
+.dashboard-how-builds-work {
+  background: none;
+  border: none;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--theme-muted, #a1a1aa);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.dashboard-how-builds-work:hover {
+  color: var(--theme-text, #e4e4e7);
+}
+
+.dashboard-modal--golden {
+  max-width: 440px;
+  width: 92%;
+}
+
+.dashboard-golden-modal-lead {
+  font-size: 14px;
+  color: var(--theme-muted, #a1a1aa);
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+
+.dashboard-golden-modal-steps {
+  margin: 0;
+  padding: 0 0 0 4px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dashboard-golden-modal-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--theme-text, #e4e4e7);
+  line-height: 1.45;
+}
+
+.dashboard-golden-modal-step-num {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(224, 90, 37, 0.2);
+  color: #fb923c;
+}
+
 .dashboard-chips {
   display: flex;
   flex-direction: column;

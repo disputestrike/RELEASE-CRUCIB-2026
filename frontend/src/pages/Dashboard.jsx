@@ -5,9 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Mic, MicOff, Paperclip, Loader2,
   Sparkles, ArrowRight, Upload, X, Github,
-  Layout, Smartphone, Code, Zap, Globe,
+  Layout, Code, Zap, Globe,
   Copy, Check, Pencil, Play, CheckCircle, Clock, AlertCircle,
-  BarChart3, ExternalLink
+  BarChart3, ExternalLink, ChevronDown,
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import { useAuth, API } from '../App';
@@ -120,77 +120,6 @@ const SKILLS = [
   { icon: '📄', name: 'Blog / CMS', skill_name: null, desc: 'Articles, categories, search, author dashboard', prompt: 'Build a blog with articles, categories, search, and an author dashboard' },
 ];
 
-const SkillsPanel = ({ onSelect, token: skillToken, API: skillAPI }) => {
-  const [showAll, setShowAll] = useState(false);
-  const visibleSkills = showAll ? SKILLS : SKILLS.slice(0, 5);
-  const navigate = useNavigate();
-
-  const handleSkillClick = (skill) => {
-    onSelect(skill.prompt);
-    // Activate the skill when clicked (fire-and-forget)
-    if (skillToken && skill.skill_name) {
-      axios.post(
-        `${skillAPI}/skills/${skill.skill_name}/activate`,
-        {},
-        { headers: { Authorization: `Bearer ${skillToken}` } }
-      ).catch(() => {});
-    }
-  };
-
-  return (
-    <div style={{ maxWidth: '720px', width: '100%', margin: '20px auto 0' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-        <div>
-          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--theme-text, #111827)' }}>What can I build?</span>
-          <span style={{ fontSize: '12px', color: '#9ca3af', marginLeft: '8px' }}>Click any skill to start building</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button
-            type="button"
-            onClick={() => setShowAll((v) => !v)}
-            style={{ fontSize: '12px', color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-          >
-            {showAll ? 'Show fewer' : 'Show all capabilities'}
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/app/skills')}
-            style={{ fontSize: '12px', color: '#6366f1', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '3px' }}
-          >
-            View in Skills <ArrowRight size={11} />
-          </button>
-        </div>
-      </div>
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(5, 1fr)',
-        gap: '8px',
-      }} className="skills-grid">
-        {visibleSkills.map((skill) => (
-          <button
-            key={skill.name}
-            type="button"
-            onClick={() => handleSkillClick(skill)}
-            style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
-              padding: '12px', background: 'var(--theme-bg, #fff)', border: '1px solid var(--theme-border, #e5e7eb)',
-              borderRadius: '12px', cursor: 'pointer', textAlign: 'left',
-              transition: 'border-color 0.15s, box-shadow 0.15s',
-              gap: '6px',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--theme-border, #e5e7eb)'; e.currentTarget.style.boxShadow = 'none'; }}
-          >
-            <span style={{ fontSize: '20px', lineHeight: 1 }}>{skill.icon}</span>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--theme-text, #111827)' }}>{skill.name}</span>
-            <span style={{ fontSize: '11px', color: '#6b7280', lineHeight: 1.4 }}>{skill.desc}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-};
-
 const QUICK_START_CHIPS = [
   { label: 'Build website', icon: Layout, prompt: 'Build me a stunning multi-page website with hero, features grid, pricing, testimonials, and footer — beautiful modern design' },
   { label: 'Develop app', icon: Code, prompt: 'Build a complete React web app with multiple pages, authentication UI, dashboard, and CRUD data management' },
@@ -198,6 +127,9 @@ const QUICK_START_CHIPS = [
   { label: 'SaaS MVP', icon: Zap, prompt: 'Build a SaaS MVP with login/register pages, dashboard, subscription pricing table, settings, and admin panel' },
   { label: 'Import code', icon: Upload, prompt: null, action: 'import' },
 ];
+
+/** First row on home (Manus-style); Import + templates live under “More”. */
+const HOME_PRIMARY_CHIPS = QUICK_START_CHIPS.slice(0, 4);
 
 const GOLDEN_PATH_STEPS = [
   'Prompt or import',
@@ -226,6 +158,9 @@ const Dashboard = () => {
   const [gitUrl, setGitUrl] = useState('');
   const [importLoading, setImportLoading] = useState(false);
   const [importError, setImportError] = useState(null);
+  const [showGoldenPathModal, setShowGoldenPathModal] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const moreMenuRef = useRef(null);
   // Chat state for conversational (non-build) messages
   const [chatMessages, setChatMessages] = useState([]);
   const [chatLoading, setChatLoading] = useState(false);
@@ -512,6 +447,27 @@ const Dashboard = () => {
     }
   };
 
+  const activateSkillName = (skillName) => {
+    if (!token || !skillName) return;
+    axios.post(`${API}/skills/${skillName}/activate`, {}, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+  };
+
+  const handleSkillFromMore = (skill) => {
+    setMoreMenuOpen(false);
+    if (!skill?.prompt) return;
+    activateSkillName(skill.skill_name);
+    handleChipClick({ label: skill.name, prompt: skill.prompt });
+  };
+
+  useEffect(() => {
+    if (!moreMenuOpen) return;
+    const onDoc = (e) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target)) setMoreMenuOpen(false);
+    };
+    document.addEventListener('click', onDoc);
+    return () => document.removeEventListener('click', onDoc);
+  }, [moreMenuOpen]);
+
   const handleFileSelect = (e) => {
     const selectedFiles = Array.from(e.target.files);
     selectedFiles.forEach(file => {
@@ -774,6 +730,7 @@ const Dashboard = () => {
       <div className={`home-messages ${hasChat ? 'has-chat' : ''}`}>
         {!hasChat && (
           <>
+            <div className="dashboard-home-column">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="dashboard-greeting">
               <h1 className="dashboard-greeting-text">
                 <span className="dashboard-greeting-sub">{location.state?.newProject ? 'What\'s your new project?' : 'What do you want to build?'}</span>
@@ -782,38 +739,81 @@ const Dashboard = () => {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }} className="dashboard-prompt-inline">
               {inputForm}
             </motion.div>
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.2 }} className="dashboard-chips">
-              <span className="dashboard-chips-label">Quick start:</span>
-              <div className="dashboard-chips-grid">
-                {QUICK_START_CHIPS.map((chip) => (
-                  <button key={chip.label} type="button" onClick={() => handleChipClick(chip)} className="dashboard-chip">
-                    <chip.icon size={16} className="dashboard-chip-icon" />
-                    <span>{chip.label}</span>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.15 }} className="dashboard-chips" ref={moreMenuRef}>
+              <span className="dashboard-chips-label">Quick start</span>
+              <div className="dashboard-chips-row">
+                <div className="dashboard-chips-grid">
+                  {HOME_PRIMARY_CHIPS.map((chip) => (
+                    <button key={chip.label} type="button" onClick={() => handleChipClick(chip)} className="dashboard-chip">
+                      <chip.icon size={16} className="dashboard-chip-icon" />
+                      <span>{chip.label}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="dashboard-more-wrap">
+                  <button
+                    type="button"
+                    className={`dashboard-chip dashboard-chip-more ${moreMenuOpen ? 'open' : ''}`}
+                    aria-expanded={moreMenuOpen}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMoreMenuOpen((o) => !o);
+                    }}
+                  >
+                    <span>More</span>
+                    <ChevronDown size={16} className="dashboard-chip-more-chevron" />
                   </button>
-                ))}
+                  {moreMenuOpen && (
+                    <div className="dashboard-more-menu" role="menu">
+                      {QUICK_START_CHIPS.slice(4).map((chip) => (
+                        <button
+                          key={chip.label}
+                          type="button"
+                          role="menuitem"
+                          className="dashboard-more-menu-item"
+                          onClick={() => {
+                            setMoreMenuOpen(false);
+                            handleChipClick(chip);
+                          }}
+                        >
+                          <chip.icon size={14} className="dashboard-chip-icon" />
+                          {chip.label}
+                        </button>
+                      ))}
+                      <div className="dashboard-more-menu-divider" />
+                      {SKILLS.map((skill) => (
+                        <button
+                          key={skill.name}
+                          type="button"
+                          role="menuitem"
+                          className="dashboard-more-menu-item dashboard-more-menu-item-skill"
+                          onClick={() => handleSkillFromMore(skill)}
+                        >
+                          <span className="dashboard-more-skill-emoji" aria-hidden>{skill.icon}</span>
+                          <span>{skill.name}</span>
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        className="dashboard-more-menu-footer"
+                        onClick={() => {
+                          setMoreMenuOpen(false);
+                          navigate('/app/templates');
+                        }}
+                      >
+                        Browse templates &amp; gallery <ArrowRight size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.24 }}
-              className="dashboard-golden-path-card"
-            >
-              <div className="dashboard-golden-path-copy">
-                <span className="dashboard-golden-path-eyebrow">Golden path</span>
-                <strong>Build, prove, preview, publish, then keep improving.</strong>
-              </div>
-              <div className="dashboard-golden-path-steps">
-                {GOLDEN_PATH_STEPS.map((step, index) => (
-                  <span key={step} className="dashboard-golden-path-step">
-                    <span>{index + 1}</span>{step}
-                  </span>
-                ))}
-              </div>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.35, delay: 0.2 }} className="dashboard-how-builds-wrap">
+              <button type="button" className="dashboard-how-builds-work" onClick={() => setShowGoldenPathModal(true)}>
+                How builds work
+              </button>
             </motion.div>
-
-            {/* Skills / Capabilities Panel */}
-            <SkillsPanel onSelect={(prompt) => setPrompt(prompt)} token={token} API={API} />
+            </div>
 
             {/* Live Builds Panel — real-time build progress, polled every 4s when builds are running */}
             {liveProjects.length > 0 && (
@@ -1068,6 +1068,42 @@ const Dashboard = () => {
                   {importLoading ? 'Importing...' : 'Import'}
                 </button>
               </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showGoldenPathModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="dashboard-modal-overlay"
+            onClick={() => setShowGoldenPathModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="dashboard-modal dashboard-modal--golden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="dashboard-modal-header">
+                <h2>How CrucibAI builds</h2>
+                <button type="button" onClick={() => setShowGoldenPathModal(false)} className="dashboard-modal-close">
+                  <X size={20} />
+                </button>
+              </div>
+              <p className="dashboard-golden-modal-lead">Build, prove, preview, publish, then keep improving.</p>
+              <ol className="dashboard-golden-modal-steps">
+                {GOLDEN_PATH_STEPS.map((step, index) => (
+                  <li key={step}>
+                    <span className="dashboard-golden-modal-step-num">{index + 1}</span>
+                    {step}
+                  </li>
+                ))}
+              </ol>
             </motion.div>
           </motion.div>
         )}
