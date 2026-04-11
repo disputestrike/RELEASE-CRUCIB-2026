@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Send, Loader2, ArrowRight, Check, Menu, X, Play, ArrowUpRight, Paperclip, Image, FileText, Mic, MicOff, FileCode, GitFork } from 'lucide-react';
+import { ChevronDown, ArrowRight, Check, Menu, X, Play, ArrowUpRight, FileCode, GitFork } from 'lucide-react';
 import { useAuth, API } from '../App';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';
@@ -11,29 +11,11 @@ import SolutionsNavDropdown, { SOLUTION_LINKS, USE_CASE_LINKS } from '../compone
 const OurProjectsPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState(null);
   const [openWhere, setOpenWhere] = useState(null);
-  
-  // Build state
-  const [input, setInput] = useState('');
-  const [messages, setMessages] = useState([]);
-  const [isBuilding, setIsBuilding] = useState(false);
-  const [buildProgress, setBuildProgress] = useState(0);
-  const [generatedCode, setGeneratedCode] = useState(null);
-  const [sessionId] = useState(() => `session_${Date.now()}`);
-  const [attachedFiles, setAttachedFiles] = useState([]);
-  const [voiceLanguage, setVoiceLanguage] = useState('en');
   const [liveExamples, setLiveExamples] = useState([]);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
-  const [voiceError, setVoiceError] = useState(null);
-  const chatEndRef = useRef(null);
-  const fileInputRef = useRef(null);
-  const mediaRecorderRef = useRef(null);
-  const voiceStreamRef = useRef(null);
-  const voiceChunksRef = useRef([]);
 
   useEffect(() => {
     axios.get(`${API}/examples`).then((r) => setLiveExamples((r.data.examples || []).slice(0, 3))).catch((e) => { logApiError('LandingPage examples', e); setLiveExamples([]); });
@@ -48,206 +30,21 @@ const OurProjectsPage = () => {
     return () => clearTimeout(t);
   }, [location.hash, location.pathname]);
 
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  const startBuild = async (promptOverride = null, filesOverride = null) => {
-    const prompt = (promptOverride ?? input).trim();
-    if (!prompt || isBuilding) return;
+  const startBuild = (promptText, filesOverride = null) => {
+    const prompt = (promptText || '').trim();
+    if (!prompt) return;
     const q = `prompt=${encodeURIComponent(prompt)}`;
     const workspacePath = `/app/workspace?${q}`;
-    const state = (filesOverride?.length || attachedFiles?.length) ? { initialAttachedFiles: filesOverride || attachedFiles } : undefined;
+    const state = filesOverride?.length ? { initialAttachedFiles: filesOverride } : undefined;
     navigate(workspacePath, { state });
   };
-
-  const handleLandingFileSelect = (e) => {
-    const selected = Array.from(e.target.files || []);
-    const valid = selected.filter(f =>
-      f.type.startsWith('image/') || f.type === 'application/pdf' || f.type.startsWith('text/') ||
-      f.type === 'application/zip' || f.name?.toLowerCase().endsWith('.zip') || f.type.startsWith('audio/')
-    );
-    valid.forEach(file => {
-      const isZip = file.type === 'application/zip' || file.name?.toLowerCase().endsWith('.zip');
-      const isAudio = file.type.startsWith('audio/');
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const data = isZip ? btoa(String.fromCharCode(...new Uint8Array(ev.target.result))) : ev.target.result;
-        setAttachedFiles(prev => [...prev, { name: file.name, type: file.type, data, size: file.size }]);
-      };
-      if (file.type.startsWith('image/') || file.type === 'application/pdf' || isAudio) reader.readAsDataURL(file);
-      else if (isZip) reader.readAsArrayBuffer(file);
-      else reader.readAsText(file);
-    });
-    e.target.value = '';
-  };
-
-  const removeLandingFile = (index) => {
-    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleVoiceTranscribed = (text) => {
-    setInput(prev => (prev ? prev + ' ' : '') + text);
-  };
-
-  const startVoiceRecording = async () => {
-    setVoiceError(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      });
-      voiceStreamRef.current = stream;
-      const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find(m => MediaRecorder.isTypeSupported(m)) || 'audio/webm';
-      const recorder = new MediaRecorder(stream, { mimeType });
-      voiceChunksRef.current = [];
-      recorder.ondataavailable = (e) => { if (e.data.size > 0) voiceChunksRef.current.push(e.data); };
-      recorder.onerror = () => { setVoiceError('Recording error'); setIsRecording(false); };
-      recorder.start();
-      mediaRecorderRef.current = recorder;
-      setIsRecording(true);
-    } catch (err) {
-      setVoiceError(err.name === 'NotAllowedError' ? 'Microphone access denied.' : err.message || 'Could not start recording.');
-      setIsRecording(false);
-    }
-  };
-
-  const stopVoiceRecording = async () => {
-    if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') return;
-    setIsRecording(false);
-    setIsTranscribing(true);
-    setVoiceError(null);
-    mediaRecorderRef.current.onstop = async () => {
-      try {
-        const blob = new Blob(voiceChunksRef.current, { type: mediaRecorderRef.current.mimeType || 'audio/webm' });
-        if (blob.size < 100) {
-          setVoiceError('Recording too short. Speak at least 1 second.');
-          setIsTranscribing(false);
-          return;
-        }
-        const ext = (mediaRecorderRef.current.mimeType || '').includes('mp4') ? 'm4a' : 'webm';
-        const formData = new FormData();
-        formData.append('audio', blob, `recording.${ext}`);
-        formData.append('language', voiceLanguage);
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        const res = await axios.post(`${API}/voice/transcribe`, formData, {
-          headers: { ...headers, 'Content-Type': 'multipart/form-data' },
-          timeout: 60000,
-          maxContentLength: Infinity,
-          maxBodyLength: Infinity,
-        });
-        const text = res.data?.text?.trim();
-        if (text) handleVoiceTranscribed(text);
-        else setVoiceError('No text from transcription.');
-      } catch (err) {
-        setVoiceError(err.response?.data?.detail || err.message || 'Transcription failed.');
-      } finally {
-        setIsTranscribing(false);
-        if (voiceStreamRef.current) {
-          voiceStreamRef.current.getTracks().forEach(t => t.stop());
-          voiceStreamRef.current = null;
-        }
-      }
-    };
-    mediaRecorderRef.current.stop();
-  };
-
-  const handleSubmit = async (e) => {
-    e?.preventDefault();
-    let hasInput = input.trim();
-    const hasImageOnly = attachedFiles.length > 0 && attachedFiles.every(f => f.type?.startsWith('image/'));
-    let filesToSend = attachedFiles.length ? [...attachedFiles] : null;
-    const audioFiles = (filesToSend || []).filter(f => f.type?.startsWith?.('audio/'));
-    if (audioFiles.length > 0) {
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      for (const att of audioFiles) {
-        try {
-          const blob = await (await fetch(att.data)).blob();
-          const formData = new FormData();
-          formData.append('audio', blob, att.name || 'audio.webm');
-          const res = await axios.post(`${API}/voice/transcribe`, formData, { headers, timeout: 30000 });
-          const text = res.data?.text?.trim();
-          if (text) hasInput = (hasInput ? hasInput + ' ' : '') + text;
-        } catch (_) {}
-      }
-      if (filesToSend) filesToSend = filesToSend.filter(f => !f.type?.startsWith?.('audio/'));
-    }
-    if (!hasInput && !hasImageOnly) return;
-    if (generatedCode) {
-      modifyCode(hasInput || 'Convert image to code');
-    } else {
-      startBuild(hasInput || 'Convert image to code', filesToSend?.length ? filesToSend : null);
-    }
-  };
-
-  const modifyCode = async (request) => {
-    if (!request.trim() || isBuilding) return;
-
-    setInput('');
-    setIsBuilding(true);
-    setMessages(prev => [...prev, { role: 'user', content: request }]);
-    setMessages(prev => [...prev, { role: 'assistant', content: 'Updating...', isBuilding: true }]);
-
-    try {
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      
-      const response = await axios.post(`${API}/ai/chat`, {
-        message: `Current code:\n\n${generatedCode.code}\n\nModify it to: "${request}"\n\nRespond with ONLY the complete updated code.`,
-        session_id: sessionId,
-        model: 'auto'
-      }, { headers, timeout: 60000 });
-
-      const newCode = response.data.response.replace(/```jsx?/g, '').replace(/```/g, '').trim();
-
-      if (newCode.includes('import') || newCode.includes('function') || newCode.includes('const')) {
-        setGeneratedCode(prev => ({ ...prev, code: newCode }));
-        setMessages(prev => prev.map((msg, i) => 
-          i === prev.length - 1 ? { role: 'assistant', content: `Updated. What else?`, hasCode: true } : msg
-        ));
-      } else {
-        setMessages(prev => prev.map((msg, i) => 
-          i === prev.length - 1 ? { role: 'assistant', content: response.data.response } : msg
-        ));
-      }
-    } catch (error) {
-      setMessages(prev => prev.map((msg, i) => 
-        i === prev.length - 1 ? { role: 'assistant', content: 'Error. Try again.', error: true } : msg
-      ));
-    } finally {
-      setIsBuilding(false);
-    }
-  };
-
-  const downloadCode = () => {
-    if (!generatedCode) return;
-    const blob = new Blob([generatedCode.code], { type: 'text/javascript' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'app.jsx';
-    a.click();
-  };
-
-  const whatAreYouBuilding = [
-    { title: 'Reporting Dashboard', desc: 'Charts, stats, and data views', prompt: 'Create a reporting dashboard with sidebar, stat cards, and chart placeholders. React and Tailwind.' },
-    { title: 'Task Manager', desc: 'Add, complete, filter tasks', prompt: 'Create a task manager with add, complete, delete, and filter by status. React and Tailwind.' },
-    { title: 'E-commerce Store', desc: 'Product list, cart, checkout', prompt: 'Build a modern e-commerce product list with add-to-cart, cart sidebar, and checkout button. React and Tailwind.' },
-    { title: 'Landing + Waitlist', desc: 'Hero, features, email signup', prompt: 'Build a landing page with hero, features section, and email waitlist signup. React and Tailwind.' },
-    { title: 'Auth + Dashboard', desc: 'Login and main app shell', prompt: 'Create a login page and a dashboard with sidebar navigation. React, Tailwind, and local state for auth.' },
-    { title: 'SaaS Pricing Page', desc: 'Plans and Stripe-ready', prompt: 'Build a SaaS landing page with pricing cards and Stripe Checkout integration for subscription. React and Tailwind.' },
-    { title: 'Portfolio Site', desc: 'Projects and contact', prompt: 'Build a personal portfolio with project grid, about section, and contact form. React and Tailwind.' },
-    { title: 'Onboarding Portal', desc: 'Steps and progress', prompt: 'Create an onboarding flow with step progress, back/next, and completion screen. React and Tailwind.' },
-    { title: 'Blog', desc: 'Post list and detail view', prompt: 'Build a blog with a list of posts and a post detail view. React and Tailwind.' },
-    { title: 'Internal Tool', desc: 'Admin table and filters', prompt: 'Build an internal admin tool with a data table, filters, and search. React and Tailwind.' },
-    { title: 'Custom Web Tool', desc: 'Calculator, converter, etc.', prompt: 'Build a custom web tool (e.g. calculator or unit converter) with a clean UI. React and Tailwind.' },
-    { title: 'Event or Booking', desc: 'Calendar and booking flow', prompt: 'Create an event or booking page with date selection and confirmation. React and Tailwind.' },
-  ];
 
   const faqs = [
     { q: 'What is CrucibAI?', a: 'CrucibAI is Inevitable AI — the platform where intelligence doesn\'t just act, it makes outcomes inevitable. Describe what you need in plain language; we generate production-ready code with plan-first flow and a swarm of agents and sub-agents. Full transparency: every phase, every agent, no black boxes.' },
     { q: 'Is CrucibAI free to use?', a: 'Yes. We offer a free tier with 200 credits. Paid plans are monthly (Builder, Pro, Scale, Teams) with more credits per month. Need more? Buy credits in bulk (100–10,000 at $0.03/credit, same rate as plans).' },
     { q: 'Do I need coding experience?', a: 'No. Our platform is designed for everyone. Just describe your idea and our AI handles the technical implementation.' },
     { q: 'What can I build?', a: 'Websites, dashboards, task managers, onboarding portals, pricing pages, e-commerce stores, internal tools, and more. If you can describe it, we can build it.' },
-    { q: 'What is design-to-code?', a: 'Upload a UI screenshot or mockup and CrucibAI generates structured, responsive code (HTML/CSS, React, Tailwind). Use the attach button on the landing or in the workspace.' },
+    { q: 'What is design-to-code?', a: 'Upload a UI screenshot or mockup and CrucibAI generates structured, responsive code (HTML/CSS, React, Tailwind). Attach it from the Workspace composer or Dashboard prompt.' },
     { q: 'What are Quick, Plan, Agent, and Thinking modes?', a: 'Quick: single-shot generation, no plan step. Plan: we create a structured plan first, then build. Agent: full orchestration with our agent swarm and sub-agents (planning, frontend, backend, design, SEO, tests, deploy). Thinking: step-by-step reasoning before code. Swarm runs selected agents in parallel for speed.' },
     { q: 'How do I make changes?', a: 'Just ask in the chat. Say "make it dark mode", "add a sidebar", or "change the colors" and we update the code instantly.' },
     { q: 'How are apps deployed?', a: 'You export your code as a ZIP or push to GitHub. We give you the files; you deploy to Vercel, Netlify, or any host. You own the code.' },
@@ -264,8 +61,8 @@ const OurProjectsPage = () => {
     { q: 'How does plan-first work?', a: 'For larger prompts we first call a planning agent that returns a structured plan (features, components, design notes) and optional suggestions. You see the plan, then we generate code. This reduces backtracking and improves quality.' },
     { q: 'What is Swarm mode?', a: "Swarm (Beta) runs selected agents in parallel instead of sequentially, so multi-step builds can complete faster. It's available on paid plans." },
     { q: 'Can I collaborate with my team?', a: 'You can share exported code or push to a shared GitHub repo. Team and org features are on our roadmap.' },
-    { q: 'Does CrucibAI support voice input?', a: 'Yes. Use the microphone button on the landing or in the workspace to record; we transcribe and insert your words into the prompt.' },
-    { q: 'What file types can I attach?', a: 'Images, PDFs, text/code files, ZIP (loaded into workspace), and audio/voice notes (transcribed into your prompt). Use the paperclip on the input bar.' },
+    { q: 'Does CrucibAI support voice input?', a: 'Yes. Use the microphone in the Workspace or Dashboard composer; we transcribe and insert your words into the prompt.' },
+    { q: 'What file types can I attach?', a: 'Images, PDFs, text/code files, ZIP (loaded into workspace), and audio/voice notes (transcribed into your prompt). Use the attach control in the Workspace composer.' },
     { q: 'How do token bundles work?', a: 'You buy a bundle (e.g. Starter 100K tokens). Each AI request consumes tokens; when you run low you can buy more. Tokens do not expire.' },
     { q: 'Is there an API for developers?', a: 'We offer API access for prompt to plan and prompt to code. See our roadmap and documentation for availability.' },
     { q: 'How do I get help or report a bug?', a: 'Use the Documentation and Support links in the footer. For bugs, include steps to reproduce and your environment (browser, OS).' },
@@ -276,7 +73,7 @@ const OurProjectsPage = () => {
   const allFaqs = [...faqs, ...faqsExtra];
 
   const whereItems = [
-    { title: 'Web app', desc: 'Use CrucibAI in your browser. Describe your idea on the landing page or open the workspace to build, iterate, and export. No setup required.' },
+    { title: 'Web app', desc: 'Use CrucibAI in your browser. Open the workspace (or home dashboard) to describe your idea, build, iterate, and export. No setup required.' },
     { title: 'API', desc: 'Integrate via API for prompt → plan and prompt → code. Billing by token usage.' },
     { title: 'Export & deploy', desc: 'Download your project as a ZIP or push to GitHub. Deploy to Vercel, Netlify, or any host. You own the code and can customize anything.' }
   ];
@@ -382,193 +179,6 @@ const OurProjectsPage = () => {
           )}
         </div>
 
-        {/* Hero stats — 4 items, remove 72 hours */}
-        <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }} className="max-w-4xl mx-auto mt-12 px-6">
-          <div className="flex flex-wrap items-center justify-center gap-6 py-5 px-6 rounded-xl border border-gray-200 bg-kimi-bg-elevated/50">
-            <span className="text-sm font-medium text-kimi-text">Agent swarm in parallel</span>
-            <span className="text-sm font-medium text-kimi-text">Production-grade output</span>
-            <span className="text-sm font-medium text-kimi-text">Half the price of Lovable</span>
-            <span className="text-sm font-medium text-kimi-text">Web · Mobile · Automation</span>
-          </div>
-          <p className="text-center text-xs text-kimi-muted mt-2">Not promises. Every number is measured.</p>
-        </motion.section>
-
-        {/* Main Input — extra space + glass */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="max-w-2xl mx-auto mt-16">
-          <p className="text-center text-sm font-medium text-kimi-accent mb-3">Agentic: describe it — we build it. Full automation, minimal supervision.</p>
-          <div className="glass-kimi-panel rounded-2xl overflow-hidden">
-            {/* Messages */}
-            {messages.length > 0 && (
-              <div className="max-h-80 overflow-y-auto p-5 space-y-4">
-                {messages.map((msg, i) => (
-                  <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[80%] px-4 py-3 rounded-xl text-sm ${
-                      msg.role === 'user' 
-                        ? 'bg-white text-gray-900' 
-                        : msg.error 
-                          ? 'bg-[#F5F5F4] text-[#666666]'
-                          : 'bg-gray-100 text-gray-700'
-                    }`}>
-                      {msg.isBuilding ? (
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-                          <span>{msg.content}</span>
-                        </div>
-                      ) : (
-                        <span>{msg.content}</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                <div ref={chatEndRef} />
-              </div>
-            )}
-
-            {/* Progress */}
-            {isBuilding && (
-              <div className="px-5 pb-2">
-                <div className="h-0.5 bg-gray-200 rounded-full overflow-hidden">
-                  <motion.div 
-                    className="h-full bg-white"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${buildProgress}%` }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Generated Code */}
-            {generatedCode && !isBuilding && (
-              <div className="px-5 pb-4">
-                <div className="bg-kimi-bg rounded-lg overflow-hidden">
-                  <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200">
-                    <span className="text-xs text-kimi-muted font-mono">app.jsx</span>
-                    <button onClick={downloadCode} className="text-xs text-kimi-muted hover:text-kimi-text transition">
-                      Download
-                    </button>
-                  </div>
-                  <pre className="p-4 text-xs text-kimi-muted font-mono overflow-x-auto max-h-48 overflow-y-auto">
-                    <code>{generatedCode.code.slice(0, 800)}{generatedCode.code.length > 800 ? '\n...' : ''}</code>
-                  </pre>
-                </div>
-              </div>
-            )}
-
-            {/* Attached files */}
-            {attachedFiles.length > 0 && (
-              <div className="px-4 pb-2 flex flex-wrap gap-2">
-                {attachedFiles.map((file, i) => (
-                  <div key={i} className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg text-sm">
-                    {file.type?.startsWith('image/') ? (
-                      <Image className="w-4 h-4 text-kimi-accent shrink-0" />
-                    ) : file.type?.startsWith('audio/') ? (
-                      <Mic className="w-4 h-4 text-gray-500 shrink-0" />
-                    ) : (
-                      <FileText className="w-4 h-4 text-gray-400 shrink-0" />
-                    )}
-                    <span className="text-gray-500 max-w-[180px] truncate">{file.name}</span>
-                    <button type="button" onClick={() => removeLandingFile(i)} className="text-kimi-muted hover:text-kimi-text p-0.5">
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Input — same options as workspace: big box, attach, submit */}
-            <form onSubmit={handleSubmit} className="p-4">
-              <div className="flex gap-2 items-end">
-                <div className="flex-1 flex flex-col gap-2">
-                  <div className="flex gap-2 px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 focus-within:ring-1 focus-within:ring-gray-300 transition min-h-[160px]">
-                    <textarea
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      placeholder={messages.length > 0 ? "Ask for changes..." : "What do you want to build?"}
-                      className="flex-1 bg-transparent text-gray-900 placeholder-gray-400 outline-none resize-none min-h-[120px] text-base leading-relaxed"
-                      disabled={isBuilding}
-                      rows={5}
-                    />
-                    <button
-                      type="button"
-                      onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
-                      disabled={isBuilding || isTranscribing}
-                      className={`p-2.5 rounded-lg transition self-end shrink-0 ${isRecording ? 'bg-[#EBE8E2] text-[#1A1A1A] ring-2 ring-black/10' : 'text-kimi-muted hover:text-kimi-text hover:bg-gray-100'}`}
-                      title={isRecording ? 'Click to stop and transcribe' : 'Voice input — click to speak'}
-                    >
-                      {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="p-2.5 rounded-lg text-kimi-muted hover:text-kimi-text hover:bg-gray-100 transition self-end shrink-0"
-                      title="Attach image or file"
-                    >
-                      <Paperclip className="w-5 h-5" />
-                    </button>
-                  </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    accept="image/*,.pdf,.txt,.md,.zip,audio/*,.js,.jsx,.ts,.tsx,.css,.html,.json,.py"
-                    onChange={handleLandingFileSelect}
-                    className="hidden"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={(!input.trim() && !attachedFiles.some(f => f.type?.startsWith('image/') || f.type?.startsWith('audio/'))) || isBuilding}
-                  className="px-6 py-4 bg-white text-gray-900 rounded-xl text-base font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 transition shrink-0"
-                >
-                  {isBuilding ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <ArrowRight className="w-5 h-5" />
-                  )}
-                </button>
-              </div>
-
-              {/* Voice status: Listening / Transcribing / Error */}
-              {(isRecording || isTranscribing || voiceError) && (
-                <div className="mt-3 flex items-center gap-2 min-h-[24px]">
-                  {isRecording && (
-                    <>
-                      <span className="w-2 h-2 rounded-full bg-[#666666] animate-pulse" aria-hidden />
-                      <span className="text-sm text-[#666666] font-medium">Listening… click the mic again to stop and see your text here.</span>
-                    </>
-                  )}
-                  {isTranscribing && !isRecording && (
-                    <>
-                      <Loader2 className="w-4 h-4 text-kimi-accent animate-spin shrink-0" />
-                      <span className="text-sm text-kimi-muted">Transcribing… your words will appear above when ready.</span>
-                    </>
-                  )}
-                  {voiceError && !isRecording && !isTranscribing && (
-                    <span className="text-sm text-[#666666]">{voiceError}</span>
-                  )}
-                </div>
-              )}
-              
-              {messages.length === 0 && (
-                <div className="mt-4">
-                  <p className="text-xs text-kimi-muted mb-2">Not sure where to start? Try one of these:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {['Reporting Dashboard', 'Task manager', 'E-commerce store', 'Landing + waitlist', 'Auth + Dashboard', 'Portfolio site', 'Pricing page', 'Blog', 'Internal tool'].map(s => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => setInput(s)}
-                        className="px-3 py-1.5 text-xs text-kimi-muted bg-gray-100 rounded-lg hover:bg-gray-200 hover:text-kimi-text transition border border-gray-200"
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </form>
-          </div>
-        </motion.div>
       </section>
 
       {/* The Bridge — moat section */}
