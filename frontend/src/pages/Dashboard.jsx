@@ -364,7 +364,7 @@ const Dashboard = () => {
     const el = inputRef.current;
     if (!el) return;
     const maxPx = 160;
-    const minPx = 28;
+    const minPx = 24;
     el.style.height = '0px';
     el.style.overflowY = 'hidden';
     const sh = el.scrollHeight;
@@ -896,7 +896,7 @@ const Dashboard = () => {
               <Sparkles size={14} />
             </div>
             <button type="button" onClick={() => fileInputRef.current?.click()} className="dashboard-prompt-btn" title="Attach file">
-              <Paperclip size={18} />
+              <Paperclip size={16} />
             </button>
             <button
               type="button"
@@ -904,7 +904,7 @@ const Dashboard = () => {
               title="Open workspace"
               onClick={() => navigate({ pathname: '/app/workspace' })}
             >
-              <Monitor size={18} />
+              <Monitor size={16} />
             </button>
             <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.txt,.md,.zip,audio/*,.js,.jsx,.ts,.tsx,.css,.html,.json,.py" onChange={handleFileSelect} className="hidden" />
           </div>
@@ -918,7 +918,7 @@ const Dashboard = () => {
               </div>
             ) : (
               <button type="button" onClick={isTranscribing ? undefined : startRecording} disabled={isTranscribing} className={`dashboard-prompt-btn ${isRecording ? 'recording' : ''}`} title={isTranscribing ? 'Transcribing...' : 'Voice input (9 languages)'}>
-                {isTranscribing ? <Loader2 size={18} className="animate-spin" /> : <Mic size={18} />}
+                {isTranscribing ? <Loader2 size={16} className="animate-spin" /> : <Mic size={16} />}
               </button>
             )}
             <button
@@ -927,7 +927,7 @@ const Dashboard = () => {
               className={`dashboard-prompt-submit ${!chatLoading && (prompt.trim() || attachedFiles.length) ? 'dashboard-prompt-submit--ready' : ''}`}
               title="Send"
             >
-              {chatLoading ? <Loader2 size={18} className="animate-spin" /> : <ArrowUp size={18} strokeWidth={2.25} />}
+              {chatLoading ? <Loader2 size={16} className="animate-spin" /> : <ArrowUp size={16} strokeWidth={2.25} />}
             </button>
           </div>
         </div>
