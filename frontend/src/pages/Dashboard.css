@@ -69,18 +69,18 @@
   min-height: min(560px, 72vh);
 }
 
-/* Chat: transcript scrolls here; inner column is 768px-centered (messages L/R inside that column) */
+/* Chat: full main width — AI starts near left edge, user near right (not a narrow centered column) */
 .home-messages.has-chat {
   justify-content: flex-start;
   align-items: stretch;
-  padding: 12px 8px 0;
+  padding: 12px 0 0;
   gap: 0;
 }
 
 @media (max-width: 640px) {
   .home-messages.has-chat {
-    padding-left: 4px;
-    padding-right: 4px;
+    padding-left: 0;
+    padding-right: 0;
   }
 }
 
@@ -112,10 +112,10 @@
 }
 
 .home-input-bar--chat .home-prompt-wrapper {
-  max-width: 768px;
+  max-width: none;
   width: 100%;
-  margin-left: auto;
-  margin-right: auto;
+  margin-left: 0;
+  margin-right: 0;
   padding: 0 16px;
   box-sizing: border-box;
 }
@@ -197,10 +197,10 @@
 
 .dashboard-prompt-form--chat {
   align-items: stretch;
-  max-width: 768px;
+  max-width: none;
   width: 100%;
-  margin-left: auto;
-  margin-right: auto;
+  margin-left: 0;
+  margin-right: 0;
   padding: 0 16px;
   box-sizing: border-box;
 }
@@ -469,15 +469,15 @@
 }
 
 /* ============================================
-   Chat — column is centered (768px); each ROW is full width with justify-start/end
-   (standard chat layout — not center-stacked bubbles)
+   Chat — full width of main panel; each ROW uses justify-start / flex-end
+   so clusters hug the left and right edges (small horizontal padding only)
    ============================================ */
 
 .dashboard-chat-container {
-  max-width: 768px;
+  max-width: none;
   width: 100%;
-  margin: 0 auto;
-  padding: 24px 16px;
+  margin: 0;
+  padding: 20px 16px 12px;
   box-sizing: border-box;
   flex: 1 1 auto;
   min-height: 0;
@@ -514,11 +514,11 @@
   margin-bottom: 0;
 }
 
-/* Cluster: id + bubble + actions; max 70% of the 768px column */
+/* Cluster: id + bubble + actions; cap width so long replies stay readable */
 .dashboard-chat-cluster {
   display: flex;
   flex-direction: column;
-  max-width: 70%;
+  max-width: min(70%, 42rem);
   min-width: 0;
   align-items: flex-start;
 }
