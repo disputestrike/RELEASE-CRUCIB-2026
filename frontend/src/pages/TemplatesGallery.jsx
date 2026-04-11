@@ -4,12 +4,12 @@ import { Layout, FileCode, Loader2 } from 'lucide-react';
 import { useAuth, API } from '../App';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';
+import './TemplatesGallery.css';
 
 export default function TemplatesGallery() {
   const navigate = useNavigate();
   const { token } = useAuth();
   const [templates, setTemplates] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [creatingId, setCreatingId] = useState(null);
 
   useEffect(() => {
@@ -35,39 +35,42 @@ export default function TemplatesGallery() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] text-[#1A1A1A] p-6">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold mb-2">Templates</h1>
-        <p className="text-gray-400 mb-8">Start from a template to build faster.</p>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {templates.map((t) => (
-            <div
-              key={t.id}
-              className="p-5 rounded-xl border border-gray-800 bg-gray-900/50 hover:border-gray-700 transition"
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <div className="p-2 rounded-lg bg-gray-800">
-                  <FileCode className="w-5 h-5 text-[#1A1A1A]" />
-                </div>
-                <div>
-                  <h2 className="font-semibold">{t.name}</h2>
-                  <p className="text-sm text-gray-500">{t.description}</p>
-                  {Array.isArray(t.tags) && t.tags.length > 0 && (
-                    <p className="text-xs text-gray-500 mt-1">{t.tags.join(' - ')} - {t.difficulty || 'starter'}</p>
-                  )}
-                </div>
+    <div className="templates-gallery">
+      <h1 className="templates-gallery__title">Templates</h1>
+      <p className="templates-gallery__subtitle">Start from a template to build faster.</p>
+      <div className="templates-gallery__grid">
+        {templates.length === 0 && (
+          <p className="templates-gallery__empty" style={{ gridColumn: '1 / -1' }}>
+            No templates loaded. Check your connection or try again later.
+          </p>
+        )}
+        {templates.map((t) => (
+          <div key={t.id} className="templates-gallery__card">
+            <div className="templates-gallery__card-head">
+              <div className="templates-gallery__icon-wrap" aria-hidden>
+                <FileCode className="w-5 h-5" strokeWidth={2} />
               </div>
-              <button
-                onClick={() => createFromTemplate(t.id)}
-                disabled={loading || creatingId !== null}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-gray-200 text-[#1A1A1A] hover:bg-gray-300 transition disabled:opacity-50"
-              >
-                {creatingId === t.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Layout className="w-4 h-4" />}
-                Use template
-              </button>
+              <div>
+                <h2 className="templates-gallery__name">{t.name}</h2>
+                <p className="templates-gallery__desc">{t.description}</p>
+                {Array.isArray(t.tags) && t.tags.length > 0 && (
+                  <p className="templates-gallery__meta">
+                    {t.tags.join(' · ')} · {t.difficulty || 'starter'}
+                  </p>
+                )}
+              </div>
             </div>
-          ))}
-        </div>
+            <button
+              type="button"
+              onClick={() => createFromTemplate(t.id)}
+              disabled={creatingId !== null}
+              className="templates-gallery__cta"
+            >
+              {creatingId === t.id ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> : <Layout className="w-4 h-4" aria-hidden />}
+              Use template
+            </button>
+          </div>
+        ))}
       </div>
     </div>
   );
