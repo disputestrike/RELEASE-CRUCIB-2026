@@ -32,6 +32,24 @@ const CHAT_ONLY_PATTERNS = [
 const BUILD_KEYWORDS = /\b(build|create|make|develop|design|generate|produce|build\s+me|create\s+(a|an)|make\s+me|develop\s+(a|an)|generate\s+(a|an))\b.*\b(app|application|website|web\s*app|landing\s*page|dashboard|saas|mvp|api|backend|frontend|tool|platform|product)\b/i;
 const AGENT_KEYWORDS = /\b(automate|schedule|cron|webhook|trigger|run\s+every|run\s+when|run\s+on|agent|automation|workflow)\b/i;
 
+/** Stringify bubble content so user/assistant lines always render (never [object Object]). */
+function formatChatContent(content) {
+  if (content == null) return '';
+  if (typeof content === 'string') return content;
+  if (typeof content === 'number' || typeof content === 'boolean') return String(content);
+  if (typeof content === 'object') {
+    if (content.text != null) return formatChatContent(content.text);
+    if (content.message != null) return formatChatContent(content.message);
+    if (content.content != null) return formatChatContent(content.content);
+    try {
+      return JSON.stringify(content);
+    } catch {
+      return '';
+    }
+  }
+  return String(content);
+}
+
 function isDefinitelyChat(prompt) {
   const p = prompt.trim();
   if (p.length < 4) return true; // Single words like "Hi" or "Ok"
@@ -228,10 +246,8 @@ const Dashboard = () => {
       if (msgs && Array.isArray(msgs) && msgs.length > 0) {
         setChatMessages(msgs);
         setConversationStarted(true);
-      } else {
-        // No persisted messages yet (e.g. mid-send); don't clear existing chat
-        if (chatMessages.length === 0) setConversationStarted(false);
       }
+      // If task has no messages yet (mid-send), keep in-memory chat — never clear optimistic turns
       setPrompt('');
       inputRef.current?.focus();
       return;
@@ -268,9 +284,12 @@ const Dashboard = () => {
   useEffect(() => {
     const el = inputRef.current;
     if (!el) return;
+    const inChat = chatMessages.length > 0;
+    const maxPx = inChat ? 168 : 240;
+    const minPx = inChat ? 40 : 28;
     el.style.height = 'auto';
-    el.style.height = `${Math.min(Math.max(el.scrollHeight, 28), 240)}px`;
-  }, [prompt]);
+    el.style.height = `${Math.min(Math.max(el.scrollHeight, minPx), maxPx)}px`;
+  }, [prompt, chatMessages.length]);
 
   const PROMPT_CONVERT_TO_FILE_LIMIT = 3000;
 
@@ -316,8 +335,12 @@ const Dashboard = () => {
     const userMsg = { role: 'user', content: userPrompt || (filesToSend.length ? `[${filesToSend.length} attachment(s)]` : '') };
     setPrompt('');
     setAttachedFiles([]);
+    let messagesAfterUser;
     flushSync(() => {
-      setChatMessages(prev => [...prev, userMsg]);
+      setChatMessages((prev) => {
+        messagesAfterUser = [...prev, userMsg];
+        return messagesAfterUser;
+      });
       setConversationStarted(true);
       setChatLoading(true);
     });
@@ -371,11 +394,20 @@ const Dashboard = () => {
 
     // chat — add task (first message) or update existing (continued conversation). Stay on task until user navigates.
     const existingTaskId = chatTaskIdRef.current;
-    const taskId = existingTaskId || addTask({ name: userPrompt.slice(0, 60), prompt: userPrompt, status: 'completed', type: 'chat' });
+    const taskId = existingTaskId
+      || addTask({
+        name: userPrompt.slice(0, 60),
+        prompt: userPrompt,
+        status: 'completed',
+        type: 'chat',
+        messages: [userMsg],
+      });
     if (!existingTaskId) {
       chatTaskIdRef.current = taskId;
       // Keep URL in sync so task context survives refresh
       navigate(`/app?chatTaskId=${encodeURIComponent(taskId)}`, { replace: true });
+    } else if (messagesAfterUser) {
+      updateTask(taskId, { messages: messagesAfterUser, prompt: userPrompt });
     }
 
     try {
@@ -392,11 +424,12 @@ const Dashboard = () => {
       }, { headers, timeout: 60000 });
       const reply = res.data?.response || res.data?.message || "Hey! What are we building today?";
       const assistantMsg = { role: 'assistant', content: reply };
-      setChatMessages(prev => [...prev, assistantMsg]);
-      // Persist explicitly: include both user and assistant (don't rely on prev)
-      const task = storeTasks?.find(t => t.id === taskId);
-      const prevMsgs = (task?.messages && Array.isArray(task.messages)) ? task.messages : [];
-      updateTask(taskId, { messages: [...prevMsgs, userMsg, assistantMsg], prompt: userPrompt });
+      let afterAssistant;
+      setChatMessages((prev) => {
+        afterAssistant = [...prev, assistantMsg];
+        return afterAssistant;
+      });
+      if (afterAssistant) updateTask(taskId, { messages: afterAssistant, prompt: userPrompt });
     } catch (err) {
       const is404 = err.response?.status === 404 || err.response?.status === 405;
       const detail = err.response?.data?.detail;
@@ -406,10 +439,12 @@ const Dashboard = () => {
         role: 'assistant',
         content: (typeof detail === 'string' && detail && !is404) ? detail : (err.message?.includes('404') ? backendUnavailable : (err.message || fallback))
       };
-      setChatMessages(prev => [...prev, assistantMsg]);
-      const task = storeTasks?.find(t => t.id === taskId);
-      const prevMsgs = (task?.messages && Array.isArray(task.messages)) ? task.messages : [];
-      updateTask(taskId, { messages: [...prevMsgs, userMsg, assistantMsg], prompt: userPrompt });
+      let afterAssistantErr;
+      setChatMessages((prev) => {
+        afterAssistantErr = [...prev, assistantMsg];
+        return afterAssistantErr;
+      });
+      if (afterAssistantErr) updateTask(taskId, { messages: afterAssistantErr, prompt: userPrompt });
     } finally {
       setChatLoading(false);
     }
@@ -606,14 +641,14 @@ const Dashboard = () => {
   }, [actionFeedback]);
 
   const handleCopyMessage = (index) => {
-    const text = chatMessages[index]?.content;
-    if (text == null) return;
+    const text = formatChatContent(chatMessages[index]?.content);
+    if (!text) return;
     navigator.clipboard?.writeText(text).then(() => setActionFeedback({ type: 'copy', index }));
   };
 
   const handleEditMessage = (content) => {
     if (content == null) return;
-    setPrompt(String(content));
+    setPrompt(formatChatContent(content));
     inputRef.current?.focus();
   };
 
@@ -654,7 +689,7 @@ const Dashboard = () => {
           ))}
         </div>
       )}
-      <div className={`dashboard-prompt-container ${hasChat ? 'dashboard-prompt-container--stacked' : ''}`}>
+      <div className={`dashboard-prompt-container ${hasChat ? 'dashboard-prompt-container--stacked dashboard-prompt-container--chat' : ''}`}>
         <textarea
           ref={inputRef}
           value={prompt}
@@ -740,7 +775,7 @@ const Dashboard = () => {
     <div className="dashboard-redesigned home-screen" data-testid="dashboard">
       <div className={`home-messages ${hasChat ? 'has-chat' : ''}`}>
         {!hasChat && (
-          <>
+          <div className="home-hero-stage">
             <div className="dashboard-home-column">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="dashboard-greeting">
               <h1 className="dashboard-greeting-text">
@@ -895,7 +930,7 @@ const Dashboard = () => {
                 </div>
               </motion.div>
             )}
-          </>
+          </div>
         )}
         {hasChat && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="dashboard-chat-thread">
@@ -907,7 +942,7 @@ const Dashboard = () => {
                   </div>
                 )}
                 <div className={`dashboard-chat-bubble ${msg.role}`}>
-                  {msg.content}
+                  {formatChatContent(msg.content)}
                 </div>
                 {msg.buildOffer && (
                   <div className="dashboard-chat-build-offer">
