@@ -2,7 +2,7 @@
 import '@testing-library/jest-dom';
 /**
  * Nav & Pages click-through verification.
- * Evidence: Nav has Our solution (dropdown), Pricing, Our Project, Log in, Sign up, Get Started.
+ * Evidence: Nav has Our solution (dropdown), Pricing, Our Project, Dashboard, Log in, Get started (no Sign up in header).
  * No Prompts, Templates, Documentation in nav. Blog removed from primary nav. All links go to correct routes.
  */
 import React from 'react';
@@ -50,8 +50,9 @@ describe('Nav and pages — link and click-through verification', () => {
     });
     expect(screen.getByRole('button', { name: /our solution/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /log in/i })).toHaveAttribute('href', '/auth');
-    expect(screen.getByRole('link', { name: /sign up/i })).toHaveAttribute('href', '/auth?mode=register');
+    expect(screen.queryByRole('link', { name: /^sign up$/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /get started/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^dashboard$/i })).toBeInTheDocument();
   });
 
   it('LandingPage: hero headline is "What can I do for you?"', () => {
@@ -116,7 +117,7 @@ describe('Nav and pages — link and click-through verification', () => {
     expect(src).toMatch(/Monday to Friday\. One platform/);
   });
 
-  it('PublicNav: has Our solution, Pricing, Our Project, Sign In, Get Started (no Blog)', () => {
+  it('PublicNav: has Our solution, Pricing, Our Project, Log in, Get started, no Sign up (no Blog)', () => {
     render(
       <MemoryRouter>
         <PublicNav />
@@ -127,8 +128,9 @@ describe('Nav and pages — link and click-through verification', () => {
     expect(screen.getByRole('link', { name: /our project/i })).toHaveAttribute('href', '/our-projects');
     expect(screen.queryByRole('link', { name: /^blog$/i })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /log in/i })).toHaveAttribute('href', '/auth');
-    expect(screen.getByRole('link', { name: /sign up/i })).toHaveAttribute('href', '/auth?mode=register');
+    expect(screen.queryByRole('link', { name: /^sign up$/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /get started/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^dashboard$/i })).toHaveAttribute('href', '/app');
   });
 
   it('PublicNav: does NOT have Prompts, Templates, Documentation links', () => {
