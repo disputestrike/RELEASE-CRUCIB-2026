@@ -207,6 +207,12 @@
   overflow: hidden;
 }
 
+/* Single main app sidebar — no inner Auto Runner left rail */
+.arp-layout--no-inner-rail .arp-center-pane {
+  flex: 1;
+  min-width: 0;
+}
+
 /* ── Left rail ────────────────────────────────────────────────────────── */
 .arp-left-rail {
   width: 240px;

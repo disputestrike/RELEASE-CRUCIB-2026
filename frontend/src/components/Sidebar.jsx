@@ -9,6 +9,7 @@ import {
   X, MoreHorizontal, ExternalLink, Pencil, Share2,
   Trash2, FolderInput, Star, Settings,
   PanelLeftClose, PanelLeftOpen, History, Home,
+  PlayCircle, BarChart3, Store,
 } from 'lucide-react';
 import Logo from './Logo';
 import './Sidebar.css';
@@ -503,6 +504,12 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
           <Link to="/app" className="sidebar-collapsed-icon" title="Home" aria-label="Home">
             <Home size={20} />
           </Link>
+          <Link to="/app/workspace" className="sidebar-collapsed-icon" title="Build" aria-label="Build workspace">
+            <PlayCircle size={20} />
+          </Link>
+          <Link to="/app/monitoring" className="sidebar-collapsed-icon" title="Runs & metrics" aria-label="Monitoring">
+            <BarChart3 size={20} />
+          </Link>
           <Link to="/app/agents" className="sidebar-collapsed-icon" title="Agents" aria-label="Agents">
             <FolderOpen size={20} />
           </Link>
@@ -622,9 +629,24 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
             <Home size={18} className="sidebar-nav-icon" />
             <span className="sidebar-nav-label">Home</span>
           </Link>
+          <Link
+            to="/app/workspace"
+            className={`sidebar-nav-item ${isActivePrefix('/app/workspace') && !location.pathname.includes('workspace-classic') && !location.pathname.includes('workspace-manus') ? 'active' : ''}`}
+          >
+            <PlayCircle size={18} className="sidebar-nav-icon" />
+            <span className="sidebar-nav-label">Build</span>
+          </Link>
+          <Link to="/app/monitoring" className={`sidebar-nav-item ${isActivePrefix('/app/monitoring') ? 'active' : ''}`}>
+            <BarChart3 size={18} className="sidebar-nav-icon" />
+            <span className="sidebar-nav-label">Runs</span>
+          </Link>
           <Link to="/app/agents" className={`sidebar-nav-item ${isActivePrefix('/app/agents') ? 'active' : ''}`}>
             <FolderOpen size={18} className="sidebar-nav-icon" />
             <span className="sidebar-nav-label">Agents</span>
+          </Link>
+          <Link to="/app/skills/marketplace" className={`sidebar-nav-item ${isActivePrefix('/app/skills/marketplace') ? 'active' : ''}`}>
+            <Store size={18} className="sidebar-nav-icon" />
+            <span className="sidebar-nav-label">Marketplace</span>
           </Link>
         </div>
         <div className="sidebar-nav-group-label">Library</div>

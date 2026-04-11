@@ -3,22 +3,14 @@
  * Tokens: ../styles/unified-workspace-tokens.css (scoped .uw-root).
  */
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth, API } from '../App';
 import { useTaskStore } from '../stores/useTaskStore';
 import axios from 'axios';
 import Editor from '@monaco-editor/react';
 import { useJobStream } from '../hooks/useJobStream';
 import {
-  PlayCircle,
-  FolderKanban,
-  Briefcase,
-  Bot,
-  FileCode2,
   Rocket,
-  BarChart3,
-  Store,
-  Settings,
   ChevronLeft,
   ChevronRight,
   Eye,
@@ -44,25 +36,9 @@ import { API_BASE } from '../apiBase';
 import '../styles/unified-workspace-tokens.css';
 import './AutoRunnerPage.css';
 
-const WORKSPACE_NAV = [
-  { key: 'auto_runner', label: 'Auto-Runner', Icon: PlayCircle, route: null },
-  { key: 'projects', label: 'Projects', Icon: FolderKanban, route: '/app' },
-  { key: 'jobs', label: 'Jobs', Icon: Briefcase, route: '/app/monitoring' },
-  { key: 'agents', label: 'Agents', Icon: Bot, route: '/app/agents' },
-];
-const SYSTEM_NAV = [
-  { key: 'files', label: 'Files', Icon: FileCode2, route: null, pane: 'code' },
-  { key: 'deploys', label: 'Deploys', Icon: Rocket, route: 'classic' },
-  { key: 'metrics', label: 'Metrics', Icon: BarChart3, route: '/app/monitoring' },
-  { key: 'marketplace', label: 'Marketplace', Icon: Store, route: '/app/skills/marketplace' },
-  { key: 'settings', label: 'Settings', Icon: Settings, route: '/app/settings' },
-];
-
 const RIGHT_ORDER = ['proof', 'explorer', 'replay', 'failure', 'preview', 'timeline', 'code'];
 
 export default function UnifiedWorkspace() {
-  const navigate = useNavigate();
-  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const projectIdFromUrl = searchParams.get('projectId');
   const taskIdFromUrl = searchParams.get('taskId');
@@ -111,48 +87,40 @@ export default function UnifiedWorkspace() {
     localStorage.setItem('crucibai_ux_mode', m);
   };
 
-  const [leftCollapsed, setLeftCollapsed] = useState(() => localStorage.getItem('crucibai_left_collapsed') === 'true');
   const [rightCollapsed, setRightCollapsed] = useState(() => localStorage.getItem('crucibai_right_collapsed') === 'true');
-  useEffect(() => {
-    localStorage.setItem('crucibai_left_collapsed', leftCollapsed);
-  }, [leftCollapsed]);
   useEffect(() => {
     localStorage.setItem('crucibai_right_collapsed', rightCollapsed);
   }, [rightCollapsed]);
 
-  const [leftWidth, setLeftWidth] = useState(() => parseInt(localStorage.getItem('crucibai_left_width') || '240', 10));
-  useEffect(() => {
-    localStorage.setItem('crucibai_left_width', String(leftWidth));
-  }, [leftWidth]);
-
   const [rightWidth, setRightWidth] = useState(() => parseInt(localStorage.getItem('crucibai_right_width') || '440', 10));
   useEffect(() => {
-    localStorage.setItem('crucibai_right_width', rightWidth);
+    localStorage.setItem('crucibai_right_width', String(rightWidth));
   }, [rightWidth]);
-
-  const handleLeftResize = useCallback((delta) => {
-    setLeftWidth((w) => {
-      const minLeft = 200;
-      const inner = typeof window !== 'undefined' ? window.innerWidth : 1280;
-      const maxLeft = Math.max(minLeft, Math.floor(inner * 0.45));
-      return Math.min(maxLeft, Math.max(minLeft, w + delta));
-    });
-  }, []);
-  const handleResetLeftWidth = useCallback(() => setLeftWidth(240), []);
 
   const handleResize = useCallback((delta) => {
     setRightWidth((w) => {
       const minRight = 200;
-      const minCenter = 240;
+      const minCenter = 280;
       const div = 10;
-      const leftW = leftCollapsed ? 72 : leftWidth;
-      const divLeft = leftCollapsed ? 0 : div;
       const inner = typeof window !== 'undefined' ? window.innerWidth : 1440;
-      const maxRight = Math.max(minRight, inner - leftW - divLeft - div - minCenter);
+      const sidebarReserve = 300;
+      const maxRight = Math.max(minRight, inner - sidebarReserve - div - minCenter);
       return Math.min(maxRight, Math.max(minRight, w + delta));
     });
-  }, [leftCollapsed, leftWidth]);
+  }, []);
   const handleResetWidth = useCallback(() => setRightWidth(440), []);
+
+  const [editorColorMode, setEditorColorMode] = useState(() =>
+    typeof document !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark',
+  );
+  useEffect(() => {
+    const read = () =>
+      setEditorColorMode(document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark');
+    read();
+    const obs = new MutationObserver(read);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => obs.disconnect();
+  }, []);
 
   const [goal, setGoal] = useState('');
   const [continuationNotes, setContinuationNotes] = useState('');
@@ -168,7 +136,6 @@ export default function UnifiedWorkspace() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activePane, setActivePane] = useState('proof');
-  const [activeNav, setActiveNav] = useState('auto_runner');
   const [failedStep, setFailedStep] = useState(null);
   const [buildJobs, setBuildJobs] = useState([]);
 
@@ -298,20 +265,6 @@ export default function UnifiedWorkspace() {
   const projectSlug = effectiveProjectId
     ? `project-${String(effectiveProjectId).slice(0, 8)}…`
     : user?.email?.split('@')[0] || user?.name || 'proof-service';
-
-  const handleNav = (item) => {
-    setActiveNav(item.key);
-    if (item.key === 'auto_runner') return;
-    if (item.route === 'classic') {
-      navigate(`/app/workspace-classic${location.search}`);
-      return;
-    }
-    if (item.route) navigate(item.route);
-    if (item.pane) {
-      setActivePane(item.pane);
-      setRightCollapsed(false);
-    }
-  };
 
   const handleShare = useCallback(() => {
     const url = window.location.href;
@@ -694,8 +647,11 @@ export default function UnifiedWorkspace() {
           <button
             type="button"
             className="arp-topbar-btn"
-            title="Full deploy tools (classic workspace)"
-            onClick={() => navigate(`/app/workspace-classic${location.search}`)}
+            title="Open preview (export & share from preview when ready)"
+            onClick={() => {
+              setActivePane('preview');
+              setRightCollapsed(false);
+            }}
           >
             <Rocket size={14} />
             <span className="arp-topbar-btn-label">Deploy</span>
@@ -725,15 +681,6 @@ export default function UnifiedWorkspace() {
               Pro
             </button>
           </div>
-
-          <button
-            type="button"
-            className="arp-topbar-btn"
-            title="Open classic workspace (full IDE)"
-            onClick={() => navigate(`/app/workspace-classic${location.search}`)}
-          >
-            <span className="arp-topbar-btn-label">Classic</span>
-          </button>
 
           <SystemStatusHUD
             isConnected={isConnected}
@@ -773,61 +720,7 @@ export default function UnifiedWorkspace() {
         </div>
       )}
 
-      <div className="arp-layout">
-        <div
-          className={`arp-left-rail ${leftCollapsed ? 'collapsed' : ''}`}
-          style={!leftCollapsed ? { width: leftWidth, minWidth: leftWidth, maxWidth: leftWidth } : undefined}
-        >
-          <div
-            className="arp-rail-toggle"
-            role="button"
-            tabIndex={0}
-            aria-expanded={!leftCollapsed}
-            aria-label={leftCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                setLeftCollapsed(!leftCollapsed);
-              }
-            }}
-            onClick={() => setLeftCollapsed(!leftCollapsed)}
-          >
-            {leftCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-          </div>
-          <nav className="arp-nav">
-            {!leftCollapsed && <div className="arp-nav-section-label">Workspace</div>}
-            {WORKSPACE_NAV.map(({ key, label, Icon, ...rest }) => (
-              <button
-                key={key}
-                type="button"
-                className={`arp-nav-item ${activeNav === key ? 'active' : ''}`}
-                onClick={() => handleNav({ key, label, Icon, ...rest })}
-                title={leftCollapsed ? label : undefined}
-              >
-                <Icon size={16} />
-                {!leftCollapsed && <span className="arp-nav-label">{label}</span>}
-              </button>
-            ))}
-            {!leftCollapsed && <div className="arp-nav-section-label arp-nav-section-label-system">System</div>}
-            {SYSTEM_NAV.map(({ key, label, Icon, ...rest }) => (
-              <button
-                key={key}
-                type="button"
-                className={`arp-nav-item ${activeNav === key ? 'active' : ''}`}
-                onClick={() => handleNav({ key, label, Icon, ...rest })}
-                title={leftCollapsed ? label : undefined}
-              >
-                <Icon size={16} />
-                {!leftCollapsed && <span className="arp-nav-label">{label}</span>}
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        {!leftCollapsed && (
-          <ResizableDivider invertDelta onResize={handleLeftResize} onDoubleClick={handleResetLeftWidth} />
-        )}
-
+      <div className="arp-layout arp-layout--no-inner-rail">
         <div className="arp-center-pane">
           <RunnerScopeTrack buildTargetId={effectiveBuildTargetId} buildTargetMeta={effectiveBuildTargetMeta} />
           {/* Always show input - never hide it */}
@@ -852,25 +745,9 @@ export default function UnifiedWorkspace() {
               onContinuationChange={setContinuationNotes}
             />
             <div className="iterative-strip">
-              <h3>Iterative build (classic API)</h3>
+              <h3>Iterative build</h3>
               <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--text-muted)' }}>
-                Streams file updates into the preview panel. Full Monaco, deploy ZIP, and Pro panels remain in{' '}
-                <button
-                  type="button"
-                  className="classic-link"
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    padding: 0,
-                    cursor: 'pointer',
-                    color: 'var(--state-info)',
-                    textDecoration: 'underline',
-                  }}
-                  onClick={() => navigate(`/app/workspace-classic${location.search}`)}
-                >
-                  Classic workspace
-                </button>
-                .
+                Streams file updates into the preview panel. Use the <strong>Preview</strong> and <strong>Code</strong> tabs on the right when you need files or a live view.
               </p>
               <textarea
                 value={iterPrompt}
@@ -1013,7 +890,7 @@ export default function UnifiedWorkspace() {
                     <div className="code-pane-editor">
                       <Editor
                         height="100%"
-                        theme="vs-dark"
+                        theme={editorColorMode === 'light' ? 'vs' : 'vs-dark'}
                         path={activeFile}
                         language={
                           activeFile.endsWith('.css')
