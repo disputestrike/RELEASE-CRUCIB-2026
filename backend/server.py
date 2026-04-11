@@ -425,6 +425,7 @@ class ChatMessage(BaseModel):
     mode: Optional[str] = None  # thinking = step-by-step reasoning (no extra cost, same call)
     system_message: Optional[str] = None  # override for intent classification etc.
     attachments: Optional[List[Dict[str, Any]]] = None  # [{ "type": "image"|"pdf"|"text", "data": base64 or data URL or text, "name": "file.pdf" }]
+    prior_turns: Optional[List[Dict[str, Any]]] = None  # [{ "role": "user"|"assistant", "content": "..." }] before current `message`
 
 class ChatResponse(BaseModel):
     model_config = {"protected_namespaces": ()}  # suppress model_used namespace warning
@@ -1578,9 +1579,15 @@ IDENTITY — answer these exactly, no more, no less:
 - "How do you work?" / "What technology?" / "What stack?" → "Proprietary technology built to take your idea from prompt to product. Give me a description and I\'ll show you what it can do."
 - "What can you build?" → "Web apps, mobile apps, landing pages, automations, APIs, dashboards — your entire product from one prompt. What do you need?"
 
-Be warm, direct, and confident. You are a builder, not a customer service bot.
+Be direct, grounded, and confident. You are a builder and research partner—not customer support.
 
 When the user attaches images or PDFs: images are shown to you directly, PDFs are extracted as text. Use that content to answer questions or help build something. Do not say you cannot see attachments.
+
+OUTPUT FORMAT (modern product, not an old-school chatbot):
+- Do not wrap normal prose in asterisks or decorative markdown. Avoid **bold** except when one term truly needs emphasis.
+- No cheesy filler: not "I'm excited", "Here's what I found", "Great question", "I'd love to help", or generic AI-marketplace hype.
+- Headings only when they help scan a long answer. Bullets only when they improve clarity—not by default.
+- For research, markets, or startup ideas: be specific and analytical. Separate obvious plays from overlooked angles. Say where the market is saturated, what incumbents likely missed, and what combinations could stand alone—each with brief viability logic. Never dump generic "AI-powered X platform" ideas without concrete insight.
 
 Rules:
 - Never say "How can I assist you today?"
@@ -1597,9 +1604,9 @@ CRITICAL — Ambiguity and clarification:
 - Ambiguity is a reason to decide, not a reason to stop.
 
 Examples:
-- "Hello" / "Hi" → "Hey! What are we building today?"
-- "What can you do?" → "I build apps, automations, landing pages, mobile apps — your entire tech stack. What do you need?"
-- "How are you?" → "Ready to build. What are we making today?"
+- "Hello" / "Hi" → "Hi. What do you want to build?"
+- "What can you do?" → "Apps, automations, landing pages, APIs, internal tools—from prompt to shippable output. What are you trying to ship?"
+- "How are you?" → "Ready when you are. What's the project?"
 - Company name mentioned WITHOUT build request → "Interesting — do you want to build something related to that? Tell me what you have in mind."
 - Question about a competitor or other AI tool → "I don\'t worry about other tools — I just build. What do you want to make?"
 - Build request with vague details → State one concrete interpretation in one sentence and offer to build it.
@@ -1738,11 +1745,30 @@ async def _fetch_search_context(query: str) -> Optional[str]:
         logger.warning(f"Tavily search failed: {e}")
         return None
 
-CHAT_WITH_SEARCH_SYSTEM = """You are CrucibAI. Answer the user's question using the live search results provided below.
-Provide accurate, current information based on the data. Never say "I'm not a weather service" or similar disclaimers.
-Use the search results to give a real, helpful answer. If the data is about weather, give the weather. If it's news, summarize it.
-Be concise and factual. Then offer to build something related if relevant.
+CHAT_WITH_SEARCH_SYSTEM = """You are CrucibAI. Use the live search results below. Answer directly and factually—no filler, no hedging unless uncertainty is real.
+Do not wrap sections in decorative asterisks. Prefer short paragraphs over markdown theater.
+If a build is relevant, one crisp line offering to prototype it—no hype.
 """
+
+
+def _merge_prior_turns_into_message(latest_user: str, prior_turns: Optional[List[Dict[str, Any]]]) -> str:
+    """Fold earlier turns into one text block so single-message LLM APIs keep context."""
+    latest_user = (latest_user or "").strip()
+    if not prior_turns:
+        return latest_user
+    lines = []
+    for t in prior_turns[-40:]:
+        role = (t.get("role") or "user")
+        role = role.lower() if isinstance(role, str) else "user"
+        content = (t.get("content") or "").strip()
+        if not content:
+            continue
+        label = "User" if role == "user" else "CrucibAI"
+        lines.append(f"{label}: {content}")
+    if not lines:
+        return latest_user
+    return "Conversation history:\n" + "\n\n".join(lines) + "\n\n---\nUser (latest message):\n" + latest_user
+
 
 @api_router.post("/ai/chat")
 async def ai_chat(
@@ -1763,6 +1789,7 @@ async def ai_chat(
         effective = _effective_api_keys(user_keys)
         session_id = data.session_id or str(uuid.uuid4())
         message = (data.message or "").strip()
+        message_for_llm = _merge_prior_turns_into_message(message, data.prior_turns)
         # Auto-detect skill and inject transparently — no user action needed
         user_id_for_skill = (user or {}).get("id") if user else None
         system_message = data.system_message or await _build_chat_system_prompt_for_request(message, user_id_for_skill)
@@ -1771,13 +1798,13 @@ async def ai_chat(
             search_ctx = await _fetch_search_context(message)
             if search_ctx:
                 system_message = CHAT_WITH_SEARCH_SYSTEM
-                message = f"Live search results:\n{search_ctx}\n\nUser question: {data.message}"
+                message_for_llm = f"Live search results:\n{search_ctx}\n\n---\n{message_for_llm}"
         # INTENT-BASED MODEL ROUTING:
         # Conversational/factual questions → Haiku only (best knowledge cutoff, smartest answers)
         # Build requests → full model chain (Cerebras → Llama → Haiku)
 
         # Multimodal: build content_blocks from message + attachments (images + PDF/text)
-        text_parts = [message] if message else []
+        text_parts = [message_for_llm] if message_for_llm else []
         image_blocks = []
         for att in (data.attachments or []):
             att_type = (att.get("type") or "text").lower()
@@ -1834,8 +1861,8 @@ async def ai_chat(
         available_credits = (user.get("credit_balance", 0) if user else 0)
         speed_selector = _speed_from_plan(user_tier)
         # Route conversational/factual questions to Haiku only — best knowledge cutoff
-        # Route build requests through full model chain for cost efficiency
-        if _is_conversational_message(combined_text):
+        # Route build requests through full model chain for cost efficiency (use latest user line only)
+        if _is_conversational_message(message):
             haiku_key = (effective or {}).get("anthropic") or os.environ.get("ANTHROPIC_API_KEY")
             if haiku_key:
                 from llm_router import HAIKU_MODEL
@@ -1948,17 +1975,19 @@ async def ai_chat_stream(
                     "tokens_used": tokens_used,
                 }) + "\n"
                 return
-            model_chain = _get_model_chain(data.model or "auto", data.message, effective_keys=effective)
+            stream_latest = (data.message or "").strip()
+            message_for_llm = _merge_prior_turns_into_message(stream_latest, data.prior_turns)
+            model_chain = _get_model_chain(data.model or "auto", message_for_llm, effective_keys=effective)
             user_tier = (user.get("plan", "free") if user else "free")
             available_credits = (user.get("credit_balance", 0) if user else 0)
             speed_selector = _speed_from_plan(user_tier)
             # Auto-detect skill and inject transparently
             _stream_user_id = (user or {}).get("id") if user else None
-            system_message = await _build_chat_system_prompt_for_request(data.message or "", _stream_user_id)
+            system_message = await _build_chat_system_prompt_for_request(stream_latest, _stream_user_id)
             if (getattr(data, "mode", None) or "").lower() == "thinking":
                 system_message = "You are CrucibAI. Think step by step: reason through the problem, then provide your final code or answer. Be thorough but concise."
             response, model_used = await _call_llm_with_fallback(
-                message=data.message,
+                message=message_for_llm,
                 system_message=system_message,
                 session_id=session_id,
                 model_chain=model_chain,

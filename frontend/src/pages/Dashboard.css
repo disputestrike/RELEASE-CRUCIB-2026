@@ -244,8 +244,18 @@
   box-shadow: none;
 }
 
+/* Caps growing textarea; JS sets explicit height + overflow per content */
+.dashboard-prompt-input-wrap {
+  width: 100%;
+  max-height: 160px;
+  min-height: 0;
+  overflow: hidden;
+  flex: 1 1 auto;
+}
+
 .dashboard-prompt-input {
-  flex: 1;
+  display: block;
+  box-sizing: border-box;
   border: none;
   outline: none;
   background: transparent;
@@ -253,19 +263,21 @@
   font-size: 15px;
   color: var(--theme-text, #e4e4e7);
   resize: none;
-  min-height: 24px;
+  min-height: 28px;
   max-height: 160px;
   line-height: 1.5;
   width: 100%;
-  overflow-y: auto;
+  overflow-y: hidden;
   word-wrap: break-word;
   white-space: pre-wrap;
   scrollbar-width: thin;
 }
 .dashboard-prompt-input::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
+  width: 6px;
+}
+.dashboard-prompt-input::-webkit-scrollbar-thumb {
+  background: var(--theme-border, rgba(255, 255, 255, 0.2));
+  border-radius: 3px;
 }
 
 .dashboard-prompt-input::placeholder {
@@ -515,6 +527,7 @@
 
 .dashboard-chat-row--user {
   justify-content: flex-end;
+  position: relative;
 }
 
 .dashboard-chat-row:last-child {
@@ -648,6 +661,45 @@
 .dashboard-chat-action:hover {
   color: var(--theme-text, #e4e4e7);
   background: rgba(255, 255, 255, 0.08);
+}
+
+.dashboard-chat-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.dashboard-chat-action--active {
+  color: var(--theme-text, #e4e4e7);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* User message actions: hover/focus only on fine pointers; touch shows faint until tap */
+@media (hover: hover) and (pointer: fine) {
+  .dashboard-chat-actions--user {
+    opacity: 0;
+    transition: opacity 180ms ease;
+    pointer-events: none;
+  }
+  .dashboard-chat-row--user:hover .dashboard-chat-actions--user,
+  .dashboard-chat-row--user:focus-within .dashboard-chat-actions--user {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+@media (hover: none) {
+  .dashboard-chat-actions--user {
+    opacity: 0.4;
+    transition: opacity 160ms ease;
+  }
+  .dashboard-chat-row--user:active .dashboard-chat-actions--user,
+  .dashboard-chat-row--user:focus-within .dashboard-chat-actions--user {
+    opacity: 1;
+  }
+}
+
+.dashboard-chat-actions--assistant {
+  flex-wrap: wrap;
 }
 
 /* Quick Start Chips */

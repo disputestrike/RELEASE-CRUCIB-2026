@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { flushSync } from 'react-dom';
 import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -8,6 +8,7 @@ import {
   Layout, Code, Zap, Globe, Monitor,
   Copy, Check, Pencil, Play, CheckCircle, Clock, AlertCircle,
   BarChart3, ExternalLink, ChevronDown,
+  ThumbsUp, ThumbsDown, Share2, RefreshCw,
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import { useAuth, API } from '../App';
@@ -48,6 +49,15 @@ function formatChatContent(content) {
     }
   }
   return String(content);
+}
+
+/** Prior turns for API: all messages before the latest user line (exclusive). */
+function buildPriorTurnsFromMessages(msgs) {
+  if (!Array.isArray(msgs) || msgs.length < 2) return [];
+  return msgs.slice(0, -1).map((m) => ({
+    role: m.role === 'assistant' ? 'assistant' : 'user',
+    content: formatChatContent(m.content),
+  }));
 }
 
 function isDefinitelyChat(prompt) {
@@ -171,6 +181,8 @@ const Dashboard = () => {
   // Chat state for conversational (non-build) messages
   const [chatMessages, setChatMessages] = useState([]);
   const [chatLoading, setChatLoading] = useState(false);
+  /** assistant message index -> 'up' | 'down' */
+  const [msgReactions, setMsgReactions] = useState({});
   const [conversationStarted, setConversationStarted] = useState(false);
   const [audioStream, setAudioStream] = useState(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -178,6 +190,9 @@ const Dashboard = () => {
   const actionFeedbackTimerRef = useRef(null);
   const inputRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const homeMessagesRef = useRef(null);
+  /** When true, new messages / loading scroll the transcript to the bottom */
+  const stickToBottomRef = useRef(true);
   const fileInputRef = useRef(null);
   const mediaRecorderRef = useRef(null);
 
@@ -276,19 +291,49 @@ const Dashboard = () => {
     }
   }, [location.state]);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages, chatLoading]);
+  const NEAR_BOTTOM_PX = 120;
 
-  // Auto-grow textarea: one line by default; max 160px then internal scroll (not viewport-sized)
-  useEffect(() => {
+  const scrollTranscriptToBottom = useCallback((behavior = 'smooth') => {
+    const root = homeMessagesRef.current;
+    if (!root || !stickToBottomRef.current) return;
+    requestAnimationFrame(() => {
+      root.scrollTo({ top: root.scrollHeight, behavior: behavior === 'instant' ? 'auto' : behavior });
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    const root = homeMessagesRef.current;
+    if (!root || !chatMessages.length) return;
+    const onScroll = () => {
+      const dist = root.scrollHeight - root.scrollTop - root.clientHeight;
+      stickToBottomRef.current = dist < NEAR_BOTTOM_PX;
+    };
+    root.addEventListener('scroll', onScroll, { passive: true });
+    return () => root.removeEventListener('scroll', onScroll);
+  }, [chatMessages.length]);
+
+  useLayoutEffect(() => {
+    if (!chatMessages.length) return;
+    scrollTranscriptToBottom(chatLoading ? 'instant' : 'smooth');
+  }, [chatMessages, chatLoading, scrollTranscriptToBottom]);
+
+  /** Composer textarea: grow with content up to 160px, then internal scroll; ~single-line start */
+  const adjustComposerHeight = useCallback(() => {
     const el = inputRef.current;
     if (!el) return;
     const maxPx = 160;
-    const minPx = 24;
-    el.style.height = 'auto';
-    el.style.height = `${Math.min(Math.max(el.scrollHeight, minPx), maxPx)}px`;
-  }, [prompt, chatMessages.length]);
+    const minPx = 28;
+    el.style.height = '0px';
+    el.style.overflowY = 'hidden';
+    const sh = el.scrollHeight;
+    const h = Math.min(Math.max(sh, minPx), maxPx);
+    el.style.height = `${h}px`;
+    el.style.overflowY = sh > maxPx ? 'auto' : 'hidden';
+  }, []);
+
+  useLayoutEffect(() => {
+    adjustComposerHeight();
+  }, [prompt, attachedFiles.length, chatMessages.length, adjustComposerHeight]);
 
   const PROMPT_CONVERT_TO_FILE_LIMIT = 3000;
 
@@ -306,6 +351,22 @@ const Dashboard = () => {
   };
 
   const handleConvertToFile = () => attachTextAsFile(prompt, 'pasted_content.txt');
+
+  const requestAssistantReply = useCallback(async (taskId, userText, priorTurns, filesToSend) => {
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const attachments = filesToSend?.length > 0 ? filesToSend.map((f) => {
+      const type = f.type?.startsWith('image/') ? 'image' : (f.type === 'application/pdf' ? 'pdf' : 'text');
+      return { type, data: f.data, name: f.name };
+    }) : undefined;
+    const res = await axios.post(`${API}/ai/chat`, {
+      message: userText,
+      session_id: `chat_${taskId}`,
+      model: 'auto',
+      ...(priorTurns?.length ? { prior_turns: priorTurns } : {}),
+      ...(attachments?.length ? { attachments } : {}),
+    }, { headers, timeout: 120000 });
+    return res.data?.response || res.data?.message || '';
+  }, [API, token]);
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
@@ -332,6 +393,7 @@ const Dashboard = () => {
     }
 
     const userMsg = { role: 'user', content: userPrompt || (filesToSend.length ? `[${filesToSend.length} attachment(s)]` : '') };
+    stickToBottomRef.current = true;
     setPrompt('');
     setAttachedFiles([]);
     let messagesAfterUser;
@@ -343,6 +405,7 @@ const Dashboard = () => {
       setConversationStarted(true);
       setChatLoading(true);
     });
+    requestAnimationFrame(() => scrollTranscriptToBottom('instant'));
 
     // Conversation-only: skip intent API for greetings or when user sent only attachments (images/PDF)
     const intent = (!userPrompt && filesToSend.length > 0) ? 'chat' : (isDefinitelyChat(userPrompt) ? 'chat' : await detectIntent(userPrompt, API, token));
@@ -414,18 +477,9 @@ const Dashboard = () => {
     }
 
     try {
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const attachments = filesToSend.length > 0 ? filesToSend.map((f) => {
-        const type = f.type?.startsWith('image/') ? 'image' : (f.type === 'application/pdf' ? 'pdf' : 'text');
-        return { type, data: f.data, name: f.name };
-      }) : undefined;
-      const res = await axios.post(`${API}/ai/chat`, {
-        message: userPrompt,
-        session_id: `chat_${taskId}`,
-        model: 'auto',
-        ...(attachments?.length ? { attachments } : {})
-      }, { headers, timeout: 60000 });
-      const reply = res.data?.response || res.data?.message || "Hey! What are we building today?";
+      const priorTurns = buildPriorTurnsFromMessages(messagesAfterUser);
+      const reply = await requestAssistantReply(taskId, userPrompt, priorTurns, filesToSend)
+        || 'No response from model. Try again.';
       const assistantMsg = { role: 'assistant', content: reply };
       let afterAssistant;
       setChatMessages((prev) => {
@@ -646,13 +700,72 @@ const Dashboard = () => {
   const handleCopyMessage = (index) => {
     const text = formatChatContent(chatMessages[index]?.content);
     if (!text) return;
-    navigator.clipboard?.writeText(text).then(() => setActionFeedback({ type: 'copy', index }));
+    const role = chatMessages[index]?.role || 'user';
+    navigator.clipboard?.writeText(text).then(() => setActionFeedback({ type: 'copy', index, role }));
   };
 
   const handleEditMessage = (content) => {
     if (content == null) return;
     setPrompt(formatChatContent(content));
     inputRef.current?.focus();
+    requestAnimationFrame(() => adjustComposerHeight());
+  };
+
+  const handleRegenerateAssistant = async (assistantIndex) => {
+    if (assistantIndex < 1 || chatLoading) return;
+    const userPrev = chatMessages[assistantIndex - 1];
+    if (!userPrev || userPrev.role !== 'user') return;
+    const taskId = chatTaskIdRef.current;
+    if (!taskId) return;
+    const kept = chatMessages.slice(0, assistantIndex);
+    const userText = formatChatContent(userPrev.content);
+    const priorTurns = buildPriorTurnsFromMessages(kept);
+    setMsgReactions({});
+    stickToBottomRef.current = true;
+    setChatMessages(kept);
+    setChatLoading(true);
+    requestAnimationFrame(() => scrollTranscriptToBottom('instant'));
+    try {
+      const reply = await requestAssistantReply(taskId, userText, priorTurns, [])
+        || 'No response from model. Try again.';
+      const after = [...kept, { role: 'assistant', content: reply }];
+      setChatMessages(after);
+      updateTask(taskId, { messages: after, prompt: userText });
+    } catch (err) {
+      const detail = err.response?.data?.detail;
+      const fallback = (typeof detail === 'string' && detail) ? detail : (err.message || 'Regenerate failed. Try again.');
+      const after = [...kept, { role: 'assistant', content: fallback }];
+      setChatMessages(after);
+      updateTask(taskId, { messages: after, prompt: userText });
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const handleShareAssistant = (i) => {
+    const text = formatChatContent(chatMessages[i]?.content);
+    const base = `${window.location.origin}/app`;
+    const tid = chatTaskIdRef.current;
+    const url = tid ? `${base}?chatTaskId=${encodeURIComponent(tid)}` : base;
+    const payload = text ? `${text}\n\n—\n${url}` : url;
+    if (navigator.share) {
+      navigator.share({ title: 'CrucibAI', text: payload }).catch(() => {
+        navigator.clipboard?.writeText(payload).then(() => setActionFeedback({ type: 'share', index: i, role: 'assistant' }));
+      });
+    } else {
+      navigator.clipboard?.writeText(payload).then(() => setActionFeedback({ type: 'share', index: i, role: 'assistant' }));
+    }
+  };
+
+  const toggleMsgReaction = (i, dir) => {
+    setMsgReactions((prev) => {
+      const cur = prev[i];
+      const next = cur === dir ? null : dir;
+      const copy = { ...prev };
+      if (next == null) delete copy[i];
+      else copy[i] = next;
+      return copy;
+    });
   };
 
   const handleStartBuilding = (buildOffer) => {
@@ -693,27 +806,31 @@ const Dashboard = () => {
         </div>
       )}
       <div className={`dashboard-prompt-container ${hasChat ? 'dashboard-prompt-container--stacked dashboard-prompt-container--chat' : ''}`}>
-        <textarea
-          ref={inputRef}
-          value={prompt}
-          onChange={(e) => {
-            const next = e.target.value;
-            if (next.length >= PROMPT_CONVERT_TO_FILE_LIMIT) {
-              attachTextAsFile(next, 'pasted_content.txt');
-            } else {
-              setPrompt(next);
-            }
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              handleSubmit(e);
-            }
-          }}
-          placeholder={hasChat ? 'Ask a follow-up or describe a new idea...' : (location.state?.newProject ? 'Describe your project (e.g. I need a flower website)...' : 'Describe what you want to build or ask anything...')}
-          className="dashboard-prompt-input"
-          rows={1}
-        />
+        <div className="dashboard-prompt-input-wrap">
+          <textarea
+            ref={inputRef}
+            value={prompt}
+            onChange={(e) => {
+              const next = e.target.value;
+              if (next.length >= PROMPT_CONVERT_TO_FILE_LIMIT) {
+                attachTextAsFile(next, 'pasted_content.txt');
+              } else {
+                setPrompt(next);
+              }
+            }}
+            onInput={() => requestAnimationFrame(() => adjustComposerHeight())}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit(e);
+              }
+            }}
+            placeholder={hasChat ? 'Ask a follow-up or describe a new idea...' : (location.state?.newProject ? 'Describe your project (e.g. I need a flower website)...' : 'Describe what you want to build or ask anything...')}
+            className="dashboard-prompt-input"
+            rows={1}
+            aria-label="Message"
+          />
+        </div>
         <div className="dashboard-prompt-footer">
           <div className="dashboard-prompt-footer-left" aria-label="Add context">
             <div className="dashboard-model-badge" title="Auto-selects best model">
@@ -776,7 +893,7 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-redesigned home-screen" data-testid="dashboard">
-      <div className={`home-messages ${hasChat ? 'has-chat' : ''}`}>
+      <div ref={homeMessagesRef} className={`home-messages ${hasChat ? 'has-chat' : ''}`}>
         {!hasChat && (
           <div className="home-hero-stage">
             <div className="dashboard-home-column">
@@ -961,22 +1078,74 @@ const Dashboard = () => {
                         </button>
                       </div>
                     )}
-                    <div className="dashboard-chat-actions">
-                      <button
-                        type="button"
-                        onClick={() => handleCopyMessage(i)}
-                        className="dashboard-chat-action"
-                        title={actionFeedback?.type === 'copy' && actionFeedback?.index === i ? 'Copied!' : 'Copy'}
-                        aria-label={actionFeedback?.type === 'copy' && actionFeedback?.index === i ? 'Copied!' : 'Copy'}
-                      >
-                        {actionFeedback?.type === 'copy' && actionFeedback?.index === i ? <Check size={14} /> : <Copy size={14} />}
-                      </button>
-                      {msg.role === 'user' && (
+                    {msg.role === 'assistant' && (
+                      <div className="dashboard-chat-actions dashboard-chat-actions--assistant">
+                        <button
+                          type="button"
+                          onClick={() => handleCopyMessage(i)}
+                          className="dashboard-chat-action"
+                          title={actionFeedback?.type === 'copy' && actionFeedback?.index === i && actionFeedback?.role === 'assistant' ? 'Copied!' : 'Copy'}
+                          aria-label="Copy assistant message"
+                        >
+                          {actionFeedback?.type === 'copy' && actionFeedback?.index === i && actionFeedback?.role === 'assistant' ? <Check size={14} /> : <Copy size={14} />}
+                        </button>
+                        <button
+                          type="button"
+                          className={`dashboard-chat-action${msgReactions[i] === 'up' ? ' dashboard-chat-action--active' : ''}`}
+                          title="Helpful"
+                          aria-label="Thumbs up"
+                          aria-pressed={msgReactions[i] === 'up'}
+                          onClick={() => toggleMsgReaction(i, 'up')}
+                        >
+                          <ThumbsUp size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          className={`dashboard-chat-action${msgReactions[i] === 'down' ? ' dashboard-chat-action--active' : ''}`}
+                          title="Not helpful"
+                          aria-label="Thumbs down"
+                          aria-pressed={msgReactions[i] === 'down'}
+                          onClick={() => toggleMsgReaction(i, 'down')}
+                        >
+                          <ThumbsDown size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          className="dashboard-chat-action"
+                          title="Share"
+                          aria-label="Share"
+                          onClick={() => handleShareAssistant(i)}
+                        >
+                          {actionFeedback?.type === 'share' && actionFeedback?.index === i && actionFeedback?.role === 'assistant' ? <Check size={14} /> : <Share2 size={14} />}
+                        </button>
+                        <button
+                          type="button"
+                          className="dashboard-chat-action"
+                          title="Regenerate"
+                          aria-label="Regenerate"
+                          disabled={chatLoading}
+                          onClick={() => handleRegenerateAssistant(i)}
+                        >
+                          <RefreshCw size={14} />
+                        </button>
+                      </div>
+                    )}
+                    {msg.role === 'user' && (
+                      <div className="dashboard-chat-actions dashboard-chat-actions--user">
+                        <button
+                          type="button"
+                          onClick={() => handleCopyMessage(i)}
+                          className="dashboard-chat-action"
+                          title={actionFeedback?.type === 'copy' && actionFeedback?.index === i && actionFeedback?.role === 'user' ? 'Copied!' : 'Copy'}
+                          aria-label="Copy user message"
+                        >
+                          {actionFeedback?.type === 'copy' && actionFeedback?.index === i && actionFeedback?.role === 'user' ? <Check size={14} /> : <Copy size={14} />}
+                        </button>
                         <button type="button" onClick={() => handleEditMessage(msg.content)} className="dashboard-chat-action" title="Edit" aria-label="Edit">
                           <Pencil size={14} />
                         </button>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
