@@ -80,7 +80,7 @@
   width: 100%;
   padding: 24px;
   background: var(--theme-bg, #111113);
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
   position: sticky;
   bottom: 0;
   display: flex;
@@ -97,27 +97,27 @@
 
 /* Chat mode: input and thread — Manus-scale width (matches workspace composer token intent) */
 .home-input-bar--chat .home-prompt-wrapper {
-  max-width: min(920px, calc(100vw - 96px));
+  max-width: min(1120px, calc(100vw - 48px));
   margin-left: auto;
   margin-right: auto;
 }
 
 /* Chat mode — same Manus-style footer row */
 .dashboard-prompt-form--chat .dashboard-prompt-container--stacked .dashboard-prompt-input {
-  min-height: 44px;
+  min-height: 88px;
 }
 
 .dashboard-prompt-inline {
   width: 100%;
-  max-width: 560px;
+  max-width: min(1120px, calc(100vw - 48px));
   display: flex;
   justify-content: center;
 }
 
-/* Minimal home column (Manus-like measure) */
+/* Minimal home column — width matches enlarged chatbox */
 .dashboard-home-column {
   width: 100%;
-  max-width: 560px;
+  max-width: min(1120px, calc(100vw - 48px));
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -182,16 +182,18 @@
   align-items: stretch;
   gap: 0;
   width: 100%;
-  min-height: 56px;
-  padding: 14px 16px 10px;
+  min-height: 112px;
+  padding: 20px 20px 12px;
   background: var(--theme-surface, #18181B);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--theme-border-strong, #52525b);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
   border-radius: 16px;
-  transition: border-color 200ms ease;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
 }
 
 .dashboard-prompt-container:focus-within {
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: var(--theme-border-focus, #a1a1aa);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25), 0 0 0 2px rgba(255, 255, 255, 0.12);
 }
 
 .dashboard-prompt-input {
@@ -203,8 +205,8 @@
   font-size: 17px;
   color: var(--theme-text, #e4e4e7);
   resize: none;
-  min-height: 28px;
-  max-height: 240px;
+  min-height: 72px;
+  max-height: 480px;
   line-height: 1.45;
   width: 100%;
   overflow-y: auto;
@@ -256,9 +258,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
   flex-shrink: 0;
 }
 
