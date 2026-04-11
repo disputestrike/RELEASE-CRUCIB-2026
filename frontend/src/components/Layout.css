@@ -216,6 +216,31 @@
   background: var(--theme-bg);
 }
 
+/* Home chat (`/app`): single centered trust line — no links, no status row */
+.layout-footer--chat-trust-only {
+  justify-content: center;
+  align-items: center;
+  padding: 10px 20px 14px;
+  border-top: 1px solid var(--theme-border, rgba(255, 255, 255, 0.06));
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--theme-muted, #71717a);
+  background: var(--theme-bg);
+}
+
+.layout-footer-trust {
+  margin: 0;
+  max-width: min(42rem, 92vw);
+  text-align: center;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+[data-theme="light"] .layout-footer--chat-trust-only {
+  color: #6b7280;
+  border-top-color: rgba(0, 0, 0, 0.06);
+}
+
 /* Light theme: ensure footer text is always legible (dark on light) */
 [data-theme="light"] .layout-footer {
   color: #374151;

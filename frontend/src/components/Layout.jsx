@@ -165,25 +165,33 @@ const Layout = () => {
         }} />
       </div>
 
-      {/* Footer */}
-      <footer className={`layout-footer ${isAppHomeDashboard ? 'layout-footer--dash-home' : ''}`}>
-        <span className="layout-footer-status">
-          {backendOk === true && <span className="status-green">● Connected</span>}
-          {backendOk === false && (
-            <>
-              <span className="status-amber">● Disconnected</span>
-              <button type="button" onClick={checkBackend} className="status-retry">Retry</button>
-            </>
-          )}
-          {backendOk === null && <span className="status-gray">● Checking…</span>}
-        </span>
-        <span className="layout-footer-links">
-          <Link to="/about">About</Link>
-          <Link to="/get-help">Get help</Link>
-          <Link to="/contact">Contact</Link>
-          <Link to="/privacy">Privacy</Link>
-          <Link to="/terms">Terms</Link>
-        </span>
+      {/* Footer — home chat: trust line only; elsewhere: status + legal links */}
+      <footer className={`layout-footer ${isAppHomeDashboard ? 'layout-footer--dash-home layout-footer--chat-trust-only' : ''}`}>
+        {isAppHomeDashboard ? (
+          <p className="layout-footer-trust">
+            CrucibAI can make mistakes. Please double-check important responses.
+          </p>
+        ) : (
+          <>
+            <span className="layout-footer-status">
+              {backendOk === true && <span className="status-green">● Connected</span>}
+              {backendOk === false && (
+                <>
+                  <span className="status-amber">● Disconnected</span>
+                  <button type="button" onClick={checkBackend} className="status-retry">Retry</button>
+                </>
+              )}
+              {backendOk === null && <span className="status-gray">● Checking…</span>}
+            </span>
+            <span className="layout-footer-links">
+              <Link to="/about">About</Link>
+              <Link to="/get-help">Get help</Link>
+              <Link to="/contact">Contact</Link>
+              <Link to="/privacy">Privacy</Link>
+              <Link to="/terms">Terms</Link>
+            </span>
+          </>
+        )}
       </footer>
     </div>
   );

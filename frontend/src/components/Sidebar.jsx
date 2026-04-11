@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTaskStore } from '../stores/useTaskStore';
@@ -36,6 +36,9 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
   const [renameValue, setRenameValue] = useState('');
   const [deleteConfirmTask, setDeleteConfirmTask] = useState(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const [moveProjectExpanded, setMoveProjectExpanded] = useState(false);
+  const menuDropdownRef = useRef(null);
+  const menuAnchorRef = useRef({ top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0 });
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [pinnedIds, setPinnedIds] = useState(() => {
     try {
@@ -117,6 +120,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
       type: t.type || 'build',
       isProject: false,
       createdAt: t.createdAt ?? Date.now(),
+      linkedProjectId: t.linkedProjectId || null,
     }));
     return [...fromProjects, ...fromStore];
   }, [projects, storeTasks, propTasks]);
@@ -214,14 +218,64 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
   };
 
   const handleShare = (item) => {
-    const url = item.isProject
-      ? `${window.location.origin}/app/projects/${item.id}`
-      : (item.type === 'chat' || item.type === 'query')
-        ? `${window.location.origin}/app?chatTaskId=${encodeURIComponent(item.id)}`
-        : `${window.location.origin}/app/workspace?taskId=${encodeURIComponent(item.id)}`;
+    const origin = window.location.origin;
+    let url;
+    if (item.isProject) url = `${origin}/app/projects/${item.id}`;
+    else if (item.type === 'chat' || item.type === 'query') {
+      const qs = new URLSearchParams({ chatTaskId: item.id });
+      if (item.linkedProjectId) qs.set('projectId', item.linkedProjectId);
+      url = `${origin}/app?${qs.toString()}`;
+    } else {
+      const qs = new URLSearchParams({ taskId: item.id });
+      if (item.linkedProjectId) qs.set('projectId', item.linkedProjectId);
+      url = `${origin}/app/workspace?${qs.toString()}`;
+    }
     navigator.clipboard?.writeText(url).then(() => {});
     setMenuTaskId(null);
   };
+
+  const clampTaskMenuToViewport = useCallback(() => {
+    const el = menuDropdownRef.current;
+    if (!el) return;
+    const pad = 8;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const ar = menuAnchorRef.current;
+    let left = ar.right + 4;
+    let top = ar.top;
+    el.style.maxHeight = `${Math.max(120, vh - 2 * pad)}px`;
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    if (left + w > vw - pad) left = ar.left - w - 4;
+    if (left < pad) left = pad;
+    if (left + w > vw - pad) left = Math.max(pad, vw - pad - w);
+    if (top + h > vh - pad) top = vh - pad - h;
+    if (top < pad) top = pad;
+    el.style.top = `${top}px`;
+    el.style.left = `${left}px`;
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!menuTaskId) return;
+    const run = () => {
+      clampTaskMenuToViewport();
+      requestAnimationFrame(() => clampTaskMenuToViewport());
+    };
+    run();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(run) : null;
+    if (menuDropdownRef.current && ro) ro.observe(menuDropdownRef.current);
+    window.addEventListener('resize', run);
+    window.addEventListener('scroll', run, true);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', run);
+      window.removeEventListener('scroll', run, true);
+    };
+  }, [menuTaskId, moveProjectExpanded, clampTaskMenuToViewport]);
+
+  useEffect(() => {
+    if (!menuTaskId) setMoveProjectExpanded(false);
+  }, [menuTaskId]);
 
   useEffect(() => {
     const close = (e) => {
@@ -231,6 +285,17 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     document.addEventListener('click', close);
     return () => document.removeEventListener('click', close);
   }, []);
+
+  useEffect(() => {
+    if (!menuTaskId) return;
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      if (moveProjectExpanded) setMoveProjectExpanded(false);
+      else setMenuTaskId(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [menuTaskId, moveProjectExpanded]);
 
   // Keyboard shortcut: Ctrl+K for search
   useEffect(() => {
@@ -273,7 +338,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
       <div
         key={item.id}
         className={`sidebar-task-row ${isSelected ? 'active' : ''}`}
-        onClick={(e) => { if (!isEditing && !e.target.closest('.sidebar-task-menu')) openTask(item); }}
+        onClick={(e) => { if (!isEditing && !e.target.closest('.sidebar-task-menu-btn')) openTask(item); }}
       >
         {isEditing ? (
           <div className="sidebar-task-rename" onClick={(e) => e.stopPropagation()}>
@@ -302,8 +367,17 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
                 if (showMenu) {
                   setMenuTaskId(null);
                 } else {
-                  setMenuTaskId(item.id);
                   const rect = e.currentTarget.getBoundingClientRect();
+                  menuAnchorRef.current = {
+                    top: rect.top,
+                    left: rect.left,
+                    right: rect.right,
+                    bottom: rect.bottom,
+                    width: rect.width,
+                    height: rect.height,
+                  };
+                  setMoveProjectExpanded(false);
+                  setMenuTaskId(item.id);
                   setMenuPosition({ top: rect.top, left: rect.right + 4 });
                 }
               }}
@@ -315,9 +389,11 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
         )}
         {showMenu && createPortal(
           <div
+            ref={menuDropdownRef}
             className="sidebar-task-dropdown sidebar-task-dropdown-fixed"
             style={{ top: menuPosition.top, left: menuPosition.left }}
             onClick={(e) => e.stopPropagation()}
+            role="menu"
           >
             <button type="button" onClick={() => { handleShare(item); }}>
               <Share2 size={14} /> Share
@@ -340,10 +416,55 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
             <button type="button" onClick={() => { openInNewTab(item); setMenuTaskId(null); }}>
               <ExternalLink size={14} /> Open in new tab
             </button>
-            <button type="button" disabled title="Coming soon" className="has-submenu">
-              <FolderInput size={14} /> Move to project
-              <ChevronRight size={14} />
-            </button>
+            {!item.isProject && (
+              <>
+                <button
+                  type="button"
+                  className={`has-submenu${moveProjectExpanded ? ' sidebar-task-move-trigger--open' : ''}`}
+                  onClick={() => setMoveProjectExpanded((v) => !v)}
+                  aria-expanded={moveProjectExpanded}
+                >
+                  <FolderInput size={14} /> Move to project
+                  <ChevronRight size={14} className="sidebar-task-move-chevron" />
+                </button>
+                {moveProjectExpanded && (
+                  <div className="sidebar-task-move-panel" role="group" aria-label="Choose project">
+                    {(projects || []).filter((p) => p && p.id).length === 0 ? (
+                      <div className="sidebar-task-move-empty">No projects yet. Use Create → New Project.</div>
+                    ) : (
+                      (projects || []).filter((p) => p && p.id).map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          className={item.linkedProjectId === p.id ? 'sidebar-task-move-project sidebar-task-move-project--current' : 'sidebar-task-move-project'}
+                          onClick={() => {
+                            updateTask(item.id, { linkedProjectId: p.id });
+                            setMenuTaskId(null);
+                            setMoveProjectExpanded(false);
+                          }}
+                        >
+                          {item.linkedProjectId === p.id ? '✓ ' : ''}
+                          {p.name || p.requirements?.prompt?.slice(0, 48) || 'Project'}
+                        </button>
+                      ))
+                    )}
+                    {item.linkedProjectId && (
+                      <button
+                        type="button"
+                        className="sidebar-task-move-clear"
+                        onClick={() => {
+                          updateTask(item.id, { linkedProjectId: null });
+                          setMenuTaskId(null);
+                          setMoveProjectExpanded(false);
+                        }}
+                      >
+                        Remove from project
+                      </button>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
             {isLocalTask && (
               <button type="button" className="danger" onClick={() => handleDeleteClick(item)}>
                 <Trash2 size={14} /> Delete

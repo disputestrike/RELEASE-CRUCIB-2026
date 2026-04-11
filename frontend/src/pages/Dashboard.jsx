@@ -280,13 +280,12 @@ const Dashboard = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages, chatLoading]);
 
-  // Auto-expand textarea as user types (wrap + grow upward)
+  // Auto-grow textarea: one line by default; max 160px then internal scroll (not viewport-sized)
   useEffect(() => {
     const el = inputRef.current;
     if (!el) return;
-    const inChat = chatMessages.length > 0;
-    const maxPx = inChat ? 160 : 240;
-    const minPx = inChat ? 44 : 28;
+    const maxPx = 160;
+    const minPx = 24;
     el.style.height = 'auto';
     el.style.height = `${Math.min(Math.max(el.scrollHeight, minPx), maxPx)}px`;
   }, [prompt, chatMessages.length]);
@@ -394,6 +393,7 @@ const Dashboard = () => {
 
     // chat — add task (first message) or update existing (continued conversation). Stay on task until user navigates.
     const existingTaskId = chatTaskIdRef.current;
+    const pidFromUrl = searchParams.get('projectId');
     const taskId = existingTaskId
       || addTask({
         name: userPrompt.slice(0, 60),
@@ -401,11 +401,14 @@ const Dashboard = () => {
         status: 'completed',
         type: 'chat',
         messages: [userMsg],
+        ...(pidFromUrl ? { linkedProjectId: pidFromUrl } : {}),
       });
     if (!existingTaskId) {
       chatTaskIdRef.current = taskId;
-      // Keep URL in sync so task context survives refresh
-      navigate(`/app?chatTaskId=${encodeURIComponent(taskId)}`, { replace: true });
+      // Keep URL in sync so task context survives refresh (preserve project link from sidebar)
+      const qs = new URLSearchParams({ chatTaskId: taskId });
+      if (pidFromUrl) qs.set('projectId', pidFromUrl);
+      navigate(`/app?${qs.toString()}`, { replace: true });
     } else if (messagesAfterUser) {
       updateTask(taskId, { messages: messagesAfterUser, prompt: userPrompt });
     }
@@ -933,8 +936,9 @@ const Dashboard = () => {
           </div>
         )}
         {hasChat && (
-          <div className="dashboard-chat-container">
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="dashboard-chat-thread">
+          <div className="dashboard-chat-shell">
+            <div className="dashboard-chat-inner">
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="dashboard-chat-thread">
               {chatMessages.map((msg, i) => (
                 <div
                   key={i}
@@ -944,6 +948,7 @@ const Dashboard = () => {
                     {msg.role === 'assistant' && (
                       <div className="dashboard-chat-identifier">
                         <Logo href={null} showTagline={false} height={18} className="dashboard-chat-logo" />
+                        <span className="dashboard-chat-brand">CrucibAI</span>
                       </div>
                     )}
                     <div className={`dashboard-chat-bubble ${msg.role}`}>
@@ -980,6 +985,7 @@ const Dashboard = () => {
                   <div className="dashboard-chat-cluster">
                     <div className="dashboard-chat-identifier">
                       <Logo href={null} showTagline={false} height={18} className="dashboard-chat-logo" />
+                      <span className="dashboard-chat-brand">CrucibAI</span>
                     </div>
                     <div className="dashboard-chat-bubble assistant">
                       <Loader2 size={16} className="animate-spin" style={{ display: 'inline-block' }} aria-hidden />
@@ -988,7 +994,8 @@ const Dashboard = () => {
                   </div>
                 </div>
               )}
-            </motion.div>
+              </motion.div>
+            </div>
           </div>
         )}
         <div ref={messagesEndRef} />
@@ -996,7 +1003,7 @@ const Dashboard = () => {
 
       {hasChat && (
         <div className="home-input-bar home-input-bar--chat">
-          <div className="home-prompt-wrapper">{inputForm}</div>
+          <div className="home-prompt-wrapper home-prompt-wrapper--chat">{inputForm}</div>
         </div>
       )}
 
