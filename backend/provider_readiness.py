@@ -21,6 +21,20 @@ LLAMA_MODEL_DEFAULT = "meta-llama/Llama-2-70b-chat-hf"
 CEREBRAS_KEY_ENV_NAMES = ["CEREBRAS_API_KEY"] + [f"CEREBRAS_API_KEY_{i}" for i in range(1, 6)]
 
 
+def _sandbox_status(env: "Mapping[str, str]") -> "dict[str, Any]":
+    """Report E2B sandbox readiness."""
+    e2b_key = _env_value(env, "E2B_API_KEY")
+    return {
+        "e2b": {
+            "configured": bool(e2b_key),
+            "key_env": "E2B_API_KEY",
+            "missing_env": [] if e2b_key else ["E2B_API_KEY"],
+            "fallback": "in-process sandbox (resource-limited)" if not e2b_key else None,
+            "role": "isolated code execution for Test Executor and Backend Generation validation",
+        }
+    }
+
+
 COMPLEX_KEYWORDS = {
     "architecture",
     "auth",
@@ -93,6 +107,13 @@ def env_contract() -> dict[str, Any]:
                 "model_env": "LLAMA_MODEL",
                 "default_model": LLAMA_MODEL_DEFAULT,
                 "role": "optional Together-hosted Llama path when configured",
+            },
+        },
+        "sandbox": {
+            "e2b": {
+                "key_env": "E2B_API_KEY",
+                "role": "isolated code execution for Test Executor and Backend Generation validation",
+                "fallback": "in-process sandbox when E2B_API_KEY not set",
             },
         },
     }
@@ -222,6 +243,7 @@ def build_provider_readiness(
         "prompt_classification": complexity,
         "selected_chain": chain,
         "providers": providers,
+        "sandbox": _sandbox_status(env),
         "warnings": warnings,
         "env_contract": env_contract(),
     }

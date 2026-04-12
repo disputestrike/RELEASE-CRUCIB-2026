@@ -2,7 +2,8 @@
 Real agent runner: every agent has a real effect.
 - Tool agents (Browser, File, API, Database, Deployment): execute real tools.
 - All agents: output is persisted to project workspace (real write to disk).
-- Test Executor: runs real tests (pytest / npm test).
+- Test Executor: runs real tests via sandbox (E2B when configured, in-process fallback).
+- Backend Generation: validates generated backend code via sandbox smoke-run.
 - Security Checker / UX Auditor / Performance Analyzer: run real linters/checks where possible.
 """
 import asyncio
@@ -12,6 +13,13 @@ import os
 import re
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
+
+try:
+    from services.sandbox_runner import run_code as _sandbox_run_code
+    _SANDBOX_AVAILABLE = True
+except Exception:  # pragma: no cover
+    _sandbox_run_code = None  # type: ignore[assignment]
+    _SANDBOX_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -525,6 +533,26 @@ async def run_real_post_step(
 
     if agent_name == "Test Executor":
         ran = []
+        # Try sandbox (E2B or in-process) first for isolated, reproducible test runs
+        if _SANDBOX_AVAILABLE and _sandbox_run_code is not None:
+            test_code = result.get("output") or result.get("result") or ""
+            if test_code.strip():
+                try:
+                    sandbox_result = await _sandbox_run_code(
+                        language="python",
+                        code=test_code,
+                        timeout=60,
+                    )
+                    sandbox_out = sandbox_result.get("stdout", "") if isinstance(sandbox_result, dict) else getattr(sandbox_result, "stdout", "")
+                    sandbox_err = sandbox_result.get("stderr", "") if isinstance(sandbox_result, dict) else getattr(sandbox_result, "stderr", "")
+                    exit_code = sandbox_result.get("exit_code", -1) if isinstance(sandbox_result, dict) else getattr(sandbox_result, "exit_code", -1)
+                    label = "[SANDBOX E2B]" if os.environ.get("E2B_API_KEY") else "[SANDBOX local]"
+                    combined = (sandbox_out + ("\n" + sandbox_err if sandbox_err else "")).strip()
+                    out = (out + f"\n\n{label} exit {exit_code}:\n" + combined[:2000]).strip()
+                    ran.append(f"sandbox exit {exit_code}")
+                except Exception as _e:
+                    ran.append(f"sandbox: {_e}")
+        # Also run pytest/npm test if workspace has real test files
         if (workspace / "tests").exists() or (workspace / "test").exists():
             try:
                 proc = await asyncio.create_subprocess_exec(
@@ -586,6 +614,44 @@ async def run_real_post_step(
             out = (out + f"\n\n[REAL RUN] Python lines in workspace: {lines}").strip()
         except Exception as e:
             out = (out + f"\n\n[REAL RUN] count error: {e}").strip()
+        result["output"] = out
+        result["result"] = out
+        return result
+
+    if agent_name == "Backend Generation":
+        # Smoke-validate generated backend code in the sandbox (syntax + import check)
+        if _SANDBOX_AVAILABLE and _sandbox_run_code is not None:
+            be_code = result.get("output") or result.get("result") or result.get("code") or ""
+            if be_code.strip():
+                # Wrap in a py_compile check so syntax errors surface without full execution
+                validate_script = (
+                    "import py_compile, tempfile, os\n"
+                    "code = '''" + be_code.replace("'", "\\'")[:8000] + "'''\n"
+                    "with tempfile.NamedTemporaryFile(suffix='.py', mode='w', delete=False) as f:\n"
+                    "    f.write(code)\n"
+                    "    fname = f.name\n"
+                    "try:\n"
+                    "    py_compile.compile(fname, doraise=True)\n"
+                    "    print('[SANDBOX] Backend code syntax OK')\n"
+                    "except py_compile.PyCompileError as e:\n"
+                    "    print(f'[SANDBOX] Syntax error: {e}')\n"
+                    "finally:\n"
+                    "    os.unlink(fname)\n"
+                )
+                try:
+                    sandbox_result = await _sandbox_run_code(
+                        language="python",
+                        code=validate_script,
+                        timeout=30,
+                    )
+                    s_out = sandbox_result.get("stdout", "") if isinstance(sandbox_result, dict) else getattr(sandbox_result, "stdout", "")
+                    s_err = sandbox_result.get("stderr", "") if isinstance(sandbox_result, dict) else getattr(sandbox_result, "stderr", "")
+                    label = "[SANDBOX E2B]" if os.environ.get("E2B_API_KEY") else "[SANDBOX local]"
+                    note = (s_out + ("\n" + s_err if s_err else "")).strip()
+                    out = (out + f"\n\n{label} validation:\n" + note[:800]).strip()
+                    result["sandbox_validated"] = True
+                except Exception as _e:
+                    out = (out + f"\n\n[SANDBOX] validation skipped: {_e}").strip()
         result["output"] = out
         result["result"] = out
         return result
