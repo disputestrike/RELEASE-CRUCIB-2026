@@ -473,8 +473,25 @@
 .workspace-console-line--info .workspace-console-message { color: var(--theme-text); }
 
 /* Chat input: legible text and placeholder in both themes */
+.workspace-chat-input {
+  font-size: 15px;
+  line-height: 1.6;
+}
 .workspace-chat-input::placeholder {
   color: var(--theme-muted);
+}
+
+/* Post-build actions under flat transcript */
+.workspace-code-actions button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+.workspace-code-actions button:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+[data-theme="light"] .workspace-code-actions button:hover {
+  background: rgba(0, 0, 0, 0.05);
 }
 
 /* ============================================================
