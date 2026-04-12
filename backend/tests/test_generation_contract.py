@@ -30,6 +30,7 @@ def test_parse_generation_contract_extracts_multistack_requirements():
     assert "websockets" in contract["realtime"]
     assert "kubernetes" in contract["deployment"]
     assert contract["recommended_build_target"] == "full_system_generator"
+    assert contract["stack_profile"] == contract["recommended_build_target"]
 
 
 @pytest.mark.asyncio

@@ -1528,6 +1528,17 @@ async def execute_step(step: Dict[str, Any], job: Dict[str, Any],
 
     attach_elite_context_to_job(job, workspace_path or "")
 
+    before_snap: Dict[str, Any] = {}
+    if workspace_path:
+        try:
+            from pathlib import Path
+
+            from .artifact_delta import snapshot_workspace_fingerprints
+
+            before_snap = snapshot_workspace_fingerprints(Path(workspace_path))
+        except Exception as ex:
+            logger.debug("artifact_delta: pre-snapshot skipped: %s", ex)
+
     # 1. Mark running
     await update_step_state(step_id, "running")
     t_start_ms = int(time.time() * 1000)
@@ -1703,6 +1714,23 @@ async def execute_step(step: Dict[str, Any], job: Dict[str, Any],
                                {"step_key": step_key, "duration_ms": duration_ms,
                                 "verifier_score": vr["score"]},
                                step_id=step_id)
+        if workspace_path:
+            try:
+                from pathlib import Path
+
+                from .artifact_delta import cap_delta, diff_fingerprints, snapshot_workspace_fingerprints
+
+                after_snap = snapshot_workspace_fingerprints(Path(workspace_path))
+                raw = diff_fingerprints(before_snap, after_snap)
+                delta = cap_delta(raw, cap=200)
+                await append_job_event(
+                    job_id,
+                    "artifact_delta",
+                    {"step_key": step_key, "step_id": step_id, **delta},
+                    step_id=step_id,
+                )
+            except Exception as ex:
+                logger.debug("artifact_delta: emit skipped: %s", ex)
         t_end_ms = int(time.time() * 1000)
         outs = list(result.get("output_files") or [])
         arts = result.get("artifacts") or []

@@ -2,6 +2,8 @@
 WorkspaceAssemblyPipeline (P2) — multi-file ingest → merge → materialize.
 
 Behind CRUCIBAI_ASSEMBLY_V2=1|true|yes|on. When unset/false, legacy paths run unchanged.
+P3: when V2 is enabled, `real_agent_runner` short-circuits to this pipeline so the legacy
+four-file writer never runs (no duplicate disk writes for the same outputs).
 
 Primary entry points:
   - materialize_from_previous_outputs() — used by File Tool Agent (replaces narrow 4-file-only writes).

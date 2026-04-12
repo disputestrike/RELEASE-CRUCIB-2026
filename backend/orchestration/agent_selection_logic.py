@@ -11,6 +11,9 @@ from typing import Dict, List, Set
 
 from agent_dag import AGENT_DAG, get_execution_phases
 
+from .agent_audit_registry import agents_excluded_from_autorunner_selection
+from .directory_contracts import stack_profile_from_contract
+
 
 BASE_AGENTS = [
     "Planner",
@@ -253,12 +256,13 @@ AGENT_KEYWORDS = {
 
 
 def _dependency_closure(initial: Set[str]) -> Set[str]:
+    block = agents_excluded_from_autorunner_selection()
     selected = set(initial)
     queue = list(initial)
     while queue:
         name = queue.pop()
         for dep in AGENT_DAG.get(name, {}).get("depends_on", []):
-            if dep in AGENT_DAG and dep not in selected:
+            if dep in AGENT_DAG and dep not in selected and dep not in block:
                 selected.add(dep)
                 queue.append(dep)
     return selected
@@ -305,7 +309,8 @@ def _record_rule_hit(
     label: str,
     agents: tuple[str, ...] | list[str],
 ) -> None:
-    additions = [agent for agent in agents if agent in AGENT_DAG]
+    block = agents_excluded_from_autorunner_selection()
+    additions = [agent for agent in agents if agent in AGENT_DAG and agent not in block]
     if not additions:
         return
     before = len(selected)
@@ -505,6 +510,7 @@ def explain_agent_selection(goal: str, stack_contract: Dict | None = None) -> Di
         "matched_rules": matched_rules,
         "specialized_agents": specialized_agents,
         "specialized_agent_count": len(specialized_agents),
+        "stack_profile": stack_profile_from_contract(contract),
     }
 
 

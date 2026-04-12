@@ -100,13 +100,21 @@ python scripts/audit_agent_dag.py --check
 
 | Phase | Deliverable | Notes |
 |-------|----------------|-------|
-| P1 | `artifact_delta` on **every** step completion (executor → `append_job_event`) | Still optional after P2; telemetry-first is deprioritized per founder note. |
+| P1 | `artifact_delta` on **every** step completion (executor → `append_job_event`) | **Shipped:** `artifact_delta` job_event after each successful `execute_step` (size+mtime snapshot diff; capped lists). Module: `orchestration/artifact_delta.py`. |
 | P2 | `WorkspaceAssemblyPipeline` (v1) | **Shipped** behind `CRUCIBAI_ASSEMBLY_V2`: File Tool + swarm hooks; last-writer merge; path-tagged fences; preview contract overlay. **Still to deepen:** richer parse (JSON file maps), explicit owner table, non-Vite profiles. |
-| P3 | Thin legacy shim / remove duplicate writes | Optional cleanup once V2 is default in prod. |
-| P4 | `stack_contract` / profile drives `select_agents_for_goal` + directory contract tests | Golden tests per profile. |
+| P3 | Thin legacy shim / remove duplicate writes | **Satisfied while V2 is flag-gated:** `real_agent_runner._run_file_tool_agent` returns early on `assembly_v2_enabled()` so legacy four-file writer does not double-write. Full removal waits default-on V2 + soak. |
+| P4 | `stack_contract` / profile drives `select_agents_for_goal` + directory contract tests | **Shipped (baseline):** `parse_generation_contract` sets `stack_profile`; `explain_agent_selection` returns `stack_profile`; `directory_contracts.validate_directory_contract` + tests (`test_directory_contracts.py`). Extend profiles as new build targets land. |
 | P5 | Proof index ↔ `artifact_manifest` paths | **Shipped (v1):** `META/proof_index.json` on seal + `get_proof.proof_index` + ProofPanel strip. **Deeper:** enrich more verifier payloads with explicit paths; link `proof_bundle_generator` on-disk bundles. |
-| P6 | Single canonical export story | Keep `/projects/.../zip` if needed; document which is “ownership” vs deploy. |
-| P7 | Orphan DAG agents | Wire artifact/state/tool **or** remove from default selection — use `not_fully_integrated_agent` count in `agent_audit.json` as backlog input. |
+| P6 | Single canonical export story | **Documented below** — two ZIP surfaces are intentional: job workspace export vs generic POST `/api/export/zip`. |
+| P7 | Orphan DAG agents | **Shipped (narrow):** `agent_audit_registry.agents_excluded_from_autorunner_selection()` loads `docs/agent_audit.json` and excludes **3D/WebGL/immersive-family** `not_fully_integrated` agents from keyword hits + dependency closure (does not blanket-block web3/infra agents the swarm still expects). |
+
+### P6 — Canonical export (which ZIP when)
+
+| Mechanism | Role |
+|------------|------|
+| `GET /api/jobs/{job_id}/export/full.zip` | **Ownership / evidence:** zips the **project workspace** tied to the job (`WORKSPACE_ROOT/<project_id>`), including `META/*` after seal. Use for downloads, audits, handoff. |
+| `POST /api/export/zip` | **Ad-hoc / editor payloads:** request-body `files` map for one-off zips (dashboards, tools). Not the durable Auto-Runner workspace. |
+| Git push (`POST /api/git-sync/push`, PAT) | **Remote repo:** canonical for version control, not a filesystem ZIP. |
 
 ---
 

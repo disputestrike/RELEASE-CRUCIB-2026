@@ -283,6 +283,8 @@ def parse_generation_contract(goal: str) -> Dict[str, Any]:
         recommended_target = "api_backend"
 
     contract["recommended_build_target"] = recommended_target
+    # P4 — explicit profile key for agent selection + directory contract tests
+    contract["stack_profile"] = recommended_target
     summary_lines = []
     if contract["frontend_frameworks"]:
         summary_lines.append(f"Frontend: {', '.join(contract['frontend_frameworks'])}")
