@@ -26,6 +26,7 @@ import FailureDrawer from '../components/AutoRunner/FailureDrawer';
 import BuildReplay from '../components/AutoRunner/BuildReplay';
 import BuildCompletionCard from '../components/AutoRunner/BuildCompletionCard';
 import WorkspaceActivityFeed from '../components/AutoRunner/WorkspaceActivityFeed';
+import WorkspaceUserChat from '../components/AutoRunner/WorkspaceUserChat';
 import SystemStatusHUD from '../components/AutoRunner/SystemStatusHUD';
 import PreviewPanel from '../components/AutoRunner/PreviewPanel';
 import ResizableDivider from '../components/AutoRunner/ResizableDivider';
@@ -41,11 +42,18 @@ import {
   toEditorPath,
 } from '../workspace/workspaceFileUtils';
 import { WorkspaceNavProvider } from '../workspace/WorkspaceNavContext';
+import { detailToString, formatWorkspaceBuildError } from '../workspace/workspaceErrorUtils';
 import { API_BASE } from '../apiBase';
 import '../styles/unified-workspace-tokens.css';
 import './AutoRunnerPage.css';
 
 const RIGHT_ORDER = ['proof', 'explorer', 'replay', 'failure', 'preview', 'timeline', 'code'];
+
+function shortWorkspaceId(id) {
+  if (!id || typeof id !== 'string') return '';
+  if (id.length <= 16) return id;
+  return `${id.slice(0, 8)}…${id.slice(-4)}`;
+}
 
 export default function UnifiedWorkspace() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -143,6 +151,10 @@ export default function UnifiedWorkspace() {
   const [stage, setStage] = useState('input');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  /** Full server / API text for expandable “Technical details” under GoalComposer. */
+  const [errorRaw, setErrorRaw] = useState(null);
+  /** User prompts sent from the composer — shown as bubbles above activity (input stays empty after send). */
+  const [userChatMessages, setUserChatMessages] = useState([]);
   const [activePane, setActivePane] = useState('proof');
   const [failedStep, setFailedStep] = useState(null);
   useEffect(() => {
@@ -176,7 +188,17 @@ export default function UnifiedWorkspace() {
         const j = r.data?.job ?? r.data;
         if (!j || typeof j !== 'object') return;
         setJobId(jobIdFromUrl);
-        if (j.goal) setGoal(j.goal);
+        if (j.goal) {
+          const g = String(j.goal).trim();
+          if (g) {
+            const hid = `hydrate-${jobIdFromUrl}`;
+            setUserChatMessages((prev) => {
+              if (prev.some((m) => m.id === hid)) return prev;
+              return [...prev, { id: hid, body: g, jobId: jobIdFromUrl, pendingBind: false, ts: Date.now() }];
+            });
+          }
+        }
+        setGoal('');
         const st = j.status;
         if (st === 'planned') {
           try {
@@ -229,6 +251,56 @@ export default function UnifiedWorkspace() {
   const { job, steps, events, proof, isConnected, connectionMode, refresh } = useJobStream(effectiveJobId, token);
 
   const effectiveProjectId = job?.project_id || projectIdFromUrl || null;
+
+  const appendUserChat = useCallback((body) => {
+    const id =
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `uw_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    const jidAt = jobId || jobIdFromUrl || null;
+    setUserChatMessages((prev) => [...prev, { id, body, jobId: jidAt, pendingBind: !jidAt, ts: Date.now() }]);
+  }, [jobId, jobIdFromUrl]);
+
+  const clearBuildError = useCallback(() => {
+    setError(null);
+    setErrorRaw(null);
+  }, []);
+
+  const applyBuildError = useCallback((raw) => {
+    let text = '';
+    if (typeof raw === 'string') text = raw;
+    else if (raw && typeof raw === 'object' && raw.response) {
+      const d = raw.response.data?.detail;
+      text = detailToString(d) || raw.message || 'Request failed';
+    } else if (raw instanceof Error) text = raw.message || String(raw);
+    else text = String(raw);
+    const { friendly } = formatWorkspaceBuildError(text);
+    setError(friendly);
+    setErrorRaw(text);
+  }, []);
+
+  const buildDisplayTitle = useMemo(() => {
+    const g = (job?.goal || '').trim();
+    if (g) return g.split('\n')[0].slice(0, 120);
+    const last = [...userChatMessages].reverse().find((m) => m.body);
+    if (last?.body) return String(last.body).split('\n')[0].slice(0, 120);
+    return 'Build';
+  }, [job?.goal, userChatMessages]);
+
+  useEffect(() => {
+    if (!effectiveJobId) return;
+    setUserChatMessages((prev) => {
+      let changed = false;
+      const next = prev.map((m) => {
+        if (m.pendingBind && !m.jobId) {
+          changed = true;
+          return { ...m, jobId: effectiveJobId, pendingBind: false };
+        }
+        return m;
+      });
+      return changed ? next : prev;
+    });
+  }, [effectiveJobId]);
 
   const isCompleted = job?.status === 'completed';
   const latestFailedStep = steps.find((s) => s.status === 'failed' && !failedStep);
@@ -526,11 +598,12 @@ export default function UnifiedWorkspace() {
     const jid = jobId || jobIdFromUrl;
     if (!jid) {
       setError('No job to run — generate a plan first (or open a valid job link).');
+      setErrorRaw(null);
       return;
     }
     setLoading(true);
     setStage('running');
-    setError(null);
+    clearBuildError();
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       await axios.post(`${API}/orchestrator/run-auto`, { job_id: jid }, { headers });
@@ -545,7 +618,7 @@ export default function UnifiedWorkspace() {
         }
       } else if (typeof d === 'string') msg = d;
       else if (Array.isArray(d)) msg = d.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join('; ');
-      setError(msg);
+      applyBuildError(msg);
       setStage('plan');
     } finally {
       setLoading(false);
@@ -563,7 +636,7 @@ export default function UnifiedWorkspace() {
       if (sendInFlightRef.current) return;
       sendInFlightRef.current = true;
       setLoading(true);
-      setError(null);
+      clearBuildError();
       const headers = { Authorization: `Bearer ${token}` };
       const planBody = { goal: trimmed, mode: 'auto', build_target: null };
       const pid = (projectIdFromUrl || '').trim();
@@ -603,17 +676,19 @@ export default function UnifiedWorkspace() {
             }
           } else if (typeof d === 'string') msg = d;
           else if (Array.isArray(d)) msg = d.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join('; ');
-          setError(msg);
+          applyBuildError(msg);
           setStage('plan');
         }
       } catch (e) {
-        setError(e.response?.data?.detail || 'Failed to generate plan.');
+        applyBuildError(
+          detailToString(e.response?.data?.detail) || e.message || 'Failed to generate plan.',
+        );
       } finally {
         setLoading(false);
         sendInFlightRef.current = false;
       }
     },
-    [API, token, authLoading, buildTargets, projectIdFromUrl, setSearchParams],
+    [API, token, authLoading, buildTargets, projectIdFromUrl, setSearchParams, clearBuildError, applyBuildError],
   );
 
   /**
@@ -623,6 +698,11 @@ export default function UnifiedWorkspace() {
   const handleSend = async () => {
     if (!goal.trim() || authLoading || !token) return;
     if (sendInFlightRef.current) return;
+    const submitted = goal.trim();
+    appendUserChat(submitted);
+    setGoal('');
+    clearBuildError();
+
     const jidExisting = jobId || jobIdFromUrl;
     if (stage === 'plan' && jidExisting) {
       sendInFlightRef.current = true;
@@ -635,10 +715,11 @@ export default function UnifiedWorkspace() {
     }
     if (stage === 'running' || job?.status === 'running' || job?.status === 'queued') {
       setError('A run is already in progress. Wait for it to finish, or open another task from the sidebar.');
+      setErrorRaw(null);
       return;
     }
 
-    await runNewPlanAndAuto(goal.trim());
+    await runNewPlanAndAuto(submitted);
   };
 
   /** Home / dashboard: consume navigate(..., { state: { initialPrompt, autoStart } }). */
@@ -676,8 +757,10 @@ export default function UnifiedWorkspace() {
       return;
     }
     if (!goalText) return;
+    appendUserChat(goalText);
+    setGoal('');
     void runNewPlanAndAuto(goalText);
-  }, [token, authLoading, runNewPlanAndAuto]);
+  }, [token, authLoading, runNewPlanAndAuto, appendUserChat]);
 
   const handleCancel = async () => {
     const jid = jobId || jobIdFromUrl;
@@ -723,7 +806,8 @@ export default function UnifiedWorkspace() {
     setEstimate(null);
     setJobId(null);
     setStage('input');
-    setError(null);
+    clearBuildError();
+    setUserChatMessages([]);
     setFailedStep(null);
     setActiveWsPath('');
     setWsPaths([]);
@@ -796,8 +880,12 @@ export default function UnifiedWorkspace() {
     <div className={`uw-root arp-root arp-ux-${uxMode}`} data-testid="unified-workspace-root">
       <div className="arp-layout arp-layout--no-inner-rail">
         <div className="arp-center-pane arp-center-pane--composer-bottom">
-          <div className="arp-center-toolbar">
-            <div className="arp-center-toolbar-left">
+          <div className="arp-center-toolbar uw-center-headline">
+            <div className="uw-center-headline-brand" aria-label="Crucible product version">
+              <span className="uw-center-headline-name">Crucible</span>
+              <span className="uw-center-headline-version">1.0</span>
+            </div>
+            <div className="uw-center-headline-actions">
               {(effectiveProjectId || effectiveJobId) && token && (
                 <button
                   type="button"
@@ -809,8 +897,6 @@ export default function UnifiedWorkspace() {
                   Sync
                 </button>
               )}
-            </div>
-            <div className="arp-center-toolbar-center">
               <AutoRunnerPanel
                 mode="auto"
                 jobId={effectiveJobId}
@@ -827,6 +913,24 @@ export default function UnifiedWorkspace() {
           </div>
 
           <div className="arp-center-pane-scroll">
+            {(effectiveJobId || effectiveProjectId) && (
+              <div className="uw-build-identity" aria-label="Active build">
+                <div className="uw-build-identity-title">{buildDisplayTitle}</div>
+                <div className="uw-build-identity-meta">
+                  {effectiveJobId ? (
+                    <span className="uw-build-identity-chip" title={effectiveJobId}>
+                      Job {shortWorkspaceId(effectiveJobId)}
+                    </span>
+                  ) : null}
+                  {effectiveProjectId ? (
+                    <span className="uw-build-identity-chip" title={effectiveProjectId}>
+                      Project {shortWorkspaceId(effectiveProjectId)}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            )}
+            <WorkspaceUserChat messages={userChatMessages} projectId={effectiveProjectId} />
             <WorkspaceActivityFeed
               stage={stage}
               plan={plan}
@@ -837,6 +941,7 @@ export default function UnifiedWorkspace() {
               loading={loading}
               connectionMode={connectionMode}
               fallbackGoal={goal}
+              hideGoalEcho={userChatMessages.length > 0}
               openWorkspacePath={openWorkspacePath}
             />
 
@@ -896,6 +1001,7 @@ export default function UnifiedWorkspace() {
               onSubmit={handleSend}
               loading={loading}
               error={error}
+              errorRaw={errorRaw}
               token={token}
               onEstimateReady={setEstimate}
               authLoading={authLoading}
@@ -907,6 +1013,7 @@ export default function UnifiedWorkspace() {
               showQuickChips={false}
               showComposerHeader={false}
               composerSubtitle={null}
+              composerVariant="workspace"
             />
           </div>
         </div>

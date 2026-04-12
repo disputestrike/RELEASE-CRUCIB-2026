@@ -2,8 +2,9 @@
  * FailureDrawer — failure details and recovery UI.
  * Props: step, onRetry, onOpenCode, onPauseJob, onClose
  */
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { X, RefreshCw, Code2, PauseCircle, AlertTriangle } from 'lucide-react';
+import { formatWorkspaceBuildError } from '../../workspace/workspaceErrorUtils';
 import './FailureDrawer.css';
 
 const FAILURE_LABELS = {
@@ -37,11 +38,13 @@ const MAX_ATTEMPTS = MAX_STEP_RETRIES + 1; // 9 total attempts
 export default function FailureDrawer({ step, onRetry, onOpenCode, onPauseJob, onClose, openWorkspacePath }) {
   const [retryTriggered, setRetryTriggered] = useState(false);
 
+  const errorMsg = step?.error_message || (step ? 'No diagnostic output available.' : '');
+  const { friendly: errorFriendly } = useMemo(() => formatWorkspaceBuildError(errorMsg), [errorMsg]);
+
   if (!step) return null;
 
   const failureType = step.failure_type || 'unknown';
   const label = FAILURE_LABELS[failureType] || failureType.toUpperCase();
-  const errorMsg = step.error_message || 'No diagnostic output available.';
   const outputFiles = step.output_files || [];
   const retryCount = step.retry_count || 0;
   const retryStrategy = RETRY_STRATEGIES[failureType] || RETRY_STRATEGIES.unknown;
@@ -72,8 +75,12 @@ export default function FailureDrawer({ step, onRetry, onOpenCode, onPauseJob, o
         </div>
 
         <div className="fd-row">
-          <span className="fd-label">Root Cause</span>
-          <pre className="fd-error-msg">{errorMsg}</pre>
+          <span className="fd-label">Summary</span>
+          <p className="fd-error-friendly">{errorFriendly}</p>
+          <details className="fd-raw-details">
+            <summary className="fd-raw-summary">Technical details</summary>
+            <pre className="fd-error-msg">{errorMsg}</pre>
+          </details>
         </div>
 
         {step.diagnosis && (

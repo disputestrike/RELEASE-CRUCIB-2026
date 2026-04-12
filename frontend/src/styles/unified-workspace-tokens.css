@@ -61,9 +61,9 @@
 [data-theme="light"] .uw-root {
   --uw-bg-root: var(--theme-bg, #ffffff);
   --uw-bg-surface: var(--theme-surface, #ffffff);
-  --uw-bg-elevated: var(--theme-surface2, #f5f5f4);
-  --uw-border-subtle: var(--theme-border, rgba(0, 0, 0, 0.12));
-  --uw-border-strong: var(--theme-border-vis, rgba(0, 0, 0, 0.2));
+  --uw-bg-elevated: var(--theme-surface2, #f8f9fb);
+  --uw-border-subtle: var(--theme-border, rgba(15, 23, 42, 0.07));
+  --uw-border-strong: var(--theme-border-vis, rgba(15, 23, 42, 0.1));
   --uw-text: var(--theme-text, #1a1a1a);
   --uw-text-muted: var(--theme-muted, #555555);
   --uw-accent-success: #16a34a;
@@ -109,11 +109,69 @@
 
 /* Light: clearer split between center column and proof / preview pane */
 [data-theme="light"] .uw-root .arp-right-pane {
-  border-left-color: var(--uw-border-strong);
+  border-left: 1px solid var(--uw-border-subtle);
 }
 [data-theme="light"] .uw-root .arp-topbar,
 [data-theme="light"] .uw-root .arp-pane-tabs {
-  border-color: var(--uw-border-strong);
+  border-color: var(--uw-border-subtle);
+}
+
+/* Build title + softer center stack */
+.uw-root .uw-build-identity {
+  width: 100%;
+  max-width: var(--uw-composer-max-width, min(920px, calc(100vw - 96px)));
+  margin: 0 auto;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+[data-theme='dark'] .uw-root .uw-build-identity {
+  background: var(--uw-bg-surface);
+  border-color: var(--uw-border-subtle);
+  box-shadow: none;
+}
+
+.uw-build-identity-title {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--text-strong);
+  line-height: 1.35;
+}
+
+.uw-build-identity-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.uw-build-identity-chip {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: var(--text-secondary);
+  background: #f1f3f7;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+[data-theme='dark'] .uw-build-identity-chip {
+  background: var(--uw-bg-elevated);
+  border-color: var(--uw-border-subtle);
+}
+
+.uw-user-chat + .uw-activity-feed {
+  margin-top: 2px;
+}
+
+[data-theme='light'] .uw-root .arp-center-pane--composer-bottom .arp-center-pane-scroll {
+  gap: 12px;
 }
 
 .uw-root .arp-breadcrumb {
@@ -316,13 +374,56 @@
   box-shadow: var(--uw-chrome-sep-light), var(--uw-chrome-shadow-down-light);
 }
 
-.uw-root .arp-center-toolbar {
+/* One headline row with pane 2 + pane 3 (aligns with sidebar header when workspace headline layout is on) */
+.uw-root .arp-center-toolbar.uw-center-headline {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  gap: 12px;
   border-bottom: none;
   box-shadow: 0 18px 32px color-mix(in srgb, #000 22%, transparent);
 }
 
-[data-theme='light'] .uw-root .arp-center-toolbar {
+[data-theme='light'] .uw-root .arp-center-toolbar.uw-center-headline {
   box-shadow: 0 14px 28px rgba(15, 23, 42, 0.05);
+}
+
+.uw-root .uw-center-headline-brand {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.uw-root .uw-center-headline-name {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--text-strong);
+  line-height: 1;
+}
+
+.uw-root .uw-center-headline-version {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+.uw-root .uw-center-headline-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
 }
 
 .uw-root .arp-center-pane--composer-bottom .arp-center-pane-composer {
@@ -345,6 +446,11 @@
 }
 
 .uw-root .arp-right-toolbar {
+  min-height: 48px;
+  align-items: center;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  box-sizing: border-box;
   border-bottom: none;
   box-shadow: var(--uw-chrome-sep), 0 12px 24px color-mix(in srgb, #000 18%, transparent);
 }

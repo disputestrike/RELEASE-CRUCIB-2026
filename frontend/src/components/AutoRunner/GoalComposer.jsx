@@ -117,6 +117,10 @@ export default function GoalComposer({
   showContinuation = true,
   /** Hide quick-start chip row. */
   showQuickChips = true,
+  /** `workspace` — lighter shell when embedded under UnifiedWorkspace. */
+  composerVariant = 'default',
+  /** Raw API / server message for expandable “Technical details” (friendly string in `error`). */
+  errorRaw = null,
   /** Hide title + subtitle block (unified workspace: composer sits under activity feed). */
   showComposerHeader = true,
   composerTitle = 'Auto-Runner',
@@ -456,7 +460,17 @@ export default function GoalComposer({
 
       {authLoading && <div className="gc-hint">Starting your session…</div>}
 
-      {error && <div className="gc-error">{error}</div>}
+      {error && (
+        <div className="gc-error-wrap">
+          <div className="gc-error gc-error-friendly">{error}</div>
+          {errorRaw ? (
+            <details className="gc-error-details">
+              <summary className="gc-error-details-summary">Technical details</summary>
+              <pre className="gc-error-details-pre">{errorRaw}</pre>
+            </details>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }

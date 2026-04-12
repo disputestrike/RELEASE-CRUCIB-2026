@@ -78,6 +78,9 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
 
   const isActive = (path) => location.pathname === path;
   const isActivePrefix = (path) => location.pathname.startsWith(path);
+  /** Unified workspace: Manus-style headline — logo only in pane 1; wordmark lives in workspace center header. */
+  const workspaceHeadlineLayout =
+    /^\/app\/workspace(\/|$)/.test(location.pathname) || /^\/app\/workspace-manus(\/|$)/.test(location.pathname);
   const currentTaskId =
     location.pathname === '/app/workspace' || location.pathname === '/app/workspace-manus'
       ? searchParams.get('taskId')
@@ -535,8 +538,16 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
       </div>
 
       {/* Header — collapse button at top inside pane one (Manus-like) */}
-      <div className="sidebar-header">
-        <Logo variant="full" height={32} href="/app" className="sidebar-logo" showTagline={false} nameClassName="sidebar-logo-text" />
+      <div className={`sidebar-header ${workspaceHeadlineLayout ? 'sidebar-header--workspace-headline' : ''}`}>
+        <Logo
+          variant="full"
+          height={32}
+          href="/app"
+          className="sidebar-logo"
+          showTagline={false}
+          showWordmark={!workspaceHeadlineLayout}
+          nameClassName="sidebar-logo-text"
+        />
         {onToggleSidebar && (
           <button
             type="button"

@@ -41,6 +41,8 @@ export function Logo({
   className = '',
   alt = 'CrucibAI logo',
   showTagline = true,
+  /** When false, show mark only (no "CrucibAI" wordmark). Tagline is hidden regardless of `showTagline`. */
+  showWordmark = true,
   /** Optional class on the "CrucibAI" wordmark (e.g. sidebar typography). */
   nameClassName = '',
 }) {
@@ -70,29 +72,31 @@ export function Logo({
       ) : (
         <YourIconSvg size={height} />
       )}
-      <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, flexWrap: 'nowrap' }}>
-        <span
-          className={wordmarkClass}
-          style={{
-            fontSize: Math.round(height * 0.5),
-            fontWeight: 700,
-            letterSpacing: '-0.02em',
-          }}
-        >
-          CrucibAI
-        </span>
-        {showTagline && (
+      {showWordmark && (
+        <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, flexWrap: 'nowrap' }}>
           <span
-            className={taglineClass}
+            className={wordmarkClass}
             style={{
-              fontSize: Math.round(height * 0.4),
-              fontWeight: 400,
+              fontSize: Math.round(height * 0.5),
+              fontWeight: 700,
+              letterSpacing: '-0.02em',
             }}
           >
-            — Inevitable AI
+            CrucibAI
           </span>
-        )}
-      </span>
+          {showTagline && (
+            <span
+              className={taglineClass}
+              style={{
+                fontSize: Math.round(height * 0.4),
+                fontWeight: 400,
+              }}
+            >
+              — Inevitable AI
+            </span>
+          )}
+        </span>
+      )}
     </>
   );
 

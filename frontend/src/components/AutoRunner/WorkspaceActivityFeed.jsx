@@ -45,6 +45,8 @@ export default function WorkspaceActivityFeed({
   connectionMode = 'offline',
   /** When the job row has not hydrated yet, show the in-composer goal text. */
   fallbackGoal = '',
+  /** When true, do not repeat the goal as body text (shown in chat bubbles above). */
+  hideGoalEcho = false,
   openWorkspacePath,
 }) {
   const sortedSteps = useMemo(
@@ -110,7 +112,7 @@ export default function WorkspaceActivityFeed({
           <p className="uw-af-body uw-af-body--tight">{loading ? 'Loading job…' : 'Connecting…'}</p>
         )}
 
-        {goalLine && (
+        {goalLine && !hideGoalEcho && (
           <p className="uw-af-goal">
             {goalLine}
             {goalTruncated ? '…' : ''}
