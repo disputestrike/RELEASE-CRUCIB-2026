@@ -22,6 +22,7 @@ export default function WorkspaceUserChat({ messages = [], projectId = null }) {
     <section className="uw-user-chat" aria-label="Your messages">
       {messages.map((m) => (
         <div key={m.id} className="uw-chat-row">
+          <div className="uw-chat-turn-label" aria-hidden>You</div>
           <div className="uw-chat-bubble">{m.body}</div>
           {m.jobId || projectId ? (
             <div className="uw-chat-meta">

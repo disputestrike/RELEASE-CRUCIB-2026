@@ -1200,6 +1200,11 @@ const Dashboard = () => {
                         <span className="dashboard-chat-brand">CrucibAI</span>
                       </div>
                     )}
+                    {msg.role === 'user' && (
+                      <div className="dashboard-chat-identifier dashboard-chat-identifier--user">
+                        <span className="dashboard-chat-brand">You</span>
+                      </div>
+                    )}
                     <div className={`dashboard-chat-bubble ${msg.role}`}>
                       {bubbleText}
                     </div>

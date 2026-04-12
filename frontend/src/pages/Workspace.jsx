@@ -97,20 +97,19 @@ function formatMsgContent(c) {
   return typeof c === 'object' ? JSON.stringify(c) : String(c);
 }
 
-/** Chat message â€” user on right, long messages with Show more */
+/** Chat message — flat document block, long messages with Show more */
 function ChatMessage({ msg }) {
   const [expanded, setExpanded] = useState(false);
   const content = formatMsgContent(msg.content);
   const isLong = content.length > 300 || (content.match(/\n/g) || []).length > 4;
   const showContent = expanded || !isLong ? content : content.slice(0, 300) + (content.length > 300 ? '...' : '');
   return (
-    <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-      <div className={`max-w-[80%] rounded-xl px-4 py-3 text-sm ${
-        msg.role === 'user'
-          ? 'bg-gray-100 text-gray-900'
-          : 'bg-white border border-gray-200 text-gray-800'
-      }`}>
-        <pre className="whitespace-pre-wrap font-sans">{showContent}</pre>
+    <div className="flex w-full max-w-[720px] mx-auto justify-start">
+      <div className="w-full min-w-0">
+        <div className="text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--theme-muted, #71717a)' }}>
+          {msg.role === 'user' ? 'You' : 'CrucibAI'}
+        </div>
+        <pre className="whitespace-pre-wrap font-sans text-[15px] leading-[1.6]" style={{ color: 'var(--theme-text, #e4e4e7)' }}>{showContent}</pre>
         {isLong && (
           <button
             type="button"
@@ -3216,8 +3215,8 @@ BUILD IT NOW â€” output every file completely:`;
             </div>
           )}
 
-          {/* Messages area */}
-          <div className="flex-1 overflow-y-auto px-5 py-6 space-y-4 min-h-0">
+          {/* Messages area — flat transcript, centered column */}
+          <div className="flex-1 overflow-y-auto px-5 py-6 space-y-6 min-h-0">
             {messages.length === 0 && !isBuilding && (
               <div className="flex flex-col items-center justify-center h-full gap-4" style={{ color: 'var(--theme-muted, #3f3f46)' }}>
                 <Sparkles className="w-10 h-10" style={{ color: 'var(--theme-input, #27272a)' }} />
@@ -3292,50 +3291,43 @@ BUILD IT NOW â€” output every file completely:`;
               </div>
             )}
 
-            {/* Chat messages */}
+            {/* Chat messages — document blocks, left-aligned */}
             {messages.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                {msg.role === 'assistant' && (
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mr-2 mt-0.5" style={{ background: 'var(--theme-input, #27272a)' }}>
-                    <Sparkles className="w-3.5 h-3.5" style={{ color: 'var(--theme-muted, #a1a1aa)' }} />
+              <div key={i} className="flex w-full max-w-[720px] mx-auto justify-start">
+                <div className="w-full min-w-0">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--theme-muted, #71717a)' }}>
+                    {msg.role === 'user' ? 'You' : 'CrucibAI'}
                   </div>
-                )}
-                <div
-                  className="max-w-[75%] rounded-2xl px-4 py-2.5 text-sm"
-                  style={{
-                    background: msg.role === 'user' ? '#1A1A1A' : 'var(--chat-ai-bg)',
-                    border: msg.role === 'user' ? '1px solid rgba(255,255,255,0.08)' : '1px solid var(--theme-border)',
-                    color: msg.role === 'user' ? '#e4e4e7' : (msg.error ? 'var(--chat-error)' : 'var(--chat-text)'),
-                  }}
-                >
-                  {msg.isBuilding ? (
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--theme-accent)' }} />
-                      <span style={{ color: 'var(--theme-muted, #a1a1aa)' }}>{formatMsgContent(msg.content)}</span>
-                    </div>
-                  ) : (
-                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">{formatMsgContent(msg.content)}</pre>
-                  )}
-                  {msg.hasCode && (
-                    <div className="mt-2.5 flex items-center gap-2">
-                      <button onClick={() => setActivePanel('preview')} className="flex items-center gap-1.5 text-xs px-3 py-1 rounded-lg transition hover:bg-white/10" style={{ background: 'var(--theme-surface2, rgba(255,255,255,0.08))', color: 'var(--theme-muted, #a1a1aa)' }}>
-                        <Eye className="w-3 h-3" /> Preview
-                      </button>
-                      <button onClick={() => setActivePanel('code')} className="flex items-center gap-1.5 text-xs px-3 py-1 rounded-lg transition hover:bg-white/10" style={{ background: 'var(--theme-surface2, rgba(255,255,255,0.08))', color: 'var(--theme-muted, #a1a1aa)' }}>
-                        <FileCode className="w-3 h-3" /> Code
-                      </button>
-                      <button onClick={downloadCode} className="flex items-center gap-1.5 text-xs px-3 py-1 rounded-lg transition hover:bg-white/10" style={{ background: 'var(--theme-surface2, rgba(255,255,255,0.08))', color: 'var(--theme-muted, #a1a1aa)' }}>
-                        <Download className="w-3 h-3" /> Export
-                      </button>
-                    </div>
-                  )}
+                  <div className="text-[15px] leading-[1.6]" style={{ color: msg.error ? 'var(--chat-error, #f87171)' : 'var(--theme-text, #e4e4e7)' }}>
+                    {msg.isBuilding ? (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" style={{ color: 'var(--theme-accent)' }} />
+                        <span style={{ color: 'var(--theme-muted, #a1a1aa)' }}>{formatMsgContent(msg.content)}</span>
+                      </div>
+                    ) : (
+                      <pre className="whitespace-pre-wrap font-sans text-[15px] leading-[1.6] m-0">{formatMsgContent(msg.content)}</pre>
+                    )}
+                    {msg.hasCode && (
+                      <div className="workspace-code-actions mt-3 flex flex-wrap items-center gap-2">
+                        <button type="button" onClick={() => setActivePanel('preview')} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition" style={{ color: 'var(--theme-muted, #a1a1aa)' }}>
+                          <Eye className="w-3 h-3" /> Preview
+                        </button>
+                        <button type="button" onClick={() => setActivePanel('code')} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition" style={{ color: 'var(--theme-muted, #a1a1aa)' }}>
+                          <FileCode className="w-3 h-3" /> Code
+                        </button>
+                        <button type="button" onClick={downloadCode} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition" style={{ color: 'var(--theme-muted, #a1a1aa)' }}>
+                          <Download className="w-3 h-3" /> Export
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
 
             {/* Next suggestions */}
             {nextSuggestions.length > 0 && !isBuilding && (
-              <div className="flex flex-wrap gap-2 pl-9">
+              <div className="flex flex-wrap gap-2 w-full max-w-[720px] mx-auto">
                 {nextSuggestions.slice(0, 4).map((s, i) => (
                   <button key={i} onClick={() => setInput(s)} className="text-xs px-3 py-1.5 rounded-full border transition hover:bg-white/5" style={{ borderColor: 'var(--theme-border, rgba(255,255,255,0.1))', color: 'var(--theme-muted, #71717a)' }}>
                     {s}
@@ -3347,8 +3339,8 @@ BUILD IT NOW â€” output every file completely:`;
             <div ref={chatEndRef} />
           </div>
 
-          {/* â”€â”€ Input bar â”€â”€ */}
-          <div className="px-4 pb-4 shrink-0">
+          {/* Input bar — separated from transcript (spacing only, no divider) */}
+          <div className="px-4 pt-2 pb-4 shrink-0 mt-10">
             {/* Guided mode: Quick Build chips */}
             {!devMode && !isBuilding && versions.length === 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
