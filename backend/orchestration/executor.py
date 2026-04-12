@@ -552,6 +552,16 @@ def _ensure_preview_contract_files(workspace_path: str, job: Dict[str, Any]) -> 
         if _safe_write(workspace_path, "src/App.jsx", template_map["src/App.jsx"]):
             written.append("src/App.jsx")
 
+    # Next.js App Router track (parallel to root Vite) — P2 open item: Next-specific preview templates.
+    next_prefix = "next-app-stub/"
+    for rel, content in template_map.items():
+        if not isinstance(rel, str) or not rel.startswith(next_prefix):
+            continue
+        if _read_text(workspace_path, rel):
+            continue
+        if _safe_write(workspace_path, rel, content):
+            written.append(rel)
+
     return written
 
 

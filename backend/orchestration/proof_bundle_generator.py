@@ -127,6 +127,7 @@ class ProofBundleGenerator:
             "run_manifest.json",
             "seal.json",
             "path_last_writer.json",
+            "merge_map.json",
         ):
             src = os.path.join(meta, name)
             if os.path.isfile(src):

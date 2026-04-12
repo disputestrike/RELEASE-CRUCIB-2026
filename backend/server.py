@@ -8366,6 +8366,41 @@ async def get_job(job_id: str, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.get("/jobs/{job_id}/export")
+async def export_job_workspace_discovery(
+    job_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """
+    P6 — JSON discovery for workspace export: canonical full.zip URL and on-disk hints.
+    """
+    try:
+        project_id = await _resolve_workspace_project_for_job(job_id, user)
+        root = _project_workspace_path(project_id).resolve()
+        meta = root / "META"
+        return {
+            "success": True,
+            "job_id": job_id,
+            "project_id": project_id,
+            "workspace_root": str(root),
+            "workspace_exists": root.is_dir(),
+            "href_full_zip": f"/api/jobs/{job_id}/export/full.zip",
+            "meta": {
+                "exists": meta.is_dir(),
+                "artifact_manifest": (meta / "artifact_manifest.json").is_file(),
+                "run_manifest": (meta / "run_manifest.json").is_file(),
+                "seal": (meta / "seal.json").is_file(),
+                "path_last_writer": (meta / "path_last_writer.json").is_file(),
+                "merge_map": (meta / "merge_map.json").is_file(),
+                "proof_index": (meta / "proof_index.json").is_file(),
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @api_router.get("/jobs/{job_id}/export/full.zip")
 async def export_job_workspace_full_zip(
     job_id: str,

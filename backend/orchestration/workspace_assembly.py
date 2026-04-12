@@ -4,6 +4,7 @@ Workspace manifests and sealing for Auto-Runner jobs.
 Writes under <workspace>/META/:
   run_manifest.json   — step ledger summary
   path_last_writer.json — last ``dag_node_completed`` owner per output path (P2)
+  merge_map.json       — optional; assembly V2 last-writer agents (merged into artifact_manifest at seal)
   artifact_manifest.json — file tree with sha256 + optional last_writer fields
   seal.json           — job completion fingerprint
 
@@ -109,6 +110,39 @@ def build_run_manifest(job_id: str, steps: List[Dict[str, Any]]) -> Dict[str, An
     }
 
 
+def merge_map_owner_overlay(workspace_root: Path) -> Dict[str, Dict[str, Any]]:
+    """
+    Owners from META/merge_map.json (assembly V2 last-writer merge).
+    Used only to fill artifact_manifest rows when dag events did not list a path.
+    """
+    owners: Dict[str, Dict[str, Any]] = {}
+    path = workspace_root / "META" / "merge_map.json"
+    if not path.is_file():
+        return owners
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return owners
+    raw_paths = doc.get("paths")
+    if not isinstance(raw_paths, dict):
+        return owners
+    for rel, row in raw_paths.items():
+        if not isinstance(rel, str) or not isinstance(row, dict):
+            continue
+        rel_norm = rel.strip().replace("\\", "/").lstrip("/")
+        if not rel_norm or ".." in rel_norm.split("/"):
+            continue
+        agent = row.get("last_writer_agent") or row.get("agent")
+        if not agent:
+            continue
+        owners[rel_norm] = {
+            "step_key": str(agent),
+            "step_id": "",
+            "source": "assembly_merge_map",
+        }
+    return owners
+
+
 async def compute_path_last_writers_from_events(job_id: str) -> Dict[str, Dict[str, Any]]:
     """
     P2 — Last step that reported each path in ``dag_node_completed.output_files`` wins.
@@ -171,6 +205,9 @@ async def seal_completed_job_workspace(
     try:
         run_m = build_run_manifest(job_id, steps)
         path_owners = await compute_path_last_writers_from_events(job_id)
+        merge_overlay = merge_map_owner_overlay(root)
+        manifest_owners = dict(merge_overlay)
+        manifest_owners.update(path_owners)
         plw_doc = {
             "job_id": job_id,
             "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -178,7 +215,7 @@ async def seal_completed_job_workspace(
             "path_count": len(path_owners),
         }
         write_meta(root, "path_last_writer.json", plw_doc)
-        art_m = build_artifact_manifest(root, path_owners=path_owners)
+        art_m = build_artifact_manifest(root, path_owners=manifest_owners)
         write_meta(root, "run_manifest.json", run_m)
         write_meta(root, "artifact_manifest.json", art_m)
         seal_payload = {

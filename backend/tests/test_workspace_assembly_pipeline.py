@@ -8,6 +8,7 @@ from orchestration.workspace_assembly_pipeline import (
     parse_proposed_files,
     materialize_merged_map,
     extract_json_file_maps,
+    write_assembly_merge_map,
 )
 
 
@@ -80,3 +81,14 @@ def test_materialize_merged_map_writes(tmp_path):
     p = tmp_path / "src" / "x.jsx"
     assert p.is_file()
     assert "export default" in p.read_text(encoding="utf-8")
+
+
+def test_write_assembly_merge_map_creates_meta(tmp_path):
+    merged = {"src/x.jsx": ("//x", "Frontend Generation")}
+    write_assembly_merge_map(str(tmp_path), merged)
+    mm = tmp_path / "META" / "merge_map.json"
+    assert mm.is_file()
+    import json
+
+    doc = json.loads(mm.read_text(encoding="utf-8"))
+    assert doc["paths"]["src/x.jsx"]["last_writer_agent"] == "Frontend Generation"

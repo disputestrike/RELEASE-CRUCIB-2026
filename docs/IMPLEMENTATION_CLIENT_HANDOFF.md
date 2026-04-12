@@ -59,6 +59,7 @@ python scripts/audit_agent_dag.py --check
 
 | Route | Auth | Behavior |
 |-------|------|----------|
+| `GET /api/jobs/{job_id}/export` | Bearer | JSON discovery: `href_full_zip`, `workspace_exists`, booleans for common `META/*` files (including `merge_map.json` when assembly V2 wrote it). |
 | `GET /api/jobs/{job_id}/export/full.zip` | Bearer (same as other job APIs) | Resolves `job → project_id → WORKSPACE_ROOT/<project_id>`, zips tree (skips `node_modules`, `.git`, common caches). Deletes temp zip after response via `BackgroundTask`. |
 
 **Frontend / client:** download with `Authorization: Bearer <token>`. Suggested filename already prefixed `crucibai-job-…-full.zip`.
@@ -101,11 +102,11 @@ python scripts/audit_agent_dag.py --check
 | Phase | Deliverable | Notes |
 |-------|----------------|-------|
 | P1 | `artifact_delta` on **every** step completion (executor → `append_job_event`) | **Shipped:** `artifact_delta` job_event after each successful `execute_step` (size+mtime snapshot diff; capped lists). Module: `orchestration/artifact_delta.py`. |
-| P2 | `WorkspaceAssemblyPipeline` (v1) | **Shipped** behind `CRUCIBAI_ASSEMBLY_V2`: … (JSON maps, seal owners). **Profile-aware preview:** `materialize_from_previous_outputs` parses the Planner goal snippet; **`api_backend`** goals skip the Vite preview overlay so API-only workspaces are not stuffed with `index.html` / `src/main.jsx`. **Still open:** Next-specific preview templates (beyond directory contract). |
+| P2 | `WorkspaceAssemblyPipeline` (v1) | **Shipped** behind `CRUCIBAI_ASSEMBLY_V2`: … (JSON maps, seal owners). **Profile-aware preview:** `materialize_from_previous_outputs` parses the Planner goal snippet; **`api_backend`** goals skip the Vite preview overlay so API-only workspaces are not stuffed with `index.html` / `src/main.jsx`. **`next_app_router`:** `_ensure_preview_contract_files` materializes missing `next-app-stub/*` from the template map alongside the root Vite contract. **Merge map:** V2 materialization writes `META/merge_map.json`; seal merges those owners into `artifact_manifest` with **`dag_node_completed` owners winning** on the same path (`path_last_writer.json` stays event-sourced only). |
 | P3 | Thin legacy shim / remove duplicate writes | **Shim module:** `orchestration/legacy_file_tool_writes.py` (`run_legacy_file_tool_writes`) — legacy path is isolated; `real_agent_runner` delegates when V2 is off. Full delete waits default-on V2 + soak. |
 | P4 | `stack_contract` / profile drives `select_agents_for_goal` + directory contract tests | **`directory_profile`** on `parse_generation_contract` (`next_js` when Next is requested); **`directory_profile_from_contract`** + **`next_js`** layout checks (`app` / `src/app` / `pages`); `explain_agent_selection` returns `directory_profile`. |
 | P5 | Proof index ↔ `artifact_manifest` paths | **Shipped (v1):** … **Deeper (incremental):** compile / prose / py_compile + **DB table-exists** proofs carry **`path`** where a migration `.sql` path is known; bundle copies `path_last_writer.json` when present. |
-| P6 | Single canonical export story | **Documented below** — two ZIP surfaces are intentional: job workspace export vs generic POST `/api/export/zip`. |
+| P6 | Single canonical export story | **Documented below** — two ZIP surfaces are intentional: job workspace export vs generic POST `/api/export/zip`. **`GET /api/jobs/{job_id}/export`** returns JSON (`href_full_zip`, workspace existence, `META/*` presence flags) for client discovery. |
 | P7 | Orphan DAG agents | **Shipped (narrow):** `agent_audit_registry.agents_excluded_from_autorunner_selection()` loads `docs/agent_audit.json` and excludes **3D/WebGL/immersive-family** `not_fully_integrated` agents from keyword hits + dependency closure (does not blanket-block web3/infra agents the swarm still expects). |
 
 ### P6 — Canonical export (which ZIP when)

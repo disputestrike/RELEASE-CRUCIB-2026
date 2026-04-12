@@ -15,6 +15,7 @@ import json
 import logging
 import os
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -236,6 +237,30 @@ def ensure_minimum_preview_tree(workspace_path: str, job_stub: Optional[Dict[str
     return _ensure_preview_contract_files(workspace_path, job)
 
 
+def write_assembly_merge_map(workspace_path: str, merged: Dict[str, Tuple[str, str]]) -> None:
+    """Persist last-writer agents from V2 merge (seal merges into artifact_manifest where events lack a path)."""
+    if not workspace_path or not merged:
+        return
+    root = Path(workspace_path)
+    if not root.is_dir():
+        return
+    meta = root / "META"
+    meta.mkdir(parents=True, exist_ok=True)
+    paths: Dict[str, Any] = {}
+    for rel, (content, agent) in sorted(merged.items(), key=lambda x: x[0]):
+        paths[rel] = {
+            "last_writer_agent": agent,
+            "approx_bytes": len(content.encode("utf-8")) if isinstance(content, str) else 0,
+        }
+    doc = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "source": "assembly_v2",
+        "path_count": len(paths),
+        "paths": paths,
+    }
+    (meta / "merge_map.json").write_text(json.dumps(doc, indent=2), encoding="utf-8")
+
+
 def materialize_merged_map(
     workspace_path: str,
     merged: Dict[str, Tuple[str, str]],
@@ -273,13 +298,15 @@ async def materialize_from_previous_outputs(
     pairs = collect_assembly_pairs(previous_outputs)
     merged = merge_last_writer(pairs)
     written, errors = materialize_merged_map(ws, merged)
+    write_assembly_merge_map(ws, merged)
 
     preview_bt = "vite_react"
     if (goal_snippet or "").strip():
+        from orchestration.build_targets import normalize_build_target
         from orchestration.generation_contract import parse_generation_contract
 
         pc = parse_generation_contract(goal_snippet)
-        preview_bt = str(pc.get("recommended_build_target") or "vite_react")
+        preview_bt = normalize_build_target(pc.get("recommended_build_target") or "vite_react")
     job_stub = {"goal": goal_snippet, "build_target": preview_bt}
     extra: List[str] = []
     if preview_bt != "api_backend":
