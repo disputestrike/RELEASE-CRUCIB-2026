@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from orchestration.legacy_file_tool_writes import run_legacy_file_tool_writes
+from real_agent_runner import run_legacy_file_tool_writes
 
 
 def _extract(out, filepath: str = "") -> str:  # noqa: ARG001 — matches legacy extract_code shape
