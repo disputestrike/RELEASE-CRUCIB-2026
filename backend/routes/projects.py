@@ -1833,6 +1833,7 @@ async def create_project(
     user: dict = Depends(get_current_user),
 ):
     db = get_db()
+    audit_logger = get_audit_logger()
     if Permission is not None and not has_permission(user, Permission.CREATE_PROJECT):
         raise HTTPException(
             status_code=403, detail="Insufficient permission to create projects"
@@ -2651,6 +2652,7 @@ async def one_click_deploy_vercel(
     ),
 ):
     db = get_db()
+    audit_logger = get_audit_logger()
     """One-click deploy to Vercel. Uses token from body, or user's stored deploy_tokens.vercel, or env VERCEL_TOKEN."""
     deploy_files, project_name = await _get_project_deploy_files(project_id, user["id"])
     from validate_deployment import validate_deployment
@@ -2754,6 +2756,7 @@ async def one_click_deploy_netlify(
     ),
 ):
     db = get_db()
+    audit_logger = get_audit_logger()
     """One-click deploy to Netlify. Reuses the same site on subsequent deploys (idempotent).
     Uses token from body, or user's stored deploy_tokens.netlify, or env NETLIFY_TOKEN."""
     deploy_files, _ = await _get_project_deploy_files(project_id, user["id"])

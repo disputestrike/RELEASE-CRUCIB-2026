@@ -109,6 +109,59 @@ os.environ.setdefault("CRUCIBAI_LOG_DIR", str((_TEST_TEMP_ROOT / "logs").resolve
 pytest_plugins = ("pytest_asyncio",)
 
 
+def _apply_projection(row, projection):
+    if not projection:
+        return row
+    include = {k for k, v in projection.items() if v}
+    exclude = {k for k, v in projection.items() if not v}
+    if include:
+        row = {k: v for k, v in row.items() if k in include}
+    for k in exclude:
+        row.pop(k, None)
+    return row
+
+
+class _InMemoryCursor:
+    """Motor-style cursor returned by ``_InMemoryCollection.find``."""
+
+    def __init__(self, rows, projection=None):
+        self._rows = rows
+        self._projection = projection
+        self._sort_keys = []
+        self._skip_n = 0
+        self._limit_n = 0
+
+    def sort(self, key_or_list, direction=None):
+        if isinstance(key_or_list, list):
+            self._sort_keys = key_or_list
+        else:
+            self._sort_keys = [(key_or_list, direction or 1)]
+        return self
+
+    def skip(self, n):
+        self._skip_n = n
+        return self
+
+    def limit(self, n):
+        self._limit_n = n
+        return self
+
+    async def to_list(self, length=None):
+        results = list(self._rows)
+        if self._sort_keys:
+            for key, direction in reversed(self._sort_keys):
+                results.sort(
+                    key=lambda r, k=key: r.get(k, ""),
+                    reverse=(direction == -1),
+                )
+        if self._skip_n:
+            results = results[self._skip_n:]
+        limit = self._limit_n or length
+        if limit:
+            results = results[:limit]
+        return [_apply_projection(deepcopy(r), self._projection) for r in results]
+
+
 class _InMemoryCollection:
     def __init__(self):
         self._rows = []
@@ -117,23 +170,26 @@ class _InMemoryCollection:
     def _matches(row, query):
         return all(row.get(k) == v for k, v in (query or {}).items())
 
-    async def find_one(self, query, projection=None):
-        for row in self._rows:
-            if self._matches(row, query):
-                result = deepcopy(row)
-                if projection:
-                    include_keys = {k for k, v in projection.items() if v}
-                    exclude_keys = {k for k, v in projection.items() if not v}
-                    if include_keys:
-                        result = {k: v for k, v in result.items() if k in include_keys}
-                    for key in exclude_keys:
-                        result.pop(key, None)
-                return result
+    async def find_one(self, query=None, projection=None, sort=None):
+        rows = [r for r in self._rows if self._matches(r, query)]
+        if sort:
+            sort_list = sort if isinstance(sort, list) else [sort]
+            for key, direction in reversed(sort_list):
+                rows.sort(
+                    key=lambda r, k=key: r.get(k, ""),
+                    reverse=(direction == -1),
+                )
+        if rows:
+            return _apply_projection(deepcopy(rows[0]), projection)
         return None
+
+    def find(self, query=None, projection=None):
+        matched = [r for r in self._rows if self._matches(r, query)]
+        return _InMemoryCursor(matched, projection)
 
     async def insert_one(self, document):
         self._rows.append(deepcopy(document))
-        return {"inserted_id": document.get("id")}
+        return type("InsertResult", (), {"inserted_id": document.get("id")})()
 
     async def update_one(self, query, update, upsert=False):
         target = None
@@ -152,6 +208,28 @@ class _InMemoryCollection:
             target[key] = target.get(key, 0) + value
         return {"matched_count": 1, "modified_count": 1}
 
+    async def count_documents(self, query=None):
+        return sum(1 for row in self._rows if self._matches(row, query))
+
+    async def delete_one(self, query):
+        for i, row in enumerate(self._rows):
+            if self._matches(row, query):
+                self._rows.pop(i)
+                return {"deleted_count": 1}
+        return {"deleted_count": 0}
+
+    async def delete_many(self, query=None):
+        before = len(self._rows)
+        self._rows = [r for r in self._rows if not self._matches(r, query)]
+        return {"deleted_count": before - len(self._rows)}
+
+    async def insert_many(self, documents):
+        ids = []
+        for doc in documents:
+            self._rows.append(deepcopy(doc))
+            ids.append(doc.get("id"))
+        return {"inserted_ids": ids}
+
 
 class _FakeDb:
     def __init__(self):
@@ -159,6 +237,11 @@ class _FakeDb:
         self.projects = _InMemoryCollection()
         self.tasks = _InMemoryCollection()
         self.examples = _InMemoryCollection()
+
+    def __getattr__(self, name):
+        col = _InMemoryCollection()
+        object.__setattr__(self, name, col)
+        return col
 
 
 def pytest_sessionstart(session):
