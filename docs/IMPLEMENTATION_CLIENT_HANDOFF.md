@@ -42,12 +42,12 @@ python scripts/audit_agent_dag.py --check
 - `artifact_manifest.json` lists **workspace files** (hashes, sizes). `META/` itself is excluded from the manifest body to avoid recursion noise.
 - This is **evidence**, not yet the full “merge policy / last writer per path” table from the long-term plan.
 
-### 3. P2 — `WorkspaceAssemblyPipeline` (multi-file assembly, feature-flagged)
+### 3. P2 — `WorkspaceAssemblyPipeline` (multi-file assembly, **default on**)
 
 | Module / entry | Purpose |
 |----------------|---------|
 | `backend/orchestration/workspace_assembly_pipeline.py` | **Ingest** outputs from upstream agents in `previous_outputs`, **parse** path-tagged fenced blocks (` ```tsx src/foo.jsx …``` ` and variants), **merge** last-writer-wins per relative path, **materialize** with `executor._safe_write` (same prose/fence stripping as the runner). |
-| `CRUCIBAI_ASSEMBLY_V2` | Must be `1`, `true`, `yes`, or `on` to activate. **Default: off** — production behavior unchanged until you set the flag. |
+| `CRUCIBAI_ASSEMBLY_V2` | **Default: on** (multi-file assembly). Set to `0`, `false`, `no`, or `off` to use the legacy four-file File Tool writer (`legacy_file_tool_writes`). |
 | `real_agent_runner._run_file_tool_agent` | When V2 on, **replaces** the narrow four-file-only writer with `materialize_from_previous_outputs`, then fills missing **Vite preview contract** files via `executor._ensure_preview_contract_files` (merge-only where files already exist). |
 | `swarm_agent_runner.run_swarm_agent_step` | When V2 on, after each swarm LLM step, **materialize_swarm_agent_output** writes extra paths from multi-file fences and extends `output_files`. |
 
@@ -102,8 +102,8 @@ python scripts/audit_agent_dag.py --check
 | Phase | Deliverable | Notes |
 |-------|----------------|-------|
 | P1 | `artifact_delta` on **every** step completion (executor → `append_job_event`) | **Shipped:** `artifact_delta` job_event after each successful `execute_step` (size+mtime snapshot diff; capped lists). Module: `orchestration/artifact_delta.py`. |
-| P2 | `WorkspaceAssemblyPipeline` (v1) | **Shipped** behind `CRUCIBAI_ASSEMBLY_V2`: … (JSON maps, seal owners). **Profile-aware preview:** `materialize_from_previous_outputs` parses the Planner goal snippet; **`api_backend`** goals skip the Vite preview overlay so API-only workspaces are not stuffed with `index.html` / `src/main.jsx`. **`next_app_router`:** `_ensure_preview_contract_files` materializes missing `next-app-stub/*` from the template map alongside the root Vite contract. **Merge map:** File-tool materialization **replaces** `META/merge_map.json` from the full upstream merge; **swarm** assembly V2 **upserts** only paths it successfully wrote (preserving other paths). Seal merges merge_map into `artifact_manifest` with **`dag_node_completed` owners winning** on the same path (`path_last_writer.json` stays event-sourced only). |
-| P3 | Thin legacy shim / remove duplicate writes | **Shim module:** `orchestration/legacy_file_tool_writes.py` (`run_legacy_file_tool_writes`) — legacy path is isolated; `real_agent_runner` delegates when V2 is off. Full delete waits default-on V2 + soak. |
+| P2 | `WorkspaceAssemblyPipeline` (v1) | **Shipped; default on** (set `CRUCIBAI_ASSEMBLY_V2=0|false|no|off` to opt out). JSON maps, seal owners, profile-aware preview (`api_backend` skips Vite overlay), **`next_app_router`** `next-app-stub/*` fill, merge_map replace (file tool) + upsert (swarm), seal merge into `artifact_manifest` with **events overriding** same path (`path_last_writer.json` event-only). |
+| P3 | Thin legacy shim / remove duplicate writes | **Shim module:** `legacy_file_tool_writes.py` — used **only** when V2 is explicitly disabled via env. **Default-on V2 shipped**; deleting the legacy module entirely is optional follow-up once you no longer need the escape hatch. |
 | P4 | `stack_contract` / profile drives `select_agents_for_goal` + directory contract tests | **`directory_profile`** on `parse_generation_contract` (`next_js` when Next is requested); **`directory_profile_from_contract`** + **`next_js`** layout checks (`app` / `src/app` / `pages`); `explain_agent_selection` returns `directory_profile`. |
 | P5 | Proof index ↔ `artifact_manifest` paths | **Shipped (v1):** … **Deeper (incremental):** compile / prose / py_compile + **DB table-exists** proofs carry **`path`** where a migration `.sql` path is known; bundle copies `path_last_writer.json` when present. |
 | P6 | Single canonical export story | **Documented below** — two ZIP surfaces are intentional: job workspace export vs generic POST `/api/export/zip`. **`GET /api/jobs/{job_id}/export`** JSON discovery; **Proof** tab **Workspace ZIP** for `full.zip`. |
@@ -133,7 +133,7 @@ python scripts/audit_agent_dag.py --check
 2. A completed Auto-Runner job leaves `META/*.json` on disk.  
 3. `GET /api/jobs/{id}/export/full.zip` returns a zip for that job’s project workspace.  
 4. “Continue with GitHub” hits live `/api/auth/github` with configured OAuth app.  
-5. With **`CRUCIBAI_ASSEMBLY_V2=1`**, File Tool + swarm runs materialize **multi-file** path-tagged output into the workspace and still pass preview contract fill.
+5. With assembly V2 **on by default** (or explicitly unset), File Tool + swarm runs materialize **multi-file** path-tagged output into the workspace and still pass preview contract fill; **`CRUCIBAI_ASSEMBLY_V2=0`** restores the legacy writer for regression checks.
 
 ---
 

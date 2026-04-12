@@ -13,12 +13,18 @@ from orchestration.workspace_assembly_pipeline import (
 )
 
 
-def test_assembly_v2_default_off():
-    os.environ.pop("CRUCIBAI_ASSEMBLY_V2", None)
-    assert assembly_v2_enabled() is False
-    os.environ["CRUCIBAI_ASSEMBLY_V2"] = "1"
-    assert assembly_v2_enabled() is True
-    os.environ.pop("CRUCIBAI_ASSEMBLY_V2", None)
+def test_assembly_v2_default_on_with_explicit_opt_out():
+    try:
+        os.environ.pop("CRUCIBAI_ASSEMBLY_V2", None)
+        assert assembly_v2_enabled() is True
+        os.environ["CRUCIBAI_ASSEMBLY_V2"] = "0"
+        assert assembly_v2_enabled() is False
+        os.environ["CRUCIBAI_ASSEMBLY_V2"] = "off"
+        assert assembly_v2_enabled() is False
+        os.environ["CRUCIBAI_ASSEMBLY_V2"] = "1"
+        assert assembly_v2_enabled() is True
+    finally:
+        os.environ.pop("CRUCIBAI_ASSEMBLY_V2", None)
 
 
 def test_parse_lang_path_fence():

@@ -1,7 +1,7 @@
 """
 P3 — Legacy File Tool Agent: four canonical writes (App, server, schema, tests).
 
-Used only when ``CRUCIBAI_ASSEMBLY_V2`` is off. Keeps ``real_agent_runner`` thin and
+Used only when ``CRUCIBAI_ASSEMBLY_V2`` is set to ``0``/``false``/``no``/``off`` (V2 is on by default). Keeps ``real_agent_runner`` thin and
 documents the non-V2 code path in one place.
 """
 from __future__ import annotations

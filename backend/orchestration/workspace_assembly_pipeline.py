@@ -1,7 +1,7 @@
 """
 WorkspaceAssemblyPipeline (P2) — multi-file ingest → merge → materialize.
 
-Behind CRUCIBAI_ASSEMBLY_V2=1|true|yes|on. When unset/false, legacy paths run unchanged.
+Assembly V2 is **on by default**. Set ``CRUCIBAI_ASSEMBLY_V2`` to ``0``, ``false``, ``no``, or ``off`` to use the legacy File Tool writer (P3 shim).
 P3: when V2 is enabled, `real_agent_runner` short-circuits to this pipeline so the legacy
 four-file writer never runs (no duplicate disk writes for the same outputs).
 
@@ -69,7 +69,11 @@ _MAX_JSON_FILE_BODY = 400_000
 
 
 def assembly_v2_enabled() -> bool:
-    return os.environ.get("CRUCIBAI_ASSEMBLY_V2", "").strip().lower() in ("1", "true", "yes", "on")
+    """V2 multi-file assembly is default-on; only explicit opt-out values disable it."""
+    raw = os.environ.get("CRUCIBAI_ASSEMBLY_V2", "").strip().lower()
+    if raw in ("0", "false", "no", "off"):
+        return False
+    return True
 
 
 def _norm_rel(p: str) -> str:

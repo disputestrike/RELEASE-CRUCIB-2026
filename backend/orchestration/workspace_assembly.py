@@ -8,7 +8,7 @@ Writes under <workspace>/META/:
   artifact_manifest.json — file tree with sha256 + optional last_writer fields
   seal.json           — job completion fingerprint
 
-Full multi-agent merge pipeline lives behind future CRUCIBAI_ASSEMBLY_V2 work;
+Multi-file merge pipeline is default-on (``CRUCIBAI_ASSEMBLY_V2`` opt-out); legacy path remains in ``legacy_file_tool_writes``;
 this module is the mandatory evidence + ZIP source-of-truth hook.
 """
 from __future__ import annotations
