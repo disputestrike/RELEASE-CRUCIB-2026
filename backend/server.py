@@ -114,10 +114,23 @@ class CSRFMiddleware:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
-        # Local dev should never be blocked by CSRF header checks.
+        # Local dev: only bypass CSRF for requests originating from localhost.
+        # This prevents CRUCIBAI_DEV=1 from accidentally disabling CSRF on production
+        # if the env var is set on a deployed server.
         if os.environ.get("CRUCIBAI_DEV", "").strip().lower() in ("1", "true", "yes"):
-            await self.app(scope, receive, send)
-            return
+            headers = dict(scope.get("headers", []))
+            origin = headers.get(b"origin", b"").decode()
+            host = headers.get(b"host", b"").decode()
+            _localhost_origins = ("http://localhost", "http://127.0.0.1", "https://localhost", "https://127.0.0.1")
+            _is_localhost = (
+                not origin  # Same-origin requests have no Origin header
+                or any(origin.startswith(o) for o in _localhost_origins)
+                or any(h in host for h in ("localhost", "127.0.0.1"))
+            )
+            if _is_localhost:
+                await self.app(scope, receive, send)
+                return
+            # Non-localhost origin with CRUCIBAI_DEV=1 — fall through to normal CSRF checks
         
         method = scope["method"]
         path = scope.get("path", "")
@@ -1123,7 +1136,7 @@ def _filter_chain_by_keys(chain: list, effective_keys: Optional[Dict[str, str]] 
 
 def _get_model_chain(model_key: str, message: str, effective_keys: Optional[Dict[str, str]] = None, force_complex: bool = False):
     """Get list of (provider, model) to try. effective_keys = merged user Settings + server .env keys.
-    Cerebras (llama3.1-8b) for fast/simple tasks. Haiku for complex/build tasks.
+    Cerebras (llama-3.3-70b) for fast/simple tasks. Haiku for complex/build tasks.
     force_complex=True always selects Haiku (for iterative builds)."""
     cerebras_key = (effective_keys or {}).get("cerebras") or os.environ.get("CEREBRAS_API_KEY")
     anthropic_key = (effective_keys or {}).get("anthropic") or ANTHROPIC_API_KEY
@@ -1137,17 +1150,17 @@ def _get_model_chain(model_key: str, message: str, effective_keys: Optional[Dict
             if complexity == "fast" and cerebras_key:
                 # Cerebras first for fast tasks, Haiku fallback
                 chain = [
-                    {"provider": "cerebras", "model": "llama3.1-8b"},
+                    {"provider": "cerebras", "model": "llama-3.3-70b"},
                     {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
                 ]
             elif anthropic_key:
                 # Haiku first for complex tasks, Cerebras fallback
                 chain = [
                     {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
-                    {"provider": "cerebras", "model": "llama3.1-8b"},
+                    {"provider": "cerebras", "model": "llama-3.3-70b"},
                 ]
             elif cerebras_key:
-                chain = [{"provider": "cerebras", "model": "llama3.1-8b"}]
+                chain = [{"provider": "cerebras", "model": "llama-3.3-70b"}]
             else:
                 chain = MODEL_FALLBACK_CHAINS
     else:
@@ -1193,7 +1206,7 @@ async def _call_anthropic_direct(prompt: str, system: str, model: str = ANTHROPI
 
 
 
-async def _call_cerebras_direct(prompt: str, system: str, model: str = "llama3.1-8b", api_key: Optional[str] = None) -> str:
+async def _call_cerebras_direct(prompt: str, system: str, model: str = "llama-3.3-70b", api_key: Optional[str] = None) -> str:
     """Call Cerebras API directly (free tier fallback). Uses api_key or CEREBRAS_API_KEY."""
     key = (api_key or "").strip() or _get_cerebras_key() or os.environ.get("CEREBRAS_API_KEY")
     if not key:
@@ -1300,7 +1313,7 @@ async def _call_llama_direct(
 async def _call_cerebras_direct(
     message: str,
     system_message: str,
-    model: str = "llama3.1-8b",
+    model: str = "llama-3.3-70b",
     api_key: str = None,
 ) -> str:
     """Call Cerebras Llama 2 70B."""
@@ -5610,32 +5623,6 @@ async def get_project_export_deploy(project_id: str, user: dict = Depends(get_cu
     )
 
 
-@api_router.get("/users/me/deploy-tokens")
-async def get_deploy_tokens_status(user: dict = Depends(get_current_user)):
-    """Return whether user has deploy tokens set (no values). For UI to show one-click availability."""
-    u = await db.users.find_one({"id": user["id"]}, {"deploy_tokens": 1})
-    dt = u.get("deploy_tokens") or {}
-    return {"has_vercel": bool(dt.get("vercel")), "has_netlify": bool(dt.get("netlify")), "has_github": bool(dt.get("github")), "has_railway": bool(dt.get("railway"))}
-
-
-@api_router.patch("/users/me/deploy-tokens")
-async def update_deploy_tokens(data: DeployTokensUpdate, user: dict = Depends(get_current_user)):
-    """Set deploy tokens for one-click Vercel/Netlify. Only updates provided keys."""
-    update = {}
-    if data.vercel is not None:
-        update["deploy_tokens.vercel"] = data.vercel.strip() if data.vercel else None
-    if data.netlify is not None:
-        update["deploy_tokens.netlify"] = data.netlify.strip() if data.netlify else None
-    if data.github is not None:
-        update["deploy_tokens.github"] = data.github.strip() if data.github else None
-    if data.railway is not None:
-        update["deploy_tokens.railway"] = data.railway.strip() if data.railway else None
-    if not update:
-        return {"ok": True}
-    await db.users.update_one({"id": user["id"]}, {"$set": update})
-    return {"ok": True}
-
-
 async def _get_project_deploy_files(project_id: str, user_id: str) -> tuple[Dict[str, str], str]:
     """Return (deploy_files dict, project_name) for a project. Raises HTTPException if not found."""
     project = await db.projects.find_one({"id": project_id, "user_id": user_id})
@@ -5681,7 +5668,12 @@ async def one_click_deploy_vercel(
         if not safe_path:
             continue
         raw = content if isinstance(content, (bytes, bytearray)) else content.encode("utf-8")
-        files_payload.append({"file": safe_path, "data": base64.b64encode(raw).decode("ascii")})
+        # Explicit base64 encoding so Vercel handles binary files correctly
+        files_payload.append({
+            "file": safe_path,
+            "data": base64.b64encode(raw).decode("ascii"),
+            "encoding": "base64",
+        })
     if not files_payload:
         raise HTTPException(status_code=400, detail="No deploy files to upload")
     import httpx
@@ -5695,16 +5687,15 @@ async def one_click_deploy_vercel(
         msg = r.text
         try:
             msg = r.json().get("error", {}).get("message", r.text)
-        except (jwt.InvalidTokenError, jwt.DecodeError, KeyError) as e:
-            logger.debug(f"Invalid JWT token: {e}")
         except Exception as e:
-            logger.error(f"Unexpected error in JWT verification: {e}")
+            logger.error(f"Error parsing Vercel error response: {e}")
         raise HTTPException(status_code=502, detail=f"Vercel deploy failed: {msg}")
     data = r.json()
-    url = data.get("url") or (data.get("alias", [""])[0] if data.get("alias") else "")
-    if not url and data.get("id"):
-        url = f"https://{data.get('id', '')}.vercel.app"
-    live_url = url or data.get("url")
+    # Vercel returns url as a hostname only (no scheme) — normalise to https://
+    raw_url = data.get("url") or (data.get("alias", [""])[0] if data.get("alias") else "")
+    if not raw_url and data.get("id"):
+        raw_url = f"{data.get('id', '')}.vercel.app"
+    live_url = f"https://{raw_url}" if raw_url and not raw_url.startswith("http") else raw_url
     if live_url:
         await db.projects.update_one({"id": project_id, "user_id": user["id"]}, {"$set": {"live_url": live_url}})
         if audit_logger:
@@ -5714,7 +5705,7 @@ async def one_click_deploy_vercel(
                 new_value={"live_url": live_url},
                 ip_address=getattr(request.client, "host", None),
             )
-    return {"url": live_url, "deployment_id": data.get("id"), "status": data.get("status")}
+    return {"url": live_url, "deployment_id": data.get("id"), "status": data.get("readyState") or data.get("status")}
 
 
 @projects_router.post("/projects/{project_id}/deploy/netlify")
@@ -5724,7 +5715,8 @@ async def one_click_deploy_netlify(
     body: Optional[DeployOneClickBody] = None,
     user: dict = Depends(require_permission(Permission.DEPLOY_PROJECT if Permission else None)),
 ):
-    """One-click deploy to Netlify. Uses token from body, or user's stored deploy_tokens.netlify, or env NETLIFY_TOKEN."""
+    """One-click deploy to Netlify. Reuses the same site on subsequent deploys (idempotent).
+    Uses token from body, or user's stored deploy_tokens.netlify, or env NETLIFY_TOKEN."""
     deploy_files, _ = await _get_project_deploy_files(project_id, user["id"])
     from validate_deployment import validate_deployment
     validation = validate_deployment("netlify", deploy_files, None)
@@ -5743,41 +5735,55 @@ async def one_click_deploy_netlify(
             status_code=402,
             detail="Add your Netlify token in Settings → Deploy integrations for one-click deploy, or set NETLIFY_TOKEN on server.",
         )
+    # Reuse an existing Netlify site for this project to avoid creating a new site every deploy
+    existing_project = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"netlify_site_id": 1})
+    netlify_site_id = (existing_project or {}).get("netlify_site_id")
     import httpx
     async with httpx.AsyncClient(timeout=90.0) as client:
-        r = await client.post(
-            "https://api.netlify.com/api/v1/sites",
-            headers={
-                "Authorization": f"Bearer {netlify_token}",
-                "Content-Type": "application/zip",
-            },
-            content=zip_bytes,
-        )
+        if netlify_site_id:
+            # Redeploy to the existing site
+            r = await client.post(
+                f"https://api.netlify.com/api/v1/sites/{netlify_site_id}/deploys",
+                headers={"Authorization": f"Bearer {netlify_token}", "Content-Type": "application/zip"},
+                content=zip_bytes,
+            )
+        else:
+            # First deploy: create a new site
+            r = await client.post(
+                "https://api.netlify.com/api/v1/sites",
+                headers={"Authorization": f"Bearer {netlify_token}", "Content-Type": "application/zip"},
+                content=zip_bytes,
+            )
     if r.status_code >= 400:
         msg = r.text
         try:
             msg = r.json().get("message", r.text)
-        except (jwt.InvalidTokenError, jwt.DecodeError, KeyError) as e:
-            logger.debug(f"Invalid JWT token: {e}")
         except Exception as e:
-            logger.error(f"Unexpected error in JWT verification: {e}")
+            logger.error(f"Error parsing Netlify error response: {e}")
         raise HTTPException(status_code=502, detail=f"Netlify deploy failed: {msg}")
     data = r.json()
+    # For site-creation response the site_id is at data["id"]; for deploy response it's data["site_id"]
+    site_id = data.get("id") if not netlify_site_id else (data.get("site_id") or netlify_site_id)
     url = data.get("ssl_url") or data.get("url") or ""
     if not url and data.get("default_subdomain"):
         url = f"https://{data['default_subdomain']}.netlify.app"
     if not url and data.get("name"):
         url = f"https://{data['name']}.netlify.app"
+    updates: dict = {}
     if url:
-        await db.projects.update_one({"id": project_id, "user_id": user["id"]}, {"$set": {"live_url": url}})
-        if audit_logger:
-            await audit_logger.log(
-                user["id"], "project_deployed",
-                resource_type="project", resource_id=project_id,
-                new_value={"live_url": url},
-                ip_address=getattr(request.client, "host", None),
-            )
-    return {"url": url, "site_id": data.get("id")}
+        updates["live_url"] = url
+    if site_id and site_id != netlify_site_id:
+        updates["netlify_site_id"] = site_id
+    if updates:
+        await db.projects.update_one({"id": project_id, "user_id": user["id"]}, {"$set": updates})
+    if url and audit_logger:
+        await audit_logger.log(
+            user["id"], "project_deployed",
+            resource_type="project", resource_id=project_id,
+            new_value={"live_url": url},
+            ip_address=getattr(request.client, "host", None),
+        )
+    return {"url": url, "site_id": site_id}
 
 
 @projects_router.patch("/projects/{project_id}/publish-settings")
@@ -10225,12 +10231,6 @@ class DeployValidateRequest(BaseModel):
     files: Dict[str, str] = {}
     config: Optional[Dict[str, Any]] = None
 
-@api_router.post("/deploy/validate")
-async def deploy_validate(body: DeployValidateRequest):
-    from validate_deployment import validate_deployment
-    result = validate_deployment(body.platform, body.files, body.config)
-    return {"valid": result.valid, "errors": result.errors, "warnings": result.warnings, "platform": result.platform}
-
 @api_router.post("/cache/invalidate")
 async def cache_invalidate(agent_name: Optional[str] = Query(None), admin: dict = Depends(get_current_admin(("owner", "operations")))):
     """Invalidate agent cache (optional: by agent_name). Admin only."""
@@ -11697,6 +11697,13 @@ try:
     logger.info("workspace router registered")
 except Exception as _e:
     logger.warning("workspace router not loaded: %s", _e)
+
+try:
+    from routes.deploy import router as deploy_router
+    app.include_router(deploy_router)
+    logger.info("deploy router registered")
+except Exception as _e:
+    logger.warning("deploy router not loaded: %s", _e)
 
 if _static_dir.exists():
     app.mount("/", SpaStaticFiles(directory=str(_static_dir), html=True), name="frontend")

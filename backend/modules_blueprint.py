@@ -2103,7 +2103,7 @@ async def _call_llm_for_schema(prompt: str, system: str) -> str:
                 "https://api.cerebras.ai/v1/chat/completions",
                 headers={"Authorization": f"Bearer {cerebras_key}"},
                 json={
-                    "model": "llama3.1-8b",
+                    "model": "llama-3.3-70b",
                     "max_tokens": 4096,
                     "temperature": 0.1,
                     "messages": [

@@ -1,14 +1,16 @@
 """
 CrucibAI LLM Router: Intelligent Routing System
 ================================================
-Routes requests to Llama 70B, Cerebras, or Haiku based on:
+Routes requests to Cerebras, Haiku, or Sonnet based on:
 - Task complexity (simple vs complex)
 - User tier (free, builder, pro, scale, teams)
 - Speed selector (lite, pro, max)
 - Credit availability
 
-Primary: Llama 70B + Cerebras (intelligent routing)
-Fallback: Haiku (high quality)
+Free tier:    Cerebras llama-3.3-70b (fast, high quality)
+Paid lite:    Cerebras llama-3.3-70b (fast)
+Paid pro/max: Claude Haiku (paid quality)
+Critical/complex (paid pro+): Claude Sonnet (highest quality)
 """
 
 import os
@@ -16,13 +18,13 @@ import logging
 from typing import Tuple, Optional, Dict, Any
 from enum import Enum
 
-from anthropic_models import ANTHROPIC_HAIKU_MODEL
+from anthropic_models import ANTHROPIC_HAIKU_MODEL, ANTHROPIC_SONNET_MODEL
 
 logger = logging.getLogger(__name__)
 
 # LLM Configuration
 LLAMA_API_KEY = os.environ.get("LLAMA_API_KEY", "").strip()
-LLAMA_MODEL = "meta-llama/Llama-2-70b-chat-hf"
+LLAMA_MODEL = "meta-llama/Llama-3-70b-chat-hf"
 LLAMA_PROVIDER = "together"  # Using Together AI for hosted Llama
 
 # Cerebras key pool — round-robin across up to 5 keys for 5x rate limit
@@ -52,10 +54,12 @@ def get_cerebras_key() -> str:
 
 # Backwards compat — single key reference (first key or empty)
 CEREBRAS_API_KEY = _CEREBRAS_KEYS[0] if _CEREBRAS_KEYS else ""
-CEREBRAS_MODEL = "llama3.1-8b"
+# Cerebras llama-3.3-70b: 70B parameters, dramatically better than 8b, same cost
+CEREBRAS_MODEL = "llama-3.3-70b"
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
 HAIKU_MODEL = ANTHROPIC_HAIKU_MODEL
+SONNET_MODEL = ANTHROPIC_SONNET_MODEL
 
 class TaskComplexity(str, Enum):
     """Task complexity classification"""
@@ -122,12 +126,20 @@ class LLMRouter:
     - User tier
     - Speed selector
     - Credit availability
+
+    Routing tiers:
+      Free        → Cerebras llama-3.3-70b (fast, high-quality 70B model)
+      Builder     → lite: Cerebras; pro: Haiku
+      Pro/Scale   → lite: Cerebras; pro: Haiku; max: Sonnet
+      Teams       → lite: Cerebras; pro: Haiku; max: Sonnet
+      Critical    → always Sonnet for paid, Cerebras for free
     """
     
     def __init__(self):
         self.llama_available = bool(LLAMA_API_KEY)
         self.cerebras_available = bool(CEREBRAS_API_KEY)
         self.haiku_available = bool(ANTHROPIC_API_KEY)
+        self.sonnet_available = bool(ANTHROPIC_API_KEY)
     
     def get_model_chain(
         self,
@@ -150,39 +162,38 @@ class LLMRouter:
         """
         
         chain = []
+        is_paid = user_tier in ("builder", "pro", "scale", "teams")
+        is_pro_plus = user_tier in ("pro", "scale", "teams")
         
         # TIER-BASED ROUTING
         if user_tier == "free":
-            # Free tier: Llama (free) + Cerebras (cheap) → Haiku fallback
-            if task_complexity == TaskComplexity.SIMPLE:
-                chain = ["cerebras", "llama", "haiku"]
-            else:
-                chain = ["llama", "cerebras", "haiku"]
+            # Free tier: Cerebras llama-3.3-70b (free, 70B quality) → Haiku fallback
+            chain = ["cerebras", "haiku"]
         
         elif user_tier == "builder":
-            # Builder: Llama + Cerebras (swarm enabled) → Haiku
             if speed_selector == "lite":
-                chain = ["cerebras", "llama", "haiku"]
+                chain = ["cerebras", "haiku"]
             else:  # pro
-                chain = ["llama", "cerebras", "haiku"]
+                chain = ["haiku", "cerebras"]
         
-        elif user_tier in ["pro", "scale", "teams"]:
-            # Pro/Teams: Llama + Cerebras (max_swarm enabled) → Haiku
+        elif is_pro_plus:
             if speed_selector == "lite":
-                chain = ["cerebras", "llama", "haiku"]
+                chain = ["cerebras", "haiku"]
             elif speed_selector == "pro":
-                chain = ["llama", "cerebras", "haiku"]
-            else:  # max
-                chain = ["llama", "cerebras", "haiku"]
+                chain = ["haiku", "cerebras"]
+            else:  # max — use Sonnet for best quality
+                chain = ["sonnet", "haiku", "cerebras"]
         
-        # COMPLEXITY-BASED OVERRIDE
-        if task_complexity == TaskComplexity.CRITICAL:
-            # Critical tasks: always try Llama first
-            if "llama" not in chain:
-                chain.insert(0, "llama")
+        # COMPLEXITY-BASED OVERRIDE for paid users
+        if task_complexity == TaskComplexity.CRITICAL and is_paid:
+            # Critical tasks on paid plans: use Sonnet if on pro+, Haiku otherwise
+            if is_pro_plus and "sonnet" not in chain:
+                chain.insert(0, "sonnet")
+            elif "haiku" not in chain:
+                chain.insert(0, "haiku")
         
         elif task_complexity == TaskComplexity.SIMPLE:
-            # Simple tasks: prefer Cerebras (fast)
+            # Simple tasks: always prefer Cerebras (fast, cheap)
             if chain and chain[0] != "cerebras":
                 if "cerebras" in chain:
                     chain.remove("cerebras")
@@ -190,10 +201,11 @@ class LLMRouter:
         
         # CREDIT-BASED OVERRIDE
         if available_credits < 10:
-            # Low credits: prefer free (Llama) over paid (Haiku)
-            if "llama" in chain and "haiku" in chain:
-                chain.remove("haiku")
-                chain.append("haiku")  # Move Haiku to end
+            # Low credits: deprioritize Sonnet and Haiku
+            for model in ("sonnet", "haiku"):
+                if model in chain:
+                    chain.remove(model)
+                    chain.append(model)
         
         # AVAILABILITY CHECK
         final_chain = []
@@ -204,6 +216,8 @@ class LLMRouter:
                 final_chain.append(("cerebras", CEREBRAS_MODEL, "cerebras"))
             elif model == "haiku" and self.haiku_available:
                 final_chain.append(("haiku", HAIKU_MODEL, "anthropic"))
+            elif model == "sonnet" and self.sonnet_available:
+                final_chain.append(("sonnet", SONNET_MODEL, "anthropic"))
         
         # Fallback: if no models available, return empty (will error)
         if not final_chain:
@@ -215,17 +229,17 @@ class LLMRouter:
         """Get cost and performance info for a model."""
         info = {
             "llama": {
-                "name": "Llama 70B",
-                "cost_per_1m_tokens": 0.0,  # Free (open-source)
+                "name": "Llama 3 70B",
+                "cost_per_1m_tokens": 0.0,  # Free (open-source via Together)
                 "speed": "medium",
                 "quality": 8.5,
                 "provider": "together",
             },
             "cerebras": {
-                "name": "Cerebras Llama 2 70B",
+                "name": "Cerebras llama-3.3-70b",
                 "cost_per_1m_tokens": 0.27,
                 "speed": "very_fast",
-                "quality": 7.0,
+                "quality": 8.5,
                 "provider": "cerebras",
             },
             "haiku": {
@@ -233,6 +247,13 @@ class LLMRouter:
                 "cost_per_1m_tokens": 1.0,
                 "speed": "medium",
                 "quality": 9.0,
+                "provider": "anthropic",
+            },
+            "sonnet": {
+                "name": "Claude Sonnet 4.6",
+                "cost_per_1m_tokens": 3.0,
+                "speed": "medium",
+                "quality": 9.8,
                 "provider": "anthropic",
             },
         }

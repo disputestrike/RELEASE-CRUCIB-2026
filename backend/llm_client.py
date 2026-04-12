@@ -72,7 +72,7 @@ def get_llm_config(task_type: str = "") -> Optional[LLMConfig]:
 
     # Route: small/fast task can use Cerebras
     if cerebras_key and cerebras_ok:
-        model = os.environ.get("CEREBRAS_MODEL", "llama-3.1-8b")
+        model = os.environ.get("CEREBRAS_MODEL", "llama-3.3-70b")
         logger.debug("LLM routing: task=%s → cerebras/%s", task_type, model)
         return LLMConfig(provider="cerebras", api_key=cerebras_key, model=model)
 
@@ -85,7 +85,7 @@ def get_llm_config(task_type: str = "") -> Optional[LLMConfig]:
         return LLMConfig(provider="anthropic", api_key=claude_key, model=model)
 
     if cerebras_key:
-        model = os.environ.get("CEREBRAS_MODEL", "llama-3.1-8b")
+        model = os.environ.get("CEREBRAS_MODEL", "llama-3.3-70b")
         return LLMConfig(provider="cerebras", api_key=cerebras_key, model=model)
 
     logger.warning("No LLM API keys configured (ANTHROPIC_API_KEY or CEREBRAS_API_KEY)")
