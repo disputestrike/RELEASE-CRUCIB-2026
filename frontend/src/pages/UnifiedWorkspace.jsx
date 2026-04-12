@@ -64,9 +64,12 @@ export default function UnifiedWorkspace() {
   const taskIdFromUrl = searchParams.get('taskId');
   const jobIdFromUrl = searchParams.get('jobId');
   const { token, user, loading: authLoading, ensureGuest } = useAuth();
-  const { updateTask } = useTaskStore();
+  const { updateTask, tasks } = useTaskStore();
   const sessionBootstrapRef = useRef(false);
   const processedLocationHandoffRef = useRef(new Set());
+  /** Dedupe React StrictMode double effect while session still holds the goal until `finally` clears it. */
+  const autostartClaimRef = useRef(null);
+  const taskPromptHydratedForIdRef = useRef(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -644,7 +647,7 @@ export default function UnifiedWorkspace() {
   const runNewPlanAndAuto = useCallback(
     async (goalText) => {
       const trimmed = (goalText || '').trim();
-      if (!trimmed || authLoading || !token) return;
+      if (!trimmed || authLoading || !token || !API) return;
       if (sendInFlightRef.current) return;
       sendInFlightRef.current = true;
       setLoading(true);
@@ -747,7 +750,6 @@ export default function UnifiedWorkspace() {
     if (processedLocationHandoffRef.current.has(key)) return;
     processedLocationHandoffRef.current.add(key);
 
-    setGoal(raw);
     if (st.autoStart) {
       try {
         sessionStorage.setItem('crucibai_autostart_goal', raw);
@@ -755,27 +757,57 @@ export default function UnifiedWorkspace() {
         /* private mode / quota */
       }
     }
+    setGoal(raw);
     navigate(
       { pathname: location.pathname, search: location.search || '' },
       { replace: true, state: {} },
     );
   }, [location.key, location.state, location.pathname, location.search, navigate]);
 
-  /** After guest/session token is ready, start build from dashboard handoff (one shot). */
+  /** After guest/session token + API base are ready, start build from dashboard handoff (one shot). */
   useEffect(() => {
-    if (authLoading || !token) return;
+    if (authLoading || !token || !API) return;
     let goalText = '';
     try {
       goalText = (sessionStorage.getItem('crucibai_autostart_goal') || '').trim();
-      if (goalText) sessionStorage.removeItem('crucibai_autostart_goal');
     } catch (_) {
       return;
     }
     if (!goalText) return;
-    appendUserChat(goalText);
-    setGoal('');
-    void runNewPlanAndAuto(goalText);
-  }, [token, authLoading, runNewPlanAndAuto, appendUserChat]);
+    if (autostartClaimRef.current === goalText) return;
+    autostartClaimRef.current = goalText;
+
+    (async () => {
+      try {
+        appendUserChat(goalText);
+        setGoal('');
+        await runNewPlanAndAuto(goalText);
+      } finally {
+        try {
+          sessionStorage.removeItem('crucibai_autostart_goal');
+        } catch (_) {}
+        if (autostartClaimRef.current === goalText) autostartClaimRef.current = null;
+      }
+    })();
+  }, [token, authLoading, API, runNewPlanAndAuto, appendUserChat]);
+
+  /** Sidebar reopen: `?taskId=` with no `jobId` — show stored build prompt in the composer (no auto-run). */
+  useEffect(() => {
+    if (!taskIdFromUrl) {
+      taskPromptHydratedForIdRef.current = null;
+      return;
+    }
+    if (jobIdFromUrl) return;
+    if (taskPromptHydratedForIdRef.current === taskIdFromUrl) return;
+    const task = tasks.find((t) => t.id === taskIdFromUrl);
+    if (!task?.prompt?.trim() || task.type !== 'build' || task.status !== 'pending') return;
+    try {
+      if ((sessionStorage.getItem('crucibai_autostart_goal') || '').trim()) return;
+    } catch (_) {}
+    if (goal.trim() || userChatMessages.length > 0) return;
+    taskPromptHydratedForIdRef.current = taskIdFromUrl;
+    setGoal(String(task.prompt).trim());
+  }, [taskIdFromUrl, jobIdFromUrl, tasks, goal, userChatMessages.length]);
 
   const handleCancel = async () => {
     const jid = jobId || jobIdFromUrl;

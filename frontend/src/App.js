@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, createContext, useContext, Component, useC
 
 // Theme system — respects user preference stored in localStorage
 const THEME_KEY = 'crucibai-theme';
-const getInitialTheme = () => localStorage.getItem(THEME_KEY) || 'dark';
+const getInitialTheme = () => localStorage.getItem(THEME_KEY) || 'light';
 const applyTheme = (theme) => {
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem(THEME_KEY, theme);

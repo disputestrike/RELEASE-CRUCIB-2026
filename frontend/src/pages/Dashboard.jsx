@@ -19,6 +19,15 @@ import '../components/VoiceWaveform.css';
 import './Dashboard.css';
 import { withWorkspaceHandoffNonce } from '../utils/workspaceHandoff';
 
+/** Backup when `location.state` is dropped (refresh / edge navigation); consumed in UnifiedWorkspace. */
+function stashWorkspaceAutostartGoal(text) {
+  const raw = (text || '').trim();
+  if (!raw) return;
+  try {
+    sessionStorage.setItem('crucibai_autostart_goal', raw);
+  } catch (_) {}
+}
+
 /**
  * Dashboard — New Task / Home screen
  * AI intent classification → build / agent / chat
@@ -618,6 +627,7 @@ const Dashboard = () => {
         return lastSpace > 35 ? cut.slice(0, lastSpace) : cut;
       })();
       const taskId = addTask({ name: taskName, prompt: chip.prompt, status: 'pending', type: 'build' });
+      stashWorkspaceAutostartGoal(chip.prompt);
       navigate({
         pathname: '/app/workspace',
         search: taskId ? `?taskId=${encodeURIComponent(taskId)}` : '',
@@ -889,6 +899,7 @@ const Dashboard = () => {
       return lastSpace > 35 ? cut.slice(0, lastSpace) : cut;
     })();
     const taskId = addTask({ name: taskName, prompt: spec, status: 'pending', type: 'build' });
+    stashWorkspaceAutostartGoal(spec);
     navigate({
       pathname: '/app/workspace',
       search: taskId ? `?taskId=${encodeURIComponent(taskId)}` : '',
