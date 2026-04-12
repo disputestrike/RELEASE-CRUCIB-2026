@@ -11,6 +11,7 @@ Primary entry points:
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 import re
@@ -62,6 +63,9 @@ _FILE_HINT = re.compile(
     re.IGNORECASE,
 )
 
+_JSON_FENCE = re.compile(r"```(?:json|JSON)\s*\n(?P<body>.*?)```", re.DOTALL)
+_MAX_JSON_FILE_BODY = 400_000
+
 
 def assembly_v2_enabled() -> bool:
     return os.environ.get("CRUCIBAI_ASSEMBLY_V2", "").strip().lower() in ("1", "true", "yes", "on")
@@ -89,6 +93,51 @@ def _extract_code_for_path(raw: str, rel: str) -> str:
     from real_agent_runner import _extract_code
 
     return _extract_code(raw, filepath=rel or "file.txt")
+
+
+def extract_json_file_maps(raw: str) -> List[Tuple[str, str]]:
+    """
+    P2 — Parse fenced ```json blocks that encode a path → file body map.
+
+    Supported shapes:
+      { "files": { "src/App.jsx": "..." } }  (also file_map, workspace_files)
+      [ { "path": "...", "content": "..." }, ... ]  (also file / filepath, contents / body)
+    """
+    raw = raw or ""
+    out: List[Tuple[str, str]] = []
+    for m in _JSON_FENCE.finditer(raw):
+        body = (m.group("body") or "").strip()
+        if not body:
+            continue
+        try:
+            data = json.loads(body)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(data, dict):
+            fm = data.get("files") or data.get("file_map") or data.get("workspace_files")
+            if isinstance(fm, dict):
+                for k, v in fm.items():
+                    if not isinstance(k, str) or not isinstance(v, str):
+                        continue
+                    if len(v) > _MAX_JSON_FILE_BODY:
+                        continue
+                    nr = _norm_rel(k)
+                    if nr and v.strip():
+                        out.append((nr, v))
+        elif isinstance(data, list):
+            for item in data:
+                if not isinstance(item, dict):
+                    continue
+                pth = item.get("path") or item.get("file") or item.get("filepath")
+                content = item.get("content") or item.get("contents") or item.get("body")
+                if not isinstance(pth, str) or not isinstance(content, str):
+                    continue
+                if len(content) > _MAX_JSON_FILE_BODY:
+                    continue
+                nr = _norm_rel(pth)
+                if nr and content.strip():
+                    out.append((nr, content))
+    return out
 
 
 def parse_proposed_files(raw: str, default_rel: str, agent_name: str) -> List[Tuple[str, str]]:
@@ -125,6 +174,9 @@ def parse_proposed_files(raw: str, default_rel: str, agent_name: str) -> List[Tu
         if not re.match(r"^[A-Za-z0-9_./\-]+\.[A-Za-z0-9]{1,12}$", first):
             continue
         add(first, body)
+
+    for rel, body in extract_json_file_maps(raw):
+        add(rel, body)
 
     if not out and default_rel:
         single = _extract_code_for_path(raw, default_rel)

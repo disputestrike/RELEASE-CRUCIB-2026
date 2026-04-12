@@ -17,7 +17,7 @@ Structure:
   │  ├─ generated_code.zip
   │  ├─ package.json
   │  └─ deploy_url.txt (if successful)
-  ├─ workspace_meta/        # P5: copy of workspace META (proof_index, artifact_manifest, run_manifest, seal)
+  ├─ workspace_meta/        # P5: copy of workspace META (+ path_last_writer when present)
   ├─ verification/
   │  ├─ compile_check.json
   │  ├─ api_smoke.json
@@ -121,7 +121,13 @@ class ProofBundleGenerator:
             return
         dest = os.path.join(proof_dir, "workspace_meta")
         os.makedirs(dest, exist_ok=True)
-        for name in ("proof_index.json", "artifact_manifest.json", "run_manifest.json", "seal.json"):
+        for name in (
+            "proof_index.json",
+            "artifact_manifest.json",
+            "run_manifest.json",
+            "seal.json",
+            "path_last_writer.json",
+        ):
             src = os.path.join(meta, name)
             if os.path.isfile(src):
                 try:

@@ -3,7 +3,8 @@ Workspace manifests and sealing for Auto-Runner jobs.
 
 Writes under <workspace>/META/:
   run_manifest.json   — step ledger summary
-  artifact_manifest.json — file tree with sha256
+  path_last_writer.json — last ``dag_node_completed`` owner per output path (P2)
+  artifact_manifest.json — file tree with sha256 + optional last_writer fields
   seal.json           — job completion fingerprint
 
 Full multi-agent merge pipeline lives behind future CRUCIBAI_ASSEMBLY_V2 work;
@@ -28,10 +29,18 @@ def _sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def build_artifact_manifest(workspace_root: Path) -> Dict[str, Any]:
-    """Walk workspace (excluding heavy/ephemeral dirs) and record path → hash."""
+def build_artifact_manifest(
+    workspace_root: Path,
+    path_owners: Optional[Dict[str, Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
+    """Walk workspace (excluding heavy/ephemeral dirs) and record path → hash.
+
+    When ``path_owners`` is provided (rel path → {step_key, step_id}), fills
+    ``last_writer_agent`` / ``last_writer_step_id`` on each manifest row (P2).
+    """
     root = workspace_root.resolve()
     files: List[Dict[str, Any]] = []
+    owners = path_owners or {}
     if not root.is_dir():
         return {"root": str(root), "generated_at": datetime.now(timezone.utc).isoformat(), "files": []}
 
@@ -54,12 +63,16 @@ def build_artifact_manifest(workspace_root: Path) -> Dict[str, Any]:
                 raw = p.read_bytes()
             except OSError:
                 continue
+            own = owners.get(rel) or {}
+            lw = str(own.get("step_key") or own.get("agent") or "")
+            lsid = str(own.get("step_id") or "")
             files.append(
                 {
                     "path": rel,
                     "sha256": _sha256_bytes(raw),
                     "bytes": st.st_size,
-                    "last_writer_agent": "",
+                    "last_writer_agent": lw,
+                    "last_writer_step_id": lsid,
                     "contributing_agents": [],
                     "merge_policy": "unspecified",
                 }
@@ -96,6 +109,41 @@ def build_run_manifest(job_id: str, steps: List[Dict[str, Any]]) -> Dict[str, An
     }
 
 
+async def compute_path_last_writers_from_events(job_id: str) -> Dict[str, Dict[str, Any]]:
+    """
+    P2 — Last step that reported each path in ``dag_node_completed.output_files`` wins.
+    """
+    from .runtime_state import get_job_events
+
+    owners: Dict[str, Dict[str, Any]] = {}
+    try:
+        events = await get_job_events(job_id, limit=5000)
+    except Exception as e:
+        logger.warning("path_last_writer: load events failed: %s", e)
+        return owners
+    for ev in events:
+        if (ev.get("event_type") or "") != "dag_node_completed":
+            continue
+        payload = ev.get("payload_json")
+        if isinstance(payload, str):
+            try:
+                payload = json.loads(payload)
+            except json.JSONDecodeError:
+                continue
+        elif not isinstance(payload, dict):
+            continue
+        sk = str(payload.get("step_key") or "")
+        sid = str(ev.get("step_id") or "")
+        for fp in payload.get("output_files") or []:
+            if not isinstance(fp, str):
+                continue
+            rel = fp.strip().replace("\\", "/").lstrip("/")
+            if not rel or ".." in rel.split("/"):
+                continue
+            owners[rel] = {"step_key": sk, "step_id": sid}
+    return owners
+
+
 def write_meta(workspace_root: Path, name: str, payload: Dict[str, Any]) -> Path:
     meta = workspace_root.resolve() / "META"
     meta.mkdir(parents=True, exist_ok=True)
@@ -122,7 +170,15 @@ async def seal_completed_job_workspace(
         return None
     try:
         run_m = build_run_manifest(job_id, steps)
-        art_m = build_artifact_manifest(root)
+        path_owners = await compute_path_last_writers_from_events(job_id)
+        plw_doc = {
+            "job_id": job_id,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "paths": path_owners,
+            "path_count": len(path_owners),
+        }
+        write_meta(root, "path_last_writer.json", plw_doc)
+        art_m = build_artifact_manifest(root, path_owners=path_owners)
         write_meta(root, "run_manifest.json", run_m)
         write_meta(root, "artifact_manifest.json", art_m)
         seal_payload = {

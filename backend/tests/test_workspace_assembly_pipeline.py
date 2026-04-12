@@ -7,6 +7,7 @@ from orchestration.workspace_assembly_pipeline import (
     merge_last_writer,
     parse_proposed_files,
     materialize_merged_map,
+    extract_json_file_maps,
 )
 
 
@@ -26,6 +27,28 @@ export function Widget() { return <div/> }
 """
     pairs = parse_proposed_files(raw, "src/App.jsx", "Frontend Generation")
     assert any(p[0] == "src/components/Widget.jsx" for p in pairs)
+
+
+def test_parse_json_file_map_fence():
+    raw = r"""
+```json
+{
+  "files": {
+    "src/lib/util.ts": "export const x = 1;\n"
+  }
+}
+```
+"""
+    pairs = parse_proposed_files(raw, "", "Planner")
+    assert any(p[0] == "src/lib/util.ts" for p in pairs)
+
+
+def test_extract_json_file_map_list_shape():
+    raw = """```json
+[{"path": "api/routes.ts", "content": "export const routes = [];"}]
+```"""
+    got = extract_json_file_maps(raw)
+    assert got == [("api/routes.ts", "export const routes = [];")]
 
 
 def test_parse_fallback_default():

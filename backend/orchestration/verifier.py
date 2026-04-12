@@ -213,9 +213,14 @@ async def _verify_frontend_source_file(full: str, rel: str, workspace_path: str)
                 with open(full, "w", encoding="utf-8") as fh:
                     fh.write(cleaned)
                 text = cleaned
-                proof.append({"check": "prose_auto_stripped", "payload": {
-                    "file": rel, "stripped_line": prose[:80]
-                }})
+                proof.append(
+                    _proof_item(
+                        "syntax",
+                        f"Auto-stripped prose in {rel}",
+                        {"file": rel, "path": rel, "stripped_line": prose[:80]},
+                        verification_class="syntax",
+                    )
+                )
                 logger.info("verifier: auto-stripped prose from %s: %s", rel, prose[:60])
             except OSError:
                 issues.append(f"Prose preamble detected in {rel}: {prose}")
@@ -263,7 +268,7 @@ async def _verify_frontend_source_file(full: str, rel: str, workspace_path: str)
                 _proof_item(
                     "compile",
                     f"esbuild OK: {rel}",
-                    {"file": rel, "command": cmd, "mode": "stdin_transform"},
+                    {"file": rel, "path": rel, "command": cmd, "mode": "stdin_transform"},
                     verification_class="syntax",
                 ),
             )
@@ -361,7 +366,7 @@ async def verify_backend_step(step: Dict[str, Any],
                     else:
                         proof.append(_proof_item(
                             "compile", f"Python syntax OK: {f}",
-                            {"file": f, "command": list(cmd)},
+                            {"file": f, "path": f, "command": list(cmd)},
                         ))
                 except FileNotFoundError:
                     issues.append(
