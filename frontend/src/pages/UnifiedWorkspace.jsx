@@ -5,7 +5,6 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth, API } from '../App';
-import { useTaskStore } from '../stores/useTaskStore';
 import axios from 'axios';
 import Editor from '@monaco-editor/react';
 import { useJobStream } from '../hooks/useJobStream';
@@ -20,13 +19,13 @@ import {
 import AutoRunnerPanel from '../components/AutoRunner/AutoRunnerPanel';
 import GoalComposer from '../components/AutoRunner/GoalComposer';
 import PlanApproval from '../components/AutoRunner/PlanApproval';
-import RunnerScopeTrack from '../components/AutoRunner/RunnerScopeTrack';
 import ExecutionTimeline from '../components/AutoRunner/ExecutionTimeline';
 import ProofPanel from '../components/AutoRunner/ProofPanel';
 import SystemExplorer from '../components/AutoRunner/SystemExplorer';
 import FailureDrawer from '../components/AutoRunner/FailureDrawer';
 import BuildReplay from '../components/AutoRunner/BuildReplay';
 import BuildCompletionCard from '../components/AutoRunner/BuildCompletionCard';
+import WorkspaceActivityFeed from '../components/AutoRunner/WorkspaceActivityFeed';
 import SystemStatusHUD from '../components/AutoRunner/SystemStatusHUD';
 import PreviewPanel from '../components/AutoRunner/PreviewPanel';
 import ResizableDivider from '../components/AutoRunner/ResizableDivider';
@@ -79,8 +78,6 @@ export default function UnifiedWorkspace() {
     };
   }, []);
 
-  const { tasks: storeTasks, addTask, updateTask } = useTaskStore();
-
   const [uxMode, setUxMode] = useState(() => localStorage.getItem('crucibai_ux_mode') || 'pro');
   const toggleUxMode = (m) => {
     setUxMode(m);
@@ -123,8 +120,6 @@ export default function UnifiedWorkspace() {
   }, []);
 
   const [goal, setGoal] = useState('');
-  const [continuationNotes, setContinuationNotes] = useState('');
-  const [autoMode, setAutoMode] = useState('guided');
   const [plan, setPlan] = useState(null);
   const [capabilityNotice, setCapabilityNotice] = useState([]);
   const [buildTargets, setBuildTargets] = useState([]);
@@ -207,8 +202,6 @@ export default function UnifiedWorkspace() {
   const [files, setFiles] = useState(DEFAULT_FILES);
   const [activeFile, setActiveFile] = useState('/App.js');
   const [filesReadyKey, setFilesReadyKey] = useState('uw-default');
-  const [iterPrompt, setIterPrompt] = useState('');
-  const [iterBuilding, setIterBuilding] = useState(false);
 
   const [workspacePullKey, setWorkspacePullKey] = useState(0);
 
@@ -255,16 +248,12 @@ export default function UnifiedWorkspace() {
     if (isCompleted && stage === 'running') setStage('completed');
   }, [isCompleted, stage]);
 
-  const previewStatus = isCompleted ? 'ready' : stage === 'running' || iterBuilding ? 'building' : 'idle';
+  const previewStatus = isCompleted ? 'ready' : stage === 'running' || job?.status === 'running' ? 'building' : 'idle';
   const previewUrl =
     job?.preview_url ||
     job?.published_url ||
     job?.deploy_url ||
     (isCompleted && effectiveJobId ? `/published/${encodeURIComponent(effectiveJobId)}/` : null);
-
-  const projectSlug = effectiveProjectId
-    ? `project-${String(effectiveProjectId).slice(0, 8)}…`
-    : user?.email?.split('@')[0] || user?.name || 'proof-service';
 
   const handleShare = useCallback(() => {
     const url = window.location.href;
@@ -354,45 +343,7 @@ export default function UnifiedWorkspace() {
     setWorkspacePullKey((k) => k + 1);
   }, []);
 
-  const handleGeneratePlan = async () => {
-    if (!goal.trim()) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const cont = continuationNotes.trim();
-      const planGoal = cont
-        ? `${goal.trim()}\n\n--- Continuation / next phase (${new Date().toISOString()}) ---\n${cont}`
-        : goal.trim();
-      const res = await axios.post(
-        `${API}/orchestrator/plan`,
-        { goal: planGoal, mode: autoMode, build_target: buildTarget },
-        { headers },
-      );
-      setPlan(res.data.plan);
-      setCapabilityNotice(Array.isArray(res.data.capability_notice) ? res.data.capability_notice : []);
-      if (res.data.build_target_meta) setBuildTargetMeta(res.data.build_target_meta);
-      else if (res.data.build_target && buildTargets.length) {
-        setBuildTargetMeta(buildTargets.find((t) => t.id === res.data.build_target) || null);
-      }
-      setEstimate(res.data.estimate);
-      setJobId(res.data.job_id);
-      setStage('plan');
-      setContinuationNotes('');
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          if (res.data.job_id) next.set('jobId', res.data.job_id);
-          return next;
-        },
-        { replace: true },
-      );
-    } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to generate plan.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const sendInFlightRef = useRef(false);
 
   const handleApprove = async () => {
     const jid = jobId || jobIdFromUrl;
@@ -421,6 +372,82 @@ export default function UnifiedWorkspace() {
       setStage('plan');
     } finally {
       setLoading(false);
+    }
+  };
+
+  /**
+   * Phase 1: one Send = POST /orchestrator/plan then POST /orchestrator/run-auto (same job).
+   * If already in plan review (e.g. run-auto failed), Send only approves / starts run.
+   */
+  const handleSend = async () => {
+    if (!goal.trim() || authLoading || !token) return;
+    if (sendInFlightRef.current) return;
+    const jidExisting = jobId || jobIdFromUrl;
+    if (stage === 'plan' && jidExisting) {
+      sendInFlightRef.current = true;
+      try {
+        await handleApprove();
+      } finally {
+        sendInFlightRef.current = false;
+      }
+      return;
+    }
+    if (stage === 'running' || job?.status === 'running' || job?.status === 'queued') {
+      setError('A run is already in progress. Wait for it to finish, or open another task from the sidebar.');
+      return;
+    }
+
+    sendInFlightRef.current = true;
+    setLoading(true);
+    setError(null);
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    try {
+      const res = await axios.post(
+        `${API}/orchestrator/plan`,
+        { goal: goal.trim(), mode: 'auto', build_target: null },
+        { headers },
+      );
+      const newJid = res.data.job_id;
+      setPlan(res.data.plan);
+      setCapabilityNotice(Array.isArray(res.data.capability_notice) ? res.data.capability_notice : []);
+      if (res.data.build_target_meta) setBuildTargetMeta(res.data.build_target_meta);
+      else if (res.data.build_target && buildTargets.length) {
+        setBuildTargetMeta(buildTargets.find((t) => t.id === res.data.build_target) || null);
+      }
+      if (res.data.build_target) setBuildTarget(res.data.build_target);
+      setEstimate(res.data.estimate);
+      setJobId(newJid);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (newJid) next.set('jobId', newJid);
+          return next;
+        },
+        { replace: true },
+      );
+
+      try {
+        await axios.post(`${API}/orchestrator/run-auto`, { job_id: newJid }, { headers });
+        setStage('running');
+      } catch (e) {
+        const d = e.response?.data?.detail;
+        let msg = 'Failed to start job.';
+        if (d && typeof d === 'object' && !Array.isArray(d)) {
+          if (Array.isArray(d.issues)) msg = d.issues.join(' ');
+          else if (d.message) msg = String(d.message);
+          else if (d.error === 'runtime_unsatisfied') {
+            msg = 'Runtime check failed: install Python and Node.js on the host running the API, then retry.';
+          }
+        } else if (typeof d === 'string') msg = d;
+        else if (Array.isArray(d)) msg = d.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join('; ');
+        setError(msg);
+        setStage('plan');
+      }
+    } catch (e) {
+      setError(e.response?.data?.detail || 'Failed to generate plan.');
+    } finally {
+      setLoading(false);
+      sendInFlightRef.current = false;
     }
   };
 
@@ -461,7 +488,6 @@ export default function UnifiedWorkspace() {
 
   const handleReset = () => {
     setGoal('');
-    setContinuationNotes('');
     setPlan(null);
     setCapabilityNotice([]);
     setBuildTarget('vite_react');
@@ -495,73 +521,6 @@ export default function UnifiedWorkspace() {
     [setSearchParams],
   );
 
-  const runIterativeBuild = async () => {
-    if (!iterPrompt.trim() || iterBuilding) return;
-    setIterBuilding(true);
-    const headers = {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    };
-    const sessionId = taskIdFromUrl || `task_${Date.now()}`;
-    const existingTask = storeTasks.find((t) => String(t.id) === String(taskIdFromUrl));
-    try {
-      const res = await fetch(`${API}/ai/build/iterative`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ message: iterPrompt.trim(), session_id: sessionId }),
-      });
-      if (!res.ok || !res.body) throw new Error(`Build failed (${res.status})`);
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let done = false;
-      while (!done) {
-        const { value, done: streamDone } = await reader.read();
-        if (streamDone) break;
-        const chunk = decoder.decode(value, { stream: true });
-        for (const line of chunk.split('\n').filter(Boolean)) {
-          let ev;
-          try {
-            ev = JSON.parse(line);
-          } catch {
-            continue;
-          }
-          if (ev.type === 'step_complete' && ev.files) {
-            setFiles((prev) => ({ ...prev, ...ev.files }));
-            setFilesReadyKey(`iter_${Date.now()}`);
-          }
-          if (ev.type === 'done') {
-            done = true;
-            const built = ev.files || {};
-            setFiles((prev) => {
-              const merged = { ...prev, ...built };
-              const taskPayload = {
-                id: sessionId,
-                name: iterPrompt.slice(0, 80) || 'Build',
-                prompt: iterPrompt,
-                status: 'completed',
-                type: 'build',
-                files: merged,
-                createdAt: existingTask?.createdAt || Date.now(),
-              };
-              if (existingTask) updateTask(sessionId, taskPayload);
-              else addTask(taskPayload);
-              return merged;
-            });
-            const u = new URL(window.location.href);
-            u.searchParams.set('taskId', sessionId);
-            window.history.replaceState({}, '', u.toString());
-            setActivePane('preview');
-            break;
-          }
-        }
-      }
-    } catch (e) {
-      setError(e.message || 'Iterative build failed');
-    } finally {
-      setIterBuilding(false);
-    }
-  };
-
   const handleCodeChange = (value) => {
     setFiles((prev) => ({
       ...prev,
@@ -584,117 +543,8 @@ export default function UnifiedWorkspace() {
     return Object.values(proof.bundle || {}).reduce((s, arr) => s + (arr?.length || 0), 0);
   }, [proof]);
 
-  const effectiveBuildTargetId = useMemo(
-    () => plan?.crucib_build_target || buildTarget,
-    [plan?.crucib_build_target, buildTarget],
-  );
-  const effectiveBuildTargetMeta = useMemo(() => {
-    if (buildTargetMeta && buildTargetMeta.id === effectiveBuildTargetId) return buildTargetMeta;
-    const row = buildTargets.find((t) => t.id === effectiveBuildTargetId);
-    return row || buildTargetMeta;
-  }, [effectiveBuildTargetId, buildTargetMeta, buildTargets]);
-
   return (
     <div className={`uw-root arp-root arp-ux-${uxMode}`}>
-      <div className="arp-topbar">
-        <div className="arp-topbar-left">
-          <span className="arp-logo">CrucibAI</span>
-          <div className="arp-breadcrumb">
-            <span className="arp-bc-strong">{projectSlug}</span>
-            <span className="arp-bc-sep">/</span>
-            <code className="arp-env-pill">production</code>
-          </div>
-          {(effectiveProjectId || effectiveJobId) && token && (
-            <button
-              type="button"
-              className="arp-topbar-btn"
-              style={{ fontSize: 11 }}
-              title="Reload files from server"
-              onClick={reloadWorkspaceFromServer}
-            >
-              Sync
-            </button>
-          )}
-        </div>
-
-        <div className="arp-topbar-center">
-          <AutoRunnerPanel
-            mode={autoMode}
-            onModeChange={setAutoMode}
-            jobId={effectiveJobId}
-            jobStatus={job?.status}
-            onRun={() => handleApprove()}
-            onPause={handleCancel}
-            onResume={handleResume}
-            onCancel={handleCancel}
-            budget={estimate}
-          />
-        </div>
-
-        <div className="arp-topbar-right">
-          <button
-            type="button"
-            className="arp-topbar-btn"
-            title="Preview"
-            onClick={() => {
-              setActivePane('preview');
-              setRightCollapsed(false);
-            }}
-          >
-            <Eye size={14} />
-            <span className="arp-topbar-btn-label">Preview</span>
-          </button>
-          <button
-            type="button"
-            className="arp-topbar-btn"
-            title="Open preview (export & share from preview when ready)"
-            onClick={() => {
-              setActivePane('preview');
-              setRightCollapsed(false);
-            }}
-          >
-            <Rocket size={14} />
-            <span className="arp-topbar-btn-label">Deploy</span>
-          </button>
-          <button
-            type="button"
-            className="arp-topbar-btn"
-            title="Proof"
-            onClick={() => {
-              setActivePane('proof');
-              setRightCollapsed(false);
-            }}
-          >
-            <ShieldCheck size={14} />
-            <span className="arp-topbar-btn-label">Proof</span>
-          </button>
-          <button type="button" className="arp-topbar-btn arp-topbar-btn-share" title="Copy link" onClick={handleShare}>
-            <Share2 size={14} />
-            <span className="arp-topbar-btn-label">Share</span>
-          </button>
-
-          <div className="arp-mode-switch">
-            <button type="button" className={`arp-ux-btn ${uxMode === 'beginner' ? 'active' : ''}`} onClick={() => toggleUxMode('beginner')}>
-              Beginner
-            </button>
-            <button type="button" className={`arp-ux-btn ${uxMode === 'pro' ? 'active' : ''}`} onClick={() => toggleUxMode('pro')}>
-              Pro
-            </button>
-          </div>
-
-          <SystemStatusHUD
-            isConnected={isConnected}
-            connectionMode={connectionMode}
-            activeAgentCount={activeAgentCount}
-            jobStatus={job?.status}
-            steps={steps}
-            healthLatencyMs={healthMs}
-            eventCount={events.length}
-            proofItemCount={proofItemCount}
-          />
-        </div>
-      </div>
-
       {token && buildJobs.length > 0 && (
         <div className="arp-recent-builds" aria-label="Recent Auto-Runner jobs">
           <span className="arp-recent-label">Recent builds</span>
@@ -721,103 +571,118 @@ export default function UnifiedWorkspace() {
       )}
 
       <div className="arp-layout arp-layout--no-inner-rail">
-        <div className="arp-center-pane">
-          <RunnerScopeTrack buildTargetId={effectiveBuildTargetId} buildTargetMeta={effectiveBuildTargetMeta} />
-          {/* Always show input - never hide it */}
-          <>
+        <div className="arp-center-pane arp-center-pane--composer-bottom">
+          <div className="arp-center-toolbar">
+            <div className="arp-center-toolbar-left">
+              {(effectiveProjectId || effectiveJobId) && token && (
+                <button
+                  type="button"
+                  className="arp-topbar-btn"
+                  style={{ fontSize: 11 }}
+                  title="Reload files from server"
+                  onClick={reloadWorkspaceFromServer}
+                >
+                  Sync
+                </button>
+              )}
+            </div>
+            <div className="arp-center-toolbar-center">
+              <AutoRunnerPanel
+                mode="auto"
+                jobId={effectiveJobId}
+                jobStatus={job?.status}
+                onRun={() => handleApprove()}
+                onPause={handleCancel}
+                onResume={handleResume}
+                onCancel={handleCancel}
+                budget={estimate}
+                showRunButton={false}
+                showModeSelector={false}
+              />
+            </div>
+          </div>
+
+          <div className="arp-center-pane-scroll">
+            <WorkspaceActivityFeed
+              stage={stage}
+              plan={plan}
+              job={job}
+              steps={steps}
+              events={events}
+              effectiveJobId={effectiveJobId}
+              loading={loading}
+              connectionMode={connectionMode}
+              fallbackGoal={goal}
+            />
+
+            {stage === 'plan' && plan && (
+              <PlanApproval
+                plan={plan}
+                estimate={estimate}
+                capabilityNotice={capabilityNotice}
+                buildTargetMeta={buildTargetMeta}
+                onApprove={() => handleApprove()}
+                onRunAuto={() => handleApprove()}
+                onEdit={() => setStage('input')}
+                loading={loading}
+              />
+            )}
+
+            {(stage === 'running' || stage === 'completed') && (
+              <div className="arp-execution-area">
+                {isCompleted && (
+                  <BuildCompletionCard
+                    job={job}
+                    proof={proof}
+                    onOpenPreview={() => {
+                      setActivePane('preview');
+                      setRightCollapsed(false);
+                    }}
+                    onOpenProof={() => {
+                      setActivePane('proof');
+                      setRightCollapsed(false);
+                    }}
+                    onOpenCode={() => {
+                      setActivePane('code');
+                      setRightCollapsed(false);
+                    }}
+                    onDeployAgain={handleReset}
+                  />
+                )}
+
+                {failureStep && activePane !== 'failure' && (
+                  <FailureDrawer
+                    step={failureStep}
+                    onRetry={handleRetryStep}
+                    onOpenCode={() => setActivePane('code')}
+                    onPauseJob={handleCancel}
+                    onClose={() => setFailedStep(null)}
+                  />
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="arp-center-pane-composer">
             <GoalComposer
               goal={goal}
               onGoalChange={setGoal}
-              onSubmit={handleGeneratePlan}
+              onSubmit={handleSend}
               loading={loading}
               error={error}
               token={token}
               onEstimateReady={setEstimate}
               authLoading={authLoading}
-              onRetrySession={() => {
-                sessionBootstrapRef.current = false;
-                ensureGuest();
-              }}
               buildTarget={buildTarget}
               onBuildTargetChange={setBuildTarget}
               buildTargets={buildTargets}
-              continuationNotes={continuationNotes}
-              onContinuationChange={setContinuationNotes}
+              showExecutionTargets={false}
+              showContinuation={false}
+              showQuickChips={false}
+              showComposerHeader={false}
+              composerSubtitle={null}
             />
-            <div className="iterative-strip">
-              <h3>Iterative build</h3>
-              <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--text-muted)' }}>
-                Streams file updates into the preview panel. Use the <strong>Preview</strong> and <strong>Code</strong> tabs on the right when you need files or a live view.
-              </p>
-              <textarea
-                value={iterPrompt}
-                onChange={(e) => setIterPrompt(e.target.value)}
-                placeholder="e.g. Build a proof-validation microservice with REST API and tests…"
-              />
-              <div className="iterative-strip-actions">
-                <button type="button" className="primary" disabled={iterBuilding || !iterPrompt.trim()} onClick={runIterativeBuild}>
-                  {iterBuilding ? 'Building…' : 'Run iterative build'}
-                </button>
-              </div>
-            </div>
-          </>
-
-          {stage === 'plan' && plan && (
-            <PlanApproval
-              plan={plan}
-              estimate={estimate}
-              capabilityNotice={capabilityNotice}
-              buildTargetMeta={buildTargetMeta}
-              onApprove={() => handleApprove()}
-              onRunAuto={() => handleApprove()}
-              onEdit={() => setStage('input')}
-              loading={loading}
-            />
-          )}
-
-          {(stage === 'running' || stage === 'completed') && (
-            <div className="arp-execution-area">
-              {isCompleted && (
-                <BuildCompletionCard
-                  job={job}
-                  proof={proof}
-                  onOpenPreview={() => {
-                    setActivePane('preview');
-                    setRightCollapsed(false);
-                  }}
-                  onOpenProof={() => {
-                    setActivePane('proof');
-                    setRightCollapsed(false);
-                  }}
-                  onOpenCode={() => {
-                    setActivePane('code');
-                    setRightCollapsed(false);
-                  }}
-                  onDeployAgain={handleReset}
-                />
-              )}
-
-              <ExecutionTimeline
-                steps={steps}
-                events={events}
-                job={job}
-                onRetryStep={handleRetryStep}
-                onJumpToCode={() => setActivePane('code')}
-                isConnected={isConnected}
-                connectionMode={connectionMode}
-              />
-
-              {failureStep && activePane !== 'failure' && (
-                <FailureDrawer
-                  step={failureStep}
-                  onRetry={handleRetryStep}
-                  onOpenCode={() => setActivePane('code')}
-                  onPauseJob={handleCancel}
-                  onClose={() => setFailedStep(null)}
-                />
-              )}
-            </div>
-          )}
+          </div>
         </div>
 
         {!rightCollapsed && <ResizableDivider onResize={handleResize} onDoubleClick={handleResetWidth} />}
@@ -829,6 +694,71 @@ export default function UnifiedWorkspace() {
 
           {!rightCollapsed && (
             <>
+              <div className="arp-right-toolbar">
+                <button
+                  type="button"
+                  className="arp-topbar-btn arp-toolbar-icon-btn"
+                  title="Preview"
+                  aria-label="Preview"
+                  onClick={() => {
+                    setActivePane('preview');
+                    setRightCollapsed(false);
+                  }}
+                >
+                  <Eye size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="arp-topbar-btn arp-toolbar-icon-btn"
+                  title="Deploy — open preview when ready"
+                  aria-label="Deploy"
+                  onClick={() => {
+                    setActivePane('preview');
+                    setRightCollapsed(false);
+                  }}
+                >
+                  <Rocket size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="arp-topbar-btn arp-toolbar-icon-btn"
+                  title="Proof"
+                  aria-label="Proof"
+                  onClick={() => {
+                    setActivePane('proof');
+                    setRightCollapsed(false);
+                  }}
+                >
+                  <ShieldCheck size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="arp-topbar-btn arp-toolbar-icon-btn arp-topbar-btn-share"
+                  title="Share — copy link"
+                  aria-label="Share"
+                  onClick={handleShare}
+                >
+                  <Share2 size={16} />
+                </button>
+                <div className="arp-mode-switch" title="Simple vs Dev — which tools show in the right pane">
+                  <button type="button" className={`arp-ux-btn ${uxMode === 'beginner' ? 'active' : ''}`} onClick={() => toggleUxMode('beginner')}>
+                    Simple
+                  </button>
+                  <button type="button" className={`arp-ux-btn ${uxMode === 'pro' ? 'active' : ''}`} onClick={() => toggleUxMode('pro')}>
+                    Dev
+                  </button>
+                </div>
+                <SystemStatusHUD
+                  isConnected={isConnected}
+                  connectionMode={connectionMode}
+                  activeAgentCount={activeAgentCount}
+                  jobStatus={job?.status}
+                  steps={steps}
+                  healthLatencyMs={healthMs}
+                  eventCount={events.length}
+                  proofItemCount={proofItemCount}
+                />
+              </div>
               <div className="arp-pane-tabs">
                 {visibleRightPanes.map((p) => (
                   <button key={p} type="button" className={`arp-pane-tab ${activePane === p ? 'active' : ''}`} onClick={() => setActivePane(p)}>

@@ -81,6 +81,34 @@ async def store_proof(job_id: str, step_id: str,
     return proof_id
 
 
+async def fetch_proof_items_raw(job_id: str) -> List[Dict[str, Any]]:
+    """
+    Flat proof rows for P5 proof_index (id, step_id, proof_type, title, payload dict, created_at).
+    """
+    if _pool is None:
+        return []
+    async with _pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT id, step_id, proof_type, title, payload_json, created_at
+            FROM proof_items
+            WHERE job_id = $1
+            ORDER BY created_at
+            """,
+            job_id,
+        )
+    out: List[Dict[str, Any]] = []
+    for r in rows:
+        d = dict(r)
+        raw = d.pop("payload_json", None)
+        try:
+            d["payload"] = json.loads(raw) if raw else {}
+        except Exception:
+            d["payload"] = {}
+        out.append(d)
+    return out
+
+
 async def get_proof(job_id: str) -> Dict[str, Any]:
     """Return proof bundle grouped by category for the proof panel UI."""
     if _pool is None:
@@ -255,6 +283,23 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
 
         contract = empty_contract(job_id)
 
+    proof_index_doc: Optional[Dict[str, Any]] = None
+    try:
+        if _pool is not None:
+            async with _pool.acquire() as conn:
+                jrow = await conn.fetchrow("SELECT project_id FROM jobs WHERE id = $1", job_id)
+            pid = (jrow or {}).get("project_id")
+            if pid:
+                from pathlib import Path
+                from project_state import WORKSPACE_ROOT
+
+                safe = str(pid).replace("..", "").strip()
+                idx_path = Path(WORKSPACE_ROOT) / safe / "META" / "proof_index.json"
+                if idx_path.is_file():
+                    proof_index_doc = json.loads(idx_path.read_text(encoding="utf-8"))
+    except Exception:
+        logger.debug("get_proof: proof_index load skipped", exc_info=True)
+
     return {
         "job_id": job_id,
         "quality_score": quality_score,
@@ -269,4 +314,5 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
         "spec_compliance_percent": spec_compliance,
         **prod,
         "scorecard": scorecard,
+        "proof_index": proof_index_doc or {},
     }

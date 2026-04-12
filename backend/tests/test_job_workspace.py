@@ -4,6 +4,7 @@ Uses async app_client + auth_headers like the rest of backend/tests.
 """
 from __future__ import annotations
 
+import os
 import shutil
 import uuid
 from types import SimpleNamespace
@@ -17,6 +18,11 @@ pytestmark = pytest.mark.asyncio
 @pytest_asyncio.fixture
 async def mock_job_with_project(app_client, auth_headers):
     """Registered user, PG job row, and one file on disk under WORKSPACE_ROOT/{project_id}."""
+    if os.environ.get("CRUCIBAI_TEST_DB_UNAVAILABLE") == "1":
+        pytest.skip(
+            "PostgreSQL not reachable (127.0.0.1:5434); start deps: docker compose up -d postgres redis"
+        )
+
     import project_state
     from db_pg import get_pg_pool
     from orchestration import runtime_state as rs

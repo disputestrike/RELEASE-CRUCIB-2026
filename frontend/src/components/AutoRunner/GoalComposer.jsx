@@ -14,6 +14,9 @@ const QUICK_CHIPS = ['Build an app', 'Automate workflow', 'Fix project', 'Add a 
 const MAX_ATTACH_CHARS = 120000;
 const MAX_IMAGE_DATA_CHARS = 48000;
 
+const IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'];
+const BINARY_EXTS = ['.pdf', '.docx', '.doc', ...IMAGE_EXTS];
+
 function smartTags(goal) {
   const g = goal.toLowerCase();
   const tags = [];
@@ -103,12 +106,22 @@ export default function GoalComposer({
   token,
   onEstimateReady,
   authLoading = false,
-  onRetrySession,
   buildTarget = 'vite_react',
   onBuildTargetChange,
   buildTargets = [],
   continuationNotes = '',
   onContinuationChange,
+  /** Unified workspace: hide execution-target grid (backend infers target). */
+  showExecutionTargets = true,
+  /** Hide continuation textarea (follow-ups use the same composer). */
+  showContinuation = true,
+  /** Hide quick-start chip row. */
+  showQuickChips = true,
+  /** Hide title + subtitle block (unified workspace: composer sits under activity feed). */
+  showComposerHeader = true,
+  composerTitle = 'Auto-Runner',
+  /** undefined = default copy; null = hide subtitle entirely */
+  composerSubtitle,
 }) {
   const navigate = useNavigate();
   const tags = useMemo(() => (goal.length >= 12 ? smartTags(goal) : []), [goal]);
@@ -177,9 +190,6 @@ export default function GoalComposer({
       setVoiceError('Could not start microphone — check permissions.');
     }
   }, [listening, onGoalChange, stopVoice]);
-
-  const IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'];
-  const BINARY_EXTS = ['.pdf', '.docx', '.doc', ...IMAGE_EXTS];
 
   const appendToGoal = useCallback((block) => {
     const base = goalRef.current;
@@ -271,22 +281,30 @@ export default function GoalComposer({
       });
       e.target.value = '';
     },
-    [onGoalChange, appendToGoal],
+    [appendToGoal],
   );
 
-  const hasContinuation = typeof onContinuationChange === 'function';
+  const hasContinuation = showContinuation && typeof onContinuationChange === 'function';
+
+  const defaultSubtitle = (
+    <>
+      Describe what to build. Use voice or attach files (text, PDF, DOCX, images). Press <strong>Send</strong> to plan and
+      start the run in one step.
+    </>
+  );
 
   return (
     <div className="goal-composer">
-      <div className="gc-header">
-        <h2 className="gc-title">Auto-Runner</h2>
-        <p className="gc-subtitle">
-          Describe your goal… Pick an execution target (apps, sites, APIs, automation, agents). Use voice or attach files (text, PDF, DOCX, images). After a run, use <strong>Continuation</strong> so the next plan includes what to build next — no separate
-          comment thread required.
-        </p>
-      </div>
+      {showComposerHeader && (
+        <div className="gc-header">
+          <h2 className="gc-title">{composerTitle}</h2>
+          {composerSubtitle !== null && (
+            <p className="gc-subtitle">{composerSubtitle === undefined ? defaultSubtitle : composerSubtitle}</p>
+          )}
+        </div>
+      )}
 
-      {buildTargets.length > 0 && typeof onBuildTargetChange === 'function' && (
+      {showExecutionTargets && buildTargets.length > 0 && typeof onBuildTargetChange === 'function' && (
         <div className="gc-build-targets" role="group" aria-label="Execution target">
           <div className="gc-bt-label">Execution target</div>
           <div className="gc-bt-grid">
@@ -402,13 +420,15 @@ export default function GoalComposer({
         </div>
       )}
 
-      <div className="gc-chips">
-        {QUICK_CHIPS.map((chip) => (
-          <button key={chip} type="button" className="gc-chip" onClick={() => onGoalChange(chip)}>
-            {chip}
-          </button>
-        ))}
-      </div>
+      {showQuickChips && (
+        <div className="gc-chips">
+          {QUICK_CHIPS.map((chip) => (
+            <button key={chip} type="button" className="gc-chip" onClick={() => onGoalChange(chip)}>
+              {chip}
+            </button>
+          ))}
+        </div>
+      )}
 
       {tags.length > 0 && (
         <div className="gc-detect-row">
@@ -425,7 +445,7 @@ export default function GoalComposer({
 
       <CostEstimator
         goal={
-          (continuationNotes || '').trim()
+          hasContinuation && (continuationNotes || '').trim()
             ? `${goal}\n\n--- Continuation ---\n${(continuationNotes || '').trim()}`
             : goal
         }
@@ -435,16 +455,6 @@ export default function GoalComposer({
       />
 
       {authLoading && <div className="gc-hint">Starting your session…</div>}
-      {!authLoading && !token && (
-        <div className="gc-hint gc-hint-warn">
-          No API session yet — plans and jobs need a signed-in or guest token.{' '}
-          {onRetrySession && (
-            <button type="button" className="gc-linkish" onClick={onRetrySession}>
-              Start guest session
-            </button>
-          )}
-        </div>
-      )}
 
       {error && <div className="gc-error">{error}</div>}
     </div>

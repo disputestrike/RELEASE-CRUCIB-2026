@@ -26,8 +26,9 @@
   /* Bridge — existing Auto Runner + Proof components */
   --bg-0: var(--uw-bg-root);
   --bg-1: var(--uw-bg-surface);
-  --bg-2: #18181b;
-  --bg-3: var(--uw-bg-elevated);
+  /* Panels / chips — follow elevated surface so light theme is not stuck on dark zinc */
+  --bg-2: var(--uw-bg-elevated);
+  --bg-3: color-mix(in srgb, var(--uw-bg-elevated) 88%, var(--uw-text) 12%);
   --border-1: var(--uw-border-subtle);
   --border-2: var(--uw-border-strong);
   --text-strong: #f3f4f6;
@@ -46,6 +47,14 @@
 
   /* Main prompt / plan column — Manus-scale wide composer (was ~640px). */
   --uw-composer-max-width: min(920px, calc(100vw - 96px));
+
+  /* Soft elevation (prefer over 1px hairlines inside unified workspace). */
+  --uw-activity-shadow: 0 16px 42px rgba(0, 0, 0, 0.28);
+  --uw-activity-shadow-light: 0 12px 32px rgba(15, 23, 42, 0.07);
+  --uw-chrome-shadow-down: 0 14px 36px rgba(0, 0, 0, 0.35);
+  --uw-chrome-shadow-down-light: 0 10px 28px rgba(15, 23, 42, 0.06);
+  --uw-chrome-sep: 0 1px 0 color-mix(in srgb, var(--uw-text) 9%, transparent);
+  --uw-chrome-sep-light: 0 1px 0 rgba(255, 255, 255, 0.92);
 }
 
 /* Light theme — match global app tokens (data-theme on documentElement) */
@@ -65,6 +74,15 @@
   --uw-tab-active-underline: var(--theme-accent, #2563eb);
   --uw-focus-ring-color: var(--theme-accent, #2563eb);
   --uw-focus-ring: 0 0 0 2px var(--uw-bg-root), 0 0 0 4px var(--uw-focus-ring-color);
+
+  /* Bridge vars — base .uw-root used dark-tinted literals; re-map for readable light UI */
+  --text-strong: var(--theme-text, #1a1a1a);
+  --text-primary: var(--uw-text);
+  --text-secondary: var(--theme-muted, #57534e);
+  --text-muted: var(--uw-text-muted);
+  --accent: var(--theme-muted, #64748b);
+  /* Slightly stronger hover / active panels than flat surface2 */
+  --bg-3: color-mix(in srgb, var(--uw-bg-elevated) 88%, var(--uw-text) 12%);
 }
 
 [data-theme="light"] .uw-root .arp-env-pill {
@@ -87,6 +105,16 @@
 [data-theme="light"] .uw-root .iterative-strip button.primary {
   background: var(--theme-accent, #2563eb);
   color: #ffffff;
+}
+
+/* Light: clearer split between center column and proof / preview pane */
+[data-theme="light"] .uw-root .arp-right-pane {
+  border-left-color: var(--uw-border-strong);
+}
+[data-theme="light"] .uw-root .arp-topbar,
+[data-theme="light"] .uw-root .arp-pane-tabs,
+[data-theme="light"] .uw-root .arp-recent-builds {
+  border-color: var(--uw-border-strong);
 }
 
 .uw-root .arp-breadcrumb {
@@ -260,4 +288,79 @@
   box-shadow: none;
   outline: 1px solid var(--uw-focus-ring-color);
   outline-offset: 1px;
+}
+
+/* ── Manus-style chrome: shade + shadow instead of stacked hairlines ───── */
+.uw-root .arp-topbar {
+  border-bottom: none;
+  box-shadow: var(--uw-chrome-sep), var(--uw-chrome-shadow-down);
+}
+
+[data-theme='light'] .uw-root .arp-topbar {
+  box-shadow: var(--uw-chrome-sep-light), var(--uw-chrome-shadow-down-light);
+}
+
+.uw-root .arp-center-toolbar {
+  border-bottom: none;
+  box-shadow: 0 18px 32px color-mix(in srgb, #000 22%, transparent);
+}
+
+[data-theme='light'] .uw-root .arp-center-toolbar {
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.05);
+}
+
+.uw-root .arp-center-pane--composer-bottom .arp-center-pane-composer {
+  border-top: none;
+  padding-top: 18px;
+  box-shadow: 0 -16px 36px color-mix(in srgb, #000 18%, transparent);
+}
+
+[data-theme='light'] .uw-root .arp-center-pane--composer-bottom .arp-center-pane-composer {
+  box-shadow: 0 -12px 28px rgba(15, 23, 42, 0.05);
+}
+
+.uw-root .arp-right-pane:not(.collapsed) {
+  border-left: none;
+  box-shadow: -18px 0 40px color-mix(in srgb, #000 28%, transparent);
+}
+
+[data-theme='light'] .uw-root .arp-right-pane:not(.collapsed) {
+  box-shadow: -12px 0 32px rgba(15, 23, 42, 0.06);
+}
+
+.uw-root .arp-right-toolbar {
+  border-bottom: none;
+  box-shadow: var(--uw-chrome-sep), 0 12px 24px color-mix(in srgb, #000 18%, transparent);
+}
+
+[data-theme='light'] .uw-root .arp-right-toolbar {
+  box-shadow: var(--uw-chrome-sep-light), 0 8px 20px rgba(15, 23, 42, 0.04);
+}
+
+.uw-root .arp-pane-tabs {
+  border-bottom: none;
+  box-shadow: var(--uw-chrome-sep);
+}
+
+[data-theme='light'] .uw-root .arp-pane-tabs {
+  box-shadow: var(--uw-chrome-sep-light);
+}
+
+.uw-root .gc-composer-shell {
+  border: none;
+  background: color-mix(in srgb, var(--uw-bg-elevated) 94%, var(--uw-text) 6%);
+  box-shadow: 0 16px 40px color-mix(in srgb, #000 26%, transparent), inset 0 1px 0 color-mix(in srgb, var(--uw-text) 7%, transparent);
+}
+
+[data-theme='light'] .uw-root .gc-composer-shell {
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.uw-root .gc-composer-footer {
+  border-top: none;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--uw-text) 8%, transparent);
+}
+
+[data-theme='light'] .uw-root .gc-composer-footer {
+  box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.06);
 }

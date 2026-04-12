@@ -16,7 +16,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  background: #FAFAF8;
+  background: var(--theme-surface, #fafaf8);
+  color: var(--theme-text, #1a1a1a);
   gap: 12px;
 }
 
@@ -34,7 +35,7 @@
   border: none;
   cursor: pointer;
   padding: 8px;
-  color: #1A1A1A;
+  color: var(--theme-text, #1a1a1a);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -44,7 +45,7 @@
 
 .layout-toggle-sidebar:hover,
 .layout-toggle-panel:hover {
-  background: #F3F1ED;
+  background: var(--theme-surface2, #f3f1ed);
 }
 
 /* Main Container */
@@ -357,16 +358,4 @@
   }
 }
 
-/* Hide layout nav sidebar toggle in fullbleed workspace — workspace has its own explorer toggle */
-.layout-page-content--fullbleed ~ * .layout-sidebar-toggle,
-.layout-page-content--fullbleed .layout-sidebar-toggle {
-  display: none !important;
-}
-
-/* Auto-runner and workspace: hide the sidebar entirely so the page uses full width */
-.layout-3-column.sidebar-hidden .layout-sidebar-wrapper {
-  display: none !important;
-}
-.layout-3-column.sidebar-hidden .layout-main {
-  margin-left: 0 !important;
-}
+/* Workspace uses the same app sidebar as other /app routes (no sidebar-hidden). */

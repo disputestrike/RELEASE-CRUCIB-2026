@@ -79,6 +79,37 @@
   --chat-error:     #b91c1c;
 }
 
+/* Logo wordmark — follows app theme; marketing nav uses kimi ink so dark theme ≠ invisible text on light headers */
+.logo-wordmark {
+  color: var(--theme-text, #1a1a1a);
+}
+.logo-tagline {
+  color: var(--theme-muted, #71717a);
+}
+.logo-wordmark--force-light {
+  color: #ffffff !important;
+}
+.logo-tagline--force-light {
+  color: rgba(255, 255, 255, 0.88) !important;
+}
+/* Public / marketing surfaces use kimi ink so logo stays dark on light headers while app theme is dark */
+.marketing-top-nav .logo-wordmark,
+.marketing-page .logo-wordmark {
+  color: var(--kimi-text, #1a1a1a);
+}
+.marketing-top-nav .logo-tagline,
+.marketing-page .logo-tagline {
+  color: var(--kimi-text-muted, #555555);
+}
+
+/* Explicit light panels (auth form, onboarding) — always dark text */
+.logo-surface-light .logo-wordmark {
+  color: #1a1a1a;
+}
+.logo-surface-light .logo-tagline {
+  color: #555555;
+}
+
 /* Apply theme to body — single source so dark = black, light = white everywhere */
 body {
   background: var(--theme-bg);

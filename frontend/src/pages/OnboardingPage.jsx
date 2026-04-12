@@ -69,7 +69,7 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen w-full bg-white flex flex-col items-center justify-center p-8">
-      <Logo variant="full" height={40} href="/app" className="mb-8" showTagline={false} />
+      <Logo variant="full" height={40} href="/app" className="logo-surface-light mb-8" showTagline={false} />
       <h1 className="text-2xl font-semibold text-[#1A1A1A] mb-8">
         How do you want to use CrucibAI?
       </h1>

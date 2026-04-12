@@ -670,6 +670,23 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
             "reason": "critical_enforcement_block",
         }
 
+    try:
+        from .workspace_assembly import seal_completed_job_workspace
+
+        seal = await seal_completed_job_workspace(job_id, workspace_path, steps)
+        if seal:
+            await append_job_event(
+                job_id,
+                "workspace_sealed",
+                {
+                    "kind": "seal.json",
+                    "artifact_file_count": seal.get("artifact_file_count"),
+                    "manifest_sha256": seal.get("manifest_sha256"),
+                },
+            )
+    except Exception as _seal_e:
+        logger.warning("workspace seal skipped: %s", _seal_e)
+
     await update_job_state(job_id, "completed", {
         "current_phase": "completed",
         "quality_score": quality_score,

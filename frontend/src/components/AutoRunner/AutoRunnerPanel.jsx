@@ -24,25 +24,33 @@ export default function AutoRunnerPanel({
   onCancel,
   budget: _budget,
   className = '',
+  /** When false, primary Run is hidden (workspace uses composer Send → plan + run-auto). */
+  showRunButton = true,
+  /** When false, Off/Guided/Auto pills are hidden (workspace always plans with mode=auto on the server). */
+  showModeSelector = true,
 }) {
   const isRunning = jobStatus === 'running';
-  const canRun = mode !== 'off' && (!jobStatus || ['planned', 'approved'].includes(jobStatus));
+  const effectiveMode = showModeSelector ? mode : 'auto';
+  const canRun = effectiveMode !== 'off' && (!jobStatus || ['planned', 'approved'].includes(jobStatus));
   const canResume = ['failed', 'blocked'].includes(jobStatus);
 
   return (
     <div className={`auto-runner-panel ${className}`}>
-      {/* Mode selector */}
-      <div className="arp-modes">
-        {MODES.map(m => (
-          <button
-            key={m.key}
-            className={`arp-mode-btn ${mode === m.key ? 'active' : ''}`}
-            onClick={() => onModeChange?.(m.key)}
-          >
-            {m.label}
-          </button>
-        ))}
-      </div>
+      {/* Mode selector — optional; unified workspace runs in auto without exposing the tri-state */}
+      {showModeSelector && (
+        <div className="arp-modes">
+          {MODES.map(m => (
+            <button
+              key={m.key}
+              type="button"
+              className={`arp-mode-btn ${mode === m.key ? 'active' : ''}`}
+              onClick={() => onModeChange?.(m.key)}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Status indicator */}
       {jobStatus && (
@@ -53,7 +61,7 @@ export default function AutoRunnerPanel({
 
       {/* Controls */}
       <div className="arp-controls">
-        {canRun && (
+        {showRunButton && canRun && (
           <button className="arp-btn arp-btn-run" onClick={onRun}>
             <Play size={12} /> Run
           </button>

@@ -98,6 +98,7 @@ backend/workspace/
 screenshots/
 
 # Local dev / test artifacts (do not push)
+.tmp_pytest_manual/
 frontend/dev.log
 frontend/playwright-report/
 frontend/test-results/

@@ -7,9 +7,12 @@ multi-stack or enterprise-style requests.
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 import re
 from typing import Any, Dict, List
+
+logger = logging.getLogger(__name__)
 
 from agent_dag import AGENT_DAG, get_execution_phases, _AGENT_RELEVANT_DEPS
 from agent_resilience import get_criticality
@@ -312,6 +315,16 @@ async def run_swarm_agent_step(step: Dict[str, Any], job: Dict[str, Any], worksp
         rel for rel, digest in after.items()
         if before.get(rel) != digest
     )
+
+    try:
+        from orchestration.workspace_assembly_pipeline import assembly_v2_enabled, materialize_swarm_agent_output
+
+        if assembly_v2_enabled() and workspace_path:
+            extra_written = materialize_swarm_agent_output(workspace_path, agent_name, result)
+            if extra_written:
+                changed_files = sorted(set(changed_files + extra_written))
+    except Exception as e:
+        logger.warning("assembly v2 swarm materialize: %s", e)
 
     artifact_path = f"outputs/{slugify_agent_name(agent_name)}.md"
     artifacts = []

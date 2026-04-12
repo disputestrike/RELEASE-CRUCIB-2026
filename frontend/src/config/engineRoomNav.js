@@ -6,11 +6,12 @@ import {
   Sparkles, Bot, BookOpen, Library, Radio, MessageSquare, ShoppingBag, Users,
   FileOutput, FileText, LayoutGrid, HelpCircle, Key, Keyboard,
   CreditCard, ScrollText, BarChart3, Zap, ShieldCheck, Code, Monitor,
-  PlayCircle, Coins,
+  PlayCircle, Coins, Store,
 } from 'lucide-react';
 
 export const ENGINE_ROOM_ITEMS = [
   { label: 'Skills', icon: Sparkles, href: '/app/skills' },
+  { label: 'Marketplace', icon: Store, href: '/app/skills/marketplace' },
   { label: 'Studio', icon: Bot, href: '/app/studio', beta: true },
   { label: 'Knowledge', icon: BookOpen, href: '/app/knowledge', beta: true },
   { label: 'Channels', icon: Radio, href: '/app/channels', beta: true },
@@ -32,7 +33,7 @@ export const ENGINE_ROOM_ITEMS = [
   { label: 'Model Manager', icon: BarChart3, href: '/app/models' },
   { label: 'Fine-Tuning', icon: Zap, href: '/app/fine-tuning', beta: true },
   { label: 'Safety Dashboard', icon: ShieldCheck, href: '/app/safety', beta: true },
-  { label: 'Monitoring', icon: BarChart3, href: '/app/monitoring' },
+  { label: 'Runs', icon: BarChart3, href: '/app/monitoring' },
   { label: 'Auto-Runner', icon: PlayCircle, href: '/app/workspace' },
   { label: 'VibeCode', icon: Code, href: '/app/vibecode', beta: true },
   { label: 'IDE', icon: Monitor, href: '/app/ide', beta: true },

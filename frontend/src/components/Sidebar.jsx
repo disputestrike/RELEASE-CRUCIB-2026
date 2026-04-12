@@ -5,11 +5,10 @@ import { useTaskStore } from '../stores/useTaskStore';
 import {
   Plus, Search, Library, FolderOpen, FolderPlus, CheckCircle, Clock,
   MessageCircle, Zap, AlertCircle, LogOut, ChevronRight, ChevronDown,
-  FileText, LayoutGrid, BookOpen, HelpCircle, Coins,
+  LayoutGrid, BookOpen, HelpCircle, Coins,
   X, MoreHorizontal, ExternalLink, Pencil, Share2,
   Trash2, FolderInput, Star, Settings,
   PanelLeftClose, PanelLeftOpen, History, Home,
-  PlayCircle, BarChart3, Store,
 } from 'lucide-react';
 import Logo from './Logo';
 import './Sidebar.css';
@@ -18,7 +17,7 @@ import './Sidebar.css';
  * Sidebar — minimal primary nav (Manus-style density).
  * Create: New + menu (task / project). Work: Home, Agents. Library: Prompts / Learn / Patterns.
  * History: only when there is at least one task or project.
- * Engine room: moved to Settings → Engine room (linked from account menus).
+ * Runs, Marketplace, and other power routes: Settings → Engine room only (not duplicated here).
  */
 
 export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], sidebarOpen = true, onToggleSidebar }) => {
@@ -95,12 +94,6 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
       return next;
     });
   }, []);
-
-  /** Create — primary actions (compliance S-01: grouped IA) */
-  const createNav = [
-    { label: 'New Task', icon: Plus, href: '/app', exact: true, state: { newAgent: Date.now() } },
-    { label: 'New Project', icon: FolderPlus, href: '/app', exact: true, state: { newProject: true } },
-  ];
 
   // Show BOTH projects and store tasks — chat tasks must always be visible; include createdAt for History grouping
   const listItems = useMemo(() => {
@@ -504,12 +497,6 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
           <Link to="/app" className="sidebar-collapsed-icon" title="Home" aria-label="Home">
             <Home size={20} />
           </Link>
-          <Link to="/app/workspace" className="sidebar-collapsed-icon" title="Build" aria-label="Build workspace">
-            <PlayCircle size={20} />
-          </Link>
-          <Link to="/app/monitoring" className="sidebar-collapsed-icon" title="Runs & metrics" aria-label="Monitoring">
-            <BarChart3 size={20} />
-          </Link>
           <Link to="/app/agents" className="sidebar-collapsed-icon" title="Agents" aria-label="Agents">
             <FolderOpen size={20} />
           </Link>
@@ -549,7 +536,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
 
       {/* Header — collapse button at top inside pane one (Manus-like) */}
       <div className="sidebar-header">
-        <Logo variant="full" height={32} href="/app" className="sidebar-logo" showTagline={false} dark />
+        <Logo variant="full" height={32} href="/app" className="sidebar-logo" showTagline={false} nameClassName="sidebar-logo-text" />
         {onToggleSidebar && (
           <button
             type="button"
@@ -629,24 +616,9 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
             <Home size={18} className="sidebar-nav-icon" />
             <span className="sidebar-nav-label">Home</span>
           </Link>
-          <Link
-            to="/app/workspace"
-            className={`sidebar-nav-item ${isActivePrefix('/app/workspace') && !location.pathname.includes('workspace-classic') && !location.pathname.includes('workspace-manus') ? 'active' : ''}`}
-          >
-            <PlayCircle size={18} className="sidebar-nav-icon" />
-            <span className="sidebar-nav-label">Build</span>
-          </Link>
-          <Link to="/app/monitoring" className={`sidebar-nav-item ${isActivePrefix('/app/monitoring') ? 'active' : ''}`}>
-            <BarChart3 size={18} className="sidebar-nav-icon" />
-            <span className="sidebar-nav-label">Runs</span>
-          </Link>
           <Link to="/app/agents" className={`sidebar-nav-item ${isActivePrefix('/app/agents') ? 'active' : ''}`}>
             <FolderOpen size={18} className="sidebar-nav-icon" />
             <span className="sidebar-nav-label">Agents</span>
-          </Link>
-          <Link to="/app/skills/marketplace" className={`sidebar-nav-item ${isActivePrefix('/app/skills/marketplace') ? 'active' : ''}`}>
-            <Store size={18} className="sidebar-nav-icon" />
-            <span className="sidebar-nav-label">Marketplace</span>
           </Link>
         </div>
         <div className="sidebar-nav-group-label">Library</div>

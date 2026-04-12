@@ -191,7 +191,7 @@ const AuthPage = () => {
             className="w-full max-w-[380px]"
           >
             {/* Logo — centered above form, 48–64px per spec */}
-            <div className="mb-8 flex justify-center">
+            <div className="mb-8 flex justify-center logo-surface-light">
               <Logo variant="full" height={56} href="/" />
             </div>
 

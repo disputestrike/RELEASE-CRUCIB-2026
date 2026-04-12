@@ -31,17 +31,23 @@ function YourIconSvg({ size }) {
 
 export function Logo({
   variant: _variant = 'full',
+  /**
+   * Force light ink on a fixed dark background (hero strip, etc.).
+   * Default: follow `data-theme` via `.logo-wordmark` / `.logo-tagline` in index.css.
+   */
   dark = false,
   height = 32,
   href,
   className = '',
   alt = 'CrucibAI logo',
   showTagline = true,
+  /** Optional class on the "CrucibAI" wordmark (e.g. sidebar typography). */
+  nameClassName = '',
 }) {
   const [iconError, setIconError] = useState(false);
 
-  const textColor = dark ? '#fff' : '#1A1A1A';
-  const mutedColor = dark ? 'rgba(255,255,255,0.8)' : '#6B7280';
+  const wordmarkClass = ['logo-wordmark', dark ? 'logo-wordmark--force-light' : '', nameClassName].filter(Boolean).join(' ');
+  const taglineClass = ['logo-tagline', dark ? 'logo-tagline--force-light' : ''].filter(Boolean).join(' ');
 
   const contentInner = (
     <>
@@ -66,21 +72,21 @@ export function Logo({
       )}
       <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, flexWrap: 'nowrap' }}>
         <span
+          className={wordmarkClass}
           style={{
             fontSize: Math.round(height * 0.5),
             fontWeight: 700,
             letterSpacing: '-0.02em',
-            color: textColor,
           }}
         >
           CrucibAI
         </span>
         {showTagline && (
           <span
+            className={taglineClass}
             style={{
               fontSize: Math.round(height * 0.4),
               fontWeight: 400,
-              color: mutedColor,
             }}
           >
             — Inevitable AI

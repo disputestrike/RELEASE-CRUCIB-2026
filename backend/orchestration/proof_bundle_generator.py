@@ -17,6 +17,7 @@ Structure:
   │  ├─ generated_code.zip
   │  ├─ package.json
   │  └─ deploy_url.txt (if successful)
+  ├─ workspace_meta/        # P5: copy of workspace META (proof_index, artifact_manifest, run_manifest, seal)
   ├─ verification/
   │  ├─ compile_check.json
   │  ├─ api_smoke.json
@@ -89,6 +90,9 @@ class ProofBundleGenerator:
         
         # 8. ARTIFACTS
         await self._collect_artifacts(proof_dir, job_state)
+
+        # 8b. Workspace META (P5 proof ↔ files) — mirror from sealed project workspace when available
+        await self._copy_workspace_meta(proof_dir, job_state)
         
         # 9. CREATE ZIP FOR DOWNLOAD
         await self._create_proof_zip(proof_dir)
@@ -96,6 +100,35 @@ class ProofBundleGenerator:
         logger.info(f"Proof bundle generated: {proof_dir}")
         return proof_dir
     
+    async def _copy_workspace_meta(self, proof_dir: str, job_state: Dict[str, Any]) -> None:
+        """Copy META/* from the durable workspace into proof bundle (P5)."""
+        ws = (job_state.get("workspace_path") or "").strip()
+        pid = (job_state.get("project_id") or "").strip().replace("..", "")
+        if not ws and pid:
+            try:
+                from pathlib import Path
+                from project_state import WORKSPACE_ROOT
+
+                p = Path(WORKSPACE_ROOT) / pid
+                if p.is_dir():
+                    ws = str(p.resolve())
+            except Exception as e:
+                logger.debug("workspace_meta: resolve workspace: %s", e)
+        if not ws or not os.path.isdir(ws):
+            return
+        meta = os.path.join(ws, "META")
+        if not os.path.isdir(meta):
+            return
+        dest = os.path.join(proof_dir, "workspace_meta")
+        os.makedirs(dest, exist_ok=True)
+        for name in ("proof_index.json", "artifact_manifest.json", "run_manifest.json", "seal.json"):
+            src = os.path.join(meta, name)
+            if os.path.isfile(src):
+                try:
+                    shutil.copy2(src, os.path.join(dest, name))
+                except OSError as e:
+                    logger.debug("workspace_meta copy %s: %s", name, e)
+
     async def _write_manifest(self, proof_dir: str, job_id: str, job_state: Dict[str, Any]) -> None:
         """Write job manifest."""
         manifest = {

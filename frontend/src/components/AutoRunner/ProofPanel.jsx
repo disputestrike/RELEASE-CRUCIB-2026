@@ -156,6 +156,28 @@ export default function ProofPanel({ proof, jobId, onExport: _onExport }) {
         </div>
       )}
 
+      {proof.proof_index &&
+        typeof proof.proof_index === 'object' &&
+        proof.proof_index.by_path &&
+        Object.keys(proof.proof_index.by_path).length > 0 && (
+          <div className="pp-proof-index" aria-label="Proof rows linked to workspace paths">
+            <div className="pp-proof-index-title">Workspace ↔ proof (P5)</div>
+            <ul className="pp-proof-index-list">
+              {Object.entries(proof.proof_index.by_path)
+                .slice(0, 50)
+                .map(([path, rows]) => (
+                  <li key={path} className="pp-proof-index-row">
+                    <code className="pp-proof-index-path">{path}</code>
+                    <span className="pp-proof-index-meta">
+                      {Array.isArray(rows) ? rows.length : 0} proof row
+                      {Array.isArray(rows) && rows.length === 1 ? '' : 's'}
+                    </span>
+                  </li>
+                ))}
+            </ul>
+          </div>
+        )}
+
       <div className="pp-score-breakdown">
         <button type="button" className="pp-score-toggle" onClick={() => setScoreExpanded(!scoreExpanded)}>
           {scoreExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
@@ -232,6 +254,28 @@ export default function ProofPanel({ proof, jobId, onExport: _onExport }) {
                   </div>
                   <div className="pp-item-content">
                     <div className="pp-item-title">{item.title}</div>
+                    {item.id &&
+                      proof.proof_index?.by_proof_item_id?.[item.id] &&
+                      (proof.proof_index.by_proof_item_id[item.id].paths_resolved_in_manifest?.length > 0 ||
+                        proof.proof_index.by_proof_item_id[item.id].paths_missing_from_manifest?.length >
+                          0) && (
+                        <div className="pp-item-file-links" aria-label="Paths linked to this proof row">
+                          {(proof.proof_index.by_proof_item_id[item.id].paths_resolved_in_manifest || []).map(
+                            (p) => (
+                              <span key={`ok-${p}`} className="pp-path-chip pp-path-resolved" title="In workspace">
+                                {p}
+                              </span>
+                            )
+                          )}
+                          {(proof.proof_index.by_proof_item_id[item.id].paths_missing_from_manifest || []).map(
+                            (p) => (
+                              <span key={`miss-${p}`} className="pp-path-chip pp-path-missing" title="Not in manifest">
+                                {p}
+                              </span>
+                            )
+                          )}
+                        </div>
+                      )}
                     {item.created_at && <div className="pp-item-meta">{item.created_at}</div>}
                     {!isExpanded && item.payload && Object.keys(item.payload).length > 0 && (
                       <div className="pp-item-payload">

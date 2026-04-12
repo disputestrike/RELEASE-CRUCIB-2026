@@ -136,13 +136,15 @@ const Layout = () => {
   // Main content
   const mainContent = (
     <div className="layout-main-wrapper">
-      {/* Credits — top right (Manus-style); frees sidebar history space */}
-      <div className="layout-topbar" role="region" aria-label="Credits">
-        <Link to="/app/tokens" className="layout-topbar-credits" title="Credits & Billing">
-          <Sparkles size={16} className="layout-topbar-credits-icon" aria-hidden />
-          <span className="layout-topbar-credits-value">{creditsAmount}</span>
-        </Link>
-      </div>
+      {/* Credits — dashboard / rest of app only (workspace uses full vertical space) */}
+      {!isWorkspaceView && (
+        <div className="layout-topbar" role="region" aria-label="Credits">
+          <Link to="/app/tokens" className="layout-topbar-credits" title="Credits & Billing">
+            <Sparkles size={16} className="layout-topbar-credits-icon" aria-hidden />
+            <span className="layout-topbar-credits-value">{creditsAmount}</span>
+          </Link>
+        </div>
+      )}
 
       {user?.internal_team && (
         <div className="layout-internal-banner">
@@ -165,34 +167,36 @@ const Layout = () => {
         }} />
       </div>
 
-      {/* Footer — home chat: trust line only; elsewhere: status + legal links */}
-      <footer className={`layout-footer ${isAppHomeDashboard ? 'layout-footer--dash-home layout-footer--chat-trust-only' : ''}`}>
-        {isAppHomeDashboard ? (
-          <p className="layout-footer-trust">
-            CrucibAI can make mistakes. Please double-check important responses.
-          </p>
-        ) : (
-          <>
-            <span className="layout-footer-status">
-              {backendOk === true && <span className="status-green">● Connected</span>}
-              {backendOk === false && (
-                <>
-                  <span className="status-amber">● Disconnected</span>
-                  <button type="button" onClick={checkBackend} className="status-retry">Retry</button>
-                </>
-              )}
-              {backendOk === null && <span className="status-gray">● Checking…</span>}
-            </span>
-            <span className="layout-footer-links">
-              <Link to="/about">About</Link>
-              <Link to="/get-help">Get help</Link>
-              <Link to="/contact">Contact</Link>
-              <Link to="/privacy">Privacy</Link>
-              <Link to="/terms">Terms</Link>
-            </span>
-          </>
-        )}
-      </footer>
+      {/* Footer — hidden on workspace (max vertical space); home chat trust line; elsewhere status + legal */}
+      {!isWorkspaceView && (
+        <footer className={`layout-footer ${isAppHomeDashboard ? 'layout-footer--dash-home layout-footer--chat-trust-only' : ''}`}>
+          {isAppHomeDashboard ? (
+            <p className="layout-footer-trust">
+              CrucibAI can make mistakes. Please double-check important responses.
+            </p>
+          ) : (
+            <>
+              <span className="layout-footer-status">
+                {backendOk === true && <span className="status-green">● Connected</span>}
+                {backendOk === false && (
+                  <>
+                    <span className="status-amber">● Disconnected</span>
+                    <button type="button" onClick={checkBackend} className="status-retry">Retry</button>
+                  </>
+                )}
+                {backendOk === null && <span className="status-gray">● Checking…</span>}
+              </span>
+              <span className="layout-footer-links">
+                <Link to="/about">About</Link>
+                <Link to="/get-help">Get help</Link>
+                <Link to="/contact">Contact</Link>
+                <Link to="/privacy">Privacy</Link>
+                <Link to="/terms">Terms</Link>
+              </span>
+            </>
+          )}
+        </footer>
+      )}
     </div>
   );
 
@@ -202,10 +206,12 @@ const Layout = () => {
       <header className="layout-mobile-header-bar">
         <Logo variant="full" height={28} href="/app" className="layout-mobile-logo" showTagline={false} />
         <div className="layout-mobile-header-actions">
-          <Link to="/app/tokens" className="layout-mobile-credits" title="Credits & Billing">
-            <Sparkles size={16} className="layout-mobile-credits-icon" aria-hidden />
-            <span className="layout-mobile-credits-value">{creditsAmount}</span>
-          </Link>
+          {!isWorkspaceView && (
+            <Link to="/app/tokens" className="layout-mobile-credits" title="Credits & Billing">
+              <Sparkles size={16} className="layout-mobile-credits-icon" aria-hidden />
+              <span className="layout-mobile-credits-value">{creditsAmount}</span>
+            </Link>
+          )}
           <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="layout-mobile-menu-btn" aria-label="Toggle menu">
             {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
@@ -231,11 +237,11 @@ const Layout = () => {
         sidebar={sidebarContent}
         main={mainContent}
         rightPanel={rightPanelContent}
-        sidebarOpen={isWorkspaceView ? false : sidebarOpen}
+        sidebarOpen={sidebarOpen}
         onToggleSidebar={toggleSidebar}
         setSidebarOpen={setSidebarOpen}
-        hideSidebarToggle={isWorkspaceView}
-        className={[isWorkspaceView ? 'sidebar-hidden' : '', isAppHomeDashboard ? 'layout-shell--dash-home' : ''].filter(Boolean).join(' ')}
+        hideSidebarToggle={false}
+        className={isAppHomeDashboard ? 'layout-shell--dash-home' : ''}
       />
 
       {/* Onboarding Tour for first-time users */}

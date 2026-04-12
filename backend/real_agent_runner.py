@@ -121,6 +121,26 @@ async def _run_file_tool_agent(
     previous_outputs: Dict[str, Dict[str, Any]],
 ) -> Dict[str, Any]:
     """Write generated frontend/backend/database/tests to project workspace. Real execution."""
+    try:
+        from orchestration.workspace_assembly_pipeline import assembly_v2_enabled, materialize_from_previous_outputs
+
+        if assembly_v2_enabled():
+            pl = previous_outputs.get("Planner") or {}
+            g = (
+                (pl.get("output") or pl.get("result") or pl.get("code") or "")
+                if isinstance(pl, dict)
+                else ""
+            )
+            if isinstance(g, str):
+                goal_snippet = g[:800]
+            else:
+                goal_snippet = ""
+            return await materialize_from_previous_outputs(
+                project_id, previous_outputs, goal_snippet=goal_snippet
+            )
+    except Exception as e:
+        logger.warning("File Tool Agent assembly v2 skipped, using legacy path: %s", e)
+
     from tools.file_agent import FileAgent
     workspace = _project_workspace(project_id)
     agent = FileAgent(llm_client=None, config={"workspace": str(workspace)})

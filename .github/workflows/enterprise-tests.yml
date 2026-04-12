@@ -13,6 +13,20 @@ env:
   PYTHON_VERSION: '3.11'
 
 jobs:
+  # Agent DAG ↔ committed audit manifests (fast gate)
+  agent-dag-audit:
+    name: Agent DAG audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install backend deps (audit imports agent_dag)
+        run: cd backend && pip install -r requirements.txt
+      - name: Verify agent_audit.json matches code
+        run: cd backend && PYTHONPATH=. python scripts/audit_agent_dag.py --check
+
   # Layer 1.1: Lint
   lint:
     name: Lint

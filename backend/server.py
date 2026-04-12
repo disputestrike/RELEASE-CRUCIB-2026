@@ -9,6 +9,7 @@ ROOT_DIR = Path(__file__).resolve().parent
 load_dotenv(ROOT_DIR / ".env", override=True)
 
 from starlette.middleware.cors import CORSMiddleware
+from starlette.background import BackgroundTask
 from middleware import (
     RateLimitMiddleware,
     SecurityHeadersMiddleware,
@@ -94,6 +95,8 @@ class CSRFMiddleware:
         "/api/auth/login",
         "/api/auth/google",
         "/api/auth/google/callback",
+        "/api/auth/github",
+        "/api/auth/github/callback",
         "/api/health",
         "/api/contact",
         "/api/enterprise/contact",
@@ -3456,6 +3459,16 @@ logger.info(f"Google OAuth Config - GOOGLE_CLIENT_ID: {GOOGLE_CLIENT_ID[:20]}...
 logger.info(f"Google OAuth Config - GOOGLE_CLIENT_SECRET: {'SET' if GOOGLE_CLIENT_SECRET else 'NOT SET'}")
 logger.info(f"Google OAuth Config - GOOGLE_REDIRECT_URI: {GOOGLE_REDIRECT_URI or '(derive from BACKEND_PUBLIC_URL or request)'}")
 
+GITHUB_CLIENT_ID = os.environ.get("GITHUB_CLIENT_ID", "").strip()
+GITHUB_CLIENT_SECRET = os.environ.get("GITHUB_CLIENT_SECRET", "").strip()
+GITHUB_REDIRECT_URI = (os.environ.get("GITHUB_REDIRECT_URI") or "").strip().rstrip("/")
+logger.info(
+    "GitHub OAuth Config - GITHUB_CLIENT_ID: %s",
+    (GITHUB_CLIENT_ID[:16] + "...") if GITHUB_CLIENT_ID else "not set",
+)
+logger.info("GitHub OAuth Config - GITHUB_CLIENT_SECRET: %s", "SET" if GITHUB_CLIENT_SECRET else "NOT SET")
+
+
 def _backend_base_for_oauth(request: Request) -> str:
     """Prefer HTTPS for OAuth callback when behind a TLS proxy (e.g. Railway)."""
     # Env override (e.g. BACKEND_PUBLIC_URL=https://crucibai-production.up.railway.app)
@@ -3473,6 +3486,13 @@ def _oauth_callback_url(request: Request) -> str:
         return GOOGLE_REDIRECT_URI
     base = _backend_base_for_oauth(request)
     return f"{base}/api/auth/google/callback"
+
+
+def _github_oauth_callback_url(request: Request) -> str:
+    if GITHUB_REDIRECT_URI:
+        return GITHUB_REDIRECT_URI
+    base = _backend_base_for_oauth(request)
+    return f"{base}/api/auth/github/callback"
 
 
 @auth_router.get("/auth/google")
@@ -3615,6 +3635,155 @@ async def auth_google_callback(request: Request, code: Optional[str] = None, sta
     if redirect_path and redirect_path.startswith("/"):
         target += f"&redirect={quote(redirect_path)}"
     logger.info("Google callback: success, redirecting to frontend with token (user_id=%s)", user.get("id", ""))
+    return RedirectResponse(url=target)
+
+
+@auth_router.get("/auth/github")
+async def auth_github_redirect(request: Request, redirect: Optional[str] = None):
+    """GitHub OAuth: authorize URL; callback must match GitHub OAuth App settings."""
+    callback = _github_oauth_callback_url(request)
+    if not GITHUB_CLIENT_ID or GITHUB_CLIENT_ID.lower().startswith("mock"):
+        import base64 as b64
+
+        state_raw = json.dumps({"redirect": redirect or ""}) if redirect else ""
+        state_param = b64.urlsafe_b64encode(state_raw.encode()).decode() if state_raw else ""
+        return RedirectResponse(url=f"{callback}?code=mock_github_auth_test&state={state_param}")
+    import base64 as b64
+
+    state_raw = json.dumps({"redirect": redirect or ""}) if redirect else ""
+    state_param = b64.urlsafe_b64encode(state_raw.encode()).decode() if state_raw else ""
+    params = {
+        "client_id": GITHUB_CLIENT_ID,
+        "redirect_uri": callback,
+        "scope": "read:user user:email",
+        "allow_signup": "true",
+    }
+    if state_param:
+        params["state"] = state_param
+    return RedirectResponse(url=f"https://github.com/login/oauth/authorize?{urlencode(params)}")
+
+
+@auth_router.get("/auth/github/callback")
+async def auth_github_callback(
+    request: Request,
+    code: Optional[str] = None,
+    state: Optional[str] = None,
+    error: Optional[str] = None,
+    error_description: Optional[str] = None,
+):
+    """Exchange GitHub OAuth code, create/find user, redirect to frontend with JWT."""
+    if FRONTEND_URL and not FRONTEND_URL.startswith("http://localhost"):
+        frontend_base = FRONTEND_URL.rstrip("/")
+    else:
+        frontend_base = _backend_base_for_oauth(request).rstrip("/")
+    if error:
+        logger.info("GitHub callback error=%s desc=%s", error, (error_description or "")[:200])
+        return RedirectResponse(url=f"{frontend_base}/auth?error=github_{error}")
+    if not code:
+        return RedirectResponse(url=f"{frontend_base}/auth?error=no_code")
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not ready")
+
+    if code == "mock_github_auth_test":
+        import time
+
+        email = f"github.test.{int(time.time())}@crucibai.test"
+        name = "Test User (GitHub Mock)"
+    else:
+        if not GITHUB_CLIENT_ID or not GITHUB_CLIENT_SECRET:
+            return RedirectResponse(url=f"{frontend_base}/auth?error=github_not_configured")
+        cb = _github_oauth_callback_url(request)
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            tr = await client.post(
+                "https://github.com/login/oauth/access_token",
+                data={
+                    "client_id": GITHUB_CLIENT_ID,
+                    "client_secret": GITHUB_CLIENT_SECRET,
+                    "code": code,
+                    "redirect_uri": cb,
+                },
+                headers={"Accept": "application/json"},
+            )
+        if tr.status_code != 200:
+            logger.warning("GitHub token exchange failed: %s %s", tr.status_code, tr.text[:300])
+            return RedirectResponse(url=f"{frontend_base}/auth?error=github_token_failed")
+        tok = tr.json()
+        access_token = tok.get("access_token")
+        if not access_token:
+            return RedirectResponse(url=f"{frontend_base}/auth?error=github_no_access_token")
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        }
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            ur = await client.get("https://api.github.com/user", headers=headers)
+        if ur.status_code != 200:
+            logger.warning("GitHub user fetch failed: %s", ur.text[:300])
+            return RedirectResponse(url=f"{frontend_base}/auth?error=github_user_failed")
+        gh = ur.json()
+        name = (gh.get("name") or gh.get("login") or "GitHub User").strip()
+        email = (gh.get("email") or "").strip()
+        if not email:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                er = await client.get("https://api.github.com/user/emails", headers=headers)
+            if er.status_code == 200:
+                for row in er.json():
+                    if row.get("primary") and row.get("email"):
+                        email = row["email"].strip()
+                        break
+                    if row.get("verified") and row.get("email"):
+                        email = row["email"].strip()
+                        break
+        if not email:
+            return RedirectResponse(url=f"{frontend_base}/auth?error=github_no_email")
+
+    user = await db.users.find_one({"email": email}, {"_id": 0})
+    if not user:
+        user_id = str(uuid.uuid4())
+        user = {
+            "id": user_id,
+            "email": email,
+            "password": "",
+            "name": name,
+            "token_balance": FREE_TIER_CREDITS * CREDITS_PER_TOKEN,
+            "credit_balance": FREE_TIER_CREDITS,
+            "plan": "free",
+            "auth_provider": "github",
+            "workspace_mode": "simple",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        await db.users.insert_one(user)
+        await db.token_ledger.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "tokens": FREE_TIER_CREDITS * CREDITS_PER_TOKEN,
+            "credits": FREE_TIER_CREDITS,
+            "type": "bonus",
+            "description": "Welcome (Free tier)",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+    else:
+        if not user.get("workspace_mode"):
+            await db.users.update_one({"id": user["id"]}, {"$set": {"workspace_mode": "simple"}})
+            user["workspace_mode"] = "simple"
+        await db.users.update_one({"id": user["id"]}, {"$set": {"auth_provider": "github"}})
+
+    token = create_token(user["id"])
+    redirect_path = ""
+    if state:
+        try:
+            import base64 as b64
+
+            decoded = b64.urlsafe_b64decode(state.encode()).decode()
+            obj = json.loads(decoded)
+            redirect_path = obj.get("redirect") or ""
+        except Exception as e:
+            logger.debug("GitHub callback state decode: %s", e)
+    target = f"{frontend_base}/auth?token={token}"
+    if redirect_path and redirect_path.startswith("/"):
+        target += f"&redirect={quote(redirect_path)}"
+    logger.info("GitHub callback: success redirect (user_id=%s)", user.get("id", ""))
     return RedirectResponse(url=target)
 
 
@@ -8197,6 +8366,58 @@ async def get_job(job_id: str, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.get("/jobs/{job_id}/export/full.zip")
+async def export_job_workspace_full_zip(
+    job_id: str,
+    user: dict = Depends(get_current_user),
+):
+    """
+    Download the durable project workspace for this job as one ZIP (excludes node_modules, .git).
+    Includes META/* manifests when present (written on successful job seal).
+    """
+    try:
+        from orchestration.workspace_assembly import iter_files_for_zip
+
+        project_id = await _resolve_workspace_project_for_job(job_id, user)
+        root = _project_workspace_path(project_id).resolve()
+        if not root.is_dir():
+            raise HTTPException(status_code=404, detail="Workspace not found or empty")
+        fd, tmp_path = tempfile.mkstemp(suffix=".zip")
+        os.close(fd)
+        try:
+            with zipfile.ZipFile(tmp_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+                for arcname, fp in iter_files_for_zip(root):
+                    try:
+                        zf.write(str(fp), arcname=arcname)
+                    except OSError:
+                        continue
+        except Exception:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
+
+        def _unlink(p: str) -> None:
+            try:
+                os.unlink(p)
+            except OSError:
+                pass
+
+        safe = "".join(c if c.isalnum() or c in "-_" else "-" for c in job_id[:24])
+        return FileResponse(
+            tmp_path,
+            media_type="application/zip",
+            filename=f"crucibai-job-{safe}-full.zip",
+            background=BackgroundTask(_unlink, tmp_path),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("export full zip: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @api_router.get("/jobs")
 async def list_jobs(user: dict = Depends(get_current_user)):
     """List active/recent jobs for the current user.
@@ -8450,6 +8671,8 @@ def _orchestrator_planner_project_state(user: Optional[dict] = None) -> Dict[str
         "SMTP_PASSWORD",
         "GOOGLE_CLIENT_ID",
         "GOOGLE_CLIENT_SECRET",
+        "GITHUB_CLIENT_ID",
+        "GITHUB_CLIENT_SECRET",
         "TAVILY_API_KEY",
     ):
         if os.environ.get(_k, "").strip():

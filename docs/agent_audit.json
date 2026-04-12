@@ -1,0 +1,2385 @@
+{
+  "version": 1,
+  "total_agents": 237,
+  "counts_by_group": {
+    "not_fully_integrated_agent": 104,
+    "llm_generation_agent": 101,
+    "deploy_infra_agent": 12,
+    "validation_proof_agent": 8,
+    "real_tool_execution_agent": 5,
+    "automation_run_agent": 4,
+    "planning_orchestration_agent": 3
+  },
+  "agents": [
+    {
+      "agent_name": "2FA Agent",
+      "dag_depends_on": "Auth Setup Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "auth/2fa.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=auth/2fa.json"
+    },
+    {
+      "agent_name": "3D AR/VR Agent",
+      "dag_depends_on": "3D Model Agent|3D Interaction Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "3D Animation Agent",
+      "dag_depends_on": "3D Model Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "3D Engine Selector Agent",
+      "dag_depends_on": "Stack Selector",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "3D Interaction Agent",
+      "dag_depends_on": "3D Model Agent|3D Scene Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "3D Model Agent",
+      "dag_depends_on": "3D Engine Selector Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "3D Performance Agent",
+      "dag_depends_on": "3D Model Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "3D Physics Agent",
+      "dag_depends_on": "3D Model Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "3D Scene Agent",
+      "dag_depends_on": "3D Engine Selector Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "A/B Test Agent",
+      "dag_depends_on": "Frontend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "experiments/ab.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=experiments/ab.json"
+    },
+    {
+      "agent_name": "API Contract Validator Agent",
+      "dag_depends_on": "Backend Generation",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "API Documentation Agent",
+      "dag_depends_on": "Backend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "openapi.yaml",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=openapi.yaml"
+    },
+    {
+      "agent_name": "API Documentation Generation Agent",
+      "dag_depends_on": "API Documentation Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "API Integration",
+      "dag_depends_on": "Stack Selector",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "api/client.js",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=api/client.js"
+    },
+    {
+      "agent_name": "API Tool Agent",
+      "dag_depends_on": "API Integration",
+      "group": "real_tool_execution_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "True",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "real_runner=1"
+    },
+    {
+      "agent_name": "Accessibility Agent",
+      "dag_depends_on": "Frontend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "docs/a11y.md",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=docs/a11y.md"
+    },
+    {
+      "agent_name": "Accessibility Audit Agent",
+      "dag_depends_on": "Frontend Generation",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Accessibility Vibe Agent",
+      "dag_depends_on": "Accessibility Agent|Vibe Analyzer Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "",
+      "state_key": "accessibility_vibe",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "state_key=accessibility_vibe"
+    },
+    {
+      "agent_name": "Accessibility WCAG Agent",
+      "dag_depends_on": "Accessibility Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "docs/wcag.md",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=docs/wcag.md"
+    },
+    {
+      "agent_name": "Aesthetic Reasoner Agent",
+      "dag_depends_on": "Design Agent|Frontend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "",
+      "state_key": "aesthetic_report",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "state_key=aesthetic_report"
+    },
+    {
+      "agent_name": "Analytics Agent",
+      "dag_depends_on": "Deployment Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "analytics/events.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=analytics/events.json"
+    },
+    {
+      "agent_name": "Analytics Events Schema Agent",
+      "dag_depends_on": "Analytics Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Animation & Transitions Agent",
+      "dag_depends_on": "Frontend Generation",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Animation Agent",
+      "dag_depends_on": "Stack Selector",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "animations/config.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=animations/config.json"
+    },
+    {
+      "agent_name": "Approval Flow Agent",
+      "dag_depends_on": "Backend Generation",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Architecture Decision Records Agent",
+      "dag_depends_on": "Planner",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Audit & Compliance Engine Agent",
+      "dag_depends_on": "Audit Trail Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Audit Export Agent",
+      "dag_depends_on": "Deployment Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "scripts/export_audit.sh",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=scripts/export_audit.sh"
+    },
+    {
+      "agent_name": "Audit Trail Agent",
+      "dag_depends_on": "Backend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "audit/middleware.js",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=audit/middleware.js"
+    },
+    {
+      "agent_name": "Auth Setup Agent",
+      "dag_depends_on": "Stack Selector",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "auth/config.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=auth/config.json"
+    },
+    {
+      "agent_name": "Automation Agent",
+      "dag_depends_on": "Stack Selector",
+      "group": "automation_run_agent",
+      "artifact_default_path": "cron/tasks.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=cron/tasks.json"
+    },
+    {
+      "agent_name": "Backend Generation",
+      "dag_depends_on": "Stack Selector",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "server.py",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=server.py"
+    },
+    {
+      "agent_name": "Backup Agent",
+      "dag_depends_on": "Deployment Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "scripts/backup.sh",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=scripts/backup.sh"
+    },
+    {
+      "agent_name": "Blockchain Data Agent",
+      "dag_depends_on": "Backend Generation",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Blockchain Security Agent",
+      "dag_depends_on": "Smart Contract Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Blockchain Selector Agent",
+      "dag_depends_on": "Stack Selector",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Brand Agent",
+      "dag_depends_on": "Stack Selector",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "",
+      "state_key": "brand_spec",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "state_key=brand_spec"
+    },
+    {
+      "agent_name": "Browser Tool Agent",
+      "dag_depends_on": "Stack Selector",
+      "group": "real_tool_execution_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "True",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "real_runner=1"
+    },
+    {
+      "agent_name": "Build Orchestrator Agent",
+      "dag_depends_on": "Build Validator Agent|Compilation Dry-Run Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Build Validator Agent",
+      "dag_depends_on": "Frontend Generation",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Bundle Analyzer Agent",
+      "dag_depends_on": "Frontend Generation",
+      "group": "validation_proof_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": ""
+    },
+    {
+      "agent_name": "Business Rules Engine Agent",
+      "dag_depends_on": "Backend Generation",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "CDN Agent",
+      "dag_depends_on": "Deployment Agent",
+      "group": "deploy_infra_agent",
+      "artifact_default_path": "cdn/config.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=cdn/config.json"
+    },
+    {
+      "agent_name": "CORS & Security Headers Agent",
+      "dag_depends_on": "Backend Generation",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "CSS Modern Standards Agent",
+      "dag_depends_on": "Frontend Generation",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Caching Agent",
+      "dag_depends_on": "Stack Selector",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "cache/redis.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=cache/redis.json"
+    },
+    {
+      "agent_name": "Canvas/SVG Rendering Agent",
+      "dag_depends_on": "Frontend Generation",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Chaos Engineering Agent",
+      "dag_depends_on": "Load Test Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Chart Agent",
+      "dag_depends_on": "Frontend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "charts/config.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=charts/config.json"
+    },
+    {
+      "agent_name": "Code Quality Gate Agent",
+      "dag_depends_on": "Code Review Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Code Review Agent",
+      "dag_depends_on": "Frontend Generation|Backend Generation",
+      "group": "validation_proof_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": ""
+    },
+    {
+      "agent_name": "Collaborative Memory Agent",
+      "dag_depends_on": "Memory Agent|Team Preferences",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "",
+      "state_key": "team_preferences",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "state_key=team_preferences"
+    },
+    {
+      "agent_name": "Color Palette System Agent",
+      "dag_depends_on": "Design Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Compilation Dry-Run Agent",
+      "dag_depends_on": "Build Validator Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Component Library Agent",
+      "dag_depends_on": "Frontend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "components/manifest.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=components/manifest.json"
+    },
+    {
+      "agent_name": "Content Agent",
+      "dag_depends_on": "Planner",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "content/copy.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=content/copy.json"
+    },
+    {
+      "agent_name": "Contract Deployment Agent",
+      "dag_depends_on": "Smart Contract Agent",
+      "group": "deploy_infra_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": ""
+    },
+    {
+      "agent_name": "Contract Testing Agent",
+      "dag_depends_on": "API Documentation Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Cookie Consent Agent",
+      "dag_depends_on": "Legal Compliance Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "consent/cookies.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=consent/cookies.json"
+    },
+    {
+      "agent_name": "Cost Optimizer Agent",
+      "dag_depends_on": "Deployment Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "docs/cost.md",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=docs/cost.md"
+    },
+    {
+      "agent_name": "Creativity Catalyst Agent",
+      "dag_depends_on": "Design Agent|Content Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "",
+      "state_key": "creative_ideas",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "state_key=creative_ideas"
+    },
+    {
+      "agent_name": "Customization Engine Agent",
+      "dag_depends_on": "Brand Agent|Vibe Analyzer Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "customization/config.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=customization/config.json"
+    },
+    {
+      "agent_name": "Dark Mode Agent",
+      "dag_depends_on": "Stack Selector",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "themes/dark.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=themes/dark.json"
+    },
+    {
+      "agent_name": "Dark Mode Theme Agent",
+      "dag_depends_on": "CSS Modern Standards Agent|Color Palette System Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Data Pipeline Agent",
+      "dag_depends_on": "Database Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Data Quality Agent",
+      "dag_depends_on": "ML Data Pipeline Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Data Residency Agent",
+      "dag_depends_on": "Legal Compliance Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "compliance/residency.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=compliance/residency.json"
+    },
+    {
+      "agent_name": "Data Visualization Agent",
+      "dag_depends_on": "Analytics Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Data Warehouse Agent",
+      "dag_depends_on": "Database Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Database Agent",
+      "dag_depends_on": "Backend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "schema.sql",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=schema.sql"
+    },
+    {
+      "agent_name": "Database Optimization Agent",
+      "dag_depends_on": "Database Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Database Schema Validator Agent",
+      "dag_depends_on": "Database Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Database Tool Agent",
+      "dag_depends_on": "Database Agent",
+      "group": "real_tool_execution_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "True",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "real_runner=1"
+    },
+    {
+      "agent_name": "DeFi Integration Agent",
+      "dag_depends_on": "Smart Contract Agent|Web3 Frontend Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Dependency Audit Agent",
+      "dag_depends_on": "Stack Selector",
+      "group": "validation_proof_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": ""
+    },
+    {
+      "agent_name": "Dependency Conflict Resolver Agent",
+      "dag_depends_on": "Stack Selector",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Deployment Agent",
+      "dag_depends_on": "Backend Generation",
+      "group": "deploy_infra_agent",
+      "artifact_default_path": "",
+      "state_key": "deploy_result",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "state_key=deploy_result"
+    },
+    {
+      "agent_name": "Deployment Safety Agent",
+      "dag_depends_on": "Deployment Agent|Security Scanning Agent",
+      "group": "deploy_infra_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": ""
+    },
+    {
+      "agent_name": "Deployment Tool Agent",
+      "dag_depends_on": "Deployment Agent|File Tool Agent",
+      "group": "real_tool_execution_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "True",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "real_runner=1"
+    },
+    {
+      "agent_name": "Design Agent",
+      "dag_depends_on": "Stack Selector",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "",
+      "state_key": "design_spec",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "state_key=design_spec"
+    },
+    {
+      "agent_name": "Design Iteration Agent",
+      "dag_depends_on": "Planner|Design Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "",
+      "state_key": "design_iterations",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "state_key=design_iterations"
+    },
+    {
+      "agent_name": "Design System Agent",
+      "dag_depends_on": "Brand Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "design/tokens.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=design/tokens.json"
+    },
+    {
+      "agent_name": "DevOps Agent",
+      "dag_depends_on": "Deployment Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": ".github/workflows/ci.yml",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=.github/workflows/ci.yml"
+    },
+    {
+      "agent_name": "Disaster Recovery Agent",
+      "dag_depends_on": "Backup Agent",
+      "group": "deploy_infra_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": ""
+    },
+    {
+      "agent_name": "Docker Setup Agent",
+      "dag_depends_on": "Deployment Agent",
+      "group": "deploy_infra_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": ""
+    },
+    {
+      "agent_name": "Documentation Agent",
+      "dag_depends_on": "Deployment Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "README.md",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=README.md"
+    },
+    {
+      "agent_name": "E2E Agent",
+      "dag_depends_on": "Test Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "e2e/spec.js",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=e2e/spec.js"
+    },
+    {
+      "agent_name": "E2E Test Agent",
+      "dag_depends_on": "Frontend Generation",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Edge Computing Agent",
+      "dag_depends_on": "Microcontroller Firmware Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Edge Deployment Agent",
+      "dag_depends_on": "Deployment Agent",
+      "group": "deploy_infra_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": ""
+    },
+    {
+      "agent_name": "Email Agent",
+      "dag_depends_on": "Stack Selector",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "email/config.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=email/config.json"
+    },
+    {
+      "agent_name": "Email Template Agent",
+      "dag_depends_on": "Email Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Embeddings/Vectorization Agent",
+      "dag_depends_on": "ML Data Pipeline Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Environment Configuration Agent",
+      "dag_depends_on": "Deployment Agent",
+      "group": "deploy_infra_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": ""
+    },
+    {
+      "agent_name": "Error Boundary Agent",
+      "dag_depends_on": "Frontend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "components/ErrorBoundary.jsx",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=components/ErrorBoundary.jsx"
+    },
+    {
+      "agent_name": "Error Recovery",
+      "dag_depends_on": "Backend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "docs/runbook.md",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=docs/runbook.md"
+    },
+    {
+      "agent_name": "Excel Export",
+      "dag_depends_on": "Deployment Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "docs/tracking.csv",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=docs/tracking.csv"
+    },
+    {
+      "agent_name": "Feature Flag Agent",
+      "dag_depends_on": "Stack Selector",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "flags.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=flags.json"
+    },
+    {
+      "agent_name": "File Storage Agent",
+      "dag_depends_on": "Backend Generation",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "File Tool Agent",
+      "dag_depends_on": "Frontend Generation|Backend Generation",
+      "group": "real_tool_execution_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "True",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "real_runner=1"
+    },
+    {
+      "agent_name": "Form Builder Agent",
+      "dag_depends_on": "Frontend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "forms/schema.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=forms/schema.json"
+    },
+    {
+      "agent_name": "Frontend Generation",
+      "dag_depends_on": "Stack Selector",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "src/App.jsx",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=src/App.jsx"
+    },
+    {
+      "agent_name": "GitHub Actions CI Agent",
+      "dag_depends_on": "Deployment Agent|Test Generation",
+      "group": "deploy_infra_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": ""
+    },
+    {
+      "agent_name": "GraphQL Agent",
+      "dag_depends_on": "Backend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "schema.graphql",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=schema.graphql"
+    },
+    {
+      "agent_name": "HIPAA Agent",
+      "dag_depends_on": "Legal Compliance Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "docs/hipaa.md",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=docs/hipaa.md"
+    },
+    {
+      "agent_name": "IDE Integration Coordinator Agent",
+      "dag_depends_on": "Frontend Generation|Backend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": ".vscode/settings.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=.vscode/settings.json"
+    },
+    {
+      "agent_name": "Icon System Agent",
+      "dag_depends_on": "Design Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Image Generation",
+      "dag_depends_on": "Design Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": ""
+    },
+    {
+      "agent_name": "Image Optimization Agent",
+      "dag_depends_on": "Image Generation",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Import Path Validator Agent",
+      "dag_depends_on": "Frontend Generation",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Incident Response Agent",
+      "dag_depends_on": "Deployment Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "docs/incident_runbook.md",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=docs/incident_runbook.md"
+    },
+    {
+      "agent_name": "Input Validation Agent",
+      "dag_depends_on": "Backend Generation",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Integration Test Agent",
+      "dag_depends_on": "Backend Generation|Frontend Generation",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Invoice Agent",
+      "dag_depends_on": "Payment Setup Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "templates/invoice.html",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=templates/invoice.html"
+    },
+    {
+      "agent_name": "IoT Cloud Backend Agent",
+      "dag_depends_on": "IoT Platform Selector Agent|Backend Generation",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "IoT Communication Agent",
+      "dag_depends_on": "Microcontroller Firmware Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "IoT Dashboard Agent",
+      "dag_depends_on": "Stack Selector",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "IoT Data Pipeline Agent",
+      "dag_depends_on": "IoT Cloud Backend Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "IoT Mobile App Agent",
+      "dag_depends_on": "Native Config Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "IoT Platform Selector Agent",
+      "dag_depends_on": "Stack Selector",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "IoT Security Agent",
+      "dag_depends_on": "IoT Platform Selector Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "IoT Sensor Agent",
+      "dag_depends_on": "Microcontroller Firmware Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Jupyter Notebook Agent",
+      "dag_depends_on": "ML Data Pipeline Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Keyboard Nav Agent",
+      "dag_depends_on": "Frontend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "a11y/keyboard.md",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=a11y/keyboard.md"
+    },
+    {
+      "agent_name": "Kubernetes Advanced Agent",
+      "dag_depends_on": "DevOps Agent",
+      "group": "deploy_infra_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": ""
+    },
+    {
+      "agent_name": "Layout Agent",
+      "dag_depends_on": "Frontend Generation|Image Generation|Design Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "src/Layout.jsx",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=src/Layout.jsx"
+    },
+    {
+      "agent_name": "Legal Compliance Agent",
+      "dag_depends_on": "Planner",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "docs/compliance.md",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=docs/compliance.md"
+    },
+    {
+      "agent_name": "License Agent",
+      "dag_depends_on": "Planner",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "LICENSE",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=LICENSE"
+    },
+    {
+      "agent_name": "Lighthouse Agent",
+      "dag_depends_on": "Deployment Agent",
+      "group": "validation_proof_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": ""
+    },
+    {
+      "agent_name": "Lighthouse Performance Agent",
+      "dag_depends_on": "Deployment Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Load Balancer Agent",
+      "dag_depends_on": "DevOps Agent",
+      "group": "deploy_infra_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": ""
+    },
+    {
+      "agent_name": "Load Test Agent",
+      "dag_depends_on": "Backend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "load/k6.js",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=load/k6.js"
+    },
+    {
+      "agent_name": "Logging Agent",
+      "dag_depends_on": "Backend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "logging/config.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=logging/config.json"
+    },
+    {
+      "agent_name": "ML Data Pipeline Agent",
+      "dag_depends_on": "ML Framework Selector Agent|Database Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "ML Evaluation Agent",
+      "dag_depends_on": "ML Training Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "ML Explainability Agent",
+      "dag_depends_on": "ML Evaluation Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "ML Feature Store Agent",
+      "dag_depends_on": "ML Data Pipeline Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "ML Framework Selector Agent",
+      "dag_depends_on": "Stack Selector",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "ML Inference API Agent",
+      "dag_depends_on": "ML Model Export Agent|Backend Generation",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "ML Model Definition Agent",
+      "dag_depends_on": "ML Framework Selector Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "ML Model Export Agent",
+      "dag_depends_on": "ML Training Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "ML Model Monitoring Agent",
+      "dag_depends_on": "ML Inference API Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "ML Preprocessing Agent",
+      "dag_depends_on": "ML Data Pipeline Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "ML Training Agent",
+      "dag_depends_on": "ML Model Definition Agent|ML Data Pipeline Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Markdown Export",
+      "dag_depends_on": "Deployment Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "docs/summary.md",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=docs/summary.md"
+    },
+    {
+      "agent_name": "Memory Agent",
+      "dag_depends_on": "Deployment Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "",
+      "state_key": "memory_summary",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "state_key=memory_summary"
+    },
+    {
+      "agent_name": "Message Queue Advanced Agent",
+      "dag_depends_on": "Queue Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Metrics Agent",
+      "dag_depends_on": "Deployment Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "metrics/prometheus.yaml",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=metrics/prometheus.yaml"
+    },
+    {
+      "agent_name": "Microcontroller Firmware Agent",
+      "dag_depends_on": "IoT Platform Selector Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Migration Agent",
+      "dag_depends_on": "Database Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "migrations/001_init.sql",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=migrations/001_init.sql"
+    },
+    {
+      "agent_name": "Mobile Responsive Agent",
+      "dag_depends_on": "Stack Selector",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "styles/responsive.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=styles/responsive.json"
+    },
+    {
+      "agent_name": "Mock API Agent",
+      "dag_depends_on": "Backend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "mocks/handlers.js",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=mocks/handlers.js"
+    },
+    {
+      "agent_name": "Monitoring & Logging Agent",
+      "dag_depends_on": "Deployment Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Monitoring Agent",
+      "dag_depends_on": "Deployment Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "monitoring/sentry.yaml",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=monitoring/sentry.yaml"
+    },
+    {
+      "agent_name": "Mood Detection Agent",
+      "dag_depends_on": "Planner",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "",
+      "state_key": "mood",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "state_key=mood"
+    },
+    {
+      "agent_name": "Multi-language Code Agent",
+      "dag_depends_on": "Stack Selector",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "api_go/main.go",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=api_go/main.go"
+    },
+    {
+      "agent_name": "Multi-tenant Agent",
+      "dag_depends_on": "Database Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "tenant/schema.sql",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=tenant/schema.sql"
+    },
+    {
+      "agent_name": "Mutation Testing Agent",
+      "dag_depends_on": "Test Generation",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Native Config Agent",
+      "dag_depends_on": "Stack Selector",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "",
+      "state_key": "native_config",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "state_key=native_config"
+    },
+    {
+      "agent_name": "Network Security Agent",
+      "dag_depends_on": "Security Checker",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Notification Agent",
+      "dag_depends_on": "Email Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "notifications/config.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=notifications/config.json"
+    },
+    {
+      "agent_name": "Notification Rules Agent",
+      "dag_depends_on": "Notification Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "OAuth Provider Agent",
+      "dag_depends_on": "Auth Setup Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "auth/oauth.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=auth/oauth.json"
+    },
+    {
+      "agent_name": "ORM Setup Agent",
+      "dag_depends_on": "Database Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "PDF Export",
+      "dag_depends_on": "Deployment Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "docs/summary.pdf",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=docs/summary.pdf"
+    },
+    {
+      "agent_name": "Payment Setup Agent",
+      "dag_depends_on": "Stack Selector",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "payments/config.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=payments/config.json"
+    },
+    {
+      "agent_name": "Penetration Test Agent",
+      "dag_depends_on": "Security Checker",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "security/pentest.md",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=security/pentest.md"
+    },
+    {
+      "agent_name": "Performance Analyzer",
+      "dag_depends_on": "Frontend Generation|Backend Generation",
+      "group": "validation_proof_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "post_step_scan=1"
+    },
+    {
+      "agent_name": "Performance Test Agent",
+      "dag_depends_on": "Frontend Generation|Backend Generation",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Performance Vibe Agent",
+      "dag_depends_on": "Performance Analyzer|Frontend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "",
+      "state_key": "performance_vibe",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "state_key=performance_vibe"
+    },
+    {
+      "agent_name": "Planner",
+      "dag_depends_on": "",
+      "group": "planning_orchestration_agent",
+      "artifact_default_path": "",
+      "state_key": "plan",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "state_key=plan"
+    },
+    {
+      "agent_name": "Privacy Policy Agent",
+      "dag_depends_on": "Legal Compliance Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "docs/privacy.md",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=docs/privacy.md"
+    },
+    {
+      "agent_name": "Property-Based Testing Agent",
+      "dag_depends_on": "Test Generation",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Quality Metrics Aggregator Agent",
+      "dag_depends_on": "Code Quality Gate Agent|Lighthouse Performance Agent|Security Scanning Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Queue Agent",
+      "dag_depends_on": "Backend Generation",
+      "group": "automation_run_agent",
+      "artifact_default_path": "queue/config.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=queue/config.json"
+    },
+    {
+      "agent_name": "RBAC Agent",
+      "dag_depends_on": "Auth Setup Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "auth/roles.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=auth/roles.json"
+    },
+    {
+      "agent_name": "RTL Agent",
+      "dag_depends_on": "Frontend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "styles/rtl.css",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=styles/rtl.css"
+    },
+    {
+      "agent_name": "Rate Limit Agent",
+      "dag_depends_on": "Backend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "middleware/rate_limit.js",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=middleware/rate_limit.js"
+    },
+    {
+      "agent_name": "Rate Limiting Agent",
+      "dag_depends_on": "Backend Generation",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Real-Time Collaboration Agent",
+      "dag_depends_on": "WebSocket Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Real-time Feedback Agent",
+      "dag_depends_on": "Frontend Generation|Backend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "",
+      "state_key": "feedback_log",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "state_key=feedback_log"
+    },
+    {
+      "agent_name": "Recommendation Engine Agent",
+      "dag_depends_on": "Embeddings/Vectorization Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Report Generation Agent",
+      "dag_depends_on": "Data Visualization Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Requirements Clarifier",
+      "dag_depends_on": "Planner",
+      "group": "planning_orchestration_agent",
+      "artifact_default_path": "",
+      "state_key": "requirements",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "state_key=requirements"
+    },
+    {
+      "agent_name": "Responsive Breakpoints Agent",
+      "dag_depends_on": "Stack Selector",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "SEO Agent",
+      "dag_depends_on": "Stack Selector",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "public/robots.txt",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=public/robots.txt"
+    },
+    {
+      "agent_name": "SLA Agent",
+      "dag_depends_on": "Deployment Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "docs/sla.md",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=docs/sla.md"
+    },
+    {
+      "agent_name": "SMS & Push Agent",
+      "dag_depends_on": "Notification Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "SOC2 Agent",
+      "dag_depends_on": "Legal Compliance Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "docs/soc2.md",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=docs/soc2.md"
+    },
+    {
+      "agent_name": "SSO Agent",
+      "dag_depends_on": "Auth Setup Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "auth/sso.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=auth/sso.json"
+    },
+    {
+      "agent_name": "SSR Agent",
+      "dag_depends_on": "Frontend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "next.config.js",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=next.config.js"
+    },
+    {
+      "agent_name": "Scheduling Agent",
+      "dag_depends_on": "Backend Generation",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Schema Validation Agent",
+      "dag_depends_on": "Backend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "schemas/api.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=schemas/api.json"
+    },
+    {
+      "agent_name": "Scraping Agent",
+      "dag_depends_on": "Stack Selector",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": ""
+    },
+    {
+      "agent_name": "Screen Reader Agent",
+      "dag_depends_on": "Accessibility Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "a11y/screenreader.md",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=a11y/screenreader.md"
+    },
+    {
+      "agent_name": "Search Agent",
+      "dag_depends_on": "Stack Selector",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "search/config.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=search/config.json"
+    },
+    {
+      "agent_name": "Search Engine Agent",
+      "dag_depends_on": "Backend Generation",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Search Relevance Agent",
+      "dag_depends_on": "Search Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Secret Management Agent",
+      "dag_depends_on": "Auth Setup Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Security Checker",
+      "dag_depends_on": "Frontend Generation|Backend Generation",
+      "group": "validation_proof_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "post_step_scan=1"
+    },
+    {
+      "agent_name": "Security Scanning Agent",
+      "dag_depends_on": "Security Checker",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Serverless Deployment Agent",
+      "dag_depends_on": "Deployment Agent",
+      "group": "deploy_infra_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": ""
+    },
+    {
+      "agent_name": "Session Agent",
+      "dag_depends_on": "Backend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "session/config.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=session/config.json"
+    },
+    {
+      "agent_name": "Smart Contract Agent",
+      "dag_depends_on": "Blockchain Selector Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Smoke Test Agent",
+      "dag_depends_on": "E2E Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Stack Selector",
+      "dag_depends_on": "Requirements Clarifier",
+      "group": "planning_orchestration_agent",
+      "artifact_default_path": "",
+      "state_key": "stack",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "state_key=stack"
+    },
+    {
+      "agent_name": "Staging Agent",
+      "dag_depends_on": "Deployment Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "staging.env",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=staging.env"
+    },
+    {
+      "agent_name": "Statistical Analysis Agent",
+      "dag_depends_on": "ML Data Pipeline Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Store Prep Agent",
+      "dag_depends_on": "Frontend Generation|Native Config Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "store-submission/STORE_SUBMISSION_GUIDE.md",
+      "state_key": "store_prep",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=store-submission/STORE_SUBMISSION_GUIDE.md; state_key=store_prep"
+    },
+    {
+      "agent_name": "Stripe Integration Agent",
+      "dag_depends_on": "Payment Setup Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Stripe Subscription Agent",
+      "dag_depends_on": "Payment Setup Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "payments/stripe.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=payments/stripe.json"
+    },
+    {
+      "agent_name": "Subscription Management Agent",
+      "dag_depends_on": "Stripe Integration Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Synthetic Monitoring Agent",
+      "dag_depends_on": "Monitoring Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Table Agent",
+      "dag_depends_on": "Frontend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "components/table.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=components/table.json"
+    },
+    {
+      "agent_name": "Team Collaboration Agent",
+      "dag_depends_on": "Collaborative Memory Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "docs/collab.md",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=docs/collab.md"
+    },
+    {
+      "agent_name": "Team Preferences",
+      "dag_depends_on": "Planner",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Terms Agent",
+      "dag_depends_on": "Legal Compliance Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "docs/terms.md",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=docs/terms.md"
+    },
+    {
+      "agent_name": "Test Executor",
+      "dag_depends_on": "Test Generation",
+      "group": "validation_proof_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "post_step_scan=1"
+    },
+    {
+      "agent_name": "Test Generation",
+      "dag_depends_on": "Backend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "tests/test_basic.py",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=tests/test_basic.py"
+    },
+    {
+      "agent_name": "Time Series Forecasting Agent",
+      "dag_depends_on": "ML Framework Selector Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Typography System Agent",
+      "dag_depends_on": "Stack Selector",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "UX Auditor",
+      "dag_depends_on": "Frontend Generation",
+      "group": "validation_proof_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "post_step_scan=1"
+    },
+    {
+      "agent_name": "Unit Test Agent",
+      "dag_depends_on": "Test Generation",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "User Onboarding Agent",
+      "dag_depends_on": "Documentation Agent|Video Tutorial Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "onboarding/flow.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=onboarding/flow.json"
+    },
+    {
+      "agent_name": "Validation Agent",
+      "dag_depends_on": "Frontend Generation|Backend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "validation/schema.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=validation/schema.json"
+    },
+    {
+      "agent_name": "Vibe Analyzer Agent",
+      "dag_depends_on": "Design Agent|Brand Agent",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "",
+      "state_key": "vibe_spec",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "state_key=vibe_spec"
+    },
+    {
+      "agent_name": "Video Generation",
+      "dag_depends_on": "Image Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": ""
+    },
+    {
+      "agent_name": "Video Tutorial Agent",
+      "dag_depends_on": "Documentation Agent|Frontend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "docs/tutorial_script.md",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=docs/tutorial_script.md"
+    },
+    {
+      "agent_name": "Voice Context Agent",
+      "dag_depends_on": "Planner|Requirements Clarifier",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "",
+      "state_key": "voice_requirements",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "state_key=voice_requirements"
+    },
+    {
+      "agent_name": "Web3 Frontend Agent",
+      "dag_depends_on": "Frontend Generation",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "WebGL Shader Agent",
+      "dag_depends_on": "3D Engine Selector Agent",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "WebSocket Agent",
+      "dag_depends_on": "Backend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "ws/handler.js",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=ws/handler.js"
+    },
+    {
+      "agent_name": "Webhook Agent",
+      "dag_depends_on": "Backend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "webhooks/handler.js",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=webhooks/handler.js"
+    },
+    {
+      "agent_name": "Webhook Management Agent",
+      "dag_depends_on": "Backend Generation",
+      "group": "not_fully_integrated_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+    },
+    {
+      "agent_name": "Workflow Agent",
+      "dag_depends_on": "Backend Generation",
+      "group": "automation_run_agent",
+      "artifact_default_path": "workflows/main.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=workflows/main.json"
+    },
+    {
+      "agent_name": "Workflow Engine Agent",
+      "dag_depends_on": "Workflow Agent",
+      "group": "automation_run_agent",
+      "artifact_default_path": "",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": ""
+    },
+    {
+      "agent_name": "i18n Agent",
+      "dag_depends_on": "Frontend Generation",
+      "group": "llm_generation_agent",
+      "artifact_default_path": "locales/en.json",
+      "state_key": "",
+      "real_tool_runner": "False",
+      "auto_runner_step_kind": "dag_node",
+      "notes": "artifact=locales/en.json"
+    }
+  ]
+}

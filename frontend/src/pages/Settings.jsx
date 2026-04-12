@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   User, Mail, Lock, Bell, Shield, CreditCard,
@@ -138,12 +138,21 @@ const Settings = () => {
     const t = location.state?.openTab;
     return TABS.some((x) => x.id === t) ? t : 'account';
   });
+  const engineListRef = useRef(null);
+  const focusEngineHref = typeof location.state?.focusEngineHref === 'string' ? location.state.focusEngineHref : null;
   const h = token ? { Authorization: `Bearer ${token}` } : {};
 
   useEffect(() => {
     const t = location.state?.openTab;
     if (t && TABS.some((x) => x.id === t)) setTab(t);
   }, [location.state, location.key]);
+
+  /** Sidebar “Runs” / “Marketplace” land here first — scroll the matching Engine room row into view */
+  useLayoutEffect(() => {
+    if (tab !== 'engine' || !focusEngineHref || !engineListRef.current) return;
+    const el = engineListRef.current.querySelector(`[data-engine-href="${focusEngineHref}"]`);
+    el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [tab, focusEngineHref, location.key]);
 
   // Theme system — real working toggle
   const [theme, setTheme] = useState(() => localStorage.getItem('crucibai-theme') || 'dark');
@@ -624,11 +633,12 @@ const Settings = () => {
               <p style={{ fontSize: 13, color: T.muted, marginBottom: 16 }}>
                 Advanced tools, integrations, and internal routes. Same destinations as before; they now live here to keep the home sidebar calm.
               </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div ref={engineListRef} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {ENGINE_ROOM_ITEMS.map((item) => (
                   <Link
                     key={item.href}
                     to={item.href}
+                    data-engine-href={item.href}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 10,
                       padding: '10px 12px', borderRadius: 8, textDecoration: 'none',

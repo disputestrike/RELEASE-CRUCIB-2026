@@ -20,6 +20,13 @@
   gap: 8px;
   padding: 16px 12px 12px;
   flex-shrink: 0;
+  min-width: 0;
+}
+
+.sidebar-header .sidebar-logo {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
 }
 
 .sidebar-header-collapse {
