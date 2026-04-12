@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import logging
 import os
-import re
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -37,6 +36,118 @@ def _strip_leading_sql_comments(stmt: str) -> str:
             continue
         lines.append(line)
     return "\n".join(lines).strip()
+
+
+def _split_sql_statements(content: str) -> list[str]:
+    """Split SQL into statements without breaking quoted strings or DO $$ blocks."""
+    statements: list[str] = []
+    current: list[str] = []
+    i = 0
+    in_single_quote = False
+    in_double_quote = False
+    in_line_comment = False
+    in_block_comment = False
+    dollar_tag: str | None = None
+    length = len(content)
+
+    while i < length:
+        char = content[i]
+        next_char = content[i + 1] if i + 1 < length else ""
+
+        if in_line_comment:
+            current.append(char)
+            if char == "\n":
+                in_line_comment = False
+            i += 1
+            continue
+
+        if in_block_comment:
+            current.append(char)
+            if char == "*" and next_char == "/":
+                current.append(next_char)
+                in_block_comment = False
+                i += 2
+            else:
+                i += 1
+            continue
+
+        if dollar_tag is not None:
+            if content.startswith(dollar_tag, i):
+                current.append(dollar_tag)
+                i += len(dollar_tag)
+                dollar_tag = None
+            else:
+                current.append(char)
+                i += 1
+            continue
+
+        if in_single_quote:
+            current.append(char)
+            if char == "'" and next_char == "'":
+                current.append(next_char)
+                i += 2
+                continue
+            if char == "'":
+                in_single_quote = False
+            i += 1
+            continue
+
+        if in_double_quote:
+            current.append(char)
+            if char == '"':
+                in_double_quote = False
+            i += 1
+            continue
+
+        if char == "-" and next_char == "-":
+            current.extend((char, next_char))
+            in_line_comment = True
+            i += 2
+            continue
+
+        if char == "/" and next_char == "*":
+            current.extend((char, next_char))
+            in_block_comment = True
+            i += 2
+            continue
+
+        if char == "'":
+            current.append(char)
+            in_single_quote = True
+            i += 1
+            continue
+
+        if char == '"':
+            current.append(char)
+            in_double_quote = True
+            i += 1
+            continue
+
+        if char == "$":
+            tag_end = content.find("$", i + 1)
+            if tag_end != -1:
+                candidate = content[i : tag_end + 1]
+                if all(c == "_" or c.isalnum() or c == "$" for c in candidate):
+                    current.append(candidate)
+                    dollar_tag = candidate
+                    i = tag_end + 1
+                    continue
+
+        if char == ";":
+            statement = _strip_leading_sql_comments("".join(current))
+            if statement:
+                statements.append(statement)
+            current = []
+            i += 1
+            continue
+
+        current.append(char)
+        i += 1
+
+    trailing = _strip_leading_sql_comments("".join(current))
+    if trailing:
+        statements.append(trailing)
+    return statements
 
 
 async def _get_pool():
@@ -76,7 +187,7 @@ async def _execute_file(pool, path: Path) -> tuple[int, int]:
         logger.warning("Migration %s: could not read file: %s", path.name, exc)
         return 0, 0
 
-    statements = [_strip_leading_sql_comments(s) for s in content.split(";")]
+    statements = _split_sql_statements(content)
     ok = fail = 0
     for stmt in statements:
         if not stmt:

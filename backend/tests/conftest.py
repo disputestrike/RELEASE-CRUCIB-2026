@@ -76,8 +76,9 @@ def _ensure_temp_paths():
 
 def _ensure_test_env():
     """Defaults so in-process FastAPI tests match docker-compose.local.yml and pass env_setup."""
-    if os.environ.get("TEST_DATABASE_URL"):
-        os.environ["DATABASE_URL"] = os.environ["TEST_DATABASE_URL"]
+    test_database_url = os.environ.get("TEST_DATABASE_URL", "").strip()
+    if test_database_url:
+        os.environ["DATABASE_URL"] = test_database_url
     elif not os.environ.get("DATABASE_URL", "").strip():
         os.environ["DATABASE_URL"] = (
             "postgresql://crucibai:crucibai@127.0.0.1:5434/crucibai"
@@ -96,12 +97,6 @@ def _ensure_test_env():
         os.environ["FRONTEND_URL"] = "http://localhost:3000"
     os.environ["CRUCIBAI_DEV"] = "1"
     os.environ["CRUCIBAI_TEST"] = "1"
-    if os.environ.get("TEST_DATABASE_URL"):
-        os.environ["DATABASE_URL"] = os.environ["TEST_DATABASE_URL"]
-    else:
-        os.environ["DATABASE_URL"] = (
-            "postgresql://crucibai:crucibai@127.0.0.1:5434/crucibai"
-        )
 
 
 _ensure_test_env()
