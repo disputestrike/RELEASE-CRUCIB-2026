@@ -67,8 +67,8 @@ export default function UnifiedWorkspace() {
   const { updateTask, tasks } = useTaskStore();
   const sessionBootstrapRef = useRef(false);
   const processedLocationHandoffRef = useRef(new Set());
-  /** Dedupe React StrictMode double effect while session still holds the goal until `finally` clears it. */
-  const autostartClaimRef = useRef(null);
+  /** Same-tick handoff goal when router state + session can race with the autostart effect. */
+  const handoffQueuedAutostartRef = useRef(null);
   const taskPromptHydratedForIdRef = useRef(null);
 
   useEffect(() => {
@@ -647,7 +647,8 @@ export default function UnifiedWorkspace() {
   const runNewPlanAndAuto = useCallback(
     async (goalText) => {
       const trimmed = (goalText || '').trim();
-      if (!trimmed || authLoading || !token || !API) return;
+      // Do not gate on authLoading here: handoff/autostart can race a one-frame loading flip while token is valid.
+      if (!trimmed || !token || !API) return;
       if (sendInFlightRef.current) return;
       sendInFlightRef.current = true;
       setLoading(true);
@@ -703,7 +704,7 @@ export default function UnifiedWorkspace() {
         sendInFlightRef.current = false;
       }
     },
-    [API, token, authLoading, buildTargets, projectIdFromUrl, setSearchParams, clearBuildError, applyBuildError],
+    [API, token, buildTargets, projectIdFromUrl, setSearchParams, clearBuildError, applyBuildError],
   );
 
   /**
@@ -711,7 +712,7 @@ export default function UnifiedWorkspace() {
    * If already in plan review (e.g. run-auto failed), Send only approves / starts run.
    */
   const handleSend = async () => {
-    if (!goal.trim() || authLoading || !token) return;
+    if (!goal.trim() || authLoading || !token || !API) return;
     if (sendInFlightRef.current) return;
     const submitted = goal.trim();
     appendUserChat(submitted);
@@ -767,28 +768,52 @@ export default function UnifiedWorkspace() {
   /** After guest/session token + API base are ready, start build from dashboard handoff (one shot). */
   useEffect(() => {
     if (authLoading || !token || !API) return;
+    if (sendInFlightRef.current) return;
+
     let goalText = '';
     try {
-      goalText = (sessionStorage.getItem('crucibai_autostart_goal') || '').trim();
+      const fromHandoff = (handoffQueuedAutostartRef.current || '').trim();
+      if (fromHandoff) {
+        goalText = fromHandoff;
+        handoffQueuedAutostartRef.current = null;
+        try {
+          sessionStorage.removeItem('crucibai_autostart_goal');
+        } catch (_) {}
+      } else {
+        goalText = (sessionStorage.getItem('crucibai_autostart_goal') || '').trim();
+        if (goalText) {
+          try {
+            sessionStorage.removeItem('crucibai_autostart_goal');
+          } catch (_) {}
+        }
+      }
     } catch (_) {
       return;
     }
     if (!goalText) return;
-    if (autostartClaimRef.current === goalText) return;
-    autostartClaimRef.current = goalText;
 
-    (async () => {
+    let finished = false;
+    void (async () => {
+      if (sendInFlightRef.current) return;
       try {
         appendUserChat(goalText);
         setGoal('');
         await runNewPlanAndAuto(goalText);
+      } catch (_) {
+        /* runNewPlanAndAuto surfaces errors via applyBuildError */
       } finally {
-        try {
-          sessionStorage.removeItem('crucibai_autostart_goal');
-        } catch (_) {}
-        if (autostartClaimRef.current === goalText) autostartClaimRef.current = null;
+        finished = true;
       }
     })();
+
+    return () => {
+      if (!finished) {
+        try {
+          sessionStorage.setItem('crucibai_autostart_goal', goalText);
+        } catch (_) {}
+        handoffQueuedAutostartRef.current = goalText;
+      }
+    };
   }, [token, authLoading, API, runNewPlanAndAuto, appendUserChat]);
 
   /** Sidebar reopen: `?taskId=` with no `jobId` — show stored build prompt in the composer (no auto-run). */
