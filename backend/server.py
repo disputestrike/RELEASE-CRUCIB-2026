@@ -11132,10 +11132,32 @@ try:
     app.include_router(create_community_router())
 except ImportError as exc:
     logger.warning("community router unavailable: %s", exc)
-app.include_router(auth_router)
-app.include_router(projects_router)
+# Route modules replace inline auth/projects/agents router definitions
+try:
+    from routes.auth import auth_router as _auth_router_module
+    app.include_router(_auth_router_module)
+    logger.info("auth router registered from routes.auth")
+except Exception as _e:
+    logger.warning("auth route module not loaded, falling back to inline: %s", _e)
+    app.include_router(auth_router)
+
+try:
+    from routes.projects import projects_router as _projects_router_module
+    app.include_router(_projects_router_module)
+    logger.info("projects router registered from routes.projects")
+except Exception as _e:
+    logger.warning("projects route module not loaded, falling back to inline: %s", _e)
+    app.include_router(projects_router)
+
+try:
+    from routes.agents import agents_router as _agents_router_module
+    app.include_router(_agents_router_module)
+    logger.info("agents router registered from routes.agents")
+except Exception as _e:
+    logger.warning("agents route module not loaded, falling back to inline: %s", _e)
+    app.include_router(agents_router)
+
 app.include_router(tools_router)
-app.include_router(agents_router)
 app.include_router(api_router)
 
 # Domain routers (extracted from server.py for maintainability)
