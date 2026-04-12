@@ -18,6 +18,12 @@ async def test_api_smoke_passes_with_main_sketch():
         titles = " ".join(p["title"] for p in r["proof"]).lower()
         assert "health" in titles
         assert "py_compile" in titles
+        compile_proofs = [p for p in r["proof"] if p.get("proof_type") == "compile"]
+        assert compile_proofs
+        for p in compile_proofs:
+            pl = p.get("payload") or {}
+            assert pl.get("path") == pl.get("file")
+            assert pl.get("path")
 
 
 def test_healthcheck_script_contains_curl_health():

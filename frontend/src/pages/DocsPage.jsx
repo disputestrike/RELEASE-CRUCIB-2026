@@ -73,6 +73,8 @@ const API_SECTIONS = [
       { method: 'POST', path: '/api/deploy/one-click/vercel', desc: 'Deploy to Vercel', body: '{ "project_id": "..." }', response: '{ "url": "https://...", "status": "ready" }' },
       { method: 'POST', path: '/api/deploy/one-click/netlify', desc: 'Deploy to Netlify', body: '{ "project_id": "..." }', response: '{ "url": "https://...", "status": "ready" }' },
       { method: 'GET', path: '/api/projects/:id/export/zip', desc: 'Download deploy-ready ZIP', body: null, response: 'Binary ZIP file' },
+      { method: 'GET', path: '/api/jobs/:job_id/export', desc: 'Auto-Runner: JSON discovery for workspace export (ZIP URL + META flags)', body: null, response: '{ "href_full_zip": "...", "meta": {...} }' },
+      { method: 'GET', path: '/api/jobs/:job_id/export/full.zip', desc: 'Auto-Runner: download sealed project workspace ZIP', body: null, response: 'Binary ZIP (Bearer)' },
       { method: 'GET', path: '/api/users/me/deploy-tokens', desc: 'Check deploy token status', body: null, response: '{ "has_vercel": true, "has_netlify": false }' },
       { method: 'PATCH', path: '/api/users/me/deploy-tokens', desc: 'Set deploy tokens', body: '{ "vercel_token": "...", "netlify_token": "..." }', response: '{ "ok": true }' },
     ]

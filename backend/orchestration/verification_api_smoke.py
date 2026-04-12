@@ -112,7 +112,7 @@ async def verify_api_smoke_workspace(workspace_path: str) -> Dict[str, Any]:
                     _pi(
                         "api",
                         f"API smoke: /health referenced in {rel}",
-                        {"check": "health_path_literal", "file": rel},
+                        {"check": "health_path_literal", "file": rel, "path": rel},
                     ),
                 )
                 break
@@ -145,7 +145,7 @@ async def verify_api_smoke_workspace(workspace_path: str) -> Dict[str, Any]:
                     _pi(
                         "compile",
                         f"API smoke: py_compile OK {rel}",
-                        {"file": rel},
+                        {"file": rel, "path": rel},
                         verification_class="syntax",
                     ),
                 )
