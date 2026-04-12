@@ -67,6 +67,7 @@ import base64
 import zipfile
 import io
 from urllib.parse import quote, urlencode
+import mimetypes
 
 from anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_model
 from env_encryption import encrypt_env, decrypt_env
@@ -5298,6 +5299,57 @@ async def _resolve_job_project_id_for_user(project_id: Optional[str], user: dict
     return pid
 
 
+def _list_all_workspace_rel_paths(root: Path) -> List[str]:
+    """Sorted posix relative paths for all files under workspace (excludes node_modules / __pycache__)."""
+    files: List[str] = []
+    if not root.is_dir():
+        return files
+    for p in root.rglob("*"):
+        if not p.is_file():
+            continue
+        sp = str(p)
+        if "node_modules" in sp or "__pycache__" in sp:
+            continue
+        try:
+            rel = p.relative_to(root)
+            files.append(rel.as_posix())
+        except ValueError:
+            continue
+    files.sort()
+    return files
+
+
+def _paginated_workspace_files_payload(paths: List[str], offset: int, limit: int) -> Dict[str, Any]:
+    total = len(paths)
+    off = max(0, int(offset))
+    lim = max(1, min(int(limit), 1000))
+    slice_paths = paths[off : off + lim]
+    has_more = off + lim < total
+    next_off = off + lim if has_more else None
+    return {
+        "files": slice_paths,
+        "total_count": total,
+        "offset": off,
+        "limit": lim,
+        "has_more": has_more,
+        "next_offset": next_off,
+    }
+
+
+def _workspace_file_disk_path(root: Path, path: str) -> Path:
+    rel = (path or "").strip().replace("\\", "/").lstrip("/")
+    if ".." in rel or not rel:
+        raise HTTPException(status_code=400, detail="Invalid path")
+    full = (root / rel).resolve()
+    try:
+        full.relative_to(root.resolve())
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Path outside workspace")
+    if not full.exists() or not full.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    return full
+
+
 def _create_preview_token(project_id: str, user_id: str) -> str:
     """Short-lived JWT so iframe can load preview without Bearer header."""
     payload = {"project_id": project_id, "user_id": user_id, "purpose": "preview", "exp": datetime.now(timezone.utc) + timedelta(minutes=2)}
@@ -5384,22 +5436,20 @@ async def serve_preview(
 
 
 @projects_router.get("/projects/{project_id}/workspace/files")
-async def list_workspace_files(project_id: str, user: dict = Depends(get_current_user)):
-    """List files in project workspace (view files in task). Wired to workspace."""
+async def list_workspace_files(
+    project_id: str,
+    offset: int = Query(0, ge=0),
+    limit: int = Query(500, ge=1, le=1000),
+    user: dict = Depends(get_current_user),
+):
+    """List files in project workspace (paginated; tree source of truth for clients)."""
     if not await _user_can_access_project_workspace(user.get("id"), project_id):
         raise HTTPException(status_code=404, detail="Project not found")
     root = _project_workspace_path(project_id).resolve()
     if not root.exists():
-        return {"files": []}
-    files = []
-    for p in root.rglob("*"):
-        if p.is_file() and "node_modules" not in str(p) and "__pycache__" not in str(p):
-            try:
-                rel = p.relative_to(root)
-                files.append(str(rel).replace("\\", "/"))
-            except ValueError:
-                pass
-    return {"files": sorted(files)[:500]}
+        return _paginated_workspace_files_payload([], offset, limit)
+    paths = _list_all_workspace_rel_paths(root)
+    return _paginated_workspace_files_payload(paths, offset, limit)
 
 
 @projects_router.get("/projects/{project_id}/workspace/file")
@@ -5412,21 +5462,29 @@ async def get_workspace_file_content(
     if not await _user_can_access_project_workspace(user.get("id"), project_id):
         raise HTTPException(status_code=404, detail="Project not found")
     root = _project_workspace_path(project_id).resolve()
-    path = (path or "").strip().replace("\\", "/").lstrip("/")
-    if ".." in path or not path:
-        raise HTTPException(status_code=400, detail="Invalid path")
-    full = (root / path).resolve()
-    try:
-        full.relative_to(root)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Path outside workspace")
-    if not full.exists() or not full.is_file():
-        raise HTTPException(status_code=404, detail="File not found")
+    full = _workspace_file_disk_path(root, path)
     try:
         content = full.read_text(encoding="utf-8", errors="replace")
     except Exception:
         raise HTTPException(status_code=400, detail="File not readable as text")
-    return {"path": path, "content": content}
+    rel = str(full.relative_to(root)).replace("\\", "/")
+    return {"path": rel, "content": content}
+
+
+@projects_router.get("/projects/{project_id}/workspace/file/raw")
+async def get_workspace_file_raw(
+    project_id: str,
+    path: str = Query(..., description="Relative file path in workspace"),
+    user: dict = Depends(get_current_user),
+):
+    """Stream file bytes from project workspace (images, binaries, or fallback when text read fails)."""
+    if not await _user_can_access_project_workspace(user.get("id"), project_id):
+        raise HTTPException(status_code=404, detail="Project not found")
+    root = _project_workspace_path(project_id).resolve()
+    full = _workspace_file_disk_path(root, path)
+    guessed, _ = mimetypes.guess_type(full.name)
+    media = guessed or "application/octet-stream"
+    return FileResponse(path=str(full), media_type=media, filename=full.name)
 
 
 @projects_router.get("/projects/{project_id}/dependency-audit")
@@ -9457,21 +9515,19 @@ async def get_job_proof(job_id: str, user: dict = Depends(get_current_user)):
 
 
 @api_router.get("/jobs/{job_id}/workspace/files")
-async def list_job_workspace_files(job_id: str, user: dict = Depends(get_current_user)):
-    """List files under the job's project workspace (avoids client project_id mismatch)."""
+async def list_job_workspace_files(
+    job_id: str,
+    offset: int = Query(0, ge=0),
+    limit: int = Query(500, ge=1, le=1000),
+    user: dict = Depends(get_current_user),
+):
+    """List files under the job's project workspace (paginated)."""
     project_id = await _resolve_workspace_project_for_job(job_id, user)
     root = _project_workspace_path(project_id).resolve()
     if not root.exists():
-        return {"files": []}
-    files = []
-    for p in root.rglob("*"):
-        if p.is_file() and "node_modules" not in str(p) and "__pycache__" not in str(p):
-            try:
-                rel = p.relative_to(root)
-                files.append(str(rel).replace("\\", "/"))
-            except ValueError:
-                pass
-    return {"files": sorted(files)[:500]}
+        return _paginated_workspace_files_payload([], offset, limit)
+    paths = _list_all_workspace_rel_paths(root)
+    return _paginated_workspace_files_payload(paths, offset, limit)
 
 
 @api_router.get("/jobs/{job_id}/workspace/file")
@@ -9483,21 +9539,28 @@ async def get_job_workspace_file_content(
     """Read one file from the job's project workspace."""
     project_id = await _resolve_workspace_project_for_job(job_id, user)
     root = _project_workspace_path(project_id).resolve()
-    path = (path or "").strip().replace("\\", "/").lstrip("/")
-    if ".." in path or not path:
-        raise HTTPException(status_code=400, detail="Invalid path")
-    full = (root / path).resolve()
-    try:
-        full.relative_to(root)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Path outside workspace")
-    if not full.exists() or not full.is_file():
-        raise HTTPException(status_code=404, detail="File not found")
+    full = _workspace_file_disk_path(root, path)
     try:
         content = full.read_text(encoding="utf-8", errors="replace")
     except Exception:
         raise HTTPException(status_code=400, detail="File not readable as text")
-    return {"path": path, "content": content}
+    rel = str(full.relative_to(root)).replace("\\", "/")
+    return {"path": rel, "content": content}
+
+
+@api_router.get("/jobs/{job_id}/workspace/file/raw")
+async def get_job_workspace_file_raw(
+    job_id: str,
+    path: str = Query(..., description="Relative file path in workspace"),
+    user: dict = Depends(get_current_user),
+):
+    """Stream file bytes from the job's project workspace."""
+    project_id = await _resolve_workspace_project_for_job(job_id, user)
+    root = _project_workspace_path(project_id).resolve()
+    full = _workspace_file_disk_path(root, path)
+    guessed, _ = mimetypes.guess_type(full.name)
+    media = guessed or "application/octet-stream"
+    return FileResponse(path=str(full), media_type=media, filename=full.name)
 
 
 @api_router.post("/jobs/{job_id}/visual-edit")

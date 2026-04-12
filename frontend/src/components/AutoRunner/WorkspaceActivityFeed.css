@@ -224,6 +224,40 @@
   min-width: 0;
 }
 
+.uw-af-writes {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--uw-bg-root) 72%, transparent);
+}
+.uw-af-writes-label {
+  margin: 0 0 6px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.uw-af-writes-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.uw-af-write-link {
+  font: 11px/1.4 var(--font-mono, ui-monospace, monospace);
+  color: var(--state-info, #60a5fa);
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  text-decoration: underline;
+  word-break: break-all;
+}
+
 .uw-af-stream {
   list-style: none;
   margin: 14px 0 0;

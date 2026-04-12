@@ -99,3 +99,34 @@ async def test_get_job_workspace_files_requires_auth(app_client, mock_job_with_p
     job_id = mock_job_with_project.id
     resp = await app_client.get(f"/api/jobs/{job_id}/workspace/files", timeout=10)
     assert resp.status_code == 401
+
+
+async def test_get_job_workspace_files_pagination_metadata(app_client, auth_headers, mock_job_with_project):
+    job_id = mock_job_with_project.id
+    resp = await app_client.get(
+        f"/api/jobs/{job_id}/workspace/files",
+        headers=auth_headers,
+        params={"offset": 0, "limit": 10},
+        timeout=15,
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "files" in body
+    assert "src/App.jsx" in body["files"]
+    assert body.get("total_count") >= 1
+    assert body.get("offset") == 0
+    assert body.get("limit") == 10
+    assert isinstance(body.get("has_more"), bool)
+
+
+async def test_get_job_workspace_file_raw_streams_text(app_client, auth_headers, mock_job_with_project):
+    job_id = mock_job_with_project.id
+    resp = await app_client.get(
+        f"/api/jobs/{job_id}/workspace/file/raw",
+        headers=auth_headers,
+        params={"path": "src/App.jsx"},
+        timeout=15,
+    )
+    assert resp.status_code == 200
+    raw = resp.content
+    assert mock_job_with_project.marker.encode("utf-8") in raw

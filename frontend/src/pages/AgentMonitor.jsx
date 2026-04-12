@@ -8,6 +8,7 @@ import {
 import { useAuth, API } from '../App';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';
+import { fetchAllWorkspaceFilePaths } from '../workspace/workspaceFileUtils';
 import BuildProgress from '../components/BuildProgress';
 import QualityScore from '../components/QualityScore';
 
@@ -76,8 +77,10 @@ const AgentMonitor = () => {
           setBuildHistory([]);
         }
         try {
-          const filesRes = await axios.get(`${API}/projects/${id}/workspace/files`, { headers: { Authorization: `Bearer ${token}` } });
-          setWorkspaceFiles(filesRes.data?.files || []);
+          const listUrl = `${API}/projects/${id}/workspace/files`;
+          const headers = { Authorization: `Bearer ${token}` };
+          const paths = await fetchAllWorkspaceFilePaths(listUrl, headers);
+          setWorkspaceFiles(paths);
         } catch (e) {
           logApiError('AgentMonitor workspace/files', e);
           setWorkspaceFiles([]);

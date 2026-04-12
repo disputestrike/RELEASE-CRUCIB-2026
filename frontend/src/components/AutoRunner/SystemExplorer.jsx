@@ -144,7 +144,14 @@ function getStatusDotFill(status) {
   }
 }
 
-export default function SystemExplorer({ steps = [], proof, job: _job, projectId: _projectId, token: _token }) {
+export default function SystemExplorer({
+  steps = [],
+  proof,
+  job: _job,
+  projectId: _projectId,
+  token: _token,
+  openWorkspacePath,
+}) {
   const [activeTab, setActiveTab] = useState('agents');
   const [routeFilter, setRouteFilter] = useState('');
   const [expandedTable, setExpandedTable] = useState(null);
@@ -431,7 +438,17 @@ export default function SystemExplorer({ steps = [], proof, job: _job, projectId
                         return (
                           <li key={`art-${i}`} className={isCompliance ? 'se-deploy-artifact-compliance' : ''}>
                             <span className="se-deploy-dot" />
-                            <span className="se-deploy-artifact-path">{path}</span>
+                            {openWorkspacePath && path ? (
+                              <button
+                                type="button"
+                                className="se-deploy-artifact-path se-deploy-artifact-path-btn"
+                                onClick={() => openWorkspacePath(path)}
+                              >
+                                {path}
+                              </button>
+                            ) : (
+                              <span className="se-deploy-artifact-path">{path}</span>
+                            )}
                             {isCompliance && (
                               <span className="se-deploy-artifact-badge" title="Regulated-domain goal detected">
                                 compliance sketch

@@ -34,6 +34,12 @@ def _project_workspace(project_id: str) -> Path:
     root = _workspace_root()
     path = root / project_id.replace("/", "_").replace("\\", "_")
     path.mkdir(parents=True, exist_ok=True)
+    try:
+        from orchestration.workspace_assembly import ensure_standard_workspace_scaffold
+
+        ensure_standard_workspace_scaffold(path)
+    except Exception:
+        pass
     return path
 
 

@@ -334,6 +334,12 @@ async def materialize_from_previous_outputs(
     safe_pid = str(project_id).replace("..", "").strip() or "default"
     workspace = Path(__file__).resolve().parents[1] / "workspace" / safe_pid
     workspace.mkdir(parents=True, exist_ok=True)
+    try:
+        from orchestration.workspace_assembly import ensure_standard_workspace_scaffold
+
+        ensure_standard_workspace_scaffold(workspace)
+    except Exception:
+        pass
     ws = str(workspace)
 
     pairs = collect_assembly_pairs(previous_outputs)

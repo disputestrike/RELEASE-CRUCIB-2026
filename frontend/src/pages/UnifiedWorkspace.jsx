@@ -6,7 +6,6 @@ import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth, API } from '../App';
 import axios from 'axios';
-import Editor from '@monaco-editor/react';
 import { useJobStream } from '../hooks/useJobStream';
 import {
   Rocket,
@@ -15,6 +14,7 @@ import {
   Eye,
   ShieldCheck,
   Share2,
+  FileArchive,
 } from 'lucide-react';
 import AutoRunnerPanel from '../components/AutoRunner/AutoRunnerPanel';
 import GoalComposer from '../components/AutoRunner/GoalComposer';
@@ -29,8 +29,18 @@ import WorkspaceActivityFeed from '../components/AutoRunner/WorkspaceActivityFee
 import SystemStatusHUD from '../components/AutoRunner/SystemStatusHUD';
 import PreviewPanel from '../components/AutoRunner/PreviewPanel';
 import ResizableDivider from '../components/AutoRunner/ResizableDivider';
+import WorkspaceFileTree from '../components/AutoRunner/WorkspaceFileTree';
+import WorkspaceFileViewer from '../components/AutoRunner/WorkspaceFileViewer';
 import { DEFAULT_FILES } from '../components/workspace/constants';
 import { computeSandpackFilesWithMeta, computeSandpackDeps } from '../workspace/sandpackFromFiles';
+import {
+  normalizeWorkspacePath,
+  fetchAllWorkspaceFilePaths,
+  buildTraceIndexFromEvents,
+  guessViewerKind,
+  toEditorPath,
+} from '../workspace/workspaceFileUtils';
+import { WorkspaceNavProvider } from '../workspace/WorkspaceNavContext';
 import { API_BASE } from '../apiBase';
 import '../styles/unified-workspace-tokens.css';
 import './AutoRunnerPage.css';
@@ -186,13 +196,33 @@ export default function UnifiedWorkspace() {
   }, [jobIdFromUrl, token, jobId]);
 
   const [files, setFiles] = useState(DEFAULT_FILES);
-  const [activeFile, setActiveFile] = useState('/App.js');
+  /** API workspace selection (posix, no leading slash) — tree + viewer source of truth. */
+  const [activeWsPath, setActiveWsPath] = useState('');
+  const [treeRevealTick, setTreeRevealTick] = useState(0);
   const [filesReadyKey, setFilesReadyKey] = useState('uw-default');
 
   const [workspacePullKey, setWorkspacePullKey] = useState(0);
+  const [wsPaths, setWsPaths] = useState([]);
+  const [wsListLoading, setWsListLoading] = useState(false);
+  const [wsFileCache, setWsFileCache] = useState({});
+  const [zipBusy, setZipBusy] = useState(false);
 
-  const { sandpackFiles, isFallback: sandpackIsFallback } = useMemo(() => computeSandpackFilesWithMeta(files), [files]);
-  const sandpackDeps = useMemo(() => computeSandpackDeps(files), [files]);
+  const sandpackMergeFiles = useMemo(() => {
+    const base = { ...DEFAULT_FILES, ...files };
+    Object.entries(wsFileCache).forEach(([k, ent]) => {
+      if (ent?.status === 'text' || ent?.status === 'markdown') {
+        const slashed = toEditorPath(k);
+        base[slashed] = { code: ent.text ?? '' };
+      }
+    });
+    return base;
+  }, [files, wsFileCache]);
+
+  const { sandpackFiles, isFallback: sandpackIsFallback } = useMemo(
+    () => computeSandpackFilesWithMeta(sandpackMergeFiles),
+    [sandpackMergeFiles],
+  );
+  const sandpackDeps = useMemo(() => computeSandpackDeps(sandpackMergeFiles), [sandpackMergeFiles]);
 
   /** URL wins so stream/poll start on first paint when opening ?jobId=… (state hydrates a tick later). */
   const effectiveJobId = jobIdFromUrl || jobId;
@@ -267,7 +297,12 @@ export default function UnifiedWorkspace() {
         }, {});
         if (Object.keys(loaded).length > 0) {
           setFiles(loaded);
-          setActiveFile(Object.keys(loaded).sort().find((k) => k.includes('App')) || Object.keys(loaded).sort()[0]);
+          const pick =
+            Object.keys(loaded)
+              .sort()
+              .find((k) => /App\.(jsx?|tsx?)$/i.test(k)) || Object.keys(loaded).sort()[0];
+          setActiveWsPath(normalizeWorkspacePath(pick));
+          setTreeRevealTick((t) => t + 1);
           setFilesReadyKey(`task_${taskIdFromUrl}_${Date.now()}`);
         }
       })
@@ -282,52 +317,191 @@ export default function UnifiedWorkspace() {
     const listUrl = useJobWs
       ? `${API}/jobs/${effectiveJobId}/workspace/files`
       : `${API}/projects/${effectiveProjectId}/workspace/files`;
-    const fileUrl = (path) =>
-      useJobWs
-        ? `${API}/jobs/${effectiveJobId}/workspace/file`
-        : `${API}/projects/${effectiveProjectId}/workspace/file`;
-    axios
-      .get(listUrl, { headers })
-      .then((r) => {
-        const list = r.data?.files || [];
-        if (list.length === 0) return;
-        return Promise.all(
-          list.map((path) =>
-            axios
-              .get(fileUrl(path), { params: { path }, headers })
-              .then((f) => ({ path: f.data.path, content: f.data.content }))
-              .catch(() => null),
-          ),
-        ).then((results) => {
-          const loaded = results.filter(Boolean).reduce((acc, { path, content }) => {
-            const key = path.startsWith('/') ? path : `/${path}`;
-            acc[key] = { code: content };
-            return acc;
-          }, {});
-          if (Object.keys(loaded).length > 0) {
-            // Merge so backend-only trees do not wipe Sandpack (computeSandpackFiles ignores .py, etc.).
-            setFiles((prev) => ({ ...prev, ...loaded }));
-            setActiveFile((cur) => {
-              if (cur) {
-                const normalized = cur.startsWith('/') ? cur : `/${cur}`;
-                if (loaded[normalized]) return normalized;
-              }
-              const keys = Object.keys(loaded).sort();
-              return keys.find((k) => /App\.(jsx?|tsx?)$/i.test(k)) || keys[0] || cur;
-            });
-            setFilesReadyKey(
-              useJobWs ? `job_${effectiveJobId}_${Date.now()}` : `proj_${effectiveProjectId}_${Date.now()}`,
-            );
-          }
+    let cancelled = false;
+    setWsListLoading(true);
+    fetchAllWorkspaceFilePaths(listUrl, headers)
+      .then((paths) => {
+        if (cancelled) return;
+        setWsPaths(paths);
+        setFilesReadyKey(
+          useJobWs ? `job_${effectiveJobId}_${Date.now()}` : `proj_${effectiveProjectId}_${Date.now()}`,
+        );
+        setActiveWsPath((cur) => {
+          if (cur && paths.includes(cur)) return cur;
+          const pick =
+            paths.find((p) => /(^|\/)App\.(jsx?|tsx?)$/i.test(p)) ||
+            paths.find((p) => /(^|\/)index\.(jsx?|tsx?)$/i.test(p)) ||
+            paths[0] ||
+            '';
+          if (pick) setTreeRevealTick((t) => t + 1);
+          return pick;
         });
       })
-      .catch(() => {});
-  }, [effectiveProjectId, effectiveJobId, token, workspacePullKey]);
+      .catch(() => {
+        if (!cancelled) setWsPaths([]);
+      })
+      .finally(() => {
+        if (!cancelled) setWsListLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveProjectId, effectiveJobId, token, workspacePullKey, API]);
+
+  const traceByPath = useMemo(() => buildTraceIndexFromEvents(events, steps), [events, steps]);
+
+  const loadWorkspaceFileBody = useCallback(
+    async (posixPath) => {
+      const key = normalizeWorkspacePath(posixPath);
+      if (!key || !token || !API) return;
+      const useJobWs = Boolean(effectiveJobId);
+      if (!useJobWs && !effectiveProjectId) return;
+      const headers = { Authorization: `Bearer ${token}` };
+      const textBase = useJobWs
+        ? `${API}/jobs/${effectiveJobId}/workspace/file`
+        : `${API}/projects/${effectiveProjectId}/workspace/file`;
+      const rawBase = useJobWs
+        ? `${API}/jobs/${effectiveJobId}/workspace/file/raw`
+        : `${API}/projects/${effectiveProjectId}/workspace/file/raw`;
+      setWsFileCache((prev) => {
+        const old = prev[key];
+        if (old?.blobUrl) {
+          try {
+            URL.revokeObjectURL(old.blobUrl);
+          } catch (_) {
+            /* ignore */
+          }
+        }
+        return { ...prev, [key]: { status: 'loading' } };
+      });
+      const kind = guessViewerKind(key);
+      if (kind === 'image' || kind === 'binary') {
+        try {
+          const r = await fetch(`${rawBase}?path=${encodeURIComponent(key)}`, { headers });
+          if (!r.ok) throw new Error((await r.text()) || r.statusText || `HTTP ${r.status}`);
+          const blob = await r.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          setWsFileCache((prev) => ({
+            ...prev,
+            [key]: { status: kind === 'image' ? 'image' : 'binary', blobUrl, contentType: r.headers.get('content-type') },
+          }));
+        } catch (e) {
+          setWsFileCache((prev) => ({
+            ...prev,
+            [key]: { status: 'error', error: e instanceof Error ? e.message : String(e) },
+          }));
+        }
+        return;
+      }
+      try {
+        const r = await axios.get(textBase, { params: { path: key }, headers });
+        const text = r.data?.content ?? '';
+        const pathReturned = normalizeWorkspacePath(r.data?.path || key);
+        const md = pathReturned.endsWith('.md') || key.endsWith('.md');
+        setWsFileCache((prev) => ({
+          ...prev,
+          [pathReturned]: { status: md ? 'markdown' : 'text', text },
+        }));
+      } catch (e) {
+        if (e.response?.status === 400) {
+          try {
+            const r = await fetch(`${rawBase}?path=${encodeURIComponent(key)}`, { headers });
+            if (!r.ok) throw new Error((await r.text()) || r.statusText);
+            const blob = await r.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            const isImg = (r.headers.get('content-type') || '').startsWith('image/');
+            setWsFileCache((prev) => ({
+              ...prev,
+              [key]: { status: isImg ? 'image' : 'binary', blobUrl, contentType: r.headers.get('content-type') },
+            }));
+          } catch (e2) {
+            setWsFileCache((prev) => ({
+              ...prev,
+              [key]: { status: 'error', error: e2 instanceof Error ? e2.message : String(e2) },
+            }));
+          }
+        } else {
+          setWsFileCache((prev) => ({
+            ...prev,
+            [key]: { status: 'error', error: e instanceof Error ? e.message : String(e) },
+          }));
+        }
+      }
+    },
+    [API, token, effectiveJobId, effectiveProjectId],
+  );
+
+  const openWorkspacePath = useCallback((rawPath) => {
+    const key = normalizeWorkspacePath(rawPath);
+    setActivePane('code');
+    setRightCollapsed(false);
+    if (!key) return;
+    setActiveWsPath(key);
+    setTreeRevealTick((t) => t + 1);
+  }, []);
+
+  useEffect(() => {
+    if (!activeWsPath) return;
+    loadWorkspaceFileBody(activeWsPath);
+  }, [activeWsPath, workspacePullKey, loadWorkspaceFileBody]);
+
+  useEffect(() => {
+    const last = events.length ? events[events.length - 1] : null;
+    const t = last?.type || last?.event_type;
+    if (t !== 'dag_node_completed') return undefined;
+    const id = setTimeout(() => setWorkspacePullKey((k) => k + 1), 600);
+    return () => clearTimeout(id);
+  }, [events]);
+
+  const prevJobStatusRef = useRef(null);
+  useEffect(() => {
+    prevJobStatusRef.current = null;
+  }, [effectiveJobId]);
+  useEffect(() => {
+    const st = job?.status;
+    if (st === 'failed' && prevJobStatusRef.current !== 'failed') {
+      setWorkspacePullKey((k) => k + 1);
+    }
+    prevJobStatusRef.current = st;
+  }, [job?.status]);
 
   const reloadWorkspaceFromServer = useCallback(() => {
     lastPulledStepCount.current = 0;
     setWorkspacePullKey((k) => k + 1);
   }, []);
+
+  const handleDownloadWorkspaceZip = useCallback(async () => {
+    if (!effectiveJobId || !token || !API) return;
+    setZipBusy(true);
+    try {
+      const res = await fetch(`${API}/jobs/${encodeURIComponent(effectiveJobId)}/export/full.zip`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        throw new Error(errText || res.statusText || `HTTP ${res.status}`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `crucibai-job-${effectiveJobId}-full.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'Download failed');
+    } finally {
+      setZipBusy(false);
+    }
+  }, [effectiveJobId, token, API]);
+
+  const workspaceNavValue = useMemo(
+    () => ({
+      openWorkspacePath,
+      traceForPath: (p) => traceByPath[normalizeWorkspacePath(p)] || null,
+    }),
+    [openWorkspacePath, traceByPath],
+  );
 
   const sendInFlightRef = useRef(false);
 
@@ -534,6 +708,20 @@ export default function UnifiedWorkspace() {
     setStage('input');
     setError(null);
     setFailedStep(null);
+    setActiveWsPath('');
+    setWsPaths([]);
+    setWsFileCache((prev) => {
+      Object.values(prev).forEach((e) => {
+        if (e?.blobUrl) {
+          try {
+            URL.revokeObjectURL(e.blobUrl);
+          } catch (_) {
+            /* ignore */
+          }
+        }
+      });
+      return {};
+    });
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
@@ -545,11 +733,31 @@ export default function UnifiedWorkspace() {
   };
 
   const handleCodeChange = (value) => {
-    setFiles((prev) => ({
-      ...prev,
-      [activeFile]: { code: value },
-    }));
+    if (!activeWsPath) return;
+    const fk = toEditorPath(activeWsPath);
+    setFiles((prev) => ({ ...prev, [fk]: { code: value } }));
+    setWsFileCache((prev) => {
+      const k = normalizeWorkspacePath(activeWsPath);
+      const e = prev[k];
+      if (!e || (e.status !== 'text' && e.status !== 'markdown')) return prev;
+      return { ...prev, [k]: { ...e, text: value } };
+    });
   };
+
+  const jumpStepToCode = useCallback(
+    (step) => {
+      let raw =
+        (step?.output_files && step.output_files[0]) ||
+        (step?.diagnosis && step.diagnosis.specific_file) ||
+        '';
+      if (typeof raw === 'string') {
+        const m = raw.match(/^(.+\.[a-z0-9]+):(\d+)$/i);
+        if (m) [, raw] = m;
+      }
+      openWorkspacePath(raw);
+    },
+    [openWorkspacePath],
+  );
 
   const activeAgentCount = [...new Set(steps.filter((s) => s.status === 'running').map((s) => s.agent_name))].length;
 
@@ -567,7 +775,8 @@ export default function UnifiedWorkspace() {
   }, [proof]);
 
   return (
-    <div className={`uw-root arp-root arp-ux-${uxMode}`}>
+    <WorkspaceNavProvider value={workspaceNavValue}>
+    <div className={`uw-root arp-root arp-ux-${uxMode}`} data-testid="unified-workspace-root">
       <div className="arp-layout arp-layout--no-inner-rail">
         <div className="arp-center-pane arp-center-pane--composer-bottom">
           <div className="arp-center-toolbar">
@@ -611,6 +820,7 @@ export default function UnifiedWorkspace() {
               loading={loading}
               connectionMode={connectionMode}
               fallbackGoal={goal}
+              openWorkspacePath={openWorkspacePath}
             />
 
             {stage === 'plan' && plan && (
@@ -652,9 +862,10 @@ export default function UnifiedWorkspace() {
                   <FailureDrawer
                     step={failureStep}
                     onRetry={handleRetryStep}
-                    onOpenCode={() => setActivePane('code')}
+                    onOpenCode={jumpStepToCode}
                     onPauseJob={handleCancel}
                     onClose={() => setFailedStep(null)}
+                    openWorkspacePath={openWorkspacePath}
                   />
                 )}
               </div>
@@ -782,14 +993,23 @@ export default function UnifiedWorkspace() {
                     events={events}
                     job={job}
                     onRetryStep={handleRetryStep}
-                    onJumpToCode={() => setActivePane('code')}
+                    onJumpToCode={jumpStepToCode}
                     isConnected={isConnected}
                     connectionMode={connectionMode}
                   />
                 )}
-                {activePane === 'proof' && <ProofPanel proof={proof} jobId={effectiveJobId} onExport={() => {}} />}
+                {activePane === 'proof' && (
+                  <ProofPanel proof={proof} jobId={effectiveJobId} onExport={() => {}} openWorkspacePath={openWorkspacePath} />
+                )}
                 {activePane === 'explorer' && uxMode === 'pro' && (
-                  <SystemExplorer steps={steps} proof={proof} job={job} projectId={effectiveProjectId} token={token} />
+                  <SystemExplorer
+                    steps={steps}
+                    proof={proof}
+                    job={job}
+                    projectId={effectiveProjectId}
+                    token={token}
+                    openWorkspacePath={openWorkspacePath}
+                  />
                 )}
                 {activePane === 'replay' && uxMode === 'pro' && <BuildReplay events={events} steps={steps} />}
                 {activePane === 'failure' &&
@@ -797,43 +1017,49 @@ export default function UnifiedWorkspace() {
                     <FailureDrawer
                       step={failureStep}
                       onRetry={handleRetryStep}
-                      onOpenCode={() => setActivePane('code')}
+                      onOpenCode={jumpStepToCode}
                       onPauseJob={handleCancel}
                       onClose={() => setFailedStep(null)}
+                      openWorkspacePath={openWorkspacePath}
                     />
                   ) : (
                     <div className="arp-failure-empty">No failed steps — all green.</div>
                   ))}
                 {activePane === 'code' && uxMode === 'pro' && (
                   <div className="code-pane-wrap">
-                    <div className="code-pane-tabs">
-                      {Object.keys(files)
-                        .sort()
-                        .map((fp) => (
-                          <button key={fp} type="button" className={activeFile === fp ? 'active' : ''} onClick={() => setActiveFile(fp)}>
-                            {fp.replace(/^\//, '')}
-                          </button>
-                        ))}
+                    <div className="code-pane-actions">
+                      {effectiveJobId && token ? (
+                        <button
+                          type="button"
+                          className="arp-topbar-btn"
+                          style={{ fontSize: 11 }}
+                          disabled={zipBusy}
+                          title="Download sealed workspace ZIP"
+                          onClick={handleDownloadWorkspaceZip}
+                        >
+                          <FileArchive size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                          {zipBusy ? 'ZIP…' : 'Workspace ZIP'}
+                        </button>
+                      ) : null}
+                      <span title="From API file list">{wsPaths.length ? `${wsPaths.length} paths` : '—'}</span>
                     </div>
-                    <div className="code-pane-editor">
-                      <Editor
-                        height="100%"
-                        theme={editorColorMode === 'light' ? 'vs' : 'vs-dark'}
-                        path={activeFile}
-                        language={
-                          activeFile.endsWith('.css')
-                            ? 'css'
-                            : activeFile.endsWith('.json')
-                              ? 'json'
-                              : activeFile.endsWith('.html')
-                                ? 'html'
-                                : activeFile.endsWith('.tsx') || activeFile.endsWith('.ts')
-                                  ? 'typescript'
-                                  : 'javascript'
-                        }
-                        value={files[activeFile]?.code || ''}
-                        onChange={handleCodeChange}
-                        options={{ minimap: { enabled: false }, fontSize: 13, wordWrap: 'on' }}
+                    <div className="code-pane-main">
+                      <WorkspaceFileTree
+                        paths={wsPaths}
+                        selectedPath={activeWsPath}
+                        onSelectPath={(p) => {
+                          setActiveWsPath(p);
+                          setTreeRevealTick((t) => t + 1);
+                        }}
+                        revealTick={treeRevealTick}
+                        loading={wsListLoading}
+                      />
+                      <WorkspaceFileViewer
+                        activePathPosix={activeWsPath}
+                        entry={wsFileCache[activeWsPath]}
+                        trace={activeWsPath ? traceByPath[activeWsPath] : null}
+                        editorColorMode={editorColorMode}
+                        onTextChange={handleCodeChange}
                       />
                     </div>
                   </div>
@@ -844,5 +1070,6 @@ export default function UnifiedWorkspace() {
         </div>
       </div>
     </div>
+    </WorkspaceNavProvider>
   );
 }

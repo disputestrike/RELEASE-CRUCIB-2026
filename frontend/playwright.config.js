@@ -20,22 +20,22 @@ module.exports = defineConfig({
   projects: [
     {
       name: 'chromium',
-      testIgnore: '**/workspace-preview.spec.js',
+      testIgnore: /workspace-(preview|crosswalk)\.spec\.js$/,
       use: { ...devices['Desktop Chrome'] },
     },
     {
       name: 'firefox',
-      testIgnore: '**/workspace-preview.spec.js',
+      testIgnore: /workspace-(preview|crosswalk)\.spec\.js$/,
       use: { ...devices['Desktop Firefox'] },
     },
     {
       name: 'webkit',
-      testIgnore: '**/workspace-preview.spec.js',
+      testIgnore: /workspace-(preview|crosswalk)\.spec\.js$/,
       use: { ...devices['Desktop Safari'] },
     },
     {
       name: 'workspace-preview',
-      testMatch: '**/workspace-preview.spec.js',
+      testMatch: /workspace-(preview|crosswalk)\.spec\.js$/,
       use: { ...devices['Desktop Chrome'] },
     },
   ],

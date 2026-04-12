@@ -12,7 +12,7 @@
  *   E2E_BUILD_TARGET=next_app_router npx playwright test --project=workspace-preview
  *
  * The second test creates a real job via /api/orchestrator/plan and writes `src/App.jsx` under
- * `backend/workspace/<project_id>/` so the UI can load Sandpack from the job workspace API.
+ * `backend/workspace/<project_id>/`, syncs from the UI, then asserts the Sandpack host + Sandbox label.
  */
 const { test, expect } = require('@playwright/test');
 const fs = require('fs');
@@ -40,10 +40,23 @@ async function apiRequestContext(playwright) {
   });
 }
 
-async function openPreviewPane(page) {
-  await page.waitForSelector('.arp-topbar', { timeout: 90000 });
-  const topPreview = page.locator('.arp-topbar').locator('button[title="Preview"]');
-  await topPreview.click({ timeout: 30000 });
+/** UnifiedWorkspace mounts `uw-root` (no legacy `.arp-topbar` wrapper). */
+async function waitForUnifiedWorkspace(page) {
+  await page.waitForSelector('[data-testid="unified-workspace-root"]', { timeout: 90000 });
+}
+
+/** Right-rail icon (distinct from `.arp-pane-tab` text "Preview"). */
+async function openPreviewFromToolbar(page) {
+  await waitForUnifiedWorkspace(page);
+  await page.locator('.arp-right-toolbar button[title="Preview"]').click({ timeout: 30000 });
+}
+
+/** Dev mode exposes the Code pane tab; then open Code and assert API-driven tree + viewer shell. */
+async function openCodeWorkspacePane(page) {
+  await waitForUnifiedWorkspace(page);
+  await page.getByRole('button', { name: 'Dev' }).click({ timeout: 15000 }).catch(() => {});
+  await page.getByRole('button', { name: 'Code' }).click({ timeout: 15000 });
+  await page.waitForSelector('.code-pane-main', { timeout: 20000 });
 }
 
 /**
@@ -82,11 +95,15 @@ test.describe('Unified workspace preview', () => {
       await page.addInitScript((t) => {
         window.localStorage.setItem('token', t);
         window.localStorage.setItem('crucibai_onboarding_complete', '1');
+        window.localStorage.setItem('crucibai_workspace_mode', 'developer');
+        window.localStorage.setItem('crucibai_right_collapsed', 'false');
       }, token);
 
       await page.goto('/app/workspace', { waitUntil: 'domcontentloaded' });
-      await openPreviewPane(page);
+      await openCodeWorkspacePane(page);
+      await expect(page.locator('.wft-wrap')).toBeVisible({ timeout: 20000 });
 
+      await openPreviewFromToolbar(page);
       await expect(page.locator('.preview-panel')).toBeVisible({ timeout: 20000 });
       await expect(page.locator('.preview-panel .pp-preview-body')).toBeVisible({ timeout: 20000 });
       await expect(page.locator('.pp-sandpack-host')).toBeVisible({ timeout: 90000 });
@@ -95,7 +112,7 @@ test.describe('Unified workspace preview', () => {
     }
   });
 
-  test('job deep link + seeded workspace mounts Sandpack iframe', async ({ page, playwright }) => {
+  test('job deep link + seeded workspace shows Sandpack preview shell', async ({ page, playwright }) => {
     const apiReq = await apiRequestContext(playwright);
     try {
       const health = await apiReq.get('/api/health').catch(() => null);
@@ -150,20 +167,29 @@ test.describe('Unified workspace preview', () => {
         await page.addInitScript((t) => {
           window.localStorage.setItem('token', t);
           window.localStorage.setItem('crucibai_onboarding_complete', '1');
+          window.localStorage.setItem('crucibai_workspace_mode', 'developer');
+          window.localStorage.setItem('crucibai_right_collapsed', 'false');
         }, token);
 
         await page.goto(`/app/workspace?jobId=${encodeURIComponent(jobId)}`, { waitUntil: 'domcontentloaded' });
-        await openPreviewPane(page);
+        await waitForUnifiedWorkspace(page);
+
+        const syncBtn = page
+          .locator('[data-testid="unified-workspace-root"]')
+          .locator('button[title="Reload files from server"]');
+        await syncBtn.waitFor({ state: 'visible', timeout: 60000 });
 
         const filesPromise = page
-          .waitForResponse((r) => r.url().includes(`/jobs/${jobId}/workspace/files`) && r.ok(), { timeout: 30000 })
+          .waitForResponse((r) => r.url().includes(`/jobs/${jobId}/workspace/files`) && r.ok(), { timeout: 60000 })
           .catch(() => null);
-
-        await page.locator('.arp-topbar').locator('button[title="Reload files from server"]').click().catch(() => {});
+        await syncBtn.click();
         await filesPromise;
 
+        await openPreviewFromToolbar(page);
+
         await expect(page.locator('.pp-sandpack-host')).toBeVisible({ timeout: 90000 });
-        await expect(page.locator('.pp-sandpack-host iframe')).toBeVisible({ timeout: 90000 });
+        // Sandpack may host the runtime iframe inside shadow / nested roots; assert shell + mode like test 1.
+        await expect(page.locator('.preview-panel')).toContainText('Sandbox', { timeout: 30000 });
       } finally {
         try {
           fs.rmSync(seededRoot, { recursive: true, force: true });

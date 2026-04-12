@@ -34,7 +34,7 @@ const RETRY_STRATEGIES = {
 const MAX_STEP_RETRIES = 8;
 const MAX_ATTEMPTS = MAX_STEP_RETRIES + 1; // 9 total attempts
 
-export default function FailureDrawer({ step, onRetry, onOpenCode, onPauseJob, onClose }) {
+export default function FailureDrawer({ step, onRetry, onOpenCode, onPauseJob, onClose, openWorkspacePath }) {
   const [retryTriggered, setRetryTriggered] = useState(false);
 
   if (!step) return null;
@@ -95,9 +95,20 @@ export default function FailureDrawer({ step, onRetry, onOpenCode, onPauseJob, o
           <div className="fd-row">
             <span className="fd-label">Impacted Files</span>
             <div className="fd-files">
-              {outputFiles.map(f => (
-                <span key={f} className="fd-file">{f}</span>
-              ))}
+              {outputFiles.map((f) =>
+                openWorkspacePath ? (
+                  <button
+                    key={f}
+                    type="button"
+                    className="fd-file fd-file-link"
+                    onClick={() => openWorkspacePath(f)}
+                  >
+                    {f}
+                  </button>
+                ) : (
+                  <span key={f} className="fd-file">{f}</span>
+                ),
+              )}
             </div>
           </div>
         )}

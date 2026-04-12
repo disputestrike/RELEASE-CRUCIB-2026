@@ -43,7 +43,7 @@ function payloadSummary(payload) {
   }
 }
 
-export default function ProofPanel({ proof, jobId, onExport: _onExport }) {
+export default function ProofPanel({ proof, jobId, onExport: _onExport, openWorkspacePath }) {
   const { token } = useAuth();
   const [activeTab, setActiveTab] = useState('files');
   const [expandedItems, setExpandedItems] = useState(new Set());
@@ -219,7 +219,17 @@ export default function ProofPanel({ proof, jobId, onExport: _onExport }) {
                 .slice(0, 50)
                 .map(([path, rows]) => (
                   <li key={path} className="pp-proof-index-row">
-                    <code className="pp-proof-index-path">{path}</code>
+                    {openWorkspacePath ? (
+                      <button
+                        type="button"
+                        className="pp-proof-index-path pp-proof-index-path-btn"
+                        onClick={() => openWorkspacePath(path)}
+                      >
+                        {path}
+                      </button>
+                    ) : (
+                      <code className="pp-proof-index-path">{path}</code>
+                    )}
                     <span className="pp-proof-index-meta">
                       {Array.isArray(rows) ? rows.length : 0} proof row
                       {Array.isArray(rows) && rows.length === 1 ? '' : 's'}
@@ -313,18 +323,46 @@ export default function ProofPanel({ proof, jobId, onExport: _onExport }) {
                           0) && (
                         <div className="pp-item-file-links" aria-label="Paths linked to this proof row">
                           {(proof.proof_index.by_proof_item_id[item.id].paths_resolved_in_manifest || []).map(
-                            (p) => (
-                              <span key={`ok-${p}`} className="pp-path-chip pp-path-resolved" title="In workspace">
-                                {p}
-                              </span>
-                            )
+                            (p) =>
+                              openWorkspacePath ? (
+                                <button
+                                  key={`ok-${p}`}
+                                  type="button"
+                                  className="pp-path-chip pp-path-resolved pp-path-chip-btn"
+                                  title="Open in Code"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openWorkspacePath(p);
+                                  }}
+                                >
+                                  {p}
+                                </button>
+                              ) : (
+                                <span key={`ok-${p}`} className="pp-path-chip pp-path-resolved" title="In workspace">
+                                  {p}
+                                </span>
+                              ),
                           )}
                           {(proof.proof_index.by_proof_item_id[item.id].paths_missing_from_manifest || []).map(
-                            (p) => (
-                              <span key={`miss-${p}`} className="pp-path-chip pp-path-missing" title="Not in manifest">
-                                {p}
-                              </span>
-                            )
+                            (p) =>
+                              openWorkspacePath ? (
+                                <button
+                                  key={`miss-${p}`}
+                                  type="button"
+                                  className="pp-path-chip pp-path-missing pp-path-chip-btn"
+                                  title="Open in Code"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openWorkspacePath(p);
+                                  }}
+                                >
+                                  {p}
+                                </button>
+                              ) : (
+                                <span key={`miss-${p}`} className="pp-path-chip pp-path-missing" title="Not in manifest">
+                                  {p}
+                                </span>
+                              ),
                           )}
                         </div>
                       )}

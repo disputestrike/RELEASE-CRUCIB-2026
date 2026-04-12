@@ -256,3 +256,14 @@ def iter_files_for_zip(workspace_root: Path):
             except ValueError:
                 continue
             yield arc, fp
+
+
+STANDARD_TOP_DIRS = ("client", "server", "docs", "config", "assets", "META")
+
+
+def ensure_standard_workspace_scaffold(workspace_root: Path) -> None:
+    """Create canonical top-level dirs for generated workspaces (idempotent)."""
+    root = workspace_root.resolve()
+    root.mkdir(parents=True, exist_ok=True)
+    for name in STANDARD_TOP_DIRS:
+        (root / name).mkdir(parents=True, exist_ok=True)

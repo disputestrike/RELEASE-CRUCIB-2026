@@ -233,6 +233,23 @@
   min-height: 0;
 }
 
+.uw-root .code-pane-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-1);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.uw-root .code-pane-main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
 .uw-root .code-pane-tabs {
   display: flex;
   gap: 0;

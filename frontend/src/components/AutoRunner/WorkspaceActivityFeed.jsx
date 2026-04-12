@@ -45,6 +45,7 @@ export default function WorkspaceActivityFeed({
   connectionMode = 'offline',
   /** When the job row has not hydrated yet, show the in-composer goal text. */
   fallbackGoal = '',
+  openWorkspacePath,
 }) {
   const sortedSteps = useMemo(
     () => [...steps].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)),
@@ -64,6 +65,19 @@ export default function WorkspaceActivityFeed({
       if (text) lines.push({ id: ev.id ?? `${text}-${lines.length}`, text });
     }
     return lines.slice(-14);
+  }, [events]);
+
+  const latestWritePaths = useMemo(() => {
+    for (let i = events.length - 1; i >= 0; i -= 1) {
+      const ev = events[i];
+      const t = ev.type || ev.event_type;
+      if (t !== 'dag_node_completed') continue;
+      const p = ev.payload || {};
+      const files = p.output_files;
+      if (!Array.isArray(files) || files.length === 0) continue;
+      return files.slice(0, 6).map((x) => String(x));
+    }
+    return [];
   }, [events]);
 
   if (!effectiveJobId) {
@@ -138,6 +152,21 @@ export default function WorkspaceActivityFeed({
               </li>
             ))}
           </ul>
+        )}
+
+        {openWorkspacePath && latestWritePaths.length > 0 && (
+          <div className="uw-af-writes" aria-label="Latest workspace writes">
+            <p className="uw-af-writes-label">Open in Code</p>
+            <ul className="uw-af-writes-list">
+              {latestWritePaths.map((p) => (
+                <li key={p}>
+                  <button type="button" className="uw-af-write-link" onClick={() => openWorkspacePath(p)}>
+                    {p}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
 
         {feedEvents.length > 0 && (
