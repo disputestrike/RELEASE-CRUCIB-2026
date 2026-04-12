@@ -8,6 +8,7 @@ from . import auth, jobs, agents, monitoring, projects
 # Create main router
 api_router = APIRouter(prefix="/api", tags=["api"])
 
+
 # Register all route modules
 def include_all_routes(app):
     """Include all route modules in the FastAPI app"""
@@ -17,6 +18,7 @@ def include_all_routes(app):
     app.include_router(monitoring.router, prefix="")
     app.include_router(projects.router, prefix="")
     return app
+
 
 __all__ = [
     "auth",

@@ -4,6 +4,7 @@
 - Agent failure recovery ? fallback or skip.
 No real API keys required for these tests (mocks used).
 """
+
 import os
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
@@ -65,12 +66,20 @@ async def test_agent_failure_recovery_returns_fallback_or_skip():
         mock_db.project_logs.insert_one = AsyncMock()
         mock_db.token_usage.insert_one = AsyncMock()
 
-        with patch("server._run_single_agent_with_context", new_callable=AsyncMock) as mock_run:
+        with patch(
+            "server._run_single_agent_with_context", new_callable=AsyncMock
+        ) as mock_run:
             mock_run.side_effect = Exception("Simulated API failure")
 
             result = await _run_single_agent_with_retry(
-                project_id, user_id, agent_name, project_prompt,
-                previous_outputs, effective, model_chain, max_retries=2,
+                project_id,
+                user_id,
+                agent_name,
+                project_prompt,
+                previous_outputs,
+                effective,
+                model_chain,
+                max_retries=2,
             )
 
     assert result.get("status") in ("skipped", "failed_with_fallback", "failed")
@@ -97,18 +106,30 @@ async def test_high_agent_failure_returns_fallback():
         mock_db.agent_status.update_one = AsyncMock()
         mock_db.project_logs.insert_one = AsyncMock()
 
-        with patch("server._run_single_agent_with_context", new_callable=AsyncMock) as mock_run:
+        with patch(
+            "server._run_single_agent_with_context", new_callable=AsyncMock
+        ) as mock_run:
             mock_run.side_effect = Exception("Simulated failure")
 
             result = await _run_single_agent_with_retry(
-                project_id, user_id, agent_name, project_prompt,
-                previous_outputs, effective, model_chain, max_retries=2,
+                project_id,
+                user_id,
+                agent_name,
+                project_prompt,
+                previous_outputs,
+                effective,
+                model_chain,
+                max_retries=2,
             )
 
     assert result.get("status") == "failed_with_fallback"
     assert result.get("recoverable") is True
     out = result.get("output") or result.get("result") or ""
-    assert out and (("React" in out) or ("frontend" in out.lower()) or ("placeholder" in out.lower()))
+    assert out and (
+        ("React" in out)
+        or ("frontend" in out.lower())
+        or ("placeholder" in out.lower())
+    )
 
 
 def test_dag_phases_include_all_agents():
@@ -128,7 +149,8 @@ def test_context_truncation():
     max_chars = get_context_max_chars()
     long_output = "x" * (max_chars + 500)
     previous = {"Planner": {"output": long_output}}
-    out = build_context_from_previous_agents("Stack Selector", previous, "Build a todo app")
+    out = build_context_from_previous_agents(
+        "Stack Selector", previous, "Build a todo app"
+    )
     assert "truncated" in out
     assert len(out) <= len("Build a todo app") + max_chars + 100
-

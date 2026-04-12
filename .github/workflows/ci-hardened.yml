@@ -128,9 +128,9 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       
       - name: Install dependencies
-        run: pip install --no-cache-dir -r requirements.txt
-      
-      - name: Run Bandit security check
+        run: |
+          pip install --no-cache-dir -r requirements.txt
+          pip install bandit safety
         run: |
           bandit -r backend/ -f json -o bandit-report.json
           bandit -r backend/ -f txt

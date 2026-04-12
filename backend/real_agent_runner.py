@@ -6,6 +6,7 @@ Real agent runner: every agent has a real effect.
 - Backend Generation: validates generated backend code via sandbox smoke-run.
 - Security Checker / UX Auditor / Performance Analyzer: run real linters/checks where possible.
 """
+
 import asyncio
 import json
 import logging
@@ -16,6 +17,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 try:
     from services.sandbox_runner import run_code as _sandbox_run_code
+
     _SANDBOX_AVAILABLE = True
 except Exception:  # pragma: no cover
     _sandbox_run_code = None  # type: ignore[assignment]
@@ -24,13 +26,16 @@ except Exception:  # pragma: no cover
 logger = logging.getLogger(__name__)
 
 # Agents that execute real tools; when the DAG runs these, we call the real implementation.
-REAL_AGENT_NAMES = frozenset({
-    "Browser Tool Agent",
-    "File Tool Agent",
-    "API Tool Agent",
-    "Database Tool Agent",
-    "Deployment Tool Agent",
-})
+REAL_AGENT_NAMES = frozenset(
+    {
+        "Browser Tool Agent",
+        "File Tool Agent",
+        "API Tool Agent",
+        "Database Tool Agent",
+        "Deployment Tool Agent",
+    }
+)
+
 
 # Default workspace root (per-project dirs go under this)
 def _workspace_root() -> Path:
@@ -52,14 +57,48 @@ def _project_workspace(project_id: str) -> Path:
 
 
 _PROSE_PREFIXES = (
-    "i ", "i'", "here ", "here'", "this ", "the following",
-    "appreciate", "certainly", "sure,", "below", "based on",
-    "as requested", "i have", "i'll", "let me", "of course",
-    "happy to", "glad to", "please find", "above is", "this is",
-    "the above", "note:", "note that", "in this", "we have",
+    "i ",
+    "i'",
+    "here ",
+    "here'",
+    "this ",
+    "the following",
+    "appreciate",
+    "certainly",
+    "sure,",
+    "below",
+    "based on",
+    "as requested",
+    "i have",
+    "i'll",
+    "let me",
+    "of course",
+    "happy to",
+    "glad to",
+    "please find",
+    "above is",
+    "this is",
+    "the above",
+    "note:",
+    "note that",
+    "in this",
+    "we have",
 )
-_CODE_EXTENSIONS = {".jsx", ".tsx", ".js", ".ts", ".py", ".css", ".scss",
-                    ".json", ".yaml", ".yml", ".html", ".sh", ".sql"}
+_CODE_EXTENSIONS = {
+    ".jsx",
+    ".tsx",
+    ".js",
+    ".ts",
+    ".py",
+    ".css",
+    ".scss",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".html",
+    ".sh",
+    ".sql",
+}
 _FENCE_RE = re.compile(r"```(?P<lang>[a-zA-Z0-9_+-]*)\s*\n(?P<body>.*?)```", re.DOTALL)
 _FENCE_ONLY_RE = re.compile(r"^\s*```[a-zA-Z0-9_+-]*\s*$")
 _LANGUAGE_HINTS = {
@@ -80,7 +119,9 @@ _LANGUAGE_HINTS = {
 
 
 def _strip_fence_lines(text: str) -> str:
-    return "\n".join(line for line in text.splitlines() if not _FENCE_ONLY_RE.match(line))
+    return "\n".join(
+        line for line in text.splitlines() if not _FENCE_ONLY_RE.match(line)
+    )
 
 
 def _extract_best_fenced_block(content: str, filepath: str = "") -> str:
@@ -147,7 +188,9 @@ async def run_legacy_file_tool_writes(
     errors: List[str] = []
 
     fe = previous_outputs.get("Frontend Generation") or {}
-    fe_code = extract_code(fe.get("output") or fe.get("result") or fe.get("code"), "src/App.jsx")
+    fe_code = extract_code(
+        fe.get("output") or fe.get("result") or fe.get("code"), "src/App.jsx"
+    )
     if fe_code:
         try:
             r = await agent.execute({"action": "mkdir", "path": "src"})
@@ -163,10 +206,14 @@ async def run_legacy_file_tool_writes(
             errors.append(f"Frontend write: {e}")
 
     be = previous_outputs.get("Backend Generation") or {}
-    be_code = extract_code(be.get("output") or be.get("result") or be.get("code"), "server.py")
+    be_code = extract_code(
+        be.get("output") or be.get("result") or be.get("code"), "server.py"
+    )
     if be_code:
         try:
-            r = await agent.execute({"action": "write", "path": "server.py", "content": be_code})
+            r = await agent.execute(
+                {"action": "write", "path": "server.py", "content": be_code}
+            )
             if r.get("success"):
                 written.append("server.py")
             else:
@@ -175,10 +222,14 @@ async def run_legacy_file_tool_writes(
             errors.append(f"Backend write: {e}")
 
     db_agent = previous_outputs.get("Database Agent") or {}
-    db_code = extract_code(db_agent.get("output") or db_agent.get("result"), "schema.sql")
+    db_code = extract_code(
+        db_agent.get("output") or db_agent.get("result"), "schema.sql"
+    )
     if db_code:
         try:
-            r = await agent.execute({"action": "write", "path": "schema.sql", "content": db_code})
+            r = await agent.execute(
+                {"action": "write", "path": "schema.sql", "content": db_code}
+            )
             if r.get("success"):
                 written.append("schema.sql")
             else:
@@ -196,7 +247,11 @@ async def run_legacy_file_tool_writes(
             r = await agent.execute({"action": "mkdir", "path": "tests"})
             if r.get("success"):
                 r = await agent.execute(
-                    {"action": "write", "path": "tests/test_basic.py", "content": test_code},
+                    {
+                        "action": "write",
+                        "path": "tests/test_basic.py",
+                        "content": test_code,
+                    },
                 )
                 if r.get("success"):
                     written.append("tests/test_basic.py")
@@ -205,7 +260,9 @@ async def run_legacy_file_tool_writes(
         except Exception as e:
             errors.append(f"Tests write: {e}")
 
-    output = f"Real File Tool Agent: wrote {len(written)} file(s): {', '.join(written)}."
+    output = (
+        f"Real File Tool Agent: wrote {len(written)} file(s): {', '.join(written)}."
+    )
     if errors:
         output += f" Errors: {'; '.join(errors)}"
     return {
@@ -226,7 +283,10 @@ async def _run_file_tool_agent(
 ) -> Dict[str, Any]:
     """Write generated frontend/backend/database/tests to project workspace. Real execution."""
     try:
-        from orchestration.workspace_assembly_pipeline import assembly_v2_enabled, materialize_from_previous_outputs
+        from orchestration.workspace_assembly_pipeline import (
+            assembly_v2_enabled,
+            materialize_from_previous_outputs,
+        )
 
         if assembly_v2_enabled():
             pl = previous_outputs.get("Planner") or {}
@@ -245,7 +305,9 @@ async def _run_file_tool_agent(
     except Exception as e:
         logger.warning("File Tool Agent assembly v2 skipped, using legacy path: %s", e)
 
-    return await run_legacy_file_tool_writes(project_id, previous_outputs, _extract_code)
+    return await run_legacy_file_tool_writes(
+        project_id, previous_outputs, _extract_code
+    )
 
 
 async def _run_database_tool_agent(
@@ -254,11 +316,14 @@ async def _run_database_tool_agent(
 ) -> Dict[str, Any]:
     """Apply database schema to project SQLite. Real execution."""
     import aiosqlite
+
     workspace = _project_workspace(project_id)
     db_path = str(workspace / "app.db")
 
     db_agent = previous_outputs.get("Database Agent") or {}
-    schema = _extract_code(db_agent.get("output") or db_agent.get("result"), filepath="schema.sql")
+    schema = _extract_code(
+        db_agent.get("output") or db_agent.get("result"), filepath="schema.sql"
+    )
     if not schema or not schema.strip():
         return {
             "output": "Real Database Tool Agent: no schema from Database Agent; skipped.",
@@ -301,6 +366,7 @@ async def _run_browser_tool_agent(
 ) -> Dict[str, Any]:
     """Optional: if Scraping Agent or context gave a URL, navigate and return snippet. Real execution."""
     from tools.browser_agent import BrowserAgent
+
     agent = BrowserAgent(llm_client=None, config={})
     url: Optional[str] = None
     scrape = previous_outputs.get("Scraping Agent") or {}
@@ -356,9 +422,12 @@ async def _run_api_tool_agent(
 ) -> Dict[str, Any]:
     """If API Integration or context has an endpoint URL, call it. Real execution."""
     from tools.api_agent import APIAgent
+
     agent = APIAgent(llm_client=None, config={})
     api_out = previous_outputs.get("API Integration") or {}
-    out = _extract_code(api_out.get("output") or api_out.get("result"), filepath="api/client.js")
+    out = _extract_code(
+        api_out.get("output") or api_out.get("result"), filepath="api/client.js"
+    )
     url: Optional[str] = None
     if out and "http" in out:
         for word in out.replace(",", " ").replace("\n", " ").split():
@@ -410,6 +479,7 @@ async def _run_deployment_tool_agent(
 ) -> Dict[str, Any]:
     """Deploy from project workspace (after File Tool Agent has written files). Real execution."""
     from tools.deployment_operations_agent import DeploymentOperationsAgent
+
     workspace = _project_workspace(project_id)
     if not (workspace / "server.py").exists() and not (workspace / "src").exists():
         return {
@@ -422,11 +492,13 @@ async def _run_deployment_tool_agent(
         }
     agent = DeploymentOperationsAgent(llm_client=None, config={})
     try:
-        r = await agent.execute({
-            "platform": "vercel",
-            "project_path": str(workspace),
-            "config": {},
-        })
+        r = await agent.execute(
+            {
+                "platform": "vercel",
+                "project_path": str(workspace),
+                "config": {},
+            }
+        )
         if r.get("success"):
             return {
                 "output": f"Real Deployment Tool Agent: {r.get('output', 'deployed')} URL: {r.get('url', 'N/A')}.",
@@ -475,7 +547,9 @@ async def run_real_agent(
         if agent_name == "Database Tool Agent":
             return await _run_database_tool_agent(project_id, previous_outputs)
         if agent_name == "Browser Tool Agent":
-            return await _run_browser_tool_agent(project_id, previous_outputs, project_prompt)
+            return await _run_browser_tool_agent(
+                project_id, previous_outputs, project_prompt
+            )
         if agent_name == "API Tool Agent":
             return await _run_api_tool_agent(project_id, previous_outputs)
         if agent_name == "Deployment Tool Agent":
@@ -495,11 +569,14 @@ async def run_real_agent(
 
 # --- All agents: persist output to workspace (real effect) ---
 
+
 def _agent_slug(name: str) -> str:
     return name.replace(" ", "_").replace("/", "-")
 
 
-def persist_agent_output(project_id: str, agent_name: str, result: Dict[str, Any]) -> None:
+def persist_agent_output(
+    project_id: str, agent_name: str, result: Dict[str, Any]
+) -> None:
     """Persist every agent's output to workspace so all agents have a real effect (written to disk)."""
     workspace = _project_workspace(project_id)
     out_dir = workspace / "outputs"
@@ -520,6 +597,7 @@ def persist_agent_output(project_id: str, agent_name: str, result: Dict[str, Any
 
 
 # --- Real post-steps for specific agents (run real tools after LLM) ---
+
 
 async def run_real_post_step(
     agent_name: str,
@@ -543,12 +621,32 @@ async def run_real_post_step(
                         code=test_code,
                         timeout=60,
                     )
-                    sandbox_out = sandbox_result.get("stdout", "") if isinstance(sandbox_result, dict) else getattr(sandbox_result, "stdout", "")
-                    sandbox_err = sandbox_result.get("stderr", "") if isinstance(sandbox_result, dict) else getattr(sandbox_result, "stderr", "")
-                    exit_code = sandbox_result.get("exit_code", -1) if isinstance(sandbox_result, dict) else getattr(sandbox_result, "exit_code", -1)
-                    label = "[SANDBOX E2B]" if os.environ.get("E2B_API_KEY") else "[SANDBOX local]"
-                    combined = (sandbox_out + ("\n" + sandbox_err if sandbox_err else "")).strip()
-                    out = (out + f"\n\n{label} exit {exit_code}:\n" + combined[:2000]).strip()
+                    sandbox_out = (
+                        sandbox_result.get("stdout", "")
+                        if isinstance(sandbox_result, dict)
+                        else getattr(sandbox_result, "stdout", "")
+                    )
+                    sandbox_err = (
+                        sandbox_result.get("stderr", "")
+                        if isinstance(sandbox_result, dict)
+                        else getattr(sandbox_result, "stderr", "")
+                    )
+                    exit_code = (
+                        sandbox_result.get("exit_code", -1)
+                        if isinstance(sandbox_result, dict)
+                        else getattr(sandbox_result, "exit_code", -1)
+                    )
+                    label = (
+                        "[SANDBOX E2B]"
+                        if os.environ.get("E2B_API_KEY")
+                        else "[SANDBOX local]"
+                    )
+                    combined = (
+                        sandbox_out + ("\n" + sandbox_err if sandbox_err else "")
+                    ).strip()
+                    out = (
+                        out + f"\n\n{label} exit {exit_code}:\n" + combined[:2000]
+                    ).strip()
                     ran.append(f"sandbox exit {exit_code}")
                 except Exception as _e:
                     ran.append(f"sandbox: {_e}")
@@ -556,20 +654,28 @@ async def run_real_post_step(
         if (workspace / "tests").exists() or (workspace / "test").exists():
             try:
                 proc = await asyncio.create_subprocess_exec(
-                    "python", "-m", "pytest", "tests/", "-v", "--tb=short",
+                    "python",
+                    "-m",
+                    "pytest",
+                    "tests/",
+                    "-v",
+                    "--tb=short",
                     cwd=str(workspace),
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
                 )
                 stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=60)
                 ran.append(f"pytest exit {proc.returncode}")
-                out = (out + "\n\n[REAL RUN] pytest:\n" + (stdout.decode() or "")[:2000]).strip()
+                out = (
+                    out + "\n\n[REAL RUN] pytest:\n" + (stdout.decode() or "")[:2000]
+                ).strip()
             except (FileNotFoundError, asyncio.TimeoutError, Exception) as e:
                 ran.append(f"pytest: {e}")
         if (workspace / "package.json").exists():
             try:
                 proc = await asyncio.create_subprocess_exec(
-                    "npm", "test",
+                    "npm",
+                    "test",
                     cwd=str(workspace),
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
@@ -589,14 +695,25 @@ async def run_real_post_step(
         if (workspace / "server.py").exists() or (workspace / "backend").exists():
             try:
                 proc = await asyncio.create_subprocess_exec(
-                    "python", "-m", "bandit", "-r", str(workspace), "-f", "txt", "-ll",
+                    "python",
+                    "-m",
+                    "bandit",
+                    "-r",
+                    str(workspace),
+                    "-f",
+                    "txt",
+                    "-ll",
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
                 )
                 stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=30)
-                out = (out + "\n\n[REAL RUN] bandit:\n" + stdout.decode()[:1500]).strip()
+                out = (
+                    out + "\n\n[REAL RUN] bandit:\n" + stdout.decode()[:1500]
+                ).strip()
             except (FileNotFoundError, asyncio.TimeoutError, Exception):
-                out = (out + "\n\n[REAL RUN] bandit not run (not installed or timeout).").strip()
+                out = (
+                    out + "\n\n[REAL RUN] bandit not run (not installed or timeout)."
+                ).strip()
         result["output"] = out
         result["result"] = out
         return result
@@ -608,7 +725,9 @@ async def run_real_post_step(
                 if "node_modules" in str(f) or "__pycache__" in str(f):
                     continue
                 try:
-                    lines += len(f.read_text(encoding="utf-8", errors="ignore").splitlines())
+                    lines += len(
+                        f.read_text(encoding="utf-8", errors="ignore").splitlines()
+                    )
                 except Exception:
                     pass
             out = (out + f"\n\n[REAL RUN] Python lines in workspace: {lines}").strip()
@@ -621,7 +740,9 @@ async def run_real_post_step(
     if agent_name == "Backend Generation":
         # Smoke-validate generated backend code in the sandbox (syntax + import check)
         if _SANDBOX_AVAILABLE and _sandbox_run_code is not None:
-            be_code = result.get("output") or result.get("result") or result.get("code") or ""
+            be_code = (
+                result.get("output") or result.get("result") or result.get("code") or ""
+            )
             if be_code.strip():
                 # Wrap in a py_compile check so syntax errors surface without full execution
                 validate_script = (
@@ -644,9 +765,21 @@ async def run_real_post_step(
                         code=validate_script,
                         timeout=30,
                     )
-                    s_out = sandbox_result.get("stdout", "") if isinstance(sandbox_result, dict) else getattr(sandbox_result, "stdout", "")
-                    s_err = sandbox_result.get("stderr", "") if isinstance(sandbox_result, dict) else getattr(sandbox_result, "stderr", "")
-                    label = "[SANDBOX E2B]" if os.environ.get("E2B_API_KEY") else "[SANDBOX local]"
+                    s_out = (
+                        sandbox_result.get("stdout", "")
+                        if isinstance(sandbox_result, dict)
+                        else getattr(sandbox_result, "stdout", "")
+                    )
+                    s_err = (
+                        sandbox_result.get("stderr", "")
+                        if isinstance(sandbox_result, dict)
+                        else getattr(sandbox_result, "stderr", "")
+                    )
+                    label = (
+                        "[SANDBOX E2B]"
+                        if os.environ.get("E2B_API_KEY")
+                        else "[SANDBOX local]"
+                    )
                     note = (s_out + ("\n" + s_err if s_err else "")).strip()
                     out = (out + f"\n\n{label} validation:\n" + note[:800]).strip()
                     result["sandbox_validated"] = True
@@ -668,7 +801,9 @@ async def run_real_post_step(
                 except Exception:
                     pass
         if a11y:
-            out = (out + f"\n\n[REAL RUN] Files with ARIA/role: {', '.join(a11y[:10])}").strip()
+            out = (
+                out + f"\n\n[REAL RUN] Files with ARIA/role: {', '.join(a11y[:10])}"
+            ).strip()
         else:
             out = (out + "\n\n[REAL RUN] No JSX with ARIA/role found in src/.").strip()
         result["output"] = out

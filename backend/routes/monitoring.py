@@ -6,6 +6,7 @@ GET  /monitoring/events         – list recent monitoring events.
 GET  /monitoring/health         – liveness / readiness probe.
 GET  /monitoring/metrics        – Prometheus metrics (when prometheus_client is installed).
 """
+
 from __future__ import annotations
 
 import json
@@ -26,6 +27,7 @@ router = APIRouter(prefix="/monitoring", tags=["monitoring"])
 
 try:
     from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+
     _prometheus_available = True
 except ImportError:
     _prometheus_available = False
@@ -33,6 +35,7 @@ except ImportError:
 # ═══════════════════════════════════════════════════════════════════════════════
 # MODELS
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class TrackEventRequest(BaseModel):
     event_type: str
@@ -42,9 +45,11 @@ class TrackEventRequest(BaseModel):
     success: bool = True
     error_message: Optional[str] = None
 
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # ENDPOINTS
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.get("/health")
 async def health():
@@ -56,7 +61,9 @@ async def health():
 async def metrics():
     """Expose Prometheus metrics when prometheus_client is installed."""
     if not _prometheus_available:
-        return PlainTextResponse("# prometheus_client not installed\n", media_type="text/plain")
+        return PlainTextResponse(
+            "# prometheus_client not installed\n", media_type="text/plain"
+        )
     return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
@@ -66,6 +73,7 @@ async def track_event(body: TrackEventRequest):
     event_id = str(uuid.uuid4())
     try:
         from db_pg import get_pool
+
         pool = await get_pool()
         if pool:
             async with pool.acquire() as conn:
@@ -95,9 +103,13 @@ async def list_events(
     """List recent monitoring events from PostgreSQL, with optional filters."""
     try:
         from db_pg import get_pool
+
         pool = await get_pool()
         if not pool:
-            return {"events": [], "message": "PostgreSQL not configured (DATABASE_URL missing)"}
+            return {
+                "events": [],
+                "message": "PostgreSQL not configured (DATABASE_URL missing)",
+            }
 
         # Build a parameterised WHERE clause
         conditions: List[str] = []

@@ -6,8 +6,11 @@ import pytest
 
 from orchestration.generation_contract import parse_generation_contract
 from orchestration.planner import generate_plan
-from orchestration.executor import handle_backend_route, handle_db_migration, handle_frontend_generate
-
+from orchestration.executor import (
+    handle_backend_route,
+    handle_db_migration,
+    handle_frontend_generate,
+)
 
 FULL_SYSTEM_PROMPT = (
     "Build a multi-tenant SaaS with React frontend, Node backend, PostgreSQL, Redis caching, "
@@ -46,7 +49,9 @@ async def test_generate_plan_includes_stack_contract_and_generation_mode():
     assert plan["generation_mode"] == "full_system_builder"
     assert plan["recommended_build_target"] == "full_system_generator"
     assert plan["stack_contract"]["requires_full_system_builder"] is True
-    assert any("Requested stack components" in row for row in plan["acceptance_criteria"])
+    assert any(
+        "Requested stack components" in row for row in plan["acceptance_criteria"]
+    )
 
 
 @pytest.mark.asyncio
@@ -60,7 +65,9 @@ async def test_full_system_builder_writes_integrated_workspace(monkeypatch):
     async def fake_execute(self, context):
         return {
             "files": {
-                "frontend/package.json": json.dumps({"name": "full-system-ui", "private": True}),
+                "frontend/package.json": json.dumps(
+                    {"name": "full-system-ui", "private": True}
+                ),
                 "frontend/src/App.tsx": "export default function App(){ return <div>Ops Center</div>; }",
                 "backend/server.js": "const express = require('express'); const app = express(); app.get('/health', (_req,res)=>res.json({status:'ok'})); module.exports = app;",
                 "backend/routes/payments.js": "module.exports = {};",
@@ -75,7 +82,9 @@ async def test_full_system_builder_writes_integrated_workspace(monkeypatch):
             "_build_target": "full_system_generator",
         }
 
-    monkeypatch.setattr(plan_context, "fetch_build_target_for_job", fake_fetch_build_target)
+    monkeypatch.setattr(
+        plan_context, "fetch_build_target_for_job", fake_fetch_build_target
+    )
     monkeypatch.setattr(BuilderAgent, "execute", fake_execute)
 
     with tempfile.TemporaryDirectory() as d:
@@ -116,9 +125,14 @@ async def test_full_system_builder_critical_block_does_not_fall_back(monkeypatch
         return "full_system_generator"
 
     async def critical_block(self, context):
-        return {"status": "❌ CRITICAL BLOCK", "reason": "requested stack was not generated"}
+        return {
+            "status": "❌ CRITICAL BLOCK",
+            "reason": "requested stack was not generated",
+        }
 
-    monkeypatch.setattr(plan_context, "fetch_build_target_for_job", fake_fetch_build_target)
+    monkeypatch.setattr(
+        plan_context, "fetch_build_target_for_job", fake_fetch_build_target
+    )
     monkeypatch.setattr(BuilderAgent, "execute", critical_block)
 
     with tempfile.TemporaryDirectory() as d:

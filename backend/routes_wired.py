@@ -41,8 +41,12 @@ async def build_wired(
 
     resolved_project_id = project_id or f"proj-{uuid.uuid4().hex[:8]}"
     try:
-        plan = await generate_plan(goal, project_state={"project_id": resolved_project_id})
-        plan["phase_count"] = int(plan.get("phase_count") or len(plan.get("phases", [])))
+        plan = await generate_plan(
+            goal, project_state={"project_id": resolved_project_id}
+        )
+        plan["phase_count"] = int(
+            plan.get("phase_count") or len(plan.get("phases", []))
+        )
         return {
             "status": "success",
             "project_id": resolved_project_id,

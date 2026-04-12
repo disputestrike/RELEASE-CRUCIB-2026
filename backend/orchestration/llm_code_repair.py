@@ -11,6 +11,7 @@ the same way a human developer would:
 
 This is what separates "parameter tuning" from "code authorship."
 """
+
 import logging
 import os
 from typing import Any, Dict, List, Optional
@@ -25,18 +26,15 @@ You will be given broken Python code and an error message.
 Return ONLY the fixed Python code. No explanation. No markdown fences.
 Your response must start with the first character of valid Python code (import/def/class/etc).
 The fix must be minimal — change only what is necessary to resolve the error.""",
-
     "javascript": """You are a JavaScript/React code repair expert.
 You will be given broken JSX/TSX/JS code and an error message.
 Return ONLY the fixed code. No explanation. No markdown fences.
 Your response must start with the first character of valid code (import/export/const/function/etc).
 The fix must be minimal — change only what is necessary to resolve the error.""",
-
     "json": """You are a JSON repair expert.
 You will be given malformed JSON and an error message.
 Return ONLY valid JSON. No explanation. No markdown fences.
 Your response must start with { or [.""",
-
     "general": """You are a code repair expert.
 You will be given broken code and an error message.
 Return ONLY the fixed code. No explanation. No markdown fences.
@@ -71,6 +69,7 @@ Respond in JSON with this structure:
 
 # ── LLM caller ─────────────────────────────────────────────────────────────────
 
+
 async def _call_anthropic_repair(
     system_prompt: str,
     user_prompt: str,
@@ -84,8 +83,10 @@ async def _call_anthropic_repair(
 
     try:
         import anthropic as _anthropic
+
         client = _anthropic.AsyncAnthropic(api_key=api_key)
         from anthropic_models import normalize_anthropic_model, ANTHROPIC_SONNET_MODEL
+
         model = normalize_anthropic_model(
             os.environ.get("ANTHROPIC_MODEL"),
             default=ANTHROPIC_SONNET_MODEL,
@@ -107,6 +108,7 @@ async def _call_anthropic_repair(
 
 # ── Repair callback for CodeRepairAgent ───────────────────────────────────────
 
+
 async def llm_repair_callback(
     agent_name: str,
     language: str,
@@ -119,7 +121,11 @@ async def llm_repair_callback(
     Call signature matches RepairCallback type:
     (agent_name, language, broken_code, error_message) -> fixed_code
     """
-    lang_key = "javascript" if language in ("javascript", "jsx", "tsx", "ts", "js") else language
+    lang_key = (
+        "javascript"
+        if language in ("javascript", "jsx", "tsx", "ts", "js")
+        else language
+    )
     system_prompt = REPAIR_PROMPTS.get(lang_key, REPAIR_PROMPTS["general"])
 
     user_prompt = f"""Agent: {agent_name}
@@ -136,6 +142,7 @@ Fix the code above. Return ONLY the fixed code."""
 
 
 # ── Full file repair ───────────────────────────────────────────────────────────
+
 
 async def repair_file_with_llm(
     workspace_path: str,
@@ -163,9 +170,15 @@ async def repair_file_with_llm(
     # Determine language from extension
     ext = os.path.splitext(rel_path)[1].lower()
     lang_map = {
-        ".py": "python", ".jsx": "javascript", ".tsx": "javascript",
-        ".js": "javascript", ".ts": "javascript", ".json": "json",
-        ".yaml": "yaml", ".yml": "yaml", ".sql": "sql",
+        ".py": "python",
+        ".jsx": "javascript",
+        ".tsx": "javascript",
+        ".js": "javascript",
+        ".ts": "javascript",
+        ".json": "json",
+        ".yaml": "yaml",
+        ".yml": "yaml",
+        ".sql": "sql",
     }
     language = lang_map.get(ext, "general")
 
@@ -190,13 +203,16 @@ Broken file content:
 Fix this file completely. Return ONLY the fixed code, nothing else."""
 
     logger.info("llm_code_repair: repairing %s (%s)", rel_path, language)
-    fixed_content = await _call_anthropic_repair(system_prompt, user_prompt, max_tokens=6000)
+    fixed_content = await _call_anthropic_repair(
+        system_prompt, user_prompt, max_tokens=6000
+    )
 
     if not fixed_content:
         return {"fixed": False, "reason": "LLM returned no content"}
 
     # Strip any markdown fences the LLM added despite instructions
     from agents.code_repair_agent import strip_code_fences
+
     fixed_content = strip_code_fences(fixed_content)
 
     if fixed_content == broken_content:
@@ -205,7 +221,12 @@ Fix this file completely. Return ONLY the fixed code, nothing else."""
     try:
         with open(full_path, "w", encoding="utf-8") as f:
             f.write(fixed_content)
-        logger.info("llm_code_repair: fixed %s (%d→%d chars)", rel_path, len(broken_content), len(fixed_content))
+        logger.info(
+            "llm_code_repair: fixed %s (%d→%d chars)",
+            rel_path,
+            len(broken_content),
+            len(fixed_content),
+        )
         return {
             "fixed": True,
             "file": rel_path,
@@ -222,29 +243,39 @@ Fix this file completely. Return ONLY the fixed code, nothing else."""
 # DAG downstream map — if X fails, these are also blocked
 CAUSAL_CHAINS = {
     "agents.database_agent": [
-        "agents.multi_tenant_agent", "agents.data_pipeline_agent",
-        "agents.data_warehouse_agent", "agents.database_schema_validator_agent",
-        "agents.orm_setup_agent", "agents.ml_data_pipeline_agent",
+        "agents.multi_tenant_agent",
+        "agents.data_pipeline_agent",
+        "agents.data_warehouse_agent",
+        "agents.database_schema_validator_agent",
+        "agents.orm_setup_agent",
+        "agents.ml_data_pipeline_agent",
         "agents.database_optimization_agent",
     ],
     "agents.frontend_generation": [
-        "agents.e2e_test_agent", "agents.responsive_breakpoints_agent",
-        "agents.typography_system_agent", "agents.iot_dashboard_agent",
+        "agents.e2e_test_agent",
+        "agents.responsive_breakpoints_agent",
+        "agents.typography_system_agent",
+        "agents.iot_dashboard_agent",
         "agents.build_validator_agent",
     ],
     "agents.backend_generation": [
-        "agents.database_agent", "agents.deployment_agent", "agents.websocket_agent",
-        "agents.logging_agent", "agents.api_contract_validator_agent",
+        "agents.database_agent",
+        "agents.deployment_agent",
+        "agents.websocket_agent",
+        "agents.logging_agent",
+        "agents.api_contract_validator_agent",
         "agents.cors_security_headers_agent",
     ],
     "verification.compile": [
-        "verification.preview", "verification.api_smoke",
+        "verification.preview",
+        "verification.api_smoke",
     ],
     "verification.preview": [
         "verification.elite_builder",
     ],
     "verification.elite_builder": [
-        "deploy.build", "deploy.publish",
+        "deploy.build",
+        "deploy.publish",
     ],
 }
 
@@ -287,7 +318,9 @@ Known downstream steps that will be blocked: {downstream[:5]}
 
 Analyse the root cause and respond in JSON."""
 
-    result = await _call_anthropic_repair(CAUSAL_CHAIN_PROMPT, user_prompt, max_tokens=800)
+    result = await _call_anthropic_repair(
+        CAUSAL_CHAIN_PROMPT, user_prompt, max_tokens=800
+    )
 
     if not result:
         return {
@@ -300,6 +333,7 @@ Analyse the root cause and respond in JSON."""
 
     try:
         import json
+
         # Strip markdown if present
         clean = result.strip()
         if clean.startswith("```"):
@@ -307,9 +341,9 @@ Analyse the root cause and respond in JSON."""
             if clean.endswith("```"):
                 clean = clean[:-3]
         parsed = json.loads(clean)
-        parsed["downstream_blocked"] = list(dict.fromkeys(
-            downstream + (parsed.get("downstream_blocked") or [])
-        ))
+        parsed["downstream_blocked"] = list(
+            dict.fromkeys(downstream + (parsed.get("downstream_blocked") or []))
+        )
         parsed["source"] = "llm_analysis"
         return parsed
     except Exception as e:

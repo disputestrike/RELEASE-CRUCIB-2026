@@ -9,6 +9,7 @@ Model routing policy:
   - VERIFICATION / SECURITY REVIEW → Anthropic (most reliable reviewer)
   - FALLBACK → whichever key is available
 """
+
 import os
 import json
 import logging
@@ -22,22 +23,41 @@ logger = logging.getLogger(__name__)
 
 # Task types that MUST use Anthropic (long context or reasoning-heavy)
 ANTHROPIC_REQUIRED_TASKS = {
-    "planning", "architecture", "reasoning", "verification",
-    "security", "frontend_generation", "backend_generation",
-    "multi_tenant", "rag", "embedding", "review", "audit",
+    "planning",
+    "architecture",
+    "reasoning",
+    "verification",
+    "security",
+    "frontend_generation",
+    "backend_generation",
+    "multi_tenant",
+    "rag",
+    "embedding",
+    "review",
+    "audit",
 }
 
 # Task types that can use Cerebras (fast, small outputs)
 CEREBRAS_OK_TASKS = {
-    "styling", "color_palette", "typography", "animation",
-    "brand", "responsive", "dark_mode", "seo", "i18n",
-    "notification", "email_template", "documentation",
+    "styling",
+    "color_palette",
+    "typography",
+    "animation",
+    "brand",
+    "responsive",
+    "dark_mode",
+    "seo",
+    "i18n",
+    "notification",
+    "email_template",
+    "documentation",
 }
 
 
 @dataclass
 class LLMConfig:
     """LLM configuration from environment."""
+
     provider: str  # "anthropic" or "cerebras"
     api_key: str
     model: str
@@ -48,7 +68,7 @@ class LLMConfig:
 def get_llm_config(task_type: str = "") -> Optional[LLMConfig]:
     """
     Load LLM config with smart model routing based on task type.
-    
+
     Large/complex tasks → Anthropic (200K context, superior reasoning)
     Small/fast tasks → Cerebras (if available, avoids 8K limit issues)
     """
@@ -67,7 +87,9 @@ def get_llm_config(task_type: str = "") -> Optional[LLMConfig]:
             os.environ.get("ANTHROPIC_MODEL"),
             default=ANTHROPIC_SONNET_MODEL,
         )
-        logger.debug("LLM routing: task=%s → anthropic/%s", task_type or "default", model)
+        logger.debug(
+            "LLM routing: task=%s → anthropic/%s", task_type or "default", model
+        )
         return LLMConfig(provider="anthropic", api_key=claude_key, model=model)
 
     # Route: small/fast task can use Cerebras
@@ -117,11 +139,18 @@ async def call_claude(
 
             except Exception as e:
                 if attempt < max_retries - 1:
-                    wait_time = 2 ** attempt
-                    logger.warning("Claude API error (attempt %d): %s, retrying in %ds", attempt + 1, e, wait_time)
+                    wait_time = 2**attempt
+                    logger.warning(
+                        "Claude API error (attempt %d): %s, retrying in %ds",
+                        attempt + 1,
+                        e,
+                        wait_time,
+                    )
                     await asyncio.sleep(wait_time)
                 else:
-                    logger.error("Claude API failed after %d attempts: %s", max_retries, e)
+                    logger.error(
+                        "Claude API failed after %d attempts: %s", max_retries, e
+                    )
                     raise
 
     except ImportError:
@@ -177,21 +206,32 @@ async def call_cerebras(
                         return data["choices"][0]["message"]["content"]
                     elif response.status_code == 429:
                         if attempt < max_retries - 1:
-                            wait_time = 2 ** attempt
-                            logger.warning("Cerebras rate limited, retrying in %ds", wait_time)
+                            wait_time = 2**attempt
+                            logger.warning(
+                                "Cerebras rate limited, retrying in %ds", wait_time
+                            )
                             await asyncio.sleep(wait_time)
                         else:
                             raise Exception("Rate limited after retries")
                     else:
-                        raise Exception(f"Cerebras API error: {response.status_code} {response.text}")
+                        raise Exception(
+                            f"Cerebras API error: {response.status_code} {response.text}"
+                        )
 
             except Exception as e:
                 if attempt < max_retries - 1:
-                    wait_time = 2 ** attempt
-                    logger.warning("Cerebras error (attempt %d): %s, retrying in %ds", attempt + 1, e, wait_time)
+                    wait_time = 2**attempt
+                    logger.warning(
+                        "Cerebras error (attempt %d): %s, retrying in %ds",
+                        attempt + 1,
+                        e,
+                        wait_time,
+                    )
                     await asyncio.sleep(wait_time)
                 else:
-                    logger.error("Cerebras API failed after %d attempts: %s", max_retries, e)
+                    logger.error(
+                        "Cerebras API failed after %d attempts: %s", max_retries, e
+                    )
                     raise
 
     except ImportError:
@@ -216,7 +256,12 @@ async def call_llm(
         logger.error("No LLM configured - returning None")
         return None
 
-    logger.info("LLM call: provider=%s model=%s task=%s", config.provider, config.model, task_type or "default")
+    logger.info(
+        "LLM call: provider=%s model=%s task=%s",
+        config.provider,
+        config.model,
+        task_type or "default",
+    )
 
     try:
         config.temperature = temperature
@@ -238,14 +283,18 @@ async def call_llm(
                 fallback = LLMConfig(
                     provider="anthropic",
                     api_key=claude_key,
-                    model=normalize_anthropic_model(None, default=ANTHROPIC_SONNET_MODEL),
+                    model=normalize_anthropic_model(
+                        None, default=ANTHROPIC_SONNET_MODEL
+                    ),
                     temperature=temperature,
                 )
                 return await call_claude(system_prompt, user_prompt, fallback)
         return None
 
 
-async def parse_json_response(response: str, required_keys: List[str] = None) -> Optional[Dict[str, Any]]:
+async def parse_json_response(
+    response: str, required_keys: List[str] = None
+) -> Optional[Dict[str, Any]]:
     """Parse JSON response from LLM with validation."""
     if not response:
         return None
@@ -304,7 +353,9 @@ Context: {context}
 
 Generate the complete {language} code now."""
 
-    response = await call_llm(system_prompt, user_prompt, temperature=0.7, task_type=task_type)
+    response = await call_llm(
+        system_prompt, user_prompt, temperature=0.7, task_type=task_type
+    )
 
     if not response:
         return None
@@ -335,7 +386,9 @@ Context: {context}
 
 Generate the JSON now."""
 
-    response = await call_llm(system_prompt, user_prompt, temperature=0.3, task_type=task_type)
+    response = await call_llm(
+        system_prompt, user_prompt, temperature=0.3, task_type=task_type
+    )
 
     if not response:
         return None

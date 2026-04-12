@@ -3,6 +3,7 @@ Agent cache for CrucibAI — caches agent outputs by (agent_name, input_hash) wi
 Uses PostgreSQL table agent_cache (via db_pg); optional in-memory cache for hot path.
 Reduces duplicate agent runs, faster repeat requests, lower token/cost.
 """
+
 from typing import Optional, Dict, Any
 from datetime import datetime, timezone, timedelta
 import hashlib
@@ -34,7 +35,9 @@ async def get(db, agent_name: str, input_data: str) -> Optional[Dict[str, Any]]:
         del _memory_cache[agent_name][key]
     # PostgreSQL
     try:
-        doc = await db[COLLECTION_NAME].find_one({"agent_name": agent_name, "input_hash": key})
+        doc = await db[COLLECTION_NAME].find_one(
+            {"agent_name": agent_name, "input_hash": key}
+        )
         if not doc:
             return None
         expires = doc.get("expires_at")
@@ -47,7 +50,13 @@ async def get(db, agent_name: str, input_data: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-async def set(db, agent_name: str, input_data: str, output: Dict[str, Any], ttl_seconds: int = DEFAULT_TTL_SECONDS) -> None:
+async def set(
+    db,
+    agent_name: str,
+    input_data: str,
+    output: Dict[str, Any],
+    ttl_seconds: int = DEFAULT_TTL_SECONDS,
+) -> None:
     """Store output for (agent_name, input_data) with TTL."""
     key = _input_hash(input_data)
     expires = datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
@@ -66,14 +75,22 @@ async def set(db, agent_name: str, input_data: str, output: Dict[str, Any], ttl_
     try:
         await db[COLLECTION_NAME].update_one(
             {"agent_name": agent_name, "input_hash": key},
-            {"$set": {"output": output, "expires_at": expires, "updated_at": datetime.now(timezone.utc)}},
+            {
+                "$set": {
+                    "output": output,
+                    "expires_at": expires,
+                    "updated_at": datetime.now(timezone.utc),
+                }
+            },
             upsert=True,
         )
     except Exception as e:
         logger.warning("agent_cache set %s: %s", agent_name, e)
 
 
-async def invalidate(db, agent_name: Optional[str] = None, input_hash_key: Optional[str] = None) -> int:
+async def invalidate(
+    db, agent_name: Optional[str] = None, input_hash_key: Optional[str] = None
+) -> int:
     """Remove cache entries. If agent_name only, remove all for that agent. Return count deleted."""
     try:
         q = {}

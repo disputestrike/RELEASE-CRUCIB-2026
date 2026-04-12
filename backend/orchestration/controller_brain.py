@@ -35,10 +35,7 @@ def _phase_parallel_groups(phases: List[Dict[str, Any]]) -> List[Dict[str, Any]]
                 "label": phase.get("label") or phase.get("key") or "phase",
                 "step_count": len(steps),
                 "agents": [
-                    step.get("agent")
-                    or step.get("name")
-                    or step.get("key")
-                    or "Agent"
+                    step.get("agent") or step.get("name") or step.get("key") or "Agent"
                     for step in steps[:8]
                 ],
             }
@@ -46,11 +43,17 @@ def _phase_parallel_groups(phases: List[Dict[str, Any]]) -> List[Dict[str, Any]]
     return groups[:8]
 
 
-def _build_plan_next_actions(selected_agents: List[str], phases: List[Dict[str, Any]]) -> List[str]:
+def _build_plan_next_actions(
+    selected_agents: List[str], phases: List[Dict[str, Any]]
+) -> List[str]:
     if not selected_agents:
         return ["scaffold_primary_pack", "compile_preview_bundle", "verify_core_routes"]
 
-    actions = ["launch_parallel_specialists", "synthesize_phase_outputs", "run_verification_gates"]
+    actions = [
+        "launch_parallel_specialists",
+        "synthesize_phase_outputs",
+        "run_verification_gates",
+    ]
     if any(len(_phase_steps(phase)) > 1 for phase in phases or []):
         actions.insert(1, "continue_dependency_aware_parallelism")
     return actions
@@ -64,24 +67,34 @@ def build_plan_controller_summary(
     selection_explanation: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     explanation = selection_explanation or {}
-    phase_labels = [phase.get("label") or phase.get("key") or "phase" for phase in phases[:12]]
+    phase_labels = [
+        phase.get("label") or phase.get("key") or "phase" for phase in phases[:12]
+    ]
     parallel_groups = _phase_parallel_groups(phases)
     specialized_agents = list(explanation.get("specialized_agents") or [])[:12]
     return {
-        "controller_mode": "selective_parallel_swarm" if selected_agents else "fixed_autorunner",
+        "controller_mode": (
+            "selective_parallel_swarm" if selected_agents else "fixed_autorunner"
+        ),
         "goal_excerpt": (goal or "")[:180],
         "selected_agent_count": len(selected_agents or []),
         "specialized_agent_count": int(explanation.get("specialized_agent_count") or 0),
         "matched_keywords": list(explanation.get("matched_keywords") or [])[:12],
         "matched_rules": list(explanation.get("matched_rules") or [])[:12],
         "phase_labels": phase_labels,
-        "has_parallel_phases": any(len((phase.get("steps") or [])) > 1 for phase in phases),
+        "has_parallel_phases": any(
+            len((phase.get("steps") or [])) > 1 for phase in phases
+        ),
         "recovery_strategy": "verification_repair_and_retry",
         "synthesis_strategy": "phase_summary_then_verify",
-        "execution_strategy": "dependency_aware_parallelism" if parallel_groups else "sequenced_execution",
+        "execution_strategy": (
+            "dependency_aware_parallelism" if parallel_groups else "sequenced_execution"
+        ),
         "parallel_groups": parallel_groups,
         "recommended_focus": specialized_agents or list(selected_agents or [])[:8],
-        "synthesis_checkpoints": phase_labels[-3:] if len(phase_labels) >= 3 else phase_labels,
+        "synthesis_checkpoints": (
+            phase_labels[-3:] if len(phase_labels) >= 3 else phase_labels
+        ),
         "replan_triggers": [
             "verification failure",
             "agent blocker detected",
@@ -150,11 +163,16 @@ def _derive_recovery_plan(blockers: List[Dict[str, Any]]) -> List[Dict[str, Any]
     plan: List[Dict[str, Any]] = []
     for blocker in blockers[:6]:
         error_text = str(blocker.get("error") or "").lower()
-        agent_text = str(blocker.get("agent_name") or blocker.get("step_key") or "").lower()
+        agent_text = str(
+            blocker.get("agent_name") or blocker.get("step_key") or ""
+        ).lower()
         if any(word in error_text for word in ("preview", "vite", "compile", "import")):
             action = "run_build_validator_and_preview_repair"
-        elif any(word in error_text for word in ("security", "cors", "headers", "validation")) or any(
-            word in agent_text for word in ("security", "cors", "headers", "validation", "rate limiting")
+        elif any(
+            word in error_text for word in ("security", "cors", "headers", "validation")
+        ) or any(
+            word in agent_text
+            for word in ("security", "cors", "headers", "validation", "rate limiting")
         ):
             action = "run_security_hardening_pass"
         elif any(word in error_text for word in ("timeout", "retry")):
@@ -194,14 +212,24 @@ def build_live_job_progress(
     events: List[Dict[str, Any]] | None = None,
 ) -> Dict[str, Any]:
     ordered_phases: "OrderedDict[str, List[Dict[str, Any]]]" = OrderedDict()
-    for step in sorted(steps or [], key=lambda row: (int(row.get("order_index") or 0), str(row.get("created_at") or ""))):
+    for step in sorted(
+        steps or [],
+        key=lambda row: (
+            int(row.get("order_index") or 0),
+            str(row.get("created_at") or ""),
+        ),
+    ):
         phase_key = str(step.get("phase") or "unassigned")
         ordered_phases.setdefault(phase_key, []).append(_normalize_agent_row(step))
 
     phases: List[Dict[str, Any]] = []
     for phase_key, agents in ordered_phases.items():
         total = len(agents)
-        completed = sum(1 for agent in agents if str(agent.get("status")).lower() in ("completed", "skipped"))
+        completed = sum(
+            1
+            for agent in agents
+            if str(agent.get("status")).lower() in ("completed", "skipped")
+        )
         phase_status = _derive_phase_status(agents)
         phases.append(
             {
@@ -216,7 +244,11 @@ def build_live_job_progress(
         )
 
     total_steps = len(steps or [])
-    completed_steps = sum(1 for step in steps or [] if str(step.get("status") or "").lower() in ("completed", "skipped"))
+    completed_steps = sum(
+        1
+        for step in steps or []
+        if str(step.get("status") or "").lower() in ("completed", "skipped")
+    )
     total_progress = round((completed_steps / total_steps) * 100) if total_steps else 0
     active_agents = [
         step.get("agent_name") or step.get("step_key") or "Agent"
@@ -237,16 +269,31 @@ def build_live_job_progress(
         for step in steps or []
         if str(step.get("status") or "").lower() in ("failed", "blocked")
     ]
-    current_phase = next((phase["id"] for phase in phases if phase["status"] in ("running", "error")), phases[-1]["id"] if phases else None)
-    is_running = str((job or {}).get("status") or "").lower() not in ("completed", "failed", "cancelled") and total_steps > 0
+    current_phase = next(
+        (phase["id"] for phase in phases if phase["status"] in ("running", "error")),
+        phases[-1]["id"] if phases else None,
+    )
+    is_running = (
+        str((job or {}).get("status") or "").lower()
+        not in ("completed", "failed", "cancelled")
+        and total_steps > 0
+    )
     parallel_phases = [phase for phase in phases if len(phase.get("agents") or []) > 1]
     repair_plan = _derive_recovery_plan(blockers)
 
     if blockers:
-        next_actions = ["repair_failed_steps", "rerun_verification", "resume_from_checkpoint"]
+        next_actions = [
+            "repair_failed_steps",
+            "rerun_verification",
+            "resume_from_checkpoint",
+        ]
         controller_status = "attention_required"
     elif is_running:
-        next_actions = ["continue_parallel_execution", "synthesize_phase_outputs", "advance_when_dependencies_clear"]
+        next_actions = [
+            "continue_parallel_execution",
+            "synthesize_phase_outputs",
+            "advance_when_dependencies_clear",
+        ]
         controller_status = "executing"
     elif phases:
         next_actions = ["publish_proof_bundle", "present_results"]
@@ -262,9 +309,16 @@ def build_live_job_progress(
             {
                 "timestamp": event.get("created_at") or payload.get("timestamp"),
                 "type": event.get("event_type") or event.get("type") or "event",
-                "agent": payload.get("agent_name") or payload.get("agent") or payload.get("step_key") or "system",
+                "agent": payload.get("agent_name")
+                or payload.get("agent")
+                or payload.get("step_key")
+                or "system",
                 "message": _event_message(event),
-                "level": "error" if (payload.get("error") or payload.get("failure_reason")) else "info",
+                "level": (
+                    "error"
+                    if (payload.get("error") or payload.get("failure_reason"))
+                    else "info"
+                ),
             }
         )
 
@@ -301,7 +355,8 @@ def build_live_job_progress(
                     "active_agents": [
                         agent.get("name")
                         for agent in (phase.get("agents") or [])
-                        if str(agent.get("status") or "").lower() in ("running", "verifying", "retrying")
+                        if str(agent.get("status") or "").lower()
+                        in ("running", "verifying", "retrying")
                     ][:6],
                 }
                 for phase in parallel_phases[:6]

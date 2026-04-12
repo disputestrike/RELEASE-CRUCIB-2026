@@ -4502,18 +4502,17 @@ BUILD IT NOW â€” output every file completely:`;
           </div>
         </div>
       )}
+      {/* Deploy progress panel — shown when deploy starts, auto-dismissed after URL card */}
+      {showDeployPanel && (
+        <DeployProgressPanel
+          jobId={deployPanelJobId}
+          deployUrl={deployState === 'deployed' ? (deployResult?.deploy_url || deployResult?.url || null) : null}
+          apiBase={API}
+          token={token}
+          onClose={() => setShowDeployPanel(false)}
+        />
+      )}
     </div>
-
-    {/* Deploy progress panel — shown when deploy starts, auto-dismissed after URL card */}
-    {showDeployPanel && (
-      <DeployProgressPanel
-        jobId={deployPanelJobId}
-        deployUrl={deployState === 'deployed' ? (deployResult?.deploy_url || deployResult?.url || null) : null}
-        apiBase={API}
-        token={token}
-        onClose={() => setShowDeployPanel(false)}
-      />
-    )}
   );
 };
 

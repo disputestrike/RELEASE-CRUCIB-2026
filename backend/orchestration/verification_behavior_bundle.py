@@ -3,6 +3,7 @@ verification.behavior — tenancy isolation + Stripe idempotency + RBAC smoke in
 
 Also invoked from verification.security so every Auto-Runner job runs behavioral gates without extra DAG nodes.
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List

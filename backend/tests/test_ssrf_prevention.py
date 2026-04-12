@@ -1,4 +1,5 @@
 """SSRF validator unit tests (Fifty-point #11 / #12)."""
+
 import pytest
 
 from ssrf_prevention import SSRFValidator
@@ -36,5 +37,7 @@ def test_ssrf_whitelisted_host_short_circuits():
 def test_ssrf_rejects_public_hostname_resolving_to_loopback(monkeypatch):
     """DNS-style rebinding: hostname must not resolve to private space for non-whitelisted URLs."""
     v = SSRFValidator(allowed_domains=set())
-    monkeypatch.setattr("ssrf_prevention.socket.gethostbyname", lambda _host: "127.0.0.1")
+    monkeypatch.setattr(
+        "ssrf_prevention.socket.gethostbyname", lambda _host: "127.0.0.1"
+    )
     assert v.validate_url("https://fake-public.example/path") is False

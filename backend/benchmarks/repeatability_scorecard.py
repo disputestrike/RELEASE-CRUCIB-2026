@@ -6,6 +6,7 @@ fallback scaffold, preview gate, elite proof gate, and deploy readiness gates
 across a suite of product prompts. Live replay remains covered by
 scripts/live-production-golden-path.py.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -31,7 +32,6 @@ from orchestration.executor import (
 from orchestration.generated_app_template import build_frontend_file_set
 from orchestration.preview_gate import verify_preview_workspace
 from orchestration.verifier import verify_deploy_step, verify_step
-
 
 BENCHMARK_VERSION = "2026-04-08.repeatability.v1"
 DEFAULT_MIN_PASS_RATE = 0.90
@@ -128,7 +128,9 @@ def _read_workspace_texts(workspace: Path) -> Dict[str, str]:
     for root, dirs, files in os.walk(workspace):
         dirs[:] = [d for d in dirs if d not in skip]
         for name in files:
-            if not name.endswith((".md", ".js", ".jsx", ".json", ".css", ".py", ".sh", ".html")):
+            if not name.endswith(
+                (".md", ".js", ".jsx", ".json", ".css", ".py", ".sh", ".html")
+            ):
                 continue
             full = Path(root) / name
             rel = full.relative_to(workspace).as_posix()
@@ -160,7 +162,13 @@ def _term_coverage(case: PromptCase, workspace: Path) -> Dict[str, Any]:
     }
 
 
-def _stage_result(name: str, passed: bool, *, score: float = 100.0, detail: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def _stage_result(
+    name: str,
+    passed: bool,
+    *,
+    score: float = 100.0,
+    detail: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
     return {
         "name": name,
         "passed": bool(passed),
@@ -211,19 +219,27 @@ async def run_prompt_case(
         written = _safe_write(str(workspace), rel, content)
         if written:
             generated_files.append(written)
-    backend_rel = _safe_write(str(workspace), "backend/main.py", _main_py_sketch(multitenant=False))
+    backend_rel = _safe_write(
+        str(workspace), "backend/main.py", _main_py_sketch(multitenant=False)
+    )
     if backend_rel:
         generated_files.append(backend_rel)
     hardened = _ensure_backend_elite_hardening(str(workspace))
     if hardened and hardened not in generated_files:
         generated_files.append(hardened)
 
-    manifest = await handle_delivery_manifest({"step_key": "implementation.delivery_manifest"}, job, str(workspace))
+    manifest = await handle_delivery_manifest(
+        {"step_key": "implementation.delivery_manifest"}, job, str(workspace)
+    )
     generated_files.extend(manifest.get("output_files") or [])
 
-    deploy_build_output = await handle_deploy({"step_key": "deploy.build"}, job, str(workspace))
+    deploy_build_output = await handle_deploy(
+        {"step_key": "deploy.build"}, job, str(workspace)
+    )
     generated_files.extend(deploy_build_output.get("output_files") or [])
-    deploy_publish_output = await handle_deploy({"step_key": "deploy.publish"}, job, str(workspace))
+    deploy_publish_output = await handle_deploy(
+        {"step_key": "deploy.publish"}, job, str(workspace)
+    )
     generated_files.extend(deploy_publish_output.get("output_files") or [])
 
     env_updates = {
@@ -266,7 +282,9 @@ async def run_prompt_case(
             bool(preview.get("passed")),
             score=float(preview.get("score") or 0.0),
             detail={
-                "mode": "browser" if run_browser_preview else "static_plus_skipped_browser",
+                "mode": (
+                    "browser" if run_browser_preview else "static_plus_skipped_browser"
+                ),
                 "failure_reason": preview.get("failure_reason"),
                 "issues": preview.get("issues") or [],
                 "proof_count": len(preview.get("proof") or []),
@@ -343,9 +361,7 @@ def _write_markdown_report(out_dir: Path, summary: Mapping[str, Any]) -> None:
     ]
     for result in summary["results"]:
         failed = [
-            name
-            for name, stage in result["stages"].items()
-            if not stage.get("passed")
+            name for name, stage in result["stages"].items() if not stage.get("passed")
         ]
         lines.append(
             f"| `{result['case']['id']}` | {result['case']['category']} | "
@@ -380,7 +396,9 @@ async def run_benchmark(
 
     results: List[Dict[str, Any]] = []
     for case in cases:
-        result = await run_prompt_case(case, workspace_root, run_browser_preview=run_browser_preview)
+        result = await run_prompt_case(
+            case, workspace_root, run_browser_preview=run_browser_preview
+        )
         results.append(result)
         (case_dir / f"{case.id}.json").write_text(
             json.dumps(result, indent=2, sort_keys=True),
@@ -390,12 +408,18 @@ async def run_benchmark(
     passed_count = sum(1 for item in results if item["passed"])
     prompt_count = len(results)
     pass_rate = passed_count / max(1, prompt_count)
-    average_score = round(sum(float(item["score"]) for item in results) / max(1, prompt_count), 2)
+    average_score = round(
+        sum(float(item["score"]) for item in results) / max(1, prompt_count), 2
+    )
     blockers: List[str] = []
     if pass_rate < min_pass_rate:
-        blockers.append(f"pass_rate_below_threshold:{pass_rate:.2%}<{min_pass_rate:.2%}")
+        blockers.append(
+            f"pass_rate_below_threshold:{pass_rate:.2%}<{min_pass_rate:.2%}"
+        )
     if average_score < min_average_score:
-        blockers.append(f"average_score_below_threshold:{average_score:.2f}<{min_average_score:.2f}")
+        blockers.append(
+            f"average_score_below_threshold:{average_score:.2f}<{min_average_score:.2f}"
+        )
     for item in results:
         if not item["passed"]:
             blockers.append(f"case_failed:{item['case']['id']}")
@@ -412,12 +436,16 @@ async def run_benchmark(
             "min_pass_rate": min_pass_rate,
             "min_average_score": min_average_score,
         },
-        "preview_mode": "browser" if run_browser_preview else "static_plus_skipped_browser",
+        "preview_mode": (
+            "browser" if run_browser_preview else "static_plus_skipped_browser"
+        ),
         "passed": not blockers,
         "blockers": blockers,
         "results": results,
     }
-    summary["summary_sha256"] = stable_sha256({k: v for k, v in summary.items() if k != "summary_sha256"})
+    summary["summary_sha256"] = stable_sha256(
+        {k: v for k, v in summary.items() if k != "summary_sha256"}
+    )
 
     (output_dir / "summary.json").write_text(
         json.dumps(summary, indent=2, sort_keys=True),
@@ -433,12 +461,20 @@ def _default_repo_root() -> Path:
 
 def main(argv: Optional[List[str]] = None) -> int:
     root = _default_repo_root()
-    parser = argparse.ArgumentParser(description="Run CrucibAI repeatability benchmark.")
-    parser.add_argument("--suite", default=str(root / "benchmarks" / "repeatability_prompts_v1.json"))
-    parser.add_argument("--output-dir", default=str(root / "proof" / "benchmarks" / "repeatability_v1"))
+    parser = argparse.ArgumentParser(
+        description="Run CrucibAI repeatability benchmark."
+    )
+    parser.add_argument(
+        "--suite", default=str(root / "benchmarks" / "repeatability_prompts_v1.json")
+    )
+    parser.add_argument(
+        "--output-dir", default=str(root / "proof" / "benchmarks" / "repeatability_v1")
+    )
     parser.add_argument("--run-browser-preview", action="store_true")
     parser.add_argument("--min-pass-rate", type=float, default=DEFAULT_MIN_PASS_RATE)
-    parser.add_argument("--min-average-score", type=float, default=DEFAULT_MIN_AVERAGE_SCORE)
+    parser.add_argument(
+        "--min-average-score", type=float, default=DEFAULT_MIN_AVERAGE_SCORE
+    )
     args = parser.parse_args(argv)
 
     summary = asyncio.run(
@@ -450,15 +486,21 @@ def main(argv: Optional[List[str]] = None) -> int:
             min_average_score=args.min_average_score,
         )
     )
-    print(json.dumps({
-        "passed": summary["passed"],
-        "prompt_count": summary["prompt_count"],
-        "pass_rate": summary["pass_rate"],
-        "average_score": summary["average_score"],
-        "output_dir": str(Path(args.output_dir)),
-        "summary_sha256": summary["summary_sha256"],
-        "blockers": summary["blockers"],
-    }, indent=2, sort_keys=True))
+    print(
+        json.dumps(
+            {
+                "passed": summary["passed"],
+                "prompt_count": summary["prompt_count"],
+                "pass_rate": summary["pass_rate"],
+                "average_score": summary["average_score"],
+                "output_dir": str(Path(args.output_dir)),
+                "summary_sha256": summary["summary_sha256"],
+                "blockers": summary["blockers"],
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
     return 0 if summary["passed"] else 1
 
 

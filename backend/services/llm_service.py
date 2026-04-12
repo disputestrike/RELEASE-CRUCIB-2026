@@ -51,11 +51,11 @@ ANTHROPIC_API_KEY: Optional[str] = os.environ.get("ANTHROPIC_API_KEY")
 # ---------------------------------------------------------------------------
 
 MODEL_CONFIG: Dict[str, Dict[str, str]] = {
-    "code":     {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
+    "code": {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
     "analysis": {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
-    "general":  {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
+    "general": {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
     "creative": {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
-    "fast":     {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
+    "fast": {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
 }
 
 MODEL_FALLBACK_CHAINS: List[Dict[str, str]] = [
@@ -77,15 +77,98 @@ VISION_MODEL_CHAIN: List[Dict[str, str]] = [
 # ---------------------------------------------------------------------------
 
 SKILL_TRIGGERS: Dict[str, List[str]] = {
-    "web-app-builder":       ["web app", "full-stack", "fullstack", "webapp", "build a platform", "react app", "node app", "api routes", "crud app", "portal", "browser app"],
-    "mobile-app-builder":    ["mobile app", "ios app", "android app", "react native", "expo", "phone app", "cross-platform"],
-    "saas-mvp-builder":      ["saas", "subscription", "stripe billing", "mvp with billing", "paid app", "saas mvp", "recurring payments"],
-    "ecommerce-builder":     ["e-commerce", "ecommerce", "online store", "shop", "sell products", "product catalog", "stripe checkout", "marketplace", "shopify"],
-    "ai-chatbot-builder":    ["chatbot", "ai assistant", "chat interface", "knowledge base bot", "customer support bot", "llm chat", "streaming chat", "conversational"],
-    "landing-page-builder":  ["landing page", "marketing page", "product page", "waitlist", "hero section", "features page", "promotional"],
-    "automation-builder":    ["automate", "automation", "workflow", "cron job", "webhook", "daily digest", "run every", "slack notify", "scheduled", "pipeline"],
-    "internal-tool-builder": ["admin panel", "internal tool", "back office", "crud interface", "approval workflow", "ops dashboard", "team tool"],
-    "data-dashboard-builder":["dashboard", "analytics", "charts", "kpi", "metrics dashboard", "reporting tool", "data visualization", "recharts"],
+    "web-app-builder": [
+        "web app",
+        "full-stack",
+        "fullstack",
+        "webapp",
+        "build a platform",
+        "react app",
+        "node app",
+        "api routes",
+        "crud app",
+        "portal",
+        "browser app",
+    ],
+    "mobile-app-builder": [
+        "mobile app",
+        "ios app",
+        "android app",
+        "react native",
+        "expo",
+        "phone app",
+        "cross-platform",
+    ],
+    "saas-mvp-builder": [
+        "saas",
+        "subscription",
+        "stripe billing",
+        "mvp with billing",
+        "paid app",
+        "saas mvp",
+        "recurring payments",
+    ],
+    "ecommerce-builder": [
+        "e-commerce",
+        "ecommerce",
+        "online store",
+        "shop",
+        "sell products",
+        "product catalog",
+        "stripe checkout",
+        "marketplace",
+        "shopify",
+    ],
+    "ai-chatbot-builder": [
+        "chatbot",
+        "ai assistant",
+        "chat interface",
+        "knowledge base bot",
+        "customer support bot",
+        "llm chat",
+        "streaming chat",
+        "conversational",
+    ],
+    "landing-page-builder": [
+        "landing page",
+        "marketing page",
+        "product page",
+        "waitlist",
+        "hero section",
+        "features page",
+        "promotional",
+    ],
+    "automation-builder": [
+        "automate",
+        "automation",
+        "workflow",
+        "cron job",
+        "webhook",
+        "daily digest",
+        "run every",
+        "slack notify",
+        "scheduled",
+        "pipeline",
+    ],
+    "internal-tool-builder": [
+        "admin panel",
+        "internal tool",
+        "back office",
+        "crud interface",
+        "approval workflow",
+        "ops dashboard",
+        "team tool",
+    ],
+    "data-dashboard-builder": [
+        "dashboard",
+        "analytics",
+        "charts",
+        "kpi",
+        "metrics dashboard",
+        "reporting tool",
+        "data visualization",
+        "recharts",
+    ],
 }
 
 
@@ -93,16 +176,22 @@ SKILL_TRIGGERS: Dict[str, List[str]] = {
 # FastAPI dependency
 # ---------------------------------------------------------------------------
 
-async def get_authenticated_or_api_user(user: Optional[dict] = Depends(get_optional_user)) -> dict:
+
+async def get_authenticated_or_api_user(
+    user: Optional[dict] = Depends(get_optional_user),
+) -> dict:
     """Require either a signed-in user or a valid public API key for LLM/action routes."""
     if not user:
-        raise HTTPException(status_code=401, detail="Authentication or API key required")
+        raise HTTPException(
+            status_code=401, detail="Authentication or API key required"
+        )
     return user
 
 
 # ---------------------------------------------------------------------------
 # Skill auto-detection
 # ---------------------------------------------------------------------------
+
 
 async def _auto_detect_skill(prompt: str, user_id: str) -> Optional[str]:
     """Auto-detect the best skill for a prompt. Transparent to the user."""
@@ -117,17 +206,63 @@ async def _auto_detect_skill(prompt: str, user_id: str) -> Optional[str]:
 # Task complexity / type classification
 # ---------------------------------------------------------------------------
 
+
 def _classify_task_complexity(prompt: str) -> str:
     """Returns 'fast' (Cerebras) or 'complex' (Haiku)."""
     p = prompt.lower().strip()
     complex_signals = [
-        any(w in p for w in ["build", "create", "generate", "implement", "develop", "make me", "write code", "full stack", "database schema", "api route", "authentication", "deploy", "automate"]),
+        any(
+            w in p
+            for w in [
+                "build",
+                "create",
+                "generate",
+                "implement",
+                "develop",
+                "make me",
+                "write code",
+                "full stack",
+                "database schema",
+                "api route",
+                "authentication",
+                "deploy",
+                "automate",
+            ]
+        ),
         len(p) > 150,
     ]
     fast_signals = [
         len(p) < 80,
-        p.startswith(("hi", "hello", "hey", "what", "how", "why", "when", "is ", "can you", "do you", "thanks", "ok", "yes", "no")),
-        any(w in p for w in ["explain", "summarize", "what is", "tell me", "define", "list", "example of"]),
+        p.startswith(
+            (
+                "hi",
+                "hello",
+                "hey",
+                "what",
+                "how",
+                "why",
+                "when",
+                "is ",
+                "can you",
+                "do you",
+                "thanks",
+                "ok",
+                "yes",
+                "no",
+            )
+        ),
+        any(
+            w in p
+            for w in [
+                "explain",
+                "summarize",
+                "what is",
+                "tell me",
+                "define",
+                "list",
+                "example of",
+            ]
+        ),
     ]
     if any(complex_signals):
         return "complex"
@@ -140,9 +275,38 @@ def detect_task_type(message: str) -> str:
     """Auto-detect the best model based on message content."""
     message_lower = message.lower()
 
-    code_keywords     = ["code", "function", "class", "api", "bug", "error", "debug", "implement", "python", "javascript", "react", "database"]
-    analysis_keywords = ["analyze", "compare", "evaluate", "explain", "why", "how does", "what is"]
-    creative_keywords = ["write", "create", "story", "poem", "design", "imagine", "brainstorm"]
+    code_keywords = [
+        "code",
+        "function",
+        "class",
+        "api",
+        "bug",
+        "error",
+        "debug",
+        "implement",
+        "python",
+        "javascript",
+        "react",
+        "database",
+    ]
+    analysis_keywords = [
+        "analyze",
+        "compare",
+        "evaluate",
+        "explain",
+        "why",
+        "how does",
+        "what is",
+    ]
+    creative_keywords = [
+        "write",
+        "create",
+        "story",
+        "poem",
+        "design",
+        "imagine",
+        "brainstorm",
+    ]
 
     for kw in code_keywords:
         if kw in message_lower:
@@ -160,7 +324,10 @@ def detect_task_type(message: str) -> str:
 # Provider / key helpers
 # ---------------------------------------------------------------------------
 
-def _provider_has_key(provider: str, effective_keys: Optional[Dict[str, str]] = None) -> bool:
+
+def _provider_has_key(
+    provider: str, effective_keys: Optional[Dict[str, str]] = None
+) -> bool:
     """True if we have an API key for this provider."""
     if provider == "anthropic":
         if effective_keys:
@@ -171,9 +338,13 @@ def _provider_has_key(provider: str, effective_keys: Optional[Dict[str, str]] = 
     return False
 
 
-def _filter_chain_by_keys(chain: list, effective_keys: Optional[Dict[str, str]] = None) -> list:
+def _filter_chain_by_keys(
+    chain: list, effective_keys: Optional[Dict[str, str]] = None
+) -> list:
     """Keep only providers we have keys for."""
-    return [c for c in chain if _provider_has_key(c.get("provider", ""), effective_keys)]
+    return [
+        c for c in chain if _provider_has_key(c.get("provider", ""), effective_keys)
+    ]
 
 
 def _get_model_chain(
@@ -187,14 +358,27 @@ def _get_model_chain(
     Cerebras (llama-3.3-70b) for fast/simple tasks; Haiku for complex/build tasks.
     ``force_complex=True`` always selects Haiku (for iterative builds).
     """
-    cerebras_key = (effective_keys or {}).get("cerebras") or os.environ.get("CEREBRAS_API_KEY")
-    anthropic_key = (effective_keys or {}).get("anthropic") or os.environ.get("ANTHROPIC_API_KEY")
+    cerebras_key = (effective_keys or {}).get("cerebras") or os.environ.get(
+        "CEREBRAS_API_KEY"
+    )
+    anthropic_key = (effective_keys or {}).get("anthropic") or os.environ.get(
+        "ANTHROPIC_API_KEY"
+    )
 
     if model_key == "auto":
-        if os.environ.get("PREFER_LARGEST_MODEL", "").strip().lower() in ("1", "true", "yes"):
-            chain = _filter_chain_by_keys(MODEL_FALLBACK_CHAINS, effective_keys) or MODEL_FALLBACK_CHAINS
+        if os.environ.get("PREFER_LARGEST_MODEL", "").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+        ):
+            chain = (
+                _filter_chain_by_keys(MODEL_FALLBACK_CHAINS, effective_keys)
+                or MODEL_FALLBACK_CHAINS
+            )
         else:
-            complexity = "complex" if force_complex else _classify_task_complexity(message)
+            complexity = (
+                "complex" if force_complex else _classify_task_complexity(message)
+            )
             if complexity == "fast" and cerebras_key:
                 chain = [
                     {"provider": "cerebras", "model": "llama-3.3-70b"},
@@ -216,7 +400,8 @@ def _get_model_chain(
             chain = [primary] + MODEL_FALLBACK_CHAINS
 
     return _filter_chain_by_keys(chain, effective_keys) or [
-        c for c in (MODEL_FALLBACK_CHAINS or [])
+        c
+        for c in (MODEL_FALLBACK_CHAINS or [])
         if _provider_has_key(c.get("provider", ""), effective_keys)
     ]
 
@@ -225,25 +410,29 @@ def _get_model_chain(
 # API key resolution
 # ---------------------------------------------------------------------------
 
+
 async def get_workspace_api_keys(user: Optional[dict]) -> Dict[str, Optional[str]]:
     """Load Anthropic/Cerebras from server environment. Cerebras uses round-robin rotation."""
     return {
         "anthropic": os.environ.get("ANTHROPIC_API_KEY") or None,
-        "cerebras":  _get_cerebras_key() or os.environ.get("CEREBRAS_API_KEY") or None,
+        "cerebras": _get_cerebras_key() or os.environ.get("CEREBRAS_API_KEY") or None,
     }
 
 
-def _effective_api_keys(user_keys: Dict[str, Optional[str]]) -> Dict[str, Optional[str]]:
+def _effective_api_keys(
+    user_keys: Dict[str, Optional[str]],
+) -> Dict[str, Optional[str]]:
     """Use server-side API keys. Cerebras uses round-robin rotation across key pool."""
     return {
         "anthropic": os.environ.get("ANTHROPIC_API_KEY") or None,
-        "cerebras":  _get_cerebras_key() or os.environ.get("CEREBRAS_API_KEY") or None,
+        "cerebras": _get_cerebras_key() or os.environ.get("CEREBRAS_API_KEY") or None,
     }
 
 
 # ---------------------------------------------------------------------------
 # Direct LLM callers
 # ---------------------------------------------------------------------------
+
 
 async def _call_anthropic_multimodal(
     content_blocks: List[Dict[str, Any]],
@@ -257,6 +446,7 @@ async def _call_anthropic_multimodal(
         raise ValueError("ANTHROPIC_API_KEY not set")
     model = normalize_anthropic_model(model, default=ANTHROPIC_HAIKU_MODEL)
     import anthropic
+
     client = anthropic.AsyncAnthropic(api_key=key)
     anthropic_content: List[Dict[str, Any]] = []
     for block in content_blocks:
@@ -269,9 +459,16 @@ async def _call_anthropic_multimodal(
                 media = "image/png"
                 if "image/" in header:
                     media = header.split("data:")[-1].strip()
-                anthropic_content.append({"type": "image", "source": {"type": "base64", "media_type": media, "data": b64}})
+                anthropic_content.append(
+                    {
+                        "type": "image",
+                        "source": {"type": "base64", "media_type": media, "data": b64},
+                    }
+                )
             else:
-                anthropic_content.append({"type": "text", "text": f"[Image: {url[:80]}...]"})
+                anthropic_content.append(
+                    {"type": "text", "text": f"[Image: {url[:80]}...]"}
+                )
     msg = await client.messages.create(
         model=model or ANTHROPIC_HAIKU_MODEL,
         max_tokens=4096,
@@ -336,7 +533,7 @@ async def _call_cerebras_direct(
                 "model": model,
                 "messages": [
                     {"role": "system", "content": system_message},
-                    {"role": "user",   "content": message},
+                    {"role": "user", "content": message},
                 ],
                 "max_tokens": 8192,
                 "temperature": 0.7,
@@ -354,7 +551,7 @@ async def _call_cerebras_direct(
                         "model": model,
                         "messages": [
                             {"role": "system", "content": system_message},
-                            {"role": "user",   "content": message},
+                            {"role": "user", "content": message},
                         ],
                         "max_tokens": 4096,
                         "temperature": 0.7,
@@ -363,7 +560,12 @@ async def _call_cerebras_direct(
                 )
                 if response2.status_code == 200:
                     data = response2.json()
-                    return data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+                    return (
+                        data.get("choices", [{}])[0]
+                        .get("message", {})
+                        .get("content", "")
+                        .strip()
+                    )
             logger.warning("Cerebras rate limited — falling back to next model")
             raise Exception("RATE_LIMITED: Cerebras API rate limit exceeded")
         if response.status_code != 200:
@@ -407,10 +609,12 @@ async def _call_anthropic_direct(
                 try:
                     err_json = response.json()
                     err_type = (err_json.get("error") or {}).get("type", "")
-                    err_msg  = (err_json.get("error") or {}).get("message", err_body)
+                    err_msg = (err_json.get("error") or {}).get("message", err_body)
                 except Exception:
                     err_type, err_msg = "", err_body
-                raise Exception(f"Anthropic API returned 400 ({err_type}): {err_msg[:300]}")
+                raise Exception(
+                    f"Anthropic API returned 400 ({err_type}): {err_msg[:300]}"
+                )
             raise Exception(f"Anthropic API returned {response.status_code}")
         data = response.json()
         output = data.get("content", [{}])[0].get("text", "")
@@ -446,7 +650,9 @@ async def _call_llm_with_fallback(
     )
 
     if not model_chain:
-        raise ValueError("No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY.")
+        raise ValueError(
+            "No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY."
+        )
 
     last_error = None
 
@@ -458,15 +664,18 @@ async def _call_llm_with_fallback(
 
             if provider == "together" and llm_router.llama_available:
                 response = await _call_llama_direct(
-                    message, system_message,
+                    message,
+                    system_message,
                     model=model_id,
-                    api_key=llm_router.llama_available and os.environ.get("LLAMA_API_KEY"),
+                    api_key=llm_router.llama_available
+                    and os.environ.get("LLAMA_API_KEY"),
                 )
                 return (response, f"llama/{model_id}")
 
             elif provider == "cerebras" and llm_router.cerebras_available:
                 response = await _call_cerebras_direct(
-                    message, system_message,
+                    message,
+                    system_message,
                     model=model_id,
                     api_key=_get_cerebras_key() or os.environ.get("CEREBRAS_API_KEY"),
                 )
@@ -474,7 +683,8 @@ async def _call_llm_with_fallback(
 
             elif provider == "anthropic" and llm_router.haiku_available:
                 response = await _call_anthropic_direct(
-                    message, system_message,
+                    message,
+                    system_message,
                     model=model_id,
                     api_key=os.environ.get("ANTHROPIC_API_KEY"),
                 )
@@ -483,10 +693,18 @@ async def _call_llm_with_fallback(
         except Exception as e:
             last_error = e
             err_str = str(e)
-            if "RATE_LIMITED" in err_str or "rate limit" in err_str.lower() or "429" in err_str:
-                logger.warning(f"LLM {provider}/{model_name} rate limited — falling back to next model")
+            if (
+                "RATE_LIMITED" in err_str
+                or "rate limit" in err_str.lower()
+                or "429" in err_str
+            ):
+                logger.warning(
+                    f"LLM {provider}/{model_name} rate limited — falling back to next model"
+                )
             else:
-                logger.warning(f"LLM {provider}/{model_name} failed: {e}, trying next fallback")
+                logger.warning(
+                    f"LLM {provider}/{model_name} failed: {e}, trying next fallback"
+                )
             continue
 
     error_msg = f"All LLM models failed. Last error: {last_error}"

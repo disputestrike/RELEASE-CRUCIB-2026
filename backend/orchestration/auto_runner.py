@@ -5,6 +5,7 @@ Never stops unless: success, max retries, unrecoverable failure, or cancellation
 
 Job "completed" requires every DAG step in terminal success — not a partial % threshold.
 """
+
 import asyncio
 import logging
 import json
@@ -12,8 +13,13 @@ import os
 from typing import Dict, Any, Optional, List
 
 from .runtime_state import (
-    get_job, update_job_state, get_steps, create_step,
-    append_job_event, save_checkpoint, load_checkpoint
+    get_job,
+    update_job_state,
+    get_steps,
+    create_step,
+    append_job_event,
+    save_checkpoint,
+    load_checkpoint,
 )
 from .dag_engine import (
     get_ready_steps,
@@ -34,7 +40,9 @@ from proof import proof_service
 logger = logging.getLogger(__name__)
 
 
-async def _write_blueprint(workspace_path: str, job_id: str, reason: str, **kwargs) -> None:
+async def _write_blueprint(
+    workspace_path: str, job_id: str, reason: str, **kwargs
+) -> None:
     ws = (workspace_path or "").strip()
     if not ws:
         return
@@ -72,70 +80,105 @@ def _skip_duplicate_final_preview(steps: List[Dict[str, Any]]) -> bool:
     )
 
 
-def _step_failure_context(step: Dict[str, Any], result: Dict[str, Any]) -> Dict[str, Any]:
+def _step_failure_context(
+    step: Dict[str, Any], result: Dict[str, Any]
+) -> Dict[str, Any]:
     """Extract durable late-stage failure metadata from executor results."""
-    vr = result.get("verification") if isinstance(result.get("verification"), dict) else {}
+    vr = (
+        result.get("verification")
+        if isinstance(result.get("verification"), dict)
+        else {}
+    )
     issues = vr.get("issues") if isinstance(vr.get("issues"), list) else []
     context: Dict[str, Any] = {
         "step_key": step.get("step_key"),
         "error": result.get("error") or "",
-        "failure_reason": vr.get("failure_reason") or result.get("reason") or "step_failed",
+        "failure_reason": vr.get("failure_reason")
+        or result.get("reason")
+        or "step_failed",
         "stage": vr.get("stage") or step.get("step_key"),
         "issues": issues[:12],
     }
-    for key in ("failed_checks", "checks_passed", "checks_total", "recommendation", "score"):
+    for key in (
+        "failed_checks",
+        "checks_passed",
+        "checks_total",
+        "recommendation",
+        "score",
+    ):
         if key in vr:
             context[key] = vr[key]
     return context
 
 
-async def run_job_to_completion(job_id: str,
-                                 workspace_path: str = "",
-                                 db_pool=None) -> Dict[str, Any]:
+async def run_job_to_completion(
+    job_id: str, workspace_path: str = "", db_pool=None
+) -> Dict[str, Any]:
     """
     Main auto-runner loop.
     mode=auto: runs until done without asking user.
     mode=guided: pauses before risky actions (future: emit guided_approval_needed event).
-    
+
     CRITICAL: This function MUST return a terminal state (SUCCESS, FAILED, or CANCELED).
     Never returns undefined state or background_crash.
     """
     try:
         job = await get_job(job_id)
         if not job:
-            error_result = {"success": False, "error": "Job not found", "status": "failed", "reason": "job_not_found"}
+            error_result = {
+                "success": False,
+                "error": "Job not found",
+                "status": "failed",
+                "reason": "job_not_found",
+            }
             await _finalize_job_with_failure(job_id, "job_not_found", "Job not found")
             return error_result
 
         if job["status"] in ("completed", "failed", "cancelled"):
-            return {"success": job["status"] == "completed",
-                    "status": job["status"]}
+            return {"success": job["status"] == "completed", "status": job["status"]}
 
         if db_pool:
             proof_service.set_pool(db_pool)
 
         await update_job_state(job_id, "running")
-        await publish(job_id, "job_started",
-                      {"job_id": job_id, "mode": job.get("mode"), "goal": job.get("goal", "")})
-        await append_job_event(job_id, "job_started",
-                               {"mode": job.get("mode"), "goal": job.get("goal", "")})
+        await publish(
+            job_id,
+            "job_started",
+            {"job_id": job_id, "mode": job.get("mode"), "goal": job.get("goal", "")},
+        )
+        await append_job_event(
+            job_id,
+            "job_started",
+            {"mode": job.get("mode"), "goal": job.get("goal", "")},
+        )
 
         # ── Pre-build intelligence briefing ────────────────────────────────────
         # Ensure brain memory tables exist
         try:
-            from .brain_intelligence import ensure_brain_tables, get_prebuild_intelligence
+            from .brain_intelligence import (
+                ensure_brain_tables,
+                get_prebuild_intelligence,
+            )
+
             await ensure_brain_tables()
             goal_text = (job.get("goal") or "").strip()
             if goal_text:
                 briefing = await get_prebuild_intelligence(goal_text)
                 if briefing.get("intelligence_available"):
                     await append_job_event(job_id, "brain_prebuild_briefing", briefing)
-                    await publish(job_id, "brain_prebuild_briefing", {
-                        "similar_builds": briefing.get("similar_builds_found", 0),
-                        "predicted_failures": len(briefing.get("predicted_failures", [])),
-                        "agents_to_watch": briefing.get("agents_to_watch", [])[:5],
-                    })
+                    await publish(
+                        job_id,
+                        "brain_prebuild_briefing",
+                        {
+                            "similar_builds": briefing.get("similar_builds_found", 0),
+                            "predicted_failures": len(
+                                briefing.get("predicted_failures", [])
+                            ),
+                            "agents_to_watch": briefing.get("agents_to_watch", [])[:5],
+                        },
+                    )
                     import logging as _log
+
                     _log.getLogger(__name__).info(
                         "auto_runner: prebuild briefing — %d similar builds, %d predictions",
                         briefing.get("similar_builds_found", 0),
@@ -143,7 +186,10 @@ async def run_job_to_completion(job_id: str,
                     )
         except Exception as _be:
             import logging as _log
-            _log.getLogger(__name__).warning("auto_runner: prebuild briefing failed: %s", _be)
+
+            _log.getLogger(__name__).warning(
+                "auto_runner: prebuild briefing failed: %s", _be
+            )
 
         from .execution_authority import attach_elite_context_to_job, elite_job_metadata
 
@@ -159,27 +205,44 @@ async def run_job_to_completion(job_id: str,
         # MAIN EXECUTION LOOP (wrapped with exception handler below)
         result = await _execute_job_loop(job_id, workspace_path, db_pool, total_retries)
         return result
-    
+
     except asyncio.TimeoutError:
         # Explicit timeout (not background_crash)
         error_msg = "Job execution exceeded 30 minute timeout"
         await _finalize_job_with_failure(job_id, "execution_timeout", error_msg)
-        return {"success": False, "status": "failed", "reason": "execution_timeout", "details": error_msg}
-    
+        return {
+            "success": False,
+            "status": "failed",
+            "reason": "execution_timeout",
+            "details": error_msg,
+        }
+
     except asyncio.CancelledError:
         # Job was canceled (not background_crash)
         await update_job_state(job_id, "cancelled")
         await publish(job_id, "job_cancelled", {"reason": "User canceled"})
         return {"success": False, "status": "cancelled", "reason": "user_canceled"}
-    
+
     except Exception as e:
         # CATCH-ALL: Prevents background_crash (every exception captured)
         import traceback
+
         error_msg = f"{type(e).__name__}: {str(e)}"
-        logger.error("auto_runner: UNHANDLED EXCEPTION in job %s: %s", job_id, error_msg, exc_info=True)
+        logger.error(
+            "auto_runner: UNHANDLED EXCEPTION in job %s: %s",
+            job_id,
+            error_msg,
+            exc_info=True,
+        )
         await _finalize_job_with_failure(job_id, "orchestrator_error", error_msg)
-        return {"success": False, "status": "failed", "reason": "orchestrator_error", "details": error_msg, "traceback": traceback.format_exc()}
-    
+        return {
+            "success": False,
+            "status": "failed",
+            "reason": "orchestrator_error",
+            "details": error_msg,
+            "traceback": traceback.format_exc(),
+        }
+
     finally:
         # ALWAYS finalize job state
         try:
@@ -188,7 +251,9 @@ async def run_job_to_completion(job_id: str,
             logger.error("auto_runner: Error finalizing job %s: %s", job_id, e)
 
 
-async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_retries: int) -> Dict[str, Any]:
+async def _execute_job_loop(
+    job_id: str, workspace_path: str, db_pool, total_retries: int
+) -> Dict[str, Any]:
     """Inner execution loop (wrapped by exception handlers in run_job_to_completion)."""
     while True:
         # Check cancellation
@@ -215,7 +280,10 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
                 await publish(
                     job_id,
                     "job_failed",
-                    {"reason": "no_job_steps", "message": "No DAG steps for this job; create a new plan."},
+                    {
+                        "reason": "no_job_steps",
+                        "message": "No DAG steps for this job; create a new plan.",
+                    },
                 )
                 await append_job_event(
                     job_id,
@@ -229,43 +297,57 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
                 }
 
             if await scheduler_deadlocked(job_id):
-                logger.error("auto_runner: job %s scheduler deadlock (pending steps never become ready)", job_id)
-                await update_job_state(job_id, "failed", {"current_phase": "scheduler_deadlock"})
+                logger.error(
+                    "auto_runner: job %s scheduler deadlock (pending steps never become ready)",
+                    job_id,
+                )
+                await update_job_state(
+                    job_id, "failed", {"current_phase": "scheduler_deadlock"}
+                )
                 await publish(
                     job_id,
                     "job_failed",
-                    {"reason": "scheduler_deadlock", "message": "Step dependencies cannot be satisfied."},
+                    {
+                        "reason": "scheduler_deadlock",
+                        "message": "Step dependencies cannot be satisfied.",
+                    },
                 )
-                return {"success": False, "status": "failed", "reason": "scheduler_deadlock"}
+                return {
+                    "success": False,
+                    "status": "failed",
+                    "reason": "scheduler_deadlock",
+                }
 
             if await execution_quiescent(job_id):
                 # All work finished or blocked off — finalize (blocked/failed handled below)
                 break
 
             if await has_blocking_failure(job_id):
-                await update_job_state(job_id, "failed",
-                                       {"current_phase": "blocked"})
-                await publish(job_id, "job_failed",
-                              {"reason": "Blocking step failure with no retry available"})
-                return {"success": False, "status": "failed",
-                        "reason": "Blocking step failure"}
+                await update_job_state(job_id, "failed", {"current_phase": "blocked"})
+                await publish(
+                    job_id,
+                    "job_failed",
+                    {"reason": "Blocking step failure with no retry available"},
+                )
+                return {
+                    "success": False,
+                    "status": "failed",
+                    "reason": "Blocking step failure",
+                }
             await asyncio.sleep(POLL_INTERVAL_SEC)
             continue
 
         # Execute ready steps (up to MAX_CONCURRENT_STEPS in parallel)
         batch = ready[:MAX_CONCURRENT_STEPS]
         tasks = [
-            asyncio.create_task(
-                _run_single_step(step, job, workspace_path, db_pool)
-            )
+            asyncio.create_task(_run_single_step(step, job, workspace_path, db_pool))
             for step in batch
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         for step, result in zip(batch, results):
             if isinstance(result, Exception):
-                logger.error("auto_runner: step %s raised %s",
-                             step["step_key"], result)
+                logger.error("auto_runner: step %s raised %s", step["step_key"], result)
                 result = {"success": False, "error": str(result)}
 
             if not result["success"]:
@@ -274,7 +356,8 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
                 if is_infrastructure_failure(err_msg):
                     logger.error(
                         "auto_runner: infra failure on step %s — not retrying: %s",
-                        step["step_key"], err_msg[:200],
+                        step["step_key"],
+                        err_msg[:200],
                     )
                     await append_job_event(
                         job_id,
@@ -288,14 +371,24 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
                 total_retries += 1
                 max_total = _max_total_retries()
                 if total_retries > max_total:
-                    await update_job_state(job_id, "failed",
-                                           {"current_phase": "max_retries_exceeded",
-                                            "failure_reason": failure_context.get("failure_reason"),
-                                            "failure_details": err_msg[:1000]})
-                    await publish(job_id, "job_failed",
-                                  {"reason": "max_retries_exceeded",
-                                   "message": f"Max retries ({max_total}) exceeded",
-                                   **failure_context})
+                    await update_job_state(
+                        job_id,
+                        "failed",
+                        {
+                            "current_phase": "max_retries_exceeded",
+                            "failure_reason": failure_context.get("failure_reason"),
+                            "failure_details": err_msg[:1000],
+                        },
+                    )
+                    await publish(
+                        job_id,
+                        "job_failed",
+                        {
+                            "reason": "max_retries_exceeded",
+                            "message": f"Max retries ({max_total}) exceeded",
+                            **failure_context,
+                        },
+                    )
                     await append_job_event(
                         job_id,
                         "job_failed",
@@ -313,8 +406,11 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
                         failed_step_keys=[step["step_key"]],
                         open_gates=["step_verification"],
                     )
-                    return {"success": False, "status": "failed",
-                            "reason": "max_retries_exceeded"}
+                    return {
+                        "success": False,
+                        "status": "failed",
+                        "reason": "max_retries_exceeded",
+                    }
 
                 retry_count = step.get("retry_count", 0)
                 if retry_count >= MAX_RETRIES:
@@ -343,11 +439,23 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
                     await block_dependents(job_id, step["step_key"])
                 else:
                     err_txt = result.get("error", "") or ""
-                    vr = result.get("verification") if isinstance(result.get("verification"), dict) else {}
-                    v_issues = vr.get("issues") if isinstance(vr.get("issues"), list) else None
-                    vstub = {"issues": v_issues if v_issues else ([err_txt] if err_txt else [])}
+                    vr = (
+                        result.get("verification")
+                        if isinstance(result.get("verification"), dict)
+                        else {}
+                    )
+                    v_issues = (
+                        vr.get("issues") if isinstance(vr.get("issues"), list) else None
+                    )
+                    vstub = {
+                        "issues": (
+                            v_issues if v_issues else ([err_txt] if err_txt else [])
+                        )
+                    }
                     ftype = classify_failure({**step, "error_message": err_txt}, vstub)
-                    rplan = build_retry_plan(ftype, {**step, "error_message": err_txt}, vstub)
+                    rplan = build_retry_plan(
+                        ftype, {**step, "error_message": err_txt}, vstub
+                    )
 
                     # ── BRAIN REPAIR: read workspace, fix code, mutate params ──
                     repair = await run_full_brain_repair(
@@ -390,15 +498,21 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
                     await apply_fix({**step, "error_message": err_txt}, rplan)
                     # Queue retry with mutations applied
                     from .runtime_state import update_step_state
+
                     await update_step_state(step["id"], "pending", step_mutations)
-                    await publish(job_id, "step_retrying",
-                                  {"step_key": step["step_key"],
-                                   "attempt": retry_count + 1,
-                                   "error": err_txt,
-                                   "failure_reason": failure_context.get("failure_reason"),
-                                   "stage": failure_context.get("stage"),
-                                   "brain_strategy": repair["strategy"],
-                                   "brain_explanation": repair["explanation"]})
+                    await publish(
+                        job_id,
+                        "step_retrying",
+                        {
+                            "step_key": step["step_key"],
+                            "attempt": retry_count + 1,
+                            "error": err_txt,
+                            "failure_reason": failure_context.get("failure_reason"),
+                            "stage": failure_context.get("stage"),
+                            "brain_strategy": repair["strategy"],
+                            "brain_explanation": repair["explanation"],
+                        },
+                    )
 
     # Finalize job
     steps = await get_steps(job_id)
@@ -409,6 +523,7 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
     # ── Post-build learning — store outcome so future builds benefit ─────────
     try:
         from .brain_intelligence import record_build_outcome
+
         total = len(steps)
         completion_pct = (len(completed_steps) / max(1, total)) * 100
         goal_text = (job.get("goal") or "").strip()
@@ -419,25 +534,33 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
                 step_completion_pct=completion_pct,
                 quality_score=round(completion_pct),
                 failed_steps=[
-                    {"step_key": s.get("step_key", ""),
-                     "error_message": str(s.get("error_message") or "")[:300],
-                     "brain_strategy": str(s.get("brain_strategy") or ""),
-                     "brain_explanation": str(s.get("brain_explanation") or ""),
-                     "files_repaired": s.get("files_repaired") or [],
-                     "retry_count": s.get("retry_count") or 0,
-                     "was_eventually_fixed": False}
+                    {
+                        "step_key": s.get("step_key", ""),
+                        "error_message": str(s.get("error_message") or "")[:300],
+                        "brain_strategy": str(s.get("brain_strategy") or ""),
+                        "brain_explanation": str(s.get("brain_explanation") or ""),
+                        "files_repaired": s.get("files_repaired") or [],
+                        "retry_count": s.get("retry_count") or 0,
+                        "was_eventually_fixed": False,
+                    }
                     for s in failed_steps
                 ],
                 completed_steps=[s.get("step_key", "") for s in completed_steps],
                 repairs_applied=[
-                    {"step_key": s.get("step_key", ""),
-                     "strategy": str(s.get("brain_strategy") or "")}
-                    for s in steps if s.get("brain_strategy")
+                    {
+                        "step_key": s.get("step_key", ""),
+                        "strategy": str(s.get("brain_strategy") or ""),
+                    }
+                    for s in steps
+                    if s.get("brain_strategy")
                 ],
             )
     except Exception as _le:
         import logging as _log
-        _log.getLogger(__name__).warning("auto_runner: post-build learning failed: %s", _le)
+
+        _log.getLogger(__name__).warning(
+            "auto_runner: post-build learning failed: %s", _le
+        )
     failed_step_details = [
         {
             "step_key": s.get("step_key"),
@@ -462,28 +585,43 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
     quality_score = round((len(completed_steps) / max(1, total)) * 100)
 
     if blocked_steps:
-        await update_job_state(job_id, "failed", {
-            "current_phase": "dependency_blocked",
-            "quality_score": quality_score,
-            "blocked_steps": [s["step_key"] for s in blocked_steps],
-            "failure_reason": "dependency_blocked",
-            "failure_details": json.dumps(
-                {"blocked_steps": blocked_step_details, "failed_steps": failed_step_details}
-            )[:2000],
-        })
-        await publish(job_id, "job_failed", {
-            "reason": "dependency_blocked",
-            "quality_score": quality_score,
-            "blocked_steps": [s["step_key"] for s in blocked_steps],
-            "blocked_step_details": blocked_step_details,
-            "failed_step_details": failed_step_details,
-        })
-        await append_job_event(job_id, "job_failed", {
-            "reason": "dependency_blocked",
-            "blocked_step_keys": [s["step_key"] for s in blocked_steps],
-            "blocked_step_details": blocked_step_details,
-            "failed_step_details": failed_step_details,
-        })
+        await update_job_state(
+            job_id,
+            "failed",
+            {
+                "current_phase": "dependency_blocked",
+                "quality_score": quality_score,
+                "blocked_steps": [s["step_key"] for s in blocked_steps],
+                "failure_reason": "dependency_blocked",
+                "failure_details": json.dumps(
+                    {
+                        "blocked_steps": blocked_step_details,
+                        "failed_steps": failed_step_details,
+                    }
+                )[:2000],
+            },
+        )
+        await publish(
+            job_id,
+            "job_failed",
+            {
+                "reason": "dependency_blocked",
+                "quality_score": quality_score,
+                "blocked_steps": [s["step_key"] for s in blocked_steps],
+                "blocked_step_details": blocked_step_details,
+                "failed_step_details": failed_step_details,
+            },
+        )
+        await append_job_event(
+            job_id,
+            "job_failed",
+            {
+                "reason": "dependency_blocked",
+                "blocked_step_keys": [s["step_key"] for s in blocked_steps],
+                "blocked_step_details": blocked_step_details,
+                "failed_step_details": failed_step_details,
+            },
+        )
         await _write_blueprint(
             workspace_path,
             job_id,
@@ -500,24 +638,39 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
 
     # Strict: any failed step means the plan did not complete (no "60% is good enough").
     if failed_steps:
-        await update_job_state(job_id, "failed", {
-            "current_phase": "steps_failed",
-            "quality_score": quality_score,
-            "failed_step_keys": [s["step_key"] for s in failed_steps],
-            "failure_reason": "steps_failed",
-            "failure_details": json.dumps({"failed_steps": failed_step_details})[:2000],
-        })
-        await publish(job_id, "job_failed",
-                      {"reason": "one_or_more_steps_failed",
-                       "quality_score": quality_score,
-                       "failed_steps": [s["step_key"] for s in failed_steps],
-                       "failed_step_details": failed_step_details})
-        await append_job_event(job_id, "job_failed", {
-            "reason": "steps_failed",
-            "failed_step_keys": [s["step_key"] for s in failed_steps],
-            "failed_step_details": failed_step_details,
-            "quality_score": quality_score,
-        })
+        await update_job_state(
+            job_id,
+            "failed",
+            {
+                "current_phase": "steps_failed",
+                "quality_score": quality_score,
+                "failed_step_keys": [s["step_key"] for s in failed_steps],
+                "failure_reason": "steps_failed",
+                "failure_details": json.dumps({"failed_steps": failed_step_details})[
+                    :2000
+                ],
+            },
+        )
+        await publish(
+            job_id,
+            "job_failed",
+            {
+                "reason": "one_or_more_steps_failed",
+                "quality_score": quality_score,
+                "failed_steps": [s["step_key"] for s in failed_steps],
+                "failed_step_details": failed_step_details,
+            },
+        )
+        await append_job_event(
+            job_id,
+            "job_failed",
+            {
+                "reason": "steps_failed",
+                "failed_step_keys": [s["step_key"] for s in failed_steps],
+                "failed_step_details": failed_step_details,
+                "quality_score": quality_score,
+            },
+        )
         await _write_blueprint(
             workspace_path,
             job_id,
@@ -536,15 +689,25 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
     # Every node must be completed — not left pending/skipped (should not happen if scheduler is sound).
     if len(completed_steps) != total:
         bad = [s for s in steps if s["status"] != "completed"]
-        await update_job_state(job_id, "failed", {
-            "current_phase": "incomplete_dag",
-            "quality_score": quality_score,
-            "non_completed": [{"key": s["step_key"], "status": s["status"]} for s in bad],
-        })
-        await publish(job_id, "job_failed", {
-            "reason": "incomplete_dag",
-            "non_completed": [s["step_key"] for s in bad],
-        })
+        await update_job_state(
+            job_id,
+            "failed",
+            {
+                "current_phase": "incomplete_dag",
+                "quality_score": quality_score,
+                "non_completed": [
+                    {"key": s["step_key"], "status": s["status"]} for s in bad
+                ],
+            },
+        )
+        await publish(
+            job_id,
+            "job_failed",
+            {
+                "reason": "incomplete_dag",
+                "non_completed": [s["step_key"] for s in bad],
+            },
+        )
         return {
             "success": False,
             "status": "failed",
@@ -554,17 +717,29 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
 
     ws = (workspace_path or "").strip()
     if not ws:
-        await update_job_state(job_id, "failed", {
-            "current_phase": "no_workspace_for_preview",
-            "quality_score": quality_score,
-        })
-        await append_job_event(job_id, "job_preview_failed", {
-            "issues": ["No workspace_path — cannot verify preview bundle."],
-        })
-        await publish(job_id, "job_failed", {
-            "reason": "no_workspace",
-            "quality_score": quality_score,
-        })
+        await update_job_state(
+            job_id,
+            "failed",
+            {
+                "current_phase": "no_workspace_for_preview",
+                "quality_score": quality_score,
+            },
+        )
+        await append_job_event(
+            job_id,
+            "job_preview_failed",
+            {
+                "issues": ["No workspace_path — cannot verify preview bundle."],
+            },
+        )
+        await publish(
+            job_id,
+            "job_failed",
+            {
+                "reason": "no_workspace",
+                "quality_score": quality_score,
+            },
+        )
         return {
             "success": False,
             "status": "failed",
@@ -588,19 +763,31 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
         pv = await verify_preview_workspace(ws)
 
     if not pv["passed"]:
-        await update_job_state(job_id, "failed", {
-            "current_phase": "preview_gate_failed",
-            "quality_score": quality_score,
-        })
-        await append_job_event(job_id, "job_preview_failed", {
-            "issues": pv["issues"],
-            "score": pv["score"],
-        })
-        await publish(job_id, "job_failed", {
-            "reason": "preview_gate",
-            "issues": pv["issues"],
-            "quality_score": quality_score,
-        })
+        await update_job_state(
+            job_id,
+            "failed",
+            {
+                "current_phase": "preview_gate_failed",
+                "quality_score": quality_score,
+            },
+        )
+        await append_job_event(
+            job_id,
+            "job_preview_failed",
+            {
+                "issues": pv["issues"],
+                "score": pv["score"],
+            },
+        )
+        await publish(
+            job_id,
+            "job_failed",
+            {
+                "reason": "preview_gate",
+                "issues": pv["issues"],
+                "quality_score": quality_score,
+            },
+        )
         await _write_blueprint(
             workspace_path,
             job_id,
@@ -687,17 +874,25 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
     except Exception as _seal_e:
         logger.warning("workspace seal skipped: %s", _seal_e)
 
-    await update_job_state(job_id, "completed", {
-        "current_phase": "completed",
-        "quality_score": quality_score,
-    })
+    await update_job_state(
+        job_id,
+        "completed",
+        {
+            "current_phase": "completed",
+            "quality_score": quality_score,
+        },
+    )
     proof = await proof_service.get_proof(job_id)
     summary = _build_completion_summary(steps, proof)
-    await publish(job_id, "job_completed", {
-        "quality_score": quality_score,
-        "summary": summary,
-        "proof": proof,
-    })
+    await publish(
+        job_id,
+        "job_completed",
+        {
+            "quality_score": quality_score,
+            "summary": summary,
+            "proof": proof,
+        },
+    )
     await append_job_event(
         job_id,
         "job_completed",
@@ -707,18 +902,26 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
             "enforcement_advisory": bool(egr.get("advisory_would_block")),
         },
     )
-    return {"success": True, "status": "completed",
-            "quality_score": quality_score, "summary": summary}
+    return {
+        "success": True,
+        "status": "completed",
+        "quality_score": quality_score,
+        "summary": summary,
+    }
 
 
-async def _run_single_step(step: Dict, job: Dict,
-                            workspace_path: str, db_pool) -> Dict[str, Any]:
+async def _run_single_step(
+    step: Dict, job: Dict, workspace_path: str, db_pool
+) -> Dict[str, Any]:
     """Execute one step with retry-aware error handling."""
     # Update current phase in job
-    await update_job_state(job["id"], "running",
-                           {"current_phase": step.get("phase", "")})
+    await update_job_state(
+        job["id"], "running", {"current_phase": step.get("phase", "")}
+    )
     return await execute_step(
-        step, job, workspace_path,
+        step,
+        job,
+        workspace_path,
         db_pool=db_pool,
         proof_service=proof_service,
     )
@@ -740,8 +943,10 @@ def _build_completion_summary(steps: list, proof: Dict) -> Dict[str, Any]:
 
 # ── Checkpoint resume ─────────────────────────────────────────────────────────
 
-async def resume_job(job_id: str, workspace_path: str = "",
-                      db_pool=None) -> Dict[str, Any]:
+
+async def resume_job(
+    job_id: str, workspace_path: str = "", db_pool=None
+) -> Dict[str, Any]:
     """Resume a job that was interrupted. Picks up from incomplete nodes."""
     job = await get_job(job_id)
     if not job:
@@ -753,6 +958,7 @@ async def resume_job(job_id: str, workspace_path: str = "",
     # Reset any 'running' steps back to 'pending' (they were interrupted)
     steps = await get_steps(job_id)
     from .runtime_state import update_step_state
+
     for step in steps:
         if step["status"] == "running":
             await update_step_state(step["id"], "pending")
@@ -767,22 +973,35 @@ async def resume_job(job_id: str, workspace_path: str = "",
 # Prevents background_crash by ensuring explicit terminal states
 # ============================================================================
 
+
 async def _finalize_job_with_failure(job_id: str, reason: str, details: str) -> None:
     """Finalize job with explicit failure reason (never background_crash)."""
     try:
-        await update_job_state(job_id, "failed", {
-            "current_phase": reason,
-            "failure_reason": reason,
-            "failure_details": details,
-        })
-        await publish(job_id, "job_failed", {
-            "reason": reason,
-            "details": details,
-        })
-        await append_job_event(job_id, "job_failed", {
-            "reason": reason,
-            "details": details,
-        })
+        await update_job_state(
+            job_id,
+            "failed",
+            {
+                "current_phase": reason,
+                "failure_reason": reason,
+                "failure_details": details,
+            },
+        )
+        await publish(
+            job_id,
+            "job_failed",
+            {
+                "reason": reason,
+                "details": details,
+            },
+        )
+        await append_job_event(
+            job_id,
+            "job_failed",
+            {
+                "reason": reason,
+                "details": details,
+            },
+        )
     except Exception as e:
         logger.error("auto_runner: Error finalizing job %s with failure: %s", job_id, e)
 
@@ -793,10 +1012,17 @@ async def _ensure_job_finalized(job_id: str) -> None:
         job = await get_job(job_id)
         if not job:
             return
-        
+
         # If job is still in "running" state, mark as failed
         if job.get("status") == "running":
-            logger.warning("auto_runner: Job %s still in running state at finalization — marking as failed", job_id)
-            await _finalize_job_with_failure(job_id, "incomplete_at_finalization", "Job reached finalization without terminal state")
+            logger.warning(
+                "auto_runner: Job %s still in running state at finalization — marking as failed",
+                job_id,
+            )
+            await _finalize_job_with_failure(
+                job_id,
+                "incomplete_at_finalization",
+                "Job reached finalization without terminal state",
+            )
     except Exception as e:
         logger.error("auto_runner: Error ensuring job finalized: %s", e)

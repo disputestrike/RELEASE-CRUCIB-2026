@@ -4,6 +4,7 @@ CrucibAI Environment Validation Module
 Validates all required environment variables at startup.
 Fails fast if critical vars are missing — no silent failures.
 """
+
 import os
 import sys
 import logging
@@ -51,11 +52,11 @@ OPTIONAL_VARS = {
 def validate_environment(strict: bool = False) -> dict:
     """
     Validate all required environment variables.
-    
+
     Args:
         strict: If True, exit process on missing required vars.
                 If False, log warnings but continue.
-    
+
     Returns:
         dict with 'missing_required', 'missing_optional', 'status' keys
     """
@@ -87,11 +88,15 @@ def validate_environment(strict: bool = False) -> dict:
     # Summary
     total_required = sum(len(v) for v in REQUIRED_VARS.values())
     total_optional = sum(len(v) for v in OPTIONAL_VARS.values())
-    
+
     logger.info(f"\n{'='*50}")
     logger.info(f"Environment Validation Summary:")
-    logger.info(f"  Required: {total_required - len(missing_required)}/{total_required} set")
-    logger.info(f"  Optional: {total_optional - len(missing_optional)}/{total_optional} set")
+    logger.info(
+        f"  Required: {total_required - len(missing_required)}/{total_required} set"
+    )
+    logger.info(
+        f"  Optional: {total_optional - len(missing_optional)}/{total_optional} set"
+    )
     logger.info(f"{'='*50}")
 
     if missing_required and strict:

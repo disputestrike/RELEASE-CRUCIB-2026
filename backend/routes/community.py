@@ -3,10 +3,10 @@
 This router is intentionally static for launch: templates and case studies are
 curated by the CrucibAI team until moderation workflows are staffed and audited.
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
-
 
 COMMUNITY_TEMPLATES = [
     {
@@ -94,7 +94,9 @@ def create_community_router() -> APIRouter:
 
     @router.get("/templates/{template_id}/remix-plan")
     async def community_template_remix_plan(template_id: str):
-        template = next((item for item in COMMUNITY_TEMPLATES if item["id"] == template_id), None)
+        template = next(
+            (item for item in COMMUNITY_TEMPLATES if item["id"] == template_id), None
+        )
         if not template:
             raise HTTPException(status_code=404, detail="Template not found")
         return {

@@ -1,6 +1,7 @@
 """
 Production sketch gate — cheap static checks before deploy steps (not full SAST).
 """
+
 from __future__ import annotations
 
 import os
@@ -44,7 +45,20 @@ def scan_workspace_for_credential_patterns(
                 continue
             if low in _SKIP_NAMES or name.startswith(".env"):
                 continue
-            if not low.endswith((".py", ".js", ".jsx", ".ts", ".tsx", ".json", ".sql", ".yml", ".yaml", ".toml")):
+            if not low.endswith(
+                (
+                    ".py",
+                    ".js",
+                    ".jsx",
+                    ".ts",
+                    ".tsx",
+                    ".json",
+                    ".sql",
+                    ".yml",
+                    ".yaml",
+                    ".toml",
+                )
+            ):
                 continue
             full = os.path.join(root, name)
             rel = os.path.relpath(full, workspace_path).replace("\\", "/")
@@ -56,6 +70,8 @@ def scan_workspace_for_credential_patterns(
             n += 1
             for rx, label in _SECRET_PATTERNS:
                 if rx.search(text):
-                    issues.append(f"{label} pattern matched in {rel} — remove before production")
+                    issues.append(
+                        f"{label} pattern matched in {rel} — remove before production"
+                    )
                     break
     return issues

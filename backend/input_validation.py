@@ -208,7 +208,9 @@ class InjectionValidator:
         except Exception as e:
             raise ValueError(f"Invalid URL: {str(e)}")
 
-    def validate_integer(self, value: Any, min_val: int = None, max_val: int = None) -> int:
+    def validate_integer(
+        self, value: Any, min_val: int = None, max_val: int = None
+    ) -> int:
         """
         Validate integer input.
 
@@ -256,9 +258,7 @@ class InjectionValidator:
         # Remove dangerous tags
         dangerous_tags = ["iframe", "object", "embed", "applet"]
         for tag in dangerous_tags:
-            value = re.sub(
-                rf"<{tag}[^>]*>.*?</{tag}>", "", value, flags=re.IGNORECASE
-            )
+            value = re.sub(rf"<{tag}[^>]*>.*?</{tag}>", "", value, flags=re.IGNORECASE)
 
         return value
 
@@ -267,9 +267,7 @@ class InjectionValidator:
 validator = InjectionValidator()
 
 
-def validate_input(
-    value: str, input_type: str = "string", **kwargs
-) -> Any:
+def validate_input(value: str, input_type: str = "string", **kwargs) -> Any:
     """
     Validate input based on type.
 

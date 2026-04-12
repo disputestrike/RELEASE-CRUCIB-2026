@@ -15,31 +15,35 @@ logger = logging.getLogger(__name__)
 
 class SpecializedAgent(ABC):
     """Base class for specialized agents"""
-    
+
     def __init__(self, name: str, domain: str):
         self.name = name
         self.domain = domain
         self.capabilities: List[str] = []
         self.success_rate = 0.0
         self.total_executions = 0
-    
+
     @abstractmethod
     async def execute(self, requirements: Dict[str, Any]) -> Dict[str, Any]:
         """Execute agent task"""
         pass
-    
+
     async def update_metrics(self, success: bool):
         """Update agent metrics"""
         self.total_executions += 1
         if success:
-            self.success_rate = (self.success_rate * (self.total_executions - 1) + 1) / self.total_executions
+            self.success_rate = (
+                self.success_rate * (self.total_executions - 1) + 1
+            ) / self.total_executions
         else:
-            self.success_rate = (self.success_rate * (self.total_executions - 1)) / self.total_executions
+            self.success_rate = (
+                self.success_rate * (self.total_executions - 1)
+            ) / self.total_executions
 
 
 class MLPipelineAgent(SpecializedAgent):
     """Generates complete ML pipelines end-to-end"""
-    
+
     def __init__(self):
         super().__init__("MLPipelineAgent", "machine_learning")
         self.capabilities = [
@@ -51,9 +55,9 @@ class MLPipelineAgent(SpecializedAgent):
             "model_training",
             "model_evaluation",
             "model_deployment",
-            "monitoring_setup"
+            "monitoring_setup",
         ]
-    
+
     async def generate_data_pipeline(self, requirements: Dict) -> str:
         """Generate data collection and preprocessing code"""
         code = f"""
@@ -86,11 +90,11 @@ class DataPipeline:
         return df
 """
         return code
-    
+
     async def generate_model_code(self, requirements: Dict) -> str:
         """Generate model training code"""
-        model_type = requirements.get('model_type', 'neural_network')
-        
+        model_type = requirements.get("model_type", "neural_network")
+
         code = f"""
 import torch
 import torch.nn as nn
@@ -125,7 +129,7 @@ async def train_model(model, train_loader, epochs=10):
     return model
 """
         return code
-    
+
     async def generate_deployment_code(self, requirements: Dict) -> str:
         """Generate model deployment code"""
         code = """
@@ -152,27 +156,27 @@ class ModelServer:
         return {"status": "healthy"}
 """
         return code
-    
+
     async def execute(self, requirements: Dict[str, Any]) -> Dict[str, Any]:
         """Execute ML pipeline generation"""
         logger.info(f"Generating ML pipeline: {requirements.get('name', 'ml_model')}")
-        
+
         try:
             data_pipeline = await self.generate_data_pipeline(requirements)
             model_code = await self.generate_model_code(requirements)
             deployment_code = await self.generate_deployment_code(requirements)
-            
+
             await self.update_metrics(True)
-            
+
             return {
                 "status": "success",
                 "agent": self.name,
                 "components": {
                     "data_pipeline": data_pipeline,
                     "model_code": model_code,
-                    "deployment_code": deployment_code
+                    "deployment_code": deployment_code,
                 },
-                "files_generated": 3
+                "files_generated": 3,
             }
         except Exception as e:
             logger.error(f"Error in {self.name}: {e}")
@@ -182,7 +186,7 @@ class ModelServer:
 
 class BlockchainSmartContractAgent(SpecializedAgent):
     """Generates audited smart contracts"""
-    
+
     def __init__(self):
         super().__init__("BlockchainSmartContractAgent", "blockchain")
         self.capabilities = [
@@ -191,13 +195,13 @@ class BlockchainSmartContractAgent(SpecializedAgent):
             "security_audit",
             "gas_optimization",
             "test_generation",
-            "deployment_automation"
+            "deployment_automation",
         ]
-    
+
     async def generate_contract(self, requirements: Dict) -> str:
         """Generate smart contract"""
-        contract_type = requirements.get('type', 'token')
-        
+        contract_type = requirements.get("type", "token")
+
         code = f"""
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
@@ -227,50 +231,49 @@ contract {contract_type.title()}Contract {{
 }}
 """
         return code
-    
+
     async def audit_contract(self, contract_code: str) -> Dict[str, Any]:
         """Automated security audit"""
         vulnerabilities = []
-        
+
         if "selfdestruct" in contract_code:
             vulnerabilities.append("Potential selfdestruct vulnerability")
         if "delegatecall" in contract_code:
             vulnerabilities.append("Potential delegatecall vulnerability")
         if "tx.origin" in contract_code:
             vulnerabilities.append("Potential tx.origin vulnerability")
-        
+
         return {
             "vulnerabilities": vulnerabilities,
             "security_score": max(0, 100 - len(vulnerabilities) * 10),
-            "audit_passed": len(vulnerabilities) == 0
+            "audit_passed": len(vulnerabilities) == 0,
         }
-    
+
     async def optimize_gas(self, contract_code: str) -> str:
         """Optimize for gas efficiency"""
         # Add gas optimization comments
-        optimized = contract_code.replace(
-            "public",
-            "public // Gas optimized"
-        )
+        optimized = contract_code.replace("public", "public // Gas optimized")
         return optimized
-    
+
     async def execute(self, requirements: Dict[str, Any]) -> Dict[str, Any]:
         """Execute smart contract generation"""
-        logger.info(f"Generating smart contract: {requirements.get('type', 'contract')}")
-        
+        logger.info(
+            f"Generating smart contract: {requirements.get('type', 'contract')}"
+        )
+
         try:
             contract = await self.generate_contract(requirements)
             audit = await self.audit_contract(contract)
             optimized = await self.optimize_gas(contract)
-            
+
             await self.update_metrics(audit["audit_passed"])
-            
+
             return {
                 "status": "success" if audit["audit_passed"] else "warning",
                 "agent": self.name,
                 "contract_code": optimized,
                 "audit_result": audit,
-                "files_generated": 1
+                "files_generated": 1,
             }
         except Exception as e:
             logger.error(f"Error in {self.name}: {e}")
@@ -280,7 +283,7 @@ contract {contract_type.title()}Contract {{
 
 class GameEngineAgent(SpecializedAgent):
     """Generates multiplayer games with optimized networking"""
-    
+
     def __init__(self):
         super().__init__("GameEngineAgent", "gaming")
         self.capabilities = [
@@ -289,13 +292,13 @@ class GameEngineAgent(SpecializedAgent):
             "multiplayer_networking",
             "performance_optimization",
             "asset_pipeline",
-            "latency_optimization"
+            "latency_optimization",
         ]
-    
+
     async def generate_game(self, requirements: Dict) -> str:
         """Generate game code"""
-        game_type = requirements.get('type', '2d_platformer')
-        
+        game_type = requirements.get("type", "2d_platformer")
+
         code = f"""
 import Phaser from 'phaser';
 
@@ -339,7 +342,7 @@ const config = {{
 const game = new Phaser.Game(config);
 """
         return code
-    
+
     async def optimize_networking(self, game_code: str) -> str:
         """Optimize for <100ms latency"""
         optimized = game_code + """
@@ -369,23 +372,23 @@ class NetworkManager {
 }
 """
         return optimized
-    
+
     async def execute(self, requirements: Dict[str, Any]) -> Dict[str, Any]:
         """Execute game generation"""
         logger.info(f"Generating game: {requirements.get('type', 'game')}")
-        
+
         try:
             game_code = await self.generate_game(requirements)
             optimized_code = await self.optimize_networking(game_code)
-            
+
             await self.update_metrics(True)
-            
+
             return {
                 "status": "success",
                 "agent": self.name,
                 "game_code": optimized_code,
                 "features": self.capabilities,
-                "files_generated": 1
+                "files_generated": 1,
             }
         except Exception as e:
             logger.error(f"Error in {self.name}: {e}")
@@ -395,7 +398,7 @@ class NetworkManager {
 
 class IoTFirmwareAgent(SpecializedAgent):
     """Generates IoT firmware for embedded systems"""
-    
+
     def __init__(self):
         super().__init__("IoTFirmwareAgent", "iot")
         self.capabilities = [
@@ -403,13 +406,13 @@ class IoTFirmwareAgent(SpecializedAgent):
             "sensor_drivers",
             "communication_protocols",
             "power_optimization",
-            "real_time_os_integration"
+            "real_time_os_integration",
         ]
-    
+
     async def generate_firmware(self, requirements: Dict) -> str:
         """Generate firmware code"""
-        device_type = requirements.get('device_type', 'sensor_node')
-        
+        device_type = requirements.get("device_type", "sensor_node")
+
         code = f"""
 #include <Arduino.h>
 #include <WiFi.h>
@@ -458,22 +461,22 @@ void loop() {{
 }}
 """
         return code
-    
+
     async def execute(self, requirements: Dict[str, Any]) -> Dict[str, Any]:
         """Execute firmware generation"""
         logger.info(f"Generating firmware: {requirements.get('device_type', 'device')}")
-        
+
         try:
             firmware = await self.generate_firmware(requirements)
-            
+
             await self.update_metrics(True)
-            
+
             return {
                 "status": "success",
                 "agent": self.name,
                 "firmware_code": firmware,
                 "features": self.capabilities,
-                "files_generated": 1
+                "files_generated": 1,
             }
         except Exception as e:
             logger.error(f"Error in {self.name}: {e}")
@@ -483,7 +486,7 @@ void loop() {{
 
 class MathScienceAgent(SpecializedAgent):
     """Generates solutions for mathematical and scientific problems"""
-    
+
     def __init__(self):
         super().__init__("MathScienceAgent", "science")
         self.capabilities = [
@@ -491,9 +494,9 @@ class MathScienceAgent(SpecializedAgent):
             "symbolic_math",
             "numerical_simulation",
             "proof_generation",
-            "scientific_computing"
+            "scientific_computing",
         ]
-    
+
     async def solve_equation(self, equation: str) -> str:
         """Solve mathematical equations"""
         code = f"""
@@ -522,22 +525,26 @@ for i in range(len(y_vals)-1):
 return roots
 """
         return code
-    
+
     async def execute(self, requirements: Dict[str, Any]) -> Dict[str, Any]:
         """Execute math/science solution generation"""
-        logger.info(f"Generating solution for: {requirements.get('problem', 'problem')}")
-        
+        logger.info(
+            f"Generating solution for: {requirements.get('problem', 'problem')}"
+        )
+
         try:
-            solution = await self.solve_equation(requirements.get('equation', 'x**2 - 4'))
-            
+            solution = await self.solve_equation(
+                requirements.get("equation", "x**2 - 4")
+            )
+
             await self.update_metrics(True)
-            
+
             return {
                 "status": "success",
                 "agent": self.name,
                 "solution_code": solution,
                 "features": self.capabilities,
-                "files_generated": 1
+                "files_generated": 1,
             }
         except Exception as e:
             logger.error(f"Error in {self.name}: {e}")
@@ -547,47 +554,47 @@ return roots
 
 class SpecializedAgentOrchestrator:
     """Orchestrates all 6 specialized agents"""
-    
+
     def __init__(self):
         self.agents = {
             "ml": MLPipelineAgent(),
             "blockchain": BlockchainSmartContractAgent(),
             "games": GameEngineAgent(),
             "iot": IoTFirmwareAgent(),
-            "science": MathScienceAgent()
+            "science": MathScienceAgent(),
         }
         self.execution_history = []
-    
+
     async def execute_agent(self, agent_key: str, requirements: Dict) -> Dict[str, Any]:
         """Execute a specific agent"""
         if agent_key not in self.agents:
             return {"status": "error", "error": f"Agent {agent_key} not found"}
-        
+
         agent = self.agents[agent_key]
         result = await agent.execute(requirements)
-        self.execution_history.append({
-            "agent": agent_key,
-            "requirements": requirements,
-            "result": result
-        })
+        self.execution_history.append(
+            {"agent": agent_key, "requirements": requirements, "result": result}
+        )
         return result
-    
+
     async def execute_multi_domain(self, requirements: Dict) -> Dict[str, Any]:
         """Execute multiple agents for multi-domain systems"""
-        domains = requirements.get('domains', [])
+        domains = requirements.get("domains", [])
         results = {}
-        
+
         for domain in domains:
             if domain in self.agents:
                 result = await self.execute_agent(domain, requirements)
                 results[domain] = result
-        
+
         return {
             "status": "success",
             "multi_domain_system": results,
-            "total_files_generated": sum(r.get('files_generated', 0) for r in results.values())
+            "total_files_generated": sum(
+                r.get("files_generated", 0) for r in results.values()
+            ),
         }
-    
+
     def get_agent_stats(self) -> Dict[str, Any]:
         """Get statistics for all agents"""
         stats = {}
@@ -597,7 +604,7 @@ class SpecializedAgentOrchestrator:
                 "domain": agent.domain,
                 "success_rate": agent.success_rate,
                 "total_executions": agent.total_executions,
-                "capabilities": agent.capabilities
+                "capabilities": agent.capabilities,
             }
         return stats
 
@@ -606,43 +613,42 @@ class SpecializedAgentOrchestrator:
 async def main():
     """Example: Run all 6 specialized agents"""
     orchestrator = SpecializedAgentOrchestrator()
-    
+
     # Test ML agent
-    ml_result = await orchestrator.execute_agent("ml", {
-        "name": "recommendation_system",
-        "model_type": "neural_network",
-        "data_source": "user_interactions.csv"
-    })
+    ml_result = await orchestrator.execute_agent(
+        "ml",
+        {
+            "name": "recommendation_system",
+            "model_type": "neural_network",
+            "data_source": "user_interactions.csv",
+        },
+    )
     print(f"✅ ML Pipeline: {ml_result['status']}")
-    
+
     # Test Blockchain agent
-    bc_result = await orchestrator.execute_agent("blockchain", {
-        "type": "token",
-        "name": "MyToken"
-    })
+    bc_result = await orchestrator.execute_agent(
+        "blockchain", {"type": "token", "name": "MyToken"}
+    )
     print(f"✅ Blockchain: {bc_result['status']}")
-    
+
     # Test Game agent
-    game_result = await orchestrator.execute_agent("games", {
-        "type": "2d_platformer",
-        "name": "adventure_game"
-    })
+    game_result = await orchestrator.execute_agent(
+        "games", {"type": "2d_platformer", "name": "adventure_game"}
+    )
     print(f"✅ Game Engine: {game_result['status']}")
-    
+
     # Test IoT agent
-    iot_result = await orchestrator.execute_agent("iot", {
-        "device_type": "temperature_sensor",
-        "protocol": "mqtt"
-    })
+    iot_result = await orchestrator.execute_agent(
+        "iot", {"device_type": "temperature_sensor", "protocol": "mqtt"}
+    )
     print(f"✅ IoT Firmware: {iot_result['status']}")
-    
+
     # Test Science agent
-    science_result = await orchestrator.execute_agent("science", {
-        "problem": "solve_quadratic",
-        "equation": "x**2 - 4*x + 3"
-    })
+    science_result = await orchestrator.execute_agent(
+        "science", {"problem": "solve_quadratic", "equation": "x**2 - 4*x + 3"}
+    )
     print(f"✅ Math/Science: {science_result['status']}")
-    
+
     # Get statistics
     stats = orchestrator.get_agent_stats()
     print(f"\n📊 Agent Statistics:")

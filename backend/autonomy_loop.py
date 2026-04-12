@@ -2,6 +2,7 @@
 Bounded autonomy loop: after main DAG, if tests or security failed, re-run once (self-heal).
 Max 2 iterations (tests + security). Wired to state and execute_tool.
 """
+
 import logging
 from pathlib import Path
 from typing import Any, Dict
@@ -36,41 +37,102 @@ def run_bounded_autonomy_loop(
 
     # 1) Re-run tests if Test Executor output looked like failure
     test_out = (results.get("Test Executor") or {}).get("output") or ""
-    if test_out and ("failed" in test_out.lower() or "error" in test_out.lower() or "exit 1" in test_out):
+    if test_out and (
+        "failed" in test_out.lower()
+        or "error" in test_out.lower()
+        or "exit 1" in test_out
+    ):
         if (workspace / "tests").exists() or (workspace / "test").exists():
             try:
-                tr = execute_tool(project_id, "run", {"command": ["python", "-m", "pytest", "tests/", "-v", "--tb=short"], "timeout": 90})
+                tr = execute_tool(
+                    project_id,
+                    "run",
+                    {
+                        "command": [
+                            "python",
+                            "-m",
+                            "pytest",
+                            "tests/",
+                            "-v",
+                            "--tb=short",
+                        ],
+                        "timeout": 90,
+                    },
+                )
                 report = (tr.get("output") or tr.get("error") or "")[:10000]
-                update_state(project_id, {"test_results": {"output": report, "autonomy_retry": True}})
+                update_state(
+                    project_id,
+                    {"test_results": {"output": report, "autonomy_retry": True}},
+                )
                 out["ran_tests"] = True
                 out["iterations"] += 1
                 if emit_event:
-                    emit_event(project_id, "autonomy_retry", agent="Test Executor", message="Re-ran tests after failure")
+                    emit_event(
+                        project_id,
+                        "autonomy_retry",
+                        agent="Test Executor",
+                        message="Re-ran tests after failure",
+                    )
             except Exception as e:
                 logger.warning("autonomy tests retry: %s", e)
         if (workspace / "package.json").exists() and not out["ran_tests"]:
             try:
-                tr = execute_tool(project_id, "run", {"command": ["npm", "test"], "timeout": 90})
+                tr = execute_tool(
+                    project_id, "run", {"command": ["npm", "test"], "timeout": 90}
+                )
                 report = (tr.get("output") or tr.get("error") or "")[:10000]
-                update_state(project_id, {"test_results": {"output": report, "autonomy_retry": True}})
+                update_state(
+                    project_id,
+                    {"test_results": {"output": report, "autonomy_retry": True}},
+                )
                 out["ran_tests"] = True
                 out["iterations"] += 1
                 if emit_event:
-                    emit_event(project_id, "autonomy_retry", agent="Test Executor", message="Re-ran npm test after failure")
+                    emit_event(
+                        project_id,
+                        "autonomy_retry",
+                        agent="Test Executor",
+                        message="Re-ran npm test after failure",
+                    )
             except Exception as e:
                 logger.warning("autonomy npm test retry: %s", e)
 
     # 2) Re-run security if Security Checker reported issues
     sec_out = (results.get("Security Checker") or {}).get("output") or ""
-    if sec_out and ("high" in sec_out.lower() or "medium" in sec_out.lower() or "severity" in sec_out.lower()):
+    if sec_out and (
+        "high" in sec_out.lower()
+        or "medium" in sec_out.lower()
+        or "severity" in sec_out.lower()
+    ):
         try:
-            tr = execute_tool(project_id, "run", {"command": ["python", "-m", "bandit", "-r", ".", "-f", "txt", "-ll"], "timeout": 60})
+            tr = execute_tool(
+                project_id,
+                "run",
+                {
+                    "command": [
+                        "python",
+                        "-m",
+                        "bandit",
+                        "-r",
+                        ".",
+                        "-f",
+                        "txt",
+                        "-ll",
+                    ],
+                    "timeout": 60,
+                },
+            )
             report = (tr.get("output") or tr.get("error") or "")[:10000]
             update_state(project_id, {"security_report": report})
             out["ran_security"] = True
             out["iterations"] += 1
             if emit_event:
-                emit_event(project_id, "autonomy_retry", agent="Security Checker", message="Re-ran security scan")
+                emit_event(
+                    project_id,
+                    "autonomy_retry",
+                    agent="Security Checker",
+                    message="Re-ran security scan",
+                )
         except Exception as e:
             logger.warning("autonomy security retry: %s", e)
 

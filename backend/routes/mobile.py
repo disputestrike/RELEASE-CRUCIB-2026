@@ -15,6 +15,7 @@ GET  /api/projects/{project_id}/mobile/store-checklist
     Returns a structured App Store / Play Store submission checklist generated
     from the project's build outputs.
 """
+
 from __future__ import annotations
 
 import base64
@@ -79,6 +80,7 @@ def _generate_qr_png_b64(url: str) -> str:
 # Routes
 # ---------------------------------------------------------------------------
 
+
 @mobile_router.get("/projects/{project_id}/mobile/qr")
 async def get_mobile_qr(
     project_id: str,
@@ -90,7 +92,9 @@ async def get_mobile_qr(
     with the Expo Go app on their phone to see the generated mobile app live.
     """
     db = get_db()
-    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"_id": 0})
+    project = await db.projects.find_one(
+        {"id": project_id, "user_id": user["id"]}, {"_id": 0}
+    )
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
@@ -138,7 +142,9 @@ async def trigger_eas_update(
     After publishing, scanning the QR code will load the latest version.
     """
     db = get_db()
-    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"_id": 0})
+    project = await db.projects.find_one(
+        {"id": project_id, "user_id": user["id"]}, {"_id": 0}
+    )
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
@@ -156,7 +162,9 @@ async def trigger_eas_update(
 
     deploy_files: dict = project.get("deploy_files") or {}
     if not deploy_files:
-        raise HTTPException(status_code=400, detail="No generated files to publish.  Run a build first.")
+        raise HTTPException(
+            status_code=400, detail="No generated files to publish.  Run a build first."
+        )
 
     # Call EAS Update API
     headers = {
@@ -170,7 +178,10 @@ async def trigger_eas_update(
         "message": body.message or "CrucibAI auto-update",
         "runtimeVersion": body.runtime_version or "1.0.0",
         "assets": [
-            {"url": f"data:text/plain;base64,{base64.b64encode(v.encode()).decode()}", "key": k}
+            {
+                "url": f"data:text/plain;base64,{base64.b64encode(v.encode()).decode()}",
+                "key": k,
+            }
             for k, v in list(deploy_files.items())[:50]
             if isinstance(v, str)
         ],
@@ -205,7 +216,9 @@ async def trigger_eas_update(
         raise
     except Exception as exc:
         logger.exception("EAS update failed: %s", exc)
-        raise HTTPException(status_code=502, detail=f"EAS Update failed: {str(exc)[:200]}")
+        raise HTTPException(
+            status_code=502, detail=f"EAS Update failed: {str(exc)[:200]}"
+        )
 
 
 @mobile_router.get("/projects/{project_id}/mobile/store-checklist")
@@ -219,7 +232,9 @@ async def get_store_checklist(
     based on the project's build outputs.
     """
     db = get_db()
-    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"_id": 0})
+    project = await db.projects.find_one(
+        {"id": project_id, "user_id": user["id"]}, {"_id": 0}
+    )
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
@@ -235,7 +250,10 @@ async def get_store_checklist(
                 "title": "1. App Identity",
                 "items": [
                     {"step": "Set app name and bundle ID in app.json", "done": False},
-                    {"step": "Create app icon (1024×1024 PNG, no transparency)", "done": False},
+                    {
+                        "step": "Create app icon (1024×1024 PNG, no transparency)",
+                        "done": False,
+                    },
                     {"step": "Create splash screen (2048×2732 PNG)", "done": False},
                     {"step": "Set version and buildNumber in app.json", "done": False},
                 ],
@@ -245,35 +263,77 @@ async def get_store_checklist(
                 "items": [
                     {"step": "Install EAS CLI: npm install -g eas-cli", "done": False},
                     {"step": "Run: eas login", "done": False},
-                    {"step": f"Run: eas build --platform all {'(EAS project ID: ' + eas_project_id + ')' if eas_project_id else ''}", "done": has_eas},
-                    {"step": "Wait for build to complete (~15 min for iOS)", "done": False},
+                    {
+                        "step": f"Run: eas build --platform all {'(EAS project ID: ' + eas_project_id + ')' if eas_project_id else ''}",
+                        "done": has_eas,
+                    },
+                    {
+                        "step": "Wait for build to complete (~15 min for iOS)",
+                        "done": False,
+                    },
                 ],
             },
             {
                 "title": "3. App Store (iOS)",
                 "items": [
-                    {"step": "Create app in App Store Connect (appstoreconnect.apple.com)", "done": False},
-                    {"step": "Fill in app description, keywords, screenshots", "done": False},
-                    {"step": "Upload build via: eas submit --platform ios", "done": False},
-                    {"step": "Submit for Apple review (1-3 day typical wait)", "done": False},
+                    {
+                        "step": "Create app in App Store Connect (appstoreconnect.apple.com)",
+                        "done": False,
+                    },
+                    {
+                        "step": "Fill in app description, keywords, screenshots",
+                        "done": False,
+                    },
+                    {
+                        "step": "Upload build via: eas submit --platform ios",
+                        "done": False,
+                    },
+                    {
+                        "step": "Submit for Apple review (1-3 day typical wait)",
+                        "done": False,
+                    },
                 ],
             },
             {
                 "title": "4. Google Play Store (Android)",
                 "items": [
-                    {"step": "Create app in Google Play Console (play.google.com/console)", "done": False},
-                    {"step": "Upload AAB file via: eas submit --platform android", "done": False},
-                    {"step": "Fill in store listing (description, screenshots, content rating)", "done": False},
-                    {"step": "Submit to production track (review usually <3 days)", "done": False},
+                    {
+                        "step": "Create app in Google Play Console (play.google.com/console)",
+                        "done": False,
+                    },
+                    {
+                        "step": "Upload AAB file via: eas submit --platform android",
+                        "done": False,
+                    },
+                    {
+                        "step": "Fill in store listing (description, screenshots, content rating)",
+                        "done": False,
+                    },
+                    {
+                        "step": "Submit to production track (review usually <3 days)",
+                        "done": False,
+                    },
                 ],
             },
             {
                 "title": "5. Pre-submission Testing",
                 "items": [
-                    {"step": "Test on physical iOS device via TestFlight", "done": False},
-                    {"step": "Test on physical Android device via internal testing track", "done": False},
-                    {"step": "Verify deep links, push notifications, and payments work", "done": False},
-                    {"step": "Run accessibility audit (VoiceOver / TalkBack)", "done": False},
+                    {
+                        "step": "Test on physical iOS device via TestFlight",
+                        "done": False,
+                    },
+                    {
+                        "step": "Test on physical Android device via internal testing track",
+                        "done": False,
+                    },
+                    {
+                        "step": "Verify deep links, push notifications, and payments work",
+                        "done": False,
+                    },
+                    {
+                        "step": "Run accessibility audit (VoiceOver / TalkBack)",
+                        "done": False,
+                    },
                 ],
             },
         ],

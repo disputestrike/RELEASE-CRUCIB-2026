@@ -24,6 +24,5 @@ __all__ = [
     "TargetLearningSystem",
     "LearningAnalytics",
     "detection_router",
-    "integrated_router"
+    "integrated_router",
 ]
-

@@ -5,6 +5,7 @@ When CRUCIBAI_CONTENT_POLICY_STRICT is enabled, optional comma-separated
 CRUCIBAI_CONTENT_BLOCK_SUBSTRINGS are matched case-insensitively against the full text.
 Always enforces CRUCIBAI_MAX_USER_PROMPT_CHARS when set (default 200k).
 """
+
 from __future__ import annotations
 
 import os
@@ -19,7 +20,10 @@ def screen_user_content(text: str) -> Optional[str]:
     """Return a short user-facing error if the content must be rejected; None if allowed."""
     if text is None:
         text = ""
-    max_chars = int((os.environ.get("CRUCIBAI_MAX_USER_PROMPT_CHARS") or "200000").strip() or "200000")
+    max_chars = int(
+        (os.environ.get("CRUCIBAI_MAX_USER_PROMPT_CHARS") or "200000").strip()
+        or "200000"
+    )
     if len(text) > max_chars:
         return f"Input exceeds maximum length ({max_chars} characters)."
     if not _truthy_env("CRUCIBAI_CONTENT_POLICY_STRICT"):

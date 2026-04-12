@@ -164,7 +164,8 @@ class BuildReproducibilityManager:
         total_builds = len(self.manifests)
         cached_builds = len(self.build_cache)
         reproducible_builds = sum(
-            1 for manifest in self.manifests.values()
+            1
+            for manifest in self.manifests.values()
             if manifest.output_hash is not None
         )
 

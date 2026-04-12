@@ -6,7 +6,7 @@ This shows exactly what to integrate and where
 # ============================================================================
 # FIX #2: Integrate auto_runner_fix.py serialization
 # ============================================================================
-# 
+#
 # At the top of backend/orchestration/auto_runner.py, add:
 #
 # from backend.orchestration.auto_runner_fix import prepare_job_failure_state
@@ -24,7 +24,7 @@ This shows exactly what to integrate and where
 # NEW CODE:
 # blocked_steps = [step for step in dag_steps if step in blocked_from_deps]
 # failure_state = prepare_job_failure_state(
-#     job_id, 
+#     job_id,
 #     blocked_steps,
 #     "Steps blocked by failed dependencies"
 # )
@@ -44,7 +44,7 @@ This shows exactly what to integrate and where
 #     # Create proof directory at job start
 #     if not create_proof_directory_structure(job_id, workspace_path):
 #         logger.warning(f"Failed to create proof files for job {job_id}")
-#     
+#
 #     # ... rest of execution ...
 
 # ============================================================================
@@ -58,4 +58,3 @@ This shows exactly what to integrate and where
 # [ ] Verify error handling patterns are applied
 # [ ] Test with a sample job
 # [ ] Monitor logs for any issues
-

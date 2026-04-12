@@ -1,9 +1,16 @@
 """Spec Guardian and truthful score helpers."""
+
 import os
 import pytest
 
-from orchestration.spec_guardian import evaluate_goal_against_runner, merge_plan_risk_flags_into_report
-from orchestration.truth_scores import compute_production_readiness, build_honest_scorecard
+from orchestration.spec_guardian import (
+    evaluate_goal_against_runner,
+    merge_plan_risk_flags_into_report,
+)
+from orchestration.truth_scores import (
+    compute_production_readiness,
+    build_honest_scorecard,
+)
 
 
 def test_default_mode_is_advisory_allows_nextjs_without_env(monkeypatch):
@@ -19,7 +26,11 @@ def test_advisory_mode_allows_nextjs_goal_but_lowers_compliance(monkeypatch):
     r = evaluate_goal_against_runner("Build with Next.js 14 app router")
     assert r["blocks_run"] is False
     assert r["spec_compliance_percent"] < 100
-    assert any("next" in (v.get("code") or "").lower() or "next" in v.get("message", "").lower() for v in r["violations"])
+    assert any(
+        "next" in (v.get("code") or "").lower()
+        or "next" in v.get("message", "").lower()
+        for v in r["violations"]
+    )
 
 
 def test_strict_mode_blocks_nextjs_goal(monkeypatch):
@@ -50,19 +61,36 @@ def test_strict_mode_next_track_skips_nextjs_blocker(monkeypatch):
 
 def test_merge_skips_nextjs_planner_flag_when_next_target(monkeypatch):
     monkeypatch.setenv("CRUCIBAI_SPEC_GUARD_MODE", "strict")
-    base = evaluate_goal_against_runner("simple todo app", build_target="next_app_router")
+    base = evaluate_goal_against_runner(
+        "simple todo app", build_target="next_app_router"
+    )
     merged = merge_plan_risk_flags_into_report(
         ["goal_spec_nextjs_autorunner_template_is_vite_react"],
         base,
         build_target="next_app_router",
     )
-    assert not any(v.get("code") == "stack_nextjs_requested" for v in merged["violations"])
+    assert not any(
+        v.get("code") == "stack_nextjs_requested" for v in merged["violations"]
+    )
     assert merged["blocks_run"] is False
 
 
 def test_truth_scorecard_shape():
-    flat = [{"proof_type": "compile", "title": "ok", "payload": {"verification_class": "syntax"}}]
-    bundle = {"verification": flat, "routes": [{"x": 1}], "database": [], "deploy": [], "files": [], "generic": []}
+    flat = [
+        {
+            "proof_type": "compile",
+            "title": "ok",
+            "payload": {"verification_class": "syntax"},
+        }
+    ]
+    bundle = {
+        "verification": flat,
+        "routes": [{"x": 1}],
+        "database": [],
+        "deploy": [],
+        "files": [],
+        "generic": [],
+    }
     pr = compute_production_readiness(flat, bundle)
     card = build_honest_scorecard(
         pipeline_quality_score=78,
@@ -76,7 +104,9 @@ def test_truth_scorecard_shape():
 
 def test_rls_multitenant_goal_is_advisory_not_strict_blocker(monkeypatch):
     monkeypatch.setenv("CRUCIBAI_SPEC_GUARD_MODE", "strict")
-    r = evaluate_goal_against_runner("Multi-tenant B2B SaaS with Postgres RLS on app data")
+    r = evaluate_goal_against_runner(
+        "Multi-tenant B2B SaaS with Postgres RLS on app data"
+    )
     assert not r["blocks_run"]
     codes = {v["code"] for v in r["violations"]}
     assert "tenancy_template_scope" in codes
@@ -105,9 +135,19 @@ def test_rls_verification_proof_adds_readiness_factor():
             "payload": {"check": "rls_policies_in_migrations"},
         },
     ]
-    bundle = {"verification": flat, "routes": [], "database": [], "deploy": [], "files": [], "generic": []}
+    bundle = {
+        "verification": flat,
+        "routes": [],
+        "database": [],
+        "deploy": [],
+        "files": [],
+        "generic": [],
+    }
     pr = compute_production_readiness(flat, bundle)
-    assert "rls_policies_detected_in_verification_proof" in pr["production_readiness_factors"]
+    assert (
+        "rls_policies_detected_in_verification_proof"
+        in pr["production_readiness_factors"]
+    )
 
 
 def test_compliance_sketch_proof_adds_readiness_factor():
@@ -118,6 +158,13 @@ def test_compliance_sketch_proof_adds_readiness_factor():
             "payload": {"path": "docs/COMPLIANCE_SKETCH.md", "compliance_sketch": True},
         },
     ]
-    bundle = {"verification": [], "routes": [], "database": [], "deploy": [], "files": flat, "generic": []}
+    bundle = {
+        "verification": [],
+        "routes": [],
+        "database": [],
+        "deploy": [],
+        "files": flat,
+        "generic": [],
+    }
     pr = compute_production_readiness(flat, bundle)
     assert "compliance_sketch_file_in_proof" in pr["production_readiness_factors"]

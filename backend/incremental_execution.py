@@ -2,6 +2,7 @@
 Incremental execution for CrucibAI — re-run only what changed.
 Given project state and previous run outputs, determines which agents/phases need re-execution.
 """
+
 from typing import List, Dict, Any, Optional, Set
 import hashlib
 import json
@@ -12,7 +13,15 @@ logger = logging.getLogger(__name__)
 
 def input_fingerprint(agent_name: str, prompt: str, context: Dict[str, Any]) -> str:
     """Compute a fingerprint for agent input (prompt + relevant context)."""
-    data = json.dumps({"agent": agent_name, "prompt": prompt[:2000], "context_keys": sorted(context.keys()), "context": context}, sort_keys=True)
+    data = json.dumps(
+        {
+            "agent": agent_name,
+            "prompt": prompt[:2000],
+            "context_keys": sorted(context.keys()),
+            "context": context,
+        },
+        sort_keys=True,
+    )
     return hashlib.sha256(data.encode()).hexdigest()[:24]
 
 
@@ -31,7 +40,9 @@ def agents_to_rerun(
     """
     # Minimal implementation: no persistent fingerprint store, so we recommend full run
     # When wired to project_state: compare stored fingerprints per agent and return subset
-    return set()  # empty = caller should run full build; or return set(all_agent_names) for full
+    return (
+        set()
+    )  # empty = caller should run full build; or return set(all_agent_names) for full
 
 
 def phases_to_rerun(

@@ -1,4 +1,5 @@
 """Hard completion enforcement: critical features, claims, classifications; optional strict block."""
+
 from __future__ import annotations
 
 import json
@@ -9,7 +10,12 @@ from typing import Any, Dict, List, Optional, Set
 
 from .claim_parser import merge_claims, read_workspace_claim_corpus
 from .critical_registry import CRITICAL_REGISTRY_VERSION, matching_features
-from .proof_hierarchy import PROOF_RULESET_VERSION, RANK, min_rank_for_feature, strength_for_flat_item
+from .proof_hierarchy import (
+    PROOF_RULESET_VERSION,
+    RANK,
+    min_rank_for_feature,
+    strength_for_flat_item,
+)
 from .test_signals import critical_skip_violations, skip_checks_from_flat
 
 logger = logging.getLogger(__name__)
@@ -59,21 +65,31 @@ def parse_delivery_sections(workspace_path: str) -> Dict[str, str]:
     return sections
 
 
-def mocked_claimed_as_implemented(sections: Dict[str, str], flat: List[Dict[str, Any]]) -> List[str]:
+def mocked_claimed_as_implemented(
+    sections: Dict[str, str], flat: List[Dict[str, Any]]
+) -> List[str]:
     issues: List[str] = []
     impl = sections.get("implemented") or ""
     mocked = sections.get("mocked") or ""
     skips = skip_checks_from_flat(flat)
     if "stripe" in impl and "stripe_replay_skipped" in skips:
-        issues.append("Implemented mentions Stripe but stripe verification was skipped — classify as Mocked/Unverified")
-    if re.search(r"\breal\s+(stripe|payments?)\b", impl) and ("mock" in mocked or "stripe_replay_skipped" in skips):
-        issues.append("Implemented claims real payments but evidence shows mock or skipped verification")
+        issues.append(
+            "Implemented mentions Stripe but stripe verification was skipped — classify as Mocked/Unverified"
+        )
+    if re.search(r"\breal\s+(stripe|payments?)\b", impl) and (
+        "mock" in mocked or "stripe_replay_skipped" in skips
+    ):
+        issues.append(
+            "Implemented claims real payments but evidence shows mock or skipped verification"
+        )
     if "auth" in impl and "production" in impl and "rbac_smoke_skipped" in skips:
         issues.append("Production auth claimed but RBAC smoke was skipped")
     return issues
 
 
-def _evaluate_feature(feat, flat: List[Dict[str, Any]], bundle: Dict[str, List]) -> Dict[str, Any]:
+def _evaluate_feature(
+    feat, flat: List[Dict[str, Any]], bundle: Dict[str, List]
+) -> Dict[str, Any]:
     sat_set = {c.lower() for c in feat.satisfying_checks}
     neg_set = {c.lower() for c in feat.negative_checks}
     max_r = 0
@@ -89,25 +105,38 @@ def _evaluate_feature(feat, flat: List[Dict[str, Any]], bundle: Dict[str, List])
         relevant = False
         if check in sat_set or check in neg_set:
             relevant = True
-        if feat.id == "core_api_behavior" and check in ("health_endpoint", "health_path_literal"):
+        if feat.id == "core_api_behavior" and check in (
+            "health_endpoint",
+            "health_path_literal",
+        ):
             relevant = True
         if feat.id == "tenant_isolation" and check == "tenancy_isolation_proven":
             relevant = True
-        if feat.id in ("auth", "rbac") and check in ("rbac_anonymous_blocked", "rbac_escalation_blocked"):
+        if feat.id in ("auth", "rbac") and check in (
+            "rbac_anonymous_blocked",
+            "rbac_escalation_blocked",
+        ):
             relevant = True
-        if feat.id == "integration_behavior" and check == "stripe_webhook_idempotency_proven":
+        if (
+            feat.id == "integration_behavior"
+            and check == "stripe_webhook_idempotency_proven"
+        ):
             relevant = True
         if feat.id == "security_controls" and check == "npm_audit":
             relevant = True
             if payload.get("skipped") is True:
                 rank = min(rank, RANK.get("syntax", 2))
-        if feat.presence_hint_substrings and any(h in title for h in feat.presence_hint_substrings):
+        if feat.presence_hint_substrings and any(
+            h in title for h in feat.presence_hint_substrings
+        ):
             relevant = True
 
         if relevant and rank > max_r:
             max_r = rank
             max_name = st_name
-        if check in sat_set or (feat.id == "core_api_behavior" and check == "health_endpoint"):
+        if check in sat_set or (
+            feat.id == "core_api_behavior" and check == "health_endpoint"
+        ):
             sat = True
         if check in neg_set:
             neg = True
@@ -118,7 +147,9 @@ def _evaluate_feature(feat, flat: List[Dict[str, Any]], bundle: Dict[str, List])
     skipped_hit = bool(skip_checks & flat_skips)
 
     if skipped_hit and not feat.allow_skipped:
-        issues.append(f"{feat.name}: verification path skipped (proof contains *_skipped for this area)")
+        issues.append(
+            f"{feat.name}: verification path skipped (proof contains *_skipped for this area)"
+        )
 
     if not skipped_hit:
         if feat.must_have_runtime_execution and max_r < RANK["runtime"]:
@@ -129,15 +160,20 @@ def _evaluate_feature(feat, flat: List[Dict[str, Any]], bundle: Dict[str, List])
             issues.append(f"{feat.name}: requires negative/denial proof (none found)")
         req = min_rank_for_feature(feat.required_proof_classes)
         if max_r < req:
-            issues.append(f"{feat.name}: proof strength below required (rank {max_r}, need >= {req})")
+            issues.append(
+                f"{feat.name}: proof strength below required (rank {max_r}, need >= {req})"
+            )
 
     if feat.id == "core_api_behavior":
         routes = bundle.get("routes") or []
         if len(routes) >= 1 and not any(
-            (it.get("payload") or {}).get("check") in ("health_endpoint", "health_path_literal")
+            (it.get("payload") or {}).get("check")
+            in ("health_endpoint", "health_path_literal")
             for it in flat
         ):
-            issues.append("core_api_behavior: routes recorded without health/API execution proof")
+            issues.append(
+                "core_api_behavior: routes recorded without health/API execution proof"
+            )
 
     passed = len(issues) == 0
     return {
@@ -154,11 +190,16 @@ def _evaluate_feature(feat, flat: List[Dict[str, Any]], bundle: Dict[str, List])
     }
 
 
-def _claim_blocks(claims: List[str], flat: List[Dict[str, Any]], scoped_ids: Set[str]) -> List[str]:
+def _claim_blocks(
+    claims: List[str], flat: List[Dict[str, Any]], scoped_ids: Set[str]
+) -> List[str]:
     issues: List[str] = []
     checks = {((item.get("payload") or {}).get("check") or "").lower() for item in flat}
     if "production_ready" in claims:
-        if "tenant_isolation" in scoped_ids and "tenancy_isolation_proven" not in checks:
+        if (
+            "tenant_isolation" in scoped_ids
+            and "tenancy_isolation_proven" not in checks
+        ):
             issues.append("Claim production-ready: tenant isolation not proven")
         if "auth" in scoped_ids and "rbac_anonymous_blocked" not in checks:
             issues.append("Claim production-ready: anonymous auth boundary not proven")
@@ -166,9 +207,14 @@ def _claim_blocks(claims: List[str], flat: List[Dict[str, Any]], scoped_ids: Set
         issues.append("Claim tenant-safe: missing tenancy_isolation_proven")
     if "integration_complete" in claims and "integration_behavior" in scoped_ids:
         if "stripe_webhook_idempotency_proven" not in checks:
-            issues.append("Claim integration complete: missing webhook/idempotency proof")
+            issues.append(
+                "Claim integration complete: missing webhook/idempotency proof"
+            )
     if "secure_auth" in claims and ("auth" in scoped_ids or "rbac" in scoped_ids):
-        if "rbac_anonymous_blocked" not in checks and "rbac_escalation_blocked" not in checks:
+        if (
+            "rbac_anonymous_blocked" not in checks
+            and "rbac_escalation_blocked" not in checks
+        ):
             issues.append("Claim secure auth: missing RBAC negative proof")
     return issues
 
@@ -191,7 +237,9 @@ def evaluate_enforcement(
     sections = parse_delivery_sections(workspace_path or "")
     class_issues = mocked_claimed_as_implemented(sections, flat)
     if not sections and feats:
-        class_issues.append("Missing proof/DELIVERY_CLASSIFICATION.md — cannot validate classifications")
+        class_issues.append(
+            "Missing proof/DELIVERY_CLASSIFICATION.md — cannot validate classifications"
+        )
 
     per_feature = [_evaluate_feature(f, flat, bundle or {}) for f in feats]
     feat_issues = [i for pf in per_feature for i in pf["issues"]]
@@ -252,7 +300,9 @@ def write_enforcement_artifacts(workspace_path: str, result: Dict[str, Any]) -> 
     for pf in result.get("per_feature") or []:
         st = "PASS" if pf.get("passed") else "FAIL"
         lines.append(f"### {pf.get('name')} — {st}")
-        lines.append(f"- Strength: `{pf.get('max_proof_name')}` (rank {pf.get('max_proof_rank')})")
+        lines.append(
+            f"- Strength: `{pf.get('max_proof_name')}` (rank {pf.get('max_proof_rank')})"
+        )
         for iss in pf.get("issues") or []:
             lines.append(f"- {iss}")
         lines.append("")
@@ -281,7 +331,8 @@ async def run_completion_enforcement_gate(
 ) -> Dict[str, Any]:
     flat: List[Dict[str, Any]] = []
     bundle: Dict[str, List] = {
-        k: [] for k in ("files", "routes", "database", "verification", "deploy", "generic")
+        k: []
+        for k in ("files", "routes", "database", "verification", "deploy", "generic")
     }
     if db_pool is not None and job_id:
         try:
@@ -310,7 +361,10 @@ async def run_completion_enforcement_gate(
         "advisory_would_block": result.get("advisory_would_block"),
     }
     try:
-        from orchestration.execution_authority import attach_elite_context_to_job, elite_job_metadata
+        from orchestration.execution_authority import (
+            attach_elite_context_to_job,
+            elite_job_metadata,
+        )
 
         jd = dict(job_dict or {})
         attach_elite_context_to_job(jd, workspace_path or "")

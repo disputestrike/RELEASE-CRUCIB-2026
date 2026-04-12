@@ -175,9 +175,7 @@ class AccessControl:
 
         return has_perm
 
-    def check_resource_access(
-        self, user: User, resource_id: str, action: str
-    ) -> bool:
+    def check_resource_access(self, user: User, resource_id: str, action: str) -> bool:
         """
         Check if user can access resource.
 

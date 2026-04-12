@@ -1,6 +1,7 @@
 """
 Audit log: immutable trail of user actions for compliance (enterprise).
 """
+
 from datetime import datetime, timezone
 from typing import Optional, Any, Dict, List
 
@@ -54,7 +55,9 @@ class AuditLogger:
         query = {"user_id": user_id}
         if action_filter:
             query["action"] = action_filter
-        cursor = self.db.audit_log.find(query).sort("timestamp", -1).skip(skip).limit(limit)
+        cursor = (
+            self.db.audit_log.find(query).sort("timestamp", -1).skip(skip).limit(limit)
+        )
         logs = await cursor.to_list(length=limit)
         total = await self.db.audit_log.count_documents(query)
         for log in logs:
@@ -82,24 +85,35 @@ class AuditLogger:
         if format == "csv":
             import csv
             import io
+
             out = io.StringIO()
             w = csv.DictWriter(
                 out,
-                fieldnames=["timestamp", "action", "resource_type", "resource_id", "status", "ip_address"],
+                fieldnames=[
+                    "timestamp",
+                    "action",
+                    "resource_type",
+                    "resource_id",
+                    "status",
+                    "ip_address",
+                ],
             )
             w.writeheader()
             for log in logs:
                 ts = log.get("timestamp")
-                w.writerow({
-                    "timestamp": ts.isoformat() if ts else "",
-                    "action": log.get("action", ""),
-                    "resource_type": log.get("resource_type", ""),
-                    "resource_id": log.get("resource_id", ""),
-                    "status": log.get("status", ""),
-                    "ip_address": log.get("ip_address", ""),
-                })
+                w.writerow(
+                    {
+                        "timestamp": ts.isoformat() if ts else "",
+                        "action": log.get("action", ""),
+                        "resource_type": log.get("resource_type", ""),
+                        "resource_id": log.get("resource_id", ""),
+                        "status": log.get("status", ""),
+                        "ip_address": log.get("ip_address", ""),
+                    }
+                )
             return out.getvalue()
         import json
+
         out_list = []
         for log in logs:
             d = dict(log)

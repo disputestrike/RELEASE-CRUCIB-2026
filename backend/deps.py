@@ -14,6 +14,7 @@ In route modules::
 The ``init()`` call **must** happen before the first authenticated request arrives;
 it is safe to call repeatedly (later calls overwrite the state).
 """
+
 from __future__ import annotations
 
 import os
@@ -61,9 +62,7 @@ security = HTTPBearer(auto_error=False)
 
 # Admin user IDs granted owner-level access regardless of admin_role field.
 ADMIN_USER_IDS: list[str] = [
-    x.strip()
-    for x in (os.environ.get("ADMIN_USER_IDS") or "").split(",")
-    if x.strip()
+    x.strip() for x in (os.environ.get("ADMIN_USER_IDS") or "").split(",") if x.strip()
 ]
 
 # ---------------------------------------------------------------------------
@@ -142,15 +141,20 @@ async def get_optional_user(
 
 def require_permission(permission):
     """RBAC FastAPI dependency: raise 403 if the user lacks *permission*."""
+
     async def _dep(user: dict = Depends(get_current_user)) -> dict:
         if permission is not None:
             try:
                 from utils.rbac import has_permission
+
                 if not has_permission(user, permission):
-                    raise HTTPException(status_code=403, detail="Insufficient permission")
+                    raise HTTPException(
+                        status_code=403, detail="Insufficient permission"
+                    )
             except ImportError:
                 pass  # RBAC module absent — allow through
         return user
+
     return _dep
 
 

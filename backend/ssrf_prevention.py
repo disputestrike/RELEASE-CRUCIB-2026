@@ -206,11 +206,7 @@ class SafeRequestHandler:
         self.validator = validator or SSRFValidator()
 
     def make_request(
-        self,
-        url: str,
-        method: str = "GET",
-        timeout: int = 10,
-        **kwargs
+        self, url: str, method: str = "GET", timeout: int = 10, **kwargs
     ) -> Optional[dict]:
         """
         Make HTTP request safely.

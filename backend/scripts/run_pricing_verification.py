@@ -6,6 +6,7 @@ Run all pricing alignment checks and tests. Proof that:
 - Speed tier access and _speed_from_plan aligned
 - Credit tracker has no starter branch; validators reject starter
 """
+
 import os
 import sys
 import subprocess
@@ -48,7 +49,9 @@ def run_pricing_tests():
     print("=" * 60)
     code = subprocess.run(
         [
-            sys.executable, "-m", "pytest",
+            sys.executable,
+            "-m",
+            "pytest",
             "tests/test_pricing_alignment.py",
             "tests/test_single_source_of_truth.py::test_tokens_bundles_returns_200_and_bundles_with_expected_keys",
             "-v",
@@ -81,15 +84,22 @@ def print_removal_confirmation():
     print("  - 'starter' plan: not in CREDIT_PLANS:", "starter" not in CREDIT_PLANS)
     print("  - 'starter' bundle: not in TOKEN_BUNDLES:", "starter" not in TOKEN_BUNDLES)
     print("  - 'light' / 'dev' add-ons: ADDONS empty:", ADDONS == {})
-    print("  - PLAN_SPEED_ACCESS has no 'starter':", "starter" not in SpeedTierRouter.PLAN_SPEED_ACCESS)
+    print(
+        "  - PLAN_SPEED_ACCESS has no 'starter':",
+        "starter" not in SpeedTierRouter.PLAN_SPEED_ACCESS,
+    )
 
     print("IN PLACE:")
     print("  - CREDIT_PLANS keys:", list(CREDIT_PLANS.keys()))
     print("  - TOKEN_BUNDLES keys:", list(TOKEN_BUNDLES.keys()))
     print("  - PLAN_SPEED_ACCESS keys:", list(SpeedTierRouter.PLAN_SPEED_ACCESS.keys()))
-    print("  - _speed_from_plan(free)=lite, builder=pro, pro/scale/teams=max:",
-          _speed_from_plan("free") == "lite" and _speed_from_plan("builder") == "pro"
-          and _speed_from_plan("pro") == "max" and _speed_from_plan("scale") == "max")
+    print(
+        "  - _speed_from_plan(free)=lite, builder=pro, pro/scale/teams=max:",
+        _speed_from_plan("free") == "lite"
+        and _speed_from_plan("builder") == "pro"
+        and _speed_from_plan("pro") == "max"
+        and _speed_from_plan("scale") == "max",
+    )
     print()
 
 

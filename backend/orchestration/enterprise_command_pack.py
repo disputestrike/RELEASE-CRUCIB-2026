@@ -1,4 +1,5 @@
 """Enterprise command build pack for complex regulated operating systems."""
+
 from __future__ import annotations
 
 import json
@@ -65,7 +66,11 @@ def _slugify(value: str) -> str:
 def enterprise_command_profile(job_or_goal: Any) -> Dict[str, str]:
     goal = _goal_text(job_or_goal)
     product_name = _extract_named_product(goal) or "Enterprise Command Center"
-    company_name = "Helios Aegis" if "helios aegis" in goal.lower() else product_name.replace(" Command", "")
+    company_name = (
+        "Helios Aegis"
+        if "helios aegis" in goal.lower()
+        else product_name.replace(" Command", "")
+    )
     return {
         "product_name": product_name,
         "company_name": company_name or product_name,
@@ -94,49 +99,188 @@ def _frontend_seed(profile: Dict[str, str]) -> Dict[str, Any]:
         "metrics": [
             {"label": "Portfolio ARR", "value": "$12.8M", "delta": "+8.4%"},
             {"label": "Quotes Awaiting Review", "value": "6", "delta": "2 escalated"},
-            {"label": "Policy Recommendations", "value": "4", "delta": "1 requires approval"},
+            {
+                "label": "Policy Recommendations",
+                "value": "4",
+                "delta": "1 requires approval",
+            },
             {"label": "Worker Failures", "value": "0", "delta": "all retries drained"},
         ],
         "leads": [
-            {"id": "LD-104", "org_id": org_id, "name": "Riverton Logistics", "score": 92, "status": "qualified", "owner": "Alex Chen"},
-            {"id": "LD-118", "org_id": org_id, "name": "Summit Storage Group", "score": 84, "status": "proposal", "owner": "Jordan Lee"},
+            {
+                "id": "LD-104",
+                "org_id": org_id,
+                "name": "Riverton Logistics",
+                "score": 92,
+                "status": "qualified",
+                "owner": "Alex Chen",
+            },
+            {
+                "id": "LD-118",
+                "org_id": org_id,
+                "name": "Summit Storage Group",
+                "score": 84,
+                "status": "proposal",
+                "owner": "Jordan Lee",
+            },
         ],
         "accounts": [
-            {"id": "AC-201", "org_id": org_id, "name": "Riverton Logistics", "segment": "Industrial", "region": "CA", "contracts": 3},
-            {"id": "AC-214", "org_id": org_id, "name": "Northwind Senior Living", "segment": "Healthcare", "region": "AZ", "contracts": 2},
+            {
+                "id": "AC-201",
+                "org_id": org_id,
+                "name": "Riverton Logistics",
+                "segment": "Industrial",
+                "region": "CA",
+                "contracts": 3,
+            },
+            {
+                "id": "AC-214",
+                "org_id": org_id,
+                "name": "Northwind Senior Living",
+                "segment": "Healthcare",
+                "region": "AZ",
+                "contracts": 2,
+            },
         ],
         "opportunities": [
-            {"id": "OP-88", "org_id": org_id, "account": "Riverton Logistics", "value": "$184,500", "stage": "quote_pending"},
-            {"id": "OP-93", "org_id": org_id, "account": "Northwind Senior Living", "value": "$94,300", "stage": "risk_review"},
+            {
+                "id": "OP-88",
+                "org_id": org_id,
+                "account": "Riverton Logistics",
+                "value": "$184,500",
+                "stage": "quote_pending",
+            },
+            {
+                "id": "OP-93",
+                "org_id": org_id,
+                "account": "Northwind Senior Living",
+                "value": "$94,300",
+                "stage": "risk_review",
+            },
         ],
         "quotes": [
-            {"id": "Q-1042", "org_id": org_id, "account": "Riverton Logistics", "status": "pending_review", "total": 184500, "expires_on": "2026-04-30", "approver": "Morgan Rivera", "ai_recommendation": "Reduce battery reserve by 3% after human review."},
-            {"id": "Q-1047", "org_id": org_id, "account": "Northwind Senior Living", "status": "draft", "total": 94300, "expires_on": "2026-05-12", "approver": "Pending assignment", "ai_recommendation": "Block conversion until region eligibility is cleared."},
+            {
+                "id": "Q-1042",
+                "org_id": org_id,
+                "account": "Riverton Logistics",
+                "status": "pending_review",
+                "total": 184500,
+                "expires_on": "2026-04-30",
+                "approver": "Morgan Rivera",
+                "ai_recommendation": "Reduce battery reserve by 3% after human review.",
+            },
+            {
+                "id": "Q-1047",
+                "org_id": org_id,
+                "account": "Northwind Senior Living",
+                "status": "draft",
+                "total": 94300,
+                "expires_on": "2026-05-12",
+                "approver": "Pending assignment",
+                "ai_recommendation": "Block conversion until region eligibility is cleared.",
+            },
         ],
         "projects": [
-            {"id": "PR-12", "org_id": org_id, "name": "Riverton West Campus", "status": "installation_ready", "timeline": "Apr 22 - Jun 14", "account": "Riverton Logistics"},
-            {"id": "PR-18", "org_id": org_id, "name": "Northwind Expansion", "status": "planning", "timeline": "May 03 - Jul 18", "account": "Northwind Senior Living"},
+            {
+                "id": "PR-12",
+                "org_id": org_id,
+                "name": "Riverton West Campus",
+                "status": "installation_ready",
+                "timeline": "Apr 22 - Jun 14",
+                "account": "Riverton Logistics",
+            },
+            {
+                "id": "PR-18",
+                "org_id": org_id,
+                "name": "Northwind Expansion",
+                "status": "planning",
+                "timeline": "May 03 - Jul 18",
+                "account": "Northwind Senior Living",
+            },
         ],
         "tasks": [
-            {"id": "TS-301", "org_id": org_id, "title": "Review incentive region mismatch", "status": "open", "priority": "high", "owner": "Morgan Rivera", "source": "rule:region_eligibility"},
-            {"id": "TS-309", "org_id": org_id, "title": "Approve quote Q-1042", "status": "open", "priority": "high", "owner": "Morgan Rivera", "source": "workflow:quote_review"},
+            {
+                "id": "TS-301",
+                "org_id": org_id,
+                "title": "Review incentive region mismatch",
+                "status": "open",
+                "priority": "high",
+                "owner": "Morgan Rivera",
+                "source": "rule:region_eligibility",
+            },
+            {
+                "id": "TS-309",
+                "org_id": org_id,
+                "title": "Approve quote Q-1042",
+                "status": "open",
+                "priority": "high",
+                "owner": "Morgan Rivera",
+                "source": "workflow:quote_review",
+            },
         ],
         "policyRecommendations": [
-            {"id": "POL-01", "org_id": org_id, "title": "Escalate repeated webhook failures", "status": "PENDING", "recommended_action": "Require org_admin approval before re-enabling vendor webhook.", "trigger": "3 failed sync runs in 20 minutes"},
-            {"id": "POL-02", "org_id": org_id, "title": "Geo-risk review on storage site", "status": "APPROVED", "recommended_action": "Limit remote dispatch until site inspection completes.", "trigger": "Repeated suspicious telemetry variance"},
+            {
+                "id": "POL-01",
+                "org_id": org_id,
+                "title": "Escalate repeated webhook failures",
+                "status": "PENDING",
+                "recommended_action": "Require org_admin approval before re-enabling vendor webhook.",
+                "trigger": "3 failed sync runs in 20 minutes",
+            },
+            {
+                "id": "POL-02",
+                "org_id": org_id,
+                "title": "Geo-risk review on storage site",
+                "status": "APPROVED",
+                "recommended_action": "Limit remote dispatch until site inspection completes.",
+                "trigger": "Repeated suspicious telemetry variance",
+            },
         ],
         "integrations": [
-            {"id": "INT-11", "org_id": org_id, "name": "Salesforce sync", "status": "healthy", "last_run": "2m ago"},
-            {"id": "INT-14", "org_id": org_id, "name": "Operator webhook", "status": "degraded", "last_run": "retrying"},
+            {
+                "id": "INT-11",
+                "org_id": org_id,
+                "name": "Salesforce sync",
+                "status": "healthy",
+                "last_run": "2m ago",
+            },
+            {
+                "id": "INT-14",
+                "org_id": org_id,
+                "name": "Operator webhook",
+                "status": "degraded",
+                "last_run": "retrying",
+            },
         ],
         "auditTrail": [
-            {"id": "AUD-001", "org_id": org_id, "action": "quote.pending_review", "actor": "alex.chen@heliosaegis.test", "prev_hash": "GENESIS", "current_hash": "4bd4bf1902c7c201", "entity": "Q-1042"},
-            {"id": "AUD-002", "org_id": org_id, "action": "policy.recommendation_created", "actor": "system", "prev_hash": "4bd4bf1902c7c201", "current_hash": "e1529145233cf892", "entity": "POL-01"},
+            {
+                "id": "AUD-001",
+                "org_id": org_id,
+                "action": "quote.pending_review",
+                "actor": "alex.chen@heliosaegis.test",
+                "prev_hash": "GENESIS",
+                "current_hash": "4bd4bf1902c7c201",
+                "entity": "Q-1042",
+            },
+            {
+                "id": "AUD-002",
+                "org_id": org_id,
+                "action": "policy.recommendation_created",
+                "actor": "system",
+                "prev_hash": "4bd4bf1902c7c201",
+                "current_hash": "e1529145233cf892",
+                "entity": "POL-01",
+            },
         ],
         "analytics": {
             "quote_conversion": {"approved": 14, "rejected": 2, "pending": 6},
             "operator_load": {"open_tasks": 17, "sla_watch": 3, "retrying_jobs": 1},
-            "policy_disposition": {"pending": 1, "approved": 1, "rejected": 0, "enforced": 0},
+            "policy_disposition": {
+                "pending": 1,
+                "approved": 1,
+                "rejected": 0,
+                "enforced": 0,
+            },
             "ai_disposition": {"accepted": 12, "rejected": 4, "needs_human_review": 7},
         },
     }
@@ -147,12 +291,16 @@ def build_enterprise_frontend_file_set(job: Dict[str, Any]) -> List[Tuple[str, s
     return _build_frontend_files(profile)
 
 
-def build_enterprise_backend_file_set(job: Dict[str, Any], step_key: str = "") -> List[Tuple[str, str]]:
+def build_enterprise_backend_file_set(
+    job: Dict[str, Any], step_key: str = ""
+) -> List[Tuple[str, str]]:
     profile = enterprise_command_profile(job)
     return _build_backend_files(profile)
 
 
-def build_enterprise_database_file_set(job: Dict[str, Any], step_key: str = "") -> List[Tuple[str, str]]:
+def build_enterprise_database_file_set(
+    job: Dict[str, Any], step_key: str = ""
+) -> List[Tuple[str, str]]:
     profile = enterprise_command_profile(job)
     return _build_database_files(profile, step_key=step_key)
 
@@ -163,15 +311,39 @@ def enterprise_backend_routes() -> List[Dict[str, str]]:
         {"method": "POST", "path": "/api/auth/login", "description": "Login"},
         {"method": "POST", "path": "/api/auth/refresh", "description": "Refresh token"},
         {"method": "GET", "path": "/api/auth/me", "description": "Current user"},
-        {"method": "GET", "path": "/api/crm/leads", "description": "Tenant-scoped leads"},
-        {"method": "GET", "path": "/api/crm/accounts", "description": "Tenant-scoped accounts"},
+        {
+            "method": "GET",
+            "path": "/api/crm/leads",
+            "description": "Tenant-scoped leads",
+        },
+        {
+            "method": "GET",
+            "path": "/api/crm/accounts",
+            "description": "Tenant-scoped accounts",
+        },
         {"method": "GET", "path": "/api/quotes", "description": "Quote queue"},
-        {"method": "POST", "path": "/api/quotes/{quote_id}/approve", "description": "Human quote approval"},
+        {
+            "method": "POST",
+            "path": "/api/quotes/{quote_id}/approve",
+            "description": "Human quote approval",
+        },
         {"method": "GET", "path": "/api/projects", "description": "Projects"},
-        {"method": "GET", "path": "/api/policies/recommendations", "description": "Policy recommendations"},
-        {"method": "POST", "path": "/api/policies/{policy_id}/enforce", "description": "Enforce approved policy"},
+        {
+            "method": "GET",
+            "path": "/api/policies/recommendations",
+            "description": "Policy recommendations",
+        },
+        {
+            "method": "POST",
+            "path": "/api/policies/{policy_id}/enforce",
+            "description": "Enforce approved policy",
+        },
         {"method": "GET", "path": "/api/audit/events", "description": "Audit events"},
-        {"method": "GET", "path": "/api/analytics/overview", "description": "Analytics overview"},
+        {
+            "method": "GET",
+            "path": "/api/analytics/overview",
+            "description": "Analytics overview",
+        },
     ]
 
 
@@ -185,7 +357,11 @@ def _build_frontend_files(profile: Dict[str, str]) -> List[Tuple[str, str]]:
             "version": "0.1.0",
             "private": True,
             "type": "module",
-            "scripts": {"dev": "vite", "build": "vite build", "preview": "vite preview"},
+            "scripts": {
+                "dev": "vite",
+                "build": "vite build",
+                "preview": "vite preview",
+            },
             "dependencies": {
                 "react": "^18.2.0",
                 "react-dom": "^18.2.0",
@@ -774,7 +950,10 @@ export default function App() {
 }
 """,
         ),
-        ("src/main.jsx", "import React from 'react';\nimport { createRoot } from 'react-dom/client';\nimport App from './App.jsx';\nimport './styles/global.css';\n\ncreateRoot(document.getElementById('root')).render(<App />);\n"),
+        (
+            "src/main.jsx",
+            "import React from 'react';\nimport { createRoot } from 'react-dom/client';\nimport App from './App.jsx';\nimport './styles/global.css';\n\ncreateRoot(document.getElementById('root')).render(<App />);\n",
+        ),
         ("src/index.js", "import './main.jsx';\n"),
         (
             "src/styles/global.css",
@@ -1110,7 +1289,9 @@ Implemented:
     ]
 
 
-def _build_database_files(profile: Dict[str, str], step_key: str = "") -> List[Tuple[str, str]]:
+def _build_database_files(
+    profile: Dict[str, str], step_key: str = ""
+) -> List[Tuple[str, str]]:
     org_id = profile["command_slug"].replace("-", "_")
     schema_sql = f"""-- {profile["product_name"]} schema
 CREATE EXTENSION IF NOT EXISTS pgcrypto;

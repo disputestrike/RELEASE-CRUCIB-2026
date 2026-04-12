@@ -2,6 +2,7 @@
 Git integration for CrucibAI — real git operations in project workspace.
 Runs git status, stage, commit, branch in the given repo path (project workspace).
 """
+
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 from pathlib import Path
@@ -53,18 +54,44 @@ class GitManager:
         """Real git status. repo_path must be project workspace path."""
         path = Path(repo_path)
         if not path.exists():
-            return GitStatus(branch="", ahead=0, behind=0, modified=[], untracked=[], staged=[], conflicted=[], is_repo=False, error="path not found")
-        code, out, err = await asyncio.to_thread(_run_git_sync, path, "rev-parse", "--is-inside-work-tree")
+            return GitStatus(
+                branch="",
+                ahead=0,
+                behind=0,
+                modified=[],
+                untracked=[],
+                staged=[],
+                conflicted=[],
+                is_repo=False,
+                error="path not found",
+            )
+        code, out, err = await asyncio.to_thread(
+            _run_git_sync, path, "rev-parse", "--is-inside-work-tree"
+        )
         if code != 0 or "true" not in out:
-            return GitStatus(branch="", ahead=0, behind=0, modified=[], untracked=[], staged=[], conflicted=[], is_repo=False, error=err or "not a git repository")
+            return GitStatus(
+                branch="",
+                ahead=0,
+                behind=0,
+                modified=[],
+                untracked=[],
+                staged=[],
+                conflicted=[],
+                is_repo=False,
+                error=err or "not a git repository",
+            )
 
         branch = "main"
-        code, out, err = await asyncio.to_thread(_run_git_sync, path, "branch", "--show-current")
+        code, out, err = await asyncio.to_thread(
+            _run_git_sync, path, "branch", "--show-current"
+        )
         if code == 0 and out:
             branch = out.strip()
 
         modified, untracked, staged, conflicted = [], [], [], []
-        code, out, err = await asyncio.to_thread(_run_git_sync, path, "status", "--porcelain")
+        code, out, err = await asyncio.to_thread(
+            _run_git_sync, path, "status", "--porcelain"
+        )
         if code == 0 and out:
             for line in out.splitlines():
                 if len(line) < 2:
@@ -81,7 +108,9 @@ class GitManager:
                     untracked.append(f)
 
         ahead, behind = 0, 0
-        code, out, err = await asyncio.to_thread(_run_git_sync, path, "rev-list", "--count", "--left-right", "@{u}...HEAD")
+        code, out, err = await asyncio.to_thread(
+            _run_git_sync, path, "rev-list", "--count", "--left-right", "@{u}...HEAD"
+        )
         if code == 0 and out:
             parts = out.split()
             if len(parts) >= 2:
@@ -90,13 +119,23 @@ class GitManager:
                 except ValueError:
                     pass
 
-        return GitStatus(branch=branch, ahead=ahead, behind=behind, modified=modified, untracked=untracked, staged=staged, conflicted=conflicted)
+        return GitStatus(
+            branch=branch,
+            ahead=ahead,
+            behind=behind,
+            modified=modified,
+            untracked=untracked,
+            staged=staged,
+            conflicted=conflicted,
+        )
 
     async def stage_file(self, repo_path: str, file_path: str) -> bool:
         path = Path(repo_path)
         if not path.exists():
             return False
-        code, _, err = await asyncio.to_thread(_run_git_sync, path, "add", "--", file_path)
+        code, _, err = await asyncio.to_thread(
+            _run_git_sync, path, "add", "--", file_path
+        )
         if code != 0:
             logger.warning("git add %s: %s", file_path, err)
         return code == 0
@@ -108,7 +147,9 @@ class GitManager:
         code, _, _ = await asyncio.to_thread(_run_git_sync, path, "add", "-A")
         return code == 0
 
-    async def commit(self, repo_path: str, message: str, author: Optional[str] = None) -> bool:
+    async def commit(
+        self, repo_path: str, message: str, author: Optional[str] = None
+    ) -> bool:
         path = Path(repo_path)
         if not path.exists():
             return False
@@ -118,7 +159,12 @@ class GitManager:
                 env = None
                 if author:
                     import os
-                    env = {**os.environ, "GIT_AUTHOR_NAME": author, "GIT_COMMITTER_NAME": author}
+
+                    env = {
+                        **os.environ,
+                        "GIT_AUTHOR_NAME": author,
+                        "GIT_COMMITTER_NAME": author,
+                    }
                 proc = subprocess.run(
                     ["git", "commit", "-m", message],
                     cwd=str(path),
@@ -138,7 +184,9 @@ class GitManager:
         path = Path(repo_path)
         if not path.exists():
             return []
-        code, out, _ = await asyncio.to_thread(_run_git_sync, path, "branch", "-a", "--format=%(refname:short)")
+        code, out, _ = await asyncio.to_thread(
+            _run_git_sync, path, "branch", "-a", "--format=%(refname:short)"
+        )
         if code != 0:
             return []
         return [b.strip() for b in out.splitlines() if b.strip() and "HEAD" not in b]
@@ -148,25 +196,35 @@ class GitManager:
         path = Path(repo_path)
         if not path.exists():
             return False, "path not found"
-        code, out, err = await asyncio.to_thread(_run_git_sync, path, "merge", branch, "--no-edit")
+        code, out, err = await asyncio.to_thread(
+            _run_git_sync, path, "merge", branch, "--no-edit"
+        )
         if code != 0:
             return False, err or out or "merge failed"
         return True, out or "merged"
 
-    async def resolve_conflict(self, repo_path: str, file_path: str, resolution: str) -> bool:
+    async def resolve_conflict(
+        self, repo_path: str, file_path: str, resolution: str
+    ) -> bool:
         """Resolution: 'ours' | 'theirs'. Checkout one version and stage."""
         path = Path(repo_path)
         if not path.exists():
             return False
         if resolution == "ours":
-            code, _, _ = await asyncio.to_thread(_run_git_sync, path, "checkout", "--ours", "--", file_path)
+            code, _, _ = await asyncio.to_thread(
+                _run_git_sync, path, "checkout", "--ours", "--", file_path
+            )
         elif resolution == "theirs":
-            code, _, _ = await asyncio.to_thread(_run_git_sync, path, "checkout", "--theirs", "--", file_path)
+            code, _, _ = await asyncio.to_thread(
+                _run_git_sync, path, "checkout", "--theirs", "--", file_path
+            )
         else:
             return False
         if code != 0:
             return False
-        code, _, _ = await asyncio.to_thread(_run_git_sync, path, "add", "--", file_path)
+        code, _, _ = await asyncio.to_thread(
+            _run_git_sync, path, "add", "--", file_path
+        )
         return code == 0
 
 

@@ -1,11 +1,17 @@
 """BuilderAgent: elite directive in LLM system context."""
+
 from __future__ import annotations
 
 import json
 
 import pytest
 
-from agents.builder_agent import BuilderAgent, _load_elite_directive, _parse_build_intent, _spec_echo_blocked
+from agents.builder_agent import (
+    BuilderAgent,
+    _load_elite_directive,
+    _parse_build_intent,
+    _spec_echo_blocked,
+)
 
 
 def test_load_elite_directive_reads_workspace(tmp_path):
@@ -73,4 +79,7 @@ async def test_execute_critical_block_on_spec_echo(tmp_path):
     agent = BuilderAgent(llm_client=FakeLLM(), config={})
     out = await agent.execute({"workspace_path": str(tmp_path), "goal": "build"})
     assert out.get("status") == "❌ CRITICAL BLOCK"
-    assert "echoed spec" in out.get("reason", "").lower() or "spec" in out.get("reason", "").lower()
+    assert (
+        "echoed spec" in out.get("reason", "").lower()
+        or "spec" in out.get("reason", "").lower()
+    )

@@ -4,6 +4,7 @@ Request-scoped context (trace_id, tenant_id, request_id), optional OpenTelemetry
 Enable JSON request lines: CRUCIBAI_STRUCTURED_LOGS=1 (includes request_id + correlation_id)
 Enable OTel tracer (console exporter): CRUCIBAI_OTEL=1
 """
+
 from __future__ import annotations
 
 import json
@@ -61,7 +62,11 @@ def observe_http_request(method: str, status_code: int) -> None:
 
 
 def structured_logs_enabled() -> bool:
-    return os.environ.get("CRUCIBAI_STRUCTURED_LOGS", "").strip().lower() in ("1", "true", "yes")
+    return os.environ.get("CRUCIBAI_STRUCTURED_LOGS", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
 
 
 def log_request_event(log: logging.Logger, event: str, **fields: Any) -> None:
@@ -85,7 +90,10 @@ def init_opentelemetry():  # noqa: ANN201
     try:
         from opentelemetry import trace
         from opentelemetry.sdk.trace import TracerProvider
-        from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
+        from opentelemetry.sdk.trace.export import (
+            ConsoleSpanExporter,
+            SimpleSpanProcessor,
+        )
 
         provider = TracerProvider()
         provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))

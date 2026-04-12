@@ -1,4 +1,5 @@
 """Permanent enforcement layer: critical features, proof strength, hard completion gates."""
+
 from __future__ import annotations
 
 from .enforcement_engine import (

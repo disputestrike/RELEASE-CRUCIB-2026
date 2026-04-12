@@ -2,6 +2,7 @@
 Job-scoped workspace API: list/read files via job id (project_id resolved server-side).
 Uses async app_client + auth_headers like the rest of backend/tests.
 """
+
 from __future__ import annotations
 
 import os
@@ -37,7 +38,12 @@ async def mock_job_with_project(app_client, auth_headers):
     rs.set_pool(pool)
 
     project_id = str(uuid.uuid4())
-    job = await rs.create_job(project_id=project_id, mode="guided", goal="pytest job workspace", user_id=user_id)
+    job = await rs.create_job(
+        project_id=project_id,
+        mode="guided",
+        goal="pytest job workspace",
+        user_id=user_id,
+    )
     job_id = job["id"]
 
     safe = project_id.replace("/", "_").replace("\\", "_")
@@ -46,7 +52,10 @@ async def mock_job_with_project(app_client, auth_headers):
     src = root / "src"
     src.mkdir(exist_ok=True)
     marker = f"job-ws-{job_id[:8]}"
-    (src / "App.jsx").write_text(f"export default function App(){{ return <div>{marker}</div>; }}", encoding="utf-8")
+    (src / "App.jsx").write_text(
+        f"export default function App(){{ return <div>{marker}</div>; }}",
+        encoding="utf-8",
+    )
 
     ns = SimpleNamespace(id=job_id, project_id=project_id, marker=marker)
     try:
@@ -57,14 +66,18 @@ async def mock_job_with_project(app_client, auth_headers):
 
 async def test_get_job_workspace_files(app_client, auth_headers, mock_job_with_project):
     job_id = mock_job_with_project.id
-    resp = await app_client.get(f"/api/jobs/{job_id}/workspace/files", headers=auth_headers, timeout=15)
+    resp = await app_client.get(
+        f"/api/jobs/{job_id}/workspace/files", headers=auth_headers, timeout=15
+    )
     assert resp.status_code == 200
     body = resp.json()
     assert "files" in body
     assert "src/App.jsx" in body["files"]
 
 
-async def test_get_job_workspace_files_ignores_project_id_query_param(app_client, auth_headers, mock_job_with_project):
+async def test_get_job_workspace_files_ignores_project_id_query_param(
+    app_client, auth_headers, mock_job_with_project
+):
     """Spurious project_id must not switch which workspace is listed (resolution is from the job only)."""
     job_id = mock_job_with_project.id
     wrong = "00000000-0000-0000-0000-000000000001"
@@ -80,7 +93,9 @@ async def test_get_job_workspace_files_ignores_project_id_query_param(app_client
     assert "src/App.jsx" in body["files"]
 
 
-async def test_get_job_workspace_file_ignores_project_id_query_param(app_client, auth_headers, mock_job_with_project):
+async def test_get_job_workspace_file_ignores_project_id_query_param(
+    app_client, auth_headers, mock_job_with_project
+):
     job_id = mock_job_with_project.id
     wrong = "00000000-0000-0000-0000-000000000002"
     resp = await app_client.get(
@@ -101,7 +116,9 @@ async def test_get_job_workspace_files_requires_auth(app_client, mock_job_with_p
     assert resp.status_code == 401
 
 
-async def test_get_job_workspace_files_pagination_metadata(app_client, auth_headers, mock_job_with_project):
+async def test_get_job_workspace_files_pagination_metadata(
+    app_client, auth_headers, mock_job_with_project
+):
     job_id = mock_job_with_project.id
     resp = await app_client.get(
         f"/api/jobs/{job_id}/workspace/files",
@@ -119,7 +136,9 @@ async def test_get_job_workspace_files_pagination_metadata(app_client, auth_head
     assert isinstance(body.get("has_more"), bool)
 
 
-async def test_get_job_workspace_file_raw_streams_text(app_client, auth_headers, mock_job_with_project):
+async def test_get_job_workspace_file_raw_streams_text(
+    app_client, auth_headers, mock_job_with_project
+):
     job_id = mock_job_with_project.id
     resp = await app_client.get(
         f"/api/jobs/{job_id}/workspace/file/raw",

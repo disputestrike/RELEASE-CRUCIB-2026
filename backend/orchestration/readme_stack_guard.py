@@ -7,6 +7,7 @@ We detect the real stack from files on disk and, when there is a mismatch,
 rewrite the README with a correct \"Run\" section and strip obvious Django
 command lines.
 """
+
 from __future__ import annotations
 
 import json
@@ -33,7 +34,10 @@ def infer_workspace_stack(root: Path) -> str:
             data = json.loads(pkg.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError, ValueError, TypeError):
             data = {}
-        deps = {**(data.get("dependencies") or {}), **(data.get("devDependencies") or {})}
+        deps = {
+            **(data.get("dependencies") or {}),
+            **(data.get("devDependencies") or {}),
+        }
         scripts = data.get("scripts") or {}
         if "vite" in deps or any("vite" in str(v).lower() for v in scripts.values()):
             return "vite"
@@ -52,7 +56,15 @@ def _run_section(root: Path, stack: str) -> str:
         "",
     ]
     if stack == "vite":
-        lines += ["**Frontend (Vite):**", "", "```bash", "npm install", "npm run dev", "```", ""]
+        lines += [
+            "**Frontend (Vite):**",
+            "",
+            "```bash",
+            "npm install",
+            "npm run dev",
+            "```",
+            "",
+        ]
         if (root / "backend" / "main.py").is_file():
             lines += [
                 "**Backend (example FastAPI layout under `backend/`):**",
@@ -101,7 +113,8 @@ def _strip_django_command_lines(text: str) -> str:
         if re.match(r"^\s*python\s+manage\.py\s+", line, re.IGNORECASE):
             continue
         if "manage.py" in low and any(
-            k in low for k in ("runserver", "migrate", "createsuperuser", "makemigrations")
+            k in low
+            for k in ("runserver", "migrate", "createsuperuser", "makemigrations")
         ):
             continue
         if re.match(r"^\s*django-admin\s+", line, re.IGNORECASE):

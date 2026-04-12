@@ -5,7 +5,7 @@
 import { useState } from "react";
 import axios from "axios";
 import { useAuth } from "../App";
-import { formatModelUsageLine } from "../utils/modelUsageLabel";
+import { formatModelUsageLine, isDevStubModel } from "../utils/modelUsageLabel";
 import { FileText, Presentation, Table, Loader2, Download } from "lucide-react";
 
 const API = process.env.REACT_APP_BACKEND_URL === '' ? '/api' : `${process.env.REACT_APP_BACKEND_URL || "http://localhost:8000"}/api`;

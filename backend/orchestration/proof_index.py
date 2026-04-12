@@ -5,6 +5,7 @@ Builds META/proof_index.json on job seal: each proof_item is linked to workspace
 that appear in its payload and that exist in artifact_manifest.json.
 Also builds reverse index by_path for UI navigation.
 """
+
 from __future__ import annotations
 
 import json
@@ -16,9 +17,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 logger = logging.getLogger(__name__)
 
 # Reasonable repo-relative paths (exclude URLs and sentence-like strings)
-_REL_PATH_RE = re.compile(
-    r"^([A-Za-z0-9_.\-]+/)+[A-Za-z0-9_.\-]+\.[A-Za-z0-9]{1,12}$"
-)
+_REL_PATH_RE = re.compile(r"^([A-Za-z0-9_.\-]+/)+[A-Za-z0-9_.\-]+\.[A-Za-z0-9]{1,12}$")
 # Repo root files (server.py, README.md) — used when key is file/path
 _SIMPLE_FILE_RE = re.compile(r"^[A-Za-z0-9_.\-]+\.[A-Za-z0-9]{1,12}$")
 # Paths embedded in prose / issue lines (e.g. "error in src/App.jsx line 1")
@@ -27,7 +26,16 @@ _EMBED_PATH_RE = re.compile(
     re.IGNORECASE,
 )
 _PAYLOAD_PATH_KEYS = frozenset(
-    {"file", "path", "rel", "rel_path", "filepath", "target_file", "file_path", "rel_path"}
+    {
+        "file",
+        "path",
+        "rel",
+        "rel_path",
+        "filepath",
+        "target_file",
+        "file_path",
+        "rel_path",
+    }
 )
 
 
@@ -141,7 +149,11 @@ def build_proof_index_document(
         entries.append(entry)
         for p in resolved:
             by_path.setdefault(p, []).append(
-                {"proof_item_id": pid, "title": entry["title"], "proof_type": entry["proof_type"]}
+                {
+                    "proof_item_id": pid,
+                    "title": entry["title"],
+                    "proof_type": entry["proof_type"],
+                }
             )
 
     by_proof_item_id: Dict[str, Any] = {}
@@ -153,12 +165,15 @@ def build_proof_index_document(
                 "proof_type": e.get("proof_type", ""),
                 "title": e.get("title", ""),
                 "paths_resolved_in_manifest": e.get("paths_resolved_in_manifest") or [],
-                "paths_missing_from_manifest": e.get("paths_missing_from_manifest") or [],
+                "paths_missing_from_manifest": e.get("paths_missing_from_manifest")
+                or [],
             }
 
     am_sha = ""
     try:
-        raw = json.dumps(artifact_manifest.get("files") or [], sort_keys=True, default=str)
+        raw = json.dumps(
+            artifact_manifest.get("files") or [], sort_keys=True, default=str
+        )
         import hashlib
 
         am_sha = hashlib.sha256(raw.encode("utf-8")).hexdigest()
@@ -185,18 +200,26 @@ async def write_meta_proof_index(
     """Persist META/proof_index.json; returns document or None."""
     from proof import proof_service
 
-    step_key_by_id = {str(s.get("id") or ""): str(s.get("step_key") or "") for s in steps if s.get("id")}
+    step_key_by_id = {
+        str(s.get("id") or ""): str(s.get("step_key") or "")
+        for s in steps
+        if s.get("id")
+    }
     try:
         proof_items = await proof_service.fetch_proof_items_raw(job_id)
     except Exception as e:
         logger.warning("proof_index: fetch proof items failed: %s", e)
         proof_items = []
 
-    doc = build_proof_index_document(job_id, artifact_manifest, proof_items, step_key_by_id)
+    doc = build_proof_index_document(
+        job_id, artifact_manifest, proof_items, step_key_by_id
+    )
     try:
         meta = workspace_root.resolve() / "META"
         meta.mkdir(parents=True, exist_ok=True)
-        (meta / "proof_index.json").write_text(json.dumps(doc, indent=2), encoding="utf-8")
+        (meta / "proof_index.json").write_text(
+            json.dumps(doc, indent=2), encoding="utf-8"
+        )
     except OSError as e:
         logger.warning("proof_index: write failed: %s", e)
         return None

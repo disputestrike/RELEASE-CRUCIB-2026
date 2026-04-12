@@ -1,6 +1,7 @@
 """
 verification.stripe_replay — prove webhook idempotency table semantics (SQLite stand-in for ON CONFLICT DO NOTHING).
 """
+
 from __future__ import annotations
 
 import os
@@ -42,7 +43,9 @@ def verify_stripe_replay_workspace(workspace_path: str) -> Dict[str, Any]:
         if not name.endswith(".sql"):
             continue
         try:
-            with open(os.path.join(mig_dir, name), encoding="utf-8", errors="replace") as fh:
+            with open(
+                os.path.join(mig_dir, name), encoding="utf-8", errors="replace"
+            ) as fh:
                 body = fh.read().lower()
         except OSError:
             continue
@@ -67,11 +70,17 @@ def verify_stripe_replay_workspace(workspace_path: str) -> Dict[str, Any]:
             "CREATE TABLE stripe_events_processed (id TEXT PRIMARY KEY NOT NULL, received_at TEXT)",
         )
         eid = "evt_crucib_replay_test"
-        con.execute("INSERT OR IGNORE INTO stripe_events_processed (id) VALUES (?)", (eid,))
-        con.execute("INSERT OR IGNORE INTO stripe_events_processed (id) VALUES (?)", (eid,))
+        con.execute(
+            "INSERT OR IGNORE INTO stripe_events_processed (id) VALUES (?)", (eid,)
+        )
+        con.execute(
+            "INSERT OR IGNORE INTO stripe_events_processed (id) VALUES (?)", (eid,)
+        )
         n = con.execute("SELECT count(*) FROM stripe_events_processed").fetchone()[0]
         if n != 1:
-            issues.append(f"Stripe replay: duplicate webhook id should dedupe to 1 row, got {n}")
+            issues.append(
+                f"Stripe replay: duplicate webhook id should dedupe to 1 row, got {n}"
+            )
         else:
             proof.append(
                 _pi(
@@ -85,4 +94,9 @@ def verify_stripe_replay_workspace(workspace_path: str) -> Dict[str, Any]:
         con.close()
 
     score = 100 if not issues else 40
-    return {"passed": len(issues) == 0, "score": score, "issues": issues, "proof": proof}
+    return {
+        "passed": len(issues) == 0,
+        "score": score,
+        "issues": issues,
+        "proof": proof,
+    }

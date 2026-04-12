@@ -9,20 +9,28 @@ class _UnavailableVectorMemory:
 
 
 @pytest.mark.asyncio
-async def test_run_single_agent_with_context_returns_completed_result_for_planner(monkeypatch):
+async def test_run_single_agent_with_context_returns_completed_result_for_planner(
+    monkeypatch,
+):
     monkeypatch.setenv("CRUCIBAI_DEV", "1")
     monkeypatch.setenv("JWT_SECRET", "test-secret")
     monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/test")
     import server
 
     monkeypatch.setattr(server, "REAL_AGENT_NAMES", set())
-    monkeypatch.setattr(server, "_call_llm_with_fallback", AsyncMock(return_value=("Planner output", {})))
+    monkeypatch.setattr(
+        server,
+        "_call_llm_with_fallback",
+        AsyncMock(return_value=("Planner output", {})),
+    )
     monkeypatch.setattr(server, "persist_agent_output", lambda *args, **kwargs: None)
     monkeypatch.setattr(server, "run_agent_real_behavior", lambda *args, **kwargs: None)
     monkeypatch.setattr(
         server,
         "run_real_post_step",
-        AsyncMock(side_effect=lambda agent_name, project_id, previous_outputs, result: result),
+        AsyncMock(
+            side_effect=lambda agent_name, project_id, previous_outputs, result: result
+        ),
     )
     monkeypatch.setattr(server, "_init_agent_learning", AsyncMock(return_value=None))
     monkeypatch.setattr(server, "_vector_memory", _UnavailableVectorMemory())

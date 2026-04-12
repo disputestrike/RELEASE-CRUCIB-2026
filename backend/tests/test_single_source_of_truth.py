@@ -3,6 +3,7 @@ Master Single Source of Truth tests.
 Aligns with MASTER_SINGLE_SOURCE_OF_TRUTH_TEST.md §1.3, §1.4, §3.
 Every test must pass; no skips except when DB/LLM unavailable.
 """
+
 import pytest
 from conftest import register_and_get_headers
 

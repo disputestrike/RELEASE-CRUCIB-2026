@@ -8,6 +8,7 @@ Modes (CRUCIBAI_SPEC_GUARD_MODE):
 
 This is honest gatekeeping, not silent degradation.
 """
+
 from __future__ import annotations
 
 import os
@@ -15,7 +16,6 @@ from typing import Any, Dict, List, Optional
 
 from .build_targets import normalize_build_target
 from .multiregion_terraform_sketch import multiregion_terraform_intent
-
 
 RUNNER_TRUTH = (
     "CrucibAI now has two build paths: deterministic packs for proven tracks and a direct full-system builder for complex prompts. "
@@ -32,7 +32,9 @@ def _mode() -> str:
     return "advisory"
 
 
-def evaluate_goal_against_runner(goal: str, *, build_target: Optional[str] = None) -> Dict[str, Any]:
+def evaluate_goal_against_runner(
+    goal: str, *, build_target: Optional[str] = None
+) -> Dict[str, Any]:
     """
     Returns violations (with severity), compliance score, and whether run must be blocked in strict mode.
     """
@@ -213,7 +215,17 @@ def evaluate_goal_against_runner(goal: str, *, build_target: Optional[str] = Non
 
     n = len(violations)
     # Compliance: start at 100, subtract per violation (cap 0)
-    spec_compliance = max(0.0, round(100.0 - min(100.0, n * 15.0 + sum(5 for v in violations if v["severity"] == "blocker")), 1))
+    spec_compliance = max(
+        0.0,
+        round(
+            100.0
+            - min(
+                100.0,
+                n * 15.0 + sum(5 for v in violations if v["severity"] == "blocker"),
+            ),
+            1,
+        ),
+    )
 
     blockers = [v for v in violations if v["severity"] == "blocker"]
     blocks_run = _mode() == "strict" and len(blockers) > 0
@@ -260,7 +272,10 @@ def merge_plan_risk_flags_into_report(
     for rf in plan_risk_flags or []:
         if rf not in flag_to_violation:
             continue
-        if bt == "next_app_router" and rf == "goal_spec_nextjs_autorunner_template_is_vite_react":
+        if (
+            bt == "next_app_router"
+            and rf == "goal_spec_nextjs_autorunner_template_is_vite_react"
+        ):
             continue
         code, msg = flag_to_violation[rf]
         if code in seen_codes:

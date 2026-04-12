@@ -33,12 +33,14 @@ class DeploymentOperationsAgent(BaseAgent):
     def __init__(self, llm_client, config, db=None):
         super().__init__(llm_client, config)
         self.name = "DeploymentOperationsAgent"
-        self.workspace_root = Path(config.get("workspace_root", Path(__file__).parent.parent / "workspace")).resolve()
+        self.workspace_root = Path(
+            config.get("workspace_root", Path(__file__).parent.parent / "workspace")
+        ).resolve()
 
     async def execute(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """
         Deploy application.
-        
+
         Expected context:
         {
             "platform": "vercel|railway|netlify",
@@ -47,7 +49,7 @@ class DeploymentOperationsAgent(BaseAgent):
         }
         """
         platform = context.get("platform", "vercel")
-        
+
         try:
             if platform == "vercel":
                 result = await self._deploy_vercel(context)
@@ -57,71 +59,78 @@ class DeploymentOperationsAgent(BaseAgent):
                 result = await self._deploy_netlify(context)
             else:
                 result = {"error": f"Unknown platform: {platform}"}
-            
+
             return result
-            
+
         except Exception as e:
             return {"error": str(e), "success": False}
-    
+
     async def _deploy_vercel(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """Deploy to Vercel (project_path validated under workspace)."""
-        project_path = _resolve_project_path(self.workspace_root, context.get("project_path") or ".")
+        project_path = _resolve_project_path(
+            self.workspace_root, context.get("project_path") or "."
+        )
         # Use Vercel CLI
         cmd = ["vercel", "--yes", "--cwd", str(project_path)]
-        process = subprocess.run(cmd, cwd=str(project_path), capture_output=True, text=True)
+        process = subprocess.run(
+            cmd, cwd=str(project_path), capture_output=True, text=True
+        )
         if process.returncode == 0:
             # Parse URL from output
             output = process.stdout
-            url = output.split("https://")[-1].split()[0] if "https://" in output else "unknown"
-            
+            url = (
+                output.split("https://")[-1].split()[0]
+                if "https://" in output
+                else "unknown"
+            )
+
             return {
                 "platform": "vercel",
                 "url": f"https://{url}",
                 "success": True,
-                "output": output
+                "output": output,
             }
         else:
-            return {
-                "error": process.stderr,
-                "success": False
-            }
-    
+            return {"error": process.stderr, "success": False}
+
     async def _deploy_railway(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """Deploy to Railway (project_path validated under workspace)."""
-        project_path = _resolve_project_path(self.workspace_root, context.get("project_path") or ".")
+        project_path = _resolve_project_path(
+            self.workspace_root, context.get("project_path") or "."
+        )
         cmd = ["railway", "up", "--detach"]
-        process = subprocess.run(cmd, cwd=str(project_path), capture_output=True, text=True)
-        
+        process = subprocess.run(
+            cmd, cwd=str(project_path), capture_output=True, text=True
+        )
+
         if process.returncode == 0:
-            return {
-                "platform": "railway",
-                "success": True,
-                "output": process.stdout
-            }
+            return {"platform": "railway", "success": True, "output": process.stdout}
         else:
-            return {
-                "error": process.stderr,
-                "success": False
-            }
-    
+            return {"error": process.stderr, "success": False}
+
     async def _deploy_netlify(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """Deploy to Netlify (project_path validated under workspace)."""
-        project_path = _resolve_project_path(self.workspace_root, context.get("project_path") or ".")
+        project_path = _resolve_project_path(
+            self.workspace_root, context.get("project_path") or "."
+        )
         cmd = ["netlify", "deploy", "--prod", "--dir", str(project_path)]
-        process = subprocess.run(cmd, cwd=str(project_path), capture_output=True, text=True)
-        
+        process = subprocess.run(
+            cmd, cwd=str(project_path), capture_output=True, text=True
+        )
+
         if process.returncode == 0:
             output = process.stdout
-            url = output.split("https://")[-1].split()[0] if "https://" in output else "unknown"
-            
+            url = (
+                output.split("https://")[-1].split()[0]
+                if "https://" in output
+                else "unknown"
+            )
+
             return {
                 "platform": "netlify",
                 "url": f"https://{url}",
                 "success": True,
-                "output": output
+                "output": output,
             }
         else:
-            return {
-                "error": process.stderr,
-                "success": False
-            }
+            return {"error": process.stderr, "success": False}

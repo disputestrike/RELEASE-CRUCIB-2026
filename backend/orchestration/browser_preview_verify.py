@@ -8,6 +8,7 @@ pipeline in ``asyncio.to_thread`` via ``_verify_browser_preview_sync``.
 The public ``verify_browser_preview`` is async only so ``preview_gate`` / ``verifier``
 can ``await`` it without blocking the loop for minutes.
 """
+
 import asyncio
 import json
 import logging
@@ -51,7 +52,11 @@ def playwright_chromium_status() -> Dict[str, Any]:
                 "package_available": True,
                 "chromium_available": bool(exe and os.path.exists(exe)),
                 "executable_path": exe or "",
-                "error": "" if exe and os.path.exists(exe) else "chromium browser binary missing",
+                "error": (
+                    ""
+                    if exe and os.path.exists(exe)
+                    else "chromium browser binary missing"
+                ),
             }
     except Exception as exc:
         return {
@@ -148,12 +153,19 @@ def _verify_browser_preview_sync(workspace_path: str) -> Dict[str, Any]:
 
     # Railway often runs with NODE_ENV=production; npm then omits devDependencies
     # unless we explicitly include them. Vite lives in devDependencies for generated apps.
-    code, log = _run_npm(["install", "--include=dev", "--no-fund", "--no-audit"], ws, install_timeout)
+    code, log = _run_npm(
+        ["install", "--include=dev", "--no-fund", "--no-audit"], ws, install_timeout
+    )
     if code != 0:
         issues.append(f"npm install failed (exit {code}): {log[:500]}")
         return {"passed": False, "issues": issues, "proof": proof}
     proof.append(
-        _proof("verification", "npm install completed", {"exit": code}, verification_class="runtime")
+        _proof(
+            "verification",
+            "npm install completed",
+            {"exit": code},
+            verification_class="runtime",
+        )
     )
 
     code, log = _run_npm(["run", "build"], ws, build_timeout)
@@ -161,7 +173,12 @@ def _verify_browser_preview_sync(workspace_path: str) -> Dict[str, Any]:
         issues.append(f"npm run build failed (exit {code}): {log[:800]}")
         return {"passed": False, "issues": issues, "proof": proof}
     proof.append(
-        _proof("verification", "npm run build completed", {"exit": code}, verification_class="runtime")
+        _proof(
+            "verification",
+            "npm run build completed",
+            {"exit": code},
+            verification_class="runtime",
+        )
     )
 
     dist_dir = os.path.join(ws, "dist")
@@ -284,7 +301,10 @@ def _verify_browser_preview_sync(workspace_path: str) -> Dict[str, Any]:
                         _proof(
                             "verification",
                             "Preview screenshot not captured (non-fatal)",
-                            {"kind": "preview_screenshot_error", "error": str(se)[:300]},
+                            {
+                                "kind": "preview_screenshot_error",
+                                "error": str(se)[:300],
+                            },
                             verification_class="experience",
                         ),
                     )

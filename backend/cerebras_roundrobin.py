@@ -2,6 +2,7 @@
 Cerebras API Key Round-Robin Router
 Prevents rate limiting by distributing requests across 5 API keys
 """
+
 import os
 import logging
 
@@ -26,15 +27,17 @@ _current_key_index = 0
 def get_next_cerebras_key() -> str:
     """Get next Cerebras API key in round-robin rotation."""
     global _current_key_index
-    
+
     if not CEREBRAS_KEYS:
         raise Exception("No Cerebras API keys configured")
-    
+
     key = CEREBRAS_KEYS[_current_key_index]
     _current_key_index = (_current_key_index + 1) % len(CEREBRAS_KEYS)
-    
-    logger.debug(f"Cerebras key rotation: index {_current_key_index - 1} → {_current_key_index}")
-    
+
+    logger.debug(
+        f"Cerebras key rotation: index {_current_key_index - 1} → {_current_key_index}"
+    )
+
     return key
 
 

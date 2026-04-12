@@ -9,6 +9,7 @@ When enabled, ``write_elite_directive_to_workspace`` runs at Auto-Runner job sta
 (server background task) so every job workspace gets ``proof/ELITE_EXECUTION_DIRECTIVE.md``,
 not only the crew planning step.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -55,7 +56,9 @@ def load_elite_autonomous_prompt() -> Optional[str]:
         return None
 
 
-def write_elite_directive_to_workspace(workspace_path: str, prompt_text: Optional[str] = None) -> bool:
+def write_elite_directive_to_workspace(
+    workspace_path: str, prompt_text: Optional[str] = None
+) -> bool:
     """
     Write proof/ELITE_EXECUTION_DIRECTIVE.md under workspace_path so every Auto-Runner job
     carries the active builder prompt (not only the crew planning step).
@@ -73,8 +76,7 @@ def write_elite_directive_to_workspace(workspace_path: str, prompt_text: Optiona
             "# Elite builder execution directive\n\n"
             "Source: `config/agent_prompts/ELITE_AUTONOMOUS_PROMPT.md` in the CrucibAI repo.\n\n"
             f"SHA256 prefix: `{fp}`\n\n"
-            "---\n\n"
-            + excerpt
+            "---\n\n" + excerpt
         )
         proof_dir = os.path.join(root, "proof")
         os.makedirs(proof_dir, exist_ok=True)

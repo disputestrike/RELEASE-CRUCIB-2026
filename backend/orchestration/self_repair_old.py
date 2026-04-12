@@ -4,6 +4,7 @@ Deterministic verification self-repair + optional git commit for generated works
 The executor owns the multi-attempt loop (CRUCIBAI_INNER_VERIFY_REPAIR_MAX).
 Set CRUCIBAI_VERIFICATION_AUTO_COMMIT=1 to record patches as local commits inside the job workspace.
 """
+
 from __future__ import annotations
 
 import logging
@@ -22,7 +23,9 @@ def attempt_verification_self_repair(
     verification_result: Dict[str, Any],
 ) -> List[str]:
     """Return posix-relative paths modified under workspace (may be empty)."""
-    return try_deterministic_verification_fix(step_key, workspace_path, verification_result)
+    return try_deterministic_verification_fix(
+        step_key, workspace_path, verification_result
+    )
 
 
 def _auto_commit_enabled() -> bool:
@@ -62,13 +65,17 @@ def maybe_commit_workspace_repairs(
             check=False,
         )
         if r.returncode != 0 or "true" not in (r.stdout or "").lower():
-            logger.info("self_repair: skip commit — not a git worktree at %s", workspace_path)
+            logger.info(
+                "self_repair: skip commit — not a git worktree at %s", workspace_path
+            )
             return False
     except (OSError, subprocess.TimeoutExpired) as e:
         logger.warning("self_repair: git probe failed: %s", e)
         return False
 
-    norm_paths = [os.path.normpath(os.path.join(workspace_path, *p.split("/"))) for p in paths]
+    norm_paths = [
+        os.path.normpath(os.path.join(workspace_path, *p.split("/"))) for p in paths
+    ]
     for fp in norm_paths:
         if not fp.startswith(os.path.normpath(workspace_path)):
             logger.warning("self_repair: skip out-of-tree path %s", fp)
@@ -91,7 +98,10 @@ def maybe_commit_workspace_repairs(
             check=False,
         )
         if add.returncode != 0:
-            logger.warning("self_repair: git add failed: %s", (add.stderr or add.stdout or "").strip()[:500])
+            logger.warning(
+                "self_repair: git add failed: %s",
+                (add.stderr or add.stdout or "").strip()[:500],
+            )
             return False
         commit = subprocess.run(
             ["git", "commit", "-m", message, "--no-verify"],

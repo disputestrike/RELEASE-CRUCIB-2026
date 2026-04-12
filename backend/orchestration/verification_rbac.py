@@ -3,6 +3,7 @@ verification.rbac_enforcement — optional live checks against CRUCIBAI API (adm
 
 Host RBAC is fully covered by pytest (tests/test_admin_security.py). This step adds an optional HTTP smoke hook for CI/staging.
 """
+
 from __future__ import annotations
 
 import os
@@ -21,7 +22,10 @@ async def verify_rbac_enforcement_workspace(workspace_path: str) -> Dict[str, An
             _pi(
                 "verification",
                 "RBAC smoke skipped — set CRUCIBAI_RBAC_SMOKE_URL to hit /api/admin/* (see tests/test_admin_security.py)",
-                {"check": "rbac_smoke_skipped", "host_tests": "tests/test_admin_security.py"},
+                {
+                    "check": "rbac_smoke_skipped",
+                    "host_tests": "tests/test_admin_security.py",
+                },
                 verification_class="presence",
             ),
         )
@@ -71,4 +75,9 @@ async def verify_rbac_enforcement_workspace(workspace_path: str) -> Dict[str, An
         issues.append(f"RBAC smoke request failed: {e}")
 
     score = 100 if not issues else max(35, 100 - len(issues) * 40)
-    return {"passed": len(issues) == 0, "score": score, "issues": issues, "proof": proof}
+    return {
+        "passed": len(issues) == 0,
+        "score": score,
+        "issues": issues,
+        "proof": proof,
+    }

@@ -3,11 +3,11 @@
 These tests are intentionally source-audit style where runtime websocket support is
 awkward in the in-process async client. They backstop the generated proof artifacts.
 """
+
 from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
-
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -32,11 +32,11 @@ def test_phase2_optional_auth_route_inventory_has_no_unclassified_action_routes(
 def test_phase2_websocket_project_progress_requires_token_and_project_owner():
     """Project-progress websocket must reject unauthenticated and cross-tenant subscribers."""
     text = (REPO_ROOT / "backend" / "server.py").read_text(encoding="utf-8")
-    start = text.index('async def websocket_project_progress')
-    end = text.index('# Add security and performance middleware', start)
+    start = text.index("async def websocket_project_progress")
+    end = text.index("# Add security and performance middleware", start)
     block = text[start:end]
     assert 'websocket.query_params.get("token")' in block
-    assert 'await websocket.close(code=1008)' in block
+    assert "await websocket.close(code=1008)" in block
     assert "jwt.decode" in block
     assert '{"id": project_id, "user_id": user["id"]}' in block
 

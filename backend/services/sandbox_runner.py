@@ -17,6 +17,7 @@ Public API
     )
     # result = {"stdout": "hello\\n", "stderr": "", "exit_code": 0, "files": {}}
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -36,6 +37,7 @@ _E2B_API_KEY: Optional[str] = os.environ.get("E2B_API_KEY")
 # ---------------------------------------------------------------------------
 # Result type
 # ---------------------------------------------------------------------------
+
 
 class SandboxResult:
     __slots__ = ("stdout", "stderr", "exit_code", "files", "timed_out")
@@ -68,6 +70,7 @@ class SandboxResult:
 # E2B backend
 # ---------------------------------------------------------------------------
 
+
 async def _run_via_e2b(
     language: str,
     code: str,
@@ -81,7 +84,9 @@ async def _run_via_e2b(
     try:
         from e2b_code_interpreter import AsyncSandbox  # type: ignore[import]
     except ImportError:
-        raise RuntimeError("e2b-code-interpreter is not installed.  pip install e2b-code-interpreter")
+        raise RuntimeError(
+            "e2b-code-interpreter is not installed.  pip install e2b-code-interpreter"
+        )
 
     sandbox = await AsyncSandbox.create(api_key=_E2B_API_KEY, timeout=timeout)
     try:
@@ -92,7 +97,9 @@ async def _run_via_e2b(
                 content if isinstance(content, bytes) else content.encode(),
             )
 
-        exec_result = await sandbox.run_code(code, language=_normalise_language(language))
+        exec_result = await sandbox.run_code(
+            code, language=_normalise_language(language)
+        )
 
         stdout = "\n".join(str(o.line) for o in (exec_result.logs.stdout or []))
         stderr = "\n".join(str(o.line) for o in (exec_result.logs.stderr or []))
@@ -172,7 +179,9 @@ async def _run_subprocess(
             # CPU: 30 s, address space: 512 MB
             try:
                 resource.setrlimit(resource.RLIMIT_CPU, (30, 30))
-                resource.setrlimit(resource.RLIMIT_AS, (512 * 1024 * 1024, 512 * 1024 * 1024))
+                resource.setrlimit(
+                    resource.RLIMIT_AS, (512 * 1024 * 1024, 512 * 1024 * 1024)
+                )
             except Exception:
                 pass
 
@@ -216,6 +225,7 @@ async def _run_subprocess(
 # Public entry point
 # ---------------------------------------------------------------------------
 
+
 async def run_code(
     language: str,
     code: str,
@@ -247,16 +257,12 @@ async def run_code(
     if _E2B_API_KEY:
         try:
             result = await _run_via_e2b(language, code, files, timeout)
-            logger.debug(
-                "E2B sandbox: lang=%s exit=%d", language, result.exit_code
-            )
+            logger.debug("E2B sandbox: lang=%s exit=%d", language, result.exit_code)
             return result.to_dict()
         except Exception as exc:
             logger.warning("E2B sandbox failed (%s), falling back to subprocess", exc)
 
     # Subprocess fallback
     result = await _run_subprocess(language, code, files, timeout)
-    logger.debug(
-        "Subprocess sandbox: lang=%s exit=%d", language, result.exit_code
-    )
+    logger.debug("Subprocess sandbox: lang=%s exit=%d", language, result.exit_code)
     return result.to_dict()

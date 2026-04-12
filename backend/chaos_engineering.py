@@ -268,8 +268,7 @@ class ChaosInjector:
     def get_active_experiments(self) -> dict:
         """Get active experiments."""
         return {
-            name: thread.is_alive()
-            for name, thread in self.active_experiments.items()
+            name: thread.is_alive() for name, thread in self.active_experiments.items()
         }
 
     def stop_experiment(self, experiment_name: str) -> bool:

@@ -3,6 +3,7 @@
 Smoke benchmark for trust scoring + roadmap wiring (no DB required).
 Run from repo: python backend/scripts/run_trust_benchmark_smoke.py
 """
+
 import json
 import sys
 from pathlib import Path
@@ -17,12 +18,32 @@ from orchestration.trust.trust_scoring import compute_trust_metrics  # noqa: E40
 
 def main() -> int:
     sample_items = [
-        {"payload": {"verification_class": "presence"}, "proof_type": "file", "title": "f1"},
-        {"payload": {"verification_class": "syntax"}, "proof_type": "compile", "title": "c1"},
-        {"payload": {"verification_class": "runtime"}, "proof_type": "api", "title": "a1"},
-        {"payload": {"verification_class": "experience", "kind": "preview_screenshot"}, "title": "p1"},
+        {
+            "payload": {"verification_class": "presence"},
+            "proof_type": "file",
+            "title": "f1",
+        },
+        {
+            "payload": {"verification_class": "syntax"},
+            "proof_type": "compile",
+            "title": "c1",
+        },
+        {
+            "payload": {"verification_class": "runtime"},
+            "proof_type": "api",
+            "title": "a1",
+        },
+        {
+            "payload": {
+                "verification_class": "experience",
+                "kind": "preview_screenshot",
+            },
+            "title": "p1",
+        },
     ]
-    metrics = compute_trust_metrics(sample_items, has_screenshot_proof=True, has_live_deploy_url=True)
+    metrics = compute_trust_metrics(
+        sample_items, has_screenshot_proof=True, has_live_deploy_url=True
+    )
     out = {
         "benchmark": "trust_smoke_v1",
         "metrics": metrics,

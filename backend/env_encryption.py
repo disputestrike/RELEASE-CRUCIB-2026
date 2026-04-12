@@ -3,20 +3,23 @@ Encrypt workspace_env API keys and secrets at rest.
 Uses Fernet (AES-128-CBC + HMAC). Set CRUCIBAI_ENCRYPTION_KEY in env (32-byte url-safe base64, e.g. from Fernet.generate_key()).
 If unset, values are stored in plaintext (backward compatible).
 """
+
 import os
 from typing import Dict, Any
 
 _FERNET = None
 
 # Keys in workspace_env that are encrypted at rest
-_SECRET_KEYS = frozenset({
-    "OPENAI_API_KEY",
-    "ANTHROPIC_API_KEY",
-    "VERCEL_TOKEN",
-    "NETLIFY_TOKEN",
-    "GOOGLE_API_KEY",
-    "TAVILY_API_KEY",
-})
+_SECRET_KEYS = frozenset(
+    {
+        "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "VERCEL_TOKEN",
+        "NETLIFY_TOKEN",
+        "GOOGLE_API_KEY",
+        "TAVILY_API_KEY",
+    }
+)
 
 
 def _get_fernet():
@@ -28,6 +31,7 @@ def _get_fernet():
         return None
     try:
         from cryptography.fernet import Fernet, InvalidToken
+
         _FERNET = Fernet(key.encode() if isinstance(key, str) else key)
         return _FERNET
     except Exception:

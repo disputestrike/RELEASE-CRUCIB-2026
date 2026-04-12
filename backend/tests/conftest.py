@@ -2,6 +2,7 @@
 Pytest fixtures and config for CrucibAI backend tests.
 PostgreSQL: defaults match repo docker-compose (host 5434). Session start brings up deps when possible.
 """
+
 import asyncio
 import logging
 import os
@@ -78,11 +79,15 @@ def _ensure_test_env():
     if os.environ.get("TEST_DATABASE_URL"):
         os.environ["DATABASE_URL"] = os.environ["TEST_DATABASE_URL"]
     elif not os.environ.get("DATABASE_URL", "").strip():
-        os.environ["DATABASE_URL"] = "postgresql://crucibai:crucibai@127.0.0.1:5434/crucibai"
+        os.environ["DATABASE_URL"] = (
+            "postgresql://crucibai:crucibai@127.0.0.1:5434/crucibai"
+        )
     if not os.environ.get("REDIS_URL", "").strip():
         os.environ["REDIS_URL"] = "redis://127.0.0.1:6381/0"
     if not os.environ.get("JWT_SECRET", "").strip():
-        os.environ["JWT_SECRET"] = "test-jwt-secret-for-pytest-minimum-32-characters-long"
+        os.environ["JWT_SECRET"] = (
+            "test-jwt-secret-for-pytest-minimum-32-characters-long"
+        )
     if not os.environ.get("GOOGLE_CLIENT_ID", "").strip():
         os.environ["GOOGLE_CLIENT_ID"] = "test.apps.googleusercontent.com"
     if not os.environ.get("GOOGLE_CLIENT_SECRET", "").strip():
@@ -94,7 +99,9 @@ def _ensure_test_env():
     if os.environ.get("TEST_DATABASE_URL"):
         os.environ["DATABASE_URL"] = os.environ["TEST_DATABASE_URL"]
     else:
-        os.environ["DATABASE_URL"] = "postgresql://crucibai:crucibai@127.0.0.1:5434/crucibai"
+        os.environ["DATABASE_URL"] = (
+            "postgresql://crucibai:crucibai@127.0.0.1:5434/crucibai"
+        )
 
 
 _ensure_test_env()
@@ -167,7 +174,16 @@ def pytest_sessionstart(session):
     if not skip_compose and compose.is_file():
         try:
             subprocess.run(
-                ["docker", "compose", "-f", str(compose), "up", "-d", "postgres", "redis"],
+                [
+                    "docker",
+                    "compose",
+                    "-f",
+                    str(compose),
+                    "up",
+                    "-d",
+                    "postgres",
+                    "redis",
+                ],
                 cwd=str(_REPO_ROOT),
                 timeout=120,
                 capture_output=True,
@@ -223,7 +239,9 @@ def pytest_sessionstart(session):
     asyncio.run(_migrate_once())
 
 
-BASE_URL = os.environ.get("CRUCIBAI_API_URL", os.environ.get("REACT_APP_BACKEND_URL", "http://localhost:8000"))
+BASE_URL = os.environ.get(
+    "CRUCIBAI_API_URL", os.environ.get("REACT_APP_BACKEND_URL", "http://localhost:8000")
+)
 
 
 @pytest.fixture(scope="session")
@@ -325,7 +343,10 @@ async def auth_headers_with_project(app_client, auth_headers):
         headers=auth_headers,
         timeout=15,
     )
-    assert r.status_code in (200, 201), f"Project create failed: {r.status_code} {r.text}"
+    assert r.status_code in (
+        200,
+        201,
+    ), f"Project create failed: {r.status_code} {r.text}"
     data = r.json()
     project = data.get("project") or data
     project_id = project.get("id")

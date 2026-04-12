@@ -7,6 +7,7 @@ All DB access goes through ``deps.get_db()``; all audit logging through
 ``deps.get_audit_logger()``.  Both are populated at startup by
 ``deps.init(db=..., audit_logger=...)``.
 """
+
 from __future__ import annotations
 
 import csv
@@ -40,6 +41,7 @@ admin_router = APIRouter(prefix="/api", tags=["admin"])
 
 # ── Models ───────────────────────────────────────────────────────────────────
 
+
 class GrantCreditsBody(BaseModel):
     credits: int = Field(gt=0, description="Credits to grant (must be positive)")
     reason: Optional[str] = "Support bonus"
@@ -56,6 +58,7 @@ class AdminNotificationBody(BaseModel):
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
+
 
 def _user_credits(user: Optional[dict]) -> int:
     """Credits available: credit_balance if set, else token_balance // 1000."""
@@ -85,6 +88,7 @@ def _parse_date(s: Optional[str]):
         return None
     try:
         from datetime import date as date_type
+
         return date_type(int(s[:4]), int(s[5:7]), int(s[8:10]))
     except (ValueError, IndexError):
         return None
@@ -92,22 +96,37 @@ def _parse_date(s: Optional[str]):
 
 # ── Routes ───────────────────────────────────────────────────────────────────
 
+
 @admin_router.get("/admin/dashboard")
 async def admin_dashboard(admin: dict = Depends(get_current_admin(ADMIN_ROLES))):
     """Overview: users, revenue, signups, referral count, health."""
     db = get_db()
     now = datetime.now(timezone.utc)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()[:10]
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()[
+        :10
+    ]
     week_ago = (now - timedelta(days=7)).isoformat()
     month_ago = (now - timedelta(days=30)).isoformat()
     total_users = await db.users.count_documents({})
-    signups_today = await db.users.count_documents({"created_at": {"$gte": today_start}})
+    signups_today = await db.users.count_documents(
+        {"created_at": {"$gte": today_start}}
+    )
     signups_week = await db.users.count_documents({"created_at": {"$gte": week_ago}})
-    referral_count = await db.referrals.count_documents({}) if hasattr(db, "referrals") else 0
-    projects_today = await db.projects.count_documents({"created_at": {"$gte": today_start}})
-    revenue_today = await _revenue_for_query({"type": "purchase", "created_at": {"$gte": today_start}})
-    revenue_week = await _revenue_for_query({"type": "purchase", "created_at": {"$gte": week_ago}})
-    revenue_month = await _revenue_for_query({"type": "purchase", "created_at": {"$gte": month_ago}})
+    referral_count = (
+        await db.referrals.count_documents({}) if hasattr(db, "referrals") else 0
+    )
+    projects_today = await db.projects.count_documents(
+        {"created_at": {"$gte": today_start}}
+    )
+    revenue_today = await _revenue_for_query(
+        {"type": "purchase", "created_at": {"$gte": today_start}}
+    )
+    revenue_week = await _revenue_for_query(
+        {"type": "purchase", "created_at": {"$gte": week_ago}}
+    )
+    revenue_month = await _revenue_for_query(
+        {"type": "purchase", "created_at": {"$gte": month_ago}}
+    )
     return {
         "users_online": total_users,
         "total_users": total_users,
@@ -124,14 +143,22 @@ async def admin_dashboard(admin: dict = Depends(get_current_admin(ADMIN_ROLES)))
 
 
 @admin_router.get("/admin/analytics/overview")
-async def admin_analytics_overview(admin: dict = Depends(get_current_admin(ADMIN_ROLES))):
+async def admin_analytics_overview(
+    admin: dict = Depends(get_current_admin(ADMIN_ROLES)),
+):
     db = get_db()
     now = datetime.now(timezone.utc)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()[:10]
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()[
+        :10
+    ]
     week_ago = (now - timedelta(days=7)).isoformat()
     total_users = await db.users.count_documents({})
-    projects_today = await db.projects.count_documents({"created_at": {"$gte": today_start}})
-    signups_today = await db.users.count_documents({"created_at": {"$gte": today_start}})
+    projects_today = await db.projects.count_documents(
+        {"created_at": {"$gte": today_start}}
+    )
+    signups_today = await db.users.count_documents(
+        {"created_at": {"$gte": today_start}}
+    )
     signups_week = await db.users.count_documents({"created_at": {"$gte": week_ago}})
     return {
         "total_users": total_users,
@@ -158,31 +185,65 @@ async def admin_analytics_daily(
     end_d = _parse_date(to_date)
     if start_d and end_d and start_d <= end_d:
         from datetime import date as date_type
+
         delta = (end_d - start_d).days
         for i in range(min(delta + 1, 365)):
             d = (start_d + timedelta(days=i)).isoformat()
             day_start = d + "T00:00:00"
             day_end = d + "T23:59:59.999999"
-            signups = await db.users.count_documents({"created_at": {"$gte": day_start, "$lte": day_end}})
-            paid = await db.users.count_documents({"plan": {"$nin": ["free", None, ""]}, "created_at": {"$lte": day_end}})
-            rev = await _revenue_for_query({"type": "purchase", "created_at": {"$gte": day_start, "$lte": day_end}})
-            out.append({"date": d, "signups": signups, "paid_users_cumulative": paid, "revenue": rev})
+            signups = await db.users.count_documents(
+                {"created_at": {"$gte": day_start, "$lte": day_end}}
+            )
+            paid = await db.users.count_documents(
+                {"plan": {"$nin": ["free", None, ""]}, "created_at": {"$lte": day_end}}
+            )
+            rev = await _revenue_for_query(
+                {"type": "purchase", "created_at": {"$gte": day_start, "$lte": day_end}}
+            )
+            out.append(
+                {
+                    "date": d,
+                    "signups": signups,
+                    "paid_users_cumulative": paid,
+                    "revenue": rev,
+                }
+            )
     else:
         for i in range(max(1, min(days, 90))):
             d = (now - timedelta(days=i)).date().isoformat()
             day_start = d + "T00:00:00"
             day_end = d + "T23:59:59.999999"
-            signups = await db.users.count_documents({"created_at": {"$gte": day_start, "$lte": day_end}})
-            paid = await db.users.count_documents({"plan": {"$nin": ["free", None, ""]}, "created_at": {"$lte": day_end}})
-            rev = await _revenue_for_query({"type": "purchase", "created_at": {"$gte": day_start, "$lte": day_end}})
-            out.append({"date": d, "signups": signups, "paid_users_cumulative": paid, "revenue": rev})
+            signups = await db.users.count_documents(
+                {"created_at": {"$gte": day_start, "$lte": day_end}}
+            )
+            paid = await db.users.count_documents(
+                {"plan": {"$nin": ["free", None, ""]}, "created_at": {"$lte": day_end}}
+            )
+            rev = await _revenue_for_query(
+                {"type": "purchase", "created_at": {"$gte": day_start, "$lte": day_end}}
+            )
+            out.append(
+                {
+                    "date": d,
+                    "signups": signups,
+                    "paid_users_cumulative": paid,
+                    "revenue": rev,
+                }
+            )
         out = list(reversed(out))
     if (format or "").lower() == "csv":
         buf = io.StringIO()
         w = csv.writer(buf)
         w.writerow(["date", "signups", "paid_users_cumulative", "revenue"])
         for row in out:
-            w.writerow([row["date"], row["signups"], row["paid_users_cumulative"], row["revenue"]])
+            w.writerow(
+                [
+                    row["date"],
+                    row["signups"],
+                    row["paid_users_cumulative"],
+                    row["revenue"],
+                ]
+            )
         return Response(
             content=buf.getvalue(),
             media_type="text/csv",
@@ -214,9 +275,20 @@ async def admin_analytics_weekly(
             continue
         if end_d and week_start.date() > end_d:
             continue
-        signups = await db.users.count_documents({"created_at": {"$gte": ws, "$lt": we}})
-        rev = await _revenue_for_query({"type": "purchase", "created_at": {"$gte": ws, "$lt": we}})
-        out.append({"week_start": ws_date, "week_end": we_date, "signups": signups, "revenue": rev})
+        signups = await db.users.count_documents(
+            {"created_at": {"$gte": ws, "$lt": we}}
+        )
+        rev = await _revenue_for_query(
+            {"type": "purchase", "created_at": {"$gte": ws, "$lt": we}}
+        )
+        out.append(
+            {
+                "week_start": ws_date,
+                "week_end": we_date,
+                "signups": signups,
+                "revenue": rev,
+            }
+        )
     return {"weekly": list(reversed(out))}
 
 
@@ -242,8 +314,12 @@ async def admin_analytics_report(
         d = (start_d + timedelta(days=i)).isoformat()
         day_start = d + "T00:00:00"
         day_end = d + "T23:59:59.999999"
-        signups = await db.users.count_documents({"created_at": {"$gte": day_start, "$lte": day_end}})
-        rev = await _revenue_for_query({"type": "purchase", "created_at": {"$gte": day_start, "$lte": day_end}})
+        signups = await db.users.count_documents(
+            {"created_at": {"$gte": day_start, "$lte": day_end}}
+        )
+        rev = await _revenue_for_query(
+            {"type": "purchase", "created_at": {"$gte": day_start, "$lte": day_end}}
+        )
         total_signups += signups
         total_revenue += rev
         daily.append({"date": d, "signups": signups, "revenue": rev})
@@ -262,7 +338,9 @@ async def admin_analytics_usage(admin: dict = Depends(get_current_admin(ADMIN_RO
     db = get_db()
     now = datetime.now(timezone.utc)
     week_ago = (now - timedelta(days=7)).isoformat()
-    rows = await db.token_usage.find({"created_at": {"$gte": week_ago}}, {"_id": 0}).to_list(10000)
+    rows = await db.token_usage.find(
+        {"created_at": {"$gte": week_ago}}, {"_id": 0}
+    ).to_list(10000)
     by_model: dict = {}
     for r in rows:
         m = r.get("model") or "unknown"
@@ -271,11 +349,15 @@ async def admin_analytics_usage(admin: dict = Depends(get_current_admin(ADMIN_RO
 
 
 @admin_router.get("/admin/analytics/revenue")
-async def admin_analytics_revenue(admin: dict = Depends(get_current_admin(ADMIN_ROLES))):
+async def admin_analytics_revenue(
+    admin: dict = Depends(get_current_admin(ADMIN_ROLES)),
+):
     db = get_db()
     now = datetime.now(timezone.utc)
     month_ago = (now - timedelta(days=30)).isoformat()
-    rev = await _revenue_for_query({"type": "purchase", "created_at": {"$gte": month_ago}})
+    rev = await _revenue_for_query(
+        {"type": "purchase", "created_at": {"$gte": month_ago}}
+    )
     return {"revenue_last_30_days": rev}
 
 
@@ -303,7 +385,9 @@ async def admin_list_users(
         q["email"] = {"$regex": email, "$options": "i"}
     if plan:
         q["plan"] = plan
-    cursor = db.users.find(q, {"_id": 0, "password": 0}).sort("created_at", -1).limit(limit)
+    cursor = (
+        db.users.find(q, {"_id": 0, "password": 0}).sort("created_at", -1).limit(limit)
+    )
     users = await cursor.to_list(length=limit)
     for u in users:
         u.pop("password", None)
@@ -312,7 +396,9 @@ async def admin_list_users(
 
 
 @admin_router.get("/admin/users/{user_id}")
-async def admin_user_profile(user_id: str, admin: dict = Depends(get_current_admin(ADMIN_ROLES))):
+async def admin_user_profile(
+    user_id: str, admin: dict = Depends(get_current_admin(ADMIN_ROLES))
+):
     db = get_db()
     user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
     if not user:
@@ -325,14 +411,21 @@ async def admin_user_profile(user_id: str, admin: dict = Depends(get_current_adm
         if hasattr(db, "referrals")
         else []
     )
-    cursor = db.token_ledger.find({"user_id": user_id}, {"_id": 0}).sort("created_at", -1).limit(20)
+    cursor = (
+        db.token_ledger.find({"user_id": user_id}, {"_id": 0})
+        .sort("created_at", -1)
+        .limit(20)
+    )
     ledger = await cursor.to_list(20)
     purchases = await db.token_ledger.find(
         {"user_id": user_id, "type": "purchase"}, {"_id": 0}
     ).to_list(1000)
     lifetime_revenue = round(
         sum(
-            float(r.get("price") or TOKEN_BUNDLES.get(r.get("bundle", ""), {}).get("price", 0))
+            float(
+                r.get("price")
+                or TOKEN_BUNDLES.get(r.get("bundle", ""), {}).get("price", 0)
+            )
             for r in purchases
         ),
         2,
@@ -355,7 +448,9 @@ async def admin_grant_credits(
 ):
     db = get_db()
     audit_logger = get_audit_logger()
-    role = admin.get("admin_role") or ("owner" if admin["id"] in ADMIN_USER_IDS else None)
+    role = admin.get("admin_role") or (
+        "owner" if admin["id"] in ADMIN_USER_IDS else None
+    )
     if role == "support" and body.credits > SUPPORT_GRANT_CAP_PER_MONTH:
         raise HTTPException(
             status_code=403,
@@ -364,7 +459,9 @@ async def admin_grant_credits(
     target = await db.users.find_one({"id": user_id})
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
-    await db.users.update_one({"id": user_id}, {"$inc": {"credit_balance": body.credits}})
+    await db.users.update_one(
+        {"id": user_id}, {"$inc": {"credit_balance": body.credits}}
+    )
     await db.token_ledger.insert_one(
         {
             "id": str(uuid.uuid4()),
@@ -449,7 +546,9 @@ async def self_export_user_data(user: dict = Depends(get_current_user)):
     """GDPR Article 20: user self-service data export (profile + ledger + project list)."""
     db = get_db()
     user_id = user["id"]
-    safe_user = {k: v for k, v in user.items() if k not in ("password", "hashed_password", "_id")}
+    safe_user = {
+        k: v for k, v in user.items() if k not in ("password", "hashed_password", "_id")
+    }
     ledger = await db.token_ledger.find({"user_id": user_id}, {"_id": 0}).to_list(500)
     projects = await db.projects.find(
         {"user_id": user_id}, {"id": 1, "name": 1, "status": 1, "created_at": 1}
@@ -474,7 +573,9 @@ async def admin_export_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     user.pop("password", None)
-    ledger = await db.token_ledger.find({"user_id": user_id}, {"_id": 0}).to_list(MAX_ADMIN_USER_LEDGER)
+    ledger = await db.token_ledger.find({"user_id": user_id}, {"_id": 0}).to_list(
+        MAX_ADMIN_USER_LEDGER
+    )
     project_ids = await db.projects.find({"user_id": user_id}, {"id": 1}).to_list(
         MAX_ADMIN_USER_EXPORT_PROJECTS
     )
@@ -493,18 +594,23 @@ async def admin_billing_transactions(
 ):
     """List purchases (who paid, when, amount, status) from ledger."""
     db = get_db()
-    rows = await db.token_ledger.find(
-        {"type": "purchase"},
-        {
-            "_id": 0,
-            "user_id": 1,
-            "bundle": 1,
-            "price": 1,
-            "credits": 1,
-            "created_at": 1,
-            "stripe_session_id": 1,
-        },
-    ).sort("created_at", -1).limit(limit).to_list(limit)
+    rows = (
+        await db.token_ledger.find(
+            {"type": "purchase"},
+            {
+                "_id": 0,
+                "user_id": 1,
+                "bundle": 1,
+                "price": 1,
+                "credits": 1,
+                "created_at": 1,
+                "stripe_session_id": 1,
+            },
+        )
+        .sort("created_at", -1)
+        .limit(limit)
+        .to_list(limit)
+    )
     for r in rows:
         if r.get("price") is None:
             r["price"] = TOKEN_BUNDLES.get(r.get("bundle", ""), {}).get("price", 0)
@@ -516,7 +622,11 @@ async def admin_fraud_flags(
     admin: dict = Depends(get_current_admin(("owner", "operations"))),
 ):
     db = get_db()
-    rows = await db.blocked_requests.find({}, {"_id": 0}).sort("timestamp", -1).to_list(500)
+    rows = (
+        await db.blocked_requests.find({}, {"_id": 0})
+        .sort("timestamp", -1)
+        .to_list(500)
+    )
     return {"flags": rows}
 
 
@@ -526,9 +636,12 @@ async def admin_legal_blocked(
     admin: dict = Depends(get_current_admin(ADMIN_ROLES)),
 ):
     db = get_db()
-    rows = await db.blocked_requests.find(
-        {}, {"_id": 0}
-    ).sort("timestamp", -1).limit(limit).to_list(limit)
+    rows = (
+        await db.blocked_requests.find({}, {"_id": 0})
+        .sort("timestamp", -1)
+        .limit(limit)
+        .to_list(limit)
+    )
     return {"blocked_requests": rows, "count": len(rows)}
 
 
@@ -566,7 +679,9 @@ async def admin_legal_review(
 @admin_router.get("/admin/referrals/links")
 async def admin_referral_links(admin: dict = Depends(get_current_admin(ADMIN_ROLES))):
     db = get_db()
-    rows = await db.referral_codes.find({}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    rows = (
+        await db.referral_codes.find({}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    )
     return {"referral_links": rows}
 
 
@@ -581,8 +696,14 @@ async def admin_referrals_leaderboard(
         {"$sort": {"count": -1}},
         {"$limit": limit},
     ]
-    rows = await db.referrals.aggregate(pipeline).to_list(limit) if hasattr(db, "referrals") else []
-    return {"leaderboard": [{"user_id": r["_id"], "referrals": r["count"]} for r in rows]}
+    rows = (
+        await db.referrals.aggregate(pipeline).to_list(limit)
+        if hasattr(db, "referrals")
+        else []
+    )
+    return {
+        "leaderboard": [{"user_id": r["_id"], "referrals": r["count"]} for r in rows]
+    }
 
 
 @admin_router.get("/admin/segments")

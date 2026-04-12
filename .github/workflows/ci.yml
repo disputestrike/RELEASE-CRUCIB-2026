@@ -111,7 +111,7 @@ jobs:
           POSTGRES_PASSWORD: crucibai
           POSTGRES_DB: crucibai
         options: >-
-          --health-cmd pg_isready -U crucibai -d crucibai
+          --health-cmd "pg_isready -U crucibai -d crucibai"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10

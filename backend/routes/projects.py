@@ -2,6 +2,7 @@
 projects.py - Real project route implementations extracted from server.py.
 All 34 @projects_router routes plus supporting helpers and orchestration.
 """
+
 import os, logging, uuid, json, re, zipfile, io, base64, asyncio, mimetypes, subprocess, sys
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
@@ -14,12 +15,21 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field, model_validator
 
 from deps import (
-    get_db, get_audit_logger, get_current_user, get_current_user_sse,
-    get_optional_user, require_permission, JWT_SECRET, JWT_ALGORITHM,
+    get_db,
+    get_audit_logger,
+    get_current_user,
+    get_current_user_sse,
+    get_optional_user,
+    require_permission,
+    JWT_SECRET,
+    JWT_ALGORITHM,
 )
 from services.llm_service import (
-    get_authenticated_or_api_user, get_workspace_api_keys,
-    _effective_api_keys, _call_llm_with_fallback, _get_model_chain,
+    get_authenticated_or_api_user,
+    get_workspace_api_keys,
+    _effective_api_keys,
+    _call_llm_with_fallback,
+    _get_model_chain,
 )
 from project_state import load_state, WORKSPACE_ROOT
 from code_quality import score_generated_code
@@ -36,8 +46,18 @@ try:
 except ImportError:
     legal_check_request = None
 
-from agent_dag import AGENT_DAG, get_execution_phases, build_context_from_previous_agents, get_system_prompt_for_agent
-from real_agent_runner import REAL_AGENT_NAMES, run_real_agent, persist_agent_output, run_real_post_step
+from agent_dag import (
+    AGENT_DAG,
+    get_execution_phases,
+    build_context_from_previous_agents,
+    get_system_prompt_for_agent,
+)
+from real_agent_runner import (
+    REAL_AGENT_NAMES,
+    run_real_agent,
+    persist_agent_output,
+    run_real_post_step,
+)
 from agents.code_repair_agent import CodeRepairAgent, coerce_text_output
 from agent_real_behavior import run_agent_real_behavior
 from agent_resilience import AgentError, get_criticality, get_timeout, generate_fallback
@@ -46,8 +66,11 @@ from vector_memory import vector_memory as _vector_memory
 from pgvector_memory import pgvector_memory as _pgvector_memory
 from agent_recursive_learning import AgentMemory, ExecutionStatus
 from dev_stub_llm import (
-    stub_build_enabled, is_real_agent_only, chat_llm_available,
-    REAL_AGENT_NO_LLM_KEYS_DETAIL, plan_and_suggestions as _stub_plan_and_suggestions,
+    stub_build_enabled,
+    is_real_agent_only,
+    chat_llm_available,
+    REAL_AGENT_NO_LLM_KEYS_DETAIL,
+    plan_and_suggestions as _stub_plan_and_suggestions,
 )
 from content_policy import screen_user_content
 
@@ -72,6 +95,7 @@ _critic_agent = CriticAgent()
 _truth_module = TruthModule()
 _agent_memory_instance = None
 
+
 async def _init_agent_learning():
     global _agent_memory_instance
     if _agent_memory_instance is None:
@@ -79,6 +103,7 @@ async def _init_agent_learning():
         if db is not None:
             _agent_memory_instance = AgentMemory(db)
     return _agent_memory_instance
+
 
 MIN_CREDITS_FOR_LLM = 5
 FREE_TIER_MAX_PROJECTS = 3
@@ -93,21 +118,83 @@ DEPLOY_README = """# Deploy this project
 ## Railway: https://railway.app/new  Generated with CrucibAI."""
 
 TEMPLATES_GALLERY = [
-    {"id": "dashboard", "name": "Dashboard", "description": "Sidebar + stats cards + chart placeholder", "prompt": "Create a dashboard with a sidebar, stat cards, and a chart area. React and Tailwind.", "tags": ["saas", "analytics"], "difficulty": "starter"},
-    {"id": "blog", "name": "Blog", "description": "Blog layout with posts list and post detail", "prompt": "Build a blog with a list of posts and a post detail view. React and Tailwind.", "tags": ["cms", "publishing"], "difficulty": "starter"},
-    {"id": "saas-shell", "name": "SaaS shell", "description": "Auth shell with nav and settings", "prompt": "Create a SaaS app shell with top nav, user menu, and settings page. React and Tailwind.", "tags": ["saas", "auth"], "difficulty": "intermediate"},
+    {
+        "id": "dashboard",
+        "name": "Dashboard",
+        "description": "Sidebar + stats cards + chart placeholder",
+        "prompt": "Create a dashboard with a sidebar, stat cards, and a chart area. React and Tailwind.",
+        "tags": ["saas", "analytics"],
+        "difficulty": "starter",
+    },
+    {
+        "id": "blog",
+        "name": "Blog",
+        "description": "Blog layout with posts list and post detail",
+        "prompt": "Build a blog with a list of posts and a post detail view. React and Tailwind.",
+        "tags": ["cms", "publishing"],
+        "difficulty": "starter",
+    },
+    {
+        "id": "saas-shell",
+        "name": "SaaS shell",
+        "description": "Auth shell with nav and settings",
+        "prompt": "Create a SaaS app shell with top nav, user menu, and settings page. React and Tailwind.",
+        "tags": ["saas", "auth"],
+        "difficulty": "intermediate",
+    },
 ]
 
 BUILD_PHASES = [
-    {"id": "planning", "name": "Planning", "agents": ["Planner", "Requirements Clarifier", "Stack Selector"]},
-    {"id": "generating", "name": "Generating", "agents": ["Frontend Generation", "Backend Generation", "Database Agent", "API Integration", "Test Generation", "Image Generation"]},
-    {"id": "validating", "name": "Validating", "agents": ["Security Checker", "Test Executor", "UX Auditor", "Performance Analyzer"]},
-    {"id": "deployment", "name": "Deployment", "agents": ["Deployment Agent", "Error Recovery", "Memory Agent"]},
-    {"id": "export_automation", "name": "Export & automation", "agents": ["PDF Export", "Excel Export", "Markdown Export", "Scraping Agent", "Automation Agent"]},
+    {
+        "id": "planning",
+        "name": "Planning",
+        "agents": ["Planner", "Requirements Clarifier", "Stack Selector"],
+    },
+    {
+        "id": "generating",
+        "name": "Generating",
+        "agents": [
+            "Frontend Generation",
+            "Backend Generation",
+            "Database Agent",
+            "API Integration",
+            "Test Generation",
+            "Image Generation",
+        ],
+    },
+    {
+        "id": "validating",
+        "name": "Validating",
+        "agents": [
+            "Security Checker",
+            "Test Executor",
+            "UX Auditor",
+            "Performance Analyzer",
+        ],
+    },
+    {
+        "id": "deployment",
+        "name": "Deployment",
+        "agents": ["Deployment Agent", "Error Recovery", "Memory Agent"],
+    },
+    {
+        "id": "export_automation",
+        "name": "Export & automation",
+        "agents": [
+            "PDF Export",
+            "Excel Export",
+            "Markdown Export",
+            "Scraping Agent",
+            "Automation Agent",
+        ],
+    },
 ]
 
 CRUCIBAI_TOP_COMMENT = "// Built with CrucibAI · https://crucibai.com\n"
-_BRANDING_BASE_URL = os.environ.get("CRUCIBAI_BRANDING_URL") or (os.environ.get("BACKEND_PUBLIC_URL", "http://localhost:8000").rstrip("/") + "/branding")
+_BRANDING_BASE_URL = os.environ.get("CRUCIBAI_BRANDING_URL") or (
+    os.environ.get("BACKEND_PUBLIC_URL", "http://localhost:8000").rstrip("/")
+    + "/branding"
+)
 CRUCIBAI_FREE_FOOTER_JSX = f'<iframe src="{_BRANDING_BASE_URL}" title="Built with CrucibAI" style={{{{ border: "none", height: "28px", width: "100%", display: "block" }}}} />'
 CRUCIBAI_PAID_FOOTER_JSX = '<div className="mt-8 py-3 text-center text-sm text-gray-500 border-t border-gray-200/50"><a href="https://crucibai.com" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-700">Built with CrucibAI</a></div>'
 
@@ -123,7 +210,10 @@ class ProjectCreate(BaseModel):
     @model_validator(mode="after")
     def check_requirements_size(self):
         try:
-            if len(json.dumps(self.requirements or {})) > MAX_PROJECT_REQUIREMENTS_JSON_LENGTH:
+            if (
+                len(json.dumps(self.requirements or {}))
+                > MAX_PROJECT_REQUIREMENTS_JSON_LENGTH
+            ):
                 raise ValueError("requirements too large")
         except TypeError:
             pass
@@ -172,7 +262,9 @@ def _tokens_to_credits(tokens: int) -> int:
 
 async def _ensure_credit_balance(user_id: str) -> None:
     db = get_db()
-    doc = await db.users.find_one({"id": user_id}, {"credit_balance": 1, "token_balance": 1})
+    doc = await db.users.find_one(
+        {"id": user_id}, {"credit_balance": 1, "token_balance": 1}
+    )
     if not doc or doc.get("credit_balance") is not None:
         return
     cred = (doc.get("token_balance") or 0) // CREDITS_PER_TOKEN
@@ -180,16 +272,22 @@ async def _ensure_credit_balance(user_id: str) -> None:
 
 
 def _quality_verdict(score: float) -> str:
-    if score >= 90: return "excellent"
-    if score >= 75: return "good"
-    if score >= 60: return "acceptable"
+    if score >= 90:
+        return "excellent"
+    if score >= 75:
+        return "good"
+    if score >= 60:
+        return "acceptable"
     return "needs-improvement"
 
 
 def _quality_badge(score: float) -> str:
-    if score >= 90: return "\U0001f3c6"
-    if score >= 75: return "\u2705"
-    if score >= 60: return "\u26a0\ufe0f"
+    if score >= 90:
+        return "\U0001f3c6"
+    if score >= 75:
+        return "\u2705"
+    if score >= 60:
+        return "\u26a0\ufe0f"
     return "\u274c"
 
 
@@ -197,7 +295,12 @@ def emit_build_event(project_id: str, event_type: str, **kwargs: Any) -> None:
     if project_id not in _build_events:
         _build_events[project_id] = []
     lst = _build_events[project_id]
-    ev = {"id": len(lst), "ts": datetime.now(timezone.utc).isoformat(), "type": event_type, **kwargs}
+    ev = {
+        "id": len(lst),
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "type": event_type,
+        **kwargs,
+    }
     lst.append(ev)
     if len(lst) > _BUILD_EVENTS_MAX:
         _build_events[project_id] = lst[-_BUILD_EVENTS_MAX:]
@@ -205,14 +308,23 @@ def emit_build_event(project_id: str, event_type: str, **kwargs: Any) -> None:
             e["id"] = i
     _db = get_db()
     if _db is not None:
+
         async def _persist():
             try:
                 await _db.projects.update_one(
                     {"id": project_id},
-                    {"$set": {"build_events": lst[-200:], "build_events_updated_at": datetime.now(timezone.utc).isoformat()}}
+                    {
+                        "$set": {
+                            "build_events": lst[-200:],
+                            "build_events_updated_at": datetime.now(
+                                timezone.utc
+                            ).isoformat(),
+                        }
+                    },
                 )
             except Exception:
                 pass
+
         try:
             asyncio.get_running_loop().create_task(_persist())
         except RuntimeError:
@@ -231,18 +343,27 @@ def _safe_import_path(path: str) -> str:
     return p[:500]
 
 
-async def _user_can_access_project_workspace(user_id: Optional[str], project_id: str) -> bool:
+async def _user_can_access_project_workspace(
+    user_id: Optional[str], project_id: str
+) -> bool:
     db = get_db()
     if not project_id or not user_id:
         return False
-    project = await db.projects.find_one({"id": project_id, "user_id": user_id}, {"id": 1})
+    project = await db.projects.find_one(
+        {"id": project_id, "user_id": user_id}, {"id": 1}
+    )
     if project:
         return True
     try:
         from db_pg import get_pg_pool
+
         pool = await get_pg_pool()
         async with pool.acquire() as conn:
-            row = await conn.fetchrow("SELECT 1 FROM jobs WHERE project_id = $1 AND user_id = $2 LIMIT 1", project_id, user_id)
+            row = await conn.fetchrow(
+                "SELECT 1 FROM jobs WHERE project_id = $1 AND user_id = $2 LIMIT 1",
+                project_id,
+                user_id,
+            )
         return row is not None
     except Exception:
         return False
@@ -266,13 +387,22 @@ def _list_all_workspace_rel_paths(root: Path) -> List[str]:
     return files
 
 
-def _paginated_workspace_files_payload(paths: List[str], offset: int, limit: int) -> Dict[str, Any]:
+def _paginated_workspace_files_payload(
+    paths: List[str], offset: int, limit: int
+) -> Dict[str, Any]:
     total = len(paths)
     off = max(0, int(offset))
     lim = max(1, min(int(limit), 1000))
-    slice_paths = paths[off: off + lim]
+    slice_paths = paths[off : off + lim]
     has_more = off + lim < total
-    return {"files": slice_paths, "total_count": total, "offset": off, "limit": lim, "has_more": has_more, "next_offset": off + lim if has_more else None}
+    return {
+        "files": slice_paths,
+        "total_count": total,
+        "offset": off,
+        "limit": lim,
+        "has_more": has_more,
+        "next_offset": off + lim if has_more else None,
+    }
 
 
 def _workspace_file_disk_path(root: Path, path: str) -> Path:
@@ -290,7 +420,12 @@ def _workspace_file_disk_path(root: Path, path: str) -> Path:
 
 
 def _create_preview_token(project_id: str, user_id: str) -> str:
-    payload = {"project_id": project_id, "user_id": user_id, "purpose": "preview", "exp": datetime.now(timezone.utc) + timedelta(minutes=2)}
+    payload = {
+        "project_id": project_id,
+        "user_id": user_id,
+        "purpose": "preview",
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=2),
+    }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
@@ -308,14 +443,18 @@ async def _build_project_deploy_zip(project_id: str, user_id: str):
         raise HTTPException(status_code=404, detail="Project not found")
     deploy_files = project.get("deploy_files") or {}
     if not deploy_files:
-        raise HTTPException(status_code=404, detail="No deploy snapshot for this project.")
+        raise HTTPException(
+            status_code=404, detail="No deploy snapshot for this project."
+        )
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr("README-DEPLOY.md", DEPLOY_README)
         for name, content in deploy_files.items():
             safe_name = (name or "").lstrip("/")
             if safe_name:
-                zf.writestr(safe_name, content if isinstance(content, str) else str(content))
+                zf.writestr(
+                    safe_name, content if isinstance(content, str) else str(content)
+                )
     buf.seek(0)
     return buf
 
@@ -334,14 +473,35 @@ async def _get_project_deploy_files(project_id: str, user_id: str) -> tuple:
 
 # ── Orchestration helpers (from server.py) ──
 
+
 def _token_budget_for_orchestration_agent(agent_name: str, system_msg: str) -> int:
-    explicit = {"Frontend Generation": 150000, "Backend Generation": 120000, "Database Agent": 80000, "Test Generation": 100000, "Deployment Agent": 60000}
-    if agent_name in explicit: return explicit[agent_name]
-    if agent_name.endswith("Tool Agent"): return 70000
+    explicit = {
+        "Frontend Generation": 150000,
+        "Backend Generation": 120000,
+        "Database Agent": 80000,
+        "Test Generation": 100000,
+        "Deployment Agent": 60000,
+    }
+    if agent_name in explicit:
+        return explicit[agent_name]
+    if agent_name.endswith("Tool Agent"):
+        return 70000
     prompt_len = len(system_msg or "")
     return max(25000, min(110000, 22000 + prompt_len * 18))
 
-_ORCHESTRATION_AGENTS = [(agent_name, _token_budget_for_orchestration_agent(agent_name, get_system_prompt_for_agent(agent_name)), get_system_prompt_for_agent(agent_name)) for phase in get_execution_phases(AGENT_DAG) for agent_name in phase]
+
+_ORCHESTRATION_AGENTS = [
+    (
+        agent_name,
+        _token_budget_for_orchestration_agent(
+            agent_name, get_system_prompt_for_agent(agent_name)
+        ),
+        get_system_prompt_for_agent(agent_name),
+    )
+    for phase in get_execution_phases(AGENT_DAG)
+    for agent_name in phase
+]
+
 
 async def _run_single_agent_with_context(
     project_id: str,
@@ -359,7 +519,12 @@ async def _run_single_agent_with_context(
 ) -> Dict[str, Any]:
     """Run one agent with context from previous agents. Returns {output, tokens_used, status} or raises."""
     if agent_name not in AGENT_DAG:
-        return {"output": "", "tokens_used": 0, "status": "skipped", "reason": "Unknown agent"}
+        return {
+            "output": "",
+            "tokens_used": 0,
+            "status": "skipped",
+            "reason": "Unknown agent",
+        }
     # Real tool agents: execute real tools (File, Browser, API, Database, Deployment) from DAG context
     if agent_name in REAL_AGENT_NAMES:
         real_result = await run_real_agent(
@@ -368,14 +533,21 @@ async def _run_single_agent_with_context(
         if real_result is not None:
             persist_agent_output(project_id, agent_name, real_result)
             try:
-                run_agent_real_behavior(agent_name, project_id, real_result, previous_outputs)
+                run_agent_real_behavior(
+                    agent_name, project_id, real_result, previous_outputs
+                )
             except Exception as e:
                 logger.warning("run_agent_real_behavior %s: %s", agent_name, e)
             return real_result
     system_msg = get_system_prompt_for_agent(agent_name)
-    if agent_name == "Frontend Generation" and (build_kind or "").strip().lower() == "mobile":
+    if (
+        agent_name == "Frontend Generation"
+        and (build_kind or "").strip().lower() == "mobile"
+    ):
         system_msg = "You are Frontend Generation for a mobile app. Output only Expo/React Native code (App.js, use React Native components from 'react-native', no DOM or web-only APIs). No markdown."
-    enhanced_message = build_context_from_previous_agents(agent_name, previous_outputs, project_prompt)
+    enhanced_message = build_context_from_previous_agents(
+        agent_name, previous_outputs, project_prompt
+    )
     if retry_error:
         enhanced_message += (
             "\n\n[Previous attempt failed]\n"
@@ -394,7 +566,9 @@ async def _run_single_agent_with_context(
         available_credits=available_credits,
         agent_name=agent_name,
     )
-    tokens_used = max(100, min(200000, (len(enhanced_message) + len(response or "")) * 2))
+    tokens_used = max(
+        100, min(200000, (len(enhanced_message) + len(response or "")) * 2)
+    )
     out = (response or "").strip()
     input_data = _agent_cache_input(agent_name, project_prompt, previous_outputs)
     result: Dict[str, Any] = {
@@ -406,11 +580,19 @@ async def _run_single_agent_with_context(
     }
 
     # Image Generation: LLM returns JSON prompts -> Together.ai generates images
-    if agent_name == "Image Generation" and generate_images_for_app and parse_image_prompts:
+    if (
+        agent_name == "Image Generation"
+        and generate_images_for_app
+        and parse_image_prompts
+    ):
         try:
             prompts_dict = parse_image_prompts(out)
-            design_desc = enhanced_message[:1000] if enhanced_message else project_prompt[:500]
-            images = await generate_images_for_app(design_desc, prompts_dict if prompts_dict else None)
+            design_desc = (
+                enhanced_message[:1000] if enhanced_message else project_prompt[:500]
+            )
+            images = await generate_images_for_app(
+                design_desc, prompts_dict if prompts_dict else None
+            )
             out = json.dumps(images) if images else out
             result = {
                 "output": out,
@@ -422,12 +604,26 @@ async def _run_single_agent_with_context(
             }
         except Exception as e:
             logger.error(f"Image generation failed: {e}")
-            result = {"output": out, "tokens_used": tokens_used, "status": "completed", "result": out, "code": out}
-    elif agent_name == "Video Generation" and generate_videos_for_app and parse_video_queries:
+            result = {
+                "output": out,
+                "tokens_used": tokens_used,
+                "status": "completed",
+                "result": out,
+                "code": out,
+            }
+    elif (
+        agent_name == "Video Generation"
+        and generate_videos_for_app
+        and parse_video_queries
+    ):
         try:
             queries_dict = parse_video_queries(out)
-            design_desc = enhanced_message[:1000] if enhanced_message else project_prompt[:500]
-            videos = await generate_videos_for_app(design_desc, queries_dict if queries_dict else None)
+            design_desc = (
+                enhanced_message[:1000] if enhanced_message else project_prompt[:500]
+            )
+            videos = await generate_videos_for_app(
+                design_desc, queries_dict if queries_dict else None
+            )
             out = json.dumps(videos) if videos else out
             result = {
                 "output": out,
@@ -459,11 +655,15 @@ async def _run_single_agent_with_context(
     except Exception as e:
         logger.warning("run_agent_real_behavior %s: %s", agent_name, e)
 
-    
     # --- METRICS: Track agent execution ---
     try:
-        safe_output = coerce_text_output(result.get("output") or result.get("result") or "")
-        _metrics.agent_executions_total.labels(agent=agent_name, status="success" if safe_output and len(safe_output) > 50 else "partial").inc()
+        safe_output = coerce_text_output(
+            result.get("output") or result.get("result") or ""
+        )
+        _metrics.agent_executions_total.labels(
+            agent=agent_name,
+            status="success" if safe_output and len(safe_output) > 50 else "partial",
+        ).inc()
         _metrics.active_agents.dec()
     except Exception:
         pass
@@ -471,12 +671,18 @@ async def _run_single_agent_with_context(
     try:
         memory = await _init_agent_learning()
         if memory:
-            safe_output = coerce_text_output(result.get("output") or result.get("result") or "")
+            safe_output = coerce_text_output(
+                result.get("output") or result.get("result") or ""
+            )
             await memory.record_execution(
                 agent_name=agent_name,
                 input_data={"prompt": input_data[:500], "project_id": project_id},
                 output={"result": safe_output[:500], "tokens": tokens_used},
-                status=ExecutionStatus.SUCCESS if safe_output and len(safe_output) > 50 else ExecutionStatus.PARTIAL,
+                status=(
+                    ExecutionStatus.SUCCESS
+                    if safe_output and len(safe_output) > 50
+                    else ExecutionStatus.PARTIAL
+                ),
                 duration_ms=0,
                 metadata={"build_kind": build_kind or "web"},
             )
@@ -488,24 +694,32 @@ async def _run_single_agent_with_context(
             await _vector_memory.store_agent_output(
                 project_id=project_id,
                 agent_name=agent_name,
-                output=coerce_text_output(result.get("output") or result.get("result") or "", limit=2000),
+                output=coerce_text_output(
+                    result.get("output") or result.get("result") or "", limit=2000
+                ),
                 tokens_used=tokens_used,
             )
     except Exception as e:
         logger.debug("Vector memory store failed (non-fatal): %s", e)
 
     try:
-        if _pgvector_memory and getattr(_pgvector_memory, "is_available", lambda: False)():
+        if (
+            _pgvector_memory
+            and getattr(_pgvector_memory, "is_available", lambda: False)()
+        ):
             await _pgvector_memory.store_agent_output(
                 project_id=project_id,
                 agent_name=agent_name,
-                output=coerce_text_output(result.get("output") or result.get("result") or "", limit=2000),
+                output=coerce_text_output(
+                    result.get("output") or result.get("result") or "", limit=2000
+                ),
                 tokens_used=tokens_used,
             )
     except Exception as e:
         logger.debug("PGVector memory store failed (non-fatal): %s", e)
 
     return result
+
 
 async def _repair_generated_agent_output(
     *,
@@ -519,7 +733,9 @@ async def _repair_generated_agent_output(
     available_credits: int,
     project_id: str,
 ) -> Dict[str, Any]:
-    raw_output = result.get("output") or result.get("result") or result.get("code") or ""
+    raw_output = (
+        result.get("output") or result.get("result") or result.get("code") or ""
+    )
     if not CodeRepairAgent.requires_validation(agent_name, raw_output):
         safe_text = coerce_text_output(raw_output)
         result["output"] = safe_text
@@ -527,7 +743,9 @@ async def _repair_generated_agent_output(
         result["code"] = safe_text
         return result
 
-    async def _llm_repair_callback(name: str, language: str, broken: str, error: str) -> str:
+    async def _llm_repair_callback(
+        name: str, language: str, broken: str, error: str
+    ) -> str:
         repair_prompt = (
             f"The previous output for agent '{name}' is invalid {language}.\n"
             f"Error: {error}\n\n"
@@ -558,7 +776,9 @@ async def _repair_generated_agent_output(
         llm_repair=_llm_repair_callback,
     )
     if not repaired.get("valid"):
-        raise AgentError(agent_name, f"output_validation_failed: {repaired.get('error')}", "high")
+        raise AgentError(
+            agent_name, f"output_validation_failed: {repaired.get('error')}", "high"
+        )
 
     safe_text = repaired.get("output") or ""
     result["output"] = safe_text
@@ -577,18 +797,24 @@ async def _repair_generated_agent_output(
         )
     return result
 
-def _agent_cache_input(agent_name: str, project_prompt: str, previous_outputs: Dict[str, Dict[str, Any]]) -> str:
+
+def _agent_cache_input(
+    agent_name: str, project_prompt: str, previous_outputs: Dict[str, Dict[str, Any]]
+) -> str:
     """Build stable input string for agent cache key (prompt + dependent outputs)."""
     parts = [project_prompt]
     deps = list(AGENT_DAG.get(agent_name, {}).get("depends_on", []))
     for dep in sorted(deps):
         if dep in previous_outputs:
             out = coerce_text_output(
-                previous_outputs[dep].get("output") or previous_outputs[dep].get("result") or "",
+                previous_outputs[dep].get("output")
+                or previous_outputs[dep].get("result")
+                or "",
                 limit=800,
             )
             parts.append(f"{dep}:{out}")
     return "\n".join(parts)
+
 
 async def _run_single_agent_with_retry(
     project_id: str,
@@ -606,16 +832,30 @@ async def _run_single_agent_with_retry(
 ) -> Dict[str, Any]:
     db = get_db()
     from agent_cache import get as cache_get, set as cache_set
+
     input_data = _agent_cache_input(agent_name, project_prompt, previous_outputs)
     cached = await cache_get(db, agent_name, input_data)
-    if cached and isinstance(cached, dict) and (cached.get("output") or cached.get("result")):
+    if (
+        cached
+        and isinstance(cached, dict)
+        and (cached.get("output") or cached.get("result"))
+    ):
         return cached
     last_err = None
     for attempt in range(max_retries):
         try:
             r = await _run_single_agent_with_context(
-                project_id, user_id, agent_name, project_prompt, previous_outputs, effective, model_chain, build_kind=build_kind,
-                user_tier=user_tier, speed_selector=speed_selector, available_credits=available_credits,
+                project_id,
+                user_id,
+                agent_name,
+                project_prompt,
+                previous_outputs,
+                effective,
+                model_chain,
+                build_kind=build_kind,
+                user_tier=user_tier,
+                speed_selector=speed_selector,
+                available_credits=available_credits,
                 retry_error=str(last_err) if last_err else None,
             )
             if not (r.get("output") or r.get("result")):
@@ -632,64 +872,123 @@ async def _run_single_agent_with_retry(
                 str(e)[:300],
             )
             if attempt < max_retries - 1:
-                await asyncio.sleep(2 ** attempt)
+                await asyncio.sleep(2**attempt)
     crit = get_criticality(agent_name)
     if crit == "critical":
         completed_at = datetime.now(timezone.utc).isoformat()
         await db.projects.update_one(
             {"id": project_id},
-            {"$set": {"status": "failed", "completed_at": completed_at}}
+            {"$set": {"status": "failed", "completed_at": completed_at}},
         )
         # Append to build_history for version history UI (item 13)
         proj = await db.projects.find_one({"id": project_id})
         if proj is not None:
             history = list(proj.get("build_history") or [])
-            history.insert(0, {"completed_at": completed_at, "status": "failed", "quality_score": None, "tokens_used": 0})
-            await db.projects.update_one({"id": project_id}, {"$set": {"build_history": history[:50]}})
-        return {"output": "", "tokens_used": 0, "status": "failed", "reason": str(last_err), "recoverable": False}
+            history.insert(
+                0,
+                {
+                    "completed_at": completed_at,
+                    "status": "failed",
+                    "quality_score": None,
+                    "tokens_used": 0,
+                },
+            )
+            await db.projects.update_one(
+                {"id": project_id}, {"$set": {"build_history": history[:50]}}
+            )
+        return {
+            "output": "",
+            "tokens_used": 0,
+            "status": "failed",
+            "reason": str(last_err),
+            "recoverable": False,
+        }
     if crit == "high":
         fallback = generate_fallback(agent_name)
-        return {"output": fallback, "result": fallback, "tokens_used": 0, "status": "failed_with_fallback", "reason": str(last_err), "recoverable": True}
-    return {"output": "", "tokens_used": 0, "status": "skipped", "reason": str(last_err), "recoverable": True}
+        return {
+            "output": fallback,
+            "result": fallback,
+            "tokens_used": 0,
+            "status": "failed_with_fallback",
+            "reason": str(last_err),
+            "recoverable": True,
+        }
+    return {
+        "output": "",
+        "tokens_used": 0,
+        "status": "skipped",
+        "reason": str(last_err),
+        "recoverable": True,
+    }
 
-def _inject_media_into_jsx(jsx: str, images: Dict[str, str], videos: Dict[str, str]) -> str:
+
+def _inject_media_into_jsx(
+    jsx: str, images: Dict[str, str], videos: Dict[str, str]
+) -> str:
     """Inject image/video URLs into generated JSX. Replaces placeholders or prepends a media section."""
     if not jsx or (not images and not videos):
         return jsx
     # Replace placeholders if present
     out = jsx
     if images.get("hero"):
-        out = out.replace("CRUCIBAI_HERO_IMG", images["hero"]).replace("{{HERO_IMAGE}}", images["hero"])
+        out = out.replace("CRUCIBAI_HERO_IMG", images["hero"]).replace(
+            "{{HERO_IMAGE}}", images["hero"]
+        )
     if images.get("feature_1"):
-        out = out.replace("CRUCIBAI_FEATURE_1_IMG", images["feature_1"]).replace("{{FEATURE_1_IMAGE}}", images["feature_1"])
+        out = out.replace("CRUCIBAI_FEATURE_1_IMG", images["feature_1"]).replace(
+            "{{FEATURE_1_IMAGE}}", images["feature_1"]
+        )
     if images.get("feature_2"):
-        out = out.replace("CRUCIBAI_FEATURE_2_IMG", images["feature_2"]).replace("{{FEATURE_2_IMAGE}}", images["feature_2"])
+        out = out.replace("CRUCIBAI_FEATURE_2_IMG", images["feature_2"]).replace(
+            "{{FEATURE_2_IMAGE}}", images["feature_2"]
+        )
     if videos.get("hero"):
-        out = out.replace("CRUCIBAI_HERO_VIDEO", videos["hero"]).replace("{{HERO_VIDEO}}", videos["hero"])
+        out = out.replace("CRUCIBAI_HERO_VIDEO", videos["hero"]).replace(
+            "{{HERO_VIDEO}}", videos["hero"]
+        )
     if videos.get("feature"):
-        out = out.replace("CRUCIBAI_FEATURE_VIDEO", videos["feature"]).replace("{{FEATURE_VIDEO}}", videos["feature"])
+        out = out.replace("CRUCIBAI_FEATURE_VIDEO", videos["feature"]).replace(
+            "{{FEATURE_VIDEO}}", videos["feature"]
+        )
     # If no placeholders were used, prepend a media section after "return ("
     if out == jsx and ("CRUCIBAI_" not in jsx and "{{HERO" not in jsx):
         media_parts = []
         if videos.get("hero"):
-            media_parts.append(f'<section className="relative w-full h-48 md:h-64 overflow-hidden rounded-lg"><video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover" src="{videos["hero"]}" /></section>')
+            media_parts.append(
+                f'<section className="relative w-full h-48 md:h-64 overflow-hidden rounded-lg"><video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover" src="{videos["hero"]}" /></section>'
+            )
         img_keys = ["hero", "feature_1", "feature_2"]
         img_urls = [images.get(k) for k in img_keys if images.get(k)]
         if img_urls:
-            divs = "".join(f'<div><img src="{u}" alt="Media" className="w-full h-32 object-cover rounded-lg" /></div>' for u in img_urls)
-            media_parts.append(f'<section className="grid grid-cols-1 md:grid-cols-3 gap-4 py-4">{divs}</section>')
+            divs = "".join(
+                f'<div><img src="{u}" alt="Media" className="w-full h-32 object-cover rounded-lg" /></div>'
+                for u in img_urls
+            )
+            media_parts.append(
+                f'<section className="grid grid-cols-1 md:grid-cols-3 gap-4 py-4">{divs}</section>'
+            )
         if media_parts:
             block = "\n      ".join(media_parts)
             idx = out.find("return (")
             if idx != -1:
                 insert = idx + len("return (")
-                out = out[:insert] + "\n      " + block + "\n      " + out[insert:].lstrip()
+                out = (
+                    out[:insert]
+                    + "\n      "
+                    + block
+                    + "\n      "
+                    + out[insert:].lstrip()
+                )
     return out
+
 
 # CrucibAI attribution: comment at top + footer. Free = iframe (served from our server, not removable). Paid = static div (user may remove).
 CRUCIBAI_TOP_COMMENT = "// Built with CrucibAI · https://crucibai.com\n"
 # URL for free-tier iframe: badge content is on our server so free users have no way to remove it (only the iframe tag in source).
-_BRANDING_BASE_URL = os.environ.get("CRUCIBAI_BRANDING_URL") or (os.environ.get("BACKEND_PUBLIC_URL", "http://localhost:8000").rstrip("/") + "/branding")
+_BRANDING_BASE_URL = os.environ.get("CRUCIBAI_BRANDING_URL") or (
+    os.environ.get("BACKEND_PUBLIC_URL", "http://localhost:8000").rstrip("/")
+    + "/branding"
+)
 # Free: iframe loads badge from our server — permanent, not in their editable content.
 CRUCIBAI_FREE_FOOTER_JSX = (
     f'<iframe src="{_BRANDING_BASE_URL}" title="Built with CrucibAI" '
@@ -699,7 +998,7 @@ CRUCIBAI_FREE_FOOTER_JSX = (
 CRUCIBAI_PAID_FOOTER_JSX = (
     '<div className="mt-8 py-3 text-center text-sm text-gray-500 border-t border-gray-200/50">'
     '<a href="https://crucibai.com" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-700">Built with CrucibAI</a>'
-    '</div>'
+    "</div>"
 )
 
 
@@ -713,7 +1012,11 @@ def _inject_crucibai_branding(jsx: str, plan: str) -> str:
         if out.lstrip().startswith("//") or out.lstrip().startswith("/*"):
             first_newline = out.find("\n")
             if first_newline != -1:
-                out = out[: first_newline + 1] + CRUCIBAI_TOP_COMMENT + out[first_newline + 1 :]
+                out = (
+                    out[: first_newline + 1]
+                    + CRUCIBAI_TOP_COMMENT
+                    + out[first_newline + 1 :]
+                )
             else:
                 out = CRUCIBAI_TOP_COMMENT + out
         else:
@@ -728,35 +1031,122 @@ def _inject_crucibai_branding(jsx: str, plan: str) -> str:
             before = out[:idx]
             last_div = before.rfind("</div>")
             if last_div != -1:
-                out = out[:last_div] + "\n      " + footer_jsx + "\n      " + out[last_div:]
+                out = (
+                    out[:last_div]
+                    + "\n      "
+                    + footer_jsx
+                    + "\n      "
+                    + out[last_div:]
+                )
     return out
+
 
 def _infer_build_kind(prompt: str) -> str:
     """Infer build_kind from prompt so we build the right artifact: web, mobile, agent/automation, software, etc."""
     if not prompt:
         return "fullstack"
     p = prompt.lower()
-    if any(x in p for x in ("mobile app", "react native", "flutter", "ios app", "android app", "pwa ", "app store", "play store", "apple store", "google play", "build me a mobile", "mobile application")):
+    if any(
+        x in p
+        for x in (
+            "mobile app",
+            "react native",
+            "flutter",
+            "ios app",
+            "android app",
+            "pwa ",
+            "app store",
+            "play store",
+            "apple store",
+            "google play",
+            "build me a mobile",
+            "mobile application",
+        )
+    ):
         return "mobile"
-    if any(x in p for x in ("build me an agent", "automation agent", "automation", "scheduled task", "cron", "webhook agent", "run_agent", "build agent")):
+    if any(
+        x in p
+        for x in (
+            "build me an agent",
+            "automation agent",
+            "automation",
+            "scheduled task",
+            "cron",
+            "webhook agent",
+            "run_agent",
+            "build agent",
+        )
+    ):
         return "ai_agent"
-    if any(x in p for x in ("saas", "subscription", "multi-tenant", "billing", "stripe", "plans/tiers")):
+    if any(
+        x in p
+        for x in (
+            "saas",
+            "subscription",
+            "multi-tenant",
+            "billing",
+            "stripe",
+            "plans/tiers",
+        )
+    ):
         return "saas"
-    if any(x in p for x in ("slack bot", "discord bot", "telegram bot", "chatbot", " webhook bot", "bot that")):
+    if any(
+        x in p
+        for x in (
+            "slack bot",
+            "discord bot",
+            "telegram bot",
+            "chatbot",
+            " webhook bot",
+            "bot that",
+        )
+    ):
         return "bot"
-    if any(x in p for x in ("ai agent", "llm agent", "agent with tools", "autonomous agent")):
+    if any(
+        x in p
+        for x in ("ai agent", "llm agent", "agent with tools", "autonomous agent")
+    ):
         return "ai_agent"
-    if any(x in p for x in ("game", "2d game", "3d game", "browser game", "mobile game", "arcade", "player score", "level design")):
+    if any(
+        x in p
+        for x in (
+            "game",
+            "2d game",
+            "3d game",
+            "browser game",
+            "mobile game",
+            "arcade",
+            "player score",
+            "level design",
+        )
+    ):
         return "game"
-    if any(x in p for x in ("trading software", "trading app", "stock trading", "crypto trading", "forex", "order book", "positions", "p&l", "trade execution", "portfolio tracker")):
+    if any(
+        x in p
+        for x in (
+            "trading software",
+            "trading app",
+            "stock trading",
+            "crypto trading",
+            "forex",
+            "order book",
+            "positions",
+            "p&l",
+            "trade execution",
+            "portfolio tracker",
+        )
+    ):
         return "trading"
-    if any(x in p for x in ("landing page", "landing only", "one-page", "marketing page")):
+    if any(
+        x in p for x in ("landing page", "landing only", "one-page", "marketing page")
+    ):
         return "landing"
     if any(x in p for x in ("website", "build me a website", "build me a web")):
         return "fullstack"
     if any(x in p for x in ("anything", "whatever", "no limit", "any idea", "any app")):
         return "any"
     return "fullstack"
+
 
 async def run_orchestration_v2(project_id: str, user_id: str):
     """DAG-based orchestration: parallel phases, output chaining, retry, timeout, quality score."""
@@ -770,15 +1160,33 @@ async def run_orchestration_v2(project_id: str, user_id: str):
     if not project:
         return
     req = project.get("requirements") or {}
-    prompt = req.get("prompt") or req.get("description") or project.get("description") or "Build a web application"
+    prompt = (
+        req.get("prompt")
+        or req.get("description")
+        or project.get("description")
+        or "Build a web application"
+    )
     if isinstance(prompt, dict):
         prompt = prompt.get("prompt") or str(prompt)
-    build_kind = (req.get("build_kind") or "").strip().lower() or _infer_build_kind(prompt)
-    if build_kind not in ("fullstack", "landing", "mobile", "saas", "bot", "ai_agent", "game", "trading", "any"):
+    build_kind = (req.get("build_kind") or "").strip().lower() or _infer_build_kind(
+        prompt
+    )
+    if build_kind not in (
+        "fullstack",
+        "landing",
+        "mobile",
+        "saas",
+        "bot",
+        "ai_agent",
+        "game",
+        "trading",
+        "any",
+    ):
         build_kind = "fullstack"
     project_prompt_with_kind = f"[Build kind: {build_kind}]\n{prompt}"
     try:
         from autonomous_domain_agent import initialize_autonomous_domain_agent
+
         _domain_agent = await initialize_autonomous_domain_agent(db)
         _analysis = await _domain_agent.analyze_requirements(prompt)
         _d = _analysis.get("detected_domain") or "general"
@@ -794,7 +1202,7 @@ async def run_orchestration_v2(project_id: str, user_id: str):
         logger.debug("Autonomous domain enrichment skipped: %s", _dom_err)
     user_keys = await get_workspace_api_keys({"id": user_id})
     effective = _effective_api_keys(user_keys)
-    
+
     # Get user tier and derive speed from plan (no client speed_selector)
     user = await db.users.find_one({"id": user_id}, {"plan": 1, "credit_balance": 1})
     user_tier = user.get("plan", "free") if user else "free"
@@ -802,17 +1210,40 @@ async def run_orchestration_v2(project_id: str, user_id: str):
     speed_selector = _speed_from_plan(user_tier)
     model_chain = _get_model_chain("auto", prompt, effective_keys=effective)
     if not effective.get("anthropic"):
-        await db.projects.update_one({"id": project_id}, {"$set": {"status": "failed", "completed_at": datetime.now(timezone.utc).isoformat()}})
-        emit_build_event(project_id, "build_completed", status="failed", message="No API keys")
+        await db.projects.update_one(
+            {"id": project_id},
+            {
+                "$set": {
+                    "status": "failed",
+                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+        )
+        emit_build_event(
+            project_id, "build_completed", status="failed", message="No API keys"
+        )
         return
-    await db.projects.update_one({"id": project_id}, {"$set": {"status": "running", "current_phase": 0, "progress_percent": 0}})
+    await db.projects.update_one(
+        {"id": project_id},
+        {"$set": {"status": "running", "current_phase": 0, "progress_percent": 0}},
+    )
     phases = get_execution_phases(AGENT_DAG)
     # Item 29: Quick build — run only first 2 phases for preview in ~2 min
     if project.get("quick_build"):
         phases = phases[:2]
-        emit_build_event(project_id, "build_started", phases=len(phases), message="Quick build started (preview in ~2 min)")
+        emit_build_event(
+            project_id,
+            "build_started",
+            phases=len(phases),
+            message="Quick build started (preview in ~2 min)",
+        )
     else:
-        emit_build_event(project_id, "build_started", phases=len(phases), message="Orchestration started")
+        emit_build_event(
+            project_id,
+            "build_started",
+            phases=len(phases),
+            message="Orchestration started",
+        )
     results: Dict[str, Dict[str, Any]] = {}
     total_used = 0
     suggest_retry_phase: Optional[int] = None
@@ -829,44 +1260,106 @@ async def run_orchestration_v2(project_id: str, user_id: str):
             status = doc.get("status", "")
             output = doc.get("output", "")
             if agent_nm and status in ("complete", "failed_with_fallback") and output:
-                results[agent_nm] = {"output": output, "result": output, "status": status, "from_checkpoint": True}
+                results[agent_nm] = {
+                    "output": output,
+                    "result": output,
+                    "status": status,
+                    "from_checkpoint": True,
+                }
                 checkpoint_count += 1
         if checkpoint_count > 0:
-            logger.info(f"Checkpoint recovery: {checkpoint_count} agents reloaded, skipping re-execution")
-            emit_build_event(project_id, "checkpoint_restored", count=checkpoint_count,
-                             message=f"Resuming from checkpoint: {checkpoint_count} agents already complete")
+            logger.info(
+                f"Checkpoint recovery: {checkpoint_count} agents reloaded, skipping re-execution"
+            )
+            emit_build_event(
+                project_id,
+                "checkpoint_restored",
+                count=checkpoint_count,
+                message=f"Resuming from checkpoint: {checkpoint_count} agents already complete",
+            )
     except Exception as _cp_err:
         logger.debug(f"Checkpoint load skipped: {_cp_err}")
 
     for phase_idx, agent_names in enumerate(phases):
-        emit_build_event(project_id, "phase_started", phase=phase_idx, agents=agent_names, message=f"Phase {phase_idx + 1}: {', '.join(agent_names)}")
+        emit_build_event(
+            project_id,
+            "phase_started",
+            phase=phase_idx,
+            agents=agent_names,
+            message=f"Phase {phase_idx + 1}: {', '.join(agent_names)}",
+        )
         progress_pct = int((phase_idx + 1) / len(phases) * 100)
         await db.projects.update_one(
             {"id": project_id},
-            {"$set": {"current_phase": phase_idx, "current_agent": ",".join(agent_names), "progress_percent": progress_pct, "tokens_used": total_used}},
+            {
+                "$set": {
+                    "current_phase": phase_idx,
+                    "current_agent": ",".join(agent_names),
+                    "progress_percent": progress_pct,
+                    "tokens_used": total_used,
+                }
+            },
         )
         for agent_name in agent_names:
             # Skip agents already completed in a previous run (checkpoint recovery)
             if agent_name in results and results[agent_name].get("from_checkpoint"):
-                emit_build_event(project_id, "agent_skipped", agent=agent_name,
-                                 message=f"{agent_name} skipped (checkpoint)")
+                emit_build_event(
+                    project_id,
+                    "agent_skipped",
+                    agent=agent_name,
+                    message=f"{agent_name} skipped (checkpoint)",
+                )
                 continue
-            emit_build_event(project_id, "agent_started", agent=agent_name, message=f"{agent_name} started")
+            emit_build_event(
+                project_id,
+                "agent_started",
+                agent=agent_name,
+                message=f"{agent_name} started",
+            )
             await db.agent_status.update_one(
                 {"project_id": project_id, "agent_name": agent_name},
-                {"$set": {"project_id": project_id, "agent_name": agent_name, "status": "running", "progress": 0, "tokens_used": 0, "started_at": datetime.now(timezone.utc).isoformat()}},
+                {
+                    "$set": {
+                        "project_id": project_id,
+                        "agent_name": agent_name,
+                        "status": "running",
+                        "progress": 0,
+                        "tokens_used": 0,
+                        "started_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                },
                 upsert=True,
             )
-            await db.project_logs.insert_one({
-                "id": str(uuid.uuid4()), "project_id": project_id, "agent": agent_name, "message": f"Starting {agent_name}...", "level": "info", "created_at": datetime.now(timezone.utc).isoformat()
-            })
+            await db.project_logs.insert_one(
+                {
+                    "id": str(uuid.uuid4()),
+                    "project_id": project_id,
+                    "agent": agent_name,
+                    "message": f"Starting {agent_name}...",
+                    "level": "info",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
         timeout_sec = max(get_timeout(a) for a in agent_names)
+
         async def run_one(name: str):
             return await asyncio.wait_for(
-                _run_single_agent_with_retry(project_id, user_id, name, project_prompt_with_kind, results, effective, model_chain, build_kind=build_kind,
-                    user_tier=user_tier, speed_selector=speed_selector, available_credits=available_credits),
+                _run_single_agent_with_retry(
+                    project_id,
+                    user_id,
+                    name,
+                    project_prompt_with_kind,
+                    results,
+                    effective,
+                    model_chain,
+                    build_kind=build_kind,
+                    user_tier=user_tier,
+                    speed_selector=speed_selector,
+                    available_credits=available_credits,
+                ),
                 timeout=timeout_sec + 30,
             )
+
         tasks = [run_one(name) for name in agent_names]
         phase_results = await asyncio.gather(*tasks, return_exceptions=True)
         phase_fail_count = 0
@@ -877,46 +1370,96 @@ async def run_orchestration_v2(project_id: str, user_id: str):
                 fallback = generate_fallback(name)
                 if crit == "critical":
                     # Fallback on every critical path (9.5+): use minimal output and continue build
-                    results[name] = {"output": fallback, "result": fallback, "status": "failed_with_fallback", "reason": str(r)}
+                    results[name] = {
+                        "output": fallback,
+                        "result": fallback,
+                        "status": "failed_with_fallback",
+                        "reason": str(r),
+                    }
                 else:
-                    results[name] = {"output": fallback, "result": fallback, "status": "failed_with_fallback"}
+                    results[name] = {
+                        "output": fallback,
+                        "result": fallback,
+                        "status": "failed_with_fallback",
+                    }
             else:
                 results[name] = r
                 total_used += r.get("tokens_used", 0)
-                if (r.get("status") or "").lower() in ("skipped", "failed", "failed_with_fallback"):
+                if (r.get("status") or "").lower() in (
+                    "skipped",
+                    "failed",
+                    "failed_with_fallback",
+                ):
                     phase_fail_count += 1
-            emit_build_event(project_id, "agent_completed", agent=name, tokens=results[name].get("tokens_used", 0), status=results[name].get("status", ""), message=f"{name} completed")
+            emit_build_event(
+                project_id,
+                "agent_completed",
+                agent=name,
+                tokens=results[name].get("tokens_used", 0),
+                status=results[name].get("status", ""),
+                message=f"{name} completed",
+            )
             out_snippet = coerce_text_output(
                 results[name].get("output") or results[name].get("result") or "",
                 limit=200,
             )
             await db.agent_status.update_one(
                 {"project_id": project_id, "agent_name": name},
-                {"$set": {"status": "completed", "progress": 100, "tokens_used": results[name].get("tokens_used", 0)}}
+                {
+                    "$set": {
+                        "status": "completed",
+                        "progress": 100,
+                        "tokens_used": results[name].get("tokens_used", 0),
+                    }
+                },
             )
-            await db.project_logs.insert_one({
-                "id": str(uuid.uuid4()), "project_id": project_id, "agent": name, "message": f"{name} completed. Output: {out_snippet}...", "level": "success", "created_at": datetime.now(timezone.utc).isoformat()
-            })
-            await db.token_usage.insert_one({
-                "id": str(uuid.uuid4()), "project_id": project_id, "user_id": user_id, "agent": name, "tokens": results[name].get("tokens_used", 0), "created_at": datetime.now(timezone.utc).isoformat()
-            })
+            await db.project_logs.insert_one(
+                {
+                    "id": str(uuid.uuid4()),
+                    "project_id": project_id,
+                    "agent": name,
+                    "message": f"{name} completed. Output: {out_snippet}...",
+                    "level": "success",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+            await db.token_usage.insert_one(
+                {
+                    "id": str(uuid.uuid4()),
+                    "project_id": project_id,
+                    "user_id": user_id,
+                    "agent": name,
+                    "tokens": results[name].get("tokens_used", 0),
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
         # 10/10: suggest phase retry when Quality phase (index 3) has many failures
         if phase_idx == 3 and phase_fail_count >= 2:
             suggest_retry_phase = 1
-            suggest_retry_reason = "Quality phase had many failures. Retry code generation?"
+            suggest_retry_reason = (
+                "Quality phase had many failures. Retry code generation?"
+            )
         project = await db.projects.find_one({"id": project_id})
         if project and project.get("status") == "failed":
             return
     # Bounded autonomy loop: re-run tests/security once if they failed (self-heal)
     try:
         from autonomy_loop import run_bounded_autonomy_loop
-        autonomy_result = run_bounded_autonomy_loop(project_id, results, emit_event=emit_build_event)
+
+        autonomy_result = run_bounded_autonomy_loop(
+            project_id, results, emit_event=emit_build_event
+        )
         if autonomy_result.get("iterations"):
-            await db.project_logs.insert_one({
-                "id": str(uuid.uuid4()), "project_id": project_id, "agent": "AutonomyLoop",
-                "message": f"Self-heal: re-ran tests={autonomy_result.get('ran_tests')}, security={autonomy_result.get('ran_security')}",
-                "level": "info", "created_at": datetime.now(timezone.utc).isoformat()
-            })
+            await db.project_logs.insert_one(
+                {
+                    "id": str(uuid.uuid4()),
+                    "project_id": project_id,
+                    "agent": "AutonomyLoop",
+                    "message": f"Self-heal: re-ran tests={autonomy_result.get('ran_tests')}, security={autonomy_result.get('ran_security')}",
+                    "level": "info",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
     except Exception as e:
         logger.warning("autonomy loop: %s", e)
 
@@ -924,22 +1467,55 @@ async def run_orchestration_v2(project_id: str, user_id: str):
     _spec_key = None
     if build_kind == "game":
         _spec_key = "games"
-    elif "ml" in prompt.lower() or "machine learning" in prompt.lower() or "model" in prompt.lower():
+    elif (
+        "ml" in prompt.lower()
+        or "machine learning" in prompt.lower()
+        or "model" in prompt.lower()
+    ):
         _spec_key = "ml"
-    elif "blockchain" in prompt.lower() or "smart contract" in prompt.lower() or "crypto" in prompt.lower():
+    elif (
+        "blockchain" in prompt.lower()
+        or "smart contract" in prompt.lower()
+        or "crypto" in prompt.lower()
+    ):
         _spec_key = "blockchain"
-    elif "iot" in prompt.lower() or "firmware" in prompt.lower() or "embedded" in prompt.lower():
+    elif (
+        "iot" in prompt.lower()
+        or "firmware" in prompt.lower()
+        or "embedded" in prompt.lower()
+    ):
         _spec_key = "iot"
-    elif "science" in prompt.lower() or "math" in prompt.lower() or "simulation" in prompt.lower():
+    elif (
+        "science" in prompt.lower()
+        or "math" in prompt.lower()
+        or "simulation" in prompt.lower()
+    ):
         _spec_key = "science"
     if _spec_key:
         try:
             from specialized_agents_100_percent import SpecializedAgentOrchestrator
+
             _spec_orch = SpecializedAgentOrchestrator()
-            _spec_req = {"prompt": prompt, "name": project_id[:12], "type": "2d_platformer" if _spec_key == "games" else "full"}
+            _spec_req = {
+                "prompt": prompt,
+                "name": project_id[:12],
+                "type": "2d_platformer" if _spec_key == "games" else "full",
+            }
             _spec_out = await _spec_orch.execute_agent(_spec_key, _spec_req)
-            _code = _spec_out.get("game_code") or _spec_out.get("firmware_code") or _spec_out.get("model_code") or _spec_out.get("contract_code") or _spec_out.get("solution_code") or str(_spec_out)
-            results[f"SpecializedAgent-{_spec_key.title()}"] = {"output": _code, "result": _code, "status": _spec_out.get("status", "ok"), "tokens_used": 0}
+            _code = (
+                _spec_out.get("game_code")
+                or _spec_out.get("firmware_code")
+                or _spec_out.get("model_code")
+                or _spec_out.get("contract_code")
+                or _spec_out.get("solution_code")
+                or str(_spec_out)
+            )
+            results[f"SpecializedAgent-{_spec_key.title()}"] = {
+                "output": _code,
+                "result": _code,
+                "status": _spec_out.get("status", "ok"),
+                "tokens_used": 0,
+            }
         except Exception as _spec_err:
             logger.debug("Specialized agent (%s) skipped: %s", _spec_key, _spec_err)
 
@@ -947,7 +1523,11 @@ async def run_orchestration_v2(project_id: str, user_id: str):
     critic_review: Optional[Dict[str, Any]] = None
     truth_report: Optional[Dict[str, Any]] = None
     truth_result: Optional[Dict[str, Any]] = None
-    emit_build_event(project_id, "quality_check_started", message="Running quality review and truth verification…")
+    emit_build_event(
+        project_id,
+        "quality_check_started",
+        message="Running quality review and truth verification…",
+    )
     try:
         emit_build_event(project_id, "critic_started", message="Critic review…")
         critic_review = await _critic_agent.review_build(
@@ -957,14 +1537,18 @@ async def run_orchestration_v2(project_id: str, user_id: str):
             model_chain=model_chain,
             api_keys=effective,
         )
-        logger.info(f"Critic review: score={critic_review.get('overall_score')}, pass_rate={critic_review.get('pass_rate')}%")
-        await db.project_logs.insert_one({
-            "id": str(uuid.uuid4()),
-            "project_id": project_id,
-            "type": "critic_review",
-            "data": critic_review,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        })
+        logger.info(
+            f"Critic review: score={critic_review.get('overall_score')}, pass_rate={critic_review.get('pass_rate')}%"
+        )
+        await db.project_logs.insert_one(
+            {
+                "id": str(uuid.uuid4()),
+                "project_id": project_id,
+                "type": "critic_review",
+                "data": critic_review,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
     except Exception as _critic_err:
         logger.debug("Critic review failed (non-fatal): %s", _critic_err)
     try:
@@ -976,46 +1560,60 @@ async def run_orchestration_v2(project_id: str, user_id: str):
             api_keys=effective,
             project_prompt=prompt,
         )
-        logger.info("Truth verification: verdict=%s, truth_score=%s", truth_report.get("verdict"), truth_report.get("truth_score"))
-        await db.project_logs.insert_one({
-            "id": str(uuid.uuid4()),
-            "project_id": project_id,
-            "type": "truth_verification",
-            "data": truth_report,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        })
+        logger.info(
+            "Truth verification: verdict=%s, truth_score=%s",
+            truth_report.get("verdict"),
+            truth_report.get("truth_score"),
+        )
+        await db.project_logs.insert_one(
+            {
+                "id": str(uuid.uuid4()),
+                "project_id": project_id,
+                "type": "truth_verification",
+                "data": truth_report,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
     except Exception as _truth_err:
         logger.debug("Truth verification failed (non-fatal): %s", _truth_err)
 
     # --- Optional: standalone truth_check (adversarial code honesty) ---
     try:
         from truth_module import truth_check as truth_check_build
+
         async def _llm_for_truth(msg: str, sys_msg: str, sid: str, mchain) -> str:
             r, _ = await _call_llm_with_fallback(
-                message=msg, system_message=sys_msg, session_id=sid,
+                message=msg,
+                system_message=sys_msg,
+                session_id=sid,
                 model_chain=mchain if isinstance(mchain, list) else model_chain,
                 api_keys=effective,
             )
             return r or ""
+
         build_output = {
             k: coerce_text_output(v.get("output") or v.get("result") or "", limit=5000)
             for k, v in list(results.items())[:15]
         }
         truth_result = await truth_check_build(project_id, build_output, _llm_for_truth)
-        await db.project_logs.insert_one({
-            "id": str(uuid.uuid4()),
-            "project_id": project_id,
-            "type": "truth_check_honesty",
-            "data": truth_result,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        })
+        await db.project_logs.insert_one(
+            {
+                "id": str(uuid.uuid4()),
+                "project_id": project_id,
+                "type": "truth_check_honesty",
+                "data": truth_result,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
     except Exception as _tc_err:
         logger.debug("truth_check (honesty) failed (non-fatal): %s", _tc_err)
 
     critic_score = (critic_review or {}).get("overall_score")
     truth_verdict = (truth_report or {}).get("verdict")
     truth_score = (truth_report or {}).get("truth_score")
-    truth_honest_score = (truth_result or {}).get("honest_score") if truth_result else None
+    truth_honest_score = (
+        (truth_result or {}).get("honest_score") if truth_result else None
+    )
 
     fe = (results.get("Frontend Generation") or {}).get("output") or ""
     be = (results.get("Backend Generation") or {}).get("output") or ""
@@ -1023,7 +1621,9 @@ async def run_orchestration_v2(project_id: str, user_id: str):
     tests = (results.get("Test Generation") or {}).get("output") or ""
     images = (results.get("Image Generation") or {}).get("images") or {}
     videos = (results.get("Video Generation") or {}).get("videos") or {}
-    quality = score_generated_code(frontend_code=fe, backend_code=be, database_schema=db_schema, test_code=tests)
+    quality = score_generated_code(
+        frontend_code=fe, backend_code=be, database_schema=db_schema, test_code=tests
+    )
     deploy_files = {}
     if build_kind == "mobile" and fe:
         # Mobile project: Expo app + native config + store submission pack
@@ -1045,14 +1645,25 @@ async def run_orchestration_v2(project_id: str, user_id: str):
             except Exception:
                 pass
         if "app.json" not in deploy_files:
-            deploy_files["app.json"] = '{"name":"App","slug":"app","version":"1.0.0","ios":{"bundleIdentifier":"com.example.app"},"android":{"package":"com.example.app"}}'
+            deploy_files["app.json"] = (
+                '{"name":"App","slug":"app","version":"1.0.0","ios":{"bundleIdentifier":"com.example.app"},"android":{"package":"com.example.app"}}'
+            )
         if "eas.json" not in deploy_files:
-            deploy_files["eas.json"] = '{"build":{"preview":{"ios":{},"android":{}},"production":{"ios":{},"android":{}}}}'
-        deploy_files["package.json"] = '{"name":"app","version":"1.0.0","main":"node_modules/expo/AppEntry.js","scripts":{"start":"expo start","android":"expo start --android","ios":"expo start --ios"},"dependencies":{"expo":"~50.0.0","react":"18.2.0","react-native":"0.73.0"}}'
-        deploy_files["babel.config.js"] = "module.exports = function(api) { api.cache(true); return { presets: ['babel-preset-expo'] }; };"
+            deploy_files["eas.json"] = (
+                '{"build":{"preview":{"ios":{},"android":{}},"production":{"ios":{},"android":{}}}}'
+            )
+        deploy_files["package.json"] = (
+            '{"name":"app","version":"1.0.0","main":"node_modules/expo/AppEntry.js","scripts":{"start":"expo start","android":"expo start --android","ios":"expo start --ios"},"dependencies":{"expo":"~50.0.0","react":"18.2.0","react-native":"0.73.0"}}'
+        )
+        deploy_files["babel.config.js"] = (
+            "module.exports = function(api) { api.cache(true); return { presets: ['babel-preset-expo'] }; };"
+        )
         # Store Prep Agent -> store-submission/
         store_out = (results.get("Store Prep Agent") or {}).get("output") or ""
-        deploy_files["store-submission/STORE_SUBMISSION_GUIDE.md"] = store_out or "See Expo EAS Submit docs for Apple App Store and Google Play submission."
+        deploy_files["store-submission/STORE_SUBMISSION_GUIDE.md"] = (
+            store_out
+            or "See Expo EAS Submit docs for Apple App Store and Google Play submission."
+        )
         metadata_match = re.search(r"\{[\s\S]*?\"app_name\"[\s\S]*?\}", store_out)
         if metadata_match:
             deploy_files["store-submission/metadata.json"] = metadata_match.group(0)
@@ -1075,7 +1686,9 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App />);
 """
             if "src/styles.css" not in deploy_files:
-                deploy_files["src/styles.css"] = """@import url('https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css');
+                deploy_files[
+                    "src/styles.css"
+                ] = """@import url('https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css');
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: Inter, system-ui, sans-serif; }
 """
@@ -1144,7 +1757,9 @@ body { font-family: Inter, system-ui, sans-serif; }
         set_payload["deploy_files"] = deploy_files
     if suggest_retry_phase is not None:
         set_payload["suggest_retry_phase"] = suggest_retry_phase
-        set_payload["suggest_retry_reason"] = suggest_retry_reason or "Retry code generation?"
+        set_payload["suggest_retry_reason"] = (
+            suggest_retry_reason or "Retry code generation?"
+        )
     update_op = {"$set": set_payload}
     if suggest_retry_phase is None:
         update_op["$unset"] = {"suggest_retry_phase": "", "suggest_retry_reason": ""}
@@ -1153,27 +1768,49 @@ body { font-family: Inter, system-ui, sans-serif; }
     project_after = await db.projects.find_one({"id": project_id})
     if project_after is not None:
         history = list(project_after.get("build_history") or [])
-        history.insert(0, {
-            "completed_at": set_payload.get("completed_at"),
-            "status": "completed",
-            "quality_score": quality,
-            "tokens_used": total_used,
-        })
-        await db.projects.update_one({"id": project_id}, {"$set": {"build_history": history[:50]}})
+        history.insert(
+            0,
+            {
+                "completed_at": set_payload.get("completed_at"),
+                "status": "completed",
+                "quality_score": quality,
+                "tokens_used": total_used,
+            },
+        )
+        await db.projects.update_one(
+            {"id": project_id}, {"$set": {"build_history": history[:50]}}
+        )
     emit_build_event(
-        project_id, "build_completed", status="completed", tokens=total_used, message="Build completed",
-        deploy_files=deploy_files, quality_score=quality,
-        critic_score=critic_score, truth_verdict=truth_verdict, truth_score=truth_score, truth_honest_score=truth_honest_score,
+        project_id,
+        "build_completed",
+        status="completed",
+        tokens=total_used,
+        message="Build completed",
+        deploy_files=deploy_files,
+        quality_score=quality,
+        critic_score=critic_score,
+        truth_verdict=truth_verdict,
+        truth_score=truth_score,
+        truth_honest_score=truth_honest_score,
     )
     project = await db.projects.find_one({"id": project_id})
     if project and project.get("tokens_allocated"):
         refund = project["tokens_allocated"] - total_used
         if refund > 0:
-            await db.users.update_one({"id": user_id}, {"$inc": {"token_balance": refund}})
-            await db.token_ledger.insert_one({
-                "id": str(uuid.uuid4()), "user_id": user_id, "tokens": refund, "type": "refund",
-                "description": f"Unused tokens from project {project_id[:8]}", "created_at": datetime.now(timezone.utc).isoformat()
-            })
+            await db.users.update_one(
+                {"id": user_id}, {"$inc": {"token_balance": refund}}
+            )
+            await db.token_ledger.insert_one(
+                {
+                    "id": str(uuid.uuid4()),
+                    "user_id": user_id,
+                    "tokens": refund,
+                    "type": "refund",
+                    "description": f"Unused tokens from project {project_id[:8]}",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+
 
 @projects_router.post("/projects")
 async def create_project(
@@ -1184,7 +1821,9 @@ async def create_project(
 ):
     db = get_db()
     if Permission is not None and not has_permission(user, Permission.CREATE_PROJECT):
-        raise HTTPException(status_code=403, detail="Insufficient permission to create projects")
+        raise HTTPException(
+            status_code=403, detail="Insufficient permission to create projects"
+        )
     plan = user.get("plan", "free")
     if plan == "free":
         count = await db.projects.count_documents({"user_id": user["id"]})
@@ -1192,7 +1831,7 @@ async def create_project(
             raise HTTPException(
                 status_code=403,
                 detail="You've saved 3 projects. Upgrade to Builder to save unlimited projects and get faster builds.",
-                headers={"X-Upgrade-Required": "builder"}
+                headers={"X-Upgrade-Required": "builder"},
             )
     # Landing pages need fewer credits so free/guest (100–700) can build
     project_type_lower = (data.project_type or "").strip().lower()
@@ -1202,11 +1841,16 @@ async def create_project(
     await _ensure_credit_balance(user["id"])
     cred = _user_credits(user)
     if cred < estimated_credits:
-        raise HTTPException(status_code=402, detail=f"Insufficient credits. Need {estimated_credits}, have {cred}. Buy more in Credit Center.")
+        raise HTTPException(
+            status_code=402,
+            detail=f"Insufficient credits. Need {estimated_credits}, have {cred}. Buy more in Credit Center.",
+        )
 
     # Free tier: landing-only unless user has a paid purchase
     if plan == "free":
-        has_paid = await db.token_ledger.find_one({"user_id": user["id"], "type": "purchase"})
+        has_paid = await db.token_ledger.find_one(
+            {"user_id": user["id"], "type": "purchase"}
+        )
         if not has_paid and (data.project_type or "").strip().lower() != "landing":
             raise HTTPException(
                 status_code=402,
@@ -1220,17 +1864,20 @@ async def create_project(
     if legal_check_request and prompt:
         compliance = legal_check_request(prompt)
         if not compliance.get("allowed"):
-            await db.blocked_requests.insert_one({
-                "user_id": user["id"],
-                "prompt": prompt[:2000],
-                "reason": compliance.get("reason"),
-                "category": compliance.get("category"),
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "status": "blocked",
-            })
+            await db.blocked_requests.insert_one(
+                {
+                    "user_id": user["id"],
+                    "prompt": prompt[:2000],
+                    "reason": compliance.get("reason"),
+                    "category": compliance.get("category"),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "status": "blocked",
+                }
+            )
             raise HTTPException(
                 status_code=400,
-                detail=compliance.get("reason") or "Request violates Acceptable Use Policy. See /aup for details.",
+                detail=compliance.get("reason")
+                or "Request violates Acceptable Use Policy. See /aup for details.",
             )
 
     project_id = str(uuid.uuid4())
@@ -1252,24 +1899,36 @@ async def create_project(
     await db.projects.insert_one(project)
     if audit_logger:
         await audit_logger.log(
-            user["id"], "project_created",
-            resource_type="project", resource_id=project_id,
+            user["id"],
+            "project_created",
+            resource_type="project",
+            resource_id=project_id,
             new_value={"name": data.name},
             ip_address=getattr(request.client, "host", None),
         )
-    await db.users.update_one({"id": user["id"]}, {"$inc": {"credit_balance": -estimated_credits}})
-    
+    await db.users.update_one(
+        {"id": user["id"]}, {"$inc": {"credit_balance": -estimated_credits}}
+    )
+
     background_tasks.add_task(run_orchestration_v2, project_id, user["id"])
-    
+
     return {"project": {k: v for k, v in project.items() if k != "_id"}}
 
 
 @projects_router.get("/projects")
-async def get_projects(user: dict = Depends(get_current_user), _: dict = Depends(require_permission(Permission.VIEW_PROJECT if Permission else None))):
+async def get_projects(
+    user: dict = Depends(get_current_user),
+    _: dict = Depends(
+        require_permission(Permission.VIEW_PROJECT if Permission else None)
+    ),
+):
     db = get_db()
-    cursor = db.projects.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1)
+    cursor = db.projects.find({"user_id": user["id"]}, {"_id": 0}).sort(
+        "created_at", -1
+    )
     projects = await cursor.to_list(100)
     return {"projects": projects}
+
 
 def _safe_import_path(path: str) -> str:
     """Return a safe relative path for import (no .., no absolute)."""
@@ -1279,9 +1938,13 @@ def _safe_import_path(path: str) -> str:
     return p[:500]  # limit length
 
 
-
 @projects_router.post("/projects/import")
-async def import_project(data: ProjectImportBody, user: dict = Depends(require_permission(Permission.CREATE_PROJECT if Permission else None))):
+async def import_project(
+    data: ProjectImportBody,
+    user: dict = Depends(
+        require_permission(Permission.CREATE_PROJECT if Permission else None)
+    ),
+):
     """Import a project from paste (files), ZIP (base64), or Git URL. Creates project and writes files to workspace."""
     db = get_db()
     project_id = str(uuid.uuid4())
@@ -1319,7 +1982,9 @@ async def import_project(data: ProjectImportBody, user: dict = Depends(require_p
             except ValueError:
                 continue
             full.parent.mkdir(parents=True, exist_ok=True)
-            full.write_text(content[:2 * 1024 * 1024], encoding="utf-8", errors="replace")
+            full.write_text(
+                content[: 2 * 1024 * 1024], encoding="utf-8", errors="replace"
+            )
             written += 1
     elif data.source == "zip" and data.zip_base64:
         try:
@@ -1349,30 +2014,45 @@ async def import_project(data: ProjectImportBody, user: dict = Depends(require_p
             raise HTTPException(status_code=400, detail="Git URL must be HTTPS")
         try:
             import httpx
+
             if "github.com" in url:
-                u = url.rstrip("/").replace("https://github.com/", "").replace(".git", "")
+                u = (
+                    url.rstrip("/")
+                    .replace("https://github.com/", "")
+                    .replace(".git", "")
+                )
                 parts = u.split("/")
                 if len(parts) >= 2:
                     archive_url = f"https://github.com/{parts[0]}/{parts[1]}/archive/refs/heads/main.zip"
                 else:
                     archive_url = f"https://github.com/{parts[0]}/{parts[1]}/archive/refs/heads/master.zip"
             else:
-                raise HTTPException(status_code=400, detail="Only GitHub URLs supported for now")
+                raise HTTPException(
+                    status_code=400, detail="Only GitHub URLs supported for now"
+                )
             async with httpx.AsyncClient() as client:
                 r = await client.get(archive_url, timeout=30)
                 if r.status_code != 200:
-                    r = await client.get(archive_url.replace("/main.zip", "/master.zip"), timeout=30)
+                    r = await client.get(
+                        archive_url.replace("/main.zip", "/master.zip"), timeout=30
+                    )
                 if r.status_code != 200:
-                    raise HTTPException(status_code=400, detail="Could not fetch repo archive")
+                    raise HTTPException(
+                        status_code=400, detail="Could not fetch repo archive"
+                    )
                 raw = r.content
                 if len(raw) > 15 * 1024 * 1024:
-                    raise HTTPException(status_code=413, detail="Repo archive too large (max 15MB)")
+                    raise HTTPException(
+                        status_code=413, detail="Repo archive too large (max 15MB)"
+                    )
                 with zipfile.ZipFile(io.BytesIO(raw), "r") as zf:
                     for info in zf.infolist()[:500]:
                         if info.is_dir():
                             continue
                         parts = info.filename.replace("\\", "/").split("/")
-                        name_part = "/".join(parts[1:]) if len(parts) > 1 else info.filename
+                        name_part = (
+                            "/".join(parts[1:]) if len(parts) > 1 else info.filename
+                        )
                         path = _safe_import_path(name_part)
                         if not path or "node_modules" in path or "__pycache__" in path:
                             continue
@@ -1388,25 +2068,44 @@ async def import_project(data: ProjectImportBody, user: dict = Depends(require_p
             raise
         except Exception as e:
             logger.exception("Git import failed: %s", e)
-            raise HTTPException(status_code=400, detail=f"Git import failed: {str(e)[:200]}")
+            raise HTTPException(
+                status_code=400, detail=f"Git import failed: {str(e)[:200]}"
+            )
     else:
-        raise HTTPException(status_code=400, detail="Provide source and files, zip_base64, or git_url")
-    return {"project_id": project_id, "project": {k: v for k, v in project.items() if k != "_id"}, "files_written": written}
-
+        raise HTTPException(
+            status_code=400, detail="Provide source and files, zip_base64, or git_url"
+        )
+    return {
+        "project_id": project_id,
+        "project": {k: v for k, v in project.items() if k != "_id"},
+        "files_written": written,
+    }
 
 
 @projects_router.get("/projects/{project_id}")
-async def get_project(project_id: str, user: dict = Depends(get_current_user), _: dict = Depends(require_permission(Permission.VIEW_PROJECT if Permission else None))):
+async def get_project(
+    project_id: str,
+    user: dict = Depends(get_current_user),
+    _: dict = Depends(
+        require_permission(Permission.VIEW_PROJECT if Permission else None)
+    ),
+):
     db = get_db()
-    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"_id": 0})
+    project = await db.projects.find_one(
+        {"id": project_id, "user_id": user["id"]}, {"_id": 0}
+    )
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     return {"project": project}
 
 
-
 @projects_router.delete("/projects/{project_id}")
-async def delete_project(project_id: str, user: dict = Depends(require_permission(Permission.DELETE_PROJECT if Permission else None))):
+async def delete_project(
+    project_id: str,
+    user: dict = Depends(
+        require_permission(Permission.DELETE_PROJECT if Permission else None)
+    ),
+):
     """Delete a project and its related data. Only the project owner can delete."""
     db = get_db()
     project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
@@ -1422,18 +2121,20 @@ async def delete_project(project_id: str, user: dict = Depends(require_permissio
         workspace_path = _project_workspace_path(project_id)
         if workspace_path.exists():
             import shutil
+
             shutil.rmtree(workspace_path, ignore_errors=True)
     except Exception as e:
         logger.warning("Could not remove project workspace dir %s: %s", project_id, e)
     return Response(status_code=204)
 
 
-
 @projects_router.get("/projects/{project_id}/state")
 async def get_project_state(project_id: str, user: dict = Depends(get_current_user)):
     """Return structured project state (plan, requirements, stack, reports, tool_log) for UI and debugging."""
     db = get_db()
-    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"_id": 0})
+    project = await db.projects.find_one(
+        {"id": project_id, "user_id": user["id"]}, {"_id": 0}
+    )
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     state = load_state(project_id)
@@ -1451,9 +2152,11 @@ async def get_project_state(project_id: str, user: dict = Depends(get_current_us
             "deploy_gated": overall < 60,
         }
     elif quality_score is not None:
-        state["quality"] = {"overall_score": quality_score, "display": f"{round(float(quality_score) / 10, 1)}/10"}
+        state["quality"] = {
+            "overall_score": quality_score,
+            "display": f"{round(float(quality_score) / 10, 1)}/10",
+        }
     return {"state": state}
-
 
 
 @projects_router.get("/projects/{project_id}/events")
@@ -1476,7 +2179,9 @@ async def stream_build_events(
                 if ev.get("id", 0) >= seen:
                     yield f"data: {json.dumps(ev)}\n\n"
                     seen = ev.get("id", 0) + 1
-            project_doc = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"status": 1})
+            project_doc = await db.projects.find_one(
+                {"id": project_id, "user_id": user["id"]}, {"status": 1}
+            )
             if project_doc and project_doc.get("status") in ("completed", "failed"):
                 yield f"data: {json.dumps({'type': 'stream_end', 'status': project_doc['status']})}\n\n"
                 break
@@ -1485,13 +2190,18 @@ async def stream_build_events(
     return StreamingResponse(
         event_generator(),
         media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 
-
 @projects_router.get("/projects/{project_id}/events/snapshot")
-async def get_build_events_snapshot(project_id: str, user: dict = Depends(get_current_user)):
+async def get_build_events_snapshot(
+    project_id: str, user: dict = Depends(get_current_user)
+):
     """One-shot fetch of all build events (for UI timeline). Wired to same store as SSE."""
     db = get_db()
     project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
@@ -1504,38 +2214,48 @@ async def get_build_events_snapshot(project_id: str, user: dict = Depends(get_cu
         _build_events[project_id] = list(events)  # Restore to cache
     return {"project_id": project_id, "events": events, "count": len(events)}
 
+
 def _project_workspace_path(project_id: str) -> Path:
     safe_id = project_id.replace("/", "_").replace("\\", "_")
     return WORKSPACE_ROOT / safe_id
 
 
-async def _user_can_access_project_workspace(user_id: Optional[str], project_id: str) -> bool:
+async def _user_can_access_project_workspace(
+    user_id: Optional[str], project_id: str
+) -> bool:
     """Allow workspace I/O if a user-owned project or Auto-Runner job exists."""
     db = get_db()
     if not project_id or not user_id:
         return False
-    project = await db.projects.find_one({"id": project_id, "user_id": user_id}, {"id": 1})
+    project = await db.projects.find_one(
+        {"id": project_id, "user_id": user_id}, {"id": 1}
+    )
     if project:
         return True
     try:
         from db_pg import get_pg_pool
+
         pool = await get_pg_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
                 "SELECT 1 FROM jobs WHERE project_id = $1 AND user_id = $2 LIMIT 1",
-                project_id, user_id,
+                project_id,
+                user_id,
             )
         return row is not None
     except Exception:
         return False
 
+
 async def _resolve_workspace_project_for_job(job_id: str, user: dict) -> str:
     """Orchestrator job → workspace root via project_id; same access rules as project workspace."""
     runtime_state, _, _, _, _ = _get_orchestration()
     from db_pg import get_pg_pool
+
     pool = await get_pg_pool()
     runtime_state.set_pool(pool)
     from orchestration import runtime_state as orch_rs
+
     oj = await orch_rs.get_job(job_id)
     if not oj:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -1549,7 +2269,9 @@ async def _resolve_workspace_project_for_job(job_id: str, user: dict) -> str:
     return str(pid)
 
 
-async def _resolve_project_workspace_path_for_user(project_id: Optional[str], user: dict) -> Path:
+async def _resolve_project_workspace_path_for_user(
+    project_id: Optional[str], user: dict
+) -> Path:
     """Resolve a user-owned project workspace without trusting client-supplied server paths."""
     if not project_id:
         raise HTTPException(status_code=400, detail="project_id required")
@@ -1564,7 +2286,9 @@ async def _resolve_project_workspace_path_for_user(project_id: Optional[str], us
     return root
 
 
-async def _resolve_job_project_id_for_user(project_id: Optional[str], user: dict) -> str:
+async def _resolve_job_project_id_for_user(
+    project_id: Optional[str], user: dict
+) -> str:
     """Resolve a job project_id without letting users attach jobs to other workspaces."""
     pid = (project_id or "").strip()
     if not pid:
@@ -1596,7 +2320,9 @@ def _list_all_workspace_rel_paths(root: Path) -> List[str]:
     return files
 
 
-def _paginated_workspace_files_payload(paths: List[str], offset: int, limit: int) -> Dict[str, Any]:
+def _paginated_workspace_files_payload(
+    paths: List[str], offset: int, limit: int
+) -> Dict[str, Any]:
     total = len(paths)
     off = max(0, int(offset))
     lim = max(1, min(int(limit), 1000))
@@ -1629,7 +2355,12 @@ def _workspace_file_disk_path(root: Path, path: str) -> Path:
 
 def _create_preview_token(project_id: str, user_id: str) -> str:
     """Short-lived JWT so iframe can load preview without Bearer header."""
-    payload = {"project_id": project_id, "user_id": user_id, "purpose": "preview", "exp": datetime.now(timezone.utc) + timedelta(minutes=2)}
+    payload = {
+        "project_id": project_id,
+        "user_id": user_id,
+        "purpose": "preview",
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=2),
+    }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
@@ -1641,7 +2372,7 @@ def _verify_preview_token(token: str) -> tuple:
     return payload["project_id"], payload["user_id"]
 
 
-@api_router.get("/settings/capabilities")
+@projects_router.get("/settings/capabilities")
 async def get_settings_capabilities(user: dict = Depends(get_current_user)):
     """Returns sandbox (Docker) availability and other capabilities for UI polish."""
     sandbox_available = False
@@ -1654,12 +2385,15 @@ async def get_settings_capabilities(user: dict = Depends(get_current_user)):
         )
         sandbox_available = proc.returncode == 0
     except Exception as e:
-        logger.info("Sandbox (Docker) check failed: %s. Runs will use host when Docker unavailable.", e)
+        logger.info(
+            "Sandbox (Docker) check failed: %s. Runs will use host when Docker unavailable.",
+            e,
+        )
     return {
         "sandbox_available": sandbox_available,
-        "sandbox_default": os.environ.get("RUN_IN_SANDBOX", "1").strip().lower() in ("1", "true", "yes"),
+        "sandbox_default": os.environ.get("RUN_IN_SANDBOX", "1").strip().lower()
+        in ("1", "true", "yes"),
     }
-
 
 
 @projects_router.get("/projects/{project_id}/workspace/files")
@@ -1677,7 +2411,6 @@ async def list_workspace_files(
         return _paginated_workspace_files_payload([], offset, limit)
     paths = _list_all_workspace_rel_paths(root)
     return _paginated_workspace_files_payload(paths, offset, limit)
-
 
 
 @projects_router.get("/projects/{project_id}/workspace/file")
@@ -1699,7 +2432,6 @@ async def get_workspace_file_content(
     return {"path": rel, "content": content}
 
 
-
 @projects_router.get("/projects/{project_id}/workspace/file/raw")
 async def get_workspace_file_raw(
     project_id: str,
@@ -1716,9 +2448,10 @@ async def get_workspace_file_raw(
     return FileResponse(path=str(full), media_type=media, filename=full.name)
 
 
-
 @projects_router.get("/projects/{project_id}/dependency-audit")
-async def get_project_dependency_audit(project_id: str, user: dict = Depends(get_current_user)):
+async def get_project_dependency_audit(
+    project_id: str, user: dict = Depends(get_current_user)
+):
     """Optional: run npm audit and/or pip-audit in project workspace and return summary (high/critical counts)."""
     db = get_db()
     project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
@@ -1752,10 +2485,15 @@ async def get_project_dependency_audit(project_id: str, user: dict = Depends(get
                     "moderate": counts.get("moderate", 0) or 0,
                     "low": counts.get("low", 0) or 0,
                     "info": counts.get("info", 0) or 0,
-                    "ok": (counts.get("critical", 0) or 0) == 0 and (counts.get("high", 0) or 0) == 0,
+                    "ok": (counts.get("critical", 0) or 0) == 0
+                    and (counts.get("high", 0) or 0) == 0,
                 }
             return {"ok": True, "critical": 0, "high": 0}
-        except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError) as e:
+        except (
+            subprocess.TimeoutExpired,
+            json.JSONDecodeError,
+            FileNotFoundError,
+        ) as e:
             return {"error": str(e)[:200]}
         except Exception as e:
             return {"error": str(e)[:200]}
@@ -1766,7 +2504,17 @@ async def get_project_dependency_audit(project_id: str, user: dict = Depends(get
             return None
         try:
             r = subprocess.run(
-                [sys.executable, "-m", "pip_audit", "-r", str(req), "--format", "json", "--require-hashes", "false"],
+                [
+                    sys.executable,
+                    "-m",
+                    "pip_audit",
+                    "-r",
+                    str(req),
+                    "--format",
+                    "json",
+                    "--require-hashes",
+                    "false",
+                ],
                 cwd=str(root),
                 capture_output=True,
                 text=True,
@@ -1775,10 +2523,18 @@ async def get_project_dependency_audit(project_id: str, user: dict = Depends(get
             if r.stdout:
                 data = json.loads(r.stdout)
                 deps = data.get("dependencies", {}) or {}
-                total = sum(len((d.get("vulns") or [])) for d in deps.values() if isinstance(d, dict))
+                total = sum(
+                    len((d.get("vulns") or []))
+                    for d in deps.values()
+                    if isinstance(d, dict)
+                )
                 return {"critical": total, "high": 0, "ok": total == 0}
             return {"ok": True, "critical": 0, "high": 0}
-        except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError) as e:
+        except (
+            subprocess.TimeoutExpired,
+            json.JSONDecodeError,
+            FileNotFoundError,
+        ) as e:
             return {"error": str(e)[:200]}
         except Exception as e:
             return {"error": str(e)[:200]}
@@ -1786,6 +2542,7 @@ async def get_project_dependency_audit(project_id: str, user: dict = Depends(get
     out["npm"] = await asyncio.to_thread(_run_npm_audit)
     out["pip"] = await asyncio.to_thread(_run_pip_audit)
     return out
+
 
 async def _build_project_deploy_zip(project_id: str, user_id: str):
     """Build deploy ZIP for a project. Raises HTTPException if not found or no deploy_files."""
@@ -1795,21 +2552,27 @@ async def _build_project_deploy_zip(project_id: str, user_id: str):
         raise HTTPException(status_code=404, detail="Project not found")
     deploy_files = project.get("deploy_files") or {}
     if not deploy_files:
-        raise HTTPException(status_code=404, detail="No deploy snapshot for this project. Open in Workspace and use Deploy there, or re-run the build.")
+        raise HTTPException(
+            status_code=404,
+            detail="No deploy snapshot for this project. Open in Workspace and use Deploy there, or re-run the build.",
+        )
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr("README-DEPLOY.md", DEPLOY_README)
         for name, content in deploy_files.items():
             safe_name = (name or "").lstrip("/")
             if safe_name:
-                zf.writestr(safe_name, content if isinstance(content, str) else str(content))
+                zf.writestr(
+                    safe_name, content if isinstance(content, str) else str(content)
+                )
     buf.seek(0)
     return buf
 
 
-
 @projects_router.get("/projects/{project_id}/deploy/files")
-async def get_project_deploy_files_json(project_id: str, user: dict = Depends(get_current_user)):
+async def get_project_deploy_files_json(
+    project_id: str, user: dict = Depends(get_current_user)
+):
     """Return deploy_files as JSON dict for Sandpack preview auto-wire. Called by Workspace after build_completed."""
     db = get_db()
     project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
@@ -1821,9 +2584,10 @@ async def get_project_deploy_files_json(project_id: str, user: dict = Depends(ge
     return {"files": deploy_files, "status": status, "quality_score": quality_score}
 
 
-
 @projects_router.get("/projects/{project_id}/deploy/zip")
-async def get_project_deploy_zip(project_id: str, user: dict = Depends(get_current_user)):
+async def get_project_deploy_zip(
+    project_id: str, user: dict = Depends(get_current_user)
+):
     """Download deploy ZIP for a completed project (Vercel/Netlify/Railway). Requires project to have deploy_files (stored at completion)."""
     buf = await _build_project_deploy_zip(project_id, user["id"])
     return StreamingResponse(
@@ -1833,9 +2597,10 @@ async def get_project_deploy_zip(project_id: str, user: dict = Depends(get_curre
     )
 
 
-
 @projects_router.get("/projects/{project_id}/export/deploy")
-async def get_project_export_deploy(project_id: str, user: dict = Depends(get_current_user)):
+async def get_project_export_deploy(
+    project_id: str, user: dict = Depends(get_current_user)
+):
     """Alias for deploy ZIP: same deploy-ready package keyed by project_id (for Deploy UX)."""
     buf = await _build_project_deploy_zip(project_id, user["id"])
     return StreamingResponse(
@@ -1845,7 +2610,9 @@ async def get_project_export_deploy(project_id: str, user: dict = Depends(get_cu
     )
 
 
-async def _get_project_deploy_files(project_id: str, user_id: str) -> tuple[Dict[str, str], str]:
+async def _get_project_deploy_files(
+    project_id: str, user_id: str
+) -> tuple[Dict[str, str], str]:
     """Return (deploy_files dict, project_name) for a project. Raises HTTPException if not found."""
     db = get_db()
     project = await db.projects.find_one({"id": project_id, "user_id": user_id})
@@ -1861,21 +2628,30 @@ async def _get_project_deploy_files(project_id: str, user_id: str) -> tuple[Dict
     return deploy_files, name
 
 
-
 @projects_router.post("/projects/{project_id}/deploy/vercel")
 async def one_click_deploy_vercel(
     project_id: str,
     request: Request,
     body: DeployOneClickBody = None,
-    user: dict = Depends(require_permission(Permission.DEPLOY_PROJECT if Permission else None)),
+    user: dict = Depends(
+        require_permission(Permission.DEPLOY_PROJECT if Permission else None)
+    ),
 ):
     db = get_db()
     """One-click deploy to Vercel. Uses token from body, or user's stored deploy_tokens.vercel, or env VERCEL_TOKEN."""
     deploy_files, project_name = await _get_project_deploy_files(project_id, user["id"])
     from validate_deployment import validate_deployment
+
     validation = validate_deployment("vercel", deploy_files, None)
     if not validation.valid and validation.errors:
-        raise HTTPException(status_code=400, detail={"message": "Deploy validation failed", "errors": validation.errors, "warnings": validation.warnings})
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": "Deploy validation failed",
+                "errors": validation.errors,
+                "warnings": validation.warnings,
+            },
+        )
     u = await db.users.find_one({"id": user["id"]}, {"deploy_tokens": 1})
     vercel_token = (
         (body.token if body and body.token else None)
@@ -1892,20 +2668,30 @@ async def one_click_deploy_vercel(
         safe_path = (path or "").lstrip("/")
         if not safe_path:
             continue
-        raw = content if isinstance(content, (bytes, bytearray)) else content.encode("utf-8")
+        raw = (
+            content
+            if isinstance(content, (bytes, bytearray))
+            else content.encode("utf-8")
+        )
         # Explicit base64 encoding so Vercel handles binary files correctly
-        files_payload.append({
-            "file": safe_path,
-            "data": base64.b64encode(raw).decode("ascii"),
-            "encoding": "base64",
-        })
+        files_payload.append(
+            {
+                "file": safe_path,
+                "data": base64.b64encode(raw).decode("ascii"),
+                "encoding": "base64",
+            }
+        )
     if not files_payload:
         raise HTTPException(status_code=400, detail="No deploy files to upload")
     import httpx
+
     async with httpx.AsyncClient(timeout=60.0) as client:
         r = await client.post(
             "https://api.vercel.com/v13/deployments",
-            headers={"Authorization": f"Bearer {vercel_token}", "Content-Type": "application/json"},
+            headers={
+                "Authorization": f"Bearer {vercel_token}",
+                "Content-Type": "application/json",
+            },
             json={"name": project_name, "files": files_payload, "target": "production"},
         )
     if r.status_code >= 400:
@@ -1917,21 +2703,32 @@ async def one_click_deploy_vercel(
         raise HTTPException(status_code=502, detail=f"Vercel deploy failed: {msg}")
     data = r.json()
     # Vercel returns url as a hostname only (no scheme) — normalise to https://
-    raw_url = data.get("url") or (data.get("alias", [""])[0] if data.get("alias") else "")
+    raw_url = data.get("url") or (
+        data.get("alias", [""])[0] if data.get("alias") else ""
+    )
     if not raw_url and data.get("id"):
         raw_url = f"{data.get('id', '')}.vercel.app"
-    live_url = f"https://{raw_url}" if raw_url and not raw_url.startswith("http") else raw_url
+    live_url = (
+        f"https://{raw_url}" if raw_url and not raw_url.startswith("http") else raw_url
+    )
     if live_url:
-        await db.projects.update_one({"id": project_id, "user_id": user["id"]}, {"$set": {"live_url": live_url}})
+        await db.projects.update_one(
+            {"id": project_id, "user_id": user["id"]}, {"$set": {"live_url": live_url}}
+        )
         if audit_logger:
             await audit_logger.log(
-                user["id"], "project_deployed",
-                resource_type="project", resource_id=project_id,
+                user["id"],
+                "project_deployed",
+                resource_type="project",
+                resource_id=project_id,
                 new_value={"live_url": live_url},
                 ip_address=getattr(request.client, "host", None),
             )
-    return {"url": live_url, "deployment_id": data.get("id"), "status": data.get("readyState") or data.get("status")}
-
+    return {
+        "url": live_url,
+        "deployment_id": data.get("id"),
+        "status": data.get("readyState") or data.get("status"),
+    }
 
 
 @projects_router.post("/projects/{project_id}/deploy/netlify")
@@ -1939,16 +2736,26 @@ async def one_click_deploy_netlify(
     project_id: str,
     request: Request,
     body: Optional[DeployOneClickBody] = None,
-    user: dict = Depends(require_permission(Permission.DEPLOY_PROJECT if Permission else None)),
+    user: dict = Depends(
+        require_permission(Permission.DEPLOY_PROJECT if Permission else None)
+    ),
 ):
     db = get_db()
     """One-click deploy to Netlify. Reuses the same site on subsequent deploys (idempotent).
     Uses token from body, or user's stored deploy_tokens.netlify, or env NETLIFY_TOKEN."""
     deploy_files, _ = await _get_project_deploy_files(project_id, user["id"])
     from validate_deployment import validate_deployment
+
     validation = validate_deployment("netlify", deploy_files, None)
     if not validation.valid and validation.errors:
-        raise HTTPException(status_code=400, detail={"message": "Deploy validation failed", "errors": validation.errors, "warnings": validation.warnings})
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": "Deploy validation failed",
+                "errors": validation.errors,
+                "warnings": validation.warnings,
+            },
+        )
     buf = await _build_project_deploy_zip(project_id, user["id"])
     zip_bytes = buf.getvalue()
     u = await db.users.find_one({"id": user["id"]}, {"deploy_tokens": 1})
@@ -1963,22 +2770,31 @@ async def one_click_deploy_netlify(
             detail="Add your Netlify token in Settings → Deploy integrations for one-click deploy, or set NETLIFY_TOKEN on server.",
         )
     # Reuse an existing Netlify site for this project to avoid creating a new site every deploy
-    existing_project = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"netlify_site_id": 1})
+    existing_project = await db.projects.find_one(
+        {"id": project_id, "user_id": user["id"]}, {"netlify_site_id": 1}
+    )
     netlify_site_id = (existing_project or {}).get("netlify_site_id")
     import httpx
+
     async with httpx.AsyncClient(timeout=90.0) as client:
         if netlify_site_id:
             # Redeploy to the existing site
             r = await client.post(
                 f"https://api.netlify.com/api/v1/sites/{netlify_site_id}/deploys",
-                headers={"Authorization": f"Bearer {netlify_token}", "Content-Type": "application/zip"},
+                headers={
+                    "Authorization": f"Bearer {netlify_token}",
+                    "Content-Type": "application/zip",
+                },
                 content=zip_bytes,
             )
         else:
             # First deploy: create a new site
             r = await client.post(
                 "https://api.netlify.com/api/v1/sites",
-                headers={"Authorization": f"Bearer {netlify_token}", "Content-Type": "application/zip"},
+                headers={
+                    "Authorization": f"Bearer {netlify_token}",
+                    "Content-Type": "application/zip",
+                },
                 content=zip_bytes,
             )
     if r.status_code >= 400:
@@ -1990,7 +2806,11 @@ async def one_click_deploy_netlify(
         raise HTTPException(status_code=502, detail=f"Netlify deploy failed: {msg}")
     data = r.json()
     # For site-creation response the site_id is at data["id"]; for deploy response it's data["site_id"]
-    site_id = data.get("id") if not netlify_site_id else (data.get("site_id") or netlify_site_id)
+    site_id = (
+        data.get("id")
+        if not netlify_site_id
+        else (data.get("site_id") or netlify_site_id)
+    )
     url = data.get("ssl_url") or data.get("url") or ""
     if not url and data.get("default_subdomain"):
         url = f"https://{data['default_subdomain']}.netlify.app"
@@ -2002,23 +2822,28 @@ async def one_click_deploy_netlify(
     if site_id and site_id != netlify_site_id:
         updates["netlify_site_id"] = site_id
     if updates:
-        await db.projects.update_one({"id": project_id, "user_id": user["id"]}, {"$set": updates})
+        await db.projects.update_one(
+            {"id": project_id, "user_id": user["id"]}, {"$set": updates}
+        )
     if url and audit_logger:
         await audit_logger.log(
-            user["id"], "project_deployed",
-            resource_type="project", resource_id=project_id,
+            user["id"],
+            "project_deployed",
+            resource_type="project",
+            resource_id=project_id,
             new_value={"live_url": url},
             ip_address=getattr(request.client, "host", None),
         )
     return {"url": url, "site_id": site_id}
 
 
-
 @projects_router.patch("/projects/{project_id}/publish-settings")
 async def patch_project_publish_settings(
     project_id: str,
     body: ProjectPublishSettingsBody,
-    user: dict = Depends(require_permission(Permission.EDIT_PROJECT if Permission else None)),
+    user: dict = Depends(
+        require_permission(Permission.EDIT_PROJECT if Permission else None)
+    ),
 ):
     db = get_db()
     """Persist custom domain hint and optional Railway dashboard URL (DNS still at your registrar / host)."""
@@ -2031,7 +2856,9 @@ async def patch_project_publish_settings(
         if d and len(d) > 253:
             raise HTTPException(status_code=400, detail="custom_domain too long")
         if d and any(c in d for c in (" ", "/", "\\", ":", "?", "#", "<", ">", "@")):
-            raise HTTPException(status_code=400, detail="custom_domain has invalid characters")
+            raise HTTPException(
+                status_code=400, detail="custom_domain has invalid characters"
+            )
         updates["custom_domain"] = d or None
     if body.railway_project_url is not None:
         u = (body.railway_project_url or "").strip()
@@ -2041,25 +2868,35 @@ async def patch_project_publish_settings(
     if not updates:
         return {"project": {k: v for k, v in project.items() if k != "_id"}}
     updates["publish_settings_updated_at"] = datetime.now(timezone.utc).isoformat()
-    await db.projects.update_one({"id": project_id, "user_id": user["id"]}, {"$set": updates})
-    out = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"_id": 0})
+    await db.projects.update_one(
+        {"id": project_id, "user_id": user["id"]}, {"$set": updates}
+    )
+    out = await db.projects.find_one(
+        {"id": project_id, "user_id": user["id"]}, {"_id": 0}
+    )
     return {"project": out}
-
 
 
 @projects_router.post("/projects/{project_id}/deploy/railway")
 async def deploy_railway_package(
     project_id: str,
-    user: dict = Depends(require_permission(Permission.DEPLOY_PROJECT if Permission else None)),
+    user: dict = Depends(
+        require_permission(Permission.DEPLOY_PROJECT if Permission else None)
+    ),
 ):
     """Railway: validate deploy snapshot and return first-class CLI + dashboard flow (ZIP is same as Vercel path)."""
     deploy_files, project_name = await _get_project_deploy_files(project_id, user["id"])
     from validate_deployment import validate_deployment
+
     validation = validate_deployment("railway", deploy_files, None)
     if not validation.valid and validation.errors:
         raise HTTPException(
             status_code=400,
-            detail={"message": "Deploy validation failed for Railway package", "errors": validation.errors, "warnings": validation.warnings},
+            detail={
+                "message": "Deploy validation failed for Railway package",
+                "errors": validation.errors,
+                "warnings": validation.warnings,
+            },
         )
     steps = [
         "Download Deploy ZIP from this modal (server build snapshot).",
@@ -2079,12 +2916,13 @@ async def deploy_railway_package(
     }
 
 
-
 @projects_router.post("/projects/{project_id}/retry-phase")
 async def retry_project_phase(
     project_id: str,
     background_tasks: BackgroundTasks,
-    user: dict = Depends(require_permission(Permission.EDIT_PROJECT if Permission else None)),
+    user: dict = Depends(
+        require_permission(Permission.EDIT_PROJECT if Permission else None)
+    ),
 ):
     db = get_db()
     """10/10: Retry full orchestration when Quality phase had many failures. Full re-run (no partial state)."""
@@ -2093,50 +2931,95 @@ async def retry_project_phase(
         raise HTTPException(status_code=404, detail="Project not found")
     await db.projects.update_one(
         {"id": project_id},
-        {"$set": {
-            "status": "running",
-            "progress_percent": 0,
-            "current_phase": 0,
-            "current_agent": None,
-            "completed_at": None,
-            "suggest_retry_phase": None,
-            "suggest_retry_reason": None,
-        }}
+        {
+            "$set": {
+                "status": "running",
+                "progress_percent": 0,
+                "current_phase": 0,
+                "current_agent": None,
+                "completed_at": None,
+                "suggest_retry_phase": None,
+                "suggest_retry_reason": None,
+            }
+        },
     )
     background_tasks.add_task(run_orchestration_v2, project_id, user["id"])
     return {"status": "accepted", "message": "Retry started. Build is running."}
 
 
-
 @projects_router.get("/projects/{project_id}/logs")
 async def get_project_logs(project_id: str, user: dict = Depends(get_current_user)):
     db = get_db()
-    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"id": 1})
+    project = await db.projects.find_one(
+        {"id": project_id, "user_id": user["id"]}, {"id": 1}
+    )
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    cursor = db.project_logs.find({"project_id": project_id}, {"_id": 0}).sort("created_at", 1)
+    cursor = db.project_logs.find({"project_id": project_id}, {"_id": 0}).sort(
+        "created_at", 1
+    )
     logs = await cursor.to_list(500)
     return {"logs": logs}
-
 
 
 @projects_router.get("/projects/{project_id}/build-history")
 async def get_build_history(project_id: str, user: dict = Depends(get_current_user)):
     """Version history (item 13): list of past builds for this project (completed_at, status, quality_score, tokens_used)."""
     db = get_db()
-    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"build_history": 1})
+    project = await db.projects.find_one(
+        {"id": project_id, "user_id": user["id"]}, {"build_history": 1}
+    )
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
     history = project.get("build_history") or []
     return {"build_history": history}
 
+
 # Build phases for real-time progress UI (planning -> generating -> validating -> deployment)
 BUILD_PHASES = [
-    {"id": "planning", "name": "Planning", "agents": ["Planner", "Requirements Clarifier", "Stack Selector"]},
-    {"id": "generating", "name": "Generating", "agents": ["Frontend Generation", "Backend Generation", "Database Agent", "API Integration", "Test Generation", "Image Generation"]},
-    {"id": "validating", "name": "Validating", "agents": ["Security Checker", "Test Executor", "UX Auditor", "Performance Analyzer"]},
-    {"id": "deployment", "name": "Deployment", "agents": ["Deployment Agent", "Error Recovery", "Memory Agent"]},
-    {"id": "export_automation", "name": "Export & automation", "agents": ["PDF Export", "Excel Export", "Markdown Export", "Scraping Agent", "Automation Agent"]},
+    {
+        "id": "planning",
+        "name": "Planning",
+        "agents": ["Planner", "Requirements Clarifier", "Stack Selector"],
+    },
+    {
+        "id": "generating",
+        "name": "Generating",
+        "agents": [
+            "Frontend Generation",
+            "Backend Generation",
+            "Database Agent",
+            "API Integration",
+            "Test Generation",
+            "Image Generation",
+        ],
+    },
+    {
+        "id": "validating",
+        "name": "Validating",
+        "agents": [
+            "Security Checker",
+            "Test Executor",
+            "UX Auditor",
+            "Performance Analyzer",
+        ],
+    },
+    {
+        "id": "deployment",
+        "name": "Deployment",
+        "agents": ["Deployment Agent", "Error Recovery", "Memory Agent"],
+    },
+    {
+        "id": "export_automation",
+        "name": "Export & automation",
+        "agents": [
+            "PDF Export",
+            "Excel Export",
+            "Markdown Export",
+            "Scraping Agent",
+            "Automation Agent",
+        ],
+    },
 ]
 
 
@@ -2145,7 +3028,11 @@ async def get_build_phases():
     """Return phase list for progress UI (Workspace or dashboard)."""
     return {"phases": BUILD_PHASES}
 
-SWARM_TOKEN_MULTIPLIER = 1.5  # users pay more when using swarm (parallel); we don't lose money
+
+SWARM_TOKEN_MULTIPLIER = (
+    1.5  # users pay more when using swarm (parallel); we don't lose money
+)
+
 
 @projects_router.post("/build/plan")
 async def build_plan(data: BuildPlanRequest, user: dict = Depends(get_current_user)):
@@ -2157,15 +3044,30 @@ async def build_plan(data: BuildPlanRequest, user: dict = Depends(get_current_us
     _plan_block = screen_user_content(prompt)
     if _plan_block:
         raise HTTPException(status_code=400, detail=_plan_block)
-    build_kind = (getattr(data, "build_kind", None) or "").strip().lower() or "fullstack"
-    if build_kind not in ("landing", "fullstack", "mobile", "saas", "bot", "ai_agent", "game", "trading", "any"):
+    build_kind = (
+        getattr(data, "build_kind", None) or ""
+    ).strip().lower() or "fullstack"
+    if build_kind not in (
+        "landing",
+        "fullstack",
+        "mobile",
+        "saas",
+        "bot",
+        "ai_agent",
+        "game",
+        "trading",
+        "any",
+    ):
         build_kind = "fullstack"
     use_swarm = getattr(data, "swarm", False) and user is not None
     if user is not None and not user.get("public_api"):
         credits = _user_credits(user)
         required = MIN_CREDITS_FOR_LLM * (SWARM_TOKEN_MULTIPLIER if use_swarm else 1)
         if credits < required:
-            raise HTTPException(status_code=402, detail=f"Insufficient credits for {'Swarm ' if use_swarm else ''}plan. Need at least {int(required)}. Buy more in Credit Center.")
+            raise HTTPException(
+                status_code=402,
+                detail=f"Insufficient credits for {'Swarm ' if use_swarm else ''}plan. Need at least {int(required)}. Buy more in Credit Center.",
+            )
         # Free/referral credits = landing only: if user has no paid purchase and requests non-landing, block
         # Free users with credits can build anything - no landing-only restriction
         # (The credit balance check above already ensures they have enough credits)
@@ -2246,13 +3148,20 @@ End with exactly: "Let me build this now."
                 api_keys=effective,
             )
             import re
+
             m = re.search(r"\[.*?\]", resp or "", re.DOTALL)
             arr = json.loads(m.group()) if m else []
             return [str(x).strip() for x in arr[:3]] if isinstance(arr, list) else []
 
         if use_swarm:
-            plan_text, sug_list = await asyncio.gather(get_plan(), get_suggestions_standalone())
-            suggestions = sug_list or ["Add more features", "Enhance reporting", "Improve accessibility"]
+            plan_text, sug_list = await asyncio.gather(
+                get_plan(), get_suggestions_standalone()
+            )
+            suggestions = sug_list or [
+                "Add more features",
+                "Enhance reporting",
+                "Improve accessibility",
+            ]
         else:
             plan_text = await get_plan()
             try:
@@ -2265,6 +3174,7 @@ End with exactly: "Let me build this now."
                     api_keys=effective,
                 )
                 import re
+
                 m = re.search(r"\[.*?\]", sug_resp or "", re.DOTALL)
                 arr = json.loads(m.group()) if m else []
                 if isinstance(arr, list):
@@ -2272,9 +3182,15 @@ End with exactly: "Let me build this now."
             except Exception:
                 pass
             if not suggestions:
-                suggestions = ["Add more features", "Enhance reporting", "Improve accessibility"]
+                suggestions = [
+                    "Add more features",
+                    "Enhance reporting",
+                    "Improve accessibility",
+                ]
 
-        tokens_estimate = max(1000, len(plan_text) * 2 + sum(len(s) for s in suggestions) * 2)
+        tokens_estimate = max(
+            1000, len(plan_text) * 2 + sum(len(s) for s in suggestions) * 2
+        )
         if use_swarm:
             tokens_estimate = int(tokens_estimate * SWARM_TOKEN_MULTIPLIER)
         if user and not user.get("public_api"):
@@ -2282,8 +3198,16 @@ End with exactly: "Let me build this now."
             credit_deduct = min(_tokens_to_credits(tokens_estimate), cred)
             if credit_deduct > 0:
                 await _ensure_credit_balance(user["id"])
-                await db.users.update_one({"id": user["id"]}, {"$inc": {"credit_balance": -credit_deduct}})
-        return {"plan_text": plan_text, "suggestions": suggestions, "model_used": "auto", "swarm_used": use_swarm, "plan_tokens": tokens_estimate}
+                await db.users.update_one(
+                    {"id": user["id"]}, {"$inc": {"credit_balance": -credit_deduct}}
+                )
+        return {
+            "plan_text": plan_text,
+            "suggestions": suggestions,
+            "model_used": "auto",
+            "swarm_used": use_swarm,
+            "plan_tokens": tokens_estimate,
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -2295,32 +3219,54 @@ End with exactly: "Let me build this now."
 async def get_project_phases(project_id: str, user: dict = Depends(get_current_user)):
     """Return current phase and per-phase status for a project."""
     db = get_db()
-    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"_id": 0})
+    project = await db.projects.find_one(
+        {"id": project_id, "user_id": user["id"]}, {"_id": 0}
+    )
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    statuses = await db.agent_status.find({"project_id": project_id}, {"_id": 0}).to_list(100)
+    statuses = await db.agent_status.find(
+        {"project_id": project_id}, {"_id": 0}
+    ).to_list(100)
     by_agent = {s["agent_name"]: s for s in statuses}
     phases_out = []
     current_phase_id = None
     for ph in BUILD_PHASES:
-        agent_statuses = [by_agent.get(a, {"status": "pending", "progress": 0}) for a in ph["agents"]]
+        agent_statuses = [
+            by_agent.get(a, {"status": "pending", "progress": 0}) for a in ph["agents"]
+        ]
         completed = sum(1 for a in agent_statuses if a.get("status") == "completed")
         total = len(ph["agents"])
-        status = "completed" if completed == total else ("running" if completed > 0 or current_phase_id == ph["id"] else "pending")
+        status = (
+            "completed"
+            if completed == total
+            else (
+                "running"
+                if completed > 0 or current_phase_id == ph["id"]
+                else "pending"
+            )
+        )
         if status == "running" and current_phase_id is None:
             current_phase_id = ph["id"]
-        phases_out.append({
-            "id": ph["id"],
-            "name": ph["name"],
-            "status": status,
-            "progress": round(100 * completed / total) if total else 0,
-            "agents": agent_statuses,
-        })
+        phases_out.append(
+            {
+                "id": ph["id"],
+                "name": ph["name"],
+                "status": status,
+                "progress": round(100 * completed / total) if total else 0,
+                "agents": agent_statuses,
+            }
+        )
     if not current_phase_id and project.get("status") == "completed":
         current_phase_id = "deployment"
-    return {"phases": phases_out, "current_phase": current_phase_id, "project_status": project.get("status")}
+    return {
+        "phases": phases_out,
+        "current_phase": current_phase_id,
+        "project_status": project.get("status"),
+    }
+
 
 # ==================== ORCHESTRATION ====================
+
 
 # Legacy orchestration views derive from the source-of-truth DAG so they stay
 # in sync with the swarm runtime instead of drifting behind it.
@@ -2343,12 +3289,15 @@ def _token_budget_for_orchestration_agent(agent_name: str, system_msg: str) -> i
 _ORCHESTRATION_AGENTS = [
     (
         agent_name,
-        _token_budget_for_orchestration_agent(agent_name, get_system_prompt_for_agent(agent_name)),
+        _token_budget_for_orchestration_agent(
+            agent_name, get_system_prompt_for_agent(agent_name)
+        ),
         get_system_prompt_for_agent(agent_name),
     )
     for phase in get_execution_phases(AGENT_DAG)
     for agent_name in phase
 ]
+
 
 async def run_orchestration(project_id: str, user_id: str):
     """Runs real agent orchestration: each agent calls the LLM when API keys are set. Uses user's Settings keys when available."""
@@ -2357,12 +3306,17 @@ async def run_orchestration(project_id: str, user_id: str):
     if not project:
         return
     req = project.get("requirements") or {}
-    prompt = req.get("prompt") or req.get("description") or project.get("description") or "Build a web application"
+    prompt = (
+        req.get("prompt")
+        or req.get("description")
+        or project.get("description")
+        or "Build a web application"
+    )
     if isinstance(prompt, dict):
         prompt = prompt.get("prompt") or str(prompt)
     user_keys = await get_workspace_api_keys({"id": user_id})
     effective = _effective_api_keys(user_keys)
-    
+
     # Get user tier and derive speed from plan (no client speed_selector)
     user = await db.users.find_one({"id": user_id}, {"plan": 1, "credit_balance": 1})
     user_tier = user.get("plan", "free") if user else "free"
@@ -2376,24 +3330,28 @@ async def run_orchestration(project_id: str, user_id: str):
     for agent_name, base_tokens, system_msg in _ORCHESTRATION_AGENTS:
         await db.agent_status.update_one(
             {"project_id": project_id, "agent_name": agent_name},
-            {"$set": {
-                "project_id": project_id,
-                "agent_name": agent_name,
-                "status": "running",
-                "progress": 0,
-                "tokens_used": 0,
-                "started_at": datetime.now(timezone.utc).isoformat()
-            }},
-            upsert=True
+            {
+                "$set": {
+                    "project_id": project_id,
+                    "agent_name": agent_name,
+                    "status": "running",
+                    "progress": 0,
+                    "tokens_used": 0,
+                    "started_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+            upsert=True,
         )
-        await db.project_logs.insert_one({
-            "id": str(uuid.uuid4()),
-            "project_id": project_id,
-            "agent": agent_name,
-            "message": f"Starting {agent_name}...",
-            "level": "info",
-            "created_at": datetime.now(timezone.utc).isoformat()
-        })
+        await db.project_logs.insert_one(
+            {
+                "id": str(uuid.uuid4()),
+                "project_id": project_id,
+                "agent": agent_name,
+                "message": f"Starting {agent_name}...",
+                "level": "info",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
 
         tokens_used = 0
         try:
@@ -2405,15 +3363,19 @@ async def run_orchestration(project_id: str, user_id: str):
                     model_chain=model_chain,
                     api_keys=effective,
                 )
-                tokens_used = max(100, min(200000, (len(prompt) + len(response or "")) * 2))
-                await db.project_logs.insert_one({
-                    "id": str(uuid.uuid4()),
-                    "project_id": project_id,
-                    "agent": agent_name,
-                    "message": f"{agent_name} output: {(response or '')[:200]}...",
-                    "level": "info",
-                    "created_at": datetime.now(timezone.utc).isoformat()
-                })
+                tokens_used = max(
+                    100, min(200000, (len(prompt) + len(response or "")) * 2)
+                )
+                await db.project_logs.insert_one(
+                    {
+                        "id": str(uuid.uuid4()),
+                        "project_id": project_id,
+                        "agent": agent_name,
+                        "message": f"{agent_name} output: {(response or '')[:200]}...",
+                        "level": "info",
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                )
         except Exception as e:
             logger.warning(f"Orchestration agent {agent_name} LLM failed: {e}")
 
@@ -2421,23 +3383,35 @@ async def run_orchestration(project_id: str, user_id: str):
             await asyncio.sleep(0.2)
             await db.agent_status.update_one(
                 {"project_id": project_id, "agent_name": agent_name},
-                {"$set": {"progress": progress, "tokens_used": int(tokens_used * progress / 100)}}
+                {
+                    "$set": {
+                        "progress": progress,
+                        "tokens_used": int(tokens_used * progress / 100),
+                    }
+                },
             )
         await db.agent_status.update_one(
             {"project_id": project_id, "agent_name": agent_name},
-            {"$set": {"status": "completed", "progress": 100, "tokens_used": tokens_used}}
+            {
+                "$set": {
+                    "status": "completed",
+                    "progress": 100,
+                    "tokens_used": tokens_used,
+                }
+            },
         )
-        await db.token_usage.insert_one({
-            "id": str(uuid.uuid4()),
-            "project_id": project_id,
-            "user_id": user_id,
-            "agent": agent_name,
-            "tokens": tokens_used,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        })
+        await db.token_usage.insert_one(
+            {
+                "id": str(uuid.uuid4()),
+                "project_id": project_id,
+                "user_id": user_id,
+                "agent": agent_name,
+                "tokens": tokens_used,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
         total_used += tokens_used
 
-        
         # --- METRICS: Track build completion ---
         try:
             _metrics.builds_total.labels(status="success").inc()
@@ -2445,40 +3419,48 @@ async def run_orchestration(project_id: str, user_id: str):
         except Exception:
             pass
 
-        await db.project_logs.insert_one({
-            "id": str(uuid.uuid4()),
-            "project_id": project_id,
-            "agent": agent_name,
-            "message": f"{agent_name} completed. Used {tokens_used:,} tokens.",
-            "level": "success",
-            "created_at": datetime.now(timezone.utc).isoformat()
-        })
-    
+        await db.project_logs.insert_one(
+            {
+                "id": str(uuid.uuid4()),
+                "project_id": project_id,
+                "agent": agent_name,
+                "message": f"{agent_name} completed. Used {tokens_used:,} tokens.",
+                "level": "success",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
+
     await db.projects.update_one(
         {"id": project_id},
-        {"$set": {
-            "status": "completed",
-            "tokens_used": total_used,
-            "completed_at": datetime.now(timezone.utc).isoformat(),
-            "live_url": None
-        }}
+        {
+            "$set": {
+                "status": "completed",
+                "tokens_used": total_used,
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+                "live_url": None,
+            }
+        },
     )
-    
+
     project = await db.projects.find_one({"id": project_id})
     if project:
         refund_tokens = project["tokens_allocated"] - total_used
         if refund_tokens > 0:
             refund_credits = refund_tokens // CREDITS_PER_TOKEN
-            await db.users.update_one({"id": user_id}, {"$inc": {"credit_balance": refund_credits}})
-            await db.token_ledger.insert_one({
-                "id": str(uuid.uuid4()),
-                "user_id": user_id,
-                "tokens": refund_tokens,
-                "credits": refund_credits,
-                "type": "refund",
-                "description": f"Unused from project {project_id[:8]}",
-                "created_at": datetime.now(timezone.utc).isoformat()
-            })
+            await db.users.update_one(
+                {"id": user_id}, {"$inc": {"credit_balance": refund_credits}}
+            )
+            await db.token_ledger.insert_one(
+                {
+                    "id": str(uuid.uuid4()),
+                    "user_id": user_id,
+                    "tokens": refund_tokens,
+                    "credits": refund_credits,
+                    "type": "refund",
+                    "description": f"Unused from project {project_id[:8]}",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
 
 
 # ==================== ORCHESTRATION V2 (DAG + PARALLEL + OUTPUT CHAINING + ERROR RECOVERY) ====================
@@ -2498,7 +3480,12 @@ async def _run_single_agent_with_context(
 ) -> Dict[str, Any]:
     """Run one agent with context from previous agents. Returns {output, tokens_used, status} or raises."""
     if agent_name not in AGENT_DAG:
-        return {"output": "", "tokens_used": 0, "status": "skipped", "reason": "Unknown agent"}
+        return {
+            "output": "",
+            "tokens_used": 0,
+            "status": "skipped",
+            "reason": "Unknown agent",
+        }
     # Real tool agents: execute real tools (File, Browser, API, Database, Deployment) from DAG context
     if agent_name in REAL_AGENT_NAMES:
         real_result = await run_real_agent(
@@ -2507,14 +3494,21 @@ async def _run_single_agent_with_context(
         if real_result is not None:
             persist_agent_output(project_id, agent_name, real_result)
             try:
-                run_agent_real_behavior(agent_name, project_id, real_result, previous_outputs)
+                run_agent_real_behavior(
+                    agent_name, project_id, real_result, previous_outputs
+                )
             except Exception as e:
                 logger.warning("run_agent_real_behavior %s: %s", agent_name, e)
             return real_result
     system_msg = get_system_prompt_for_agent(agent_name)
-    if agent_name == "Frontend Generation" and (build_kind or "").strip().lower() == "mobile":
+    if (
+        agent_name == "Frontend Generation"
+        and (build_kind or "").strip().lower() == "mobile"
+    ):
         system_msg = "You are Frontend Generation for a mobile app. Output only Expo/React Native code (App.js, use React Native components from 'react-native', no DOM or web-only APIs). No markdown."
-    enhanced_message = build_context_from_previous_agents(agent_name, previous_outputs, project_prompt)
+    enhanced_message = build_context_from_previous_agents(
+        agent_name, previous_outputs, project_prompt
+    )
     if retry_error:
         enhanced_message += (
             "\n\n[Previous attempt failed]\n"
@@ -2533,7 +3527,9 @@ async def _run_single_agent_with_context(
         available_credits=available_credits,
         agent_name=agent_name,
     )
-    tokens_used = max(100, min(200000, (len(enhanced_message) + len(response or "")) * 2))
+    tokens_used = max(
+        100, min(200000, (len(enhanced_message) + len(response or "")) * 2)
+    )
     out = (response or "").strip()
     input_data = _agent_cache_input(agent_name, project_prompt, previous_outputs)
     result: Dict[str, Any] = {
@@ -2545,11 +3541,19 @@ async def _run_single_agent_with_context(
     }
 
     # Image Generation: LLM returns JSON prompts -> Together.ai generates images
-    if agent_name == "Image Generation" and generate_images_for_app and parse_image_prompts:
+    if (
+        agent_name == "Image Generation"
+        and generate_images_for_app
+        and parse_image_prompts
+    ):
         try:
             prompts_dict = parse_image_prompts(out)
-            design_desc = enhanced_message[:1000] if enhanced_message else project_prompt[:500]
-            images = await generate_images_for_app(design_desc, prompts_dict if prompts_dict else None)
+            design_desc = (
+                enhanced_message[:1000] if enhanced_message else project_prompt[:500]
+            )
+            images = await generate_images_for_app(
+                design_desc, prompts_dict if prompts_dict else None
+            )
             out = json.dumps(images) if images else out
             result = {
                 "output": out,
@@ -2561,12 +3565,26 @@ async def _run_single_agent_with_context(
             }
         except Exception as e:
             logger.error(f"Image generation failed: {e}")
-            result = {"output": out, "tokens_used": tokens_used, "status": "completed", "result": out, "code": out}
-    elif agent_name == "Video Generation" and generate_videos_for_app and parse_video_queries:
+            result = {
+                "output": out,
+                "tokens_used": tokens_used,
+                "status": "completed",
+                "result": out,
+                "code": out,
+            }
+    elif (
+        agent_name == "Video Generation"
+        and generate_videos_for_app
+        and parse_video_queries
+    ):
         try:
             queries_dict = parse_video_queries(out)
-            design_desc = enhanced_message[:1000] if enhanced_message else project_prompt[:500]
-            videos = await generate_videos_for_app(design_desc, queries_dict if queries_dict else None)
+            design_desc = (
+                enhanced_message[:1000] if enhanced_message else project_prompt[:500]
+            )
+            videos = await generate_videos_for_app(
+                design_desc, queries_dict if queries_dict else None
+            )
             out = json.dumps(videos) if videos else out
             result = {
                 "output": out,
@@ -2598,11 +3616,15 @@ async def _run_single_agent_with_context(
     except Exception as e:
         logger.warning("run_agent_real_behavior %s: %s", agent_name, e)
 
-    
     # --- METRICS: Track agent execution ---
     try:
-        safe_output = coerce_text_output(result.get("output") or result.get("result") or "")
-        _metrics.agent_executions_total.labels(agent=agent_name, status="success" if safe_output and len(safe_output) > 50 else "partial").inc()
+        safe_output = coerce_text_output(
+            result.get("output") or result.get("result") or ""
+        )
+        _metrics.agent_executions_total.labels(
+            agent=agent_name,
+            status="success" if safe_output and len(safe_output) > 50 else "partial",
+        ).inc()
         _metrics.active_agents.dec()
     except Exception:
         pass
@@ -2610,12 +3632,18 @@ async def _run_single_agent_with_context(
     try:
         memory = await _init_agent_learning()
         if memory:
-            safe_output = coerce_text_output(result.get("output") or result.get("result") or "")
+            safe_output = coerce_text_output(
+                result.get("output") or result.get("result") or ""
+            )
             await memory.record_execution(
                 agent_name=agent_name,
                 input_data={"prompt": input_data[:500], "project_id": project_id},
                 output={"result": safe_output[:500], "tokens": tokens_used},
-                status=ExecutionStatus.SUCCESS if safe_output and len(safe_output) > 50 else ExecutionStatus.PARTIAL,
+                status=(
+                    ExecutionStatus.SUCCESS
+                    if safe_output and len(safe_output) > 50
+                    else ExecutionStatus.PARTIAL
+                ),
                 duration_ms=0,
                 metadata={"build_kind": build_kind or "web"},
             )
@@ -2627,18 +3655,25 @@ async def _run_single_agent_with_context(
             await _vector_memory.store_agent_output(
                 project_id=project_id,
                 agent_name=agent_name,
-                output=coerce_text_output(result.get("output") or result.get("result") or "", limit=2000),
+                output=coerce_text_output(
+                    result.get("output") or result.get("result") or "", limit=2000
+                ),
                 tokens_used=tokens_used,
             )
     except Exception as e:
         logger.debug("Vector memory store failed (non-fatal): %s", e)
 
     try:
-        if _pgvector_memory and getattr(_pgvector_memory, "is_available", lambda: False)():
+        if (
+            _pgvector_memory
+            and getattr(_pgvector_memory, "is_available", lambda: False)()
+        ):
             await _pgvector_memory.store_agent_output(
                 project_id=project_id,
                 agent_name=agent_name,
-                output=coerce_text_output(result.get("output") or result.get("result") or "", limit=2000),
+                output=coerce_text_output(
+                    result.get("output") or result.get("result") or "", limit=2000
+                ),
                 tokens_used=tokens_used,
             )
     except Exception as e:
@@ -2659,7 +3694,9 @@ async def _repair_generated_agent_output(
     available_credits: int,
     project_id: str,
 ) -> Dict[str, Any]:
-    raw_output = result.get("output") or result.get("result") or result.get("code") or ""
+    raw_output = (
+        result.get("output") or result.get("result") or result.get("code") or ""
+    )
     if not CodeRepairAgent.requires_validation(agent_name, raw_output):
         safe_text = coerce_text_output(raw_output)
         result["output"] = safe_text
@@ -2667,7 +3704,9 @@ async def _repair_generated_agent_output(
         result["code"] = safe_text
         return result
 
-    async def _llm_repair_callback(name: str, language: str, broken: str, error: str) -> str:
+    async def _llm_repair_callback(
+        name: str, language: str, broken: str, error: str
+    ) -> str:
         repair_prompt = (
             f"The previous output for agent '{name}' is invalid {language}.\n"
             f"Error: {error}\n\n"
@@ -2698,7 +3737,9 @@ async def _repair_generated_agent_output(
         llm_repair=_llm_repair_callback,
     )
     if not repaired.get("valid"):
-        raise AgentError(agent_name, f"output_validation_failed: {repaired.get('error')}", "high")
+        raise AgentError(
+            agent_name, f"output_validation_failed: {repaired.get('error')}", "high"
+        )
 
     safe_text = repaired.get("output") or ""
     result["output"] = safe_text
@@ -2718,14 +3759,18 @@ async def _repair_generated_agent_output(
     return result
 
 
-def _agent_cache_input(agent_name: str, project_prompt: str, previous_outputs: Dict[str, Dict[str, Any]]) -> str:
+def _agent_cache_input(
+    agent_name: str, project_prompt: str, previous_outputs: Dict[str, Dict[str, Any]]
+) -> str:
     """Build stable input string for agent cache key (prompt + dependent outputs)."""
     parts = [project_prompt]
     deps = list(AGENT_DAG.get(agent_name, {}).get("depends_on", []))
     for dep in sorted(deps):
         if dep in previous_outputs:
             out = coerce_text_output(
-                previous_outputs[dep].get("output") or previous_outputs[dep].get("result") or "",
+                previous_outputs[dep].get("output")
+                or previous_outputs[dep].get("result")
+                or "",
                 limit=800,
             )
             parts.append(f"{dep}:{out}")
@@ -2748,16 +3793,30 @@ async def _run_single_agent_with_retry(
 ) -> Dict[str, Any]:
     db = get_db()
     from agent_cache import get as cache_get, set as cache_set
+
     input_data = _agent_cache_input(agent_name, project_prompt, previous_outputs)
     cached = await cache_get(db, agent_name, input_data)
-    if cached and isinstance(cached, dict) and (cached.get("output") or cached.get("result")):
+    if (
+        cached
+        and isinstance(cached, dict)
+        and (cached.get("output") or cached.get("result"))
+    ):
         return cached
     last_err = None
     for attempt in range(max_retries):
         try:
             r = await _run_single_agent_with_context(
-                project_id, user_id, agent_name, project_prompt, previous_outputs, effective, model_chain, build_kind=build_kind,
-                user_tier=user_tier, speed_selector=speed_selector, available_credits=available_credits,
+                project_id,
+                user_id,
+                agent_name,
+                project_prompt,
+                previous_outputs,
+                effective,
+                model_chain,
+                build_kind=build_kind,
+                user_tier=user_tier,
+                speed_selector=speed_selector,
+                available_credits=available_credits,
                 retry_error=str(last_err) if last_err else None,
             )
             if not (r.get("output") or r.get("result")):
@@ -2774,65 +3833,123 @@ async def _run_single_agent_with_retry(
                 str(e)[:300],
             )
             if attempt < max_retries - 1:
-                await asyncio.sleep(2 ** attempt)
+                await asyncio.sleep(2**attempt)
     crit = get_criticality(agent_name)
     if crit == "critical":
         completed_at = datetime.now(timezone.utc).isoformat()
         await db.projects.update_one(
             {"id": project_id},
-            {"$set": {"status": "failed", "completed_at": completed_at}}
+            {"$set": {"status": "failed", "completed_at": completed_at}},
         )
         # Append to build_history for version history UI (item 13)
         proj = await db.projects.find_one({"id": project_id})
         if proj is not None:
             history = list(proj.get("build_history") or [])
-            history.insert(0, {"completed_at": completed_at, "status": "failed", "quality_score": None, "tokens_used": 0})
-            await db.projects.update_one({"id": project_id}, {"$set": {"build_history": history[:50]}})
-        return {"output": "", "tokens_used": 0, "status": "failed", "reason": str(last_err), "recoverable": False}
+            history.insert(
+                0,
+                {
+                    "completed_at": completed_at,
+                    "status": "failed",
+                    "quality_score": None,
+                    "tokens_used": 0,
+                },
+            )
+            await db.projects.update_one(
+                {"id": project_id}, {"$set": {"build_history": history[:50]}}
+            )
+        return {
+            "output": "",
+            "tokens_used": 0,
+            "status": "failed",
+            "reason": str(last_err),
+            "recoverable": False,
+        }
     if crit == "high":
         fallback = generate_fallback(agent_name)
-        return {"output": fallback, "result": fallback, "tokens_used": 0, "status": "failed_with_fallback", "reason": str(last_err), "recoverable": True}
-    return {"output": "", "tokens_used": 0, "status": "skipped", "reason": str(last_err), "recoverable": True}
+        return {
+            "output": fallback,
+            "result": fallback,
+            "tokens_used": 0,
+            "status": "failed_with_fallback",
+            "reason": str(last_err),
+            "recoverable": True,
+        }
+    return {
+        "output": "",
+        "tokens_used": 0,
+        "status": "skipped",
+        "reason": str(last_err),
+        "recoverable": True,
+    }
 
-def _inject_media_into_jsx(jsx: str, images: Dict[str, str], videos: Dict[str, str]) -> str:
+
+def _inject_media_into_jsx(
+    jsx: str, images: Dict[str, str], videos: Dict[str, str]
+) -> str:
     """Inject image/video URLs into generated JSX. Replaces placeholders or prepends a media section."""
     if not jsx or (not images and not videos):
         return jsx
     # Replace placeholders if present
     out = jsx
     if images.get("hero"):
-        out = out.replace("CRUCIBAI_HERO_IMG", images["hero"]).replace("{{HERO_IMAGE}}", images["hero"])
+        out = out.replace("CRUCIBAI_HERO_IMG", images["hero"]).replace(
+            "{{HERO_IMAGE}}", images["hero"]
+        )
     if images.get("feature_1"):
-        out = out.replace("CRUCIBAI_FEATURE_1_IMG", images["feature_1"]).replace("{{FEATURE_1_IMAGE}}", images["feature_1"])
+        out = out.replace("CRUCIBAI_FEATURE_1_IMG", images["feature_1"]).replace(
+            "{{FEATURE_1_IMAGE}}", images["feature_1"]
+        )
     if images.get("feature_2"):
-        out = out.replace("CRUCIBAI_FEATURE_2_IMG", images["feature_2"]).replace("{{FEATURE_2_IMAGE}}", images["feature_2"])
+        out = out.replace("CRUCIBAI_FEATURE_2_IMG", images["feature_2"]).replace(
+            "{{FEATURE_2_IMAGE}}", images["feature_2"]
+        )
     if videos.get("hero"):
-        out = out.replace("CRUCIBAI_HERO_VIDEO", videos["hero"]).replace("{{HERO_VIDEO}}", videos["hero"])
+        out = out.replace("CRUCIBAI_HERO_VIDEO", videos["hero"]).replace(
+            "{{HERO_VIDEO}}", videos["hero"]
+        )
     if videos.get("feature"):
-        out = out.replace("CRUCIBAI_FEATURE_VIDEO", videos["feature"]).replace("{{FEATURE_VIDEO}}", videos["feature"])
+        out = out.replace("CRUCIBAI_FEATURE_VIDEO", videos["feature"]).replace(
+            "{{FEATURE_VIDEO}}", videos["feature"]
+        )
     # If no placeholders were used, prepend a media section after "return ("
     if out == jsx and ("CRUCIBAI_" not in jsx and "{{HERO" not in jsx):
         media_parts = []
         if videos.get("hero"):
-            media_parts.append(f'<section className="relative w-full h-48 md:h-64 overflow-hidden rounded-lg"><video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover" src="{videos["hero"]}" /></section>')
+            media_parts.append(
+                f'<section className="relative w-full h-48 md:h-64 overflow-hidden rounded-lg"><video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover" src="{videos["hero"]}" /></section>'
+            )
         img_keys = ["hero", "feature_1", "feature_2"]
         img_urls = [images.get(k) for k in img_keys if images.get(k)]
         if img_urls:
-            divs = "".join(f'<div><img src="{u}" alt="Media" className="w-full h-32 object-cover rounded-lg" /></div>' for u in img_urls)
-            media_parts.append(f'<section className="grid grid-cols-1 md:grid-cols-3 gap-4 py-4">{divs}</section>')
+            divs = "".join(
+                f'<div><img src="{u}" alt="Media" className="w-full h-32 object-cover rounded-lg" /></div>'
+                for u in img_urls
+            )
+            media_parts.append(
+                f'<section className="grid grid-cols-1 md:grid-cols-3 gap-4 py-4">{divs}</section>'
+            )
         if media_parts:
             block = "\n      ".join(media_parts)
             idx = out.find("return (")
             if idx != -1:
                 insert = idx + len("return (")
-                out = out[:insert] + "\n      " + block + "\n      " + out[insert:].lstrip()
+                out = (
+                    out[:insert]
+                    + "\n      "
+                    + block
+                    + "\n      "
+                    + out[insert:].lstrip()
+                )
     return out
 
 
 # CrucibAI attribution: comment at top + footer. Free = iframe (served from our server, not removable). Paid = static div (user may remove).
 CRUCIBAI_TOP_COMMENT = "// Built with CrucibAI · https://crucibai.com\n"
 # URL for free-tier iframe: badge content is on our server so free users have no way to remove it (only the iframe tag in source).
-_BRANDING_BASE_URL = os.environ.get("CRUCIBAI_BRANDING_URL") or (os.environ.get("BACKEND_PUBLIC_URL", "http://localhost:8000").rstrip("/") + "/branding")
+_BRANDING_BASE_URL = os.environ.get("CRUCIBAI_BRANDING_URL") or (
+    os.environ.get("BACKEND_PUBLIC_URL", "http://localhost:8000").rstrip("/")
+    + "/branding"
+)
 # Free: iframe loads badge from our server — permanent, not in their editable content.
 CRUCIBAI_FREE_FOOTER_JSX = (
     f'<iframe src="{_BRANDING_BASE_URL}" title="Built with CrucibAI" '
@@ -2842,7 +3959,7 @@ CRUCIBAI_FREE_FOOTER_JSX = (
 CRUCIBAI_PAID_FOOTER_JSX = (
     '<div className="mt-8 py-3 text-center text-sm text-gray-500 border-t border-gray-200/50">'
     '<a href="https://crucibai.com" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-gray-700">Built with CrucibAI</a>'
-    '</div>'
+    "</div>"
 )
 
 
@@ -2856,7 +3973,11 @@ def _inject_crucibai_branding(jsx: str, plan: str) -> str:
         if out.lstrip().startswith("//") or out.lstrip().startswith("/*"):
             first_newline = out.find("\n")
             if first_newline != -1:
-                out = out[: first_newline + 1] + CRUCIBAI_TOP_COMMENT + out[first_newline + 1 :]
+                out = (
+                    out[: first_newline + 1]
+                    + CRUCIBAI_TOP_COMMENT
+                    + out[first_newline + 1 :]
+                )
             else:
                 out = CRUCIBAI_TOP_COMMENT + out
         else:
@@ -2871,7 +3992,13 @@ def _inject_crucibai_branding(jsx: str, plan: str) -> str:
             before = out[:idx]
             last_div = before.rfind("</div>")
             if last_div != -1:
-                out = out[:last_div] + "\n      " + footer_jsx + "\n      " + out[last_div:]
+                out = (
+                    out[:last_div]
+                    + "\n      "
+                    + footer_jsx
+                    + "\n      "
+                    + out[last_div:]
+                )
     return out
 
 
@@ -2880,21 +4007,100 @@ def _infer_build_kind(prompt: str) -> str:
     if not prompt:
         return "fullstack"
     p = prompt.lower()
-    if any(x in p for x in ("mobile app", "react native", "flutter", "ios app", "android app", "pwa ", "app store", "play store", "apple store", "google play", "build me a mobile", "mobile application")):
+    if any(
+        x in p
+        for x in (
+            "mobile app",
+            "react native",
+            "flutter",
+            "ios app",
+            "android app",
+            "pwa ",
+            "app store",
+            "play store",
+            "apple store",
+            "google play",
+            "build me a mobile",
+            "mobile application",
+        )
+    ):
         return "mobile"
-    if any(x in p for x in ("build me an agent", "automation agent", "automation", "scheduled task", "cron", "webhook agent", "run_agent", "build agent")):
+    if any(
+        x in p
+        for x in (
+            "build me an agent",
+            "automation agent",
+            "automation",
+            "scheduled task",
+            "cron",
+            "webhook agent",
+            "run_agent",
+            "build agent",
+        )
+    ):
         return "ai_agent"
-    if any(x in p for x in ("saas", "subscription", "multi-tenant", "billing", "stripe", "plans/tiers")):
+    if any(
+        x in p
+        for x in (
+            "saas",
+            "subscription",
+            "multi-tenant",
+            "billing",
+            "stripe",
+            "plans/tiers",
+        )
+    ):
         return "saas"
-    if any(x in p for x in ("slack bot", "discord bot", "telegram bot", "chatbot", " webhook bot", "bot that")):
+    if any(
+        x in p
+        for x in (
+            "slack bot",
+            "discord bot",
+            "telegram bot",
+            "chatbot",
+            " webhook bot",
+            "bot that",
+        )
+    ):
         return "bot"
-    if any(x in p for x in ("ai agent", "llm agent", "agent with tools", "autonomous agent")):
+    if any(
+        x in p
+        for x in ("ai agent", "llm agent", "agent with tools", "autonomous agent")
+    ):
         return "ai_agent"
-    if any(x in p for x in ("game", "2d game", "3d game", "browser game", "mobile game", "arcade", "player score", "level design")):
+    if any(
+        x in p
+        for x in (
+            "game",
+            "2d game",
+            "3d game",
+            "browser game",
+            "mobile game",
+            "arcade",
+            "player score",
+            "level design",
+        )
+    ):
         return "game"
-    if any(x in p for x in ("trading software", "trading app", "stock trading", "crypto trading", "forex", "order book", "positions", "p&l", "trade execution", "portfolio tracker")):
+    if any(
+        x in p
+        for x in (
+            "trading software",
+            "trading app",
+            "stock trading",
+            "crypto trading",
+            "forex",
+            "order book",
+            "positions",
+            "p&l",
+            "trade execution",
+            "portfolio tracker",
+        )
+    ):
         return "trading"
-    if any(x in p for x in ("landing page", "landing only", "one-page", "marketing page")):
+    if any(
+        x in p for x in ("landing page", "landing only", "one-page", "marketing page")
+    ):
         return "landing"
     if any(x in p for x in ("website", "build me a website", "build me a web")):
         return "fullstack"
@@ -2915,15 +4121,33 @@ async def run_orchestration_v2(project_id: str, user_id: str):
     if not project:
         return
     req = project.get("requirements") or {}
-    prompt = req.get("prompt") or req.get("description") or project.get("description") or "Build a web application"
+    prompt = (
+        req.get("prompt")
+        or req.get("description")
+        or project.get("description")
+        or "Build a web application"
+    )
     if isinstance(prompt, dict):
         prompt = prompt.get("prompt") or str(prompt)
-    build_kind = (req.get("build_kind") or "").strip().lower() or _infer_build_kind(prompt)
-    if build_kind not in ("fullstack", "landing", "mobile", "saas", "bot", "ai_agent", "game", "trading", "any"):
+    build_kind = (req.get("build_kind") or "").strip().lower() or _infer_build_kind(
+        prompt
+    )
+    if build_kind not in (
+        "fullstack",
+        "landing",
+        "mobile",
+        "saas",
+        "bot",
+        "ai_agent",
+        "game",
+        "trading",
+        "any",
+    ):
         build_kind = "fullstack"
     project_prompt_with_kind = f"[Build kind: {build_kind}]\n{prompt}"
     try:
         from autonomous_domain_agent import initialize_autonomous_domain_agent
+
         _domain_agent = await initialize_autonomous_domain_agent(db)
         _analysis = await _domain_agent.analyze_requirements(prompt)
         _d = _analysis.get("detected_domain") or "general"
@@ -2939,7 +4163,7 @@ async def run_orchestration_v2(project_id: str, user_id: str):
         logger.debug("Autonomous domain enrichment skipped: %s", _dom_err)
     user_keys = await get_workspace_api_keys({"id": user_id})
     effective = _effective_api_keys(user_keys)
-    
+
     # Get user tier and derive speed from plan (no client speed_selector)
     user = await db.users.find_one({"id": user_id}, {"plan": 1, "credit_balance": 1})
     user_tier = user.get("plan", "free") if user else "free"
@@ -2947,17 +4171,40 @@ async def run_orchestration_v2(project_id: str, user_id: str):
     speed_selector = _speed_from_plan(user_tier)
     model_chain = _get_model_chain("auto", prompt, effective_keys=effective)
     if not effective.get("anthropic"):
-        await db.projects.update_one({"id": project_id}, {"$set": {"status": "failed", "completed_at": datetime.now(timezone.utc).isoformat()}})
-        emit_build_event(project_id, "build_completed", status="failed", message="No API keys")
+        await db.projects.update_one(
+            {"id": project_id},
+            {
+                "$set": {
+                    "status": "failed",
+                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+        )
+        emit_build_event(
+            project_id, "build_completed", status="failed", message="No API keys"
+        )
         return
-    await db.projects.update_one({"id": project_id}, {"$set": {"status": "running", "current_phase": 0, "progress_percent": 0}})
+    await db.projects.update_one(
+        {"id": project_id},
+        {"$set": {"status": "running", "current_phase": 0, "progress_percent": 0}},
+    )
     phases = get_execution_phases(AGENT_DAG)
     # Item 29: Quick build — run only first 2 phases for preview in ~2 min
     if project.get("quick_build"):
         phases = phases[:2]
-        emit_build_event(project_id, "build_started", phases=len(phases), message="Quick build started (preview in ~2 min)")
+        emit_build_event(
+            project_id,
+            "build_started",
+            phases=len(phases),
+            message="Quick build started (preview in ~2 min)",
+        )
     else:
-        emit_build_event(project_id, "build_started", phases=len(phases), message="Orchestration started")
+        emit_build_event(
+            project_id,
+            "build_started",
+            phases=len(phases),
+            message="Orchestration started",
+        )
     results: Dict[str, Dict[str, Any]] = {}
     total_used = 0
     suggest_retry_phase: Optional[int] = None
@@ -2974,44 +4221,106 @@ async def run_orchestration_v2(project_id: str, user_id: str):
             status = doc.get("status", "")
             output = doc.get("output", "")
             if agent_nm and status in ("complete", "failed_with_fallback") and output:
-                results[agent_nm] = {"output": output, "result": output, "status": status, "from_checkpoint": True}
+                results[agent_nm] = {
+                    "output": output,
+                    "result": output,
+                    "status": status,
+                    "from_checkpoint": True,
+                }
                 checkpoint_count += 1
         if checkpoint_count > 0:
-            logger.info(f"Checkpoint recovery: {checkpoint_count} agents reloaded, skipping re-execution")
-            emit_build_event(project_id, "checkpoint_restored", count=checkpoint_count,
-                             message=f"Resuming from checkpoint: {checkpoint_count} agents already complete")
+            logger.info(
+                f"Checkpoint recovery: {checkpoint_count} agents reloaded, skipping re-execution"
+            )
+            emit_build_event(
+                project_id,
+                "checkpoint_restored",
+                count=checkpoint_count,
+                message=f"Resuming from checkpoint: {checkpoint_count} agents already complete",
+            )
     except Exception as _cp_err:
         logger.debug(f"Checkpoint load skipped: {_cp_err}")
 
     for phase_idx, agent_names in enumerate(phases):
-        emit_build_event(project_id, "phase_started", phase=phase_idx, agents=agent_names, message=f"Phase {phase_idx + 1}: {', '.join(agent_names)}")
+        emit_build_event(
+            project_id,
+            "phase_started",
+            phase=phase_idx,
+            agents=agent_names,
+            message=f"Phase {phase_idx + 1}: {', '.join(agent_names)}",
+        )
         progress_pct = int((phase_idx + 1) / len(phases) * 100)
         await db.projects.update_one(
             {"id": project_id},
-            {"$set": {"current_phase": phase_idx, "current_agent": ",".join(agent_names), "progress_percent": progress_pct, "tokens_used": total_used}},
+            {
+                "$set": {
+                    "current_phase": phase_idx,
+                    "current_agent": ",".join(agent_names),
+                    "progress_percent": progress_pct,
+                    "tokens_used": total_used,
+                }
+            },
         )
         for agent_name in agent_names:
             # Skip agents already completed in a previous run (checkpoint recovery)
             if agent_name in results and results[agent_name].get("from_checkpoint"):
-                emit_build_event(project_id, "agent_skipped", agent=agent_name,
-                                 message=f"{agent_name} skipped (checkpoint)")
+                emit_build_event(
+                    project_id,
+                    "agent_skipped",
+                    agent=agent_name,
+                    message=f"{agent_name} skipped (checkpoint)",
+                )
                 continue
-            emit_build_event(project_id, "agent_started", agent=agent_name, message=f"{agent_name} started")
+            emit_build_event(
+                project_id,
+                "agent_started",
+                agent=agent_name,
+                message=f"{agent_name} started",
+            )
             await db.agent_status.update_one(
                 {"project_id": project_id, "agent_name": agent_name},
-                {"$set": {"project_id": project_id, "agent_name": agent_name, "status": "running", "progress": 0, "tokens_used": 0, "started_at": datetime.now(timezone.utc).isoformat()}},
+                {
+                    "$set": {
+                        "project_id": project_id,
+                        "agent_name": agent_name,
+                        "status": "running",
+                        "progress": 0,
+                        "tokens_used": 0,
+                        "started_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                },
                 upsert=True,
             )
-            await db.project_logs.insert_one({
-                "id": str(uuid.uuid4()), "project_id": project_id, "agent": agent_name, "message": f"Starting {agent_name}...", "level": "info", "created_at": datetime.now(timezone.utc).isoformat()
-            })
+            await db.project_logs.insert_one(
+                {
+                    "id": str(uuid.uuid4()),
+                    "project_id": project_id,
+                    "agent": agent_name,
+                    "message": f"Starting {agent_name}...",
+                    "level": "info",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
         timeout_sec = max(get_timeout(a) for a in agent_names)
+
         async def run_one(name: str):
             return await asyncio.wait_for(
-                _run_single_agent_with_retry(project_id, user_id, name, project_prompt_with_kind, results, effective, model_chain, build_kind=build_kind,
-                    user_tier=user_tier, speed_selector=speed_selector, available_credits=available_credits),
+                _run_single_agent_with_retry(
+                    project_id,
+                    user_id,
+                    name,
+                    project_prompt_with_kind,
+                    results,
+                    effective,
+                    model_chain,
+                    build_kind=build_kind,
+                    user_tier=user_tier,
+                    speed_selector=speed_selector,
+                    available_credits=available_credits,
+                ),
                 timeout=timeout_sec + 30,
             )
+
         tasks = [run_one(name) for name in agent_names]
         phase_results = await asyncio.gather(*tasks, return_exceptions=True)
         phase_fail_count = 0
@@ -3022,46 +4331,96 @@ async def run_orchestration_v2(project_id: str, user_id: str):
                 fallback = generate_fallback(name)
                 if crit == "critical":
                     # Fallback on every critical path (9.5+): use minimal output and continue build
-                    results[name] = {"output": fallback, "result": fallback, "status": "failed_with_fallback", "reason": str(r)}
+                    results[name] = {
+                        "output": fallback,
+                        "result": fallback,
+                        "status": "failed_with_fallback",
+                        "reason": str(r),
+                    }
                 else:
-                    results[name] = {"output": fallback, "result": fallback, "status": "failed_with_fallback"}
+                    results[name] = {
+                        "output": fallback,
+                        "result": fallback,
+                        "status": "failed_with_fallback",
+                    }
             else:
                 results[name] = r
                 total_used += r.get("tokens_used", 0)
-                if (r.get("status") or "").lower() in ("skipped", "failed", "failed_with_fallback"):
+                if (r.get("status") or "").lower() in (
+                    "skipped",
+                    "failed",
+                    "failed_with_fallback",
+                ):
                     phase_fail_count += 1
-            emit_build_event(project_id, "agent_completed", agent=name, tokens=results[name].get("tokens_used", 0), status=results[name].get("status", ""), message=f"{name} completed")
+            emit_build_event(
+                project_id,
+                "agent_completed",
+                agent=name,
+                tokens=results[name].get("tokens_used", 0),
+                status=results[name].get("status", ""),
+                message=f"{name} completed",
+            )
             out_snippet = coerce_text_output(
                 results[name].get("output") or results[name].get("result") or "",
                 limit=200,
             )
             await db.agent_status.update_one(
                 {"project_id": project_id, "agent_name": name},
-                {"$set": {"status": "completed", "progress": 100, "tokens_used": results[name].get("tokens_used", 0)}}
+                {
+                    "$set": {
+                        "status": "completed",
+                        "progress": 100,
+                        "tokens_used": results[name].get("tokens_used", 0),
+                    }
+                },
             )
-            await db.project_logs.insert_one({
-                "id": str(uuid.uuid4()), "project_id": project_id, "agent": name, "message": f"{name} completed. Output: {out_snippet}...", "level": "success", "created_at": datetime.now(timezone.utc).isoformat()
-            })
-            await db.token_usage.insert_one({
-                "id": str(uuid.uuid4()), "project_id": project_id, "user_id": user_id, "agent": name, "tokens": results[name].get("tokens_used", 0), "created_at": datetime.now(timezone.utc).isoformat()
-            })
+            await db.project_logs.insert_one(
+                {
+                    "id": str(uuid.uuid4()),
+                    "project_id": project_id,
+                    "agent": name,
+                    "message": f"{name} completed. Output: {out_snippet}...",
+                    "level": "success",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+            await db.token_usage.insert_one(
+                {
+                    "id": str(uuid.uuid4()),
+                    "project_id": project_id,
+                    "user_id": user_id,
+                    "agent": name,
+                    "tokens": results[name].get("tokens_used", 0),
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
         # 10/10: suggest phase retry when Quality phase (index 3) has many failures
         if phase_idx == 3 and phase_fail_count >= 2:
             suggest_retry_phase = 1
-            suggest_retry_reason = "Quality phase had many failures. Retry code generation?"
+            suggest_retry_reason = (
+                "Quality phase had many failures. Retry code generation?"
+            )
         project = await db.projects.find_one({"id": project_id})
         if project and project.get("status") == "failed":
             return
     # Bounded autonomy loop: re-run tests/security once if they failed (self-heal)
     try:
         from autonomy_loop import run_bounded_autonomy_loop
-        autonomy_result = run_bounded_autonomy_loop(project_id, results, emit_event=emit_build_event)
+
+        autonomy_result = run_bounded_autonomy_loop(
+            project_id, results, emit_event=emit_build_event
+        )
         if autonomy_result.get("iterations"):
-            await db.project_logs.insert_one({
-                "id": str(uuid.uuid4()), "project_id": project_id, "agent": "AutonomyLoop",
-                "message": f"Self-heal: re-ran tests={autonomy_result.get('ran_tests')}, security={autonomy_result.get('ran_security')}",
-                "level": "info", "created_at": datetime.now(timezone.utc).isoformat()
-            })
+            await db.project_logs.insert_one(
+                {
+                    "id": str(uuid.uuid4()),
+                    "project_id": project_id,
+                    "agent": "AutonomyLoop",
+                    "message": f"Self-heal: re-ran tests={autonomy_result.get('ran_tests')}, security={autonomy_result.get('ran_security')}",
+                    "level": "info",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
     except Exception as e:
         logger.warning("autonomy loop: %s", e)
 
@@ -3069,22 +4428,55 @@ async def run_orchestration_v2(project_id: str, user_id: str):
     _spec_key = None
     if build_kind == "game":
         _spec_key = "games"
-    elif "ml" in prompt.lower() or "machine learning" in prompt.lower() or "model" in prompt.lower():
+    elif (
+        "ml" in prompt.lower()
+        or "machine learning" in prompt.lower()
+        or "model" in prompt.lower()
+    ):
         _spec_key = "ml"
-    elif "blockchain" in prompt.lower() or "smart contract" in prompt.lower() or "crypto" in prompt.lower():
+    elif (
+        "blockchain" in prompt.lower()
+        or "smart contract" in prompt.lower()
+        or "crypto" in prompt.lower()
+    ):
         _spec_key = "blockchain"
-    elif "iot" in prompt.lower() or "firmware" in prompt.lower() or "embedded" in prompt.lower():
+    elif (
+        "iot" in prompt.lower()
+        or "firmware" in prompt.lower()
+        or "embedded" in prompt.lower()
+    ):
         _spec_key = "iot"
-    elif "science" in prompt.lower() or "math" in prompt.lower() or "simulation" in prompt.lower():
+    elif (
+        "science" in prompt.lower()
+        or "math" in prompt.lower()
+        or "simulation" in prompt.lower()
+    ):
         _spec_key = "science"
     if _spec_key:
         try:
             from specialized_agents_100_percent import SpecializedAgentOrchestrator
+
             _spec_orch = SpecializedAgentOrchestrator()
-            _spec_req = {"prompt": prompt, "name": project_id[:12], "type": "2d_platformer" if _spec_key == "games" else "full"}
+            _spec_req = {
+                "prompt": prompt,
+                "name": project_id[:12],
+                "type": "2d_platformer" if _spec_key == "games" else "full",
+            }
             _spec_out = await _spec_orch.execute_agent(_spec_key, _spec_req)
-            _code = _spec_out.get("game_code") or _spec_out.get("firmware_code") or _spec_out.get("model_code") or _spec_out.get("contract_code") or _spec_out.get("solution_code") or str(_spec_out)
-            results[f"SpecializedAgent-{_spec_key.title()}"] = {"output": _code, "result": _code, "status": _spec_out.get("status", "ok"), "tokens_used": 0}
+            _code = (
+                _spec_out.get("game_code")
+                or _spec_out.get("firmware_code")
+                or _spec_out.get("model_code")
+                or _spec_out.get("contract_code")
+                or _spec_out.get("solution_code")
+                or str(_spec_out)
+            )
+            results[f"SpecializedAgent-{_spec_key.title()}"] = {
+                "output": _code,
+                "result": _code,
+                "status": _spec_out.get("status", "ok"),
+                "tokens_used": 0,
+            }
         except Exception as _spec_err:
             logger.debug("Specialized agent (%s) skipped: %s", _spec_key, _spec_err)
 
@@ -3092,7 +4484,11 @@ async def run_orchestration_v2(project_id: str, user_id: str):
     critic_review: Optional[Dict[str, Any]] = None
     truth_report: Optional[Dict[str, Any]] = None
     truth_result: Optional[Dict[str, Any]] = None
-    emit_build_event(project_id, "quality_check_started", message="Running quality review and truth verification…")
+    emit_build_event(
+        project_id,
+        "quality_check_started",
+        message="Running quality review and truth verification…",
+    )
     try:
         emit_build_event(project_id, "critic_started", message="Critic review…")
         critic_review = await _critic_agent.review_build(
@@ -3102,14 +4498,18 @@ async def run_orchestration_v2(project_id: str, user_id: str):
             model_chain=model_chain,
             api_keys=effective,
         )
-        logger.info(f"Critic review: score={critic_review.get('overall_score')}, pass_rate={critic_review.get('pass_rate')}%")
-        await db.project_logs.insert_one({
-            "id": str(uuid.uuid4()),
-            "project_id": project_id,
-            "type": "critic_review",
-            "data": critic_review,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        })
+        logger.info(
+            f"Critic review: score={critic_review.get('overall_score')}, pass_rate={critic_review.get('pass_rate')}%"
+        )
+        await db.project_logs.insert_one(
+            {
+                "id": str(uuid.uuid4()),
+                "project_id": project_id,
+                "type": "critic_review",
+                "data": critic_review,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
     except Exception as _critic_err:
         logger.debug("Critic review failed (non-fatal): %s", _critic_err)
     try:
@@ -3121,46 +4521,60 @@ async def run_orchestration_v2(project_id: str, user_id: str):
             api_keys=effective,
             project_prompt=prompt,
         )
-        logger.info("Truth verification: verdict=%s, truth_score=%s", truth_report.get("verdict"), truth_report.get("truth_score"))
-        await db.project_logs.insert_one({
-            "id": str(uuid.uuid4()),
-            "project_id": project_id,
-            "type": "truth_verification",
-            "data": truth_report,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        })
+        logger.info(
+            "Truth verification: verdict=%s, truth_score=%s",
+            truth_report.get("verdict"),
+            truth_report.get("truth_score"),
+        )
+        await db.project_logs.insert_one(
+            {
+                "id": str(uuid.uuid4()),
+                "project_id": project_id,
+                "type": "truth_verification",
+                "data": truth_report,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
     except Exception as _truth_err:
         logger.debug("Truth verification failed (non-fatal): %s", _truth_err)
 
     # --- Optional: standalone truth_check (adversarial code honesty) ---
     try:
         from truth_module import truth_check as truth_check_build
+
         async def _llm_for_truth(msg: str, sys_msg: str, sid: str, mchain) -> str:
             r, _ = await _call_llm_with_fallback(
-                message=msg, system_message=sys_msg, session_id=sid,
+                message=msg,
+                system_message=sys_msg,
+                session_id=sid,
                 model_chain=mchain if isinstance(mchain, list) else model_chain,
                 api_keys=effective,
             )
             return r or ""
+
         build_output = {
             k: coerce_text_output(v.get("output") or v.get("result") or "", limit=5000)
             for k, v in list(results.items())[:15]
         }
         truth_result = await truth_check_build(project_id, build_output, _llm_for_truth)
-        await db.project_logs.insert_one({
-            "id": str(uuid.uuid4()),
-            "project_id": project_id,
-            "type": "truth_check_honesty",
-            "data": truth_result,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        })
+        await db.project_logs.insert_one(
+            {
+                "id": str(uuid.uuid4()),
+                "project_id": project_id,
+                "type": "truth_check_honesty",
+                "data": truth_result,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
     except Exception as _tc_err:
         logger.debug("truth_check (honesty) failed (non-fatal): %s", _tc_err)
 
     critic_score = (critic_review or {}).get("overall_score")
     truth_verdict = (truth_report or {}).get("verdict")
     truth_score = (truth_report or {}).get("truth_score")
-    truth_honest_score = (truth_result or {}).get("honest_score") if truth_result else None
+    truth_honest_score = (
+        (truth_result or {}).get("honest_score") if truth_result else None
+    )
 
     fe = (results.get("Frontend Generation") or {}).get("output") or ""
     be = (results.get("Backend Generation") or {}).get("output") or ""
@@ -3168,7 +4582,9 @@ async def run_orchestration_v2(project_id: str, user_id: str):
     tests = (results.get("Test Generation") or {}).get("output") or ""
     images = (results.get("Image Generation") or {}).get("images") or {}
     videos = (results.get("Video Generation") or {}).get("videos") or {}
-    quality = score_generated_code(frontend_code=fe, backend_code=be, database_schema=db_schema, test_code=tests)
+    quality = score_generated_code(
+        frontend_code=fe, backend_code=be, database_schema=db_schema, test_code=tests
+    )
     deploy_files = {}
     if build_kind == "mobile" and fe:
         # Mobile project: Expo app + native config + store submission pack
@@ -3190,14 +4606,25 @@ async def run_orchestration_v2(project_id: str, user_id: str):
             except Exception:
                 pass
         if "app.json" not in deploy_files:
-            deploy_files["app.json"] = '{"name":"App","slug":"app","version":"1.0.0","ios":{"bundleIdentifier":"com.example.app"},"android":{"package":"com.example.app"}}'
+            deploy_files["app.json"] = (
+                '{"name":"App","slug":"app","version":"1.0.0","ios":{"bundleIdentifier":"com.example.app"},"android":{"package":"com.example.app"}}'
+            )
         if "eas.json" not in deploy_files:
-            deploy_files["eas.json"] = '{"build":{"preview":{"ios":{},"android":{}},"production":{"ios":{},"android":{}}}}'
-        deploy_files["package.json"] = '{"name":"app","version":"1.0.0","main":"node_modules/expo/AppEntry.js","scripts":{"start":"expo start","android":"expo start --android","ios":"expo start --ios"},"dependencies":{"expo":"~50.0.0","react":"18.2.0","react-native":"0.73.0"}}'
-        deploy_files["babel.config.js"] = "module.exports = function(api) { api.cache(true); return { presets: ['babel-preset-expo'] }; };"
+            deploy_files["eas.json"] = (
+                '{"build":{"preview":{"ios":{},"android":{}},"production":{"ios":{},"android":{}}}}'
+            )
+        deploy_files["package.json"] = (
+            '{"name":"app","version":"1.0.0","main":"node_modules/expo/AppEntry.js","scripts":{"start":"expo start","android":"expo start --android","ios":"expo start --ios"},"dependencies":{"expo":"~50.0.0","react":"18.2.0","react-native":"0.73.0"}}'
+        )
+        deploy_files["babel.config.js"] = (
+            "module.exports = function(api) { api.cache(true); return { presets: ['babel-preset-expo'] }; };"
+        )
         # Store Prep Agent -> store-submission/
         store_out = (results.get("Store Prep Agent") or {}).get("output") or ""
-        deploy_files["store-submission/STORE_SUBMISSION_GUIDE.md"] = store_out or "See Expo EAS Submit docs for Apple App Store and Google Play submission."
+        deploy_files["store-submission/STORE_SUBMISSION_GUIDE.md"] = (
+            store_out
+            or "See Expo EAS Submit docs for Apple App Store and Google Play submission."
+        )
         metadata_match = re.search(r"\{[\s\S]*?\"app_name\"[\s\S]*?\}", store_out)
         if metadata_match:
             deploy_files["store-submission/metadata.json"] = metadata_match.group(0)
@@ -3220,7 +4647,9 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App />);
 """
             if "src/styles.css" not in deploy_files:
-                deploy_files["src/styles.css"] = """@import url('https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css');
+                deploy_files[
+                    "src/styles.css"
+                ] = """@import url('https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css');
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: Inter, system-ui, sans-serif; }
 """
@@ -3289,7 +4718,9 @@ body { font-family: Inter, system-ui, sans-serif; }
         set_payload["deploy_files"] = deploy_files
     if suggest_retry_phase is not None:
         set_payload["suggest_retry_phase"] = suggest_retry_phase
-        set_payload["suggest_retry_reason"] = suggest_retry_reason or "Retry code generation?"
+        set_payload["suggest_retry_reason"] = (
+            suggest_retry_reason or "Retry code generation?"
+        )
     update_op = {"$set": set_payload}
     if suggest_retry_phase is None:
         update_op["$unset"] = {"suggest_retry_phase": "", "suggest_retry_reason": ""}
@@ -3298,27 +4729,49 @@ body { font-family: Inter, system-ui, sans-serif; }
     project_after = await db.projects.find_one({"id": project_id})
     if project_after is not None:
         history = list(project_after.get("build_history") or [])
-        history.insert(0, {
-            "completed_at": set_payload.get("completed_at"),
-            "status": "completed",
-            "quality_score": quality,
-            "tokens_used": total_used,
-        })
-        await db.projects.update_one({"id": project_id}, {"$set": {"build_history": history[:50]}})
+        history.insert(
+            0,
+            {
+                "completed_at": set_payload.get("completed_at"),
+                "status": "completed",
+                "quality_score": quality,
+                "tokens_used": total_used,
+            },
+        )
+        await db.projects.update_one(
+            {"id": project_id}, {"$set": {"build_history": history[:50]}}
+        )
     emit_build_event(
-        project_id, "build_completed", status="completed", tokens=total_used, message="Build completed",
-        deploy_files=deploy_files, quality_score=quality,
-        critic_score=critic_score, truth_verdict=truth_verdict, truth_score=truth_score, truth_honest_score=truth_honest_score,
+        project_id,
+        "build_completed",
+        status="completed",
+        tokens=total_used,
+        message="Build completed",
+        deploy_files=deploy_files,
+        quality_score=quality,
+        critic_score=critic_score,
+        truth_verdict=truth_verdict,
+        truth_score=truth_score,
+        truth_honest_score=truth_honest_score,
     )
     project = await db.projects.find_one({"id": project_id})
     if project and project.get("tokens_allocated"):
         refund = project["tokens_allocated"] - total_used
         if refund > 0:
-            await db.users.update_one({"id": user_id}, {"$inc": {"token_balance": refund}})
-            await db.token_ledger.insert_one({
-                "id": str(uuid.uuid4()), "user_id": user_id, "tokens": refund, "type": "refund",
-                "description": f"Unused tokens from project {project_id[:8]}", "created_at": datetime.now(timezone.utc).isoformat()
-            })
+            await db.users.update_one(
+                {"id": user_id}, {"$inc": {"token_balance": refund}}
+            )
+            await db.token_ledger.insert_one(
+                {
+                    "id": str(uuid.uuid4()),
+                    "user_id": user_id,
+                    "tokens": refund,
+                    "type": "refund",
+                    "description": f"Unused tokens from project {project_id[:8]}",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
+
 
 # ==================== EXPORTS ROUTES ====================
 
@@ -3326,10 +4779,12 @@ body { font-family: Inter, system-ui, sans-serif; }
 @projects_router.post("/exports")
 async def create_export(data: dict, user: dict = Depends(get_current_user)):
     db = get_db()
-    project = await db.projects.find_one({"id": data.get("project_id"), "user_id": user["id"]})
+    project = await db.projects.find_one(
+        {"id": data.get("project_id"), "user_id": user["id"]}
+    )
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    
+
     export_id = str(uuid.uuid4())
     export_doc = {
         "id": export_id,
@@ -3338,11 +4793,12 @@ async def create_export(data: dict, user: dict = Depends(get_current_user)):
         "format": data.get("format", "pdf"),
         "status": "completed",
         "download_url": f"/api/exports/{export_id}/download",
-        "created_at": datetime.now(timezone.utc).isoformat()
+        "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.exports.insert_one(export_doc)
-    
+
     return {"export": {k: v for k, v in export_doc.items() if k != "_id"}}
+
 
 @projects_router.get("/exports")
 async def get_exports(user: dict = Depends(get_current_user)):
@@ -3353,12 +4809,15 @@ async def get_exports(user: dict = Depends(get_current_user)):
 
 
 @projects_router.post("/build/from-reference")
-async def build_from_reference(data: ReferenceBuildBody, user: dict = Depends(get_authenticated_or_api_user)):
+async def build_from_reference(
+    data: ReferenceBuildBody, user: dict = Depends(get_authenticated_or_api_user)
+):
     """Use a URL or prompt as reference for build. Fetches URL content when provided."""
     context = ""
     if data.url:
         try:
             import httpx
+
             async with httpx.AsyncClient() as client:
                 r = await client.get(data.url, timeout=10)
                 if r.status_code == 200:
@@ -3370,24 +4829,61 @@ async def build_from_reference(data: ReferenceBuildBody, user: dict = Depends(ge
     effective = _effective_api_keys(user_keys)
     prompt = f"{context}Build a React app (Tailwind) that matches or is inspired by this. User request: {data.prompt}. Respond with ONLY the complete App.js code."
     model_chain = _get_model_chain("auto", prompt, effective_keys=effective)
-    response, model_used = await _call_llm_with_fallback(message=prompt, system_message="You output only valid React/JSX code. No markdown.", session_id=str(uuid.uuid4()), model_chain=model_chain, api_keys=effective)
-    code = (response or "").strip().removeprefix("```jsx").removeprefix("```js").removeprefix("```").removesuffix("```").strip()
+    response, model_used = await _call_llm_with_fallback(
+        message=prompt,
+        system_message="You output only valid React/JSX code. No markdown.",
+        session_id=str(uuid.uuid4()),
+        model_chain=model_chain,
+        api_keys=effective,
+    )
+    code = (
+        (response or "")
+        .strip()
+        .removeprefix("```jsx")
+        .removeprefix("```js")
+        .removeprefix("```")
+        .removesuffix("```")
+        .strip()
+    )
     return {"code": code, "model_used": model_used}
 
+
 @projects_router.post("/projects/{project_id}/duplicate")
-async def duplicate_project(project_id: str, user: dict = Depends(require_permission(Permission.EDIT_PROJECT if Permission else None))):
+async def duplicate_project(
+    project_id: str,
+    user: dict = Depends(
+        require_permission(Permission.EDIT_PROJECT if Permission else None)
+    ),
+):
     db = get_db()
-    project = await db.projects.find_one({"id": project_id, "user_id": user["id"]}, {"_id": 0})
+    project = await db.projects.find_one(
+        {"id": project_id, "user_id": user["id"]}, {"_id": 0}
+    )
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     new_id = str(uuid.uuid4())
-    new_project = {**project, "id": new_id, "name": project.get("name", "Copy") + " (copy)", "created_at": datetime.now(timezone.utc).isoformat(), "status": "draft", "completed_at": None, "live_url": None, "tokens_used": 0}
+    new_project = {
+        **project,
+        "id": new_id,
+        "name": project.get("name", "Copy") + " (copy)",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "status": "draft",
+        "completed_at": None,
+        "live_url": None,
+        "tokens_used": 0,
+    }
     new_project.pop("_id", None)
     await db.projects.insert_one(new_project)
     return {"project": new_project}
 
+
 @projects_router.post("/projects/from-template")
-async def create_from_template(body: dict, user: dict = Depends(require_permission(Permission.CREATE_PROJECT if Permission else None))):
+async def create_from_template(
+    body: dict,
+    user: dict = Depends(
+        require_permission(Permission.CREATE_PROJECT if Permission else None)
+    ),
+):
     tid = body.get("template_id")
     t = next((x for x in TEMPLATES_GALLERY if x["id"] == tid), None)
     if not t:
@@ -3395,17 +4891,46 @@ async def create_from_template(body: dict, user: dict = Depends(require_permissi
     user_keys = await get_workspace_api_keys(user)
     effective = _effective_api_keys(user_keys)
     model_chain = _get_model_chain("auto", t["prompt"], effective_keys=effective)
-    response, _ = await _call_llm_with_fallback(message=t["prompt"] + "\n\nRespond with ONLY the complete App.js code.", system_message="Output only valid React code.", session_id=str(uuid.uuid4()), model_chain=model_chain, api_keys=effective)
-    code = (response or "").strip().removeprefix("```jsx").removeprefix("```js").removeprefix("```").removesuffix("```").strip()
+    response, _ = await _call_llm_with_fallback(
+        message=t["prompt"] + "\n\nRespond with ONLY the complete App.js code.",
+        system_message="Output only valid React code.",
+        session_id=str(uuid.uuid4()),
+        model_chain=model_chain,
+        api_keys=effective,
+    )
+    code = (
+        (response or "")
+        .strip()
+        .removeprefix("```jsx")
+        .removeprefix("```js")
+        .removeprefix("```")
+        .removesuffix("```")
+        .strip()
+    )
     return {"files": {"/App.js": code}, "template_id": tid}
 
+
 @projects_router.post("/projects/{project_id}/save-as-template")
-async def save_project_as_template(project_id: str, body: dict, user: dict = Depends(require_permission(Permission.EDIT_PROJECT if Permission else None))):
+async def save_project_as_template(
+    project_id: str,
+    body: dict,
+    user: dict = Depends(
+        require_permission(Permission.EDIT_PROJECT if Permission else None)
+    ),
+):
     db = get_db()
     project = await db.projects.find_one({"id": project_id, "user_id": user["id"]})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     name = body.get("name", project.get("name", "My template"))
     template_id = str(uuid.uuid4())[:8]
-    await db.user_templates.insert_one({"id": template_id, "user_id": user["id"], "project_id": project_id, "name": name, "created_at": datetime.now(timezone.utc).isoformat()})
+    await db.user_templates.insert_one(
+        {
+            "id": template_id,
+            "user_id": user["id"],
+            "project_id": project_id,
+            "name": name,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+    )
     return {"template_id": template_id}

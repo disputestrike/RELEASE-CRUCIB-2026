@@ -1,6 +1,7 @@
 ﻿"""
 BackendAgent: Generates complete backend API code with proper structure.
 """
+
 from typing import Dict, Any
 from agents.base_agent import BaseAgent, AgentValidationError
 from agents.registry import AgentRegistry
@@ -10,69 +11,79 @@ from agents.registry import AgentRegistry
 class BackendAgent(BaseAgent):
     """
     Generates backend API code with proper structure.
-    
+
     Input:
         - user_prompt: str
         - stack_output: dict (optional, from StackSelectorAgent)
         - database_output: dict (optional, from DatabaseAgent)
-    
+
     Output:
         - files: dict with file paths and content
         - api_spec: dict with endpoints and models
         - setup_instructions: list of setup commands
     """
-    
+
     def validate_input(self, context: Dict[str, Any]) -> bool:
         super().validate_input(context)
-        
+
         if "user_prompt" not in context:
-            raise AgentValidationError(f"{self.name}: Missing required field 'user_prompt'")
-        
+            raise AgentValidationError(
+                f"{self.name}: Missing required field 'user_prompt'"
+            )
+
         return True
-    
+
     def validate_output(self, result: Dict[str, Any]) -> bool:
         super().validate_output(result)
-        
+
         # Check required fields
         required = ["files", "api_spec", "setup_instructions"]
         for field in required:
             if field not in result:
-                raise AgentValidationError(f"{self.name}: Missing required field '{field}'")
-        
+                raise AgentValidationError(
+                    f"{self.name}: Missing required field '{field}'"
+                )
+
         # Validate files is a dict
         if not isinstance(result["files"], dict):
             raise AgentValidationError(f"{self.name}: files must be a dictionary")
-        
+
         # Validate api_spec has endpoints
         if "endpoints" not in result["api_spec"]:
-            raise AgentValidationError(f"{self.name}: api_spec must have 'endpoints' field")
-        
+            raise AgentValidationError(
+                f"{self.name}: api_spec must have 'endpoints' field"
+            )
+
         if not isinstance(result["api_spec"]["endpoints"], list):
-            raise AgentValidationError(f"{self.name}: api_spec endpoints must be a list")
-        
+            raise AgentValidationError(
+                f"{self.name}: api_spec endpoints must be a list"
+            )
+
         # Validate setup_instructions is a list
         if not isinstance(result["setup_instructions"], list):
-            raise AgentValidationError(f"{self.name}: setup_instructions must be a list")
-        
+            raise AgentValidationError(
+                f"{self.name}: setup_instructions must be a list"
+            )
+
         return True
-    
+
     async def execute(self, context: Dict[str, Any]) -> Dict[str, Any]:
         user_prompt = context.get("user_prompt", "")
         stack_output = context.get("stack_output", {})
         database_output = context.get("database_output", {})
-        
+
         # Build context from previous agents
         backend_framework = "FastAPI"
         backend_language = "Python"
         database_type = "PostgreSQL"
-        
+
         if stack_output:
             backend = stack_output.get("backend", {})
             backend_framework = backend.get("framework", "FastAPI")
             backend_language = backend.get("language", "Python")
             database = stack_output.get("database", {})
             database_type = database.get("primary", "PostgreSQL")
-        
+
         # Include database schema if available
         schema_info = ""
         if database_output:
@@ -81,11 +92,13 @@ class BackendAgent(BaseAgent):
                 schema_info = "\n\nDatabase Schema:\n"
                 for table in tables:
                     schema_info += f"- {table.get('name', 'unknown')}: "
-                    schema_info += ", ".join([col.get("name", "") for col in table.get("columns", [])])
+                    schema_info += ", ".join(
+                        [col.get("name", "") for col in table.get("columns", [])]
+                    )
                     schema_info += "\n"
-        
+
         context_info = f"\n\nTechnology Context:\nFramework: {backend_framework}\nLanguage: {backend_language}\nDatabase: {database_type}{schema_info}"
-        
+
         system_prompt = f"""You are an expert Backend Development agent. Your job is to generate complete, production-ready backend API code.
 
 Project Requirements:
@@ -166,16 +179,15 @@ Quality expectations:
             system_prompt=system_prompt,
             model="claude-haiku-4-5-20251001",
             temperature=0.7,
-            max_tokens=4000
+            max_tokens=4000,
         )
-        
+
         # Parse JSON response
         data = self.parse_json_response(response)
-        
+
         # Add metadata
         data["_tokens_used"] = tokens
         data["_model_used"] = "claude-haiku-4-5-20251001"
         data["_agent"] = self.name
-        
-        return data
 
+        return data

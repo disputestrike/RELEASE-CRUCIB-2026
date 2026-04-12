@@ -1,4 +1,5 @@
 """Published generated-app URL helpers."""
+
 from __future__ import annotations
 
 import os
@@ -14,20 +15,37 @@ def safe_publish_id(value: str) -> str:
 
 def public_base_url_from_env() -> Optional[str]:
     """Resolve the public CrucibAI base URL without exposing secrets."""
-    for key in ("CRUCIBAI_PUBLIC_BASE_URL", "PUBLIC_BASE_URL", "API_BASE_URL", "FRONTEND_URL"):
+    for key in (
+        "CRUCIBAI_PUBLIC_BASE_URL",
+        "PUBLIC_BASE_URL",
+        "API_BASE_URL",
+        "FRONTEND_URL",
+    ):
         value = (os.environ.get(key) or "").strip().rstrip("/")
-        if value and not value.startswith("http://localhost") and not value.startswith("http://127.0.0.1"):
+        if (
+            value
+            and not value.startswith("http://localhost")
+            and not value.startswith("http://127.0.0.1")
+        ):
             return value
     railway_domain = (os.environ.get("RAILWAY_PUBLIC_DOMAIN") or "").strip().strip("/")
     if railway_domain:
-        return "https://" + railway_domain.removeprefix("https://").removeprefix("http://")
+        return "https://" + railway_domain.removeprefix("https://").removeprefix(
+            "http://"
+        )
     railway_static = (os.environ.get("RAILWAY_STATIC_URL") or "").strip().rstrip("/")
     if railway_static:
-        return railway_static if railway_static.startswith("http") else "https://" + railway_static
+        return (
+            railway_static
+            if railway_static.startswith("http")
+            else "https://" + railway_static
+        )
     return None
 
 
-def published_app_url(job_id: str, public_base_url: Optional[str] = None) -> Optional[str]:
+def published_app_url(
+    job_id: str, public_base_url: Optional[str] = None
+) -> Optional[str]:
     """Return the public in-platform generated-app URL, if a base URL is configured."""
     base = (public_base_url or public_base_url_from_env() or "").strip().rstrip("/")
     safe_id = safe_publish_id(job_id)

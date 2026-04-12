@@ -3,6 +3,7 @@ executor.py — Step execution dispatcher for CrucibAI Auto-Runner.
 Each step category routes to a specific handler.
 Every step: emit event → execute → persist artifact → emit result.
 """
+
 import asyncio
 import json
 import logging
@@ -20,7 +21,10 @@ from .fixer import (
     build_retry_plan,
     classify_failure,
 )
-from .self_repair import attempt_verification_self_repair, maybe_commit_workspace_repairs
+from .self_repair import (
+    attempt_verification_self_repair,
+    maybe_commit_workspace_repairs,
+)
 from .generated_app_template import build_frontend_file_set
 from agents.code_repair_agent import CodeRepairAgent
 from .enterprise_command_pack import (
@@ -60,7 +64,10 @@ from .multitenancy_rls_sql import (
 from .verification_api_smoke import healthcheck_sh_script
 from .publish_urls import published_app_url
 from anthropic_models import ANTHROPIC_HAIKU_MODEL
-from agents.database_architect_agent import SchemaToSQL, heuristic_schema_from_requirements
+from agents.database_architect_agent import (
+    SchemaToSQL,
+    heuristic_schema_from_requirements,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -232,7 +239,7 @@ def _ensure_backend_elite_hardening(workspace_path: str) -> Optional[str]:
         return None
     if "CRUCIBAI_SECURITY_HEADERS" in text:
         return None
-    suffix = '''
+    suffix = """
 
 # CRUCIBAI_SECURITY_HEADERS - generated deploy hardening hook.
 from fastapi import HTTPException, Request
@@ -247,7 +254,7 @@ async def crucibai_security_headers(request: Request, call_next):
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     response.headers["X-XSS-Protection"] = "0"
     return response
-'''
+"""
     return _safe_write(workspace_path, rel, text.rstrip() + suffix)
 
 
@@ -296,7 +303,9 @@ async def _store_step_memory_snapshot(
             f"agent={step.get('agent_name', '')}",
             f"score={verification.get('score')}",
             f"status=completed",
-            coerce_text_output(result.get("output") or result.get("result") or "", limit=1200),
+            coerce_text_output(
+                result.get("output") or result.get("result") or "", limit=1200
+            ),
         ]
         await memory.store_step_summary(
             project_id=project_id,
@@ -310,7 +319,9 @@ async def _store_step_memory_snapshot(
             },
         )
     except Exception as exc:
-        logger.debug("executor: memory snapshot skipped for %s: %s", step.get("step_key"), exc)
+        logger.debug(
+            "executor: memory snapshot skipped for %s: %s", step.get("step_key"), exc
+        )
 
 
 def _step_deps(step: Dict[str, Any]) -> list:
@@ -328,14 +339,48 @@ def _norm_rel(p: str) -> str:
 
 
 _PROSE_STRIP_PREFIXES = (
-    "i ", "i'", "here ", "here'", "this ", "the following",
-    "appreciate", "certainly", "sure,", "below", "based on",
-    "as requested", "i have", "i'll", "let me", "of course",
-    "happy to", "glad to", "please find", "above is", "this is",
-    "the above", "note:", "note that", "in this", "we have",
+    "i ",
+    "i'",
+    "here ",
+    "here'",
+    "this ",
+    "the following",
+    "appreciate",
+    "certainly",
+    "sure,",
+    "below",
+    "based on",
+    "as requested",
+    "i have",
+    "i'll",
+    "let me",
+    "of course",
+    "happy to",
+    "glad to",
+    "please find",
+    "above is",
+    "this is",
+    "the above",
+    "note:",
+    "note that",
+    "in this",
+    "we have",
 )
-_CODE_FILE_EXTS = {".jsx", ".tsx", ".js", ".ts", ".py", ".css", ".scss",
-                   ".json", ".yaml", ".yml", ".html", ".sh", ".sql"}
+_CODE_FILE_EXTS = {
+    ".jsx",
+    ".tsx",
+    ".js",
+    ".ts",
+    ".py",
+    ".css",
+    ".scss",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".html",
+    ".sh",
+    ".sql",
+}
 _FENCE_ONLY_RE = re.compile(r"^\s*```[a-zA-Z0-9_+-]*\s*$")
 _FENCE_RE = re.compile(r"```(?P<lang>[a-zA-Z0-9_+-]*)\s*\n(?P<body>.*?)```", re.DOTALL)
 _LANGUAGE_HINTS = {
@@ -356,7 +401,9 @@ _LANGUAGE_HINTS = {
 
 
 def _strip_fence_lines(content: str) -> str:
-    return "\n".join(line for line in content.splitlines() if not _FENCE_ONLY_RE.match(line))
+    return "\n".join(
+        line for line in content.splitlines() if not _FENCE_ONLY_RE.match(line)
+    )
 
 
 def _extract_best_fenced_block(content: str, rel: str) -> str:
@@ -389,7 +436,9 @@ def _strip_prose_preamble(content: str, rel: str) -> str:
         if not stripped:
             continue
         if any(stripped.startswith(p) for p in _PROSE_STRIP_PREFIXES):
-            logger.warning("executor: stripped prose preamble line from %s: %r", rel, line[:80])
+            logger.warning(
+                "executor: stripped prose preamble line from %s: %r", rel, line[:80]
+            )
             continue
         return "\n".join(lines[i:])
     return content
@@ -440,7 +489,9 @@ def _full_system_manifest_path(workspace_path: str) -> str:
     return os.path.join(workspace_path, ".crucibai", "full_system_build.json")
 
 
-def _store_full_system_manifest(workspace_path: str, goal: str, result: Dict[str, Any]) -> None:
+def _store_full_system_manifest(
+    workspace_path: str, goal: str, result: Dict[str, Any]
+) -> None:
     if not workspace_path:
         return
     manifest = {
@@ -469,7 +520,9 @@ def _load_full_system_manifest(workspace_path: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def _full_system_output_files(workspace_path: str, prefixes: tuple[str, ...]) -> List[str]:
+def _full_system_output_files(
+    workspace_path: str, prefixes: tuple[str, ...]
+) -> List[str]:
     manifest = _load_full_system_manifest(workspace_path) or {}
     files = manifest.get("files") or []
     matched = [f for f in files if f.startswith(prefixes)]
@@ -479,12 +532,17 @@ def _full_system_output_files(workspace_path: str, prefixes: tuple[str, ...]) ->
 def _template_file_map(job: Dict[str, Any]) -> Dict[str, str]:
     preview_job = dict(job or {})
     preview_job["preview_contract_only"] = True
-    if not preview_job.get("build_target") or preview_job.get("build_target") == "full_system_generator":
+    if (
+        not preview_job.get("build_target")
+        or preview_job.get("build_target") == "full_system_generator"
+    ):
         preview_job["build_target"] = "vite_react"
     return {rel: content for rel, content in build_frontend_file_set(preview_job)}
 
 
-def _merge_package_dependencies(existing_text: Optional[str], fallback_text: str) -> str:
+def _merge_package_dependencies(
+    existing_text: Optional[str], fallback_text: str
+) -> str:
     try:
         fallback_pkg = json.loads(fallback_text)
     except Exception:
@@ -500,7 +558,10 @@ def _merge_package_dependencies(existing_text: Optional[str], fallback_text: str
         merged = dict(fallback_pkg.get(section) or {})
         merged.update(existing_pkg.get(section) or {})
         if section in ("dependencies", "devDependencies"):
-            merged = {**(existing_pkg.get(section) or {}), **(fallback_pkg.get(section) or {})}
+            merged = {
+                **(existing_pkg.get(section) or {}),
+                **(fallback_pkg.get(section) or {}),
+            }
             merged.pop("@types/react-router-dom", None)
         existing_pkg[section] = merged
 
@@ -509,7 +570,9 @@ def _merge_package_dependencies(existing_text: Optional[str], fallback_text: str
     return json.dumps(existing_pkg, indent=2)
 
 
-def _ensure_preview_contract_files(workspace_path: str, job: Dict[str, Any]) -> list[str]:
+def _ensure_preview_contract_files(
+    workspace_path: str, job: Dict[str, Any]
+) -> list[str]:
     """
     Overlay the minimum preview-contract files after a live model run without
     clobbering existing app code.
@@ -522,7 +585,9 @@ def _ensure_preview_contract_files(workspace_path: str, job: Dict[str, Any]) -> 
 
     package_rel = "package.json"
     package_text = _read_text(workspace_path, package_rel)
-    merged_package = _merge_package_dependencies(package_text, template_map[package_rel])
+    merged_package = _merge_package_dependencies(
+        package_text, template_map[package_rel]
+    )
     if merged_package != (package_text or ""):
         if _safe_write(workspace_path, package_rel, merged_package):
             written.append(package_rel)
@@ -548,7 +613,9 @@ def _ensure_preview_contract_files(workspace_path: str, job: Dict[str, Any]) -> 
             if _safe_write(workspace_path, rel, template_map[rel]):
                 written.append(rel)
 
-    if not _read_text(workspace_path, "src/App.jsx") and not _read_text(workspace_path, "src/App.js"):
+    if not _read_text(workspace_path, "src/App.jsx") and not _read_text(
+        workspace_path, "src/App.js"
+    ):
         if _safe_write(workspace_path, "src/App.jsx", template_map["src/App.jsx"]):
             written.append("src/App.jsx")
 
@@ -578,7 +645,9 @@ except Exception:
 '''
 
 
-def _ensure_swarm_runtime_contract_files(workspace_path: str, job: Dict[str, Any]) -> list[str]:
+def _ensure_swarm_runtime_contract_files(
+    workspace_path: str, job: Dict[str, Any]
+) -> list[str]:
     """
     Swarm jobs can emit many agent artifacts without assembling the minimal
     runnable preview/API contract that late-stage verifiers expect.
@@ -624,8 +693,10 @@ PROTECTED_PREFIX = "/api/private"
 
 # ── Step handler registry ─────────────────────────────────────────────────────
 
-async def handle_planning_step(step: Dict, job: Dict,
-                                workspace_path: str, **kwargs) -> Dict:
+
+async def handle_planning_step(
+    step: Dict, job: Dict, workspace_path: str, **kwargs
+) -> Dict:
     """Planner and requirements steps — produce structured plan output."""
     written = []
     if workspace_path:
@@ -674,24 +745,33 @@ async def handle_planning_step(step: Dict, job: Dict,
     }
 
 
-async def handle_frontend_generate(step: Dict, job: Dict,
-                                    workspace_path: str, **kwargs) -> Dict:
+async def handle_frontend_generate(
+    step: Dict, job: Dict, workspace_path: str, **kwargs
+) -> Dict:
     """Generate actual frontend code using FrontendAgent + LLM, not stubs."""
     out: list = []
     job_id = job.get("id") or ""
     goal = job.get("goal", "").strip()
     full_system_mode = False
-    
+
     logger.info(f"=== FRONTEND HANDLER START ===")
-    logger.info(f"Job: {job_id}, Goal: {goal[:60] if goal else 'NONE'}, WS: {bool(workspace_path)}")
-    
+    logger.info(
+        f"Job: {job_id}, Goal: {goal[:60] if goal else 'NONE'}, WS: {bool(workspace_path)}"
+    )
+
     try:
         from .plan_context import fetch_build_target_for_job
+
         bt = await fetch_build_target_for_job(job_id)
         job_augmented = {**job, "build_target": bt}
         stack_contract = parse_generation_contract(goal)
 
-        if workspace_path and goal and requires_full_system_builder(stack_contract) and not enterprise_command_intent(job_augmented):
+        if (
+            workspace_path
+            and goal
+            and requires_full_system_builder(stack_contract)
+            and not enterprise_command_intent(job_augmented)
+        ):
             full_system_mode = True
             logger.info("Full-system builder selected for job %s", job_id)
             from agents.builder_agent import BuilderAgent
@@ -708,10 +788,14 @@ async def handle_frontend_generate(step: Dict, job: Dict,
                 }
             )
             if result.get("status") == "❌ CRITICAL BLOCK":
-                raise RuntimeError(f"full_system_generation_blocked: {result.get('reason') or 'builder reported critical block'}")
+                raise RuntimeError(
+                    f"full_system_generation_blocked: {result.get('reason') or 'builder reported critical block'}"
+                )
             files_dict = result.get("files") or {}
             if not isinstance(files_dict, dict) or not files_dict:
-                raise RuntimeError("full_system_generation_failed: builder returned no files")
+                raise RuntimeError(
+                    "full_system_generation_failed: builder returned no files"
+                )
             built_set = []
             for file_path, content in files_dict.items():
                 if isinstance(content, dict):
@@ -724,13 +808,22 @@ async def handle_frontend_generate(step: Dict, job: Dict,
                 if w:
                     built_set.append(w)
             if not built_set:
-                raise RuntimeError("full_system_generation_failed: no files were written")
+                raise RuntimeError(
+                    "full_system_generation_failed: no files were written"
+                )
             _store_full_system_manifest(workspace_path, goal, result)
             out.extend(built_set)
 
-        if not out and workspace_path and goal and enterprise_command_intent(job_augmented):
+        if (
+            not out
+            and workspace_path
+            and goal
+            and enterprise_command_intent(job_augmented)
+        ):
             logger.info("Enterprise frontend build selected for job %s", job_id)
-            out.extend(_write_file_set(workspace_path, build_frontend_file_set(job_augmented)))
+            out.extend(
+                _write_file_set(workspace_path, build_frontend_file_set(job_augmented))
+            )
         elif not out and workspace_path and goal:
             logger.info(f"Attempting FrontendAgent...")
             # STEP 1: Try to use FrontendAgent with LLM
@@ -750,12 +843,16 @@ async def handle_frontend_generate(step: Dict, job: Dict,
                 logger.info(f"Calling agent.execute() with context...")
                 result = await agent.execute(context)
 
-                logger.info(f"Agent returned: type={type(result)}, keys={list(result.keys()) if isinstance(result, dict) else 'NOT_DICT'}")
+                logger.info(
+                    f"Agent returned: type={type(result)}, keys={list(result.keys()) if isinstance(result, dict) else 'NOT_DICT'}"
+                )
 
                 # Write generated files to workspace
                 if result and result.get("files"):
                     files_dict = result["files"]
-                    logger.info(f"Files dict: type={type(files_dict)}, len={len(str(files_dict))}")
+                    logger.info(
+                        f"Files dict: type={type(files_dict)}, len={len(str(files_dict))}"
+                    )
 
                     # Ensure files is a dict (might be nested JSON string)
                     if isinstance(files_dict, str):
@@ -788,43 +885,69 @@ async def handle_frontend_generate(step: Dict, job: Dict,
                         logger.info(f"✓ FrontendAgent wrote {len(out)} files total")
 
                         logger.info(f"✓ FrontendAgent wrote {len(out)} files total")
-                        
+
                         # FIX 4: VALIDATION - Verify files actually wrote to disk
                         if out:
-                            logger.info(f"✅ Successfully wrote {len(out)} frontend files")
+                            logger.info(
+                                f"✅ Successfully wrote {len(out)} frontend files"
+                            )
                             import os
+
                             for file_path in out[:5]:  # Log first 5
                                 full_path = os.path.join(workspace_path, file_path)
                                 if os.path.exists(full_path):
                                     size = os.path.getsize(full_path)
-                                    logger.info(f"   ✓ Verified: {file_path} ({size} bytes)")
+                                    logger.info(
+                                        f"   ✓ Verified: {file_path} ({size} bytes)"
+                                    )
                                 else:
                                     logger.error(f"   ✗ FILE NOT FOUND: {file_path}")
                         else:
                             logger.error(f"❌ FrontendAgent wrote NO files to disk!")
-                            raise Exception("Frontend step produced no output_files on disk")
+                            raise Exception(
+                                "Frontend step produced no output_files on disk"
+                            )
 
                     else:
                         logger.error(f"files not a dict: {type(files_dict)}")
                 else:
-                    logger.error(f"No files in result! result={bool(result)}, files={bool(result.get('files') if result else False)}")
+                    logger.error(
+                        f"No files in result! result={bool(result)}, files={bool(result.get('files') if result else False)}"
+                    )
 
             except Exception as e:
                 logger.exception(f"❌ FrontendAgent EXCEPTION: {e}")
                 import traceback
+
                 logger.error(f"Traceback: {traceback.format_exc()}")
 
                 logger.info("Falling back to deterministic frontend file set...")
-                out.extend(_write_file_set(workspace_path, build_frontend_file_set(job_augmented)))
+                out.extend(
+                    _write_file_set(
+                        workspace_path, build_frontend_file_set(job_augmented)
+                    )
+                )
                 logger.info(f"✓ Fallback wrote {len(out)} frontend files")
             if workspace_path and not out:
-                logger.warning("FrontendAgent produced no files; writing deterministic frontend build")
-                out.extend(_write_file_set(workspace_path, build_frontend_file_set(job_augmented)))
+                logger.warning(
+                    "FrontendAgent produced no files; writing deterministic frontend build"
+                )
+                out.extend(
+                    _write_file_set(
+                        workspace_path, build_frontend_file_set(job_augmented)
+                    )
+                )
                 logger.info("Frontend empty-output fallback wrote %s files", len(out))
         else:
-            logger.warning(f"Skipping agent: workspace_path={bool(workspace_path)}, goal={bool(goal)}")
+            logger.warning(
+                f"Skipping agent: workspace_path={bool(workspace_path)}, goal={bool(goal)}"
+            )
             if workspace_path:
-                out.extend(_write_file_set(workspace_path, build_frontend_file_set(job_augmented)))
+                out.extend(
+                    _write_file_set(
+                        workspace_path, build_frontend_file_set(job_augmented)
+                    )
+                )
 
     except Exception as e:
         logger.exception(f"❌ FrontendHandler CRITICAL: {e}")
@@ -833,9 +956,14 @@ async def handle_frontend_generate(step: Dict, job: Dict,
         if workspace_path:
             try:
                 from .plan_context import fetch_build_target_for_job
+
                 bt = await fetch_build_target_for_job(job.get("id") or "")
                 job_augmented = {**job, "build_target": bt}
-                out.extend(_write_file_set(workspace_path, build_frontend_file_set(job_augmented)))
+                out.extend(
+                    _write_file_set(
+                        workspace_path, build_frontend_file_set(job_augmented)
+                    )
+                )
                 logger.info(f"Last resort wrote {len(out)} frontend files")
             except Exception:
                 logger.exception("Last resort fallback also failed")
@@ -843,6 +971,7 @@ async def handle_frontend_generate(step: Dict, job: Dict,
     if workspace_path and out and not _load_full_system_manifest(workspace_path):
         try:
             from .plan_context import fetch_build_target_for_job
+
             bt = await fetch_build_target_for_job(job.get("id") or "")
             contract_job = {**job, "build_target": bt}
             ensured = _ensure_preview_contract_files(workspace_path, contract_job)
@@ -850,12 +979,14 @@ async def handle_frontend_generate(step: Dict, job: Dict,
                 if rel not in out:
                     out.append(rel)
             if ensured:
-                logger.info("Frontend preview-contract hardening wrote %s files", len(ensured))
+                logger.info(
+                    "Frontend preview-contract hardening wrote %s files", len(ensured)
+                )
         except Exception as e:
             logger.exception("Preview-contract hardening failed: %s", e)
-    
+
     logger.info(f"=== FRONTEND HANDLER END: {len(out)} files ===")
-    
+
     return {
         "output": f"Generated {len(out)} frontend files: {goal[:60]}",
         "output_files": out,
@@ -863,12 +994,17 @@ async def handle_frontend_generate(step: Dict, job: Dict,
     }
 
 
-async def handle_frontend_modify(step: Dict, job: Dict,
-                                  workspace_path: str, **kwargs) -> Dict:
+async def handle_frontend_modify(
+    step: Dict, job: Dict, workspace_path: str, **kwargs
+) -> Dict:
     key = step.get("step_key", "")
     out: list = []
     if not workspace_path:
-        return {"output": f"Frontend modified: {key} (no workspace path)", "artifacts": [], "output_files": []}
+        return {
+            "output": f"Frontend modified: {key} (no workspace path)",
+            "artifacts": [],
+            "output_files": [],
+        }
 
     if key == "frontend.styling":
         gpath = "src/styles/global.css"
@@ -934,8 +1070,9 @@ export default function TeamPage() {
     return {"output": f"Frontend modified: {key}", "artifacts": [], "output_files": out}
 
 
-async def handle_backend_route(step: Dict, job: Dict,
-                                workspace_path: str, **kwargs) -> Dict:
+async def handle_backend_route(
+    step: Dict, job: Dict, workspace_path: str, **kwargs
+) -> Dict:
     """Generate actual backend code using BackendAgent + LLM, not stubs."""
     job_id = job.get("id") or ""
     goal = job.get("goal", "").strip()
@@ -953,9 +1090,23 @@ async def handle_backend_route(step: Dict, job: Dict,
 
     try:
         manifest = _load_full_system_manifest(workspace_path)
-        if manifest and requires_full_system_builder(manifest.get("stack_contract") or {}):
+        if manifest and requires_full_system_builder(
+            manifest.get("stack_contract") or {}
+        ):
             logger.info("Full-system manifest present for job %s step %s", job_id, key)
-            output_files = _full_system_output_files(workspace_path, ("backend/", "api/", "server/", "workers/", "tests/", "docs/", "infra/", ".github/"))
+            output_files = _full_system_output_files(
+                workspace_path,
+                (
+                    "backend/",
+                    "api/",
+                    "server/",
+                    "workers/",
+                    "tests/",
+                    "docs/",
+                    "infra/",
+                    ".github/",
+                ),
+            )
             routes_added = (manifest.get("api_spec") or {}).get("endpoints", [])
             if key in {"backend.routes", "backend.auth"}:
                 hardened = _ensure_backend_elite_hardening(workspace_path)
@@ -968,9 +1119,19 @@ async def handle_backend_route(step: Dict, job: Dict,
                 "artifacts": [],
             }
 
-        if goal and enterprise_command_intent(job) and key in {"backend.models", "backend.routes", "backend.auth"}:
-            logger.info("Enterprise backend build selected for job %s step %s", job_id, key)
-            out_files.extend(_write_file_set(workspace_path, build_enterprise_backend_file_set(job, step_key=key)))
+        if (
+            goal
+            and enterprise_command_intent(job)
+            and key in {"backend.models", "backend.routes", "backend.auth"}
+        ):
+            logger.info(
+                "Enterprise backend build selected for job %s step %s", job_id, key
+            )
+            out_files.extend(
+                _write_file_set(
+                    workspace_path, build_enterprise_backend_file_set(job, step_key=key)
+                )
+            )
             if key in {"backend.routes", "backend.auth"}:
                 hardened = _ensure_backend_elite_hardening(workspace_path)
                 if hardened and hardened not in out_files:
@@ -988,21 +1149,21 @@ async def handle_backend_route(step: Dict, job: Dict,
             try:
                 from agents.backend_agent import BackendAgent
                 import json
-                
+
                 agent = BackendAgent()
                 context = {
                     "user_prompt": goal,
                     "project_id": job_id,
                     "workspace_path": workspace_path,
                 }
-                
+
                 logger.info(f"backend_route: Running BackendAgent for job {job_id}")
                 result = await agent.execute(context)
-                
+
                 # Write generated files
                 if result and result.get("files"):
                     files_dict = result["files"]
-                    
+
                     # Ensure files is a dict
                     if isinstance(files_dict, str):
                         try:
@@ -1010,7 +1171,7 @@ async def handle_backend_route(step: Dict, job: Dict,
                         except:
                             logger.warning("Could not parse files as JSON")
                             files_dict = {}
-                    
+
                     if isinstance(files_dict, dict):
                         for file_path, content in files_dict.items():
                             # Convert to string if needed
@@ -1020,19 +1181,21 @@ async def handle_backend_route(step: Dict, job: Dict,
                                 content = ""
                             else:
                                 content = str(content)
-                            
+
                             # Write file
                             w = _safe_write(workspace_path, file_path, content)
                             if w:
                                 out_files.append(w)
                                 logger.debug(f"Wrote: {file_path}")
-                        
-                        logger.info(f"backend_route: BackendAgent wrote {len(out_files)} files")
-                
+
+                        logger.info(
+                            f"backend_route: BackendAgent wrote {len(out_files)} files"
+                        )
+
                 # Extract routes
                 if result and result.get("api_spec"):
                     routes_added = result["api_spec"].get("endpoints", [])
-            
+
             except Exception as e:
                 logger.exception(f"backend_route: BackendAgent failed: {e}")
                 # Use stubs
@@ -1042,10 +1205,18 @@ async def handle_backend_route(step: Dict, job: Dict,
                     if w:
                         out_files.append(w)
                     routes_added = [
-                        {"method": "GET", "path": "/health", "description": "Health check"},
-                        {"method": "GET", "path": "/api/items", "description": "List demo items"},
+                        {
+                            "method": "GET",
+                            "path": "/health",
+                            "description": "Health check",
+                        },
+                        {
+                            "method": "GET",
+                            "path": "/api/items",
+                            "description": "List demo items",
+                        },
                     ]
-    
+
     except Exception as e:
         logger.exception("backend_route: Critical error")
 
@@ -1097,7 +1268,11 @@ class ItemRecord(BaseModel):
                 out_files.append(w)
             routes_added = [
                 {"method": "GET", "path": "/health", "description": "Health check"},
-                {"method": "GET", "path": "/api/items", "description": "List demo items"},
+                {
+                    "method": "GET",
+                    "path": "/api/items",
+                    "description": "List demo items",
+                },
             ]
 
         elif key == "backend.auth":
@@ -1109,7 +1284,11 @@ PROTECTED_PREFIX = "/api/private"
             if w:
                 out_files.append(w)
             routes_added = [
-                {"method": "POST", "path": "/api/auth/login", "description": "Login (stub)"},
+                {
+                    "method": "POST",
+                    "path": "/api/auth/login",
+                    "description": "Login (stub)",
+                },
             ]
 
         elif key == "backend.stripe":
@@ -1119,14 +1298,24 @@ PROTECTED_PREFIX = "/api/private"
                 out_files.append(w)
             _ensure_stripe_router_mounted(workspace_path)
             m = _read_text(workspace_path, "backend/main.py")
-            if m and "CRUCIBAI_STRIPE_ROUTER_MOUNT" in m and "backend/main.py" not in out_files:
+            if (
+                m
+                and "CRUCIBAI_STRIPE_ROUTER_MOUNT" in m
+                and "backend/main.py" not in out_files
+            ):
                 out_files.append("backend/main.py")
             routes_added = [
-                {"method": "POST", "path": "/api/stripe/webhook", "description": "Stripe webhook (idempotency sketch)"},
+                {
+                    "method": "POST",
+                    "path": "/api/stripe/webhook",
+                    "description": "Stripe webhook (idempotency sketch)",
+                },
             ]
 
         else:
-            w = _safe_write(workspace_path, "backend/main.py", "# backend placeholder\n")
+            w = _safe_write(
+                workspace_path, "backend/main.py", "# backend placeholder\n"
+            )
             if w:
                 out_files.append(w)
 
@@ -1177,26 +1366,41 @@ async def root():
     }
 
 
-async def handle_db_migration(step: Dict, job: Dict,
-                               workspace_path: str, db_pool=None, **kwargs) -> Dict:
+async def handle_db_migration(
+    step: Dict, job: Dict, workspace_path: str, db_pool=None, **kwargs
+) -> Dict:
     key = step.get("step_key", "")
     out: list = []
     tables: list = []
 
     if workspace_path:
         manifest = _load_full_system_manifest(workspace_path)
-        if manifest and requires_full_system_builder(manifest.get("stack_contract") or {}):
+        if manifest and requires_full_system_builder(
+            manifest.get("stack_contract") or {}
+        ):
             logger.info("Full-system manifest present for database step %s", key)
             return {
                 "output": f"Migration step executed: {key}",
                 "tables_created": tables,
-                "output_files": _full_system_output_files(workspace_path, ("db/", "migrations/", "seeds/", "prisma/", "backend/")),
+                "output_files": _full_system_output_files(
+                    workspace_path,
+                    ("db/", "migrations/", "seeds/", "prisma/", "backend/"),
+                ),
                 "artifacts": [],
             }
 
         if enterprise_command_intent(job):
-            logger.info("Enterprise database build selected for job %s step %s", job.get("id") or "", key)
-            out.extend(_write_file_set(workspace_path, build_enterprise_database_file_set(job, step_key=key)))
+            logger.info(
+                "Enterprise database build selected for job %s step %s",
+                job.get("id") or "",
+                key,
+            )
+            out.extend(
+                _write_file_set(
+                    workspace_path,
+                    build_enterprise_database_file_set(job, step_key=key),
+                )
+            )
             return {
                 "output": f"Migration step executed: {key}",
                 "tables_created": tables,
@@ -1247,7 +1451,11 @@ CREATE TABLE IF NOT EXISTS stripe_events_processed (
 );
 CREATE INDEX IF NOT EXISTS idx_stripe_events_received ON stripe_events_processed(received_at);
 """
-                w3 = _safe_write(workspace_path, "db/migrations/003_stripe_idempotency_sketch.sql", sql_st)
+                w3 = _safe_write(
+                    workspace_path,
+                    "db/migrations/003_stripe_idempotency_sketch.sql",
+                    sql_st,
+                )
                 if w3:
                     out.append(w3)
         else:
@@ -1274,13 +1482,11 @@ INSERT INTO app_items (title) VALUES ('Welcome from Auto-Runner');
     }
 
 
-async def handle_test_run(step: Dict, job: Dict,
-                           workspace_path: str, **kwargs) -> Dict:
+async def handle_test_run(step: Dict, job: Dict, workspace_path: str, **kwargs) -> Dict:
     return {"output": f"Tests executed: {step['step_key']}", "artifacts": []}
 
 
-async def handle_deploy(step: Dict, job: Dict,
-                         workspace_path: str, **kwargs) -> Dict:
+async def handle_deploy(step: Dict, job: Dict, workspace_path: str, **kwargs) -> Dict:
     key = step.get("step_key", "")
     out: list = []
     deploy_url = None
@@ -1296,10 +1502,16 @@ CMD ["echo", "configure CMD for your app"]
             w = _safe_write(workspace_path, "Dockerfile", docker)
             if w:
                 out.append(w)
-            pm = _safe_write(workspace_path, "deploy/PRODUCTION_SKETCH.md", _production_sketch_readme())
+            pm = _safe_write(
+                workspace_path,
+                "deploy/PRODUCTION_SKETCH.md",
+                _production_sketch_readme(),
+            )
             if pm:
                 out.append(pm)
-            hc = _safe_write(workspace_path, "deploy/healthcheck.sh", healthcheck_sh_script())
+            hc = _safe_write(
+                workspace_path, "deploy/healthcheck.sh", healthcheck_sh_script()
+            )
             if hc:
                 out.append(hc)
             if compliance_regulated_intent(job):
@@ -1313,7 +1525,10 @@ CMD ["echo", "configure CMD for your app"]
             if observability_intent(job):
                 goal_txt = job.get("goal") or ""
                 obs_files = [
-                    ("docs/OBSERVABILITY_PACK.md", build_observability_pack_markdown(goal_txt)),
+                    (
+                        "docs/OBSERVABILITY_PACK.md",
+                        build_observability_pack_markdown(goal_txt),
+                    ),
                     (
                         "deploy/observability/docker-compose.observability.stub.yml",
                         docker_compose_observability_stub(),
@@ -1322,12 +1537,18 @@ CMD ["echo", "configure CMD for your app"]
                         "deploy/observability/otel-collector-config.stub.yaml",
                         otel_collector_config_stub(),
                     ),
-                    ("deploy/observability/prometheus.stub.yml", prometheus_config_stub()),
+                    (
+                        "deploy/observability/prometheus.stub.yml",
+                        prometheus_config_stub(),
+                    ),
                     (
                         "deploy/observability/grafana/provisioning/datasources/datasource.stub.yml",
                         grafana_datasource_stub(),
                     ),
-                    ("backend/observability_snippet.py", fastapi_observability_snippet_py()),
+                    (
+                        "backend/observability_snippet.py",
+                        fastapi_observability_snippet_py(),
+                    ),
                 ]
                 for rel, body in obs_files:
                     wobs = _safe_write(workspace_path, rel, body)
@@ -1336,13 +1557,34 @@ CMD ["echo", "configure CMD for your app"]
             if multiregion_terraform_intent(job):
                 goal_txt = job.get("goal") or ""
                 tf_specs = [
-                    ("terraform/multiregion_sketch/README.md", build_multiregion_terraform_readme(goal_txt)),
-                    ("terraform/multiregion_sketch/main.tf", tf_multiregion_root_main()),
-                    ("terraform/multiregion_sketch/variables.tf", tf_multiregion_variables_tf()),
-                    ("terraform/multiregion_sketch/outputs.tf", tf_multiregion_outputs_tf()),
-                    ("terraform/modules/aws_region_stub/main.tf", tf_aws_region_stub_main()),
-                    ("terraform/modules/gcp_region_stub/main.tf", tf_gcp_region_stub_main()),
-                    ("terraform/modules/azure_region_stub/main.tf", tf_azure_region_stub_main()),
+                    (
+                        "terraform/multiregion_sketch/README.md",
+                        build_multiregion_terraform_readme(goal_txt),
+                    ),
+                    (
+                        "terraform/multiregion_sketch/main.tf",
+                        tf_multiregion_root_main(),
+                    ),
+                    (
+                        "terraform/multiregion_sketch/variables.tf",
+                        tf_multiregion_variables_tf(),
+                    ),
+                    (
+                        "terraform/multiregion_sketch/outputs.tf",
+                        tf_multiregion_outputs_tf(),
+                    ),
+                    (
+                        "terraform/modules/aws_region_stub/main.tf",
+                        tf_aws_region_stub_main(),
+                    ),
+                    (
+                        "terraform/modules/gcp_region_stub/main.tf",
+                        tf_gcp_region_stub_main(),
+                    ),
+                    (
+                        "terraform/modules/azure_region_stub/main.tf",
+                        tf_azure_region_stub_main(),
+                    ),
                 ]
                 for rel, body in tf_specs:
                     wtf = _safe_write(workspace_path, rel, body)
@@ -1381,8 +1623,9 @@ No remote URL is set in local Auto-Runner runs. Set `CRUCIBAI_PUBLIC_BASE_URL`, 
     }
 
 
-async def handle_verification_step(step: Dict, job: Dict,
-                                    workspace_path: str, db_pool=None, **kwargs) -> Dict:
+async def handle_verification_step(
+    step: Dict, job: Dict, workspace_path: str, db_pool=None, **kwargs
+) -> Dict:
     """Verification is applied in execute_step via verify_step (single pass)."""
     return {
         "output": f"Verification gate: {step.get('step_key', '')}",
@@ -1390,7 +1633,9 @@ async def handle_verification_step(step: Dict, job: Dict,
     }
 
 
-async def handle_delivery_manifest(step: Dict, job: Dict, workspace_path: str, **kwargs) -> Dict:
+async def handle_delivery_manifest(
+    step: Dict, job: Dict, workspace_path: str, **kwargs
+) -> Dict:
     """Required proof/DELIVERY_CLASSIFICATION.md for elite builder gate."""
     if not workspace_path:
         return {"output": "no workspace", "artifacts": [], "output_files": []}
@@ -1458,13 +1703,13 @@ This job must make every late-stage gate deterministic and evidence-backed.
     }
 
 
-async def handle_generic(step: Dict, job: Dict,
-                          workspace_path: str, **kwargs) -> Dict:
+async def handle_generic(step: Dict, job: Dict, workspace_path: str, **kwargs) -> Dict:
     return {"output": f"Step executed: {step['step_key']}", "artifacts": []}
 
 
-async def handle_agent_swarm_step(step: Dict, job: Dict,
-                                  workspace_path: str, **kwargs) -> Dict:
+async def handle_agent_swarm_step(
+    step: Dict, job: Dict, workspace_path: str, **kwargs
+) -> Dict:
     return await run_swarm_agent_step(step, job, workspace_path)
 
 
@@ -1516,10 +1761,14 @@ def _get_handler(step_key: str):
 
 # ── Main execute_step ─────────────────────────────────────────────────────────
 
-async def execute_step(step: Dict[str, Any], job: Dict[str, Any],
-                        workspace_path: str = "",
-                        db_pool=None,
-                        proof_service=None) -> Dict[str, Any]:
+
+async def execute_step(
+    step: Dict[str, Any],
+    job: Dict[str, Any],
+    workspace_path: str = "",
+    db_pool=None,
+    proof_service=None,
+) -> Dict[str, Any]:
     """
     Execute a single step:
     1. Mark running + emit step_started
@@ -1553,9 +1802,12 @@ async def execute_step(step: Dict[str, Any], job: Dict[str, Any],
     await update_step_state(step_id, "running")
     t_start_ms = int(time.time() * 1000)
     deps = _step_deps(step)
-    await append_job_event(job_id, "step_started",
-                           {"step_key": step_key, "agent": step.get("agent_name")},
-                           step_id=step_id)
+    await append_job_event(
+        job_id,
+        "step_started",
+        {"step_key": step_key, "agent": step.get("agent_name")},
+        step_id=step_id,
+    )
     await append_job_event(
         job_id,
         "dag_node_started",
@@ -1575,9 +1827,11 @@ async def execute_step(step: Dict[str, Any], job: Dict[str, Any],
         },
         step_id=step_id,
     )
-    await publish(job_id, "step_started",
-                  {"step_key": step_key, "agent": step.get("agent_name"),
-                   "step_id": step_id})
+    await publish(
+        job_id,
+        "step_started",
+        {"step_key": step_key, "agent": step.get("agent_name"), "step_id": step_id},
+    )
 
     try:
         # 2. Execute handler
@@ -1588,7 +1842,9 @@ async def execute_step(step: Dict[str, Any], job: Dict[str, Any],
 
         # 3. Verify
         await update_step_state(step_id, "verifying")
-        await publish(job_id, "step_verifying", {"step_key": step_key, "step_id": step_id})
+        await publish(
+            job_id, "step_verifying", {"step_key": step_key, "step_id": step_id}
+        )
 
         # Merge output files/tables from result into step for verifier
         verification_input = {
@@ -1618,7 +1874,9 @@ async def execute_step(step: Dict[str, Any], job: Dict[str, Any],
             if vr.get("passed"):
                 break
             failure_payload = _verification_failure_payload(step_key, vr)
-            failure_payload.update({"inner_attempt": inner, "max_inner_attempt": max_inner})
+            failure_payload.update(
+                {"inner_attempt": inner, "max_inner_attempt": max_inner}
+            )
             await append_job_event(
                 job_id,
                 "verification_attempt_failed",
@@ -1628,7 +1886,8 @@ async def execute_step(step: Dict[str, Any], job: Dict[str, Any],
             await publish(
                 job_id,
                 "verification_attempt_failed",
-                {k: v for k, v in failure_payload.items() if k != "issues"} | {
+                {k: v for k, v in failure_payload.items() if k != "issues"}
+                | {
                     "issues": failure_payload.get("issues", [])[:5],
                 },
             )
@@ -1637,12 +1896,17 @@ async def execute_step(step: Dict[str, Any], job: Dict[str, Any],
             issues_list = vr.get("issues") or []
             if not issues_list:
                 break
-            st = {**step, "error_message": "; ".join(str(i) for i in issues_list),
-                  "max_retries": 8}
+            st = {
+                **step,
+                "error_message": "; ".join(str(i) for i in issues_list),
+                "max_retries": 8,
+            }
             # Use diagnostic agent for precise root cause analysis
             error_log = st.get("error_message", "")
             ftype = classify_failure(st, {"issues": issues_list}, error_log=error_log)
-            plan = build_retry_plan(ftype, st, {"issues": issues_list}, error_log=error_log)
+            plan = build_retry_plan(
+                ftype, st, {"issues": issues_list}, error_log=error_log
+            )
             # Log diagnosis for observability
             if plan.get("diagnosis"):
                 logger.info(
@@ -1654,10 +1918,18 @@ async def execute_step(step: Dict[str, Any], job: Dict[str, Any],
                     st.get("retry_count", 0),
                 )
             await apply_fix(step, plan)
-            changed_paths = attempt_verification_self_repair(step_key, workspace_path or "", vr)
+            changed_paths = attempt_verification_self_repair(
+                step_key, workspace_path or "", vr
+            )
             repaired_output_files: list[str] = []
-            if workspace_path and ftype in {"syntax_error", "compile_error", "runtime_error"}:
-                candidate_files = list(dict.fromkeys((result.get("output_files") or []) + changed_paths))
+            if workspace_path and ftype in {
+                "syntax_error",
+                "compile_error",
+                "runtime_error",
+            }:
+                candidate_files = list(
+                    dict.fromkeys((result.get("output_files") or []) + changed_paths)
+                )
                 # Use LLM repair callback so CodeRepairAgent can fix novel bugs
                 try:
                     from .llm_code_repair import llm_repair_callback as _llm_cb
@@ -1708,27 +1980,42 @@ async def execute_step(step: Dict[str, Any], job: Dict[str, Any],
         if proof_service:
             for p in vr.get("proof", []):
                 await proof_service.store_proof(
-                    job_id=job_id, step_id=step_id,
+                    job_id=job_id,
+                    step_id=step_id,
                     proof_type=p["proof_type"],
                     title=p["title"],
-                    payload=p["payload"]
+                    payload=p["payload"],
                 )
 
         # 5. Mark completed
-        await update_step_state(step_id, "completed", {
-            "output_ref": json.dumps(result.get("output", ""))[:500],
-            "verifier_status": "passed",
-            "verifier_score": vr["score"],
-        })
-        await append_job_event(job_id, "step_completed",
-                               {"step_key": step_key, "duration_ms": duration_ms,
-                                "verifier_score": vr["score"]},
-                               step_id=step_id)
+        await update_step_state(
+            step_id,
+            "completed",
+            {
+                "output_ref": json.dumps(result.get("output", ""))[:500],
+                "verifier_status": "passed",
+                "verifier_score": vr["score"],
+            },
+        )
+        await append_job_event(
+            job_id,
+            "step_completed",
+            {
+                "step_key": step_key,
+                "duration_ms": duration_ms,
+                "verifier_score": vr["score"],
+            },
+            step_id=step_id,
+        )
         if workspace_path:
             try:
                 from pathlib import Path
 
-                from .artifact_delta import cap_delta, diff_fingerprints, snapshot_workspace_fingerprints
+                from .artifact_delta import (
+                    cap_delta,
+                    diff_fingerprints,
+                    snapshot_workspace_fingerprints,
+                )
 
                 after_snap = snapshot_workspace_fingerprints(Path(workspace_path))
                 raw = diff_fingerprints(before_snap, after_snap)
@@ -1761,19 +2048,32 @@ async def execute_step(step: Dict[str, Any], job: Dict[str, Any],
             },
             step_id=step_id,
         )
-        await publish(job_id, "step_completed",
-                      {"step_key": step_key, "step_id": step_id,
-                       "duration_ms": duration_ms, "score": vr["score"],
-                       "proof": vr.get("proof", [])})
+        await publish(
+            job_id,
+            "step_completed",
+            {
+                "step_key": step_key,
+                "step_id": step_id,
+                "duration_ms": duration_ms,
+                "score": vr["score"],
+                "proof": vr.get("proof", []),
+            },
+        )
 
         # 6. Checkpoint
-        await save_checkpoint(job_id, step_key, {
-            "step_id": step_id, "step_key": step_key,
-            "agent_name": step.get("agent_name"),
-            "status": "completed", "score": vr["score"],
-            "output": str(result.get("output", ""))[:500],
-            "result": result,
-        })
+        await save_checkpoint(
+            job_id,
+            step_key,
+            {
+                "step_id": step_id,
+                "step_key": step_key,
+                "agent_name": step.get("agent_name"),
+                "status": "completed",
+                "score": vr["score"],
+                "output": str(result.get("output", ""))[:500],
+                "result": result,
+            },
+        )
 
         append_node_artifact_record(
             workspace_path,
@@ -1801,14 +2101,20 @@ async def execute_step(step: Dict[str, Any], job: Dict[str, Any],
     except VerificationFailed as vf:
         duration_ms = int((time.monotonic() - t0) * 1000)
         error_msg = _verification_failure_message(step_key, vf.vr)[:500]
-        failure_payload = _verification_failure_payload(step_key, vf.vr, duration_ms=duration_ms)
+        failure_payload = _verification_failure_payload(
+            step_key, vf.vr, duration_ms=duration_ms
+        )
         failure_payload.update({"error": error_msg})
         logger.warning("executor: step %s verification failed: %s", step_key, error_msg)
-        await update_step_state(step_id, "failed", {
-            "error_message": error_msg,
-            "verifier_status": "failed",
-            "verifier_score": vf.vr.get("score"),
-        })
+        await update_step_state(
+            step_id,
+            "failed",
+            {
+                "error_message": error_msg,
+                "verifier_status": "failed",
+                "verifier_score": vf.vr.get("score"),
+            },
+        )
         await append_job_event(
             job_id,
             "step_failed",
@@ -1846,14 +2152,20 @@ async def execute_step(step: Dict[str, Any], job: Dict[str, Any],
         error_msg = str(exc)[:500]
         logger.warning("executor: step %s failed: %s", step_key, error_msg)
 
-        await update_step_state(step_id, "failed", {
-            "error_message": error_msg,
-            "verifier_status": "failed",
-        })
-        await append_job_event(job_id, "step_failed",
-                               {"step_key": step_key, "error": error_msg,
-                                "duration_ms": duration_ms},
-                               step_id=step_id)
+        await update_step_state(
+            step_id,
+            "failed",
+            {
+                "error_message": error_msg,
+                "verifier_status": "failed",
+            },
+        )
+        await append_job_event(
+            job_id,
+            "step_failed",
+            {"step_key": step_key, "error": error_msg, "duration_ms": duration_ms},
+            step_id=step_id,
+        )
         await append_job_event(
             job_id,
             "dag_node_failed",
@@ -1868,8 +2180,15 @@ async def execute_step(step: Dict[str, Any], job: Dict[str, Any],
             },
             step_id=step_id,
         )
-        await publish(job_id, "step_failed",
-                      {"step_key": step_key, "step_id": step_id,
-                       "error": error_msg, "duration_ms": duration_ms})
+        await publish(
+            job_id,
+            "step_failed",
+            {
+                "step_key": step_key,
+                "step_id": step_id,
+                "error": error_msg,
+                "duration_ms": duration_ms,
+            },
+        )
 
         return {"success": False, "error": error_msg}

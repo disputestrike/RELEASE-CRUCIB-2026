@@ -7,9 +7,10 @@ import json
 from typing import Dict, List, Any
 from datetime import datetime
 
+
 class DocumentationGenerator:
     """Generate comprehensive documentation"""
-    
+
     @staticmethod
     def generate_api_documentation(endpoints: List[Dict[str, Any]]) -> str:
         """Generate API documentation in Markdown"""
@@ -65,29 +66,31 @@ All errors follow a standard format:
 ## Endpoints
 
 """
-        
+
         for endpoint in endpoints:
-            doc += f"\n### {endpoint.get('method', 'GET')} {endpoint.get('path', '/')}\n\n"
+            doc += (
+                f"\n### {endpoint.get('method', 'GET')} {endpoint.get('path', '/')}\n\n"
+            )
             doc += f"{endpoint.get('description', 'No description')}\n\n"
-            
-            if endpoint.get('parameters'):
+
+            if endpoint.get("parameters"):
                 doc += "**Parameters:**\n\n"
-                for param in endpoint['parameters']:
+                for param in endpoint["parameters"]:
                     doc += f"- `{param['name']}` ({param.get('type', 'string')}): {param.get('description', '')}\n"
                 doc += "\n"
-            
-            if endpoint.get('request_body'):
+
+            if endpoint.get("request_body"):
                 doc += "**Request Body:**\n\n```json\n"
-                doc += json.dumps(endpoint['request_body'], indent=2)
+                doc += json.dumps(endpoint["request_body"], indent=2)
                 doc += "\n```\n\n"
-            
-            if endpoint.get('response'):
+
+            if endpoint.get("response"):
                 doc += "**Response:**\n\n```json\n"
-                doc += json.dumps(endpoint['response'], indent=2)
+                doc += json.dumps(endpoint["response"], indent=2)
                 doc += "\n```\n\n"
-        
+
         return doc
-    
+
     @staticmethod
     def generate_deployment_guide() -> str:
         """Generate deployment guide"""
@@ -312,7 +315,7 @@ Monitor key metrics:
 
 For deployment issues, contact support@crucibai.com
 """
-    
+
     @staticmethod
     def generate_developer_guide() -> str:
         """Generate developer guide"""
@@ -521,7 +524,7 @@ Profile code using:
 - Ask in Discord community
 - Email support@crucibai.com
 """
-    
+
     @staticmethod
     def generate_user_guide() -> str:
         """Generate user guide"""
@@ -657,28 +660,29 @@ Upgrade your plan or wait for your monthly reset.
 - Docs: [crucibai.com/docs](https://crucibai.com/docs)
 """
 
+
 # ==================== USAGE ====================
 
 if __name__ == "__main__":
     generator = DocumentationGenerator()
-    
+
     # Generate all documentation
     api_docs = generator.generate_api_documentation([])
     deployment_guide = generator.generate_deployment_guide()
     dev_guide = generator.generate_developer_guide()
     user_guide = generator.generate_user_guide()
-    
+
     # Save to files
-    with open('API_DOCUMENTATION.md', 'w') as f:
+    with open("API_DOCUMENTATION.md", "w") as f:
         f.write(api_docs)
-    
-    with open('DEPLOYMENT_GUIDE.md', 'w') as f:
+
+    with open("DEPLOYMENT_GUIDE.md", "w") as f:
         f.write(deployment_guide)
-    
-    with open('DEVELOPER_GUIDE.md', 'w') as f:
+
+    with open("DEVELOPER_GUIDE.md", "w") as f:
         f.write(dev_guide)
-    
-    with open('USER_GUIDE.md', 'w') as f:
+
+    with open("USER_GUIDE.md", "w") as f:
         f.write(user_guide)
-    
+
     print("Documentation generated successfully!")

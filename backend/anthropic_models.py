@@ -5,10 +5,10 @@ Claude Sonnet 3.5 / 3.7 snapshots in 2025-2026. Production code should
 normalize stale model IDs so old env vars and hard-coded defaults do not
 keep returning API errors after retirement.
 """
+
 from __future__ import annotations
 
 from typing import Optional
-
 
 ANTHROPIC_HAIKU_MODEL = "claude-haiku-4-5-20251001"
 ANTHROPIC_HAIKU_ALIAS = "claude-haiku-4-5"
@@ -43,4 +43,3 @@ def normalize_anthropic_model(
     if not normalized:
         return default
     return RETIRED_MODEL_REPLACEMENTS.get(normalized, normalized)
-

@@ -2,6 +2,7 @@
 BuilderAgent - elite directive injected into LLM system context before generation.
 Uses workspace proof/ELITE_EXECUTION_DIRECTIVE.md + strict BUILD-mode system prompt.
 """
+
 from __future__ import annotations
 
 import json
@@ -44,7 +45,10 @@ def _parse_build_intent(goal: str) -> Dict[str, Any]:
                 "Output real code, not stubs. Enforce proof gates."
             ),
         }
-    summary = "; ".join(contract.get("summary_lines") or []) or "Full system requested from prompt"
+    summary = (
+        "; ".join(contract.get("summary_lines") or [])
+        or "Full system requested from prompt"
+    )
     return {
         "mode": "BUILD",
         "target": contract.get("product_name") or "unspecified",
@@ -80,7 +84,9 @@ class BuilderAgent(BaseAgent):
     def validate_input(self, context: Dict[str, Any]) -> bool:
         super().validate_input(context)
         if not (context.get("workspace_path") or "").strip():
-            raise AgentValidationError(f"{self.name}: Missing required field 'workspace_path'")
+            raise AgentValidationError(
+                f"{self.name}: Missing required field 'workspace_path'"
+            )
         if not (context.get("goal") or context.get("user_prompt") or "").strip():
             raise AgentValidationError(f"{self.name}: Missing 'goal' or 'user_prompt'")
         return True
@@ -92,13 +98,17 @@ class BuilderAgent(BaseAgent):
         required = ["files", "api_spec", "setup_instructions"]
         for field in required:
             if field not in result:
-                raise AgentValidationError(f"{self.name}: Missing required field '{field}'")
+                raise AgentValidationError(
+                    f"{self.name}: Missing required field '{field}'"
+                )
         if not isinstance(result["files"], dict):
             raise AgentValidationError(f"{self.name}: files must be a dictionary")
         if "endpoints" not in result.get("api_spec", {}):
             raise AgentValidationError(f"{self.name}: api_spec must have 'endpoints'")
         if not isinstance(result["setup_instructions"], list):
-            raise AgentValidationError(f"{self.name}: setup_instructions must be a list")
+            raise AgentValidationError(
+                f"{self.name}: setup_instructions must be a list"
+            )
         return True
 
     async def execute(self, context: Dict[str, Any]) -> Dict[str, Any]:
@@ -142,7 +152,9 @@ The files object may include any needed folders such as:
 - tests/, e2e/, docs/, db/, migrations/, seeds/
 """
 
-        user_message = f"Build {intent['target']} per this goal and stack contract:\n\n{goal}"
+        user_message = (
+            f"Build {intent['target']} per this goal and stack contract:\n\n{goal}"
+        )
 
         # Prefer injected client.chat when provided (tests / custom adapters)
         response_text: str

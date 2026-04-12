@@ -23,7 +23,6 @@ from typing import Any, Dict, Optional
 from pythonjsonlogger import jsonlogger
 from pythonjsonlogger.jsonlogger import JsonFormatter
 
-
 # Context variables for distributed tracing
 trace_id_var: contextvars.ContextVar[str] = contextvars.ContextVar(
     "trace_id", default=""
@@ -34,9 +33,7 @@ agent_id_var: contextvars.ContextVar[str] = contextvars.ContextVar(
 request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar(
     "request_id", default=""
 )
-user_id_var: contextvars.ContextVar[str] = contextvars.ContextVar(
-    "user_id", default=""
-)
+user_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("user_id", default="")
 
 
 class StructuredFormatter(JsonFormatter):
@@ -166,9 +163,7 @@ def setup_logging(
 
     # Create formatter
     formatter_class = SecureFormatter if secure else StructuredFormatter
-    formatter = formatter_class(
-        fmt="%(timestamp)s %(level)s %(logger)s %(message)s"
-    )
+    formatter = formatter_class(fmt="%(timestamp)s %(level)s %(logger)s %(message)s")
 
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)

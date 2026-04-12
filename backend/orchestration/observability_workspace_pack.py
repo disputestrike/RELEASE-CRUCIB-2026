@@ -2,6 +2,7 @@
 Workspace artifacts for observability goals — stubs only, not a production stack.
 Triggered when the goal mentions tracing, OpenTelemetry, Prometheus, Grafana, metrics, or structured logs.
 """
+
 from __future__ import annotations
 
 import re

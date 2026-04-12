@@ -2,6 +2,7 @@
 Preview gate — required success criteria for Sandpack/workspace bundles.
 Used by verification.preview and final job completion (not optional).
 """
+
 import json
 import logging
 import os
@@ -53,7 +54,7 @@ async def verify_preview_workspace(workspace_path: str) -> Dict[str, Any]:
     """
     Depth checks for a runnable preview bundle (not just file existence).
     Returns { passed, score, issues, proof, failure_reason }.
-    
+
     DETERMINISTIC: Every failure has an explicit reason that can guide regeneration.
     Possible failure_reasons:
     - no_source_files: Workspace has no readable JS/JSON/CSS
@@ -73,7 +74,7 @@ async def verify_preview_workspace(workspace_path: str) -> Dict[str, Any]:
     files = _walk_source_files(workspace_path)
     combined = "\n".join(files.values()).lower()
     rel_joined = " ".join(files.keys()).lower()
-    
+
     failure_reason = None
 
     if not files:
@@ -98,7 +99,9 @@ async def verify_preview_workspace(workspace_path: str) -> Dict[str, Any]:
             for issue in critical_issues:
                 issue_text = issue.get("issue") or "preview preflight issue"
                 suggestion = issue.get("suggestion") or ""
-                issues.append(f"Preview preflight: {issue_text}{f' ({suggestion})' if suggestion else ''}")
+                issues.append(
+                    f"Preview preflight: {issue_text}{f' ({suggestion})' if suggestion else ''}"
+                )
             proof.append(
                 _proof(
                     "verification",
@@ -140,14 +143,25 @@ async def verify_preview_workspace(workspace_path: str) -> Dict[str, Any]:
     else:
         try:
             pkg = json.loads(pkg_text)
-            deps = {**(pkg.get("dependencies") or {}), **(pkg.get("devDependencies") or {})}
+            deps = {
+                **(pkg.get("dependencies") or {}),
+                **(pkg.get("devDependencies") or {}),
+            }
             need = ("react", "react-dom", "react-router-dom", "zustand")
             missing = [k for k in need if k not in deps]
             if missing:
                 failure_reason = "missing_dependencies"
-                issues.append(f"package.json missing dependencies: {', '.join(missing)}")
+                issues.append(
+                    f"package.json missing dependencies: {', '.join(missing)}"
+                )
             else:
-                proof.append(_proof("verification", "package.json has core deps", {"deps": list(need)}))
+                proof.append(
+                    _proof(
+                        "verification",
+                        "package.json has core deps",
+                        {"deps": list(need)},
+                    )
+                )
         except json.JSONDecodeError as e:
             failure_reason = "invalid_package_json"
             issues.append(f"package.json is not valid JSON: {e}")
@@ -155,10 +169,19 @@ async def verify_preview_workspace(workspace_path: str) -> Dict[str, Any]:
     # Entry + React 18 root
     entry_ok = False
     for rel, txt in files.items():
-        if rel.endswith("index.js") or rel.endswith("index.jsx") or rel.endswith("main.jsx"):
-            if "createroot" in txt.lower().replace(" ", "") or "reactdom.render" in txt.lower():
+        if (
+            rel.endswith("index.js")
+            or rel.endswith("index.jsx")
+            or rel.endswith("main.jsx")
+        ):
+            if (
+                "createroot" in txt.lower().replace(" ", "")
+                or "reactdom.render" in txt.lower()
+            ):
                 entry_ok = True
-                proof.append(_proof("verification", f"Entry mount found: {rel}", {"path": rel}))
+                proof.append(
+                    _proof("verification", f"Entry mount found: {rel}", {"path": rel})
+                )
                 break
     if not entry_ok:
         failure_reason = "no_entry_point"
@@ -173,13 +196,19 @@ async def verify_preview_workspace(workspace_path: str) -> Dict[str, Any]:
         failure_reason = "no_router"
         issues.append("No react-router usage detected (MemoryRouter/Routes/Route).")
     else:
-        proof.append(_proof("verification", "Routing primitives present", {"hint": "router"}))
+        proof.append(
+            _proof("verification", "Routing primitives present", {"hint": "router"})
+        )
 
     # Auth pattern (context or explicit)
-    auth_ok = "authcontext" in combined or "authprovider" in combined or "useauth" in combined
+    auth_ok = (
+        "authcontext" in combined or "authprovider" in combined or "useauth" in combined
+    )
     if not auth_ok:
         failure_reason = "no_auth"
-        issues.append("No auth context pattern (AuthContext / useAuth) found in sources.")
+        issues.append(
+            "No auth context pattern (AuthContext / useAuth) found in sources."
+        )
     else:
         proof.append(_proof("verification", "Auth context pattern present", {}))
 
@@ -188,21 +217,37 @@ async def verify_preview_workspace(workspace_path: str) -> Dict[str, Any]:
     persist_ok = "persist" in combined and "zustand" in combined
     if not storage_ok and not persist_ok:
         failure_reason = "no_persistence"
-        issues.append("No localStorage/sessionStorage or zustand persist usage detected.")
+        issues.append(
+            "No localStorage/sessionStorage or zustand persist usage detected."
+        )
     else:
         proof.append(
-            _proof("verification", "Client persistence present", {"storage": storage_ok, "zustand_persist": persist_ok}),
+            _proof(
+                "verification",
+                "Client persistence present",
+                {"storage": storage_ok, "zustand_persist": persist_ok},
+            ),
         )
 
     # Reusable components (multiple under src/components or components/)
     comp_dirs = sum(
-        1 for p in files if p.startswith("src/components/") or p.startswith("components/")
+        1
+        for p in files
+        if p.startswith("src/components/") or p.startswith("components/")
     )
     if comp_dirs < 1:
         failure_reason = "no_components"
-        issues.append("Expected at least one file under src/components/ for reusable UI.")
+        issues.append(
+            "Expected at least one file under src/components/ for reusable UI."
+        )
     else:
-        proof.append(_proof("verification", f"Component modules: {comp_dirs} files", {"count": comp_dirs}))
+        proof.append(
+            _proof(
+                "verification",
+                f"Component modules: {comp_dirs} files",
+                {"count": comp_dirs},
+            )
+        )
 
     # Default export App
     app_like = [p for p in files if p.endswith("App.jsx") or p.endswith("App.js")]
@@ -210,7 +255,9 @@ async def verify_preview_workspace(workspace_path: str) -> Dict[str, Any]:
         failure_reason = "no_app_file"
         issues.append("No App.jsx / App.js found.")
     else:
-        proof.append(_proof("file", f"Root app file: {app_like[0]}", {"path": app_like[0]}))
+        proof.append(
+            _proof("file", f"Root app file: {app_like[0]}", {"path": app_like[0]})
+        )
 
     static_passed = len(issues) == 0
     if static_passed:
@@ -232,4 +279,10 @@ async def verify_preview_workspace(workspace_path: str) -> Dict[str, Any]:
 
     score = max(0, 100 - len(issues) * 18)
     passed = len(issues) == 0
-    return {"passed": passed, "score": score, "issues": issues, "proof": proof, "failure_reason": failure_reason}
+    return {
+        "passed": passed,
+        "score": score,
+        "issues": issues,
+        "proof": proof,
+        "failure_reason": failure_reason,
+    }

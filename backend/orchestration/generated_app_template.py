@@ -5,12 +5,16 @@ Explicit README marks gaps vs a full production deploy.
 When ``job["build_target"]`` is set (e.g. ``next_app_router``), extra track files are added
 without breaking the root Vite bundle verifiers expect.
 """
+
 import json
 import re
 from typing import Dict, List, Tuple
 
 from .build_targets import build_target_meta, normalize_build_target
-from .enterprise_command_pack import build_enterprise_frontend_file_set, enterprise_command_intent
+from .enterprise_command_pack import (
+    build_enterprise_frontend_file_set,
+    enterprise_command_intent,
+)
 
 
 def _safe_goal_summary(goal: str) -> str:

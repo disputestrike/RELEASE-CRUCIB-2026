@@ -1,4 +1,5 @@
 """Agent DAG audit script must stay in sync with committed manifests."""
+
 import subprocess
 import sys
 from pathlib import Path

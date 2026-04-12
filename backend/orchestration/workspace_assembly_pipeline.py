@@ -8,6 +8,7 @@ Primary entry points:
   - materialize_from_previous_outputs() — used by File Tool Agent (replaces narrow 4-file-only writes).
   - materialize_swarm_agent_output() — after each swarm LLM step, applies extra path-tagged fences and upserts META/merge_map.json per written path.
 """
+
 from __future__ import annotations
 
 import json
@@ -43,10 +44,7 @@ _ORDER_RANK = {name: i for i, name in enumerate(ASSEMBLY_AGENT_ORDER)}
 
 # Fence: optional lang, then first line may be ONLY a relative path (common LLM pattern).
 _FENCE_PATH_FIRSTLINE = re.compile(
-    r"```(?:[\w+\-.#]*)\s*\n"
-    r"(?P<first>[^\n`]{1,240})\n"
-    r"(?P<body>.*?)"
-    r"```",
+    r"```(?:[\w+\-.#]*)\s*\n" r"(?P<first>[^\n`]{1,240})\n" r"(?P<body>.*?)" r"```",
     re.DOTALL | re.IGNORECASE,
 )
 # Fence: ```lang path/to/file.ext
@@ -118,7 +116,9 @@ def extract_json_file_maps(raw: str) -> List[Tuple[str, str]]:
         except json.JSONDecodeError:
             continue
         if isinstance(data, dict):
-            fm = data.get("files") or data.get("file_map") or data.get("workspace_files")
+            fm = (
+                data.get("files") or data.get("file_map") or data.get("workspace_files")
+            )
             if isinstance(fm, dict):
                 for k, v in fm.items():
                     if not isinstance(k, str) or not isinstance(v, str):
@@ -133,7 +133,9 @@ def extract_json_file_maps(raw: str) -> List[Tuple[str, str]]:
                 if not isinstance(item, dict):
                     continue
                 pth = item.get("path") or item.get("file") or item.get("filepath")
-                content = item.get("content") or item.get("contents") or item.get("body")
+                content = (
+                    item.get("content") or item.get("contents") or item.get("body")
+                )
                 if not isinstance(pth, str) or not isinstance(content, str):
                     continue
                 if len(content) > _MAX_JSON_FILE_BODY:
@@ -144,7 +146,9 @@ def extract_json_file_maps(raw: str) -> List[Tuple[str, str]]:
     return out
 
 
-def parse_proposed_files(raw: str, default_rel: str, agent_name: str) -> List[Tuple[str, str]]:
+def parse_proposed_files(
+    raw: str, default_rel: str, agent_name: str
+) -> List[Tuple[str, str]]:
     """
     Return list of (rel_path, content). Never escapes workspace roots (caller uses safe write).
     """
@@ -208,11 +212,15 @@ def _sort_agent_names(names: List[str]) -> List[str]:
     return sorted(names, key=key)
 
 
-def collect_assembly_pairs(previous_outputs: Dict[str, Dict[str, Any]]) -> List[Tuple[str, str, str]]:
+def collect_assembly_pairs(
+    previous_outputs: Dict[str, Dict[str, Any]],
+) -> List[Tuple[str, str, str]]:
     from agent_real_behavior import ARTIFACT_PATHS
 
     pairs: List[Tuple[str, str, str]] = []
-    names = _sort_agent_names([n for n in previous_outputs if isinstance(previous_outputs.get(n), dict)])
+    names = _sort_agent_names(
+        [n for n in previous_outputs if isinstance(previous_outputs.get(n), dict)]
+    )
     for agent_name in names:
         blob = previous_outputs[agent_name]
         raw = _raw_text(blob)
@@ -230,7 +238,9 @@ def _safe_write_workspace(workspace_path: str, rel: str, content: str) -> bool:
     return _safe_write(workspace_path, rel, content) is not None
 
 
-def ensure_minimum_preview_tree(workspace_path: str, job_stub: Optional[Dict[str, Any]] = None) -> List[str]:
+def ensure_minimum_preview_tree(
+    workspace_path: str, job_stub: Optional[Dict[str, Any]] = None
+) -> List[str]:
     """Fill missing Vite contract files without clobbering agent output."""
     from orchestration.executor import _ensure_preview_contract_files
 
@@ -240,7 +250,9 @@ def ensure_minimum_preview_tree(workspace_path: str, job_stub: Optional[Dict[str
     return _ensure_preview_contract_files(workspace_path, job)
 
 
-def write_assembly_merge_map(workspace_path: str, merged: Dict[str, Tuple[str, str]]) -> None:
+def write_assembly_merge_map(
+    workspace_path: str, merged: Dict[str, Tuple[str, str]]
+) -> None:
     """Persist last-writer agents from V2 merge (seal merges into artifact_manifest where events lack a path)."""
     if not workspace_path or not merged:
         return
@@ -253,7 +265,9 @@ def write_assembly_merge_map(workspace_path: str, merged: Dict[str, Tuple[str, s
     for rel, (content, agent) in sorted(merged.items(), key=lambda x: x[0]):
         paths[rel] = {
             "last_writer_agent": agent,
-            "approx_bytes": len(content.encode("utf-8")) if isinstance(content, str) else 0,
+            "approx_bytes": (
+                len(content.encode("utf-8")) if isinstance(content, str) else 0
+            ),
         }
     doc = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -264,7 +278,9 @@ def write_assembly_merge_map(workspace_path: str, merged: Dict[str, Tuple[str, s
     (meta / "merge_map.json").write_text(json.dumps(doc, indent=2), encoding="utf-8")
 
 
-def upsert_assembly_merge_map_paths(workspace_path: str, merged: Dict[str, Tuple[str, str]]) -> None:
+def upsert_assembly_merge_map_paths(
+    workspace_path: str, merged: Dict[str, Tuple[str, str]]
+) -> None:
     """
     Merge last-writer rows into existing META/merge_map.json (swarm steps after File Tool, or multi-step swarm).
     Only paths present in ``merged`` are updated; other paths are preserved.
@@ -291,7 +307,9 @@ def upsert_assembly_merge_map_paths(workspace_path: str, merged: Dict[str, Tuple
             continue
         existing[rel] = {
             "last_writer_agent": agent,
-            "approx_bytes": len(content.encode("utf-8")) if isinstance(content, str) else 0,
+            "approx_bytes": (
+                len(content.encode("utf-8")) if isinstance(content, str) else 0
+            ),
         }
     doc = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -353,7 +371,9 @@ async def materialize_from_previous_outputs(
         from orchestration.generation_contract import parse_generation_contract
 
         pc = parse_generation_contract(goal_snippet)
-        preview_bt = normalize_build_target(pc.get("recommended_build_target") or "vite_react")
+        preview_bt = normalize_build_target(
+            pc.get("recommended_build_target") or "vite_react"
+        )
     job_stub = {"goal": goal_snippet, "build_target": preview_bt}
     extra: List[str] = []
     if preview_bt != "api_backend":
@@ -388,7 +408,11 @@ def materialize_swarm_agent_output(
     After a swarm LLM step: extract path-tagged fences and write on top of run_agent_real_behavior output.
     Returns list of newly written rel paths.
     """
-    if not assembly_v2_enabled() or not workspace_path or not os.path.isdir(workspace_path):
+    if (
+        not assembly_v2_enabled()
+        or not workspace_path
+        or not os.path.isdir(workspace_path)
+    ):
         return []
     from agent_real_behavior import ARTIFACT_PATHS
 
@@ -396,7 +420,10 @@ def materialize_swarm_agent_output(
     if not raw.strip():
         return []
     default_rel = ARTIFACT_PATHS.get(agent_name, "")
-    pairs = [(rel, body, agent_name) for rel, body in parse_proposed_files(raw, default_rel, agent_name)]
+    pairs = [
+        (rel, body, agent_name)
+        for rel, body in parse_proposed_files(raw, default_rel, agent_name)
+    ]
     if len(pairs) <= 1 and not any("/" in p[0] for p in pairs):
         # Single default-only — already handled by run_agent_real_behavior; skip duplicate work
         return []

@@ -10,11 +10,16 @@ from provider_readiness import build_provider_readiness
 
 
 def test_normalize_anthropic_model_maps_retired_haiku():
-    assert normalize_anthropic_model("claude-3-5-haiku-20241022") == ANTHROPIC_HAIKU_MODEL
+    assert (
+        normalize_anthropic_model("claude-3-5-haiku-20241022") == ANTHROPIC_HAIKU_MODEL
+    )
 
 
 def test_normalize_anthropic_model_maps_retired_sonnet():
-    assert normalize_anthropic_model("claude-3-5-sonnet-20241022") == ANTHROPIC_SONNET_MODEL
+    assert (
+        normalize_anthropic_model("claude-3-5-sonnet-20241022")
+        == ANTHROPIC_SONNET_MODEL
+    )
 
 
 def test_provider_readiness_normalizes_stale_anthropic_env():

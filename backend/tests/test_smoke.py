@@ -2,6 +2,7 @@
 Layer 9 – Post-deployment / smoke tests.
 Verifies app is up and critical endpoints respond (in-process via app_client).
 """
+
 import time
 import uuid
 import pytest
@@ -22,7 +23,10 @@ async def _create_smoke_project(app_client, auth_headers):
         headers=auth_headers,
         timeout=15,
     )
-    assert r.status_code in (200, 201), f"Project create failed: {r.status_code} {r.text}"
+    assert r.status_code in (
+        200,
+        201,
+    ), f"Project create failed: {r.status_code} {r.text}"
     data = r.json()
     project = data.get("project") or data
     project_id = project["id"]
@@ -37,17 +41,22 @@ async def _create_smoke_task(auth_headers, files=None):
     import server
 
     token = auth_headers["Authorization"].split(" ", 1)[1]
-    payload = server.jwt.decode(token, server.JWT_SECRET, algorithms=[server.JWT_ALGORITHM])
+    payload = server.jwt.decode(
+        token, server.JWT_SECRET, algorithms=[server.JWT_ALGORITHM]
+    )
     task_id = str(uuid.uuid4())
-    await server.db.tasks.insert_one({
-        "id": task_id,
-        "user_id": payload["user_id"],
-        "name": "Smoke Task",
-        "status": "complete",
-        "files": files or {"schema.sql": "CREATE TABLE IF NOT EXISTS smoke_items (id text);"},
-        "created_at": "2026-01-01T00:00:00+00:00",
-        "updated_at": "2026-01-01T00:00:00+00:00",
-    })
+    await server.db.tasks.insert_one(
+        {
+            "id": task_id,
+            "user_id": payload["user_id"],
+            "name": "Smoke Task",
+            "status": "complete",
+            "files": files
+            or {"schema.sql": "CREATE TABLE IF NOT EXISTS smoke_items (id text);"},
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "updated_at": "2026-01-01T00:00:00+00:00",
+        }
+    )
     return task_id
 
 
@@ -56,7 +65,9 @@ def _user_id_from_auth_headers(auth_headers):
     import server
 
     token = auth_headers["Authorization"].split(" ", 1)[1]
-    payload = server.jwt.decode(token, server.JWT_SECRET, algorithms=[server.JWT_ALGORITHM])
+    payload = server.jwt.decode(
+        token, server.JWT_SECRET, algorithms=[server.JWT_ALGORITHM]
+    )
     return payload["user_id"]
 
 
@@ -80,7 +91,9 @@ async def _create_failed_smoke_job_step(auth_headers):
         agent_name="Smoke Agent",
         phase="test",
     )
-    await runtime_state.update_step_state(step["id"], "failed", {"error_message": "smoke"})
+    await runtime_state.update_step_state(
+        step["id"], "failed", {"error_message": "smoke"}
+    )
     step = await runtime_state.get_step(step["id"])
     return job["id"], step["id"]
 
@@ -179,8 +192,12 @@ async def test_smoke_published_generated_app_url_serves_dist(app_client, auth_he
     )
     root = server._project_workspace_path(project_id)
     (root / "dist").mkdir(parents=True, exist_ok=True)
-    (root / "dist" / "index.html").write_text("<!doctype html><h1>Published smoke</h1>", encoding="utf-8")
-    await runtime_state.update_job_state(job["id"], "completed", {"current_phase": "completed"})
+    (root / "dist" / "index.html").write_text(
+        "<!doctype html><h1>Published smoke</h1>", encoding="utf-8"
+    )
+    await runtime_state.update_job_state(
+        job["id"], "completed", {"current_phase": "completed"}
+    )
 
     r = await app_client.get(f"/published/{job['id']}/", timeout=10)
 
@@ -188,7 +205,9 @@ async def test_smoke_published_generated_app_url_serves_dist(app_client, auth_he
     assert "Published smoke" in r.text
 
 
-async def test_smoke_published_generated_app_rewrites_asset_paths_and_serves_job_assets(app_client, auth_headers):
+async def test_smoke_published_generated_app_rewrites_asset_paths_and_serves_job_assets(
+    app_client, auth_headers
+):
     """Published app HTML must point at job-scoped assets, not CrucibAI's root frontend bundle."""
     import server
     from db_pg import get_pg_pool
@@ -210,8 +229,12 @@ async def test_smoke_published_generated_app_rewrites_asset_paths_and_serves_job
         """<!doctype html><html><head><script type="module" src="/assets/app.js"></script></head><body><div id="root"></div></body></html>""",
         encoding="utf-8",
     )
-    (root / "dist" / "assets" / "app.js").write_text("console.log('published-job-asset');", encoding="utf-8")
-    await runtime_state.update_job_state(job["id"], "completed", {"current_phase": "completed"})
+    (root / "dist" / "assets" / "app.js").write_text(
+        "console.log('published-job-asset');", encoding="utf-8"
+    )
+    await runtime_state.update_job_state(
+        job["id"], "completed", {"current_phase": "completed"}
+    )
 
     html = await app_client.get(f"/published/{job['id']}/", timeout=10)
     asset = await app_client.get(f"/published/{job['id']}/assets/app.js", timeout=10)
@@ -240,15 +263,23 @@ async def test_smoke_published_missing_asset_returns_404(app_client, auth_header
     )
     root = server._project_workspace_path(project_id)
     (root / "dist").mkdir(parents=True, exist_ok=True)
-    (root / "dist" / "index.html").write_text("<!doctype html><h1>Published smoke</h1>", encoding="utf-8")
-    await runtime_state.update_job_state(job["id"], "completed", {"current_phase": "completed"})
+    (root / "dist" / "index.html").write_text(
+        "<!doctype html><h1>Published smoke</h1>", encoding="utf-8"
+    )
+    await runtime_state.update_job_state(
+        job["id"], "completed", {"current_phase": "completed"}
+    )
 
-    missing = await app_client.get(f"/published/{job['id']}/assets/missing.js", timeout=10)
+    missing = await app_client.get(
+        f"/published/{job['id']}/assets/missing.js", timeout=10
+    )
 
     assert missing.status_code == 404
 
 
-async def test_smoke_job_api_exposes_preview_url_for_completed_published_app(app_client, auth_headers):
+async def test_smoke_job_api_exposes_preview_url_for_completed_published_app(
+    app_client, auth_headers
+):
     """Completed published jobs should return a preview_url so the workspace iframe can boot."""
     import server
     from db_pg import get_pg_pool
@@ -266,8 +297,12 @@ async def test_smoke_job_api_exposes_preview_url_for_completed_published_app(app
     )
     root = server._project_workspace_path(project_id)
     (root / "dist").mkdir(parents=True, exist_ok=True)
-    (root / "dist" / "index.html").write_text("<!doctype html><h1>Preview smoke</h1>", encoding="utf-8")
-    await runtime_state.update_job_state(job["id"], "completed", {"current_phase": "completed"})
+    (root / "dist" / "index.html").write_text(
+        "<!doctype html><h1>Preview smoke</h1>", encoding="utf-8"
+    )
+    await runtime_state.update_job_state(
+        job["id"], "completed", {"current_phase": "completed"}
+    )
 
     r = await app_client.get(f"/api/jobs/{job['id']}", headers=auth_headers, timeout=10)
 
@@ -295,12 +330,20 @@ async def test_smoke_visual_edit_patches_owned_job_workspace(app_client, auth_he
     )
     root = server._project_workspace_path(project_id)
     (root / "src").mkdir(parents=True, exist_ok=True)
-    (root / "src" / "App.jsx").write_text("export default function App(){return <h1>Old copy</h1>}", encoding="utf-8")
-    await runtime_state.update_job_state(job["id"], "completed", {"current_phase": "completed"})
+    (root / "src" / "App.jsx").write_text(
+        "export default function App(){return <h1>Old copy</h1>}", encoding="utf-8"
+    )
+    await runtime_state.update_job_state(
+        job["id"], "completed", {"current_phase": "completed"}
+    )
 
     r = await app_client.post(
         f"/api/jobs/{job['id']}/visual-edit",
-        json={"file_path": "src/App.jsx", "find_text": "Old copy", "replace_text": "New copy"},
+        json={
+            "file_path": "src/App.jsx",
+            "find_text": "Old copy",
+            "replace_text": "New copy",
+        },
         headers=auth_headers,
         timeout=10,
     )
@@ -378,7 +421,9 @@ async def test_smoke_public_community_templates_are_curated_and_remixable(app_cl
     assert all(item["moderation_status"] == "approved" for item in items)
     assert all(item["remix_endpoint"] for item in items)
 
-    plan = await app_client.get("/api/community/templates/dashboard/remix-plan", timeout=10)
+    plan = await app_client.get(
+        "/api/community/templates/dashboard/remix-plan", timeout=10
+    )
     assert plan.status_code == 200
     assert plan.json()["proof_score"] >= 90
 
@@ -408,7 +453,9 @@ async def test_smoke_health_llm_preflight_returns_provider_contract(app_client):
     data = r.json()
     assert data["secret_values_included"] is False
     assert "providers" in data
-    assert data["env_contract"]["providers"]["anthropic"]["key_env"] == "ANTHROPIC_API_KEY"
+    assert (
+        data["env_contract"]["providers"]["anthropic"]["key_env"] == "ANTHROPIC_API_KEY"
+    )
 
 
 async def test_smoke_health_response_time(app_client):
@@ -444,7 +491,9 @@ async def test_smoke_monitoring_events_list_returns_200(app_client):
 
 async def test_smoke_vibecoding_analyze_returns_200(app_client):
     """POST /api/vibecoding/analyze returns 200 and vibe (Phase 2)."""
-    r = await app_client.post("/api/vibecoding/analyze", json={"text": "Build a React todo app"}, timeout=10)
+    r = await app_client.post(
+        "/api/vibecoding/analyze", json={"text": "Build a React todo app"}, timeout=10
+    )
     assert r.status_code == 200
     data = r.json()
     assert data.get("status") == "success"
@@ -454,7 +503,9 @@ async def test_smoke_vibecoding_analyze_returns_200(app_client):
 
 async def test_smoke_vibecoding_generate_returns_200(app_client):
     """POST /api/vibecoding/generate returns 200 and code (Phase 2)."""
-    r = await app_client.post("/api/vibecoding/generate", json={"prompt": "hello world component"}, timeout=10)
+    r = await app_client.post(
+        "/api/vibecoding/generate", json={"prompt": "hello world component"}, timeout=10
+    )
     assert r.status_code == 200
     data = r.json()
     assert data.get("status") == "success"
@@ -478,7 +529,9 @@ async def test_smoke_ide_debug_start_returns_200(app_client, auth_headers):
 
 async def test_smoke_ide_debug_start_requires_auth(app_client):
     """POST /api/ide/debug/start requires auth."""
-    r = await app_client.post("/api/ide/debug/start", params={"project_id": "test-project"}, timeout=10)
+    r = await app_client.post(
+        "/api/ide/debug/start", params={"project_id": "test-project"}, timeout=10
+    )
     assert r.status_code == 401
 
 
@@ -487,7 +540,11 @@ async def test_smoke_ide_lint_returns_200(app_client, auth_headers):
     project_id = await _create_smoke_project(app_client, auth_headers)
     r = await app_client.post(
         "/api/ide/lint",
-        params={"project_id": project_id, "file_path": "src/App.js", "code": "const x = 1;"},
+        params={
+            "project_id": project_id,
+            "file_path": "src/App.js",
+            "code": "const x = 1;",
+        },
         headers=auth_headers,
         timeout=10,
     )
@@ -570,11 +627,15 @@ async def test_smoke_terminal_create_returns_200(app_client, auth_headers):
 
 async def test_smoke_terminal_create_requires_auth(app_client):
     """POST /api/terminal/create requires auth."""
-    r = await app_client.post("/api/terminal/create", params={"project_id": "test-project"}, timeout=10)
+    r = await app_client.post(
+        "/api/terminal/create", params={"project_id": "test-project"}, timeout=10
+    )
     assert r.status_code == 401
 
 
-async def test_smoke_terminal_create_respects_disabled_env(app_client, auth_headers, monkeypatch):
+async def test_smoke_terminal_create_respects_disabled_env(
+    app_client, auth_headers, monkeypatch
+):
     """Terminal execution is disabled in production unless explicitly enabled."""
     project_id = await _create_smoke_project(app_client, auth_headers)
     monkeypatch.setenv("CRUCIBAI_TERMINAL_ENABLED", "0")
@@ -587,7 +648,9 @@ async def test_smoke_terminal_create_respects_disabled_env(app_client, auth_head
     assert r.status_code == 403
 
 
-async def test_smoke_terminal_policy_blocks_non_admin_host_shell_in_production(monkeypatch):
+async def test_smoke_terminal_policy_blocks_non_admin_host_shell_in_production(
+    monkeypatch,
+):
     """Enabling terminal explicitly is not enough for non-admin host shell in production."""
     import server
 
@@ -595,7 +658,10 @@ async def test_smoke_terminal_policy_blocks_non_admin_host_shell_in_production(m
     monkeypatch.delenv("CRUCIBAI_DEV", raising=False)
     monkeypatch.setenv("CRUCIBAI_TERMINAL_ENABLED", "1")
 
-    assert server._terminal_execution_allowed({"id": "user-1", "admin_role": None}) is False
+    assert (
+        server._terminal_execution_allowed({"id": "user-1", "admin_role": None})
+        is False
+    )
 
 
 async def test_smoke_terminal_execute_returns_result(app_client, auth_headers):
@@ -624,7 +690,9 @@ async def test_smoke_terminal_execute_returns_result(app_client, auth_headers):
     assert "hello" in data.get("stdout", "")
 
 
-async def test_smoke_terminal_execute_blocks_dangerous_commands(app_client, auth_headers, monkeypatch):
+async def test_smoke_terminal_execute_blocks_dangerous_commands(
+    app_client, auth_headers, monkeypatch
+):
     """Terminal policy blocks high-risk commands while host-shell execution remains launch-gated."""
     project_id = await _create_smoke_project(app_client, auth_headers)
     monkeypatch.setenv("CRUCIBAI_TERMINAL_ENABLED", "1")
@@ -646,10 +714,15 @@ async def test_smoke_terminal_execute_blocks_dangerous_commands(app_client, auth
     data = exec_r.json()
     assert data.get("returncode") == -1
     assert "terminal policy" in data.get("stderr", "")
-    audit_r = await app_client.get("/api/terminal/audit", headers=auth_headers, timeout=10)
+    audit_r = await app_client.get(
+        "/api/terminal/audit", headers=auth_headers, timeout=10
+    )
     assert audit_r.status_code == 200
     events = audit_r.json().get("events") or []
-    assert any(event.get("blocked") is True and event.get("command") == "rm -rf /" for event in events)
+    assert any(
+        event.get("blocked") is True and event.get("command") == "rm -rf /"
+        for event in events
+    )
 
 
 async def test_smoke_terminal_audit_requires_auth(app_client):
@@ -658,7 +731,9 @@ async def test_smoke_terminal_audit_requires_auth(app_client):
     assert r.status_code == 401
 
 
-async def test_smoke_terminal_execute_respects_disabled_env(app_client, auth_headers, monkeypatch):
+async def test_smoke_terminal_execute_respects_disabled_env(
+    app_client, auth_headers, monkeypatch
+):
     """Terminal command execution can be gated off after a session exists."""
     project_id = await _create_smoke_project(app_client, auth_headers)
     monkeypatch.setenv("CRUCIBAI_TERMINAL_ENABLED", "1")
@@ -680,7 +755,9 @@ async def test_smoke_terminal_execute_respects_disabled_env(app_client, auth_hea
     assert exec_r.status_code == 403
 
 
-async def test_smoke_terminal_execute_rejects_cross_user_session(app_client, auth_headers, monkeypatch):
+async def test_smoke_terminal_execute_rejects_cross_user_session(
+    app_client, auth_headers, monkeypatch
+):
     """Terminal sessions are scoped to the owning user and hidden from other users."""
     other_headers = await _register_smoke_headers(app_client)
     project_id = await _create_smoke_project(app_client, auth_headers)
@@ -719,7 +796,11 @@ async def test_smoke_git_branches_returns_200(app_client, auth_headers):
 
 async def test_smoke_vibecoding_analyze_audio_returns_200(app_client):
     """POST /api/vibecoding/analyze-audio with transcript returns 200."""
-    r = await app_client.post("/api/vibecoding/analyze-audio", json={"transcript": "Build a minimal React todo app"}, timeout=10)
+    r = await app_client.post(
+        "/api/vibecoding/analyze-audio",
+        json={"transcript": "Build a minimal React todo app"},
+        timeout=10,
+    )
     assert r.status_code == 200
     data = r.json()
     assert data.get("status") in ("success", "error")
@@ -729,7 +810,11 @@ async def test_smoke_vibecoding_analyze_audio_returns_200(app_client):
 
 async def test_smoke_vibecoding_detect_frameworks_returns_200(app_client):
     """POST /api/vibecoding/detect-frameworks returns 200."""
-    r = await app_client.post("/api/vibecoding/detect-frameworks", json={"text": "React and Node.js app with Express"}, timeout=10)
+    r = await app_client.post(
+        "/api/vibecoding/detect-frameworks",
+        json={"text": "React and Node.js app with Express"},
+        timeout=10,
+    )
     assert r.status_code == 200
     data = r.json()
     assert data.get("status") == "success"
@@ -739,13 +824,21 @@ async def test_smoke_vibecoding_detect_frameworks_returns_200(app_client):
 
 async def test_smoke_vibecoding_detect_frameworks_project_requires_auth(app_client):
     """Project-backed framework detection requires auth before reading project metadata."""
-    r = await app_client.post("/api/vibecoding/detect-frameworks", json={"project_id": "not-owned"}, timeout=10)
+    r = await app_client.post(
+        "/api/vibecoding/detect-frameworks",
+        json={"project_id": "not-owned"},
+        timeout=10,
+    )
     assert r.status_code == 401
 
 
 async def test_smoke_ai_docs_generate_returns_200(app_client):
     """POST /api/ai/docs/generate returns 200 and readme."""
-    r = await app_client.post("/api/ai/docs/generate", json={"project_name": "TestApp", "description": "A test app"}, timeout=10)
+    r = await app_client.post(
+        "/api/ai/docs/generate",
+        json={"project_name": "TestApp", "description": "A test app"},
+        timeout=10,
+    )
     assert r.status_code == 200
     data = r.json()
     assert data.get("status") == "success"
@@ -754,7 +847,11 @@ async def test_smoke_ai_docs_generate_returns_200(app_client):
 
 async def test_smoke_deploy_validate_returns_200(app_client):
     """POST /api/deploy/validate returns 200."""
-    r = await app_client.post("/api/deploy/validate", json={"platform": "vercel", "files": {"package.json": "{}"}}, timeout=10)
+    r = await app_client.post(
+        "/api/deploy/validate",
+        json={"platform": "vercel", "files": {"package.json": "{}"}},
+        timeout=10,
+    )
     assert r.status_code == 200
     data = r.json()
     assert "valid" in data
@@ -796,7 +893,9 @@ async def test_smoke_agent_memory_list_is_user_scoped(app_client, auth_headers):
     )
     assert other.status_code == 200
     assert own.status_code == 200
-    listing = await app_client.get("/api/agents/run/memory-list", headers=auth_headers, timeout=10)
+    listing = await app_client.get(
+        "/api/agents/run/memory-list", headers=auth_headers, timeout=10
+    )
     assert listing.status_code == 200
     names = [item.get("name") for item in listing.json().get("items", [])]
     assert "own-memory" in names
@@ -832,7 +931,9 @@ async def test_smoke_agent_automation_list_is_user_scoped(app_client, auth_heade
     )
     assert other.status_code == 200
     assert own.status_code == 200
-    listing = await app_client.get("/api/agents/run/automation-list", headers=auth_headers, timeout=10)
+    listing = await app_client.get(
+        "/api/agents/run/automation-list", headers=auth_headers, timeout=10
+    )
     assert listing.status_code == 200
     names = [item.get("name") for item in listing.json().get("items", [])]
     assert "own-automation" in names
@@ -860,7 +961,9 @@ async def test_smoke_agent_run_generic_requires_auth(app_client):
         ("/api/ai/generate-readme", {"code": "print('hi')", "project_name": "Demo"}),
     ],
 )
-async def test_smoke_phase2_llm_action_routes_reject_anonymous(app_client, path, payload):
+async def test_smoke_phase2_llm_action_routes_reject_anonymous(
+    app_client, path, payload
+):
     """Anonymous callers cannot spend server-side LLM/action capacity."""
     r = await app_client.post(path, json=payload, timeout=10)
     assert r.status_code == 401, f"{path} returned {r.status_code}: {r.text}"
@@ -874,37 +977,45 @@ async def test_smoke_phase2_chat_history_requires_owner(app_client, auth_headers
     own_user_id = _user_id_from_auth_headers(auth_headers)
     other_user_id = _user_id_from_auth_headers(other_headers)
     session_id = f"phase2-chat-{uuid.uuid4().hex[:8]}"
-    await server.db.chat_history.insert_one({
-        "id": str(uuid.uuid4()),
-        "session_id": session_id,
-        "user_id": other_user_id,
-        "message": "other secret",
-        "response": "other response",
-        "model": "test",
-        "tokens_used": 1,
-        "created_at": "2026-01-01T00:00:00+00:00",
-    })
-    await server.db.chat_history.insert_one({
-        "id": str(uuid.uuid4()),
-        "session_id": session_id,
-        "user_id": own_user_id,
-        "message": "own prompt",
-        "response": "own response",
-        "model": "test",
-        "tokens_used": 1,
-        "created_at": "2026-01-01T00:01:00+00:00",
-    })
+    await server.db.chat_history.insert_one(
+        {
+            "id": str(uuid.uuid4()),
+            "session_id": session_id,
+            "user_id": other_user_id,
+            "message": "other secret",
+            "response": "other response",
+            "model": "test",
+            "tokens_used": 1,
+            "created_at": "2026-01-01T00:00:00+00:00",
+        }
+    )
+    await server.db.chat_history.insert_one(
+        {
+            "id": str(uuid.uuid4()),
+            "session_id": session_id,
+            "user_id": own_user_id,
+            "message": "own prompt",
+            "response": "own response",
+            "model": "test",
+            "tokens_used": 1,
+            "created_at": "2026-01-01T00:01:00+00:00",
+        }
+    )
 
     anon = await app_client.get(f"/api/ai/chat/history/{session_id}", timeout=10)
     assert anon.status_code == 401
-    own = await app_client.get(f"/api/ai/chat/history/{session_id}", headers=auth_headers, timeout=10)
+    own = await app_client.get(
+        f"/api/ai/chat/history/{session_id}", headers=auth_headers, timeout=10
+    )
     assert own.status_code == 200
     messages = [row["message"] for row in own.json().get("history", [])]
     assert "own prompt" in messages
     assert "other secret" not in messages
 
 
-async def test_smoke_phase2_blueprint_persona_rejects_cross_user_access(app_client, auth_headers):
+async def test_smoke_phase2_blueprint_persona_rejects_cross_user_access(
+    app_client, auth_headers
+):
     """Blueprint persona routes filter by the owning user_id."""
     other_headers = await _register_smoke_headers(app_client)
     created = await app_client.post(
@@ -915,13 +1026,19 @@ async def test_smoke_phase2_blueprint_persona_rejects_cross_user_access(app_clie
     )
     assert created.status_code == 201, created.text
     persona_id = created.json()["persona"]["id"]
-    get_r = await app_client.get(f"/api/personas/{persona_id}", headers=auth_headers, timeout=10)
+    get_r = await app_client.get(
+        f"/api/personas/{persona_id}", headers=auth_headers, timeout=10
+    )
     assert get_r.status_code == 404
-    delete_r = await app_client.delete(f"/api/personas/{persona_id}", headers=auth_headers, timeout=10)
+    delete_r = await app_client.delete(
+        f"/api/personas/{persona_id}", headers=auth_headers, timeout=10
+    )
     assert delete_r.status_code == 404
 
 
-async def test_smoke_phase2_blueprint_session_messages_require_owned_session(app_client, auth_headers):
+async def test_smoke_phase2_blueprint_session_messages_require_owned_session(
+    app_client, auth_headers
+):
     """Blueprint session messages cannot be written anonymously or across users."""
     other_headers = await _register_smoke_headers(app_client)
     created = await app_client.post(
@@ -934,15 +1051,29 @@ async def test_smoke_phase2_blueprint_session_messages_require_owned_session(app
     session_id = created.json()["session"]["id"]
     payload = {"role": "user", "content": "hello"}
 
-    anon = await app_client.post(f"/api/sessions/{session_id}/messages", json=payload, timeout=10)
+    anon = await app_client.post(
+        f"/api/sessions/{session_id}/messages", json=payload, timeout=10
+    )
     assert anon.status_code == 401
-    cross = await app_client.post(f"/api/sessions/{session_id}/messages", json=payload, headers=auth_headers, timeout=10)
+    cross = await app_client.post(
+        f"/api/sessions/{session_id}/messages",
+        json=payload,
+        headers=auth_headers,
+        timeout=10,
+    )
     assert cross.status_code == 404
-    owned = await app_client.post(f"/api/sessions/{session_id}/messages", json=payload, headers=other_headers, timeout=10)
+    owned = await app_client.post(
+        f"/api/sessions/{session_id}/messages",
+        json=payload,
+        headers=other_headers,
+        timeout=10,
+    )
     assert owned.status_code == 201
 
 
-async def test_smoke_agent_run_generic_unknown_agent_returns_404_for_user(app_client, auth_headers):
+async def test_smoke_agent_run_generic_unknown_agent_returns_404_for_user(
+    app_client, auth_headers
+):
     """Authenticated generic runner rejects unknown agents before LLM execution."""
     r = await app_client.post(
         "/api/agents/run/generic",
@@ -953,7 +1084,9 @@ async def test_smoke_agent_run_generic_unknown_agent_returns_404_for_user(app_cl
     assert r.status_code == 404
 
 
-async def test_smoke_agents_from_description_creates_run_agent_automation(app_client, auth_headers, monkeypatch):
+async def test_smoke_agents_from_description_creates_run_agent_automation(
+    app_client, auth_headers, monkeypatch
+):
     """Prompt-to-automation can save an automation that calls the app-building agent DAG."""
     import server
 
@@ -982,7 +1115,9 @@ async def test_smoke_agents_from_description_creates_run_agent_automation(app_cl
 
     r = await app_client.post(
         "/api/agents/from-description",
-        json={"description": "Every day at 9am, summarize yesterday's build output with Content Agent."},
+        json={
+            "description": "Every day at 9am, summarize yesterday's build output with Content Agent."
+        },
         headers=auth_headers,
         timeout=10,
     )
@@ -995,7 +1130,9 @@ async def test_smoke_agents_from_description_creates_run_agent_automation(app_cl
     assert data["actions"][0]["config"]["agent_name"] == "Content Agent"
 
 
-async def test_smoke_agent_run_executes_run_agent_action(app_client, auth_headers, monkeypatch):
+async def test_smoke_agent_run_executes_run_agent_action(
+    app_client, auth_headers, monkeypatch
+):
     """Manual automation runs execute saved run_agent actions and persist output."""
     import server
 
@@ -1020,16 +1157,22 @@ async def test_smoke_agent_run_executes_run_agent_action(app_client, auth_header
             }
         ],
     }
-    created = await app_client.post("/api/agents", json=create, headers=auth_headers, timeout=10)
+    created = await app_client.post(
+        "/api/agents", json=create, headers=auth_headers, timeout=10
+    )
     assert created.status_code in (200, 201), created.text
     agent_id = created.json()["id"]
 
-    run = await app_client.post(f"/api/agents/{agent_id}/run", headers=auth_headers, timeout=20)
+    run = await app_client.post(
+        f"/api/agents/{agent_id}/run", headers=auth_headers, timeout=20
+    )
     assert run.status_code == 200, run.text
     assert run.json()["status"] == "success"
     run_id = run.json()["run_id"]
 
-    detail = await app_client.get(f"/api/agents/runs/{run_id}", headers=auth_headers, timeout=10)
+    detail = await app_client.get(
+        f"/api/agents/runs/{run_id}", headers=auth_headers, timeout=10
+    )
     assert detail.status_code == 200, detail.text
     output_summary = detail.json()["output_summary"]
     assert output_summary["steps"][0]["output"]["result"] == "Bridge run output"
@@ -1049,7 +1192,9 @@ async def test_smoke_retry_step_rejects_unowned_job(app_client, auth_headers):
     assert r.status_code == 403
 
 
-async def test_smoke_retry_step_returns_200_for_owned_failed_step(app_client, auth_headers):
+async def test_smoke_retry_step_returns_200_for_owned_failed_step(
+    app_client, auth_headers
+):
     """POST /api/jobs/{job_id}/retry-step/{step_id} resets an owned failed step."""
     job_id, step_id = await _create_failed_smoke_job_step(auth_headers)
     r = await app_client.post(
@@ -1063,7 +1208,9 @@ async def test_smoke_retry_step_returns_200_for_owned_failed_step(app_client, au
     assert data.get("status") == "pending"
 
 
-async def test_smoke_run_auto_ignores_client_workspace_path(app_client, auth_headers, monkeypatch):
+async def test_smoke_run_auto_ignores_client_workspace_path(
+    app_client, auth_headers, monkeypatch
+):
     """POST /api/orchestrator/run-auto resolves workspace from job project_id, not request path."""
     import server
 
@@ -1089,7 +1236,9 @@ async def test_smoke_run_auto_ignores_client_workspace_path(app_client, auth_hea
     assert project_id in captured["workspace_path"]
 
 
-async def test_smoke_background_runner_exception_has_precise_reason(app_client, auth_headers, monkeypatch, tmp_path):
+async def test_smoke_background_runner_exception_has_precise_reason(
+    app_client, auth_headers, monkeypatch, tmp_path
+):
     """Background wrapper records explicit exception metadata, not generic background_crash."""
     import json
     import server
@@ -1103,7 +1252,9 @@ async def test_smoke_background_runner_exception_has_precise_reason(app_client, 
     async def fake_run_job_to_completion(job_id, workspace_path="", db_pool=None):
         raise RuntimeError("late-stage verifier boom")
 
-    monkeypatch.setattr(auto_runner, "run_job_to_completion", fake_run_job_to_completion)
+    monkeypatch.setattr(
+        auto_runner, "run_job_to_completion", fake_run_job_to_completion
+    )
 
     await server._background_auto_runner_job(job_id, str(tmp_path))
 
@@ -1169,7 +1320,9 @@ async def test_smoke_job_state_routes_reject_unowned_job(app_client, auth_header
 async def test_smoke_job_proof_includes_build_contract(app_client, auth_headers):
     """GET /api/jobs/{job_id}/proof includes the stable build contract envelope."""
     job_id, _project_id = await _create_smoke_auto_job(auth_headers)
-    r = await app_client.get(f"/api/jobs/{job_id}/proof", headers=auth_headers, timeout=10)
+    r = await app_client.get(
+        f"/api/jobs/{job_id}/proof", headers=auth_headers, timeout=10
+    )
     assert r.status_code == 200, r.text
     contract = r.json().get("build_contract")
     assert contract
@@ -1180,13 +1333,19 @@ async def test_smoke_job_proof_includes_build_contract(app_client, auth_headers)
     assert "missing_verification_evidence" in contract.get("blockers", [])
 
 
-async def test_smoke_orchestrator_plan_rejects_unowned_project(app_client, auth_headers):
+async def test_smoke_orchestrator_plan_rejects_unowned_project(
+    app_client, auth_headers
+):
     """POST /api/orchestrator/plan rejects a project_id owned by another user."""
     other_headers = await _register_smoke_headers(app_client)
     other_project_id = await _create_smoke_project(app_client, other_headers)
     r = await app_client.post(
         "/api/orchestrator/plan",
-        json={"project_id": other_project_id, "goal": "Build a smoke todo app", "mode": "guided"},
+        json={
+            "project_id": other_project_id,
+            "goal": "Build a smoke todo app",
+            "mode": "guided",
+        },
         headers=auth_headers,
         timeout=20,
     )
@@ -1199,7 +1358,11 @@ async def test_smoke_create_job_rejects_unowned_project(app_client, auth_headers
     other_project_id = await _create_smoke_project(app_client, other_headers)
     r = await app_client.post(
         "/api/jobs",
-        json={"project_id": other_project_id, "goal": "Build a smoke todo app", "mode": "guided"},
+        json={
+            "project_id": other_project_id,
+            "goal": "Build a smoke todo app",
+            "mode": "guided",
+        },
         headers=auth_headers,
         timeout=20,
     )
@@ -1211,7 +1374,11 @@ async def test_smoke_create_job_allows_owned_project(app_client, auth_headers):
     project_id = await _create_smoke_project(app_client, auth_headers)
     r = await app_client.post(
         "/api/jobs",
-        json={"project_id": project_id, "goal": "Build a smoke todo app", "mode": "guided"},
+        json={
+            "project_id": project_id,
+            "goal": "Build a smoke todo app",
+            "mode": "guided",
+        },
         headers=auth_headers,
         timeout=20,
     )
@@ -1224,7 +1391,9 @@ async def test_smoke_create_job_allows_owned_project(app_client, auth_headers):
 async def test_smoke_app_db_schema_returns_200_for_owned_task(app_client, auth_headers):
     """GET /api/app-db/{task_id} returns schema only for an owned task."""
     task_id = await _create_smoke_task(auth_headers)
-    r = await app_client.get(f"/api/app-db/task/{task_id}", headers=auth_headers, timeout=10)
+    r = await app_client.get(
+        f"/api/app-db/task/{task_id}", headers=auth_headers, timeout=10
+    )
     assert r.status_code == 200
     schema = r.json().get("schema")
     assert schema
@@ -1241,11 +1410,15 @@ async def test_smoke_app_db_schema_rejects_unowned_task(app_client, auth_headers
     """GET /api/app-db/{task_id} rejects another user's task."""
     other_headers = await _register_smoke_headers(app_client)
     task_id = await _create_smoke_task(other_headers)
-    r = await app_client.get(f"/api/app-db/task/{task_id}", headers=auth_headers, timeout=10)
+    r = await app_client.get(
+        f"/api/app-db/task/{task_id}", headers=auth_headers, timeout=10
+    )
     assert r.status_code == 403
 
 
-async def test_smoke_app_db_provision_returns_200_for_owned_task(app_client, auth_headers):
+async def test_smoke_app_db_provision_returns_200_for_owned_task(
+    app_client, auth_headers
+):
     """POST /api/app-db/provision accepts an owned task."""
     task_id = await _create_smoke_task(auth_headers)
     r = await app_client.post(
@@ -1264,14 +1437,19 @@ async def test_smoke_app_db_provision_rejects_unowned_project(app_client, auth_h
     project_id = await _create_smoke_project(app_client, other_headers)
     r = await app_client.post(
         "/api/app-db/provision",
-        json={"project_id": project_id, "description": "Generate a schema for a private CRM workspace."},
+        json={
+            "project_id": project_id,
+            "description": "Generate a schema for a private CRM workspace.",
+        },
         headers=auth_headers,
         timeout=10,
     )
     assert r.status_code == 404
 
 
-async def test_smoke_legacy_vercel_deploy_rejects_unowned_task(app_client, auth_headers):
+async def test_smoke_legacy_vercel_deploy_rejects_unowned_task(
+    app_client, auth_headers
+):
     """Legacy deploy helper rejects another user's task."""
     other_headers = await _register_smoke_headers(app_client)
     task_id = await _create_smoke_task(other_headers)

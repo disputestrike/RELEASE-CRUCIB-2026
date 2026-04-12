@@ -76,9 +76,7 @@ class OpenTelemetrySetup:
 
         # Create tracer provider
         self.tracer_provider = TracerProvider()
-        self.tracer_provider.add_span_processor(
-            BatchSpanProcessor(jaeger_exporter)
-        )
+        self.tracer_provider.add_span_processor(BatchSpanProcessor(jaeger_exporter))
 
         # Set global tracer provider
         trace.set_tracer_provider(self.tracer_provider)

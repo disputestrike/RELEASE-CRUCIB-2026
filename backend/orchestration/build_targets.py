@@ -4,6 +4,7 @@ Execution modes / build targets — broad product surface with honest per-run gu
 The platform vision is multi-stack; each Auto-Runner job selects a *target* so UX and docs
 stay aligned (what this run proves vs what’s on the roadmap for that track).
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
@@ -33,7 +34,13 @@ _ALIASES = {
 
 
 def normalize_build_target(raw: Optional[str]) -> str:
-    s = (raw or DEFAULT_BUILD_TARGET).strip().lower().replace(" ", "_").replace("-", "_")
+    s = (
+        (raw or DEFAULT_BUILD_TARGET)
+        .strip()
+        .lower()
+        .replace(" ", "_")
+        .replace("-", "_")
+    )
     if not s:
         return DEFAULT_BUILD_TARGET
     s = _ALIASES.get(s, s)

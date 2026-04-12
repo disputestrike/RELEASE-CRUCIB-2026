@@ -17,22 +17,40 @@ router = APIRouter(prefix="/api", tags=["orchestrator"])
 
 def _get_auth():
     from server import get_current_user
+
     return get_current_user
 
 
 def _get_optional_user():
     from server import get_optional_user
+
     return get_optional_user
 
 
 def _get_server_globals():
     import server
-    return (server.AGENT_DAG, server.LAST_BUILD_STATE, server.RECENT_AGENT_SELECTION_LOGS)
+
+    return (
+        server.AGENT_DAG,
+        server.LAST_BUILD_STATE,
+        server.RECENT_AGENT_SELECTION_LOGS,
+    )
 
 
 def _get_server_helpers():
-    from server import _user_credits, _assert_job_owner_match, _resolve_job_project_id_for_user, _project_workspace_path
-    return _user_credits, _assert_job_owner_match, _resolve_job_project_id_for_user, _project_workspace_path
+    from server import (
+        _user_credits,
+        _assert_job_owner_match,
+        _resolve_job_project_id_for_user,
+        _project_workspace_path,
+    )
+
+    return (
+        _user_credits,
+        _assert_job_owner_match,
+        _resolve_job_project_id_for_user,
+        _project_workspace_path,
+    )
 
 
 import sys as _sys
@@ -40,10 +58,17 @@ import asyncio as _asyncio
 
 _sys.path.insert(0, os.path.dirname(__file__))
 
+
 # Lazy-load orchestration modules to avoid circular imports
 def _get_orchestration():
-    from orchestration import runtime_state, dag_engine, planner as planner_mod, auto_runner as ar_mod
+    from orchestration import (
+        runtime_state,
+        dag_engine,
+        planner as planner_mod,
+        auto_runner as ar_mod,
+    )
     from proof import proof_service as ps_mod
+
     return runtime_state, dag_engine, planner_mod, ar_mod, ps_mod
 
 
@@ -51,7 +76,9 @@ class PlanRequest(BaseModel):
     project_id: Optional[str] = None  # optional — auto-assigned from user.id if missing
     goal: str
     mode: Optional[str] = "guided"
-    build_target: Optional[str] = None  # vite_react | next_app_router | static_site | api_backend | agent_workflow
+    build_target: Optional[str] = (
+        None  # vite_react | next_app_router | static_site | api_backend | agent_workflow
+    )
 
 
 class RunAutoRequest(BaseModel):
@@ -74,6 +101,7 @@ class CostEstimateRequest(BaseModel):
 try:
     from server import BuildGoalRequest
 except ImportError:
+
     class BuildGoalRequest(BaseModel):
         goal: str
         mode: Optional[str] = "guided"
@@ -151,7 +179,9 @@ def _update_last_build_state(plan: Dict[str, Any]) -> None:
     del RECENT_AGENT_SELECTION_LOGS[:-20]
 
 
-def _public_plan_summary(plan: Dict[str, Any], *, max_agents: int = 60) -> Dict[str, Any]:
+def _public_plan_summary(
+    plan: Dict[str, Any], *, max_agents: int = 60
+) -> Dict[str, Any]:
     selected_agents = list(plan.get("selected_agents") or [])
     phases = list(plan.get("phases") or [])
     controller_summary = dict(plan.get("controller_summary") or {})
@@ -163,7 +193,9 @@ def _public_plan_summary(plan: Dict[str, Any], *, max_agents: int = 60) -> Dict[
         "summary": plan.get("summary", ""),
         "orchestration_mode": plan.get("orchestration_mode", "unknown"),
         "phase_count": int(plan.get("phase_count") or len(phases)),
-        "selected_agent_count": int(plan.get("selected_agent_count") or len(selected_agents)),
+        "selected_agent_count": int(
+            plan.get("selected_agent_count") or len(selected_agents)
+        ),
         "selected_agents": selected_agents[:max_agents],
         "selected_agents_truncated": len(selected_agents) > max_agents,
         "phase_sizes": [len(phase or []) for phase in phases],
@@ -180,13 +212,16 @@ def _public_plan_summary(plan: Dict[str, Any], *, max_agents: int = 60) -> Dict[
             "parallel_phase_count": controller_summary.get("parallel_phase_count"),
             "recommended_focus": controller_summary.get("recommended_focus"),
             "next_actions": list(controller_summary.get("next_actions") or [])[:8],
-            "replan_triggers": list(controller_summary.get("replan_triggers") or [])[:8],
+            "replan_triggers": list(controller_summary.get("replan_triggers") or [])[
+                :8
+            ],
             "memory_strategy": controller_summary.get("memory_strategy"),
         },
     }
 
 
 # ── Build targets (execution modes — broad platform, honest per-run scope) ───
+
 
 @router.get("/orchestrator/build-targets")
 async def list_build_targets():
@@ -204,14 +239,84 @@ async def get_agent_info():
         "total_agents_available": len(AGENT_DAG),
         "agents_in_dag": sorted(list(AGENT_DAG.keys())),
         "agent_families": {
-            "3d_webgl": len([a for a in AGENT_DAG if "3D" in a or "Canvas" in a or "WebGL" in a]),
-            "ml_ai": len([a for a in AGENT_DAG if a.startswith("ML ") or "Embeddings" in a]),
-            "blockchain": len([a for a in AGENT_DAG if "Blockchain" in a or "Smart Contract" in a or "Web3" in a or "DeFi" in a or "Contract " in a]),
-            "iot": len([a for a in AGENT_DAG if "IoT" in a or "Microcontroller" in a or "Sensor" in a or "Edge Computing" in a]),
-            "data_science": len([a for a in AGENT_DAG if "Jupyter" in a or "Data " in a or "Time Series" in a or "Statistical" in a or "Report Generation" in a]),
-            "infrastructure": len([a for a in AGENT_DAG if "Kubernetes" in a or "Serverless" in a or "Edge Deployment" in a or "Load Balancer" in a or "DevOps" in a or "Message Queue" in a or "Disaster Recovery" in a]),
-            "testing": len([a for a in AGENT_DAG if "Chaos" in a or "Mutation" in a or "Property-Based" in a or "Smoke Test" in a or "Synthetic" in a or "Load Test" in a or "E2E" in a]),
-            "business_logic": len([a for a in AGENT_DAG if "Workflow" in a or "Business Rules" in a or "Approval" in a or "Audit & Compliance" in a or "Notification Rules" in a or "Scheduling" in a or "Multi-tenant" in a or "RBAC" in a]),
+            "3d_webgl": len(
+                [a for a in AGENT_DAG if "3D" in a or "Canvas" in a or "WebGL" in a]
+            ),
+            "ml_ai": len(
+                [a for a in AGENT_DAG if a.startswith("ML ") or "Embeddings" in a]
+            ),
+            "blockchain": len(
+                [
+                    a
+                    for a in AGENT_DAG
+                    if "Blockchain" in a
+                    or "Smart Contract" in a
+                    or "Web3" in a
+                    or "DeFi" in a
+                    or "Contract " in a
+                ]
+            ),
+            "iot": len(
+                [
+                    a
+                    for a in AGENT_DAG
+                    if "IoT" in a
+                    or "Microcontroller" in a
+                    or "Sensor" in a
+                    or "Edge Computing" in a
+                ]
+            ),
+            "data_science": len(
+                [
+                    a
+                    for a in AGENT_DAG
+                    if "Jupyter" in a
+                    or "Data " in a
+                    or "Time Series" in a
+                    or "Statistical" in a
+                    or "Report Generation" in a
+                ]
+            ),
+            "infrastructure": len(
+                [
+                    a
+                    for a in AGENT_DAG
+                    if "Kubernetes" in a
+                    or "Serverless" in a
+                    or "Edge Deployment" in a
+                    or "Load Balancer" in a
+                    or "DevOps" in a
+                    or "Message Queue" in a
+                    or "Disaster Recovery" in a
+                ]
+            ),
+            "testing": len(
+                [
+                    a
+                    for a in AGENT_DAG
+                    if "Chaos" in a
+                    or "Mutation" in a
+                    or "Property-Based" in a
+                    or "Smoke Test" in a
+                    or "Synthetic" in a
+                    or "Load Test" in a
+                    or "E2E" in a
+                ]
+            ),
+            "business_logic": len(
+                [
+                    a
+                    for a in AGENT_DAG
+                    if "Workflow" in a
+                    or "Business Rules" in a
+                    or "Approval" in a
+                    or "Audit & Compliance" in a
+                    or "Notification Rules" in a
+                    or "Scheduling" in a
+                    or "Multi-tenant" in a
+                    or "RBAC" in a
+                ]
+            ),
         },
         "last_build": LAST_BUILD_STATE,
         "selection_log_tail": RECENT_AGENT_SELECTION_LOGS,
@@ -223,7 +328,10 @@ async def get_agent_info():
 async def get_agent_selection_logs():
     """Expose recent agent-selection log lines for environments without Railway CLI access."""
     _, _, RECENT_AGENT_SELECTION_LOGS = _get_server_globals()
-    return {"logs": RECENT_AGENT_SELECTION_LOGS, "count": len(RECENT_AGENT_SELECTION_LOGS)}
+    return {
+        "logs": RECENT_AGENT_SELECTION_LOGS,
+        "count": len(RECENT_AGENT_SELECTION_LOGS),
+    }
 
 
 @router.post("/build")
@@ -246,7 +354,9 @@ async def public_build_plan(
             goal,
             project_state=_orchestrator_planner_project_state(user),
         )
-        plan["phase_count"] = int(plan.get("phase_count") or len(plan.get("phases", [])))
+        plan["phase_count"] = int(
+            plan.get("phase_count") or len(plan.get("phases", []))
+        )
         _update_last_build_state(plan)
         return {"success": True, "plan": plan}
     except HTTPException:
@@ -276,7 +386,9 @@ async def public_build_plan_summary(
             goal,
             project_state=_orchestrator_planner_project_state(user),
         )
-        plan["phase_count"] = int(plan.get("phase_count") or len(plan.get("phases", [])))
+        plan["phase_count"] = int(
+            plan.get("phase_count") or len(plan.get("phases", []))
+        )
         _update_last_build_state(plan)
         return {"success": True, "plan": _public_plan_summary(plan)}
     except HTTPException:
@@ -287,6 +399,7 @@ async def public_build_plan_summary(
 
 
 # ── Cost estimator (pre-execution, no auth required) ──────────────────────────
+
 
 @router.post("/orchestrator/estimate")
 async def estimate_cost(
@@ -305,7 +418,9 @@ async def estimate_cost(
             body.goal, project_state=_orchestrator_planner_project_state(user)
         )
         requested_target = (body.build_target or "").strip()
-        bt = normalize_build_target(requested_target or plan.get("recommended_build_target"))
+        bt = normalize_build_target(
+            requested_target or plan.get("recommended_build_target")
+        )
         estimate = planner_mod.estimate_tokens(plan)
         return {
             "success": True,
@@ -314,26 +429,47 @@ async def estimate_cost(
             "build_target": bt,
         }
     except Exception as e:
-        return {"success": False, "error": str(e), "estimate": {
-            "estimated_credits": 5, "cost_range": {"min_credits": 3, "max_credits": 15, "typical_credits": 5}
-        }}
+        return {
+            "success": False,
+            "error": str(e),
+            "estimate": {
+                "estimated_credits": 5,
+                "cost_range": {
+                    "min_credits": 3,
+                    "max_credits": 15,
+                    "typical_credits": 5,
+                },
+            },
+        }
 
 
 # ── Plan generation ───────────────────────────────────────────────────────────
 
+
 @router.post("/orchestrator/plan")
 async def create_plan(body: PlanRequest, user: dict = Depends(_get_auth())):
     """Generate a structured build plan before execution. Returns plan JSON + estimate."""
-    _user_credits, _assert_job_owner_match, _resolve_job_project_id_for_user, _project_workspace_path = _get_server_helpers()
+    (
+        _user_credits,
+        _assert_job_owner_match,
+        _resolve_job_project_id_for_user,
+        _project_workspace_path,
+    ) = _get_server_helpers()
     try:
-        from orchestration.build_targets import build_target_meta, normalize_build_target
+        from orchestration.build_targets import (
+            build_target_meta,
+            normalize_build_target,
+        )
 
         runtime_state, dag_engine, planner_mod, _, _ = _get_orchestration()
         from db_pg import get_pg_pool
+
         pool = await get_pg_pool()
         runtime_state.set_pool(pool)
 
-        effective_project_id = await _resolve_job_project_id_for_user(body.project_id, user)
+        effective_project_id = await _resolve_job_project_id_for_user(
+            body.project_id, user
+        )
 
         # Generate plan
         plan = await planner_mod.generate_plan(
@@ -341,7 +477,9 @@ async def create_plan(body: PlanRequest, user: dict = Depends(_get_auth())):
         )
         _update_last_build_state(plan)
         requested_target = (body.build_target or "").strip()
-        bt = normalize_build_target(requested_target or plan.get("recommended_build_target"))
+        bt = normalize_build_target(
+            requested_target or plan.get("recommended_build_target")
+        )
         plan["crucib_build_target"] = bt
         estimate = planner_mod.estimate_tokens(plan)
 
@@ -356,15 +494,24 @@ async def create_plan(body: PlanRequest, user: dict = Depends(_get_auth())):
 
         # Store plan
         import uuid as _uuid
+
         plan_id = str(_uuid.uuid4())
         async with pool.acquire() as conn:
-            await conn.execute("""
+            await conn.execute(
+                """
                 INSERT INTO build_plans (id, job_id, project_id, goal, plan_json, status, created_at)
                 VALUES ($1,$2,$3,$4,$5,'draft',NOW())
-            """, plan_id, job["id"], effective_project_id, body.goal, _json.dumps(plan))
+            """,
+                plan_id,
+                job["id"],
+                effective_project_id,
+                body.goal,
+                _json.dumps(plan),
+            )
 
         # Persist plan steps as job_steps
         from orchestration.dag_engine import build_dag_from_plan
+
         step_defs = build_dag_from_plan(plan)
         for idx, sd in enumerate(step_defs):
             await runtime_state.create_step(
@@ -400,6 +547,7 @@ async def create_plan(body: PlanRequest, user: dict = Depends(_get_auth())):
 
 # ── Run auto ──────────────────────────────────────────────────────────────────
 
+
 @router.get("/orchestrator/runtime-health")
 async def orchestrator_runtime_health():
     """
@@ -413,6 +561,7 @@ async def orchestrator_runtime_health():
             extended_autorunner_preflight_issues,
             skip_node_verify_env,
         )
+
         sync = collect_runtime_health_sync()
         issues = await extended_autorunner_preflight_issues()
         full = await collect_runtime_health()
@@ -433,6 +582,7 @@ async def _background_auto_runner_job(job_id: str, workspace_path: str) -> None:
     try:
         from orchestration import runtime_state as _orch_rs, auto_runner as _orch_ar
         from db_pg import get_pg_pool
+
         pool = await get_pg_pool()
         if pool is None:
             logger.error("auto_runner: no database pool for job %s", job_id)
@@ -475,9 +625,16 @@ async def _background_auto_runner_job(job_id: str, workspace_path: str) -> None:
         )
         if result and not result.get("success"):
             job = await _orch_rs.get_job(job_id)
-            if job and job.get("status") not in {"failed", "completed", "cancelled", "canceled"}:
+            if job and job.get("status") not in {
+                "failed",
+                "completed",
+                "cancelled",
+                "canceled",
+            }:
                 reason = result.get("reason") or "auto_runner_failed"
-                details = str(result.get("details") or result.get("error") or reason)[:1000]
+                details = str(result.get("details") or result.get("error") or reason)[
+                    :1000
+                ]
                 await _orch_rs.update_job_state(
                     job_id,
                     "failed",
@@ -516,21 +673,30 @@ async def _background_auto_runner_job(job_id: str, workspace_path: str) -> None:
                 },
             )
             await _ors.append_job_event(job_id, "job_failed", payload)
-            await _pub(job_id, "job_failed", {k: v for k, v in payload.items() if k != "traceback_tail"})
+            await _pub(
+                job_id,
+                "job_failed",
+                {k: v for k, v in payload.items() if k != "traceback_tail"},
+            )
         except Exception:
-            logger.exception("auto_runner: could not persist background exception for job %s", job_id)
+            logger.exception(
+                "auto_runner: could not persist background exception for job %s", job_id
+            )
 
 
 async def _background_resume_auto_job(job_id: str, workspace_path: str) -> None:
     try:
         from orchestration import runtime_state as _orch_rs, auto_runner as _orch_ar
         from db_pg import get_pg_pool
+
         pool = await get_pg_pool()
         if pool is None:
             logger.error("resume_job: no database pool for job %s", job_id)
             return
         _orch_rs.set_pool(pool)
-        result = await _orch_ar.resume_job(job_id, workspace_path=workspace_path or "", db_pool=pool)
+        result = await _orch_ar.resume_job(
+            job_id, workspace_path=workspace_path or "", db_pool=pool
+        )
         await _orch_rs.append_job_event(
             job_id,
             "background_runner_completed",
@@ -544,9 +710,16 @@ async def _background_resume_auto_job(job_id: str, workspace_path: str) -> None:
         )
         if result and not result.get("success"):
             job = await _orch_rs.get_job(job_id)
-            if job and job.get("status") not in {"failed", "completed", "cancelled", "canceled"}:
+            if job and job.get("status") not in {
+                "failed",
+                "completed",
+                "cancelled",
+                "canceled",
+            }:
                 reason = result.get("reason") or "auto_runner_failed"
-                details = str(result.get("details") or result.get("error") or reason)[:1000]
+                details = str(result.get("details") or result.get("error") or reason)[
+                    :1000
+                ]
                 await _orch_rs.update_job_state(
                     job_id,
                     "failed",
@@ -586,9 +759,15 @@ async def _background_resume_auto_job(job_id: str, workspace_path: str) -> None:
                 },
             )
             await _ors.append_job_event(job_id, "job_failed", payload)
-            await _pub(job_id, "job_failed", {k: v for k, v in payload.items() if k != "traceback_tail"})
+            await _pub(
+                job_id,
+                "job_failed",
+                {k: v for k, v in payload.items() if k != "traceback_tail"},
+            )
         except Exception:
-            logger.exception("resume_job: could not persist background exception for job %s", job_id)
+            logger.exception(
+                "resume_job: could not persist background exception for job %s", job_id
+            )
 
 
 @router.post("/orchestrator/run-auto")
@@ -601,7 +780,12 @@ async def run_auto(
     Start auto-runner for an existing job.
     Returns immediately with job_id; client streams progress via /api/jobs/{id}/stream.
     """
-    _user_credits, _assert_job_owner_match, _resolve_job_project_id_for_user, _project_workspace_path = _get_server_helpers()
+    (
+        _user_credits,
+        _assert_job_owner_match,
+        _resolve_job_project_id_for_user,
+        _project_workspace_path,
+    ) = _get_server_helpers()
     try:
         from orchestration.runtime_health import collect_runtime_health_sync
         from orchestration.preflight_report import build_preflight_report
@@ -609,6 +793,7 @@ async def run_auto(
 
         runtime_state, _, _, _, _ = _get_orchestration()
         from db_pg import get_pg_pool
+
         pool = await get_pg_pool()
         runtime_state.set_pool(pool)
 
@@ -631,7 +816,10 @@ async def run_auto(
 
         # Spec Guardian (Layer 1): record always; hard-block only when CRUCIBAI_SPEC_GUARD_MODE=strict
         import json as _sg_json
-        from orchestration.spec_guardian import evaluate_goal_against_runner, merge_plan_risk_flags_into_report
+        from orchestration.spec_guardian import (
+            evaluate_goal_against_runner,
+            merge_plan_risk_flags_into_report,
+        )
 
         goal_text = (job.get("goal") or "").strip()
         risk_flags = []
@@ -648,7 +836,9 @@ async def run_auto(
                 plan_build_target = _pj.get("crucib_build_target")
             except Exception:
                 risk_flags = []
-        spec_base = evaluate_goal_against_runner(goal_text, build_target=plan_build_target)
+        spec_base = evaluate_goal_against_runner(
+            goal_text, build_target=plan_build_target
+        )
         spec_guard = merge_plan_risk_flags_into_report(
             risk_flags,
             spec_base,
@@ -706,9 +896,11 @@ async def list_orchestrator_build_jobs(
     try:
         runtime_state, _, _, _, _ = _get_orchestration()
         from db_pg import get_pg_pool
+
         pool = await get_pg_pool()
         runtime_state.set_pool(pool)
         from orchestration import runtime_state as orch_rs
+
         jobs = await orch_rs.list_jobs_for_user(user["id"], min(max(1, limit), 50))
         return {"success": True, "jobs": jobs}
     except Exception as e:

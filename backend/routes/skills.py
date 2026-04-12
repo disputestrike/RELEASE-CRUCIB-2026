@@ -1,4 +1,5 @@
 """Skills routes — system skills, marketplace, user skills CRUD, and activation."""
+
 from __future__ import annotations
 
 import logging
@@ -17,34 +18,219 @@ router = APIRouter(prefix="/api", tags=["skills"])
 
 def _get_auth():
     from server import get_current_user
+
     return get_current_user
 
 
 def _get_optional_user():
     from server import get_optional_user
+
     return get_optional_user
 
 
 def _get_db():
     import server
+
     return server.db
 
 
 SYSTEM_SKILLS = [
-    {"name": "web-app-builder", "icon": "🌐", "color": "#3b82f6", "category": "build", "display_name": "Web App Builder", "short_desc": "Full-stack React + FastAPI with auth, PostgreSQL, and REST API", "trigger_prompt": "Build a full-stack web app with user authentication, dashboard, and REST API", "is_featured": True, "install_count": 1284, "rating_avg": 4.8, "tags": ["react","fastapi","postgres","auth"], "preview_url": None},
-    {"name": "mobile-app-builder", "icon": "📱", "color": "#8b5cf6", "category": "build", "display_name": "Mobile App Builder", "short_desc": "React Native with Expo — iOS and Android with App Store submission guide", "trigger_prompt": "Build a mobile app with navigation, screens, and local storage", "is_featured": True, "install_count": 847, "rating_avg": 4.7, "tags": ["react-native","expo","ios","android"], "preview_url": None},
-    {"name": "saas-mvp-builder", "icon": "💳", "color": "#f59e0b", "category": "build", "display_name": "SaaS MVP", "short_desc": "Auth, Stripe billing, user dashboard, multi-tenant — launch-ready in hours", "trigger_prompt": "Build a SaaS MVP with Stripe billing, user auth, and admin dashboard", "is_featured": True, "install_count": 2100, "rating_avg": 4.9, "tags": ["saas","stripe","auth","billing"], "preview_url": None},
-    {"name": "ecommerce-builder", "icon": "🛒", "color": "#10b981", "category": "build", "display_name": "E-Commerce Store", "short_desc": "Product catalog, cart, Stripe checkout, inventory, order management", "trigger_prompt": "Build an e-commerce store with product catalog, cart, and Stripe checkout", "is_featured": False, "install_count": 633, "rating_avg": 4.6, "tags": ["ecommerce","stripe","inventory"], "preview_url": None},
-    {"name": "ai-chatbot-builder", "icon": "🤖", "color": "#ec4899", "category": "build", "display_name": "AI Chatbot", "short_desc": "Multi-agent chat, knowledge base RAG, streaming, embeddable widget", "trigger_prompt": "Build an AI chatbot with multi-agent support and document knowledge base", "is_featured": True, "install_count": 1520, "rating_avg": 4.8, "tags": ["ai","chatbot","rag","streaming"], "preview_url": None},
-    {"name": "landing-page-builder", "icon": "🏠", "color": "#06b6d4", "category": "build", "display_name": "Landing Page", "short_desc": "Hero, features, pricing, testimonials, FAQ, waitlist — pixel perfect", "trigger_prompt": "Build a landing page with hero, features grid, pricing table, and FAQ", "is_featured": False, "install_count": 980, "rating_avg": 4.7, "tags": ["landing","marketing","waitlist"], "preview_url": None},
-    {"name": "automation-builder", "icon": "⚡", "color": "#f97316", "category": "automate", "display_name": "Automation Engine", "short_desc": "Scheduled agents, webhooks, cron jobs, AI-powered workflow automation", "trigger_prompt": "Build an automation that runs daily and sends results to Slack or email", "is_featured": False, "install_count": 412, "rating_avg": 4.5, "tags": ["automation","cron","webhook","workflow"], "preview_url": None},
-    {"name": "internal-tool-builder", "icon": "🛠️", "color": "#64748b", "category": "build", "display_name": "Internal Tool", "short_desc": "Admin tables, CRUD forms, approval workflows, RBAC — enterprise-ready", "trigger_prompt": "Build an internal admin tool with data tables, forms, and user roles", "is_featured": False, "install_count": 756, "rating_avg": 4.6, "tags": ["admin","crud","rbac","internal"], "preview_url": None},
-    {"name": "data-dashboard-builder", "icon": "📊", "color": "#6366f1", "category": "build", "display_name": "Data Dashboard", "short_desc": "Interactive Recharts/D3 charts, KPI cards, date filters, CSV export", "trigger_prompt": "Build a data analytics dashboard with charts and KPI cards", "is_featured": False, "install_count": 891, "rating_avg": 4.7, "tags": ["charts","analytics","kpi","data-viz"], "preview_url": None},
-    {"name": "crm-builder", "icon": "👥", "color": "#0ea5e9", "category": "build", "display_name": "CRM Builder", "short_desc": "Contacts, pipeline, deals, tasks, email sequences, activity log", "trigger_prompt": "Build a CRM with contacts, deal pipeline, and email sequences", "is_featured": False, "install_count": 344, "rating_avg": 4.5, "tags": ["crm","pipeline","contacts"], "preview_url": None},
-    {"name": "booking-builder", "icon": "📅", "color": "#84cc16", "category": "build", "display_name": "Booking System", "short_desc": "Calendar scheduling, availability, reminders, Stripe deposits", "trigger_prompt": "Build a booking system with calendar, availability management, and payments", "is_featured": False, "install_count": 298, "rating_avg": 4.4, "tags": ["booking","calendar","scheduling"], "preview_url": None},
-    {"name": "api-builder", "icon": "🔌", "color": "#ef4444", "category": "build", "display_name": "REST API Builder", "short_desc": "FastAPI with JWT auth, OpenAPI docs, Pydantic validation, rate limiting", "trigger_prompt": "Build a REST API with JWT auth, CRUD endpoints, and auto-generated docs", "is_featured": False, "install_count": 567, "rating_avg": 4.6, "tags": ["api","fastapi","openapi","jwt"], "preview_url": None},
-    {"name": "forum-builder", "icon": "💬", "color": "#a78bfa", "category": "build", "display_name": "Forum / Community", "short_desc": "Posts, threads, upvotes, user profiles, moderation panel", "trigger_prompt": "Build a forum with posts, comments, voting, and moderation", "is_featured": False, "install_count": 189, "rating_avg": 4.3, "tags": ["forum","community","social"], "preview_url": None},
-    {"name": "custom-user-skill", "icon": "✨", "color": "#a855f7", "category": "custom", "display_name": "Custom Skill", "short_desc": "Define your own building patterns and AI instructions — full control", "trigger_prompt": "", "is_featured": False, "install_count": 0, "rating_avg": 0, "tags": ["custom"], "preview_url": None},
+    {
+        "name": "web-app-builder",
+        "icon": "🌐",
+        "color": "#3b82f6",
+        "category": "build",
+        "display_name": "Web App Builder",
+        "short_desc": "Full-stack React + FastAPI with auth, PostgreSQL, and REST API",
+        "trigger_prompt": "Build a full-stack web app with user authentication, dashboard, and REST API",
+        "is_featured": True,
+        "install_count": 1284,
+        "rating_avg": 4.8,
+        "tags": ["react", "fastapi", "postgres", "auth"],
+        "preview_url": None,
+    },
+    {
+        "name": "mobile-app-builder",
+        "icon": "📱",
+        "color": "#8b5cf6",
+        "category": "build",
+        "display_name": "Mobile App Builder",
+        "short_desc": "React Native with Expo — iOS and Android with App Store submission guide",
+        "trigger_prompt": "Build a mobile app with navigation, screens, and local storage",
+        "is_featured": True,
+        "install_count": 847,
+        "rating_avg": 4.7,
+        "tags": ["react-native", "expo", "ios", "android"],
+        "preview_url": None,
+    },
+    {
+        "name": "saas-mvp-builder",
+        "icon": "💳",
+        "color": "#f59e0b",
+        "category": "build",
+        "display_name": "SaaS MVP",
+        "short_desc": "Auth, Stripe billing, user dashboard, multi-tenant — launch-ready in hours",
+        "trigger_prompt": "Build a SaaS MVP with Stripe billing, user auth, and admin dashboard",
+        "is_featured": True,
+        "install_count": 2100,
+        "rating_avg": 4.9,
+        "tags": ["saas", "stripe", "auth", "billing"],
+        "preview_url": None,
+    },
+    {
+        "name": "ecommerce-builder",
+        "icon": "🛒",
+        "color": "#10b981",
+        "category": "build",
+        "display_name": "E-Commerce Store",
+        "short_desc": "Product catalog, cart, Stripe checkout, inventory, order management",
+        "trigger_prompt": "Build an e-commerce store with product catalog, cart, and Stripe checkout",
+        "is_featured": False,
+        "install_count": 633,
+        "rating_avg": 4.6,
+        "tags": ["ecommerce", "stripe", "inventory"],
+        "preview_url": None,
+    },
+    {
+        "name": "ai-chatbot-builder",
+        "icon": "🤖",
+        "color": "#ec4899",
+        "category": "build",
+        "display_name": "AI Chatbot",
+        "short_desc": "Multi-agent chat, knowledge base RAG, streaming, embeddable widget",
+        "trigger_prompt": "Build an AI chatbot with multi-agent support and document knowledge base",
+        "is_featured": True,
+        "install_count": 1520,
+        "rating_avg": 4.8,
+        "tags": ["ai", "chatbot", "rag", "streaming"],
+        "preview_url": None,
+    },
+    {
+        "name": "landing-page-builder",
+        "icon": "🏠",
+        "color": "#06b6d4",
+        "category": "build",
+        "display_name": "Landing Page",
+        "short_desc": "Hero, features, pricing, testimonials, FAQ, waitlist — pixel perfect",
+        "trigger_prompt": "Build a landing page with hero, features grid, pricing table, and FAQ",
+        "is_featured": False,
+        "install_count": 980,
+        "rating_avg": 4.7,
+        "tags": ["landing", "marketing", "waitlist"],
+        "preview_url": None,
+    },
+    {
+        "name": "automation-builder",
+        "icon": "⚡",
+        "color": "#f97316",
+        "category": "automate",
+        "display_name": "Automation Engine",
+        "short_desc": "Scheduled agents, webhooks, cron jobs, AI-powered workflow automation",
+        "trigger_prompt": "Build an automation that runs daily and sends results to Slack or email",
+        "is_featured": False,
+        "install_count": 412,
+        "rating_avg": 4.5,
+        "tags": ["automation", "cron", "webhook", "workflow"],
+        "preview_url": None,
+    },
+    {
+        "name": "internal-tool-builder",
+        "icon": "🛠️",
+        "color": "#64748b",
+        "category": "build",
+        "display_name": "Internal Tool",
+        "short_desc": "Admin tables, CRUD forms, approval workflows, RBAC — enterprise-ready",
+        "trigger_prompt": "Build an internal admin tool with data tables, forms, and user roles",
+        "is_featured": False,
+        "install_count": 756,
+        "rating_avg": 4.6,
+        "tags": ["admin", "crud", "rbac", "internal"],
+        "preview_url": None,
+    },
+    {
+        "name": "data-dashboard-builder",
+        "icon": "📊",
+        "color": "#6366f1",
+        "category": "build",
+        "display_name": "Data Dashboard",
+        "short_desc": "Interactive Recharts/D3 charts, KPI cards, date filters, CSV export",
+        "trigger_prompt": "Build a data analytics dashboard with charts and KPI cards",
+        "is_featured": False,
+        "install_count": 891,
+        "rating_avg": 4.7,
+        "tags": ["charts", "analytics", "kpi", "data-viz"],
+        "preview_url": None,
+    },
+    {
+        "name": "crm-builder",
+        "icon": "👥",
+        "color": "#0ea5e9",
+        "category": "build",
+        "display_name": "CRM Builder",
+        "short_desc": "Contacts, pipeline, deals, tasks, email sequences, activity log",
+        "trigger_prompt": "Build a CRM with contacts, deal pipeline, and email sequences",
+        "is_featured": False,
+        "install_count": 344,
+        "rating_avg": 4.5,
+        "tags": ["crm", "pipeline", "contacts"],
+        "preview_url": None,
+    },
+    {
+        "name": "booking-builder",
+        "icon": "📅",
+        "color": "#84cc16",
+        "category": "build",
+        "display_name": "Booking System",
+        "short_desc": "Calendar scheduling, availability, reminders, Stripe deposits",
+        "trigger_prompt": "Build a booking system with calendar, availability management, and payments",
+        "is_featured": False,
+        "install_count": 298,
+        "rating_avg": 4.4,
+        "tags": ["booking", "calendar", "scheduling"],
+        "preview_url": None,
+    },
+    {
+        "name": "api-builder",
+        "icon": "🔌",
+        "color": "#ef4444",
+        "category": "build",
+        "display_name": "REST API Builder",
+        "short_desc": "FastAPI with JWT auth, OpenAPI docs, Pydantic validation, rate limiting",
+        "trigger_prompt": "Build a REST API with JWT auth, CRUD endpoints, and auto-generated docs",
+        "is_featured": False,
+        "install_count": 567,
+        "rating_avg": 4.6,
+        "tags": ["api", "fastapi", "openapi", "jwt"],
+        "preview_url": None,
+    },
+    {
+        "name": "forum-builder",
+        "icon": "💬",
+        "color": "#a78bfa",
+        "category": "build",
+        "display_name": "Forum / Community",
+        "short_desc": "Posts, threads, upvotes, user profiles, moderation panel",
+        "trigger_prompt": "Build a forum with posts, comments, voting, and moderation",
+        "is_featured": False,
+        "install_count": 189,
+        "rating_avg": 4.3,
+        "tags": ["forum", "community", "social"],
+        "preview_url": None,
+    },
+    {
+        "name": "custom-user-skill",
+        "icon": "✨",
+        "color": "#a855f7",
+        "category": "custom",
+        "display_name": "Custom Skill",
+        "short_desc": "Define your own building patterns and AI instructions — full control",
+        "trigger_prompt": "",
+        "is_featured": False,
+        "install_count": 0,
+        "rating_avg": 0,
+        "tags": ["custom"],
+        "preview_url": None,
+    },
 ]
 
 SKILLS_DIR = os.path.join(os.path.dirname(__file__), "..", "skills")
@@ -85,17 +271,23 @@ async def _get_active_skills_context(user_id: str) -> str:
                     summary = md[:1500].strip()
                     skill_sections.append(f"[{skill_meta['display_name']}]\n{summary}")
                 else:
-                    skill_sections.append(f"[{skill_meta['display_name']}]\n{skill_meta['short_desc']}")
+                    skill_sections.append(
+                        f"[{skill_meta['display_name']}]\n{skill_meta['short_desc']}"
+                    )
             else:
                 # User-defined skill
                 user_skill_doc = await db.user_skills.find_one({"id": skill_id})
                 if user_skill_doc:
-                    instructions = user_skill_doc.get("instructions", user_skill_doc.get("short_desc", ""))
+                    instructions = user_skill_doc.get(
+                        "instructions", user_skill_doc.get("short_desc", "")
+                    )
                     display_name = user_skill_doc.get("display_name", skill_id)
                     skill_sections.append(f"[{display_name}]\n{instructions[:800]}")
         if not skill_sections:
             return ""
-        context = "ACTIVE SKILLS — apply these patterns:\n" + "\n\n".join(skill_sections)
+        context = "ACTIVE SKILLS — apply these patterns:\n" + "\n\n".join(
+            skill_sections
+        )
         return context
     except Exception as e:
         logger.warning(f"_get_active_skills_context error: {e}")
@@ -103,6 +295,7 @@ async def _get_active_skills_context(user_id: str) -> str:
 
 
 # ==================== SKILLS MARKETPLACE ====================
+
 
 @router.get("/skills/marketplace")
 async def get_marketplace_skills(user: dict = Depends(_get_optional_user())):
@@ -174,8 +367,7 @@ async def publish_skill(skill_id: str, user: dict = Depends(_get_auth())):
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready")
     result = await db.user_skills.update_one(
-        {"id": skill_id, "user_id": user["id"]},
-        {"$set": {"public": True}}
+        {"id": skill_id, "user_id": user["id"]}, {"$set": {"public": True}}
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Skill not found")
@@ -183,6 +375,7 @@ async def publish_skill(skill_id: str, user: dict = Depends(_get_auth())):
 
 
 # ==================== SKILLS ROUTES ====================
+
 
 class CreateUserSkillBody(BaseModel):
     name: str = Field(..., min_length=1, max_length=80)
@@ -253,7 +446,9 @@ async def get_skill(skill_id: str, user: dict = Depends(_get_auth())):
 
 
 @router.post("/skills")
-async def create_user_skill(body: CreateUserSkillBody, user: dict = Depends(_get_auth())):
+async def create_user_skill(
+    body: CreateUserSkillBody, user: dict = Depends(_get_auth())
+):
     """Create a user-defined skill."""
     db = _get_db()
     if db is None:
@@ -280,7 +475,9 @@ async def create_user_skill(body: CreateUserSkillBody, user: dict = Depends(_get
 
 
 @router.put("/skills/{skill_id}")
-async def update_user_skill(skill_id: str, body: UpdateUserSkillBody, user: dict = Depends(_get_auth())):
+async def update_user_skill(
+    skill_id: str, body: UpdateUserSkillBody, user: dict = Depends(_get_auth())
+):
     """Update a user-defined skill."""
     db = _get_db()
     if db is None:
@@ -310,7 +507,9 @@ async def delete_user_skill(skill_id: str, user: dict = Depends(_get_auth())):
         raise HTTPException(status_code=403, detail="Access denied")
     await db.user_skills.delete_one({"id": skill_id})
     # Also remove from active_skill_ids
-    await db.users.update_one({"id": user["id"]}, {"$pull": {"active_skill_ids": skill_id}})
+    await db.users.update_one(
+        {"id": user["id"]}, {"$pull": {"active_skill_ids": skill_id}}
+    )
     return {"status": "deleted"}
 
 
@@ -334,5 +533,7 @@ async def toggle_skill_active(skill_id: str, user: dict = Depends(_get_auth())):
     else:
         active_ids.append(skill_id)
         action = "activated"
-    await db.users.update_one({"id": user["id"]}, {"$set": {"active_skill_ids": active_ids}})
+    await db.users.update_one(
+        {"id": user["id"]}, {"$set": {"active_skill_ids": active_ids}}
+    )
     return {"status": action, "skill_id": skill_id, "active_skill_ids": active_ids}

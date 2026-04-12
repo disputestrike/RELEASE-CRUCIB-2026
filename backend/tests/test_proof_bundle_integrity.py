@@ -1,4 +1,5 @@
 """Proof bundle integrity hash (Fifty-point #23)."""
+
 import pytest
 
 from proof import proof_service
@@ -15,4 +16,6 @@ def test_bundle_sha256_stable_for_same_payload():
 
 @pytest.mark.golden
 def test_bundle_sha256_empty():
-    assert proof_service.compute_bundle_integrity_sha256([]) == proof_service.compute_bundle_integrity_sha256([])
+    assert proof_service.compute_bundle_integrity_sha256(
+        []
+    ) == proof_service.compute_bundle_integrity_sha256([])

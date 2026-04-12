@@ -8,6 +8,7 @@ migrations/006_complete_schema.sql).  Reads and writes go through
 ``orchestration.runtime_state``; broadcasting uses
 ``orchestration.event_bus``.
 """
+
 from __future__ import annotations
 
 import logging
@@ -22,23 +23,28 @@ router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 
 # ── Lazy-import helpers ───────────────────────────────────────────────────────
 
+
 def _get_auth():
     from server import get_current_user
+
     return get_current_user
 
 
 def _get_runtime_state():
     from orchestration import runtime_state
+
     return runtime_state
 
 
 def _get_proof_service():
     from proof import proof_service
+
     return proof_service
 
 
 async def _get_pool():
     from db_pg import get_pg_pool
+
     return await get_pg_pool()
 
 
@@ -61,8 +67,10 @@ async def _resolve_job(job_id: str, user: dict) -> dict:
 # DATA MODELS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class JobCreateRequest(BaseModel):
     """Job creation request"""
+
     goal: str
     project_id: Optional[str] = None
     mode: Optional[str] = "guided"
@@ -72,6 +80,7 @@ class JobCreateRequest(BaseModel):
 
 class JobStatusUpdate(BaseModel):
     """Job status update"""
+
     status: str
     progress: Optional[int] = None
     message: Optional[str] = None
@@ -80,6 +89,7 @@ class JobStatusUpdate(BaseModel):
 # ═══════════════════════════════════════════════════════════════════════════════
 # JOB MANAGEMENT
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 @router.post("/", status_code=201)
 async def create_job(
@@ -187,11 +197,16 @@ async def update_job(
         # Broadcast so SSE listeners see the change
         try:
             from orchestration.event_bus import publish
-            await publish(job_id, "job_status_changed", {
-                "job_id": job_id,
-                "status": update.status,
-                "progress": update.progress,
-            })
+
+            await publish(
+                job_id,
+                "job_status_changed",
+                {
+                    "job_id": job_id,
+                    "status": update.status,
+                    "progress": update.progress,
+                },
+            )
         except Exception:
             pass
         updated = await rs.get_job(job_id)
@@ -215,6 +230,7 @@ async def cancel_job(
         await rs.update_job_state(job_id, "cancelled")
         try:
             from orchestration.event_bus import publish
+
             await publish(job_id, "job_cancelled", {"job_id": job_id})
         except Exception:
             pass
@@ -252,6 +268,7 @@ async def retry_job(
         )
         try:
             from orchestration.event_bus import publish
+
             await publish(job_id, "job_requeued", {"job_id": job_id})
         except Exception:
             pass
@@ -293,6 +310,7 @@ async def get_job_logs(
         rs = _get_runtime_state()
         events = await rs.get_job_events(job_id, since_id=since_id)
         import json as _json
+
         logs = []
         for e in events:
             try:
@@ -369,6 +387,7 @@ async def webhook_job_event(
             await rs.update_job_state(job_id, new_status)
         try:
             from orchestration.event_bus import publish
+
             await publish(job_id, event_type, event)
         except Exception:
             pass
@@ -411,9 +430,7 @@ async def delete_job(
         async with pool.acquire() as conn:
             await conn.execute("DELETE FROM job_events WHERE job_id=$1", job_id)
             await conn.execute("DELETE FROM job_steps WHERE job_id=$1", job_id)
-            await conn.execute(
-                "DELETE FROM job_checkpoints WHERE job_id=$1", job_id
-            )
+            await conn.execute("DELETE FROM job_checkpoints WHERE job_id=$1", job_id)
             await conn.execute("DELETE FROM jobs WHERE id=$1", job_id)
         return {"success": True, "job_id": job_id, "deleted": True}
     except HTTPException:
@@ -450,4 +467,3 @@ async def estimate_job_cost(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-

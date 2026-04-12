@@ -1,6 +1,7 @@
 """
 Domain intent from user goal — drives optional SQL/API sketches (not full codegen).
 """
+
 from __future__ import annotations
 
 import re

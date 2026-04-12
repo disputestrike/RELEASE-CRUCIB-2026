@@ -2,6 +2,7 @@
 When CRUCIBAI_DEV=1 and no LLM provider keys are set, return deterministic
 plan / file outputs so Workspace preview and flows can be tested locally.
 """
+
 from __future__ import annotations
 
 import json
@@ -10,7 +11,6 @@ import re
 from typing import Any, Dict, List, Optional, Tuple
 
 from llm_router import router
-
 
 REAL_AGENT_NO_LLM_KEYS_DETAIL = (
     "CRUCIBAI_REAL_AGENT_ONLY is enabled but no LLM API keys are configured. "
@@ -35,7 +35,9 @@ def chat_llm_available(effective_keys: Optional[Dict[str, Any]] = None) -> bool:
         return True
     if str(ek.get("cerebras") or "").strip():
         return True
-    return bool(router.llama_available or router.cerebras_available or router.haiku_available)
+    return bool(
+        router.llama_available or router.cerebras_available or router.haiku_available
+    )
 
 
 def stub_build_enabled() -> bool:

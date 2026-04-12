@@ -6,6 +6,7 @@ verification.api_smoke - static API contract sketch + optional live ping.
 - Runs py_compile on Python entrypoints when present
 - If CRUCIBAI_API_SMOKE_URL is set, GET that URL (e.g. http://127.0.0.1:8000/health)
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -41,7 +42,9 @@ def _pi(
     return {"proof_type": proof_type, "title": title, "payload": p}
 
 
-def _vr(passed: bool, score: int, issues: List[str], proof: List[Dict[str, Any]]) -> Dict[str, Any]:
+def _vr(
+    passed: bool, score: int, issues: List[str], proof: List[Dict[str, Any]]
+) -> Dict[str, Any]:
     return {"passed": passed, "score": score, "issues": issues, "proof": proof}
 
 
@@ -64,7 +67,9 @@ def _api_entry_candidates(workspace_path: str) -> List[str]:
 
 
 def _backend_routes(workspace_path: str) -> List[Dict[str, str]]:
-    all_r = _scan_workspace_for_route_declarations(workspace_path, max_files=48, max_matches=96)
+    all_r = _scan_workspace_for_route_declarations(
+        workspace_path, max_files=48, max_matches=96
+    )
     return [
         r
         for r in all_r
@@ -82,7 +87,9 @@ async def verify_api_smoke_workspace(workspace_path: str) -> Dict[str, Any]:
 
     entry_candidates = _api_entry_candidates(workspace_path)
     if not entry_candidates:
-        issues.append("No API entrypoint found - expected backend/main.py, server.py, app.py, or api/main.py")
+        issues.append(
+            "No API entrypoint found - expected backend/main.py, server.py, app.py, or api/main.py"
+        )
         return _vr(False, 35, issues, proof)
 
     routes = _backend_routes(workspace_path)
@@ -127,11 +134,16 @@ async def verify_api_smoke_workspace(workspace_path: str) -> Dict[str, Any]:
     else:
         issues.append("No GET /health route found in backend Python sources")
 
-    backend_files = list(dict.fromkeys(entry_candidates + [
-        "backend/models.py",
-        "backend/auth.py",
-        "backend/stripe_routes.py",
-    ]))
+    backend_files = list(
+        dict.fromkeys(
+            entry_candidates
+            + [
+                "backend/models.py",
+                "backend/auth.py",
+                "backend/stripe_routes.py",
+            ]
+        )
+    )
     for rel in backend_files:
         full = os.path.normpath(os.path.join(workspace_path, rel.replace("/", os.sep)))
         if not os.path.isfile(full):
@@ -168,11 +180,17 @@ async def verify_api_smoke_workspace(workspace_path: str) -> Dict[str, Any]:
                             _pi(
                                 "api",
                                 f"API smoke: live GET {ping_url} -> {resp.status}",
-                                {"url": ping_url, "status": resp.status, "body_len": len(body)},
+                                {
+                                    "url": ping_url,
+                                    "status": resp.status,
+                                    "body_len": len(body),
+                                },
                             ),
                         )
                     else:
-                        issues.append(f"Live API smoke returned HTTP {resp.status} for {ping_url}")
+                        issues.append(
+                            f"Live API smoke returned HTTP {resp.status} for {ping_url}"
+                        )
         except Exception as e:
             issues.append(f"Live API smoke failed ({ping_url}): {str(e)[:200]}")
 

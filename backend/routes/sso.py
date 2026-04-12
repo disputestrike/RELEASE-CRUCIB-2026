@@ -1,4 +1,5 @@
 """SSO routes — WorkOS/SAML single sign-on login, callback, and organization listing."""
+
 from __future__ import annotations
 
 import logging
@@ -18,31 +19,38 @@ router = APIRouter(prefix="/api", tags=["sso"])
 
 def _get_auth():
     from server import get_current_user
+
     return get_current_user
 
 
 def _get_optional_user():
     from server import get_optional_user
+
     return get_optional_user
 
 
 def _get_db():
     import server
+
     return server.db
 
 
 def _jwt_secret():
     import server
+
     return server.JWT_SECRET
 
 
 def _jwt_algorithm():
     import server
+
     return server.JWT_ALGORITHM
 
 
 @router.get("/sso/login")
-async def sso_login(organization_id: Optional[str] = Query(None), email: Optional[str] = Query(None)):
+async def sso_login(
+    organization_id: Optional[str] = Query(None), email: Optional[str] = Query(None)
+):
     """
     Initiate WorkOS/SAML SSO login. Redirects to IdP.
     Set WORKOS_API_KEY and WORKOS_CLIENT_ID env vars to enable real SSO.
@@ -61,6 +69,7 @@ async def sso_login(organization_id: Optional[str] = Query(None), email: Optiona
         )
     # Build WorkOS authorization URL
     import httpx, urllib.parse
+
     params = {
         "client_id": workos_client_id,
         "redirect_uri": f"{os.environ.get('BACKEND_PUBLIC_URL', 'https://crucibai-production.up.railway.app')}/api/sso/callback",
@@ -86,6 +95,7 @@ async def sso_callback(code: str = Query(...), state: Optional[str] = Query(None
         raise HTTPException(status_code=501, detail="SSO not configured")
 
     import httpx
+
     async with httpx.AsyncClient(timeout=20.0) as client:
         r = await client.post(
             "https://api.workos.com/sso/token",
@@ -98,7 +108,9 @@ async def sso_callback(code: str = Query(...), state: Optional[str] = Query(None
             },
         )
         if r.status_code != 200:
-            raise HTTPException(status_code=502, detail=f"WorkOS SSO error: {r.text[:200]}")
+            raise HTTPException(
+                status_code=502, detail=f"WorkOS SSO error: {r.text[:200]}"
+            )
         token_data = r.json()
         access_token = token_data.get("access_token")
 
@@ -141,7 +153,13 @@ async def sso_callback(code: str = Query(...), state: Optional[str] = Query(None
         else:
             await db.users.update_one(
                 {"email": email},
-                {"$set": {"last_login": now, "sso_provider": "workos", "sso_organization_id": org_id}},
+                {
+                    "$set": {
+                        "last_login": now,
+                        "sso_provider": "workos",
+                        "sso_organization_id": org_id,
+                    }
+                },
             )
 
     if not user_doc:
@@ -155,9 +173,14 @@ async def sso_callback(code: str = Query(...), state: Optional[str] = Query(None
     }
     token = jwt.encode(token_payload, _jwt_secret(), algorithm=_jwt_algorithm())
     # Redirect to frontend with token (or return JSON)
-    frontend_url = os.environ.get("FRONTEND_URL", "https://crucibai-production.up.railway.app")
+    frontend_url = os.environ.get(
+        "FRONTEND_URL", "https://crucibai-production.up.railway.app"
+    )
     from fastapi.responses import RedirectResponse
-    return RedirectResponse(url=f"{frontend_url}/app?sso_token={token}&email={email}", status_code=302)
+
+    return RedirectResponse(
+        url=f"{frontend_url}/app?sso_token={token}&email={email}", status_code=302
+    )
 
 
 @router.get("/sso/organizations")
@@ -167,6 +190,7 @@ async def sso_list_organizations(user: dict = Depends(_get_auth())):
     if not workos_api_key:
         return {"organizations": [], "sso_configured": False}
     import httpx
+
     async with httpx.AsyncClient(timeout=20.0) as client:
         r = await client.get(
             "https://api.workos.com/organizations",

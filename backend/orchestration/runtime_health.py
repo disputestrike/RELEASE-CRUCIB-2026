@@ -2,6 +2,7 @@
 Runtime health for Auto-Runner: same interpreters the verifier/executor rely on.
 Fail fast before jobs start instead of deep into backend.models.
 """
+
 import asyncio
 import logging
 import os
@@ -15,7 +16,8 @@ logger = logging.getLogger(__name__)
 async def _version_line(cmd: str, *args: str, timeout: float = 6.0) -> Optional[str]:
     try:
         proc = await asyncio.create_subprocess_exec(
-            cmd, *args,
+            cmd,
+            *args,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
         )
@@ -67,7 +69,9 @@ async def collect_runtime_health() -> Dict[str, Any]:
 def skip_node_verify_env() -> bool:
     """When True, Auto-Runner does not require Node and skips `node --check` in the verifier."""
     return os.environ.get("CRUCIBAI_SKIP_NODE_VERIFY", "").strip().lower() in (
-        "1", "true", "yes",
+        "1",
+        "true",
+        "yes",
     )
 
 
@@ -112,10 +116,14 @@ async def extended_autorunner_preflight_issues() -> List[str]:
     if os.environ.get("CRUCIBAI_DEV", "").strip().lower() in ("1", "true", "yes"):
         return []
     if os.environ.get("CRUCIBAI_SKIP_AUTORUNNER_PREFLIGHT", "").strip().lower() in (
-        "1", "true", "yes",
+        "1",
+        "true",
+        "yes",
     ):
         return []
-    issues: List[str] = list(runtime_issues_for_autorunner(collect_runtime_health_sync()))
+    issues: List[str] = list(
+        runtime_issues_for_autorunner(collect_runtime_health_sync())
+    )
 
     pip_v = await _version_line(sys.executable, "-m", "pip", "--version")
     if not pip_v:
@@ -132,11 +140,14 @@ async def extended_autorunner_preflight_issues() -> List[str]:
             issues.append("npm not on PATH (often installed with Node).")
 
     if os.environ.get("CRUCIBAI_SKIP_HEALTHCHECK", "").strip().lower() not in (
-        "1", "true", "yes",
+        "1",
+        "true",
+        "yes",
     ):
         health_url = default_api_healthcheck_url()
         try:
             import httpx
+
             async with httpx.AsyncClient(timeout=5.0) as client:
                 r = await client.get(health_url)
                 if r.status_code >= 400:
@@ -149,7 +160,9 @@ async def extended_autorunner_preflight_issues() -> List[str]:
             )
 
     if os.environ.get("CRUCIBAI_REQUIRE_BROWSER_PREVIEW", "").strip().lower() in (
-        "1", "true", "yes",
+        "1",
+        "true",
+        "yes",
     ):
         from .browser_preview_verify import playwright_chromium_status
 
@@ -166,7 +179,9 @@ async def extended_autorunner_preflight_issues() -> List[str]:
             )
 
     if os.environ.get("CRUCIBAI_REQUIRE_DEV_SERVER", "").strip().lower() in (
-        "1", "true", "yes",
+        "1",
+        "true",
+        "yes",
     ):
         fe = os.environ.get(
             "CRUCIBAI_FRONTEND_DEV_URL",
@@ -174,6 +189,7 @@ async def extended_autorunner_preflight_issues() -> List[str]:
         )
         try:
             import httpx
+
             async with httpx.AsyncClient(timeout=5.0) as client:
                 r = await client.get(fe)
                 if r.status_code >= 400:

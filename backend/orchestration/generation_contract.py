@@ -1,9 +1,9 @@
 """Parse user goals into an explicit multi-stack generation contract."""
+
 from __future__ import annotations
 
 import re
 from typing import Any, Dict, Iterable, List, Tuple
-
 
 _CATEGORY_PATTERNS: Dict[str, Dict[str, Tuple[str, ...]]] = {
     "frontend_frameworks": {
@@ -258,7 +258,11 @@ def parse_generation_contract(goal: str) -> Dict[str, Any]:
     for category in _CATEGORY_PATTERNS:
         contract[category] = _find_matches(low, category)
 
-    requested_groups = {category: values for category, values in contract.items() if isinstance(values, list) and values}
+    requested_groups = {
+        category: values
+        for category, values in contract.items()
+        if isinstance(values, list) and values
+    }
     capability_count = sum(len(values) for values in requested_groups.values())
 
     contract["requested_groups"] = requested_groups
@@ -276,8 +280,15 @@ def parse_generation_contract(goal: str) -> Dict[str, Any]:
         or contract["monitoring"]
     )
 
-    recommended_target = "full_system_generator" if contract["requires_full_system_builder"] else "vite_react"
-    if contract["frontend_frameworks"] and contract["frontend_frameworks"][0] == "next.js":
+    recommended_target = (
+        "full_system_generator"
+        if contract["requires_full_system_builder"]
+        else "vite_react"
+    )
+    if (
+        contract["frontend_frameworks"]
+        and contract["frontend_frameworks"][0] == "next.js"
+    ):
         recommended_target = "full_system_generator"
     elif contract["backend_frameworks"] and not contract["frontend_frameworks"]:
         recommended_target = "api_backend"
@@ -285,7 +296,10 @@ def parse_generation_contract(goal: str) -> Dict[str, Any]:
     contract["recommended_build_target"] = recommended_target
     # P4 — explicit profile key for agent selection + directory contract tests
     contract["stack_profile"] = recommended_target
-    ff_l = [str(x).lower().replace(" ", "") for x in (contract.get("frontend_frameworks") or [])]
+    ff_l = [
+        str(x).lower().replace(" ", "")
+        for x in (contract.get("frontend_frameworks") or [])
+    ]
     if any("next.js" in s or s == "nextjs" for s in ff_l):
         contract["directory_profile"] = "next_js"
     else:
@@ -296,10 +310,26 @@ def parse_generation_contract(goal: str) -> Dict[str, Any]:
     if contract["backend_frameworks"] or contract["backend_languages"]:
         backend_stack = contract["backend_frameworks"] or contract["backend_languages"]
         summary_lines.append(f"Backend: {', '.join(backend_stack)}")
-    if contract["sql_databases"] or contract["nosql_databases"] or contract["graph_databases"] or contract["vector_databases"]:
-        dbs = contract["sql_databases"] + contract["nosql_databases"] + contract["graph_databases"] + contract["vector_databases"]
+    if (
+        contract["sql_databases"]
+        or contract["nosql_databases"]
+        or contract["graph_databases"]
+        or contract["vector_databases"]
+    ):
+        dbs = (
+            contract["sql_databases"]
+            + contract["nosql_databases"]
+            + contract["graph_databases"]
+            + contract["vector_databases"]
+        )
         summary_lines.append(f"Data: {', '.join(dbs)}")
-    service_bits = contract["cache"] + contract["queues"] + contract["payments"] + contract["notifications"] + contract["realtime"]
+    service_bits = (
+        contract["cache"]
+        + contract["queues"]
+        + contract["payments"]
+        + contract["notifications"]
+        + contract["realtime"]
+    )
     if service_bits:
         summary_lines.append(f"Services: {', '.join(service_bits)}")
     infra_bits = contract["deployment"] + contract["testing"] + contract["apis"]
@@ -312,4 +342,8 @@ def parse_generation_contract(goal: str) -> Dict[str, Any]:
 def requires_full_system_builder(goal_or_contract: Any) -> bool:
     if isinstance(goal_or_contract, dict):
         return bool(goal_or_contract.get("requires_full_system_builder"))
-    return bool(parse_generation_contract(str(goal_or_contract)).get("requires_full_system_builder"))
+    return bool(
+        parse_generation_contract(str(goal_or_contract)).get(
+            "requires_full_system_builder"
+        )
+    )

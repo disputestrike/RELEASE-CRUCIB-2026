@@ -4,6 +4,7 @@ This module is intentionally side-effect free: it never calls a provider and it
 never returns secret values. It reports the exact environment variable contract
 and the provider chain the runtime should use for a representative prompt.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -18,7 +19,9 @@ from anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_model
 ANTHROPIC_MODEL_DEFAULT = ANTHROPIC_HAIKU_MODEL
 CEREBRAS_MODEL_DEFAULT = "llama-3.3-70b"
 LLAMA_MODEL_DEFAULT = "meta-llama/Llama-2-70b-chat-hf"
-CEREBRAS_KEY_ENV_NAMES = ["CEREBRAS_API_KEY"] + [f"CEREBRAS_API_KEY_{i}" for i in range(1, 6)]
+CEREBRAS_KEY_ENV_NAMES = ["CEREBRAS_API_KEY"] + [
+    f"CEREBRAS_API_KEY_{i}" for i in range(1, 6)
+]
 
 
 def _sandbox_status(env: "Mapping[str, str]") -> "dict[str, Any]":
@@ -29,7 +32,9 @@ def _sandbox_status(env: "Mapping[str, str]") -> "dict[str, Any]":
             "configured": bool(e2b_key),
             "key_env": "E2B_API_KEY",
             "missing_env": [] if e2b_key else ["E2B_API_KEY"],
-            "fallback": "in-process sandbox (resource-limited)" if not e2b_key else None,
+            "fallback": (
+                "in-process sandbox (resource-limited)" if not e2b_key else None
+            ),
             "role": "isolated code execution for Test Executor and Backend Generation validation",
         }
     }
@@ -166,7 +171,9 @@ def _provider_status(env: Mapping[str, str]) -> dict[str, Any]:
     }
 
 
-def _append_available(chain: list[dict[str, str]], providers: Mapping[str, Any], provider: str) -> None:
+def _append_available(
+    chain: list[dict[str, str]], providers: Mapping[str, Any], provider: str
+) -> None:
     status = providers[provider]
     if status["configured"] and not status["disabled"]:
         chain.append({"provider": provider, "model": status["model"]})
@@ -188,11 +195,23 @@ def selected_chain_for_prompt(
 
     names: list[str]
     if user_tier == "free":
-        names = ["cerebras", "llama", "anthropic"] if complexity == "simple" else ["llama", "cerebras", "anthropic"]
+        names = (
+            ["cerebras", "llama", "anthropic"]
+            if complexity == "simple"
+            else ["llama", "cerebras", "anthropic"]
+        )
     elif user_tier == "builder":
-        names = ["cerebras", "llama", "anthropic"] if speed_selector == "lite" else ["llama", "cerebras", "anthropic"]
+        names = (
+            ["cerebras", "llama", "anthropic"]
+            if speed_selector == "lite"
+            else ["llama", "cerebras", "anthropic"]
+        )
     else:
-        names = ["cerebras", "llama", "anthropic"] if speed_selector == "lite" else ["llama", "cerebras", "anthropic"]
+        names = (
+            ["cerebras", "llama", "anthropic"]
+            if speed_selector == "lite"
+            else ["llama", "cerebras", "anthropic"]
+        )
 
     if complexity == "critical" and "llama" in names:
         names = ["llama"] + [name for name in names if name != "llama"]
@@ -230,7 +249,10 @@ def build_provider_readiness(
     warnings: list[str] = []
     if not chain:
         warnings.append("no_live_provider_configured")
-    if complexity in {"complex", "critical"} and not providers["anthropic"]["configured"]:
+    if (
+        complexity in {"complex", "critical"}
+        and not providers["anthropic"]["configured"]
+    ):
         warnings.append("complex_or_critical_prompt_without_anthropic_key")
     if providers["cerebras"]["configured"] and providers["cerebras"]["key_count"] == 1:
         warnings.append("single_cerebras_key_no_rotation_pool")
@@ -255,8 +277,12 @@ def _write_json(path: Path, data: MutableMapping[str, Any]) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Write CrucibAI provider readiness proof JSON.")
-    parser.add_argument("--prompt", default="Build a full-stack todo app with auth and deploy proof.")
+    parser = argparse.ArgumentParser(
+        description="Write CrucibAI provider readiness proof JSON."
+    )
+    parser.add_argument(
+        "--prompt", default="Build a full-stack todo app with auth and deploy proof."
+    )
     parser.add_argument("--agent-name", default="")
     parser.add_argument("--user-tier", default="free")
     parser.add_argument("--speed-selector", default="lite")

@@ -3,6 +3,7 @@ CrucibAI Agent System Tests
 ==============================
 Tests for DAG engine, agent definitions, learning system, and critic module.
 """
+
 import pytest
 import json
 import ast
@@ -26,18 +27,21 @@ class TestDAGEngine:
     def test_dag_has_agent_definitions(self):
         """DAG must define agent nodes with dependencies."""
         content = (_BACKEND_DIR / "agent_dag.py").read_text(encoding="utf-8")
-        assert "AGENT_DAG" in content or "agent_dag" in content.lower(), \
-            "No AGENT_DAG structure found"
-        assert "depends_on" in content or "dependencies" in content, \
-            "No dependency definitions found in DAG"
+        assert (
+            "AGENT_DAG" in content or "agent_dag" in content.lower()
+        ), "No AGENT_DAG structure found"
+        assert (
+            "depends_on" in content or "dependencies" in content
+        ), "No dependency definitions found in DAG"
 
     def test_dag_has_no_circular_dependencies(self):
         """DAG must be acyclic — no circular dependencies."""
         content = (_BACKEND_DIR / "agent_dag.py").read_text(encoding="utf-8")
         # Basic check: no agent depends on itself
         # Full cycle detection would require executing the module
-        assert content.count("depends_on") > 0 or content.count("dependencies") > 0, \
-            "DAG has no dependency structure"
+        assert (
+            content.count("depends_on") > 0 or content.count("dependencies") > 0
+        ), "DAG has no dependency structure"
 
 
 class TestAgentDefinitions:
@@ -52,7 +56,7 @@ class TestAgentDefinitions:
         """Agent count should be consistent with landing page claims (100+)."""
         content = (_BACKEND_DIR / "server.py").read_text(encoding="utf-8")
         # Count agent definitions
-        agent_count = content.count('"name":') 
+        agent_count = content.count('"name":')
         # We claim 100+ agents — verify
         assert agent_count >= 50, (
             f"Only {agent_count} agent name fields found. "
@@ -64,8 +68,9 @@ class TestAgentDefinitions:
         content = (_BACKEND_DIR / "server.py").read_text(encoding="utf-8")
         # Check that the standard fields exist in the definitions
         assert '"role"' in content, "Agent definitions missing 'role' field"
-        assert '"system_message"' in content or '"prompt"' in content, \
-            "Agent definitions missing system_message/prompt"
+        assert (
+            '"system_message"' in content or '"prompt"' in content
+        ), "Agent definitions missing system_message/prompt"
 
 
 class TestAgentClasses:
@@ -99,14 +104,16 @@ class TestLearningSystem:
     def test_learning_wired_to_server(self):
         """Learning system must be imported and used in server.py."""
         content = (_BACKEND_DIR / "server.py").read_text(encoding="utf-8")
-        assert "from agent_recursive_learning import" in content, \
-            "Learning system not imported in server.py"
-        assert "record_execution" in content, \
-            "record_execution not called in server.py"
+        assert (
+            "from agent_recursive_learning import" in content
+        ), "Learning system not imported in server.py"
+        assert "record_execution" in content, "record_execution not called in server.py"
 
     def test_learning_has_required_classes(self):
         """Learning module must have AgentMemory and PerformanceTracker."""
-        content = (_BACKEND_DIR / "agent_recursive_learning.py").read_text(encoding="utf-8")
+        content = (_BACKEND_DIR / "agent_recursive_learning.py").read_text(
+            encoding="utf-8"
+        )
         assert "class AgentMemory" in content, "AgentMemory class missing"
         assert "class PerformanceTracker" in content, "PerformanceTracker class missing"
 
@@ -130,10 +137,10 @@ class TestCriticAgent:
     def test_critic_wired_to_server(self):
         """Critic agent must be imported and used in server.py."""
         content = (_BACKEND_DIR / "server.py").read_text(encoding="utf-8")
-        assert "from critic_agent import" in content, \
-            "Critic agent not imported in server.py"
-        assert "review_build" in content, \
-            "review_build not called in server.py"
+        assert (
+            "from critic_agent import" in content
+        ), "Critic agent not imported in server.py"
+        assert "review_build" in content, "review_build not called in server.py"
 
 
 class TestVectorMemory:
@@ -149,14 +156,14 @@ class TestVectorMemory:
     def test_vector_memory_wired_to_server(self):
         """Vector memory must be imported in server.py."""
         content = (_BACKEND_DIR / "server.py").read_text(encoding="utf-8")
-        assert "from vector_memory import" in content, \
-            "Vector memory not imported in server.py"
+        assert (
+            "from vector_memory import" in content
+        ), "Vector memory not imported in server.py"
 
     def test_vector_memory_graceful_fallback(self):
         """Vector memory should work even without ChromaDB."""
         content = (_BACKEND_DIR / "vector_memory.py").read_text(encoding="utf-8")
-        assert "ImportError" in content, \
-            "No graceful fallback for missing ChromaDB"
+        assert "ImportError" in content, "No graceful fallback for missing ChromaDB"
 
 
 class TestEnvironmentValidation:
@@ -172,8 +179,9 @@ class TestEnvironmentValidation:
     def test_env_setup_wired_to_server(self):
         """Environment validation must run at server startup."""
         content = (_BACKEND_DIR / "server.py").read_text(encoding="utf-8")
-        assert "validate_environment" in content, \
-            "validate_environment not called in server.py"
+        assert (
+            "validate_environment" in content
+        ), "validate_environment not called in server.py"
 
     def test_env_setup_checks_required_vars(self):
         """Must validate DATABASE_URL, JWT_SECRET, Google OAuth keys."""
@@ -211,4 +219,6 @@ class TestMonitoringIntegration:
         assert path.exists(), "monitoring/grafana-dashboard.json is missing"
         content = json.loads(path.read_text(encoding="utf-8"))
         assert "dashboard" in content, "Invalid Grafana dashboard format"
-        assert len(content["dashboard"]["panels"]) >= 4, "Dashboard needs at least 4 panels"
+        assert (
+            len(content["dashboard"]["panels"]) >= 4
+        ), "Dashboard needs at least 4 panels"

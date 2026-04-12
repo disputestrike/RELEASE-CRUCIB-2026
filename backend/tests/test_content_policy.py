@@ -1,4 +1,5 @@
 """Content policy screening (Fifty-point #42)."""
+
 import pytest
 
 from content_policy import screen_user_content

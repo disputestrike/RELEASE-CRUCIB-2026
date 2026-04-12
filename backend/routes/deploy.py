@@ -4,6 +4,7 @@ Deploy routes — token management, validation, and platform helpers.
 Extracted from server.py as part of the server modularisation effort.
 All heavy server-state (db, auth) is imported lazily to avoid circular imports.
 """
+
 from __future__ import annotations
 
 import logging
@@ -19,8 +20,10 @@ router = APIRouter(prefix="/api", tags=["deploy"])
 
 # ── Pydantic models ───────────────────────────────────────────────────────────
 
+
 class DeployTokensUpdate(BaseModel):
     """Token update payload for one-click deploy integrations."""
+
     vercel: Optional[str] = None
     netlify: Optional[str] = None
     github: Optional[str] = None
@@ -29,6 +32,7 @@ class DeployTokensUpdate(BaseModel):
 
 class DeployValidateRequest(BaseModel):
     """Payload for pre-flight deploy validation."""
+
     platform: str  # vercel | netlify | railway
     files: Dict[str, str] = {}
     config: Optional[Dict[str, Any]] = None
@@ -36,17 +40,21 @@ class DeployValidateRequest(BaseModel):
 
 # ── Lazy-import helpers ───────────────────────────────────────────────────────
 
+
 def _get_auth():
     from server import get_current_user
+
     return get_current_user
 
 
 def _get_db():
     from server import db
+
     return db
 
 
 # ── Deploy token management ───────────────────────────────────────────────────
+
 
 @router.get("/users/me/deploy-tokens")
 async def get_deploy_tokens_status(user: dict = Depends(_get_auth())):
@@ -63,7 +71,9 @@ async def get_deploy_tokens_status(user: dict = Depends(_get_auth())):
 
 
 @router.patch("/users/me/deploy-tokens")
-async def update_deploy_tokens(data: DeployTokensUpdate, user: dict = Depends(_get_auth())):
+async def update_deploy_tokens(
+    data: DeployTokensUpdate, user: dict = Depends(_get_auth())
+):
     """Persist deploy tokens for one-click Vercel/Netlify/Railway. Only updates provided keys."""
     db = _get_db()
     update: dict = {}
@@ -83,10 +93,12 @@ async def update_deploy_tokens(data: DeployTokensUpdate, user: dict = Depends(_g
 
 # ── Deploy validation ─────────────────────────────────────────────────────────
 
+
 @router.post("/deploy/validate")
 async def deploy_validate(body: DeployValidateRequest):
     """Validate a set of project files against platform-specific deploy rules."""
     from validate_deployment import validate_deployment
+
     result = validate_deployment(body.platform, body.files, body.config)
     return {
         "valid": result.valid,

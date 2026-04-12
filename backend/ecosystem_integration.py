@@ -1,6 +1,7 @@
 """
 Ecosystem integration for CrucibAI — VS Code config, remote dev (stubs).
 """
+
 from typing import Dict, Any
 import logging
 

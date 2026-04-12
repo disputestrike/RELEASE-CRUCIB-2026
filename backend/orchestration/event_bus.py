@@ -3,6 +3,7 @@ event_bus.py — In-process pub/sub for job events.
 Consumers (SSE/WebSocket handlers) subscribe to a job's stream.
 Events are also persisted to DB via runtime_state.
 """
+
 import asyncio
 import logging
 from typing import Dict, List, Any, Optional
@@ -33,9 +34,12 @@ async def unsubscribe(job_id: str, queue: asyncio.Queue) -> None:
             _subscribers.pop(job_id, None)
 
 
-async def publish(job_id: str, event_type: str,
-                  payload: Optional[Dict[str, Any]] = None,
-                  step_id: Optional[str] = None) -> None:
+async def publish(
+    job_id: str,
+    event_type: str,
+    payload: Optional[Dict[str, Any]] = None,
+    step_id: Optional[str] = None,
+) -> None:
     """Publish event to all in-memory subscribers and mirror to WebSocket progress."""
     event = {
         "job_id": job_id,
@@ -53,14 +57,19 @@ async def publish(job_id: str, event_type: str,
     try:
         from api.routes.job_progress import broadcast_event as websocket_broadcast_event
 
-        await websocket_broadcast_event(job_id, event_type, step_id=step_id, payload=payload or {})
+        await websocket_broadcast_event(
+            job_id, event_type, step_id=step_id, payload=payload or {}
+        )
     except Exception:
         logger.debug("event_bus: websocket mirror unavailable for job %s", job_id)
 
 
-def publish_sync(job_id: str, event_type: str,
-                 payload: Optional[Dict[str, Any]] = None,
-                 step_id: Optional[str] = None) -> None:
+def publish_sync(
+    job_id: str,
+    event_type: str,
+    payload: Optional[Dict[str, Any]] = None,
+    step_id: Optional[str] = None,
+) -> None:
     """Sync wrapper — schedules publish on the running event loop."""
     try:
         loop = asyncio.get_event_loop()

@@ -2,6 +2,7 @@
 Health and readiness router.
 Exposes GET /api/health for load balancers and ops. All wired in app.
 """
+
 from datetime import datetime, timezone
 
 from fastapi import APIRouter

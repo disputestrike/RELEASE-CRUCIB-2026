@@ -1,6 +1,7 @@
 """
 Re-export from db_pg. Primary data store is PostgreSQL (JSONB documents).
 """
+
 from db_pg import (
     get_db,
     get_pool,

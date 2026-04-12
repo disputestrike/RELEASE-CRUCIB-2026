@@ -11,13 +11,31 @@ async def test_job_progress_bootstrap_uses_runtime_state(monkeypatch):
 
     async def fake_get_steps(job_id):
         return [
-            {"id": "1", "step_key": "planning.analyze", "agent_name": "Planner", "phase": "planning", "status": "completed", "order_index": 1},
-            {"id": "2", "step_key": "agents.frontend_generation", "agent_name": "Frontend Generation", "phase": "agents.phase_01", "status": "running", "order_index": 2},
+            {
+                "id": "1",
+                "step_key": "planning.analyze",
+                "agent_name": "Planner",
+                "phase": "planning",
+                "status": "completed",
+                "order_index": 1,
+            },
+            {
+                "id": "2",
+                "step_key": "agents.frontend_generation",
+                "agent_name": "Frontend Generation",
+                "phase": "agents.phase_01",
+                "status": "running",
+                "order_index": 2,
+            },
         ]
 
     async def fake_get_events(job_id, limit=250):
         return [
-            {"event_type": "step_started", "created_at": "2026-04-09T00:00:00+00:00", "payload": {"agent_name": "Frontend Generation"}}
+            {
+                "event_type": "step_started",
+                "created_at": "2026-04-09T00:00:00+00:00",
+                "payload": {"agent_name": "Frontend Generation"},
+            }
         ]
 
     class FakeMemoryService:
@@ -28,8 +46,16 @@ async def test_job_progress_bootstrap_uses_runtime_state(monkeypatch):
                 "job_id": kwargs.get("job_id"),
                 "phase": kwargs.get("phase"),
                 "query": kwargs.get("query"),
-                "relevant_memories": [{"id": "mem-1", "agent": "Planner", "text": "Plan summary"}],
-                "recent_memories": [{"id": "mem-2", "agent": "Frontend Generation", "text": "Built shell"}],
+                "relevant_memories": [
+                    {"id": "mem-1", "agent": "Planner", "text": "Plan summary"}
+                ],
+                "recent_memories": [
+                    {
+                        "id": "mem-2",
+                        "agent": "Frontend Generation",
+                        "text": "Built shell",
+                    }
+                ],
                 "token_usage": 42,
             }
 
@@ -77,7 +103,14 @@ async def test_broadcast_event_includes_live_snapshot(monkeypatch):
 
     async def fake_get_steps(job_id):
         return [
-            {"id": "1", "step_key": "planning.analyze", "agent_name": "Planner", "phase": "planning", "status": "completed", "order_index": 1},
+            {
+                "id": "1",
+                "step_key": "planning.analyze",
+                "agent_name": "Planner",
+                "phase": "planning",
+                "status": "completed",
+                "order_index": 1,
+            },
         ]
 
     async def fake_get_events(job_id, limit=250):
@@ -92,7 +125,9 @@ async def test_broadcast_event_includes_live_snapshot(monkeypatch):
     monkeypatch.setattr(job_progress, "get_job_events", fake_get_events)
     monkeypatch.setattr(job_progress.manager, "broadcast", fake_broadcast)
 
-    await job_progress.broadcast_event("job-123", "step_completed", payload={"agent_name": "Planner"})
+    await job_progress.broadcast_event(
+        "job-123", "step_completed", payload={"agent_name": "Planner"}
+    )
 
     assert sent["job_id"] == "job-123"
     assert sent["message"]["type"] == "step_completed"
@@ -135,8 +170,12 @@ async def test_job_progress_truncates_large_log_and_memory_payloads(monkeypatch)
                 "job_id": kwargs.get("job_id"),
                 "phase": kwargs.get("phase"),
                 "query": "Q" * 500,
-                "relevant_memories": [{"id": "mem-1", "agent": "Planner", "text": "R" * 500}],
-                "recent_memories": [{"id": "mem-2", "agent": "Planner", "text": "S" * 500}],
+                "relevant_memories": [
+                    {"id": "mem-1", "agent": "Planner", "text": "R" * 500}
+                ],
+                "recent_memories": [
+                    {"id": "mem-2", "agent": "Planner", "text": "S" * 500}
+                ],
                 "token_usage": 99,
             }
 

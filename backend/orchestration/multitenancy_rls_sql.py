@@ -4,6 +4,7 @@ PostgreSQL multitenant migration text — real RLS on generated app_items.
 Session GUC: SET LOCAL app.tenant_id = '<uuid>' (or SELECT set_config('app.tenant_id', '<uuid>', true)).
 FORCE ROW LEVEL SECURITY ensures policies apply even when the session user owns the table.
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List
@@ -103,7 +104,9 @@ def validate_rls_syntax(sql: str) -> Dict[str, Any]:
     if "ENABLE ROW LEVEL SECURITY" not in u:
         issues.append("Missing ENABLE ROW LEVEL SECURITY")
     if "FORCE ROW LEVEL SECURITY" not in u:
-        issues.append("Missing FORCE ROW LEVEL SECURITY (table owner would bypass RLS without FORCE)")
+        issues.append(
+            "Missing FORCE ROW LEVEL SECURITY (table owner would bypass RLS without FORCE)"
+        )
     if "CREATE POLICY" not in u:
         issues.append("No CREATE POLICY statements")
     if "tenant_id" not in lo:

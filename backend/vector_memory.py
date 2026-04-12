@@ -1,7 +1,7 @@
 """
 CrucibAI Vector Memory Module
 ===============================
-Provides long-term memory and RAG (Retrieval-Augmented Generation) 
+Provides long-term memory and RAG (Retrieval-Augmented Generation)
 for the agent system using ChromaDB for vector storage.
 
 Falls back gracefully if ChromaDB is not installed — the system
@@ -9,11 +9,12 @@ continues to work without vector memory, just without RAG.
 
 Usage:
     from vector_memory import VectorMemory
-    
+
     memory = VectorMemory()
     await memory.store("project_123", "agent_output", {"code": "..."}, {"agent": "Frontend"})
     results = await memory.search("project_123", "responsive navbar component", top_k=5)
 """
+
 import json
 import logging
 import hashlib
@@ -27,6 +28,7 @@ _chroma_available = False
 try:
     import chromadb
     from chromadb.config import Settings
+
     _chroma_available = True
     logger.info("✅ ChromaDB available — vector memory enabled")
 except ImportError:
@@ -52,13 +54,17 @@ class VectorMemory:
             return False
         if self._client is None:
             try:
-                self._client = chromadb.Client(Settings(
-                    chroma_db_impl="duckdb+parquet",
-                    persist_directory=self._persist_dir,
-                    anonymized_telemetry=False,
-                ))
+                self._client = chromadb.Client(
+                    Settings(
+                        chroma_db_impl="duckdb+parquet",
+                        persist_directory=self._persist_dir,
+                        anonymized_telemetry=False,
+                    )
+                )
                 self._initialized = True
-                logger.info(f"✅ ChromaDB client initialized (persist: {self._persist_dir})")
+                logger.info(
+                    f"✅ ChromaDB client initialized (persist: {self._persist_dir})"
+                )
             except Exception as e:
                 logger.error(f"❌ ChromaDB init failed: {e}")
                 return False
@@ -82,13 +88,13 @@ class VectorMemory:
     ) -> Optional[str]:
         """
         Store content in vector memory.
-        
+
         Args:
             project_id: Project identifier
             content_type: Type of content (agent_output, code_snippet, project_context)
             content: The content to store
             metadata: Additional metadata
-            
+
         Returns:
             Document ID if stored, None if ChromaDB unavailable
         """
@@ -97,14 +103,14 @@ class VectorMemory:
 
         try:
             collection = self._get_collection(f"crucibai_{content_type}")
-            
+
             # Generate document text from content
             doc_text = self._content_to_text(content)
             if not doc_text or len(doc_text) < 10:
                 return None
 
             doc_id = self._generate_id(project_id, doc_text)
-            
+
             meta = {
                 "project_id": project_id,
                 "content_type": content_type,
@@ -112,14 +118,17 @@ class VectorMemory:
                 **(metadata or {}),
             }
             # ChromaDB metadata values must be str, int, float, or bool
-            meta = {k: str(v) if not isinstance(v, (str, int, float, bool)) else v for k, v in meta.items()}
+            meta = {
+                k: str(v) if not isinstance(v, (str, int, float, bool)) else v
+                for k, v in meta.items()
+            }
 
             collection.upsert(
                 documents=[doc_text[:8000]],  # ChromaDB has document size limits
                 metadatas=[meta],
                 ids=[doc_id],
             )
-            
+
             logger.debug(f"Stored in vector memory: {content_type}/{doc_id[:12]}...")
             return doc_id
 
@@ -136,13 +145,13 @@ class VectorMemory:
     ) -> List[Dict[str, Any]]:
         """
         Search vector memory for relevant content.
-        
+
         Args:
             project_id: Project to search within (or None for global)
             query: Search query text
             content_type: Type of content to search
             top_k: Number of results to return
-            
+
         Returns:
             List of matching documents with scores
         """
@@ -151,9 +160,9 @@ class VectorMemory:
 
         try:
             collection = self._get_collection(f"crucibai_{content_type}")
-            
+
             where_filter = {"project_id": project_id} if project_id else None
-            
+
             results = collection.query(
                 query_texts=[query],
                 n_results=top_k,
@@ -163,12 +172,22 @@ class VectorMemory:
             documents = []
             if results and results.get("documents"):
                 for i, doc in enumerate(results["documents"][0]):
-                    documents.append({
-                        "content": doc,
-                        "metadata": results["metadatas"][0][i] if results.get("metadatas") else {},
-                        "distance": results["distances"][0][i] if results.get("distances") else 0,
-                        "id": results["ids"][0][i] if results.get("ids") else "",
-                    })
+                    documents.append(
+                        {
+                            "content": doc,
+                            "metadata": (
+                                results["metadatas"][0][i]
+                                if results.get("metadatas")
+                                else {}
+                            ),
+                            "distance": (
+                                results["distances"][0][i]
+                                if results.get("distances")
+                                else 0
+                            ),
+                            "id": results["ids"][0][i] if results.get("ids") else "",
+                        }
+                    )
 
             return documents
 
@@ -186,7 +205,7 @@ class VectorMemory:
         """
         Get relevant context from vector memory for an agent.
         Used to enhance agent prompts with historical knowledge.
-        
+
         Returns:
             Context string to prepend to agent prompt, or empty string
         """
@@ -202,12 +221,18 @@ class VectorMemory:
         context_parts = []
         for r in results:
             if r.get("distance", 1) < 0.5:  # Only include relevant results
-                context_parts.append(f"[Previous: {r['metadata'].get('agent_name', 'unknown')}]\n{r['content'][:500]}")
+                context_parts.append(
+                    f"[Previous: {r['metadata'].get('agent_name', 'unknown')}]\n{r['content'][:500]}"
+                )
 
         if not context_parts:
             return ""
 
-        return f"\n--- RELEVANT CONTEXT FROM MEMORY ---\n" + "\n---\n".join(context_parts) + "\n--- END CONTEXT ---\n"
+        return (
+            f"\n--- RELEVANT CONTEXT FROM MEMORY ---\n"
+            + "\n---\n".join(context_parts)
+            + "\n--- END CONTEXT ---\n"
+        )
 
     async def store_agent_output(
         self,

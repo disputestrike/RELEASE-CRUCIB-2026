@@ -7,6 +7,7 @@ This module gives CrucibAI a real repair pass instead of blind retries:
 - apply deterministic repairs for common Python / JSON failures
 - optionally use an LLM repair callback when deterministic repair is not enough
 """
+
 from __future__ import annotations
 
 import ast
@@ -79,15 +80,31 @@ def _infer_language(agent_name: str, output: Any, file_path: str = "") -> str:
     agent_low = (agent_name or "").lower()
 
     if any(token in agent_low for token in ("ml ", "backend", "inference", "training")):
-        if any(cue in text for cue in ("def ", "async def ", "class ", "import ", "from ", "@app.", "return ")):
+        if any(
+            cue in text
+            for cue in (
+                "def ",
+                "async def ",
+                "class ",
+                "import ",
+                "from ",
+                "@app.",
+                "return ",
+            )
+        ):
             return "python"
     if low.startswith("{") or low.startswith("["):
         return "json"
     if re.search(r"^\s*(async\s+def|def|class)\s+\w+", text, re.MULTILINE):
         return "python"
-    if any(cue in text for cue in ("export default", "const ", "let ", "function ", "import React")):
+    if any(
+        cue in text
+        for cue in ("export default", "const ", "let ", "function ", "import React")
+    ):
         return "javascript"
-    if any(cue in low for cue in ("create table", "insert into", "alter table", "select ")):
+    if any(
+        cue in low for cue in ("create table", "insert into", "alter table", "select ")
+    ):
         return "sql"
     if yaml and re.search(r"^\s*[A-Za-z0-9_-]+\s*:\s*", text, re.MULTILINE):
         return "yaml"
@@ -122,7 +139,9 @@ def _validate_yaml(code: str) -> Tuple[bool, str]:
         return False, str(exc)
 
 
-def validate_output(agent_name: str, output: Any, file_path: str = "") -> Tuple[bool, str, str, str]:
+def validate_output(
+    agent_name: str, output: Any, file_path: str = ""
+) -> Tuple[bool, str, str, str]:
     text = _extract_largest_code_block(coerce_text_output(output))
     language = _infer_language(agent_name, text, file_path=file_path)
     if language == "python":
@@ -289,7 +308,9 @@ class CodeRepairAgent:
     )
 
     @classmethod
-    def requires_validation(cls, agent_name: str, output: Any = "", file_path: str = "") -> bool:
+    def requires_validation(
+        cls, agent_name: str, output: Any = "", file_path: str = ""
+    ) -> bool:
         if agent_name in cls.VALIDATED_AGENT_NAMES:
             return True
         language = _infer_language(agent_name, output, file_path=file_path)
@@ -305,7 +326,9 @@ class CodeRepairAgent:
         error_message: str = "",
         llm_repair: Optional[RepairCallback] = None,
     ) -> Dict[str, Any]:
-        ok, err, language, text = validate_output(agent_name, output, file_path=file_path)
+        ok, err, language, text = validate_output(
+            agent_name, output, file_path=file_path
+        )
         if ok:
             return {
                 "valid": True,
@@ -329,7 +352,9 @@ class CodeRepairAgent:
         if llm_repair is not None and language in {"python", "json", "yaml"}:
             fixed = await llm_repair(agent_name, language, text, error_message or err)
             fixed_text = _extract_largest_code_block(coerce_text_output(fixed))
-            valid_after, err_after, _, _ = validate_output(agent_name, fixed_text, file_path=file_path)
+            valid_after, err_after, _, _ = validate_output(
+                agent_name, fixed_text, file_path=file_path
+            )
             if valid_after:
                 return {
                     "valid": True,
@@ -386,7 +411,11 @@ class CodeRepairAgent:
                 error_message=issue_text,
                 llm_repair=llm_repair,
             )
-            if repaired.get("valid") and repaired.get("repaired") and repaired.get("output") != original:
+            if (
+                repaired.get("valid")
+                and repaired.get("repaired")
+                and repaired.get("output") != original
+            ):
                 try:
                     target.write_text(repaired["output"], encoding="utf-8")
                     changed.append(norm)

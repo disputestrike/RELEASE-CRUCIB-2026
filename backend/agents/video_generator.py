@@ -2,6 +2,7 @@
 Video placeholders via Pexels API. Finds relevant stock videos for app hero/feature sections.
 Legal: Pexels content is free to use; we only search and return URLs per their API terms.
 """
+
 import os
 from agents.base_agent import BaseAgent
 import logging
@@ -21,10 +22,15 @@ async def find_video(query: str) -> Optional[str]:
         return None
     try:
         import httpx
+
         async with httpx.AsyncClient(timeout=15.0) as client:
             r = await client.get(
                 PEXELS_VIDEO_SEARCH,
-                params={"query": query.strip()[:200], "per_page": 1, "orientation": "landscape"},
+                params={
+                    "query": query.strip()[:200],
+                    "per_page": 1,
+                    "orientation": "landscape",
+                },
                 headers={"Authorization": PEXELS_API_KEY},
             )
             r.raise_for_status()
@@ -52,6 +58,7 @@ async def find_video(query: str) -> Optional[str]:
 def parse_video_queries(llm_output: str) -> Dict[str, str]:
     """Parse LLM JSON to get hero and feature video search queries."""
     import json
+
     text = (llm_output or "").strip()
     if not text:
         return {}
@@ -63,12 +70,18 @@ def parse_video_queries(llm_output: str) -> Dict[str, str]:
         data = json.loads(text)
         if not isinstance(data, dict):
             return {}
-        return {k: (v if isinstance(v, str) else str(v)) for k, v in data.items() if isinstance(v, str) and v.strip()}
+        return {
+            k: (v if isinstance(v, str) else str(v))
+            for k, v in data.items()
+            if isinstance(v, str) and v.strip()
+        }
     except json.JSONDecodeError:
         return {}
 
 
-async def generate_videos_for_app(design_description: str, queries_dict: Optional[Dict[str, str]] = None) -> Dict[str, str]:
+async def generate_videos_for_app(
+    design_description: str, queries_dict: Optional[Dict[str, str]] = None
+) -> Dict[str, str]:
     """
     Find stock videos for an app. Returns {"hero": "url", "feature": "url"} (keys missing if not found).
     """

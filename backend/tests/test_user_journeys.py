@@ -2,6 +2,7 @@
 Layer 4: USER JOURNEY TEST
 Complete workflows: signup -> use app -> tokens.
 """
+
 import pytest
 from conftest import register_and_get_headers
 

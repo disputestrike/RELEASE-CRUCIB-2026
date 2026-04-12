@@ -2,6 +2,7 @@
 Layer 2: WEBHOOK & EVENT FLOW TEST
 Verify async flows: project creation, token deduction, Stripe webhook handling.
 """
+
 import pytest
 from unittest.mock import AsyncMock, patch
 
@@ -28,11 +29,16 @@ async def test_project_creation_returns_and_deduction(app_client):
         timeout=15,
     )
     assert r.status_code not in (402, 403), r.text
-    assert r.status_code in (200, 201), f"Expected 200/201, got {r.status_code} {r.text[:300]}"
+    assert r.status_code in (
+        200,
+        201,
+    ), f"Expected 200/201, got {r.status_code} {r.text[:300]}"
     data = r.json()
     project = data.get("project") or data
     assert "id" in project
-    assert project.get("status") in ("queued", "running", None) or "status" not in project
+    assert (
+        project.get("status") in ("queued", "running", None) or "status" not in project
+    )
 
     r_me_after = await app_client.get("/api/auth/me", headers=auth_headers, timeout=5)
     assert r_me_after.status_code == 200
@@ -50,7 +56,10 @@ async def test_stripe_webhook_rejects_invalid_signature(app_client):
         timeout=5,
     )
     # 400 when Stripe is configured and signature invalid; 503 when Stripe not configured
-    assert r.status_code in (400, 503), f"Webhook should reject invalid signature or be unavailable: {r.status_code}"
+    assert r.status_code in (
+        400,
+        503,
+    ), f"Webhook should reject invalid signature or be unavailable: {r.status_code}"
 
 
 @pytest.mark.asyncio
@@ -69,7 +78,9 @@ async def test_build_plan_returns_structure(app_client):
             return llm_returns.pop(0)
         return ("Plan\nLet me build this now.", 10)
 
-    with patch.object(server_mod, "_call_llm_with_fallback", new=AsyncMock(side_effect=_fake_llm)):
+    with patch.object(
+        server_mod, "_call_llm_with_fallback", new=AsyncMock(side_effect=_fake_llm)
+    ):
         r = await app_client.post(
             "/api/build/plan",
             json={"prompt": "A landing page for a coffee shop"},
@@ -78,4 +89,9 @@ async def test_build_plan_returns_structure(app_client):
         )
     assert r.status_code == 200, f"build/plan: {r.status_code} {r.text[:200]}"
     data = r.json()
-    assert "plan_text" in data or "plan" in data or "suggestions" in data or "message" in data
+    assert (
+        "plan_text" in data
+        or "plan" in data
+        or "suggestions" in data
+        or "message" in data
+    )

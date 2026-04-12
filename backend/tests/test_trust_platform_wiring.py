@@ -1,10 +1,14 @@
 """
 Proof that trust platform pieces are wired: manifests, scoring, preflight fixes, API surface.
 """
+
 import os
 import pytest
 
-from orchestration.trust.node_manifest import enrich_plan_with_node_manifests, manifest_for_step_key
+from orchestration.trust.node_manifest import (
+    enrich_plan_with_node_manifests,
+    manifest_for_step_key,
+)
 from orchestration.trust.roadmap_wiring import roadmap_wiring_status
 from orchestration.trust.trust_scoring import compute_trust_metrics
 
@@ -43,16 +47,33 @@ def test_roadmap_wiring_status_covers_core_items():
 
 def test_compute_trust_metrics_weights():
     items = [
-        {"payload": {"verification_class": "presence"}, "proof_type": "file", "title": "a"},
-        {"payload": {"verification_class": "syntax"}, "proof_type": "compile", "title": "b"},
-        {"payload": {"verification_class": "runtime"}, "proof_type": "api", "title": "c"},
         {
-            "payload": {"verification_class": "experience", "kind": "preview_screenshot"},
+            "payload": {"verification_class": "presence"},
+            "proof_type": "file",
+            "title": "a",
+        },
+        {
+            "payload": {"verification_class": "syntax"},
+            "proof_type": "compile",
+            "title": "b",
+        },
+        {
+            "payload": {"verification_class": "runtime"},
+            "proof_type": "api",
+            "title": "c",
+        },
+        {
+            "payload": {
+                "verification_class": "experience",
+                "kind": "preview_screenshot",
+            },
             "proof_type": "verification",
             "title": "shot",
         },
     ]
-    m = compute_trust_metrics(items, has_screenshot_proof=True, has_live_deploy_url=False)
+    m = compute_trust_metrics(
+        items, has_screenshot_proof=True, has_live_deploy_url=False
+    )
     assert m["trust_score"] >= 0
     assert "class_weighted_score" in m
     assert m["truth_status"]["preview_visual_evidence"] is True

@@ -16,6 +16,7 @@ Usage (server.py startup)::
     from services.migration_runner import run_migrations_idempotent
     await run_migrations_idempotent()
 """
+
 from __future__ import annotations
 
 import logging
@@ -41,6 +42,7 @@ def _strip_leading_sql_comments(stmt: str) -> str:
 async def _get_pool():
     """Import and return the asyncpg connection pool from db_pg."""
     from db_pg import get_pg_pool  # type: ignore[import]
+
     return await get_pg_pool()
 
 
@@ -106,8 +108,7 @@ async def run_migrations_idempotent() -> None:
         return
 
     all_files = sorted(
-        f for f in _MIGRATIONS_DIR.iterdir()
-        if f.is_file() and f.suffix == ".sql"
+        f for f in _MIGRATIONS_DIR.iterdir() if f.is_file() and f.suffix == ".sql"
     )
 
     applied = await _applied_migrations(pool)

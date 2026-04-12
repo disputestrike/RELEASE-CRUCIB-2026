@@ -19,7 +19,9 @@ try:  # pragma: no cover - import style depends on PYTHONPATH
     from agents.preview_validator_agent import PreviewValidatorAgent
     from memory.vector_db import get_vector_memory
 except ImportError:  # pragma: no cover
-    from backend.agents.database_architect_agent import heuristic_schema_from_requirements
+    from backend.agents.database_architect_agent import (
+        heuristic_schema_from_requirements,
+    )
     from backend.agents.preview_validator_agent import PreviewValidatorAgent
     from backend.memory.vector_db import get_vector_memory
 
@@ -82,7 +84,9 @@ class WiredExecutor:
         enriched["design_system_prompt"] = _load_text(_DESIGN_PROMPT_PATH)
         return enriched
 
-    async def _store_memory(self, agent_name: str, result: Dict[str, Any], phase: str) -> None:
+    async def _store_memory(
+        self, agent_name: str, result: Dict[str, Any], phase: str
+    ) -> None:
         text = (
             result.get("generated_code")
             or result.get("output")
@@ -104,7 +108,9 @@ class WiredExecutor:
         except Exception:
             logger.debug("wired executor memory store failed", exc_info=True)
 
-    async def _preview_preflight(self, workspace_path: str | None) -> Dict[str, Any] | None:
+    async def _preview_preflight(
+        self, workspace_path: str | None
+    ) -> Dict[str, Any] | None:
         if not workspace_path:
             return None
         workspace = Path(workspace_path)
@@ -145,7 +151,10 @@ class WiredExecutor:
 
     async def execute_build(
         self,
-        agents_by_phase: Dict[str, Iterable[Tuple[str, Callable[[Dict[str, Any]], Awaitable[Dict[str, Any]]]]]],
+        agents_by_phase: Dict[
+            str,
+            Iterable[Tuple[str, Callable[[Dict[str, Any]], Awaitable[Dict[str, Any]]]]],
+        ],
         context: Dict[str, Any],
     ) -> Dict[str, Any]:
         start = datetime.utcnow()
@@ -156,13 +165,17 @@ class WiredExecutor:
             or ""
         )
         if requirements and not working_context.get("database_schema"):
-            working_context["database_schema"] = heuristic_schema_from_requirements(str(requirements)).dict()
+            working_context["database_schema"] = heuristic_schema_from_requirements(
+                str(requirements)
+            ).dict()
 
         results: Dict[str, Dict[str, Any]] = {}
         for phase_name, phase_agents in agents_by_phase.items():
             working_context["phase"] = phase_name
             for agent_name, agent_func in phase_agents:
-                results[agent_name] = await self.execute_agent(agent_name, agent_func, working_context)
+                results[agent_name] = await self.execute_agent(
+                    agent_name, agent_func, working_context
+                )
 
         preview = await self._preview_preflight(working_context.get("workspace_path"))
         elapsed = (datetime.utcnow() - start).total_seconds()

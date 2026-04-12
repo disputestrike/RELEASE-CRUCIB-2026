@@ -3,6 +3,7 @@ verification.rls — structural validation of multitenant RLS migration files on
 
 Live isolation is proven in tests/test_multitenancy_rls_live.py (asyncpg + real Postgres).
 """
+
 from __future__ import annotations
 
 import os
@@ -22,7 +23,11 @@ def _rls_candidate_files(migration_dir: str) -> List[str]:
         if not name.endswith(".sql"):
             continue
         nl = name.lower()
-        if MULTITENANCY_MIGRATION_FILENAME.lower() in nl or "rls" in nl or "multitenancy" in nl:
+        if (
+            MULTITENANCY_MIGRATION_FILENAME.lower() in nl
+            or "rls" in nl
+            or "multitenancy" in nl
+        ):
             out.append(name)
     return out
 
@@ -32,14 +37,21 @@ def verify_rls_workspace(workspace_path: str) -> Dict[str, Any]:
     proof: List[Dict[str, Any]] = []
 
     if not workspace_path or not os.path.isdir(workspace_path):
-        return {"passed": False, "score": 0, "issues": ["No workspace for RLS verification"], "proof": proof}
+        return {
+            "passed": False,
+            "score": 0,
+            "issues": ["No workspace for RLS verification"],
+            "proof": proof,
+        }
 
     migration_dir = os.path.join(workspace_path, "db", "migrations")
     if not os.path.isdir(migration_dir):
         return {
             "passed": False,
             "score": 0,
-            "issues": ["No db/migrations directory (expected generated multitenant RLS migration)"],
+            "issues": [
+                "No db/migrations directory (expected generated multitenant RLS migration)"
+            ],
             "proof": proof,
         }
 
@@ -78,4 +90,9 @@ def verify_rls_workspace(workspace_path: str) -> Dict[str, Any]:
             )
 
     score = 100 if not issues else max(40, 100 - len(issues) * 25)
-    return {"passed": len(issues) == 0, "score": score, "issues": issues, "proof": proof}
+    return {
+        "passed": len(issues) == 0,
+        "score": score,
+        "issues": issues,
+        "proof": proof,
+    }

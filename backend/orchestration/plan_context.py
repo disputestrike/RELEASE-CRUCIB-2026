@@ -1,4 +1,5 @@
 """Load plan-side fields (e.g. build target) for executor steps."""
+
 from __future__ import annotations
 
 import json

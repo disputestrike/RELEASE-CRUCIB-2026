@@ -13,6 +13,7 @@ Usage:
     executor = SandboxExecutor()
     result = await executor.execute("print('hello')", language="python", timeout=30)
 """
+
 import asyncio
 import subprocess
 import sys
@@ -29,16 +30,24 @@ logger = logging.getLogger(__name__)
 
 # Dangerous imports that should be blocked in sandbox
 BLOCKED_IMPORTS = {
-    "subprocess", "os.system", "shutil.rmtree", "importlib",
-    "__import__", "eval(", "exec(", "compile(",
-    "open('/etc", "open('/proc", "open('/sys",
+    "subprocess",
+    "os.system",
+    "shutil.rmtree",
+    "importlib",
+    "__import__",
+    "eval(",
+    "exec(",
+    "compile(",
+    "open('/etc",
+    "open('/proc",
+    "open('/sys",
 }
 
 # Resource limits (defaults; override in production via CRUCIBAI_SANDBOX_* — see get_sandbox_resource_limits)
-MAX_OUTPUT_SIZE = 100_000       # bytes
-MAX_FILE_SIZE = 500_000         # bytes
-MAX_MEMORY_MB = 512             # MB
-MAX_CPU_SECONDS = 30            # seconds
+MAX_OUTPUT_SIZE = 100_000  # bytes
+MAX_FILE_SIZE = 500_000  # bytes
+MAX_MEMORY_MB = 512  # MB
+MAX_CPU_SECONDS = 30  # seconds
 SANDBOX_DIR = "/tmp/crucibai_sandbox"
 
 
@@ -64,7 +73,9 @@ def get_sandbox_resource_limits() -> Dict[str, int]:
             "CRUCIBAI_SANDBOX_CPU_SECONDS", MAX_CPU_SECONDS, lo=1, hi=7200
         ),
         "max_nproc": _env_int_bounded("CRUCIBAI_SANDBOX_MAX_NPROC", 10, lo=1, hi=512),
-        "max_fsize_mb": _env_int_bounded("CRUCIBAI_SANDBOX_MAX_FSIZE_MB", 50, lo=1, hi=4096),
+        "max_fsize_mb": _env_int_bounded(
+            "CRUCIBAI_SANDBOX_MAX_FSIZE_MB", 50, lo=1, hi=4096
+        ),
     }
 
 
@@ -289,6 +300,7 @@ class SandboxExecutor:
         if language == "python":
             try:
                 import ast as _ast
+
                 _ast.parse(code)
                 return {"valid": True, "language": language, "issues": []}
             except SyntaxError as e:

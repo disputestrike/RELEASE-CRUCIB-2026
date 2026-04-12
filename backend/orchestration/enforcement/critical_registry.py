@@ -3,6 +3,7 @@ Central registry of critical software features and the proof they require.
 
 Each row is active when `in_scope(...)` matches the job goal, parsed claims, or bundle shape.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -43,7 +44,16 @@ CRITICAL_FEATURES: Tuple[CriticalFeature, ...] = (
     CriticalFeature(
         id="auth",
         name="Authentication",
-        goal_keywords=("auth", "jwt", "oauth", "login", "session", "sign in", "signin", "bearer"),
+        goal_keywords=(
+            "auth",
+            "jwt",
+            "oauth",
+            "login",
+            "session",
+            "sign in",
+            "signin",
+            "bearer",
+        ),
         claim_regex_ids=("secure_auth", "production_ready"),
         satisfying_checks=("rbac_anonymous_blocked", "rbac_escalation_blocked"),
         negative_checks=("rbac_anonymous_blocked", "invalid_token", "unauthorized"),
@@ -65,7 +75,14 @@ CRITICAL_FEATURES: Tuple[CriticalFeature, ...] = (
     CriticalFeature(
         id="tenant_isolation",
         name="Tenant isolation",
-        goal_keywords=("tenant", "multi-tenant", "multitenant", "rls", "row-level", "org isolation"),
+        goal_keywords=(
+            "tenant",
+            "multi-tenant",
+            "multitenant",
+            "rls",
+            "row-level",
+            "org isolation",
+        ),
         claim_regex_ids=("tenant_safe", "production_ready"),
         satisfying_checks=("tenancy_isolation_proven",),
         negative_checks=("tenancy_isolation_proven",),
@@ -88,7 +105,13 @@ CRITICAL_FEATURES: Tuple[CriticalFeature, ...] = (
     CriticalFeature(
         id="approval_boundary",
         name="Approval / workflow boundary",
-        goal_keywords=("approval", "sign-off", "signoff", "workflow gate", "maker checker"),
+        goal_keywords=(
+            "approval",
+            "sign-off",
+            "signoff",
+            "workflow gate",
+            "maker checker",
+        ),
         claim_regex_ids=("policy_enforced",),
         satisfying_checks=("approval", "workflow", "forbidden"),
         negative_checks=("approval_denied", "forbidden_before_approval", "403"),
@@ -99,10 +122,20 @@ CRITICAL_FEATURES: Tuple[CriticalFeature, ...] = (
     CriticalFeature(
         id="state_machine_logic",
         name="State machine / lifecycle",
-        goal_keywords=("state machine", "statemachine", "lifecycle", "status transition", "workflow state"),
+        goal_keywords=(
+            "state machine",
+            "statemachine",
+            "lifecycle",
+            "status transition",
+            "workflow state",
+        ),
         claim_regex_ids=(),
         satisfying_checks=("state_transition", "transition", "invalid_transition"),
-        negative_checks=("invalid_transition", "illegal_transition", "duplicate_terminal"),
+        negative_checks=(
+            "invalid_transition",
+            "illegal_transition",
+            "duplicate_terminal",
+        ),
         skip_signal_checks=(),
         presence_hint_substrings=("state", "transition"),
         must_have_negative_test=True,
@@ -110,9 +143,21 @@ CRITICAL_FEATURES: Tuple[CriticalFeature, ...] = (
     CriticalFeature(
         id="integration_behavior",
         name="External integration",
-        goal_keywords=("stripe", "webhook", "payment", "twilio", "sendgrid", "oauth provider", "third-party"),
+        goal_keywords=(
+            "stripe",
+            "webhook",
+            "payment",
+            "twilio",
+            "sendgrid",
+            "oauth provider",
+            "third-party",
+        ),
         claim_regex_ids=("integration_complete", "production_ready"),
-        satisfying_checks=("stripe_webhook_idempotency_proven", "webhook", "integration"),
+        satisfying_checks=(
+            "stripe_webhook_idempotency_proven",
+            "webhook",
+            "integration",
+        ),
         negative_checks=("stripe_webhook_idempotency_proven", "provider_error"),
         skip_signal_checks=("stripe_replay_skipped",),
         presence_hint_substrings=("stripe", "webhook", "integration"),
@@ -121,7 +166,16 @@ CRITICAL_FEATURES: Tuple[CriticalFeature, ...] = (
     CriticalFeature(
         id="async_jobs",
         name="Async jobs / workers",
-        goal_keywords=("celery", "rq", "sidekiq", "bullmq", "queue", "background job", "worker", "async job"),
+        goal_keywords=(
+            "celery",
+            "rq",
+            "sidekiq",
+            "bullmq",
+            "queue",
+            "background job",
+            "worker",
+            "async job",
+        ),
         claim_regex_ids=("deployment_ready",),
         satisfying_checks=("job", "worker", "duplicate", "retry"),
         negative_checks=("duplicate_terminal", "job_idempotency"),
@@ -132,7 +186,15 @@ CRITICAL_FEATURES: Tuple[CriticalFeature, ...] = (
     CriticalFeature(
         id="security_controls",
         name="Security controls",
-        goal_keywords=("encrypt", "csrf", "xss", "cipher", "aes", "security audit", "pen test"),
+        goal_keywords=(
+            "encrypt",
+            "csrf",
+            "xss",
+            "cipher",
+            "aes",
+            "security audit",
+            "pen test",
+        ),
         claim_regex_ids=("secure_auth",),
         satisfying_checks=("npm_audit", "security", "rls_syntax_valid"),
         negative_checks=(),
@@ -143,7 +205,14 @@ CRITICAL_FEATURES: Tuple[CriticalFeature, ...] = (
     CriticalFeature(
         id="analytics_truth",
         name="Analytics / telemetry truth",
-        goal_keywords=("analytics", "amplitude", "mixpanel", "segment", "telemetry", "metrics pipeline"),
+        goal_keywords=(
+            "analytics",
+            "amplitude",
+            "mixpanel",
+            "segment",
+            "telemetry",
+            "metrics pipeline",
+        ),
         claim_regex_ids=(),
         satisfying_checks=("analytics", "telemetry", "event"),
         negative_checks=(),
@@ -167,7 +236,9 @@ def feature_in_scope(
     # API surface implied by many declared routes
     if feat.id == "core_api_behavior":
         routes = bundle.get("routes") or []
-        if len(routes) >= 4 and any(x in goal_lower for x in ("app", "saas", "service", "platform")):
+        if len(routes) >= 4 and any(
+            x in goal_lower for x in ("app", "saas", "service", "platform")
+        ):
             return True
     return False
 
@@ -178,4 +249,6 @@ def matching_features(
     bundle: Dict[str, List],
 ) -> List[CriticalFeature]:
     g = (goal or "").lower()
-    return [f for f in CRITICAL_FEATURES if feature_in_scope(f, g, active_claim_ids, bundle)]
+    return [
+        f for f in CRITICAL_FEATURES if feature_in_scope(f, g, active_claim_ids, bundle)
+    ]

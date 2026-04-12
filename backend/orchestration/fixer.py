@@ -2,6 +2,7 @@
 fixer.py — Failure classifier and corrective action engine.
 Only touches the failed step's scope — never rewrites unrelated code.
 """
+
 import logging
 import os
 import re
@@ -26,12 +27,15 @@ FAILURE_TYPES = [
 MAX_RETRIES = 8
 
 
-def classify_failure(step: Dict[str, Any],
-                     verification_result: Dict[str, Any],
-                     error_log: Optional[str] = None) -> str:
+def classify_failure(
+    step: Dict[str, Any],
+    verification_result: Dict[str, Any],
+    error_log: Optional[str] = None,
+) -> str:
     """Classify the failure type using the diagnostic agent brain."""
     try:
         from .diagnostic_agent import diagnose
+
         diagnosis = diagnose(step, verification_result, error_log)
         failure_class = diagnosis.get("failure_class", "unknown")
         # Map diagnostic classes to legacy fixer types
@@ -69,13 +73,21 @@ def classify_failure(step: Dict[str, Any],
         ]
     ):
         return "integration_error"
-    if any(k in combined for k in ["syntax", "syntaxerror", "py_compile", "node --check"]):
+    if any(
+        k in combined for k in ["syntax", "syntaxerror", "py_compile", "node --check"]
+    ):
         return "syntax_error"
     if any(k in combined for k in ["compile", "build failed", "tsc", "webpack"]):
         return "compile_error"
-    if any(k in combined for k in ["table not found", "relation does not exist", "migration"]):
+    if any(
+        k in combined
+        for k in ["table not found", "relation does not exist", "migration"]
+    ):
         return "db_error"
-    if any(k in combined for k in ["404", "route not found", "no handler", "missing endpoint"]):
+    if any(
+        k in combined
+        for k in ["404", "route not found", "no handler", "missing endpoint"]
+    ):
         return "api_contract_error"
     if any(
         k in combined
@@ -91,7 +103,10 @@ def classify_failure(step: Dict[str, Any],
         )
     ):
         return "verification_error"
-    if any(k in combined for k in ["stripe", "openai", "anthropic", "api key", "integration"]):
+    if any(
+        k in combined
+        for k in ["stripe", "openai", "anthropic", "api key", "integration"]
+    ):
         return "integration_error"
     if any(k in combined for k in ["file missing", "not found", "no such file"]):
         return "missing_file"
@@ -100,9 +115,12 @@ def classify_failure(step: Dict[str, Any],
     return "unknown"
 
 
-def build_retry_plan(failure_type: str, step: Dict[str, Any],
-                     verification_result: Dict[str, Any],
-                     error_log: Optional[str] = None) -> Dict[str, Any]:
+def build_retry_plan(
+    failure_type: str,
+    step: Dict[str, Any],
+    verification_result: Dict[str, Any],
+    error_log: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     Return a structured retry plan with corrective actions.
     Uses diagnostic_agent for precise root cause and targeted repair actions.
@@ -114,6 +132,7 @@ def build_retry_plan(failure_type: str, step: Dict[str, Any],
     precise_diagnosis = None
     try:
         from .diagnostic_agent import diagnose
+
         precise_diagnosis = diagnose(step, verification_result, error_log)
     except Exception as e:
         logger.warning("diagnostic_agent unavailable: %s", e)
@@ -207,9 +226,17 @@ def build_retry_plan(failure_type: str, step: Dict[str, Any],
         "can_auto_retry": step.get("retry_count", 0) < MAX_RETRIES,
         "retry_number": step.get("retry_count", 0) + 1,
         "diagnosis": precise_diagnosis,
-        "fix_strategy": precise_diagnosis.get("fix_strategy") if precise_diagnosis else "conservative_patch",
-        "specific_file": precise_diagnosis.get("specific_file") if precise_diagnosis else None,
-        "specific_line": precise_diagnosis.get("specific_line") if precise_diagnosis else None,
+        "fix_strategy": (
+            precise_diagnosis.get("fix_strategy")
+            if precise_diagnosis
+            else "conservative_patch"
+        ),
+        "specific_file": (
+            precise_diagnosis.get("specific_file") if precise_diagnosis else None
+        ),
+        "specific_line": (
+            precise_diagnosis.get("specific_line") if precise_diagnosis else None
+        ),
     }
 
 
@@ -264,8 +291,9 @@ def try_deterministic_verification_fix(
     return [rel_posix]
 
 
-async def apply_fix(step: Dict[str, Any], retry_plan: Dict[str, Any],
-                    llm_call=None) -> Dict[str, Any]:
+async def apply_fix(
+    step: Dict[str, Any], retry_plan: Dict[str, Any], llm_call=None
+) -> Dict[str, Any]:
     """
     Apply corrective action for the step.
     Returns {success: bool, changes_made: list, notes: str}
@@ -275,8 +303,12 @@ async def apply_fix(step: Dict[str, Any], retry_plan: Dict[str, Any],
     scope = retry_plan["scope"]
     changes = []
 
-    logger.info("fixer: applying %s fix for step %s (attempt %d)",
-                failure_type, step.get("step_key"), retry_plan["retry_number"])
+    logger.info(
+        "fixer: applying %s fix for step %s (attempt %d)",
+        failure_type,
+        step.get("step_key"),
+        retry_plan["retry_number"],
+    )
 
     # For now: record the intent and let the auto_runner's LLM step handle regeneration
     # In production this would call the specific agent to re-generate only the affected scope

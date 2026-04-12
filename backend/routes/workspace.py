@@ -4,6 +4,7 @@ Workspace routes — file access, preview, and deploy for project workspaces.
 All operations resolve from authenticated project_id or job_id.
 Raw server paths are never accepted from clients.
 """
+
 import logging
 import os
 import zipfile
@@ -21,14 +22,17 @@ router = APIRouter(prefix="/api", tags=["workspace"])
 
 # ── Dependency helpers ────────────────────────────────────────────────────────
 
+
 def _get_auth():
     """Import auth dep lazily to avoid circular imports."""
     from server import get_current_user
+
     return get_current_user
 
 
 def _workspace_root() -> Path:
     from server import ROOT_DIR
+
     return Path(ROOT_DIR) / "workspace"
 
 
@@ -50,6 +54,7 @@ async def _assert_project_access(project_id: str, user: dict) -> Path:
     """Verify user owns project and return workspace path."""
     try:
         from server import _user_can_access_project_workspace
+
         ok = await _user_can_access_project_workspace(user.get("id"), project_id)
         if not ok:
             raise HTTPException(status_code=403, detail="Access denied")
@@ -63,6 +68,7 @@ async def _assert_job_access(job_id: str, user: dict) -> Path:
     try:
         from server import _get_orchestration, _assert_job_owner_match
         from db_pg import get_pg_pool
+
         runtime_state, *_ = _get_orchestration()
         pool = await get_pg_pool()
         runtime_state.set_pool(pool)
@@ -77,6 +83,7 @@ async def _assert_job_access(job_id: str, user: dict) -> Path:
 
 
 # ── Project workspace file routes ─────────────────────────────────────────────
+
 
 @router.get("/projects/{project_id}/workspace/files")
 async def list_project_workspace_files(
@@ -95,11 +102,27 @@ async def list_project_workspace_files(
         for name in filenames:
             full = Path(root) / name
             rel = str(full.relative_to(workspace)).replace("\\", "/")
-            files.append({
-                "path": rel,
-                "size": full.stat().st_size,
-                "is_code": name.endswith((".jsx", ".tsx", ".js", ".ts", ".py", ".css", ".json", ".sql", ".md", ".yaml", ".yml")),
-            })
+            files.append(
+                {
+                    "path": rel,
+                    "size": full.stat().st_size,
+                    "is_code": name.endswith(
+                        (
+                            ".jsx",
+                            ".tsx",
+                            ".js",
+                            ".ts",
+                            ".py",
+                            ".css",
+                            ".json",
+                            ".sql",
+                            ".md",
+                            ".yaml",
+                            ".yml",
+                        )
+                    ),
+                }
+            )
 
     return {"files": files, "project_id": project_id, "count": len(files)}
 
@@ -130,6 +153,7 @@ async def get_project_workspace_file(
 
 
 # ── Job workspace file routes ──────────────────────────────────────────────────
+
 
 @router.get("/jobs/{job_id}/workspace/files")
 async def list_job_workspace_files(
@@ -168,12 +192,18 @@ async def get_job_workspace_file(
 
     try:
         content = full_path.read_text(encoding="utf-8", errors="replace")
-        return {"path": path, "content": content, "size": len(content), "job_id": job_id}
+        return {
+            "path": path,
+            "content": content,
+            "size": len(content),
+            "job_id": job_id,
+        }
     except OSError as e:
         raise HTTPException(status_code=500, detail=f"Cannot read file: {e}")
 
 
 # ── Deploy / export routes ─────────────────────────────────────────────────────
+
 
 @router.get("/projects/{project_id}/deploy/zip")
 async def get_project_deploy_zip(

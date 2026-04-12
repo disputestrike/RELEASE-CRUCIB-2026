@@ -10,7 +10,6 @@ from benchmarks.repeatability_scorecard import (
     run_benchmark,
 )
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SUITE = ROOT / "benchmarks" / "repeatability_prompts_v1.json"
 
@@ -22,9 +21,17 @@ def test_repeatability_prompt_suite_has_first_fifty_categories():
     assert suite["version"] == BENCHMARK_VERSION
     assert len(cases) == 50
     assert len({case.id for case in cases}) == 50
-    assert {"saas", "marketplace", "automation", "byoc", "marketing", "healthcare", "finance", "legal", "civic"}.issubset(
-        {case.category for case in cases}
-    )
+    assert {
+        "saas",
+        "marketplace",
+        "automation",
+        "byoc",
+        "marketing",
+        "healthcare",
+        "finance",
+        "legal",
+        "civic",
+    }.issubset({case.category for case in cases})
     assert all(case.goal and case.required_terms for case in cases)
 
 
@@ -49,9 +56,13 @@ async def test_repeatability_benchmark_writes_passing_scorecard(tmp_path, monkey
     assert (tmp_path / "repeatability" / "summary.json").is_file()
     assert (tmp_path / "repeatability" / "PASS_FAIL.md").is_file()
     assert (tmp_path / "repeatability" / "cases" / "saas_dashboard.json").is_file()
-    assert (tmp_path / "repeatability" / "workspaces" / "saas_dashboard" / "package.json").is_file()
+    assert (
+        tmp_path / "repeatability" / "workspaces" / "saas_dashboard" / "package.json"
+    ).is_file()
 
-    case_data = json.loads((tmp_path / "repeatability" / "cases" / "workflow_automation.json").read_text())
+    case_data = json.loads(
+        (tmp_path / "repeatability" / "cases" / "workflow_automation.json").read_text()
+    )
     assert case_data["stages"]["preview"]["passed"] is True
     assert case_data["stages"]["elite_proof"]["passed"] is True
     assert case_data["stages"]["deploy_build"]["passed"] is True

@@ -10,6 +10,7 @@ Usage (from repo root):
   cd backend && set PYTHONPATH=. && python scripts/audit_agent_dag.py
   cd backend && PYTHONPATH=. python scripts/audit_agent_dag.py --check
 """
+
 from __future__ import annotations
 
 import argparse
@@ -69,14 +70,20 @@ def _automation_kw(name: str) -> bool:
         or "workflow" in n
         or "queue agent" in n
         or "cron" in n
-        or "schedule" in n and "agent" in n
+        or "schedule" in n
+        and "agent" in n
     )
 
 
 def _validation_family(name: str) -> bool:
     if name in POST_STEP_AGENTS:
         return True
-    if name in ("Code Review Agent", "Bundle Analyzer Agent", "Lighthouse Agent", "Dependency Audit Agent"):
+    if name in (
+        "Code Review Agent",
+        "Bundle Analyzer Agent",
+        "Lighthouse Agent",
+        "Dependency Audit Agent",
+    ):
         return True
     if "proof" in name.lower() and "agent" in name.lower():
         return True
@@ -114,7 +121,9 @@ def _notes(name: str, group: str) -> str:
     if name in POST_STEP_AGENTS:
         bits.append("post_step_scan=1")
     if group == "not_fully_integrated_agent":
-        bits.append("no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior")
+        bits.append(
+            "no ARTIFACT_PATHS/STATE_WRITERS/primary wiring in agent_real_behavior"
+        )
     return "; ".join(bits) if bits else ""
 
 

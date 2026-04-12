@@ -6,6 +6,7 @@ Runs: pricing verification, backend pytest (auth, orchestration, security, chaos
 Run from repo root: python backend/scripts/run_critical_suite.py
 Or from backend: python scripts/run_critical_suite.py (REPO_ROOT inferred).
 """
+
 import json
 import os
 import re
@@ -63,7 +64,10 @@ def run_pricing_verification():
     print("1. PRICING VERIFICATION")
     print("=" * 60)
     code, out, err = _run(
-        [sys.executable, os.path.join(BACKEND, "scripts", "run_pricing_verification.py")],
+        [
+            sys.executable,
+            os.path.join(BACKEND, "scripts", "run_pricing_verification.py"),
+        ],
         cwd=BACKEND,
         timeout=120,
     )
@@ -71,12 +75,18 @@ def run_pricing_verification():
         print(out)
     if err:
         print(err, file=sys.stderr)
-    return {"ok": code == 0, "exit_code": code, "output_tail": (out + "\n" + err)[-1500:]}
+    return {
+        "ok": code == 0,
+        "exit_code": code,
+        "output_tail": (out + "\n" + err)[-1500:],
+    }
 
 
 def run_backend_critical_pytest():
     print("=" * 60)
-    print("2. BACKEND CRITICAL PYTEST (auth, orchestration, security, chaos, load, gaps, edge)")
+    print(
+        "2. BACKEND CRITICAL PYTEST (auth, orchestration, security, chaos, load, gaps, edge)"
+    )
     print("=" * 60)
     tests = [
         "tests/test_pricing_alignment.py",
@@ -114,7 +124,12 @@ def run_frontend_tests():
     print("=" * 60)
     frontend = os.path.join(REPO_ROOT, "frontend")
     if not os.path.isdir(frontend):
-        return {"ok": False, "exit_code": -1, "output_tail": "frontend/ not found", "summary": {}}
+        return {
+            "ok": False,
+            "exit_code": -1,
+            "output_tail": "frontend/ not found",
+            "summary": {},
+        }
     # On Windows npm may be npm.cmd; use shell so PATH is respected
     cmd = "npm test -- --watchAll=false --no-cache --passWithNoTests"
     try:
@@ -127,11 +142,25 @@ def run_frontend_tests():
             env=TEST_ENV,
             shell=True,
         )
-        code, out, err = r.returncode, (r.stdout or "").strip(), (r.stderr or "").strip()
+        code, out, err = (
+            r.returncode,
+            (r.stdout or "").strip(),
+            (r.stderr or "").strip(),
+        )
     except FileNotFoundError:
-        return {"ok": False, "exit_code": -1, "output_tail": "npm not found in PATH", "summary": {}}
+        return {
+            "ok": False,
+            "exit_code": -1,
+            "output_tail": "npm not found in PATH",
+            "summary": {},
+        }
     except subprocess.TimeoutExpired:
-        return {"ok": False, "exit_code": -1, "output_tail": "Frontend tests timed out", "summary": {}}
+        return {
+            "ok": False,
+            "exit_code": -1,
+            "output_tail": "Frontend tests timed out",
+            "summary": {},
+        }
     if out:
         print(out)
     if err:
@@ -171,8 +200,16 @@ def main():
     print("\n" + "=" * 60)
     print("REPORT WRITTEN:", RESULTS_JSON)
     print("Pricing:", "PASS" if results["pricing"]["ok"] else "FAIL")
-    print("Backend pytest:", "PASS" if results["backend_pytest"]["ok"] else "FAIL", results["backend_pytest"].get("summary", {}))
-    print("Frontend:", "PASS" if results["frontend"]["ok"] else "FAIL", results["frontend"].get("summary", {}))
+    print(
+        "Backend pytest:",
+        "PASS" if results["backend_pytest"]["ok"] else "FAIL",
+        results["backend_pytest"].get("summary", {}),
+    )
+    print(
+        "Frontend:",
+        "PASS" if results["frontend"]["ok"] else "FAIL",
+        results["frontend"].get("summary", {}),
+    )
     print("OVERALL:", "ALL GREEN" if results["overall_ok"] else "SOME FAILURES")
     print("=" * 60)
     return 0 if results["overall_ok"] else 1

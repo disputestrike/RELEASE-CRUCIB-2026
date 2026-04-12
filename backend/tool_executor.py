@@ -10,6 +10,7 @@ Central execute_tool(project_id, tool_name, params) for all agents.
 Auth: execute_tool is only invoked from orchestration paths that require get_current_user
 and project ownership (server verifies project belongs to user before running build).
 """
+
 import logging
 import os
 import subprocess
@@ -23,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 # Commands allowed for execute_tool(..., "run", { "command": [...], "cwd": "optional relative path" })
 RUN_ALLOWLIST = [
-    (["python", "-m", "pytest"], True),   # prefix match
+    (["python", "-m", "pytest"], True),  # prefix match
     (["npm", "test"], True),
     (["npm", "run", "test"], True),
     (["npx", "jest"], True),
@@ -109,12 +110,20 @@ def execute_tool(
             p = _resolve_under_workspace(workspace, path)
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(content, encoding="utf-8")
-            return {"success": True, "path": str(p), "bytes": len(content.encode("utf-8"))}
+            return {
+                "success": True,
+                "path": str(p),
+                "bytes": len(content.encode("utf-8")),
+            }
         elif action == "read":
             p = _resolve_under_workspace(workspace, path)
             if not p.exists():
                 return {"success": False, "error": "File not found"}
-            return {"success": True, "content": p.read_text(encoding="utf-8"), "path": str(p)}
+            return {
+                "success": True,
+                "content": p.read_text(encoding="utf-8"),
+                "path": str(p),
+            }
         elif action == "list":
             p = _resolve_under_workspace(workspace, path)
             if not p.is_dir():
@@ -140,19 +149,29 @@ def execute_tool(
             if not cwd.is_dir():
                 cwd = workspace
         # Sandbox by default (Docker when available). Set RUN_IN_SANDBOX=0 to disable.
-        run_in_sandbox = os.environ.get("RUN_IN_SANDBOX", "1").strip().lower() in ("1", "true", "yes")
+        run_in_sandbox = os.environ.get("RUN_IN_SANDBOX", "1").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+        )
         if run_in_sandbox:
             try:
                 # Isolated run in Docker (Manus-style). Pick image from command.
                 first = (cmd[0] or "").lower()
-                if first == "python" or (len(cmd) > 1 and (cmd[1] or "").lower() == "bandit"):
+                if first == "python" or (
+                    len(cmd) > 1 and (cmd[1] or "").lower() == "bandit"
+                ):
                     image = "python:3.11-slim"
                 else:
                     image = "node:20-slim"
                 docker_cmd = [
-                    "docker", "run", "--rm",
-                    "-v", f"{workspace.resolve()}:/.app",
-                    "-w", "/.app",
+                    "docker",
+                    "run",
+                    "--rm",
+                    "-v",
+                    f"{workspace.resolve()}:/.app",
+                    "-w",
+                    "/.app",
                     image,
                 ] + cmd
                 proc = subprocess.run(
@@ -164,12 +183,22 @@ def execute_tool(
                     errors="replace",
                 )
                 out = (proc.stdout or "") + (proc.stderr or "")
-                return {"success": proc.returncode == 0, "returncode": proc.returncode, "output": out[:50000], "sandbox": True}
+                return {
+                    "success": proc.returncode == 0,
+                    "returncode": proc.returncode,
+                    "output": out[:50000],
+                    "sandbox": True,
+                }
             except FileNotFoundError:
                 logger.warning("Docker not found; falling back to local run")
                 run_in_sandbox = False
             except subprocess.TimeoutExpired:
-                return {"success": False, "error": "timeout", "output": "", "sandbox": True}
+                return {
+                    "success": False,
+                    "error": "timeout",
+                    "output": "",
+                    "sandbox": True,
+                }
             except Exception as e:
                 logger.warning("Sandbox run failed: %s", e)
                 run_in_sandbox = False
@@ -201,7 +230,10 @@ def execute_tool(
             return {"success": False, "error": "URL not allowed (SSRF safety)"}
         try:
             import urllib.request
-            req = urllib.request.Request(url, headers={"User-Agent": "CrucibAI-Tool/1.0"})
+
+            req = urllib.request.Request(
+                url, headers={"User-Agent": "CrucibAI-Tool/1.0"}
+            )
             with urllib.request.urlopen(req, timeout=15) as r:
                 body = r.read().decode("utf-8", errors="replace")[:100000]
             return {"success": True, "status": r.status, "body": body}
@@ -215,7 +247,10 @@ def execute_tool(
         # Sync fetch only (no Playwright) to avoid async in execute_tool
         try:
             import urllib.request
-            req = urllib.request.Request(url, headers={"User-Agent": "CrucibAI-Browser/1.0"})
+
+            req = urllib.request.Request(
+                url, headers={"User-Agent": "CrucibAI-Browser/1.0"}
+            )
             with urllib.request.urlopen(req, timeout=15) as r:
                 body = r.read().decode("utf-8", errors="replace")[:50000]
             return {"success": True, "body_preview": body[:2000]}
@@ -235,6 +270,7 @@ def execute_tool(
                 return {"success": False, "error": "Only SELECT allowed"}
             try:
                 import sqlite3
+
                 conn = sqlite3.connect(str(db_file))
                 cur = conn.execute(sql)
                 rows = cur.fetchall()

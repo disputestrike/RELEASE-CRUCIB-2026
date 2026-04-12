@@ -1,4 +1,5 @@
 """Credit usage idempotency (fifty-point #17)."""
+
 import pytest
 
 from credit_tracker import CreditTracker
@@ -92,7 +93,9 @@ async def test_duplicate_insert_race_returns_replay():
             return None
 
         async def insert_one(self, doc):
-            raise Exception("E11000 duplicate key error collection: usage_log index: _id_")
+            raise Exception(
+                "E11000 duplicate key error collection: usage_log index: _id_"
+            )
 
     db = _FakeDB()
     db.usage_log = _StaleFindDupInsert()

@@ -3,6 +3,7 @@ Layer 3.1 – API endpoint contract tests.
 Uses real app via AsyncClient (no separate server, no mocks).
 Verifies response status codes and response shape for critical endpoints.
 """
+
 import pytest
 
 
@@ -41,14 +42,20 @@ class TestVoiceTranscribeContract:
         r = await app_client.post("/api/voice/transcribe", timeout=10)
         assert r.status_code == 401
 
-    async def test_voice_transcribe_with_empty_file_returns_401_without_auth(self, app_client):
+    async def test_voice_transcribe_with_empty_file_returns_401_without_auth(
+        self, app_client
+    ):
         files = {"audio": ("empty.webm", b"", "audio/webm")}
         r = await app_client.post("/api/voice/transcribe", files=files, timeout=10)
         assert r.status_code == 401
 
-    async def test_voice_transcribe_with_empty_file_returns_400_or_503_with_auth(self, app_client, auth_headers):
+    async def test_voice_transcribe_with_empty_file_returns_400_or_503_with_auth(
+        self, app_client, auth_headers
+    ):
         files = {"audio": ("empty.webm", b"", "audio/webm")}
-        r = await app_client.post("/api/voice/transcribe", files=files, headers=auth_headers, timeout=10)
+        r = await app_client.post(
+            "/api/voice/transcribe", files=files, headers=auth_headers, timeout=10
+        )
         assert r.status_code in (400, 503, 500)
 
 

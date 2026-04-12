@@ -5,11 +5,11 @@ The contract is the stable "what was promised / what was proved" envelope
 around a build. It is intentionally small so the UI, tests, and future deploy
 gates can depend on it without coupling to every proof row detail.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Mapping, Optional
-
 
 CONTRACT_VERSION = "2026-04-08.v1"
 
@@ -51,7 +51,10 @@ def _evidence_flags(bundle: Mapping[str, Any]) -> Dict[str, bool]:
             (row.get("payload") or {}).get("kind") in {"preview", "preview_screenshot"}
             for row in verification_rows
         ),
-        "tests": any((row.get("type") or row.get("proof_type")) == "test" for row in verification_rows),
+        "tests": any(
+            (row.get("type") or row.get("proof_type")) == "test"
+            for row in verification_rows
+        ),
     }
 
 

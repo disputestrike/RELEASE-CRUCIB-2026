@@ -8,16 +8,19 @@ router = APIRouter(prefix="/api", tags=["automation"])
 
 def _get_auth():
     from server import get_current_user
+
     return get_current_user
 
 
 # ==================== AUTOMATION ENGINE ====================
+
 
 @router.get("/automation/workflows")
 async def get_workflows(user: dict = Depends(_get_auth())):
     """List all automation workflows for this user."""
     try:
         from automation_engine import get_workflows
+
         workflows = get_workflows()
         return {"workflows": workflows}
     except Exception as e:
@@ -25,10 +28,13 @@ async def get_workflows(user: dict = Depends(_get_auth())):
 
 
 @router.post("/automation/workflows")
-async def create_automation_workflow(request: Request, user: dict = Depends(_get_auth())):
+async def create_automation_workflow(
+    request: Request, user: dict = Depends(_get_auth())
+):
     """Create a new automation workflow."""
     try:
         from automation_engine import create_workflow, TriggerType
+
         body = await request.json()
         wf_id = create_workflow(
             name=body.get("name", "New Workflow"),
@@ -41,10 +47,13 @@ async def create_automation_workflow(request: Request, user: dict = Depends(_get
 
 
 @router.post("/automation/trigger/{trigger_type}")
-async def fire_automation_trigger(trigger_type: str, request: Request, user: dict = Depends(_get_auth())):
+async def fire_automation_trigger(
+    trigger_type: str, request: Request, user: dict = Depends(_get_auth())
+):
     """Manually fire a trigger (for testing)."""
     try:
         from automation_engine import fire_trigger, TriggerType
+
         data = await request.json()
         data["user"] = {"id": user["id"], "email": user.get("email", "")}
         await fire_trigger(TriggerType(trigger_type), data)
@@ -57,6 +66,7 @@ async def fire_automation_trigger(trigger_type: str, request: Request, user: dic
 async def get_automation_run(run_id: str, user: dict = Depends(_get_auth())):
     """Get status of an automation run."""
     from automation_engine import get_run
+
     run = get_run(run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
@@ -64,6 +74,7 @@ async def get_automation_run(run_id: str, user: dict = Depends(_get_auth())):
 
 
 # ==================== CLIENT ERROR LOGGING ====================
+
 
 @router.post("/errors/log")
 async def client_error_log(request: Request):
@@ -78,7 +89,7 @@ async def client_error_log(request: Request):
                 "Client error: %s | url=%s | stack=%s",
                 message or "unknown",
                 url or request.url.path,
-                stack[:500] if stack else ""
+                stack[:500] if stack else "",
             )
     except Exception:
         pass

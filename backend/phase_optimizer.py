@@ -3,6 +3,7 @@ Phase optimizer for CrucibAI — optimizes build phase ordering/selection.
 Given DAG phases and optional build_kind / project context, returns reordered or filtered phases
 for more efficient builds.
 """
+
 from typing import List, Tuple, Dict, Any, Optional
 
 
@@ -26,7 +27,9 @@ def optimize_phases(
     return list(phases)
 
 
-def get_phase_priority_agents(phase_agent_names: List[str], build_kind: str = "fullstack") -> List[str]:
+def get_phase_priority_agents(
+    phase_agent_names: List[str], build_kind: str = "fullstack"
+) -> List[str]:
     """
     Within a phase, return agent names in priority order (e.g. critical agents first).
     Default: return as-is.

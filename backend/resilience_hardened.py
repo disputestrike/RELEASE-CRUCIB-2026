@@ -95,13 +95,9 @@ class CircuitBreaker:
         if self.state == CircuitState.OPEN:
             if self._should_attempt_reset():
                 self.state = CircuitState.HALF_OPEN
-                logger.info(
-                    f"Circuit breaker '{self.name}' entering half-open state"
-                )
+                logger.info(f"Circuit breaker '{self.name}' entering half-open state")
             else:
-                raise CircuitBreakerException(
-                    f"Circuit breaker '{self.name}' is open"
-                )
+                raise CircuitBreakerException(f"Circuit breaker '{self.name}' is open")
 
         try:
             result = func(*args, **kwargs)
@@ -113,20 +109,14 @@ class CircuitBreaker:
             self._on_failure()
             raise
 
-    async def call_async(
-        self, func: Callable[..., Any], *args, **kwargs
-    ) -> T:
+    async def call_async(self, func: Callable[..., Any], *args, **kwargs) -> T:
         """Async version of call."""
         if self.state == CircuitState.OPEN:
             if self._should_attempt_reset():
                 self.state = CircuitState.HALF_OPEN
-                logger.info(
-                    f"Circuit breaker '{self.name}' entering half-open state"
-                )
+                logger.info(f"Circuit breaker '{self.name}' entering half-open state")
             else:
-                raise CircuitBreakerException(
-                    f"Circuit breaker '{self.name}' is open"
-                )
+                raise CircuitBreakerException(f"Circuit breaker '{self.name}' is open")
 
         try:
             result = await func(*args, **kwargs)
@@ -205,7 +195,7 @@ class RetryPolicy:
 
     def get_delay(self, attempt: int) -> float:
         """Calculate delay for attempt."""
-        delay = self.initial_delay * (self.backoff_factor ** attempt)
+        delay = self.initial_delay * (self.backoff_factor**attempt)
         delay = min(delay, self.max_delay)
 
         if self.jitter:
@@ -219,9 +209,7 @@ class RetryPolicy:
         """Determine if should retry."""
         return attempt < self.max_retries
 
-    def execute(
-        self, func: Callable[..., T], *args, **kwargs
-    ) -> T:
+    def execute(self, func: Callable[..., T], *args, **kwargs) -> T:
         """
         Execute function with retries.
 
@@ -259,9 +247,7 @@ class RetryPolicy:
 
         raise RetryException("Retry failed") from last_exception
 
-    async def execute_async(
-        self, func: Callable[..., Any], *args, **kwargs
-    ) -> T:
+    async def execute_async(self, func: Callable[..., Any], *args, **kwargs) -> T:
         """Async version of execute."""
         last_exception = None
 
@@ -317,9 +303,7 @@ class TimeoutWrapper:
         import signal
 
         def timeout_handler(signum, frame):
-            raise TimeoutException(
-                f"Operation timed out after {self.timeout_seconds}s"
-            )
+            raise TimeoutException(f"Operation timed out after {self.timeout_seconds}s")
 
         signal.signal(signal.SIGALRM, timeout_handler)
         signal.alarm(int(self.timeout_seconds))
@@ -332,9 +316,7 @@ class TimeoutWrapper:
         except TimeoutException:
             raise
 
-    async def execute_async(
-        self, func: Callable[..., Any], *args, **kwargs
-    ) -> T:
+    async def execute_async(self, func: Callable[..., Any], *args, **kwargs) -> T:
         """Async version of execute."""
         try:
             return await asyncio.wait_for(
@@ -342,9 +324,7 @@ class TimeoutWrapper:
             )
 
         except asyncio.TimeoutError:
-            raise TimeoutException(
-                f"Operation timed out after {self.timeout_seconds}s"
-            )
+            raise TimeoutException(f"Operation timed out after {self.timeout_seconds}s")
 
 
 def with_timeout(timeout_seconds: float):

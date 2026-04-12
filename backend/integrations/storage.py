@@ -2,6 +2,7 @@
 File storage: S3 when AWS_* set, else local uploads/ directory.
 Users get durable storage when they add AWS credentials; otherwise local disk.
 """
+
 import os
 import logging
 import uuid
@@ -19,7 +20,9 @@ def _ensure_uploads_dir():
 
 
 def _s3_configured() -> bool:
-    return bool(os.environ.get("AWS_ACCESS_KEY_ID") and os.environ.get("AWS_SECRET_ACCESS_KEY"))
+    return bool(
+        os.environ.get("AWS_ACCESS_KEY_ID") and os.environ.get("AWS_SECRET_ACCESS_KEY")
+    )
 
 
 def get_storage() -> str:
@@ -34,6 +37,7 @@ def _get_s3():
     if _s3_client is None and _s3_configured():
         try:
             import boto3
+
             _s3_client = boto3.client(
                 "s3",
                 region_name=os.environ.get("AWS_REGION", "us-east-1"),
@@ -51,7 +55,12 @@ def upload_file(key: str, body: bytes, content_type: Optional[str] = None) -> st
         bucket = os.environ.get("AWS_S3_BUCKET", "crucibai-uploads")
         s3 = _get_s3()
         if s3:
-            s3.put_object(Bucket=bucket, Key=key, Body=body, ContentType=content_type or "application/octet-stream")
+            s3.put_object(
+                Bucket=bucket,
+                Key=key,
+                Body=body,
+                ContentType=content_type or "application/octet-stream",
+            )
             return f"https://{bucket}.s3.{os.environ.get('AWS_REGION', 'us-east-1')}.amazonaws.com/{key}"
     _ensure_uploads_dir()
     path = UPLOADS_DIR / key.replace("/", os.sep)
@@ -74,7 +83,9 @@ def read_file(key: str) -> Optional[bytes]:
     if get_storage() == "s3":
         s3 = _get_s3()
         if s3:
-            r = s3.get_object(Bucket=os.environ.get("AWS_S3_BUCKET", "crucibai-uploads"), Key=key)
+            r = s3.get_object(
+                Bucket=os.environ.get("AWS_S3_BUCKET", "crucibai-uploads"), Key=key
+            )
             return r["Body"].read()
         return None
     p = UPLOADS_DIR / key.replace("/", os.sep)

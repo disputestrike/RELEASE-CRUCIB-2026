@@ -2,6 +2,7 @@
 Golden-path regression tests: deterministic, no external LLM calls.
 Marked with @pytest.mark.golden for `scripts/run_golden_eval.py` and Fifty-point #43–#44, #50.
 """
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -47,10 +48,16 @@ def test_openapi_json_includes_health_paths():
         data = r.json()
         assert str(data.get("openapi", "")).startswith("3.")
         paths = data.get("paths") or {}
-        assert any("health" in p for p in paths), "expected at least one /api/health* path in OpenAPI"
-        assert any("/api/" in p for p in paths), "expected /api-prefixed routes in OpenAPI"
+        assert any(
+            "health" in p for p in paths
+        ), "expected at least one /api/health* path in OpenAPI"
+        assert any(
+            "/api/" in p for p in paths
+        ), "expected /api-prefixed routes in OpenAPI"
         chatish = [p for p in paths if "chat" in p.lower()]
-        assert chatish, "expected at least one chat-related path (e.g. /api/chat) in OpenAPI"
+        assert (
+            chatish
+        ), "expected at least one chat-related path (e.g. /api/chat) in OpenAPI"
 
 
 @pytest.mark.golden

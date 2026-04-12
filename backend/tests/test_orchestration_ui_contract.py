@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -24,16 +23,22 @@ def test_orchestration_component_files_exist():
 
 
 def test_orchestration_index_is_barrel_not_css_dump():
-    text = (ROOT / "frontend/src/components/orchestration/index.jsx").read_text(encoding="utf-8")
+    text = (ROOT / "frontend/src/components/orchestration/index.jsx").read_text(
+        encoding="utf-8"
+    )
     assert "export { default as KanbanBoard }" in text
     assert ".kanbanContainer" not in text
 
 
 def test_live_orchestration_board_is_mounted_in_workspace_surfaces():
-    panels = (ROOT / "frontend/src/components/workspace/WorkspaceProPanels.jsx").read_text(encoding="utf-8")
+    panels = (
+        ROOT / "frontend/src/components/workspace/WorkspaceProPanels.jsx"
+    ).read_text(encoding="utf-8")
     manus = (ROOT / "frontend/src/pages/WorkspaceManus.jsx").read_text(encoding="utf-8")
     workspace = (ROOT / "frontend/src/pages/Workspace.jsx").read_text(encoding="utf-8")
-    kanban = (ROOT / "frontend/src/components/orchestration/KanbanBoard.jsx").read_text(encoding="utf-8")
+    kanban = (ROOT / "frontend/src/components/orchestration/KanbanBoard.jsx").read_text(
+        encoding="utf-8"
+    )
 
     assert "KanbanBoard" in panels
     assert "currentJobId={currentJobId}" in manus
