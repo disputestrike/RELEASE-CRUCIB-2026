@@ -86,6 +86,9 @@ import ManusComputer from '../components/ManusComputer';
 import { CommandPalette } from '../components/AdvancedIDEUX';
 import { VibeCodingInput } from '../components/VibeCoding';
 import { KanbanBoard } from '../components/orchestration';
+import DeployProgressPanel from '../components/DeployProgressPanel';
+import WorkspaceEmptyState from '../components/WorkspaceEmptyState';
+import ActionableError from '../components/ActionableError';
 
 /** Format message content â€” avoid [object Object] */
 function formatMsgContent(c) {
@@ -961,6 +964,8 @@ root.render(<${compName} />);` };
   const [deployResult, setDeployResult] = useState(null); // { url, ... }
   const [deployError, setDeployError] = useState(null);
   const [deployHasToken, setDeployHasToken] = useState(null); // null=unknown, true/false
+  const [showDeployPanel, setShowDeployPanel] = useState(false); // progress panel visible
+  const [deployPanelJobId, setDeployPanelJobId] = useState(null); // job id for live log stream
   const [deployTokenStatus, setDeployTokenStatus] = useState({}); // { has_vercel, has_railway, has_github }
   const [customDomain, setCustomDomain] = useState('');
   const [customDomainResult, setCustomDomainResult] = useState(null);
@@ -3219,10 +3224,11 @@ BUILD IT NOW â€” output every file completely:`;
           {/* Messages area */}
           <div className="flex-1 overflow-y-auto px-5 py-6 space-y-4 min-h-0">
             {messages.length === 0 && !isBuilding && (
-              <div className="flex flex-col items-center justify-center h-full gap-4" style={{ color: 'var(--theme-muted, #3f3f46)' }}>
-                <Sparkles className="w-10 h-10" style={{ color: 'var(--theme-input, #27272a)' }} />
-                <p className="text-sm">Describe what you want to build...</p>
-              </div>
+              <WorkspaceEmptyState
+                projectType={null}
+                onPromptSelect={(prompt) => { setInput(prompt); setTimeout(() => chatInputRef.current?.focus(), 0); }}
+                disabled={isBuilding}
+              />
             )}
 
             {/* â”€â”€ Manus-style grouped execution cards â”€â”€ */}
@@ -3300,12 +3306,20 @@ BUILD IT NOW â€” output every file completely:`;
                     <Sparkles className="w-3.5 h-3.5" style={{ color: 'var(--theme-muted, #a1a1aa)' }} />
                   </div>
                 )}
+                {/* Actionable error bubbles */}
+                {msg.role === 'assistant' && msg.error ? (
+                  <ActionableError
+                    message={formatMsgContent(msg.content)}
+                    onRetry={() => { const lastUser = [...messages].reverse().find(m => m.role === 'user'); if (lastUser) { setInput(formatMsgContent(lastUser.content)); setTimeout(() => chatInputRef.current?.focus(), 0); } }}
+                    onViewLogs={() => setActivePanel('console')}
+                  />
+                ) : (
                 <div
                   className="max-w-[75%] rounded-2xl px-4 py-2.5 text-sm"
                   style={{
                     background: msg.role === 'user' ? '#1A1A1A' : 'var(--chat-ai-bg)',
                     border: msg.role === 'user' ? '1px solid rgba(255,255,255,0.08)' : '1px solid var(--theme-border)',
-                    color: msg.role === 'user' ? '#e4e4e7' : (msg.error ? 'var(--chat-error)' : 'var(--chat-text)'),
+                    color: msg.role === 'user' ? '#e4e4e7' : 'var(--chat-text)',
                   }}
                 >
                   {msg.isBuilding ? (
@@ -3330,6 +3344,7 @@ BUILD IT NOW â€” output every file completely:`;
                     </div>
                   )}
                 </div>
+                )}
               </div>
             ))}
 
@@ -4166,6 +4181,8 @@ BUILD IT NOW â€” output every file completely:`;
                   onClick={async () => {
                     setDeployState('deploying');
                     setDeployError(null);
+                    setShowDeployPanel(true);
+                    setDeployPanelJobId(null);
                     try {
                       const res = await axios.post(
                         `${API}/projects/${projectIdFromUrl}/deploy/vercel`,
@@ -4174,6 +4191,7 @@ BUILD IT NOW â€” output every file completely:`;
                       );
                       setDeployResult(res.data);
                       setDeployState('deployed');
+                      if (res.data?.job_id) setDeployPanelJobId(res.data.job_id);
                       addLog(`Deployed to Vercel: ${res.data?.deploy_url || res.data?.url || ''}`, 'success', 'deploy');
                     } catch (err) {
                       setDeployError(err.response?.data?.detail || err.message || 'Deploy failed');
@@ -4189,6 +4207,8 @@ BUILD IT NOW â€” output every file completely:`;
                     onClick={async () => {
                       setDeployState('deploying');
                       setDeployError(null);
+                      setShowDeployPanel(true);
+                      setDeployPanelJobId(null);
                       try {
                         const res = await axios.post(
                           `${API}/deploy/railway`,
@@ -4196,6 +4216,7 @@ BUILD IT NOW â€” output every file completely:`;
                           { headers: { Authorization: `Bearer ${token}` } }
                         );
                         setDeployResult({ deploy_url: res.data?.deploy_url, url: res.data?.deploy_url });
+                        if (res.data?.job_id) setDeployPanelJobId(res.data.job_id);
                         setDeployState('deployed');
                         addLog('Deployed to Railway: ' + (res.data?.deploy_url || ''), 'success', 'deploy');
                       } catch (err) {
@@ -4493,6 +4514,17 @@ BUILD IT NOW â€” output every file completely:`;
         </div>
       )}
     </div>
+
+    {/* Deploy progress panel — shown when deploy starts, auto-dismissed after URL card */}
+    {showDeployPanel && (
+      <DeployProgressPanel
+        jobId={deployPanelJobId}
+        deployUrl={deployState === 'deployed' ? (deployResult?.deploy_url || deployResult?.url || null) : null}
+        apiBase={API}
+        token={token}
+        onClose={() => setShowDeployPanel(false)}
+      />
+    )}
   );
 };
 
