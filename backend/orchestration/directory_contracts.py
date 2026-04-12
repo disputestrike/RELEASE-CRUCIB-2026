@@ -26,12 +26,27 @@ _DIRECTORY_CONTRACTS: Dict[str, Dict[str, Any]] = {
         "required_any_of": [["package.json"], ["pyproject.toml"], ["requirements.txt"]],
         "required_all_of": [],
     },
+    "next_js": {
+        "label": "Next.js (App Router or Pages)",
+        "required_any_of": [["package.json"]],
+        "required_all_of": [],
+        "must_have_subdir_one_of": ["app", "src/app", "pages"],
+    },
 }
 
 
 def stack_profile_from_contract(contract: Optional[Dict[str, Any]]) -> str:
     c = contract or {}
     return str(c.get("stack_profile") or c.get("recommended_build_target") or "vite_react").strip() or "vite_react"
+
+
+def directory_profile_from_contract(contract: Optional[Dict[str, Any]]) -> str:
+    """P4 — Layout contract profile (Next vs Vite vs API-only)."""
+    c = contract or {}
+    dp = str(c.get("directory_profile") or "").strip()
+    if dp:
+        return dp
+    return stack_profile_from_contract(c)
 
 
 def validate_directory_contract(workspace_root: Path, profile: str) -> Dict[str, Any]:
@@ -58,6 +73,11 @@ def validate_directory_contract(workspace_root: Path, profile: str) -> Dict[str,
         for options in any_of_groups:
             if not any(exists(o) for o in options):
                 violations.append(f"need one of: {', '.join(options)}")
+
+    subdirs = spec.get("must_have_subdir_one_of") or []
+    if subdirs:
+        if not any((root / d.replace("/", os.sep)).is_dir() for d in subdirs):
+            violations.append(f"need one of directories: {', '.join(subdirs)}")
 
     return {
         "ok": len(violations) == 0,

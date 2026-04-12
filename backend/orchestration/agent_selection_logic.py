@@ -12,7 +12,7 @@ from typing import Dict, List, Set
 from agent_dag import AGENT_DAG, get_execution_phases
 
 from .agent_audit_registry import agents_excluded_from_autorunner_selection
-from .directory_contracts import stack_profile_from_contract
+from .directory_contracts import directory_profile_from_contract, stack_profile_from_contract
 
 
 BASE_AGENTS = [
@@ -511,6 +511,7 @@ def explain_agent_selection(goal: str, stack_contract: Dict | None = None) -> Di
         "specialized_agents": specialized_agents,
         "specialized_agent_count": len(specialized_agents),
         "stack_profile": stack_profile_from_contract(contract),
+        "directory_profile": directory_profile_from_contract(contract),
     }
 
 

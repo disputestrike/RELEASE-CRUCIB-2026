@@ -141,97 +141,9 @@ async def _run_file_tool_agent(
     except Exception as e:
         logger.warning("File Tool Agent assembly v2 skipped, using legacy path: %s", e)
 
-    from tools.file_agent import FileAgent
-    workspace = _project_workspace(project_id)
-    agent = FileAgent(llm_client=None, config={"workspace": str(workspace)})
-    written: List[str] = []
-    errors: List[str] = []
+    from orchestration.legacy_file_tool_writes import run_legacy_file_tool_writes
 
-    # Frontend
-    fe = previous_outputs.get("Frontend Generation") or {}
-    fe_code = _extract_code(fe.get("output") or fe.get("result") or fe.get("code"), filepath="src/App.jsx")
-    if fe_code:
-        try:
-            r = await agent.execute({"action": "mkdir", "path": "src"})
-            if r.get("success"):
-                r = await agent.execute({
-                    "action": "write",
-                    "path": "src/App.jsx",
-                    "content": fe_code,
-                })
-                if r.get("success"):
-                    written.append("src/App.jsx")
-                else:
-                    errors.append(r.get("error", "write failed"))
-        except Exception as e:
-            errors.append(f"Frontend write: {e}")
-
-    # Backend
-    be = previous_outputs.get("Backend Generation") or {}
-    be_code = _extract_code(be.get("output") or be.get("result") or be.get("code"), filepath="server.py")
-    if be_code:
-        try:
-            r = await agent.execute({
-                "action": "write",
-                "path": "server.py",
-                "content": be_code,
-            })
-            if r.get("success"):
-                written.append("server.py")
-            else:
-                errors.append(r.get("error", "write failed"))
-        except Exception as e:
-            errors.append(f"Backend write: {e}")
-
-    # Database schema
-    db_agent = previous_outputs.get("Database Agent") or {}
-    db_code = _extract_code(db_agent.get("output") or db_agent.get("result"), filepath="schema.sql")
-    if db_code:
-        try:
-            r = await agent.execute({
-                "action": "write",
-                "path": "schema.sql",
-                "content": db_code,
-            })
-            if r.get("success"):
-                written.append("schema.sql")
-            else:
-                errors.append(r.get("error", "write failed"))
-        except Exception as e:
-            errors.append(f"Schema write: {e}")
-
-    # Tests
-    test_agent = previous_outputs.get("Test Generation") or {}
-    test_code = _extract_code(test_agent.get("output") or test_agent.get("result") or test_agent.get("code"), filepath="tests/test_basic.py")
-    if test_code:
-        try:
-            r = await agent.execute({"action": "mkdir", "path": "tests"})
-            if r.get("success"):
-                r = await agent.execute({
-                    "action": "write",
-                    "path": "tests/test_basic.py",
-                    "content": test_code,
-                })
-                if r.get("success"):
-                    written.append("tests/test_basic.py")
-                else:
-                    errors.append(r.get("error", "write failed"))
-        except Exception as e:
-            errors.append(f"Tests write: {e}")
-
-    output = f"Real File Tool Agent: wrote {len(written)} file(s): {', '.join(written)}."
-    if errors:
-        output += f" Errors: {'; '.join(errors)}"
-    return {
-        "output": output,
-        "tokens_used": 0,
-        "status": "completed",
-        "result": output,
-        "code": output,
-        "real_agent": True,
-        "files_written": written,
-        "errors": errors,
-    }
+    return await run_legacy_file_tool_writes(project_id, previous_outputs, _extract_code)
 
 
 async def _run_database_tool_agent(

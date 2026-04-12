@@ -274,7 +274,16 @@ async def materialize_from_previous_outputs(
     merged = merge_last_writer(pairs)
     written, errors = materialize_merged_map(ws, merged)
 
-    extra = ensure_minimum_preview_tree(ws, {"goal": goal_snippet, "build_target": "vite_react"})
+    preview_bt = "vite_react"
+    if (goal_snippet or "").strip():
+        from orchestration.generation_contract import parse_generation_contract
+
+        pc = parse_generation_contract(goal_snippet)
+        preview_bt = str(pc.get("recommended_build_target") or "vite_react")
+    job_stub = {"goal": goal_snippet, "build_target": preview_bt}
+    extra: List[str] = []
+    if preview_bt != "api_backend":
+        extra = ensure_minimum_preview_tree(ws, job_stub)
     for rel in extra:
         if rel not in written:
             written.append(rel)

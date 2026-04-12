@@ -31,6 +31,12 @@ def test_parse_generation_contract_extracts_multistack_requirements():
     assert "kubernetes" in contract["deployment"]
     assert contract["recommended_build_target"] == "full_system_generator"
     assert contract["stack_profile"] == contract["recommended_build_target"]
+    assert contract["directory_profile"] == contract["stack_profile"]
+
+
+def test_parse_generation_contract_next_js_sets_directory_profile():
+    c = parse_generation_contract("Use Next.js 14 with app router for the dashboard.")
+    assert c["directory_profile"] == "next_js"
 
 
 @pytest.mark.asyncio

@@ -444,7 +444,9 @@ async def verify_db_step(step: Dict[str, Any],
                         table
                     )
                     if row and row[0]:
-                        proof.append(_proof_item("db", f"Table exists: {table}", {"table": table}))
+                        mig0 = migration_files[0] if migration_files else ""
+                        payload = {"table": table, "path": mig0} if mig0 else {"table": table}
+                        proof.append(_proof_item("db", f"Table exists: {table}", payload))
                     else:
                         issues.append(f"Table not found: {table}")
         except Exception as e:
