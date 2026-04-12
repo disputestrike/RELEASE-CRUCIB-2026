@@ -7,7 +7,7 @@ four-file writer never runs (no duplicate disk writes for the same outputs).
 
 Primary entry points:
   - materialize_from_previous_outputs() — used by File Tool Agent (replaces narrow 4-file-only writes).
-  - materialize_swarm_agent_output() — after each swarm LLM step, applies extra path-tagged fences.
+  - materialize_swarm_agent_output() — after each swarm LLM step, applies extra path-tagged fences and upserts META/merge_map.json per written path.
 """
 from __future__ import annotations
 
@@ -261,6 +261,44 @@ def write_assembly_merge_map(workspace_path: str, merged: Dict[str, Tuple[str, s
     (meta / "merge_map.json").write_text(json.dumps(doc, indent=2), encoding="utf-8")
 
 
+def upsert_assembly_merge_map_paths(workspace_path: str, merged: Dict[str, Tuple[str, str]]) -> None:
+    """
+    Merge last-writer rows into existing META/merge_map.json (swarm steps after File Tool, or multi-step swarm).
+    Only paths present in ``merged`` are updated; other paths are preserved.
+    """
+    if not workspace_path or not merged:
+        return
+    root = Path(workspace_path)
+    if not root.is_dir():
+        return
+    meta = root / "META"
+    meta.mkdir(parents=True, exist_ok=True)
+    path_file = meta / "merge_map.json"
+    existing: Dict[str, Any] = {}
+    if path_file.is_file():
+        try:
+            old = json.loads(path_file.read_text(encoding="utf-8"))
+            raw = old.get("paths")
+            if isinstance(raw, dict):
+                existing = {k: v for k, v in raw.items() if isinstance(k, str)}
+        except (OSError, json.JSONDecodeError):
+            pass
+    for rel, (content, agent) in merged.items():
+        if not isinstance(rel, str) or not rel.strip():
+            continue
+        existing[rel] = {
+            "last_writer_agent": agent,
+            "approx_bytes": len(content.encode("utf-8")) if isinstance(content, str) else 0,
+        }
+    doc = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "source": "assembly_v2_swarm_upsert",
+        "path_count": len(existing),
+        "paths": dict(sorted(existing.items())),
+    }
+    path_file.write_text(json.dumps(doc, indent=2), encoding="utf-8")
+
+
 def materialize_merged_map(
     workspace_path: str,
     merged: Dict[str, Tuple[str, str]],
@@ -355,6 +393,9 @@ def materialize_swarm_agent_output(
         return []
     merged = merge_last_writer(pairs)
     written, _ = materialize_merged_map(workspace_path, merged)
+    subset = {rel: merged[rel] for rel in written if rel in merged}
+    if subset:
+        upsert_assembly_merge_map_paths(workspace_path, subset)
     if written:
         try:
             from orchestration.executor import append_node_artifact_record

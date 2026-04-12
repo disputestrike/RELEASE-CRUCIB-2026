@@ -9,6 +9,7 @@ from orchestration.workspace_assembly_pipeline import (
     materialize_merged_map,
     extract_json_file_maps,
     write_assembly_merge_map,
+    upsert_assembly_merge_map_paths,
 )
 
 
@@ -92,3 +93,19 @@ def test_write_assembly_merge_map_creates_meta(tmp_path):
 
     doc = json.loads(mm.read_text(encoding="utf-8"))
     assert doc["paths"]["src/x.jsx"]["last_writer_agent"] == "Frontend Generation"
+
+
+def test_upsert_assembly_merge_map_preserves_other_paths(tmp_path):
+    import json
+
+    write_assembly_merge_map(
+        str(tmp_path),
+        {"a.txt": ("1", "Planner"), "b.txt": ("2", "Design Agent")},
+    )
+    upsert_assembly_merge_map_paths(
+        str(tmp_path),
+        {"a.txt": ("3", "Backend Generation")},
+    )
+    doc = json.loads((tmp_path / "META" / "merge_map.json").read_text(encoding="utf-8"))
+    assert doc["paths"]["a.txt"]["last_writer_agent"] == "Backend Generation"
+    assert doc["paths"]["b.txt"]["last_writer_agent"] == "Design Agent"

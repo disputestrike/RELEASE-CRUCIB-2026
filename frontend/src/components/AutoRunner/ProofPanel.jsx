@@ -2,7 +2,19 @@
  * ProofPanel — evidence from GET /api/jobs/:id/proof only (no fabricated scores).
  */
 import React, { useState, useCallback, useMemo } from 'react';
-import { Download, FileCode2, Route, Database, ShieldCheck, Rocket, CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react';
+import {
+  Download,
+  FileArchive,
+  FileCode2,
+  Route,
+  Database,
+  ShieldCheck,
+  Rocket,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+} from 'lucide-react';
+import { useAuth, API } from '../../App';
 import './ProofPanel.css';
 
 const CATEGORIES = [
@@ -32,9 +44,11 @@ function payloadSummary(payload) {
 }
 
 export default function ProofPanel({ proof, jobId, onExport: _onExport }) {
+  const { token } = useAuth();
   const [activeTab, setActiveTab] = useState('files');
   const [expandedItems, setExpandedItems] = useState(new Set());
   const [scoreExpanded, setScoreExpanded] = useState(false);
+  const [zipBusy, setZipBusy] = useState(false);
 
   const handleExport = useCallback(() => {
     if (!proof) return;
@@ -46,6 +60,31 @@ export default function ProofPanel({ proof, jobId, onExport: _onExport }) {
     a.click();
     URL.revokeObjectURL(url);
   }, [proof, jobId]);
+
+  const handleDownloadWorkspaceZip = useCallback(async () => {
+    if (!jobId || !token || !API) return;
+    setZipBusy(true);
+    try {
+      const res = await fetch(`${API}/jobs/${encodeURIComponent(jobId)}/export/full.zip`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        throw new Error(errText || res.statusText || `HTTP ${res.status}`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `crucibai-job-${jobId}-full.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'Download failed');
+    } finally {
+      setZipBusy(false);
+    }
+  }, [jobId, token]);
 
   const toggleItem = (idx) => {
     setExpandedItems((prev) => {
@@ -119,9 +158,22 @@ export default function ProofPanel({ proof, jobId, onExport: _onExport }) {
         <div className="pp-proof-count">
           {totalItems} stored items · {verificationItems} verification-class
         </div>
-        <button type="button" className="pp-export-btn" onClick={handleExport}>
-          <Download size={12} /> Export Proof
-        </button>
+        <div className="pp-header-actions">
+          {jobId && token && API ? (
+            <button
+              type="button"
+              className="pp-export-btn"
+              onClick={handleDownloadWorkspaceZip}
+              disabled={zipBusy}
+              title="Download sealed project workspace (ZIP)"
+            >
+              <FileArchive size={12} /> {zipBusy ? 'ZIP…' : 'Workspace ZIP'}
+            </button>
+          ) : null}
+          <button type="button" className="pp-export-btn" onClick={handleExport}>
+            <Download size={12} /> Export Proof
+          </button>
+        </div>
       </div>
 
       {hasComplianceSketchProof && (
