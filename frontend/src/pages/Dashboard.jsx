@@ -17,6 +17,7 @@ import axios from 'axios';
 import VoiceWaveform from '../components/VoiceWaveform';
 import '../components/VoiceWaveform.css';
 import './Dashboard.css';
+import { withWorkspaceHandoffNonce } from '../utils/workspaceHandoff';
 
 /**
  * Dashboard — New Task / Home screen
@@ -162,7 +163,12 @@ async function detectIntent(prompt, API, token) {
       system_message: INTENT_SYSTEM,
     }, { headers, timeout: 10000 });
     const raw = (res.data?.response || "").trim().toLowerCase().replace(/["']/g, "");
-    if (raw === "build" || raw === "agent") return raw;
+    if (raw === "build") return "build";
+    if (raw === "agent") return "agent";
+    // Model often returns "chat" for clear build phrasing — trust keyword signals.
+    if (looksBuild && !looksAgent) return "build";
+    if (looksAgent && !looksBuild) return "agent";
+    if (looksBuild && looksAgent) return raw.startsWith("agent") ? "agent" : "build";
     return "chat";
   } catch {
     // When backend is down (e.g. no Ollama), use keyword fallback so build/agent prompts still work
@@ -465,11 +471,11 @@ const Dashboard = () => {
       navigate({
         pathname: '/app/workspace',
         search: taskId ? `?taskId=${encodeURIComponent(taskId)}` : '',
-        state: {
+        state: withWorkspaceHandoffNonce({
           initialPrompt: spec || userPrompt,
           autoStart: true,
           initialAttachedFiles: filesToSend.length > 0 ? filesToSend : undefined
-        }
+        })
       });
       return;
     }
@@ -572,7 +578,7 @@ const Dashboard = () => {
       navigate({
         pathname: '/app/workspace',
         search: taskId ? `?taskId=${encodeURIComponent(taskId)}` : '',
-        state: { initialPrompt: chip.prompt, autoStart: true }
+        state: withWorkspaceHandoffNonce({ initialPrompt: chip.prompt, autoStart: true })
       });
     }
   };
@@ -843,11 +849,11 @@ const Dashboard = () => {
     navigate({
       pathname: '/app/workspace',
       search: taskId ? `?taskId=${encodeURIComponent(taskId)}` : '',
-      state: {
+      state: withWorkspaceHandoffNonce({
         initialPrompt: spec,
         autoStart: true,
         initialAttachedFiles: buildOffer.attachedFiles?.length ? buildOffer.attachedFiles : undefined
-      }
+      })
     });
   };
 
@@ -1136,7 +1142,7 @@ const Dashboard = () => {
                   <div className="dashboard-chat-cluster">
                     {msg.role === 'assistant' && (
                       <div className="dashboard-chat-identifier">
-                        <Logo href={null} showTagline={false} height={18} className="dashboard-chat-logo" />
+                        <Logo href={null} showTagline={false} showWordmark={false} height={18} className="dashboard-chat-logo" />
                         <span className="dashboard-chat-brand">CrucibAI</span>
                       </div>
                     )}
@@ -1226,7 +1232,7 @@ const Dashboard = () => {
                 <div className="dashboard-chat-row dashboard-chat-row--assistant">
                   <div className="dashboard-chat-cluster">
                     <div className="dashboard-chat-identifier">
-                      <Logo href={null} showTagline={false} height={18} className="dashboard-chat-logo" />
+                      <Logo href={null} showTagline={false} showWordmark={false} height={18} className="dashboard-chat-logo" />
                       <span className="dashboard-chat-brand">CrucibAI</span>
                     </div>
                     <div className="dashboard-chat-bubble assistant">

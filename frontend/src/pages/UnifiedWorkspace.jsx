@@ -44,6 +44,7 @@ import {
 import { WorkspaceNavProvider } from '../workspace/WorkspaceNavContext';
 import { detailToString, formatWorkspaceBuildError } from '../workspace/workspaceErrorUtils';
 import { API_BASE } from '../apiBase';
+import { useTaskStore } from '../stores/useTaskStore';
 import '../styles/unified-workspace-tokens.css';
 import './AutoRunnerPage.css';
 
@@ -63,6 +64,7 @@ export default function UnifiedWorkspace() {
   const taskIdFromUrl = searchParams.get('taskId');
   const jobIdFromUrl = searchParams.get('jobId');
   const { token, user, loading: authLoading, ensureGuest } = useAuth();
+  const { updateTask } = useTaskStore();
   const sessionBootstrapRef = useRef(false);
   const processedLocationHandoffRef = useRef(new Set());
 
@@ -301,6 +303,16 @@ export default function UnifiedWorkspace() {
       return changed ? next : prev;
     });
   }, [effectiveJobId]);
+
+  useEffect(() => {
+    if (!taskIdFromUrl || !effectiveJobId) return;
+    const patch = { jobId: effectiveJobId };
+    const st = job?.status;
+    if (st === 'completed') patch.status = 'completed';
+    else if (st === 'failed' || st === 'cancelled') patch.status = 'failed';
+    else if (st) patch.status = 'running';
+    updateTask(taskIdFromUrl, patch);
+  }, [taskIdFromUrl, effectiveJobId, job?.status, updateTask]);
 
   const isCompleted = job?.status === 'completed';
   const latestFailedStep = steps.find((s) => s.status === 'failed' && !failedStep);
@@ -728,7 +740,10 @@ export default function UnifiedWorkspace() {
     if (!st || typeof st.initialPrompt !== 'string') return;
     const raw = st.initialPrompt.trim();
     if (!raw) return;
-    const key = typeof location.key === 'string' && location.key ? location.key : `handoff_${raw.slice(0, 40)}`;
+    const key =
+      typeof st.handoffNonce === 'number'
+        ? `h_${st.handoffNonce}`
+        : `${location.key || 'nav'}_${raw.slice(0, 48)}_${st.autoStart ? '1' : '0'}`;
     if (processedLocationHandoffRef.current.has(key)) return;
     processedLocationHandoffRef.current.add(key);
 

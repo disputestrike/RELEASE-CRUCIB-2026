@@ -4,6 +4,7 @@ import { BookOpen, Plus, Copy, Check, Save } from 'lucide-react';
 import { useAuth, API } from '../App';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';
+import { withWorkspaceHandoffNonce } from '../utils/workspaceHandoff';
 
 export default function PromptLibrary() {
   const navigate = useNavigate();
@@ -52,7 +53,7 @@ export default function PromptLibrary() {
   }, [token]);
 
   const goToPrompt = (prompt) => {
-    navigate('/app/workspace', { state: { initialPrompt: prompt } });
+    navigate('/app/workspace', { state: withWorkspaceHandoffNonce({ initialPrompt: prompt }) });
   };
 
   const copyPrompt = (text, id) => {

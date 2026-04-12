@@ -52,30 +52,30 @@
   --theme-input:     #27272a;
   --theme-select:    #27272a;
   --theme-select-text: #e4e4e7;
-  /* Chat: white text on dark (legible) */
+  /* Chat: softer panels, still legible (not near-black gray stacks) */
   --chat-user-bg:   #3f3f46;
-  --chat-ai-bg:     #1c1c1e;
-  --chat-text:      #e4e4e7;
+  --chat-ai-bg:     #27272a;
+  --chat-text:      #f4f4f5;
   --chat-error:     #f87171;
 }
 
 [data-theme="light"] {
-  --theme-bg:        #FFFFFF;
-  --theme-surface:   #FFFFFF;
-  --theme-surface2:  #F5F5F4;
-  --theme-border:    rgba(0,0,0,0.12);
-  --theme-border-vis: rgba(0,0,0,0.2);
-  --theme-text:      #1A1A1A;
-  --theme-muted:     #555555;
+  --theme-bg:        #f8f9fb;
+  --theme-surface:   #ffffff;
+  --theme-surface2:  #f1f3f7;
+  --theme-border:    rgba(15, 23, 42, 0.08);
+  --theme-border-vis: rgba(15, 23, 42, 0.12);
+  --theme-text:      #111827;
+  --theme-muted:     #4b5563;
   --theme-accent:    #2563eb;
   --theme-accent-h:  #1d4ed8;
-  --theme-input:     #F5F5F4;
-  --theme-select:    #FFFFFF;
-  --theme-select-text: #1A1A1A;
-  /* Chat: legible text, Manus-like (no bright orange) */
-  --chat-user-bg:   #e0e7ff;
-  --chat-ai-bg:     #F5F5F4;
-  --chat-text:      #1A1A1A;
+  --theme-input:     #ffffff;
+  --theme-select:    #ffffff;
+  --theme-select-text: #111827;
+  /* Chat: light surfaces, dark text (no gray-on-gray) */
+  --chat-user-bg:   #eef2ff;
+  --chat-ai-bg:     #ffffff;
+  --chat-text:      #111827;
   --chat-error:     #b91c1c;
 }
 

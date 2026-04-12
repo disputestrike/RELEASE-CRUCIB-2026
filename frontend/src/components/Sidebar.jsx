@@ -175,7 +175,10 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     else if (item.type === 'chat' || item.type === 'query') {
       navigate(`/app?chatTaskId=${encodeURIComponent(item.id)}`, { state: { chatTaskId: item.id } });
     } else {
-      navigate(`/app/workspace?taskId=${encodeURIComponent(item.id)}`);
+      const qs = new URLSearchParams({ taskId: item.id });
+      if (item.linkedProjectId) qs.set('projectId', item.linkedProjectId);
+      if (item.jobId) qs.set('jobId', item.jobId);
+      navigate(`/app/workspace?${qs.toString()}`);
     }
   };
 
@@ -184,7 +187,10 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     else if (item.type === 'chat' || item.type === 'query') {
       window.open(`${window.location.origin}/app?chatTaskId=${encodeURIComponent(item.id)}`, '_blank');
     } else {
-      window.open(`${window.location.origin}/app/workspace?taskId=${encodeURIComponent(item.id)}`, '_blank');
+      const qs = new URLSearchParams({ taskId: item.id });
+      if (item.linkedProjectId) qs.set('projectId', item.linkedProjectId);
+      if (item.jobId) qs.set('jobId', item.jobId);
+      window.open(`${window.location.origin}/app/workspace?${qs.toString()}`, '_blank');
     }
   };
 
@@ -225,6 +231,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     } else {
       const qs = new URLSearchParams({ taskId: item.id });
       if (item.linkedProjectId) qs.set('projectId', item.linkedProjectId);
+      if (item.jobId) qs.set('jobId', item.jobId);
       url = `${origin}/app/workspace?${qs.toString()}`;
     }
     navigator.clipboard?.writeText(url).then(() => {});

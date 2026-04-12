@@ -8,6 +8,7 @@ import { logApiError } from '../utils/apiError';
 import Logo from '../components/Logo';
 import SuggestionChips from '../components/SuggestionChips';
 import SolutionsNavDropdown, { SOLUTION_LINKS, USE_CASE_LINKS } from '../components/SolutionsNavDropdown';
+import { withWorkspaceHandoffNonce } from '../utils/workspaceHandoff';
 
 const PENDING_PROMPT_KEY = 'crucibai_pending_prompt';
 const MAX_PROMPT_IN_URL = 1500;
@@ -51,7 +52,7 @@ const LandingPage = () => {
       return;
     }
     const q = `prompt=${encodeURIComponent(prompt)}&autoStart=1`;
-    navigate(`/app/workspace?${q}`, { state: { ...state, initialPrompt: prompt, autoStart: true } });
+    navigate(`/app/workspace?${q}`, { state: withWorkspaceHandoffNonce({ ...state, initialPrompt: prompt, autoStart: true }) });
   };
 
   const handleLandingFileSelect = (e) => {

@@ -301,11 +301,7 @@ const TokenCenter = () => {
               <button
                 onClick={() => handlePurchase(bundle.key)}
                 disabled={purchasing === bundle.key}
-                className={`w-full py-2.5 rounded-lg font-medium transition ${
-                  bundle.key === 'builder'
-                    ? 'bg-[#1A1A1A] hover:bg-[#333] text-white'
-                    : 'bg-[#EBE8E2] hover:bg-[#E0DCD5] text-[#1A1A1A]'
-                } disabled:opacity-50`}
+                className="w-full py-2.5 rounded-lg font-medium transition bg-[#1A1A1A] hover:bg-[#333] text-white disabled:opacity-50"
                 data-testid={`buy-${bundle.key}-btn`}
               >
                 {purchasing === bundle.key && !purchasing.startsWith('stripe') ? (
