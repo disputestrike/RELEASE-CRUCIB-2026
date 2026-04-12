@@ -678,6 +678,8 @@ class AgentAutomationBody(BaseModel):
 
 # ==================== CREDITS & PRICING (1 credit = 1000 tokens) ====================
 from pricing_plans import CREDIT_PLANS, TOKEN_BUNDLES, _speed_from_plan, CREDITS_PER_TOKEN, ADDONS, ANNUAL_PRICES
+# Admin constants from deps (used in auth flow and a few remaining inline routes)
+from deps import ADMIN_USER_IDS, ADMIN_ROLES, get_current_admin as _get_current_admin_dep
 
 MIN_CREDITS_FOR_LLM = 5
 FREE_TIER_CREDITS = 100  # Free tier (email signup)
@@ -863,6 +865,28 @@ DISPOSABLE_EMAIL_DOMAINS = frozenset([
 def _is_disposable_email(email: str) -> bool:
     domain = (email or "").strip().split("@")[-1].lower()
     return domain in DISPOSABLE_EMAIL_DOMAINS
+
+
+def _quality_verdict(score: float) -> str:
+    """Human-readable verdict for a 0-100 quality score."""
+    if score >= 90:
+        return "excellent"
+    if score >= 75:
+        return "good"
+    if score >= 60:
+        return "acceptable"
+    return "needs-improvement"
+
+
+def _quality_badge(score: float) -> str:
+    """Emoji badge for quality score display in the UI."""
+    if score >= 90:
+        return "🏆"
+    if score >= 75:
+        return "✅"
+    if score >= 60:
+        return "⚠️"
+    return "❌"
 
 
 # Referral: 100 credits each (free tier only — referrer reward only if referrer is on free plan). Safest to avoid mismatch. 10/month cap, 30-day expiry.
@@ -5191,6 +5215,21 @@ async def get_project_state(project_id: str, user: dict = Depends(get_current_us
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     state = load_state(project_id)
+    # Merge quality score prominently into state so UI can display "App scored X/10"
+    quality_score = project.get("quality_score")
+    if quality_score and isinstance(quality_score, dict):
+        overall = quality_score.get("overall_score", 0)
+        breakdown = quality_score.get("breakdown") or {}
+        state["quality"] = {
+            "overall_score": overall,
+            "display": f"{round(overall / 10, 1)}/10",
+            "verdict": _quality_verdict(overall),
+            "breakdown": breakdown,
+            "badge": _quality_badge(overall),
+            "deploy_gated": overall < 60,
+        }
+    elif quality_score is not None:
+        state["quality"] = {"overall_score": quality_score, "display": f"{round(float(quality_score) / 10, 1)}/10"}
     return {"state": state}
 
 
@@ -7201,613 +7240,10 @@ async def get_patterns(user: dict = Depends(get_optional_user)):
     ]
     return {"patterns": patterns}
 
-# ==================== ADMIN (Operational Infrastructure) ====================
-
-ADMIN_USER_IDS = [x.strip() for x in (os.environ.get("ADMIN_USER_IDS") or "").split(",") if x.strip()]
-ADMIN_ROLES = ("owner", "operations", "support", "analyst")
-SUPPORT_GRANT_CAP_PER_MONTH = 50  # max credits support can grant per user per month
-
-def get_current_admin(required_roles: tuple = ADMIN_ROLES):
-    """Dependency: require authenticated user with admin_role in required_roles or id in ADMIN_USER_IDS."""
-    async def _inner(credentials: HTTPAuthorizationCredentials = Depends(security)):
-        if not credentials:
-            raise HTTPException(status_code=401, detail="Not authenticated")
-        try:
-            payload = jwt.decode(credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-            user = await db.users.find_one({"id": payload["user_id"]}, {"_id": 0})
-            if not user:
-                raise HTTPException(status_code=401, detail="User not found")
-            if user.get("suspended"):
-                raise HTTPException(status_code=403, detail="Account suspended")
-            role = user.get("admin_role")
-            if role and role in required_roles:
-                return user
-            if user["id"] in ADMIN_USER_IDS and "owner" in required_roles:
-                return {**user, "admin_role": user.get("admin_role") or "owner"}
-            raise HTTPException(status_code=403, detail="Admin access required")
-        except jwt.ExpiredSignatureError:
-            raise HTTPException(status_code=401, detail="Token expired")
-    return _inner
-
-class GrantCreditsBody(BaseModel):
-    credits: int = Field(gt=0, description="Credits to grant (must be positive)")
-    reason: Optional[str] = "Support bonus"
-
-class SuspendBody(BaseModel):
-    reason: str
-
-async def _revenue_for_query(q: dict) -> float:
-    rows = await db.token_ledger.find(q).to_list(MAX_TOKEN_LEDGER_REVENUE)
-    total = 0.0
-    for r in rows:
-        p = r.get("price")
-        if p is not None:
-            total += float(p)
-        else:
-            total += float(TOKEN_BUNDLES.get(r.get("bundle", ""), {}).get("price", 0))
-    return round(total, 2)
-
-@api_router.get("/admin/dashboard")
-async def admin_dashboard(admin: dict = Depends(get_current_admin(ADMIN_ROLES))):
-    """Overview: users, revenue, signups, referral count, fraud_flags_count (from /admin/fraud/flags when implemented), health."""
-    now = datetime.now(timezone.utc)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()[:10]
-    week_ago = (now - timedelta(days=7)).isoformat()
-    month_ago = (now - timedelta(days=30)).isoformat()
-    total_users = await db.users.count_documents({})
-    signups_today = await db.users.count_documents({"created_at": {"$gte": today_start}})
-    signups_week = await db.users.count_documents({"created_at": {"$gte": week_ago}})
-    referral_count = await db.referrals.count_documents({}) if hasattr(db, "referrals") else 0
-    projects_today = await db.projects.count_documents({"created_at": {"$gte": today_start}})
-    revenue_today = await _revenue_for_query({"type": "purchase", "created_at": {"$gte": today_start}})
-    revenue_week = await _revenue_for_query({"type": "purchase", "created_at": {"$gte": week_ago}})
-    revenue_month = await _revenue_for_query({"type": "purchase", "created_at": {"$gte": month_ago}})
-    return {
-        "users_online": total_users,
-        "total_users": total_users,
-        "signups_today": signups_today,
-        "signups_week": signups_week,
-        "referral_count": referral_count,
-        "projects_today": projects_today,
-        "revenue_today": revenue_today,
-        "revenue_week": revenue_week,
-        "revenue_month": revenue_month,
-        "fraud_flags_count": 0,
-        "system_health": "ok",
-    }
-
-@api_router.get("/admin/analytics/overview")
-async def admin_analytics_overview(admin: dict = Depends(get_current_admin(ADMIN_ROLES))):
-    now = datetime.now(timezone.utc)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()[:10]
-    week_ago = (now - timedelta(days=7)).isoformat()
-    total_users = await db.users.count_documents({})
-    projects_today = await db.projects.count_documents({"created_at": {"$gte": today_start}})
-    signups_today = await db.users.count_documents({"created_at": {"$gte": today_start}})
-    signups_week = await db.users.count_documents({"created_at": {"$gte": week_ago}})
-    return {
-        "total_users": total_users,
-        "projects_today": projects_today,
-        "signups_today": signups_today,
-        "signups_week": signups_week,
-    }
-
-def _parse_date(s: Optional[str]):
-    """Parse YYYY-MM-DD to date. Return None if invalid."""
-    if not s or len(s) < 10:
-        return None
-    try:
-        from datetime import date as date_type
-        return date_type(int(s[:4]), int(s[5:7]), int(s[8:10]))
-    except (ValueError, IndexError):
-        return None
-
-@api_router.get("/admin/analytics/daily")
-async def admin_analytics_daily(
-    days: int = 7,
-    from_date: Optional[str] = None,
-    to_date: Optional[str] = None,
-    format: Optional[str] = None,
-    admin: dict = Depends(get_current_admin(ADMIN_ROLES)),
-):
-    """Daily metrics. Use days (default 7) or from_date+to_date (YYYY-MM-DD). format=csv for CSV export."""
-    now = datetime.now(timezone.utc)
-    out = []
-    start_d = _parse_date(from_date)
-    end_d = _parse_date(to_date)
-    if start_d and end_d and start_d <= end_d:
-        from datetime import date as date_type
-        delta = (end_d - start_d).days
-        for i in range(min(delta + 1, 365)):
-            d = (start_d + timedelta(days=i)).isoformat()
-            day_start = d + "T00:00:00"
-            day_end = d + "T23:59:59.999999"
-            signups = await db.users.count_documents({"created_at": {"$gte": day_start, "$lte": day_end}})
-            paid = await db.users.count_documents({"plan": {"$nin": ["free", None, ""]}, "created_at": {"$lte": day_end}})
-            rev = await _revenue_for_query({"type": "purchase", "created_at": {"$gte": day_start, "$lte": day_end}})
-            out.append({"date": d, "signups": signups, "paid_users_cumulative": paid, "revenue": rev})
-    else:
-        for i in range(max(1, min(days, 90))):
-            d = (now - timedelta(days=i)).date().isoformat()
-            day_start = d + "T00:00:00"
-            day_end = d + "T23:59:59.999999"
-            signups = await db.users.count_documents({"created_at": {"$gte": day_start, "$lte": day_end}})
-            paid = await db.users.count_documents({"plan": {"$nin": ["free", None, ""]}, "created_at": {"$lte": day_end}})
-            rev = await _revenue_for_query({"type": "purchase", "created_at": {"$gte": day_start, "$lte": day_end}})
-            out.append({"date": d, "signups": signups, "paid_users_cumulative": paid, "revenue": rev})
-        out = list(reversed(out))
-    if (format or "").lower() == "csv":
-        import csv
-        buf = io.StringIO()
-        w = csv.writer(buf)
-        w.writerow(["date", "signups", "paid_users_cumulative", "revenue"])
-        for row in out:
-            w.writerow([row["date"], row["signups"], row["paid_users_cumulative"], row["revenue"]])
-        return Response(content=buf.getvalue(), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=analytics-daily.csv"})
-    return {"daily": out}
-
-@api_router.get("/admin/analytics/weekly")
-async def admin_analytics_weekly(
-    weeks: int = 12,
-    from_date: Optional[str] = None,
-    to_date: Optional[str] = None,
-    admin: dict = Depends(get_current_admin(ADMIN_ROLES)),
-):
-    """Weekly: signups and revenue per week. Optional from_date/to_date (YYYY-MM-DD) to limit range."""
-    now = datetime.now(timezone.utc)
-    out = []
-    start_d = _parse_date(from_date)
-    end_d = _parse_date(to_date)
-    for i in range(max(1, min(weeks, 52))):
-        week_end = now - timedelta(weeks=i)
-        week_start = week_end - timedelta(days=7)
-        ws, we = week_start.isoformat(), week_end.isoformat()
-        ws_date, we_date = ws[:10], we[:10]
-        if start_d and (week_start.date() < start_d or week_end.date() < start_d):
-            continue
-        if end_d and week_start.date() > end_d:
-            continue
-        signups = await db.users.count_documents({"created_at": {"$gte": ws, "$lt": we}})
-        rev = await _revenue_for_query({"type": "purchase", "created_at": {"$gte": ws, "$lt": we}})
-        out.append({"week_start": ws_date, "week_end": we_date, "signups": signups, "revenue": rev})
-    return {"weekly": list(reversed(out))}
-
-@api_router.get("/admin/analytics/report")
-async def admin_analytics_report(
-    from_date: Optional[str] = None,
-    to_date: Optional[str] = None,
-    admin: dict = Depends(get_current_admin(ADMIN_ROLES)),
-):
-    """Summary report for date range: total signups, total revenue, daily breakdown. For PDF/export."""
-    start_d = _parse_date(from_date)
-    end_d = _parse_date(to_date)
-    now = datetime.now(timezone.utc)
-    if not start_d or not end_d or start_d > end_d:
-        start_d = (now - timedelta(days=30)).date()
-        end_d = now.date()
-    delta = min((end_d - start_d).days + 1, 365)
-    total_signups = 0
-    total_revenue = 0.0
-    daily = []
-    for i in range(delta):
-        d = (start_d + timedelta(days=i)).isoformat()
-        day_start = d + "T00:00:00"
-        day_end = d + "T23:59:59.999999"
-        signups = await db.users.count_documents({"created_at": {"$gte": day_start, "$lte": day_end}})
-        rev = await _revenue_for_query({"type": "purchase", "created_at": {"$gte": day_start, "$lte": day_end}})
-        total_signups += signups
-        total_revenue += rev
-        daily.append({"date": d, "signups": signups, "revenue": rev})
-    return {
-        "from_date": start_d.isoformat(),
-        "to_date": end_d.isoformat(),
-        "total_signups": total_signups,
-        "total_revenue": round(total_revenue, 2),
-        "daily": daily,
-        "generated_at": now.isoformat(),
-    }
-
-@api_router.get("/admin/users")
-async def admin_list_users(
-    email: Optional[str] = None,
-    plan: Optional[str] = None,
-    limit: int = 50,
-    admin: dict = Depends(get_current_admin(ADMIN_ROLES)),
-):
-    q = {}
-    if email:
-        q["email"] = {"$regex": email, "$options": "i"}
-    if plan:
-        q["plan"] = plan
-    cursor = db.users.find(q, {"_id": 0, "password": 0}).sort("created_at", -1).limit(limit)
-    users = await cursor.to_list(length=limit)
-    for u in users:
-        u.pop("password", None)
-        u["credit_balance"] = _user_credits(u)
-    return {"users": users}
-
-@api_router.get("/admin/users/{user_id}")
-async def admin_user_profile(user_id: str, admin: dict = Depends(get_current_admin(ADMIN_ROLES))):
-    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    user.pop("password", None)
-    user["credit_balance"] = _user_credits(user)
-    projects_count = await db.projects.count_documents({"user_id": user_id})
-    referrals = await db.referrals.find({"referrer_id": user_id}, {"_id": 0}).to_list(100) if hasattr(db, "referrals") else []
-    cursor = db.token_ledger.find({"user_id": user_id}, {"_id": 0}).sort("created_at", -1).limit(20)
-    ledger = await cursor.to_list(20)
-    purchases = await db.token_ledger.find({"user_id": user_id, "type": "purchase"}, {"_id": 0}).to_list(1000)
-    lifetime_revenue = round(sum(float(r.get("price") or TOKEN_BUNDLES.get(r.get("bundle", ""), {}).get("price", 0)) for r in purchases), 2)
-    return {
-        **user,
-        "projects_count": projects_count,
-        "referral_count": len(referrals),
-        "recent_ledger": ledger,
-        "last_login": user.get("last_login"),
-        "lifetime_revenue": lifetime_revenue,
-    }
-
-@api_router.post("/admin/users/{user_id}/grant-credits")
-async def admin_grant_credits(
-    user_id: str,
-    body: GrantCreditsBody,
-    admin: dict = Depends(get_current_admin(("owner", "operations", "support"))),
-):
-    role = admin.get("admin_role") or ("owner" if admin["id"] in ADMIN_USER_IDS else None)
-    if role == "support" and body.credits > SUPPORT_GRANT_CAP_PER_MONTH:
-        raise HTTPException(status_code=403, detail=f"Support can grant at most {SUPPORT_GRANT_CAP_PER_MONTH} credits per action")
-    target = await db.users.find_one({"id": user_id})
-    if not target:
-        raise HTTPException(status_code=404, detail="User not found")
-    await db.users.update_one({"id": user_id}, {"$inc": {"credit_balance": body.credits}})
-    await db.token_ledger.insert_one({
-        "id": str(uuid.uuid4()),
-        "user_id": user_id,
-        "credits": body.credits,
-        "type": "bonus",
-        "description": body.reason or "Support bonus",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "granted_by": admin["id"],
-    })
-    if audit_logger:
-        await audit_logger.log(admin["id"], "admin_grant_credits", resource_type="user", resource_id=user_id, details={"credits": body.credits, "reason": body.reason})
-    return {"ok": True, "credits_added": body.credits}
-
-@api_router.post("/admin/users/{user_id}/suspend")
-async def admin_suspend_user(
-    user_id: str,
-    body: SuspendBody,
-    admin: dict = Depends(get_current_admin(("owner", "operations"))),
-):
-    target = await db.users.find_one({"id": user_id})
-    if not target:
-        raise HTTPException(status_code=404, detail="User not found")
-    if target.get("admin_role") and target["id"] != admin["id"]:
-        raise HTTPException(status_code=403, detail="Cannot suspend another admin")
-    await db.users.update_one(
-        {"id": user_id},
-        {"$set": {"suspended": True, "suspended_at": datetime.now(timezone.utc).isoformat(), "suspended_reason": body.reason}},
-    )
-    if audit_logger:
-        await audit_logger.log(admin["id"], "admin_suspend_user", resource_type="user", resource_id=user_id, details={"reason": body.reason})
-    return {"ok": True, "suspended": True}
-
-@api_router.post("/admin/users/{user_id}/downgrade")
-async def admin_downgrade_user(user_id: str, admin: dict = Depends(get_current_admin(("owner", "operations")))):
-    """Set user plan to free (e.g. for chargeback)."""
-    target = await db.users.find_one({"id": user_id})
-    if not target:
-        raise HTTPException(status_code=404, detail="User not found")
-    await db.users.update_one({"id": user_id}, {"$set": {"plan": "free"}})
-    if audit_logger:
-        await audit_logger.log(admin["id"], "admin_downgrade_user", resource_type="user", resource_id=user_id, details={"plan": "free"})
-    return {"ok": True, "plan": "free"}
-
-@api_router.post("/users/me/export")
-async def self_export_user_data(user: dict = Depends(get_current_user)):
-    """GDPR Article 20: user self-service data export (profile + ledger + project list)."""
-    user_id = user["id"]
-    safe_user = {k: v for k, v in user.items() if k not in ("password", "hashed_password", "_id")}
-    ledger = await db.token_ledger.find({"user_id": user_id}, {"_id": 0}).to_list(500)
-    projects = await db.projects.find({"user_id": user_id}, {"id": 1, "name": 1, "status": 1, "created_at": 1}).to_list(200)
-    return {
-        "user": safe_user,
-        "ledger_entries": ledger,
-        "projects": projects,
-        "exported_at": datetime.now(timezone.utc).isoformat(),
-        "note": "This is all data CrucibAI holds about your account."
-    }
-
-
-@api_router.get("/admin/users/{user_id}/export")
-async def admin_export_user(user_id: str, admin: dict = Depends(get_current_admin(("owner", "operations")))):
-    """GDPR: export user data (profile + ledger summary + project ids)."""
-    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    user.pop("password", None)
-    ledger = await db.token_ledger.find({"user_id": user_id}, {"_id": 0}).to_list(MAX_ADMIN_USER_LEDGER)
-    project_ids = await db.projects.find({"user_id": user_id}, {"id": 1}).to_list(MAX_ADMIN_USER_EXPORT_PROJECTS)
-    return {
-        "user": {k: v for k, v in user.items() if k != "password"},
-        "ledger_entries": ledger,
-        "project_ids": [p["id"] for p in project_ids],
-        "exported_at": datetime.now(timezone.utc).isoformat(),
-    }
-
-@api_router.get("/admin/billing/transactions")
-async def admin_billing_transactions(
-    limit: int = 100,
-    admin: dict = Depends(get_current_admin(("owner", "operations"))),
-):
-    """List purchases (who paid, when, amount, status) from ledger."""
-    rows = await db.token_ledger.find(
-        {"type": "purchase"},
-        {"_id": 0, "user_id": 1, "bundle": 1, "price": 1, "credits": 1, "created_at": 1, "stripe_session_id": 1},
-    ).sort("created_at", -1).limit(limit).to_list(limit)
-    for r in rows:
-        if r.get("price") is None:
-            r["price"] = TOKEN_BUNDLES.get(r.get("bundle", ""), {}).get("price", 0)
-    return {"transactions": rows}
-
-@api_router.get("/admin/fraud/flags")
-async def admin_fraud_flags(admin: dict = Depends(get_current_admin(("owner", "operations")))):
-    """High-risk accounts. Returns empty list until IP/device clustering and risk rules are implemented."""
-    return {"flags": [], "message": "Fraud detection (IP/device clustering) can be added here."}
-
-@api_router.get("/admin/legal/blocked-requests")
-async def admin_legal_blocked_requests(
-    status: Optional[str] = None,
-    limit: int = 100,
-    admin: dict = Depends(get_current_admin(ADMIN_ROLES)),
-):
-    """List AUP-blocked build requests for review. Optional ?status=blocked."""
-    q = {}
-    if status:
-        q["status"] = status
-    cursor = db.blocked_requests.find(q).sort("timestamp", -1).limit(limit)
-    rows = await cursor.to_list(length=limit)
-    out = []
-    for r in rows:
-        out.append({
-            "id": str(r.get("_id")),
-            "user_id": r.get("user_id"),
-            "prompt": r.get("prompt"),
-            "reason": r.get("reason"),
-            "category": r.get("category"),
-            "status": r.get("status", "blocked"),
-            "timestamp": r.get("timestamp"),
-        })
-    return {"blocked_requests": out}
-
-@api_router.post("/admin/legal/review/{request_id}")
-async def admin_legal_review(
-    request_id: str,
-    data: dict,
-    admin: dict = Depends(get_current_admin(("owner", "operations"))),
-):
-    """Mark blocked request as reviewed (false_positive, confirmed, escalated)."""
-    from bson import ObjectId
-    try:
-        oid = ObjectId(request_id)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid request id")
-    action = data.get("action") or data.get("review")
-    if not action:
-        raise HTTPException(status_code=400, detail="action or review required")
-    await db.blocked_requests.update_one(
-        {"_id": oid},
-        {"$set": {"status": "reviewed", "review_action": action, "reviewed_by": admin.get("id"), "reviewed_at": datetime.now(timezone.utc).isoformat()}},
-    )
-    return {"ok": True, "request_id": request_id, "action": action}
-
-@api_router.get("/admin/referrals/links")
-async def admin_referral_links(admin: dict = Depends(get_current_admin(ADMIN_ROLES))):
-    """All referral codes with use count."""
-    if not hasattr(db, "referral_codes"):
-        return {"links": []}
-    codes = await db.referral_codes.find({}, {"_id": 0}).to_list(500)
-    out = []
-    for c in codes:
-        use_count = await db.referrals.count_documents({"referrer_id": c.get("user_id")})
-        out.append({"user_id": c.get("user_id"), "code": c.get("code"), "use_count": use_count})
-    return {"links": out}
-
-@api_router.get("/admin/referrals/leaderboard")
-async def admin_referrals_leaderboard(limit: int = 100, admin: dict = Depends(get_current_admin(ADMIN_ROLES))):
-    pipeline = [
-        {"$group": {"_id": "$referrer_id", "count": {"$sum": 1}}},
-        {"$sort": {"count": -1}},
-        {"$limit": limit},
-    ]
-    if not hasattr(db, "referrals"):
-        return {"leaderboard": []}
-    cursor = db.referrals.aggregate(pipeline)
-    leaderboard = await cursor.to_list(length=limit)
-    return {"leaderboard": [{"referrer_id": x["_id"], "referral_count": x["count"]} for x in leaderboard]}
-
-
-@api_router.get("/admin/segments")
-async def admin_segments(
-    plan: Optional[str] = None,
-    limit: int = 500,
-    format: Optional[str] = None,
-    admin: dict = Depends(get_current_admin(ADMIN_ROLES)),
-):
-    """Export user segment: filter by plan (free|builder|pro|scale|teams). Returns list of users; ?format=csv returns CSV."""
-    q = {}
-    if plan:
-        q["plan"] = plan
-    cursor = db.users.find(q, {"_id": 0, "id": 1, "email": 1, "plan": 1, "created_at": 1, "credit_balance": 1}).sort("created_at", -1).limit(limit)
-    users = await cursor.to_list(length=limit)
-    if format == "csv":
-        import io
-        buf = io.StringIO()
-        buf.write("id,email,plan,created_at,credit_balance\n")
-        for u in users:
-            buf.write(f"{u.get('id', '')},{u.get('email', '')},{u.get('plan', '')},{u.get('created_at', '')},{u.get('credit_balance', '')}\n")
-        return Response(content=buf.getvalue(), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=admin-segments.csv"})
-    return {"segment": users, "count": len(users)}
-
-
-@api_router.get("/admin/segments")
-async def admin_segments(
-    plan: Optional[str] = None,
-    from_date: Optional[str] = None,
-    to_date: Optional[str] = None,
-    limit: int = 500,
-    format: Optional[str] = None,
-    admin: dict = Depends(get_current_admin(ADMIN_ROLES)),
-):
-    """Export user segment: filter by plan, signup date range. ?format=csv for CSV download."""
-    q = {}
-    if plan:
-        q["plan"] = plan
-    if from_date or to_date:
-        q["created_at"] = {}
-        if from_date:
-            q["created_at"]["$gte"] = _parse_date(from_date).isoformat()
-        if to_date:
-            end = _parse_date(to_date)
-            q["created_at"]["$lte"] = (end.replace(hour=23, minute=59, second=59, microsecond=999999)).isoformat()
-    cursor = db.users.find(q, {"_id": 0, "id": 1, "email": 1, "plan": 1, "credit_balance": 1, "created_at": 1}).sort("created_at", -1).limit(limit)
-    users = await cursor.to_list(length=limit)
-    if format == "csv":
-        import io
-        buf = io.StringIO()
-        buf.write("id,email,plan,credit_balance,created_at\n")
-        for u in users:
-            buf.write(f"{u.get('id', '')},{u.get('email', '')},{u.get('plan', '')},{u.get('credit_balance', '')},{u.get('created_at', '')}\n")
-        return Response(content=buf.getvalue(), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=admin-segment.csv"})
-    return {"segment": users, "count": len(users)}
-
-
-@api_router.get("/admin/analytics/usage")
-async def admin_analytics_usage(
-    days: int = 30,
-    admin: dict = Depends(get_current_admin(ADMIN_ROLES)),
-):
-    """Usage analytics: token consumption, build counts. Optional days (default 30)."""
-    since = (datetime.now(timezone.utc) - timedelta(days=max(1, min(days, 365)))).isoformat()
-    builds = await db.projects.count_documents({"created_at": {"$gte": since}, "status": {"$in": ["completed", "failed"]}})
-    pipeline = [{"$match": {"created_at": {"$gte": since}}}, {"$group": {"_id": None, "total": {"$sum": "$tokens_used"}}}]
-    cursor = db.projects.aggregate(pipeline)
-    row = await cursor.to_list(length=1)
-    total_tokens = row[0]["total"] if row else 0
-    return {"period_days": days, "builds_count": builds, "tokens_used_total": total_tokens, "since": since}
-
-
-@api_router.get("/admin/analytics/revenue")
-async def admin_analytics_revenue(
-    days: int = 30,
-    admin: dict = Depends(get_current_admin(ADMIN_ROLES)),
-):
-    """Revenue analytics for the period. Optional days (default 30)."""
-    since = (datetime.now(timezone.utc) - timedelta(days=max(1, min(days, 365)))).isoformat()
-    total = await _revenue_for_query({"type": "purchase", "created_at": {"$gte": since}})
-    return {"period_days": days, "revenue": total, "since": since}
-
-
-@api_router.get("/admin/analytics/agents")
-async def admin_analytics_agents(
-    days: int = 30,
-    limit: int = 50,
-    admin: dict = Depends(get_current_admin(ADMIN_ROLES)),
-):
-    """Agent performance: runs per agent, success rate. Optional days (default 30)."""
-    since = (datetime.now(timezone.utc) - timedelta(days=max(1, min(days, 365)))).isoformat()
-    pipeline = [
-        {"$match": {"triggered_at": {"$gte": since}}},
-        {"$group": {"_id": "$agent_id", "runs": {"$sum": 1}, "completed": {"$sum": {"$cond": [{"$eq": ["$status", "completed"]}, 1, 0]}}}},
-        {"$sort": {"runs": -1}},
-        {"$limit": limit},
-    ]
-    try:
-        cursor = db.agent_runs.aggregate(pipeline)
-        rows = await cursor.to_list(length=limit)
-    except Exception:
-        return {"agents": [], "period_days": days}
-    agents = []
-    for r in rows:
-        aid = r["_id"]
-        runs = r.get("runs", 0)
-        completed = r.get("completed", 0)
-        agents.append({"agent_id": aid, "runs": runs, "completed": completed, "success_rate": round(100 * completed / runs, 1) if runs else 0})
-    return {"agents": agents, "period_days": days}
-
-
-@api_router.post("/admin/settings/update")
-async def admin_settings_update(
-    data: dict,
-    admin: dict = Depends(get_current_admin(("owner", "operations"))),
-):
-    """Update system-wide settings (stored in db.admin_settings). Body: key-value pairs."""
-    key = (data.get("key") or data.get("name") or "").strip()
-    value = data.get("value") if "value" in data else data.get("settings")
-    if not key:
-        raise HTTPException(status_code=400, detail="key or name required")
-    now = datetime.now(timezone.utc).isoformat()
-    await db.admin_settings.update_one(
-        {"key": key},
-        {"$set": {"key": key, "value": value, "updated_at": now, "updated_by": admin.get("id")}},
-        upsert=True,
-    )
-    return {"ok": True, "key": key}
-
-
-@api_router.get("/admin/audit-log")
-async def admin_audit_log(
-    user_id: Optional[str] = None,
-    action: Optional[str] = None,
-    limit: int = 100,
-    skip: int = 0,
-    admin: dict = Depends(get_current_admin(ADMIN_ROLES)),
-):
-    """View audit logs. Optional user_id, action filter. Pagination: limit, skip."""
-    q = {}
-    if user_id:
-        q["user_id"] = user_id
-    if action:
-        q["action"] = action
-    if not hasattr(db, "audit_log"):
-        return {"logs": [], "total": 0, "limit": limit, "skip": skip}
-    cursor = db.audit_log.find(q).sort("timestamp", -1).skip(skip).limit(limit)
-    logs = await cursor.to_list(length=limit)
-    total = await db.audit_log.count_documents(q)
-    out = []
-    for log in logs:
-        d = {"id": str(log.get("_id")), "user_id": log.get("user_id"), "action": log.get("action"), "resource_type": log.get("resource_type"), "status": log.get("status"), "ip_address": log.get("ip_address")}
-        ts = log.get("timestamp")
-        d["timestamp"] = ts.isoformat() if hasattr(ts, "isoformat") else str(ts)
-        out.append(d)
-    return {"logs": out, "total": total, "limit": limit, "skip": skip}
-
-
-class AdminNotificationBody(BaseModel):
-    target: Optional[str] = None  # user_id or "all"
-    subject: str = ""
-    body: str = ""
-
-
-@api_router.post("/admin/notifications/send")
-async def admin_notifications_send(
-    data: AdminNotificationBody,
-    admin: dict = Depends(get_current_admin(("owner", "operations"))),
-):
-    """Send system notification. Stores in db.notifications; optionally trigger email when implemented."""
-    now = datetime.now(timezone.utc).isoformat()
-    doc = {
-        "id": str(uuid.uuid4()),
-        "target": data.target or "all",
-        "subject": data.subject,
-        "body": data.body,
-        "created_at": now,
-        "created_by": admin.get("id"),
-    }
-    await db.notifications.insert_one(doc)
-    return {"ok": True, "notification_id": doc["id"]}
-
+# ==================== ADMIN ROUTES ====================
+# Admin routes have been extracted to backend/routes/admin.py
+# They are registered via app.include_router(admin_router) at the bottom of this file.
+# The admin_router is an APIRouter(prefix='/api', tags=['admin']).
 
 # ==================== DASHBOARD STATS ====================
 
@@ -10232,7 +9668,7 @@ class DeployValidateRequest(BaseModel):
     config: Optional[Dict[str, Any]] = None
 
 @api_router.post("/cache/invalidate")
-async def cache_invalidate(agent_name: Optional[str] = Query(None), admin: dict = Depends(get_current_admin(("owner", "operations")))):
+async def cache_invalidate(agent_name: Optional[str] = Query(None), admin: dict = Depends(_get_current_admin_dep(("owner", "operations")))):
     """Invalidate agent cache (optional: by agent_name). Admin only."""
     from agent_cache import invalidate
     n = await invalidate(db, agent_name=agent_name)
@@ -10684,7 +10120,13 @@ async def init_postgres_primary():
     try:
         from db_pg import get_db, run_migrations, ensure_all_tables
 
-        await run_migrations()
+        # Use idempotent runner (skips already-applied migrations via schema_migrations table)
+        try:
+            from services.migration_runner import run_migrations_idempotent
+            await run_migrations_idempotent()
+        except Exception as _mr_err:
+            logger.warning("Idempotent migration runner unavailable (%s); falling back to standard runner", _mr_err)
+            await run_migrations()
         await ensure_all_tables()  # safety net: creates any tables missed by migration
         db = await get_db()
         try:
@@ -10694,6 +10136,12 @@ async def init_postgres_primary():
         except Exception as _aud:
             logger.warning("DB audit logger unavailable: %s", _aud)
             audit_logger = None
+        # Populate shared deps state so extracted route modules can access db/audit_logger
+        try:
+            import deps as _deps
+            _deps.init(db=db, audit_logger=audit_logger)
+        except Exception as _deps_err:
+            logger.debug("deps.init skipped: %s", _deps_err)
         logger.info("PostgreSQL initialized as primary database")
         # Initialize automation engine defaults
         try:
@@ -11704,6 +11152,20 @@ try:
     logger.info("deploy router registered")
 except Exception as _e:
     logger.warning("deploy router not loaded: %s", _e)
+
+try:
+    from routes.admin import admin_router as _admin_router
+    app.include_router(_admin_router)
+    logger.info("admin router registered")
+except Exception as _e:
+    logger.warning("admin router not loaded: %s", _e)
+
+try:
+    from routes.mobile import mobile_router as _mobile_router
+    app.include_router(_mobile_router)
+    logger.info("mobile router registered")
+except Exception as _e:
+    logger.warning("mobile router not loaded: %s", _e)
 
 if _static_dir.exists():
     app.mount("/", SpaStaticFiles(directory=str(_static_dir), html=True), name="frontend")
