@@ -356,7 +356,12 @@ async def app_client():
     except Exception as e:
         if os.environ.get("CRUCIBAI_TEST_DB_UNAVAILABLE") == "1":
             server_module.db = _FakeDb()
-            server_module.audit_logger = None
+            try:
+                from utils.audit_log import AuditLogger as DbAuditLogger
+
+                server_module.audit_logger = DbAuditLogger(server_module.db)
+            except Exception:
+                server_module.audit_logger = None
         else:
             pytest.fail(
                 f"PostgreSQL required for tests ({e}). "

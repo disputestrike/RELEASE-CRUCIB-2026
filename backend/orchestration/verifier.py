@@ -136,7 +136,7 @@ def _proof_item(
     p = dict(payload)
     if verification_class:
         p["verification_class"] = verification_class
-    return {"proof_type": proof_type, "title": title, "payload": p}
+    return {"proof_type": proof_type, "check": proof_type, "title": title, "payload": p}
 
 
 def _first_meaningful_line(text: str) -> str:
@@ -243,7 +243,7 @@ async def _verify_frontend_source_file(
                 text = cleaned
                 proof.append(
                     _proof_item(
-                        "syntax",
+                        "prose_auto_stripped",
                         f"Auto-stripped prose in {rel}",
                         {"file": rel, "path": rel, "stripped_line": prose[:80]},
                         verification_class="syntax",
