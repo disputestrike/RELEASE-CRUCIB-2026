@@ -55,7 +55,7 @@ async function openPreviewFromToolbar(page) {
 async function openCodeWorkspacePane(page) {
   await waitForUnifiedWorkspace(page);
   await page.getByRole('button', { name: 'Dev' }).click({ timeout: 15000 }).catch(() => {});
-  await page.getByRole('button', { name: 'Code' }).click({ timeout: 15000 });
+  await page.locator('.arp-pane-tabs').getByRole('button', { name: 'Code', exact: true }).click({ timeout: 15000 });
   await page.waitForSelector('.code-pane-main', { timeout: 20000 });
 }
 

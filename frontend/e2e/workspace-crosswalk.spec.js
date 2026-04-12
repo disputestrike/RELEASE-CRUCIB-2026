@@ -30,6 +30,25 @@ async function prepareWorkspaceSession(page, token) {
   }, token);
 }
 
+async function createLandingProject(apiReq, token) {
+  const r = await apiReq.post('/api/projects', {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {
+      name: `E2E AgentMonitor ${Date.now()}`,
+      description: 'browser e2e',
+      project_type: 'landing',
+      requirements: { prompt: 'Minimal single-section landing for E2E.' },
+      estimated_tokens: 50000,
+    },
+  });
+  if (!r.ok()) {
+    return { ok: false, status: r.status(), text: await r.text() };
+  }
+  const j = await r.json();
+  const p = j.project || j;
+  return { ok: true, projectId: p.id };
+}
+
 async function createGuidedPlanJob(apiReq, token) {
   const planRes = await apiReq.post('/api/orchestrator/plan', {
     headers: { Authorization: `Bearer ${token}` },
@@ -421,6 +440,59 @@ test.describe('Workspace crosswalk', () => {
       await expect(traceEl).toContainText('verify.files');
       await expect(traceEl).toHaveAttribute('title', new RegExp(`Step\\s+${traceStepId}`));
       await expect(traceEl).toHaveAttribute('title', /2026-06-15T14:22:33/);
+    } finally {
+      await apiReq.dispose();
+      if (root) rmWorkspaceRoot(root);
+    }
+  });
+
+  test('AgentMonitor workspace file link opens UnifiedWorkspace Code pane (no stubs)', async ({ page, playwright }) => {
+    const apiReq = await apiRequestContext(playwright);
+    let root;
+    try {
+      const health = await apiReq.get('/api/health').catch(() => null);
+      test.skip(!health || !health.ok(), `No API at ${apiBase()}/api/health`);
+
+      const gr = await apiReq.post('/api/auth/guest', { data: {} });
+      expect(gr.ok()).toBeTruthy();
+      const { token } = await gr.json();
+
+      const created = await createLandingProject(apiReq, token);
+      if (!created.ok) {
+        test.skip(true, `POST /api/projects not available for guest: ${created.status} ${created.text || ''}`);
+      }
+      const { projectId } = created;
+      root = workspaceProjectRoot(projectId);
+      seedWorkspaceTextFiles(projectId, {
+        'src/App.jsx': 'export default function App(){return <div>am</div>;}\n',
+        'src/agent-monitor-target.txt': 'AGENT_MONITOR_LINK_UNIQUE\n',
+      });
+
+      const filesRes = await apiReq.get(`/api/projects/${projectId}/workspace/files`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!filesRes.ok()) {
+        throw new Error(`workspace files: ${filesRes.status()} ${await filesRes.text()}`);
+      }
+      const filesJson = await filesRes.json();
+      const raw = filesJson.files || [];
+      const paths = raw.map((row) => (typeof row === 'string' ? row : row?.path)).filter(Boolean);
+      expect(paths).toContain('src/agent-monitor-target.txt');
+
+      await prepareWorkspaceSession(page, token);
+      await page.goto(`/app/projects/${encodeURIComponent(projectId)}`, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('[data-testid="agent-monitor"]', { timeout: 90000 });
+      await page.getByRole('button', { name: /Build state/ }).click();
+      await expect(page.getByRole('link', { name: 'src/agent-monitor-target.txt', exact: true })).toBeVisible({
+        timeout: 60000,
+      });
+
+      await page.getByRole('link', { name: 'src/agent-monitor-target.txt', exact: true }).click();
+      await waitForUnifiedWorkspace(page);
+      await expect(page).toHaveURL(/\/app\/workspace\?projectId=/);
+      await expect(page.locator('.arp-pane-tab.active').filter({ hasText: /^Code$/ })).toBeVisible({ timeout: 25000 });
+      await expect(page.locator('.wfv-path')).toContainText('src/agent-monitor-target.txt', { timeout: 25000 });
+      await expect(page.locator('[data-testid="wfv-monaco"]')).toContainText('AGENT_MONITOR_LINK_UNIQUE', { timeout: 30000 });
     } finally {
       await apiReq.dispose();
       if (root) rmWorkspaceRoot(root);

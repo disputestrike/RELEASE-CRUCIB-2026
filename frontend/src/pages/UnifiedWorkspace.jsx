@@ -440,6 +440,23 @@ export default function UnifiedWorkspace() {
     setTreeRevealTick((t) => t + 1);
   }, []);
 
+  /** AgentMonitor → workspace: Link with `state: { openWorkspacePath }` (posix path). */
+  useEffect(() => {
+    if (authLoading || !token) return;
+    const st = location.state;
+    if (!st || typeof st.openWorkspacePath !== 'string') return;
+    const raw = st.openWorkspacePath.trim();
+    if (!raw) return;
+    const key = `openWsPath_${location.key || 'k'}_${raw}`;
+    if (processedLocationHandoffRef.current.has(key)) return;
+    processedLocationHandoffRef.current.add(key);
+    openWorkspacePath(raw);
+    navigate(
+      { pathname: location.pathname, search: location.search || '' },
+      { replace: true, state: {} },
+    );
+  }, [authLoading, token, location.key, location.state, location.pathname, location.search, navigate, openWorkspacePath]);
+
   useEffect(() => {
     if (!activeWsPath) return;
     loadWorkspaceFileBody(activeWsPath);

@@ -612,7 +612,29 @@ const AgentMonitor = () => {
         {statePanelOpen && (
           <div className="mt-4 space-y-4 text-sm border-t border-black/10 pt-4">
             {!projectState ? (
-              <p className="text-gray-500">No state yet. State is written as agents run (plan, requirements, stack, tool results).</p>
+              <>
+                <p className="text-gray-500">No state yet. State is written as agents run (plan, requirements, stack, tool results).</p>
+                {workspaceFiles.length > 0 && (
+                  <div>
+                    <h4 className="text-[#666666] font-medium mb-1">Files in workspace</h4>
+                    <ul className="text-[#666666] text-xs font-mono space-y-0.5 max-h-32 overflow-y-auto">
+                      {workspaceFiles.slice(0, 50).map((f) => (
+                        <li key={f}>
+                          <Link
+                            to={`/app/workspace?projectId=${encodeURIComponent(id)}`}
+                            state={{ openWorkspacePath: f }}
+                            className="text-[#1A1A1A] hover:underline break-all"
+                            data-testid="agent-monitor-workspace-file-link"
+                          >
+                            {f}
+                          </Link>
+                        </li>
+                      ))}
+                      {workspaceFiles.length > 50 && <li className="text-gray-500">… +{workspaceFiles.length - 50} more</li>}
+                    </ul>
+                  </div>
+                )}
+              </>
             ) : (
               <>
                 {Array.isArray(projectState.plan) && projectState.plan.length > 0 && (
@@ -680,8 +702,17 @@ const AgentMonitor = () => {
                   <div>
                     <h4 className="text-[#666666] font-medium mb-1">Files in workspace</h4>
                     <ul className="text-[#666666] text-xs font-mono space-y-0.5 max-h-32 overflow-y-auto">
-                      {workspaceFiles.slice(0, 50).map((f, i) => (
-                        <li key={i}>{f}</li>
+                      {workspaceFiles.slice(0, 50).map((f) => (
+                        <li key={f}>
+                          <Link
+                            to={`/app/workspace?projectId=${encodeURIComponent(id)}`}
+                            state={{ openWorkspacePath: f }}
+                            className="text-[#1A1A1A] hover:underline break-all"
+                            data-testid="agent-monitor-workspace-file-link"
+                          >
+                            {f}
+                          </Link>
+                        </li>
                       ))}
                       {workspaceFiles.length > 50 && <li className="text-gray-500">… +{workspaceFiles.length - 50} more</li>}
                     </ul>
