@@ -2,12 +2,13 @@
 Edge-case tests: rate limiting, OAuth state handling, JWT refresh, protected routes.
 """
 
-import os
 import base64
 import json
-import pytest
+import os
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent
 
@@ -23,7 +24,7 @@ class TestRateLimiting:
             # Re-import would use new env; but app is already built. So we test that
             # the rate limit code path exists and returns 429 when limit is hit.
             # Alternative: call an endpoint that has strict limit (STRICT_RATE_LIMITS)
-            from middleware import RateLimitMiddleware, STRICT_RATE_LIMITS
+            from middleware import STRICT_RATE_LIMITS, RateLimitMiddleware
 
             assert STRICT_RATE_LIMITS is not None or hasattr(
                 RateLimitMiddleware, "_check_limit"
@@ -62,8 +63,9 @@ class TestJWTRefresh:
 
     def test_jwt_expiry_in_payload(self):
         """Token creation uses exp claim."""
+        from datetime import datetime, timedelta, timezone
+
         import jwt
-        from datetime import datetime, timezone, timedelta
 
         payload = {
             "user_id": "u1",
@@ -75,8 +77,9 @@ class TestJWTRefresh:
 
     def test_expired_jwt_rejected(self):
         """Expired token decode raises."""
+        from datetime import datetime, timedelta, timezone
+
         import jwt
-        from datetime import datetime, timezone, timedelta
 
         payload = {
             "user_id": "u1",

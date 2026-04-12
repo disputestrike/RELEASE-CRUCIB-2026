@@ -3,12 +3,12 @@ Git integration for CrucibAI — real git operations in project workspace.
 Runs git status, stage, commit, branch in the given repo path (project workspace).
 """
 
-from typing import Dict, Any, List, Optional
+import asyncio
+import logging
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-import asyncio
-import subprocess
-import logging
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 

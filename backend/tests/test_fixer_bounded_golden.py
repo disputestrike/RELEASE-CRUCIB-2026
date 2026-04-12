@@ -1,7 +1,6 @@
 """Fixer retry cap (fifty-point #21)."""
 
 import pytest
-
 from orchestration.fixer import MAX_RETRIES
 
 

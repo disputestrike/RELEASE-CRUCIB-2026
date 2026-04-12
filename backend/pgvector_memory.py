@@ -14,11 +14,12 @@ Usage:
     results = await memory.search_similar("project_123", query_embedding, top_k=5)
 """
 
+import hashlib
 import json
 import logging
-import hashlib
-from typing import Dict, Any, Optional, List
 from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
+
 import asyncpg
 
 logger = logging.getLogger(__name__)

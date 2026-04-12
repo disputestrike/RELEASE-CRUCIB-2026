@@ -2,12 +2,13 @@
 Tests for Phase 3 tool agents: Browser, File, API, Database, Deployment.
 """
 
-import pytest
 import asyncio
 import os
-from pathlib import Path
-import tempfile
 import shutil
+import tempfile
+from pathlib import Path
+
+import pytest
 
 # ==================== BASE AGENT ====================
 

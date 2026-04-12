@@ -3,10 +3,10 @@ Agent Prompt Optimization System
 Optimizes prompts for each agent to reduce tokens and improve quality.
 """
 
-import json
 import hashlib
-from typing import Dict, Any, List, Optional
+import json
 from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 
 
 class PromptOptimizer:

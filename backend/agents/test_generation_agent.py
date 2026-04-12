@@ -2,8 +2,9 @@
 TestGenerationAgent: Generates unit, integration, and E2E tests.
 """
 
-from typing import Dict, Any
-from agents.base_agent import BaseAgent, AgentValidationError
+from typing import Any, Dict
+
+from agents.base_agent import AgentValidationError, BaseAgent
 from agents.registry import AgentRegistry
 
 

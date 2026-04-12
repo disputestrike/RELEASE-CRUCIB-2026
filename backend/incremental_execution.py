@@ -3,10 +3,10 @@ Incremental execution for CrucibAI — re-run only what changed.
 Given project state and previous run outputs, determines which agents/phases need re-execution.
 """
 
-from typing import List, Dict, Any, Optional, Set
 import hashlib
 import json
 import logging
+from typing import Any, Dict, List, Optional, Set
 
 logger = logging.getLogger(__name__)
 

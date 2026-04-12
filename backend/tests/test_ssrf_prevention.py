@@ -1,7 +1,6 @@
 """SSRF validator unit tests (Fifty-point #11 / #12)."""
 
 import pytest
-
 from ssrf_prevention import SSRFValidator
 
 

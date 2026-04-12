@@ -13,10 +13,10 @@ Paid pro/max: Claude Haiku (paid quality)
 Critical/complex (paid pro+): Claude Sonnet (highest quality)
 """
 
-import os
 import logging
-from typing import Tuple, Optional, Dict, Any
+import os
 from enum import Enum
+from typing import Any, Dict, Optional, Tuple
 
 from anthropic_models import ANTHROPIC_HAIKU_MODEL, ANTHROPIC_SONNET_MODEL
 

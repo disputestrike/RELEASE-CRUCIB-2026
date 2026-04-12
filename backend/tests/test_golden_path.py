@@ -10,8 +10,9 @@ Run with:
 import asyncio
 import os
 import time
-import pytest
+
 import httpx
+import pytest
 
 BASE_URL = os.environ.get("TEST_BASE_URL", "http://localhost:8000")
 TEST_EMAIL = os.environ.get("TEST_USER_EMAIL", "test_golden@crucibai.test")

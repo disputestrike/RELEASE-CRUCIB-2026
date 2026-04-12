@@ -2,7 +2,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from benchmarks.repeatability_scorecard import (
     BENCHMARK_VERSION,
     load_prompt_suite,

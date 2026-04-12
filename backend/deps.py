@@ -23,7 +23,7 @@ from typing import Optional
 
 import jwt
 from fastapi import Depends, HTTPException, Query
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 # ---------------------------------------------------------------------------
 # Mutable shared state

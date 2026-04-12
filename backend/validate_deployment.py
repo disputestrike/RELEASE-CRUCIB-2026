@@ -3,9 +3,9 @@ Validate deployment for CrucibAI — validates deployment config/output before d
 Reduces failed deploys, clearer errors for Vercel/Netlify/Railway.
 """
 
-from typing import Dict, Any, List, Tuple, Optional
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 

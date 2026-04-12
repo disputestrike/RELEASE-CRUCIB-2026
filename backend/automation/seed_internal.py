@@ -3,8 +3,8 @@ Seed 5 internal (dogfooding) agents: Daily digest, Deployment check, Lead sync, 
 Call from server startup when SEED_INTERNAL_AGENTS=1 or run as script.
 """
 
-import os
 import logging
+import os
 from datetime import datetime, timezone
 
 from .constants import INTERNAL_USER_ID

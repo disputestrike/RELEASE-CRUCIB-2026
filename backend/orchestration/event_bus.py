@@ -6,8 +6,8 @@ Events are also persisted to DB via runtime_state.
 
 import asyncio
 import logging
-from typing import Dict, List, Any, Optional
 from collections import defaultdict
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 

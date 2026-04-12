@@ -4,12 +4,13 @@ CrucibAI Mathematical Problem Solver
 Computes actual numerical solutions for Millennium Prize Problems
 """
 
+from datetime import datetime
+
+import matplotlib.pyplot as plt
 import numpy as np
-from scipy.special import zeta, gamma
 from scipy.integrate import odeint, solve_ivp
 from scipy.optimize import fsolve, minimize
-import matplotlib.pyplot as plt
-from datetime import datetime
+from scipy.special import gamma, zeta
 
 print("=" * 80)
 print("CRUCIBAI MATHEMATICAL PROBLEM SOLVER")

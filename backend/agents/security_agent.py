@@ -2,8 +2,9 @@
 SecurityAgent: Security audit, vulnerability scanning, and fixes.
 """
 
-from typing import Dict, Any
-from agents.base_agent import BaseAgent, AgentValidationError
+from typing import Any, Dict
+
+from agents.base_agent import AgentValidationError, BaseAgent
 from agents.registry import AgentRegistry
 
 

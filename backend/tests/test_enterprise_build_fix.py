@@ -2,7 +2,6 @@ import os
 import tempfile
 
 import pytest
-
 from orchestration.executor import (
     handle_backend_route,
     handle_db_migration,
@@ -52,8 +51,8 @@ def test_enterprise_frontend_template_builds_product_not_prompt_echo():
 
 @pytest.mark.asyncio
 async def test_enterprise_frontend_handler_bypasses_generic_agent(monkeypatch):
-    from agents.frontend_agent import FrontendAgent
     import orchestration.plan_context as plan_context
+    from agents.frontend_agent import FrontendAgent
 
     async def should_not_run(self, context):  # pragma: no cover - failure guard
         raise AssertionError(

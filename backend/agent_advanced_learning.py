@@ -5,10 +5,10 @@ Better pattern recognition, strategy adaptation, and cost optimization.
 
 import json
 import math
-from typing import Dict, Any, List, Optional, Tuple
-from datetime import datetime, timezone, timedelta
-from collections import defaultdict
 import statistics
+from collections import defaultdict
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class PatternRecognizer:

@@ -7,6 +7,7 @@ Requires: backend server running on http://localhost:8000 (uvicorn server:app)
 """
 
 import sys
+
 import requests
 
 BASE = "http://localhost:8000/api"

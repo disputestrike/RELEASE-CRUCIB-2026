@@ -15,7 +15,7 @@ from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
-from agent_dag import AGENT_DAG, get_execution_phases, _AGENT_RELEVANT_DEPS
+from agent_dag import _AGENT_RELEVANT_DEPS, AGENT_DAG, get_execution_phases
 from agent_resilience import get_criticality
 
 from .agent_selection_logic import (

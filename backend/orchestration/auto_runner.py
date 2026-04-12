@@ -7,35 +7,36 @@ Job "completed" requires every DAG step in terminal success — not a partial % 
 """
 
 import asyncio
-import logging
 import json
+import logging
 import os
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
 
-from .runtime_state import (
-    get_job,
-    update_job_state,
-    get_steps,
-    create_step,
-    append_job_event,
-    save_checkpoint,
-    load_checkpoint,
-)
+from proof import proof_service
+
+from .brain_repair import apply_targeted_repair, run_full_brain_repair
 from .dag_engine import (
-    get_ready_steps,
-    has_blocking_failure,
     block_dependents,
     execution_quiescent,
+    get_ready_steps,
+    has_blocking_failure,
     scheduler_deadlocked,
 )
-from .executor import execute_step
-from .verifier import verify_step
-from .fixer import classify_failure, build_retry_plan, apply_fix, MAX_RETRIES
-from .brain_repair import apply_targeted_repair, run_full_brain_repair
 from .event_bus import publish
+from .executor import execute_step
+from .fixer import MAX_RETRIES, apply_fix, build_retry_plan, classify_failure
 from .planner import generate_plan
 from .runtime_health import is_infrastructure_failure
-from proof import proof_service
+from .runtime_state import (
+    append_job_event,
+    create_step,
+    get_job,
+    get_steps,
+    load_checkpoint,
+    save_checkpoint,
+    update_job_state,
+)
+from .verifier import verify_step
 
 logger = logging.getLogger(__name__)
 

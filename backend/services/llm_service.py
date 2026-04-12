@@ -4,39 +4,31 @@ Provides authentication dependency, task classification, model chain selection,
 and direct LLM call helpers (Anthropic, Cerebras, Llama) with fallback logic.
 """
 
-import os
-import logging
 import asyncio
-import httpx
 import json
+import logging
+import os
 import re
-from typing import Optional, Dict, List, Any
-
-from fastapi import Depends, HTTPException
 from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import httpx
 from dotenv import load_dotenv
+from fastapi import Depends, HTTPException
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT_DIR / ".env", override=True)
 
-from deps import get_optional_user
 from anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_model
-from llm_router import (
-    router as llm_router,
-    classifier,
-    TaskComplexity,
-    get_cerebras_key as _get_cerebras_key,
-)
-from dev_stub_llm import (
-    stub_build_enabled,
-    is_real_agent_only,
-    chat_llm_available,
-    REAL_AGENT_NO_LLM_KEYS_DETAIL,
-    plan_and_suggestions as _stub_plan_and_suggestions,
-    stub_multifile_markdown,
-    stub_file_dict,
-    detect_build_kind as _stub_detect_build_kind,
-)
+from deps import get_optional_user
+from dev_stub_llm import REAL_AGENT_NO_LLM_KEYS_DETAIL, chat_llm_available
+from dev_stub_llm import detect_build_kind as _stub_detect_build_kind
+from dev_stub_llm import is_real_agent_only
+from dev_stub_llm import plan_and_suggestions as _stub_plan_and_suggestions
+from dev_stub_llm import stub_build_enabled, stub_file_dict, stub_multifile_markdown
+from llm_router import TaskComplexity, classifier
+from llm_router import get_cerebras_key as _get_cerebras_key
+from llm_router import router as llm_router
 
 logger = logging.getLogger(__name__)
 

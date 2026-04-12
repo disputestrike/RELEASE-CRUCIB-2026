@@ -4,9 +4,8 @@ Marked with @pytest.mark.golden for `scripts/run_golden_eval.py` and Fifty-point
 """
 
 import pytest
-from fastapi.testclient import TestClient
-
 from dev_stub_llm import detect_build_kind
+from fastapi.testclient import TestClient
 from server import app
 
 

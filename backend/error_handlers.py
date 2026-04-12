@@ -3,12 +3,13 @@ Comprehensive error handling utilities for CrucibAI
 Provides structured error handling, logging, and recovery strategies
 """
 
-import logging
-from typing import Optional, Dict, Any, Callable
-from fastapi import HTTPException
-from enum import Enum
-import traceback
 import asyncio
+import logging
+import traceback
+from enum import Enum
+from typing import Any, Callable, Dict, Optional
+
+from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
 

@@ -14,6 +14,7 @@ import json
 import os
 import sys
 import tempfile
+
 import pytest
 
 # ═══════════════════════════════════════════════════════════════
@@ -358,11 +359,11 @@ class TestLLMCodeRepair:
 
     def test_import(self):
         from orchestration.llm_code_repair import (
-            llm_repair_callback,
-            repair_file_with_llm,
+            CAUSAL_CHAINS,
             analyse_failure_with_llm,
             get_downstream_impact,
-            CAUSAL_CHAINS,
+            llm_repair_callback,
+            repair_file_with_llm,
         )
 
         assert callable(llm_repair_callback)
@@ -448,8 +449,9 @@ class TestLLMCodeRepair:
 
     def test_causal_analysis_no_api_key_returns_static(self):
         async def run():
-            from orchestration.llm_code_repair import analyse_failure_with_llm
             import os
+
+            from orchestration.llm_code_repair import analyse_failure_with_llm
 
             old_key = os.environ.pop("ANTHROPIC_API_KEY", None)
             old_tavily = os.environ.pop("TAVILY_API_KEY", None)
@@ -484,8 +486,8 @@ class TestBrainRepair:
 
     def test_import(self):
         from orchestration.brain_repair import (
-            run_full_brain_repair,
             apply_targeted_repair,
+            run_full_brain_repair,
         )
 
         assert callable(run_full_brain_repair)
@@ -554,8 +556,9 @@ class TestBrainRepair:
 
     @pytest.mark.asyncio
     async def test_run_full_brain_repair_no_workspace(self):
-        from orchestration.brain_repair import run_full_brain_repair
         import os
+
+        from orchestration.brain_repair import run_full_brain_repair
 
         old_key = os.environ.pop("ANTHROPIC_API_KEY", None)
         try:
@@ -574,8 +577,9 @@ class TestBrainRepair:
 
     @pytest.mark.asyncio
     async def test_run_full_brain_repair_with_prose_workspace(self):
-        from orchestration.brain_repair import run_full_brain_repair
         import os
+
+        from orchestration.brain_repair import run_full_brain_repair
 
         old_key = os.environ.pop("ANTHROPIC_API_KEY", None)
         try:
@@ -616,8 +620,9 @@ class TestBrainRepair:
 
     @pytest.mark.asyncio
     async def test_run_full_brain_repair_returns_all_keys(self):
-        from orchestration.brain_repair import run_full_brain_repair
         import os
+
+        from orchestration.brain_repair import run_full_brain_repair
 
         old_key = os.environ.pop("ANTHROPIC_API_KEY", None)
         try:
@@ -655,15 +660,15 @@ class TestBrainIntelligence:
 
     def test_import(self):
         from orchestration.brain_intelligence import (
-            remember_fix,
-            recall_best_fix,
-            store_build_dna,
-            find_similar_builds,
-            predict_failures,
-            search_error_solution,
-            get_prebuild_intelligence,
-            record_build_outcome,
             _error_signature,
+            find_similar_builds,
+            get_prebuild_intelligence,
+            predict_failures,
+            recall_best_fix,
+            record_build_outcome,
+            remember_fix,
+            search_error_solution,
+            store_build_dna,
         )
 
         assert callable(remember_fix)
@@ -775,8 +780,9 @@ class TestBrainIntelligence:
     @pytest.mark.asyncio
     async def test_remember_and_recall_no_db(self):
         """Without DB, these should gracefully return None/nothing."""
-        from orchestration.brain_intelligence import remember_fix, recall_best_fix
         import os
+
+        from orchestration.brain_intelligence import recall_best_fix, remember_fix
 
         old = os.environ.pop("DATABASE_URL", None)
         try:
@@ -792,8 +798,9 @@ class TestBrainIntelligence:
 
     @pytest.mark.asyncio
     async def test_find_similar_builds_no_db(self):
-        from orchestration.brain_intelligence import find_similar_builds
         import os
+
+        from orchestration.brain_intelligence import find_similar_builds
 
         old = os.environ.pop("DATABASE_URL", None)
         try:
@@ -805,8 +812,9 @@ class TestBrainIntelligence:
 
     @pytest.mark.asyncio
     async def test_get_prebuild_intelligence_no_db(self):
-        from orchestration.brain_intelligence import get_prebuild_intelligence
         import os
+
+        from orchestration.brain_intelligence import get_prebuild_intelligence
 
         old = os.environ.pop("DATABASE_URL", None)
         try:
@@ -821,8 +829,9 @@ class TestBrainIntelligence:
 
     @pytest.mark.asyncio
     async def test_search_error_no_api_keys_returns_none(self):
-        from orchestration.brain_intelligence import search_error_solution
         import os
+
+        from orchestration.brain_intelligence import search_error_solution
 
         old_t = os.environ.pop("TAVILY_API_KEY", None)
         old_a = os.environ.pop("ANTHROPIC_API_KEY", None)
@@ -839,8 +848,9 @@ class TestBrainIntelligence:
 
     @pytest.mark.asyncio
     async def test_record_build_outcome_no_db(self):
-        from orchestration.brain_intelligence import record_build_outcome
         import os
+
+        from orchestration.brain_intelligence import record_build_outcome
 
         old = os.environ.pop("DATABASE_URL", None)
         try:
@@ -894,8 +904,9 @@ class TestEndToEndRepairScenarios:
     @pytest.mark.asyncio
     async def test_scenario_omega_database_agent_400(self):
         """The exact failure from the Omega test — Anthropic 400 on Database Agent."""
-        from orchestration.brain_repair import run_full_brain_repair
         import os
+
+        from orchestration.brain_repair import run_full_brain_repair
 
         old_key = os.environ.pop("ANTHROPIC_API_KEY", None)
         try:
@@ -915,8 +926,9 @@ class TestEndToEndRepairScenarios:
     @pytest.mark.asyncio
     async def test_scenario_prose_in_app_jsx(self):
         """Prose preamble causes vite build failure."""
-        from orchestration.brain_repair import run_full_brain_repair
         import os
+
+        from orchestration.brain_repair import run_full_brain_repair
 
         old_key = os.environ.pop("ANTHROPIC_API_KEY", None)
         try:
@@ -956,8 +968,9 @@ class TestEndToEndRepairScenarios:
     @pytest.mark.asyncio
     async def test_scenario_missing_scaffold_files(self):
         """Workspace missing vite config and index.html."""
-        from orchestration.brain_repair import run_full_brain_repair
         import os
+
+        from orchestration.brain_repair import run_full_brain_repair
 
         old_key = os.environ.pop("ANTHROPIC_API_KEY", None)
         try:

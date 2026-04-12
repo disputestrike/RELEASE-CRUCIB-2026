@@ -12,10 +12,10 @@ Used in: Phase 5 (before verification.preview step)
 
 import asyncio
 import json
+import logging
 import os
 import re
-import logging
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 

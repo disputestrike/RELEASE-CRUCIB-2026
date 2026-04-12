@@ -4,7 +4,6 @@ import os
 import tempfile
 
 import pytest
-
 from orchestration.planner import generate_plan
 from orchestration.verification_stripe_replay import verify_stripe_replay_workspace
 
@@ -68,9 +67,10 @@ async def test_planner_multitenant_stripe_same_security_gate():
 async def test_tenancy_smoke_runs_with_database_url():
     """Uses DATABASE_URL when PostgreSQL is reachable (conftest / CI)."""
     import socket
+
     from orchestration.verification_tenancy_smoke import (
-        verify_tenancy_smoke_workspace,
         _dsn_parts,
+        verify_tenancy_smoke_workspace,
     )
 
     dsn = os.environ.get("DATABASE_URL", "").strip()

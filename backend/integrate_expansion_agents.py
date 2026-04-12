@@ -4,8 +4,9 @@ Integration script: Merge expansion agents into agent_dag.py
 Adds all 50+ agents with full wiring and selection logic
 """
 
-import sys
 import json
+import sys
+
 from agents_expansion_all import EXPANSION_AGENTS
 
 

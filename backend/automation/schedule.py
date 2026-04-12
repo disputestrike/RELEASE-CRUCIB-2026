@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 try:
-    from croniter import croniter
+    from croniter import croniter  # type: ignore[import-untyped]
 except ImportError:
     croniter = None
 

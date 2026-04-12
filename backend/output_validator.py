@@ -3,11 +3,11 @@ Comprehensive Output Validation for CrucibAI
 Validates JSON, code syntax, and output formats.
 """
 
-import json
 import ast
-import re
+import json
 import logging
-from typing import Dict, Any, Tuple, List
+import re
+from typing import Any, Dict, List, Tuple
 
 logger = logging.getLogger(__name__)
 

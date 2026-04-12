@@ -3,9 +3,10 @@ Tests for agents & automation: executor (T-1), schedule (T-2), webhook (T-3), CR
 """
 
 import os
-import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
+
+import pytest
 
 # Ensure env before importing server (PostgreSQL via DATABASE_URL when needed)
 

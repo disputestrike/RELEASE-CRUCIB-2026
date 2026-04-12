@@ -3,7 +3,7 @@ Audit log: immutable trail of user actions for compliance (enterprise).
 """
 
 from datetime import datetime, timezone
-from typing import Optional, Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 
 class AuditLogger:

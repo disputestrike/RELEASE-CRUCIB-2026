@@ -4,38 +4,37 @@ Handles user registration, login, guest access, MFA, OAuth (Google + GitHub),
 audit logs, account management and user profile settings.
 """
 
-import os
-import logging
-import uuid
-import re
-import json
 import base64
 import hashlib
-import random
 import io
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Dict, Any
+import json
+import logging
+import os
+import random
+import re
+import uuid
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, Optional
 from urllib.parse import quote, urlencode
 
+import bcrypt
 import httpx
 import jwt
-import bcrypt
 import pyotp
 import qrcode
-from fastapi import APIRouter, Depends, HTTPException, Request, Query
-from fastapi.responses import RedirectResponse, Response
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel, EmailStr, Field
-
 from deps import (
-    get_db,
-    get_audit_logger,
-    JWT_SECRET,
-    JWT_ALGORITHM,
-    get_current_user,
-    get_optional_user,
     ADMIN_USER_IDS,
+    JWT_ALGORITHM,
+    JWT_SECRET,
+    get_audit_logger,
+    get_current_user,
+    get_db,
+    get_optional_user,
 )
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import RedirectResponse, Response
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import BaseModel, EmailStr, Field
 
 logger = logging.getLogger(__name__)
 
@@ -1050,8 +1049,8 @@ async def auth_google_callback(
             )
             return RedirectResponse(url=f"{frontend_base}/auth?error=no_token")
         try:
-            from google.oauth2 import id_token as google_id_token
             from google.auth.transport import requests as google_requests
+            from google.oauth2 import id_token as google_id_token
 
             payload = google_id_token.verify_oauth2_token(
                 id_token, google_requests.Request(), GOOGLE_CLIENT_ID

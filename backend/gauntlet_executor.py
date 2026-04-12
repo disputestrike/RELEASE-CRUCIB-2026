@@ -13,13 +13,13 @@ Usage:
   4. Output: proof/ bundle with ELITE_DELIVERY_CERT.md
 """
 
-import os
-import json
-import hashlib
 import asyncio
+import hashlib
+import json
+import os
 from datetime import datetime, timezone
-from typing import Dict, Any, List, Optional
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 
 class GauntletPhase:

@@ -9,12 +9,13 @@ Can:
 - Extract data
 """
 
-from playwright.async_api import async_playwright, Browser, Page
-from typing import Dict, Any, List
 import base64
 import sys
 import tempfile
 from pathlib import Path
+from typing import Any, Dict, List
+
+from playwright.async_api import Browser, Page, async_playwright
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))

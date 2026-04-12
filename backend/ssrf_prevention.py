@@ -9,10 +9,10 @@ Implements:
 - Whitelist-based access control
 """
 
-import logging
 import ipaddress
+import logging
 import socket
-from typing import Optional, Set, List
+from typing import List, Optional, Set
 from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)

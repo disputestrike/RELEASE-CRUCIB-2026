@@ -3,14 +3,15 @@ CrucibAI Email Service
 SMTP abstraction layer - ready for your email credentials
 """
 
-import os
-import logging
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from typing import Optional, List, Dict, Any
-from datetime import datetime
 import asyncio
+import logging
+import os
+import smtplib
+from datetime import datetime
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from typing import Any, Dict, List, Optional
+
 from jinja2 import Template
 
 logger = logging.getLogger(__name__)

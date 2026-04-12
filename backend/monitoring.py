@@ -3,15 +3,16 @@ CrucibAI Monitoring & Error Tracking
 Integrates Sentry for production error tracking and performance monitoring
 """
 
-import os
 import logging
-from typing import Optional, Dict, Any
+import os
 from datetime import datetime
+from typing import Any, Dict, Optional
+
 import sentry_sdk
-from sentry_sdk.integrations.fastapi import FastApiIntegration
-from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
-from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.asyncio import AsyncioIntegration
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.redis import RedisIntegration
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
 logger = logging.getLogger(__name__)
 

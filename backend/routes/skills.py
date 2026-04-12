@@ -6,7 +6,7 @@ import logging
 import os
 import uuid
 from datetime import datetime, timezone
-from typing import Optional, List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field

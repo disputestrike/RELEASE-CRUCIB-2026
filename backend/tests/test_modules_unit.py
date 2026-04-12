@@ -2,8 +2,9 @@
 Fortune 100 Layer 2: Unit tests for every module (agents, utils, quality).
 """
 
-import pytest
 import os
+
+import pytest
 
 # ==================== AGENT DAG ====================
 
@@ -92,7 +93,7 @@ def test_rbac_role_enum():
 
 def test_rbac_get_user_role_default():
     """get_user_role returns OWNER for empty/unknown."""
-    from utils.rbac import get_user_role, Role
+    from utils.rbac import Role, get_user_role
 
     assert get_user_role({}) == Role.OWNER
     assert get_user_role({"role": "viewer"}) == Role.VIEWER
@@ -100,7 +101,7 @@ def test_rbac_get_user_role_default():
 
 def test_rbac_has_permission_owner():
     """Owner has all permissions."""
-    from utils.rbac import has_permission, Permission
+    from utils.rbac import Permission, has_permission
 
     assert has_permission({"role": "owner"}, Permission.MANAGE_BILLING)
     assert has_permission({"role": "owner"}, Permission.DELETE_PROJECT)
@@ -108,7 +109,7 @@ def test_rbac_has_permission_owner():
 
 def test_rbac_has_permission_viewer():
     """Viewer has limited permissions."""
-    from utils.rbac import has_permission, Permission
+    from utils.rbac import Permission, has_permission
 
     assert has_permission({"role": "viewer"}, Permission.VIEW_PROJECT)
     assert not has_permission({"role": "viewer"}, Permission.DELETE_PROJECT)

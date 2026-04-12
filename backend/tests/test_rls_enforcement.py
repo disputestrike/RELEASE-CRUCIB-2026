@@ -8,7 +8,6 @@ import os
 import tempfile
 
 import pytest
-
 from orchestration.multitenancy_rls_sql import (
     migration_002_multitenancy_rls_sql,
     validate_rls_syntax,

@@ -8,7 +8,7 @@ dag_engine.py — Dependency-aware DAG scheduler for job steps.
 
 import json
 import logging
-from typing import List, Dict, Any, Set, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from .runtime_state import get_steps, update_step_state
 

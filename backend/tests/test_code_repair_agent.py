@@ -1,7 +1,6 @@
 import ast
 
 import pytest
-
 from agents.code_repair_agent import CodeRepairAgent, coerce_text_output
 
 

@@ -10,8 +10,8 @@ Implements:
 - Input sanitization
 """
 
-import re
 import logging
+import re
 from typing import Any, Optional, Pattern
 from urllib.parse import urlparse
 

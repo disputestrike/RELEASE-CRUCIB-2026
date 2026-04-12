@@ -4,12 +4,13 @@ CrucibAI Authentication Tests
 Tests for OAuth flow, JWT tokens, session management, and protected routes.
 """
 
-import pytest
-import jwt
 import uuid
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from datetime import datetime, timezone, timedelta
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import jwt
+import pytest
 
 # Resolve paths from this file so tests pass from repo root or backend/
 _BACKEND_DIR = Path(__file__).resolve().parent.parent

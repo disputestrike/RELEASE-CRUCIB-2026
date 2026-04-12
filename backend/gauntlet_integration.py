@@ -13,16 +13,17 @@ Adds:
 Wire into server.py by importing and calling setup_gauntlet_routes(app, db)
 """
 
-import os
-import json
-import uuid
 import asyncio
+import json
+import os
+import uuid
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
-from sqlalchemy import Column, String, Boolean, DateTime, JSON, create_engine
+from sqlalchemy import JSON, Boolean, Column, DateTime, String, create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session, sessionmaker
 
 # Database models for Gauntlet tracking
 

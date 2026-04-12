@@ -3,11 +3,12 @@ Image generation via Together.ai. Generates hero and feature images for built ap
 Legal: Generated images are for user's app only; no scraping or unauthorized use.
 """
 
-import os
-from agents.base_agent import BaseAgent
 import json
 import logging
-from typing import Dict, Any, Optional
+import os
+from typing import Any, Dict, Optional
+
+from agents.base_agent import BaseAgent
 
 logger = logging.getLogger(__name__)
 

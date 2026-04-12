@@ -1,5 +1,4 @@
 import pytest
-
 from anthropic_models import (
     ANTHROPIC_HAIKU_MODEL,
     ANTHROPIC_SONNET_MODEL,

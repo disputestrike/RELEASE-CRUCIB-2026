@@ -3,7 +3,8 @@ Agent registry for managing and discovering specialized agents.
 Agents register themselves using the @AgentRegistry.register decorator.
 """
 
-from typing import Dict, Type, List
+from typing import Dict, List, Type
+
 from agents.base_agent import BaseAgent
 
 

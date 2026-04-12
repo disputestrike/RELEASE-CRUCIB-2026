@@ -3,27 +3,28 @@ Endpoint wrapper decorator to apply error handling, logging, and validation
 to all endpoints automatically
 """
 
-from functools import wraps
-from typing import Callable, Optional, Dict, Any
-from fastapi import HTTPException, Request
-from error_handlers import (
-    CrucibError,
-    ValidationError,
-    AuthenticationError,
-    DatabaseError,
-    ExternalServiceError,
-    to_http_exception,
-    log_error,
-)
-from structured_logging import (
-    get_request_logger,
-    get_error_logger,
-    get_performance_logger,
-    log_performance,
-)
 import time
 import traceback
 from datetime import datetime
+from functools import wraps
+from typing import Any, Callable, Dict, Optional
+
+from error_handlers import (
+    AuthenticationError,
+    CrucibError,
+    DatabaseError,
+    ExternalServiceError,
+    ValidationError,
+    log_error,
+    to_http_exception,
+)
+from fastapi import HTTPException, Request
+from structured_logging import (
+    get_error_logger,
+    get_performance_logger,
+    get_request_logger,
+    log_performance,
+)
 
 request_logger = get_request_logger()
 error_logger = get_error_logger()

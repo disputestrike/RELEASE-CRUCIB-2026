@@ -3,11 +3,12 @@ API Documentation Generator for CrucibAI
 Generates comprehensive API documentation from FastAPI endpoints
 """
 
-import json
-from typing import Dict, List, Any, Optional
-from pathlib import Path
-from datetime import datetime
 import inspect
+import json
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 
@@ -276,7 +277,7 @@ class APIDocumentationGenerator:
                 "in": "header",
                 "name": "X-API-Key",
                 "description": "API key for programmatic access",
-                "example": "sk_live_xxxxxxxxxxxxx",
+                "example": "your-api-key-here",
             },
         }
         self.docs["authentication"] = auth_info

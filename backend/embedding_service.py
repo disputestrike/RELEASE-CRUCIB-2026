@@ -1,9 +1,10 @@
 """Embedding service for RAG and semantic search"""
 
-import httpx
+import json
 import os
 from typing import List
-import json
+
+import httpx
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 EMBEDDING_MODEL = "text-embedding-3-small"

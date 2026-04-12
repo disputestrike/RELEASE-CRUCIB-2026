@@ -3,12 +3,13 @@ Database Operations Agent - execute SQL queries.
 Supports PostgreSQL, MySQL, SQLite.
 """
 
-import asyncpg
-import aiomysql
-import aiosqlite
-from typing import Dict, Any, List
 import sys
 from pathlib import Path
+from typing import Any, Dict, List
+
+import aiomysql
+import aiosqlite
+import asyncpg
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))

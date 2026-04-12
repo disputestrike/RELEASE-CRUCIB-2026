@@ -12,12 +12,12 @@ Implements:
 
 import logging
 import random
+import threading
 import time
-from typing import Optional, Callable, Any
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-import threading
+from typing import Any, Callable, Optional
 
 logger = logging.getLogger(__name__)
 

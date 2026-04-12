@@ -4,7 +4,6 @@ import os
 import tempfile
 
 import pytest
-
 from orchestration.verifier import verify_deploy_step
 
 

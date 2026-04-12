@@ -5,11 +5,12 @@ Requires: DATABASE_URL; optional CRUCIBAI_API_URL, CRUCIBAI_INTERNAL_TOKEN for r
 """
 
 import asyncio
-from agents.base_agent import BaseAgent
 import logging
 import os
 import sys
 from datetime import datetime, timezone
+
+from agents.base_agent import BaseAgent
 
 # Add parent to path so backend imports work
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -21,7 +22,7 @@ from automation.constants import (
     MAX_RUNS_PER_HOUR_PER_USER,
 )
 from automation.executor import run_actions
-from automation.schedule import next_run_at, is_one_time
+from automation.schedule import is_one_time, next_run_at
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"

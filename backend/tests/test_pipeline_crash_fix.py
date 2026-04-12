@@ -1,10 +1,9 @@
 import json
-from pathlib import Path
 import os
 import tempfile
+from pathlib import Path
 
 import pytest
-
 from orchestration.auto_runner import _step_failure_context
 from orchestration.executor import (
     _ensure_backend_elite_hardening,
@@ -170,8 +169,8 @@ def test_auto_runner_failure_context_preserves_verification_reason():
 
 @pytest.mark.asyncio
 async def test_frontend_empty_agent_output_falls_back_to_preview_scaffold(monkeypatch):
-    from agents.frontend_agent import FrontendAgent
     import orchestration.plan_context as plan_context
+    from agents.frontend_agent import FrontendAgent
 
     async def empty_execute(self, context):
         return {"files": {}, "structure": {}, "setup_instructions": []}
@@ -200,8 +199,8 @@ async def test_frontend_empty_agent_output_falls_back_to_preview_scaffold(monkey
 
 @pytest.mark.asyncio
 async def test_live_frontend_output_gets_preview_contract_hardening(monkeypatch):
-    from agents.frontend_agent import FrontendAgent
     import orchestration.plan_context as plan_context
+    from agents.frontend_agent import FrontendAgent
 
     async def thin_execute(self, context):
         return {

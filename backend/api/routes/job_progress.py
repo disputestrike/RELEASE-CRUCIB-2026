@@ -8,7 +8,6 @@ from datetime import datetime, timezone
 from typing import Any, Dict
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
-
 from orchestration.controller_brain import build_live_job_progress
 from orchestration.runtime_state import get_job, get_job_events, get_steps
 

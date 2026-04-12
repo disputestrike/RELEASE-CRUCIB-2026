@@ -336,7 +336,7 @@ async def apply_self_repair(
     # 7. Fallback: scan ALL code files for prose
     if fixed_count == 0:
         try:
-            from .workspace_reader import list_workspace_files, CODE_EXTENSIONS
+            from .workspace_reader import CODE_EXTENSIONS, list_workspace_files
 
             for rel in list_workspace_files(workspace_path):
                 ext = os.path.splitext(rel)[1].lower()

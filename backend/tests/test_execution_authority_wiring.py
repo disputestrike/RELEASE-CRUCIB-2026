@@ -6,7 +6,6 @@ import os
 import tempfile
 
 import pytest
-
 from orchestration.elite_builder_gate import verify_elite_builder_workspace
 from orchestration.elite_prompt_loader import write_elite_directive_to_workspace
 from orchestration.execution_authority import (

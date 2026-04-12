@@ -10,7 +10,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from agents.base_agent import BaseAgent, AgentValidationError
+from agents.base_agent import AgentValidationError, BaseAgent
 from agents.registry import AgentRegistry
 from orchestration.generation_contract import parse_generation_contract
 

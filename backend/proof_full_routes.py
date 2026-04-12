@@ -7,6 +7,7 @@ Requires: backend running (uvicorn server:app --port 8000), pip install requests
 
 import argparse
 import sys
+
 import requests
 
 BASE = "http://localhost:8000/api"

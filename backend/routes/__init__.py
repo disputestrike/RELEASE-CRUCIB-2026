@@ -3,7 +3,8 @@ API route modules - all routes organized by domain.
 """
 
 from fastapi import APIRouter
-from . import auth, jobs, agents, monitoring, projects
+
+from . import agents, auth, jobs, monitoring, projects
 
 # Create main router
 api_router = APIRouter(prefix="/api", tags=["api"])

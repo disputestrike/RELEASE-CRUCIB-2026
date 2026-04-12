@@ -3,11 +3,11 @@ File storage: S3 when AWS_* set, else local uploads/ directory.
 Users get durable storage when they add AWS credentials; otherwise local disk.
 """
 
-import os
 import logging
+import os
 import uuid
 from pathlib import Path
-from typing import Optional, BinaryIO
+from typing import BinaryIO, Optional
 
 logger = logging.getLogger(__name__)
 

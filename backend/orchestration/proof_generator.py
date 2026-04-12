@@ -3,8 +3,8 @@ Proof file generation for CrucibAI jobs
 Creates required proof artifacts at job start
 """
 
-import os
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 

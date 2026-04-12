@@ -4,11 +4,11 @@ TestGenerator delegates to the configured LLM (Anthropic / Cerebras) via llm_cli
 When no LLM is configured a useful scaffold is returned instead of a bare TODO comment.
 """
 
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass
-from enum import Enum
 import asyncio
 import logging
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -109,9 +109,9 @@ class TestGenerator:
     ) -> str:
         """Call the LLM to generate tests; return a scaffold on failure."""
         try:
-            from llm_client import (
+            from llm_client import (  # local import to avoid circular deps at module load
                 call_llm,
-            )  # local import to avoid circular deps at module load
+            )
         except ImportError:
             logger.warning("llm_client not available; returning scaffold")
             return _scaffold_tests(test_type, language, framework)

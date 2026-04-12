@@ -4,12 +4,12 @@ Implements multi-step reasoning, constraint satisfaction, and formal verificatio
 Enables CrucibAI to think through problems step-by-step.
 """
 
+import json
 import logging
-from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-import json
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 

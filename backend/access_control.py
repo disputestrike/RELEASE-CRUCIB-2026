@@ -9,10 +9,10 @@ Implements:
 - Policy enforcement
 """
 
-from enum import Enum
-from typing import Set, Optional, Dict, Any
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any, Dict, Optional, Set
 
 logger = logging.getLogger(__name__)
 

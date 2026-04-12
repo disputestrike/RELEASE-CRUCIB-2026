@@ -2,11 +2,10 @@ import os
 import tempfile
 
 import pytest
-
 from orchestration.executor import _main_py_sketch
 from orchestration.verification_api_smoke import (
-    verify_api_smoke_workspace,
     healthcheck_sh_script,
+    verify_api_smoke_workspace,
 )
 
 

@@ -3,12 +3,12 @@ Database Query Optimization Utilities for CrucibAI
 Includes indexing strategies, query analysis, and caching
 """
 
-from typing import Dict, List, Any, Optional, Callable
-from functools import wraps
-import time
 import asyncio
-from datetime import datetime, timedelta
 import json
+import time
+from datetime import datetime, timedelta
+from functools import wraps
+from typing import Any, Callable, Dict, List, Optional
 
 # ==================== QUERY CACHING ====================
 

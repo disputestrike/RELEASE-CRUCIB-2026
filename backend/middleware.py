@@ -3,17 +3,18 @@ Advanced middleware for CrucibAI
 Includes rate limiting, security headers, CORS, and request tracking
 """
 
+import asyncio
+import logging
 import os
 import time
-import logging
 import uuid
-from typing import Dict, Optional, Callable
 from collections import defaultdict
 from datetime import datetime, timedelta
+from typing import Callable, Dict, Optional
+
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -243,12 +244,10 @@ class RequestTrackerMiddleware(BaseHTTPMiddleware):
         log_request_event = None
         observe_http_request = None
         try:
-            from orchestration.observability import (
-                bind_http_request_context as _bind,
-                clear_http_request_context as _clear,
-                log_request_event as _log_ev,
-                observe_http_request as _observe,
-            )
+            from orchestration.observability import bind_http_request_context as _bind
+            from orchestration.observability import clear_http_request_context as _clear
+            from orchestration.observability import log_request_event as _log_ev
+            from orchestration.observability import observe_http_request as _observe
 
             bind_http_request_context = _bind
             clear_http_request_context = _clear

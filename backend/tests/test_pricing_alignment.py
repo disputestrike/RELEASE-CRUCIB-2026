@@ -142,8 +142,8 @@ def test_token_purchase_validator_accepts_builder_pro_scale_teams():
 
 
 def test_token_purchase_validator_rejects_starter():
-    from validators import TokenPurchaseValidator
     from pydantic import ValidationError
+    from validators import TokenPurchaseValidator
 
     with pytest.raises(ValidationError):
         TokenPurchaseValidator(bundle="starter")

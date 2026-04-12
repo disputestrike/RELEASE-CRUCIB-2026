@@ -1,18 +1,19 @@
 from __future__ import annotations
+
+import base64
+import io
+import json
 import logging
 import os
-import io
+import random
 import re
-import json
-import base64
+import tempfile
 import uuid
 import zipfile
-import tempfile
-import random
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
 
 logger = logging.getLogger(__name__)
@@ -46,9 +47,9 @@ def _get_db():
 def _get_llm_helpers():
     from server import (
         _call_llm_with_fallback,
+        _effective_api_keys,
         _get_model_chain,
         get_workspace_api_keys,
-        _effective_api_keys,
     )
 
     return (
@@ -61,24 +62,24 @@ def _get_llm_helpers():
 
 try:
     from server import (
-        DocumentProcess,
-        GenerateContentRequest,
-        RAGQuery,
-        SearchQuery,
-        ExportFilesBody,
-        EnterpriseContact,
         ContactSubmission,
-        SavePromptBody,
-        ProjectEnvBody,
-        ShareCreateBody,
-        InjectStripeBody,
-        GenerateReadmeBody,
+        DocumentProcess,
+        EnterpriseContact,
+        ExplainErrorBody,
+        ExportFilesBody,
+        GenerateContentRequest,
         GenerateDocsBody,
         GenerateFaqSchemaBody,
-        SecurityScanBody,
+        GenerateReadmeBody,
+        InjectStripeBody,
         OptimizeBody,
+        ProjectEnvBody,
         QualityGateBody,
-        ExplainErrorBody,
+        RAGQuery,
+        SavePromptBody,
+        SearchQuery,
+        SecurityScanBody,
+        ShareCreateBody,
         SuggestNextBody,
         ValidateAndFixBody,
     )
@@ -86,7 +87,7 @@ except ImportError:
     pass
 
 try:
-    from server import require_permission, Permission
+    from server import Permission, require_permission
 except ImportError:
     require_permission = lambda p: lambda user: user
 
@@ -716,8 +717,12 @@ async def create_example_from_project(body: dict, user: dict = Depends(_get_auth
 async def fork_example(name: str, user: dict = Depends(_get_auth())):
     """Create a new project from an example (copy generated code)."""
     db = _get_db()
-    from server import _user_credits, _ensure_credit_balance, CREDITS_PER_TOKEN
-    from server import _tokens_to_credits
+    from server import (
+        CREDITS_PER_TOKEN,
+        _ensure_credit_balance,
+        _tokens_to_credits,
+        _user_credits,
+    )
 
     ex = await db.examples.find_one({"name": name})
     if not ex:
@@ -828,7 +833,7 @@ async def get_patterns(user: dict = Depends(_get_optional_user())):
 @router.get("/dashboard/stats")
 async def get_dashboard_stats(user: dict = Depends(_get_auth())):
     db = _get_db()
-    from server import MAX_USER_PROJECTS_DASHBOARD, _user_credits, CREDITS_PER_TOKEN
+    from server import CREDITS_PER_TOKEN, MAX_USER_PROJECTS_DASHBOARD, _user_credits
 
     projects = await db.projects.find({"user_id": user["id"]}).to_list(
         MAX_USER_PROJECTS_DASHBOARD
@@ -1658,9 +1663,9 @@ async def health_llm(
 async def integrations_status():
     """Report queue, storage, email — all green when env is set. No secrets."""
     try:
+        from integrations.email import get_email
         from integrations.queue import get_queue
         from integrations.storage import get_storage
-        from integrations.email import get_email
 
         return {
             "queue": get_queue(),

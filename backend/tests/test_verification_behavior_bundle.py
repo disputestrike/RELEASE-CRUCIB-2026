@@ -4,7 +4,6 @@ import os
 import tempfile
 
 import pytest
-
 from orchestration.verification_behavior_bundle import merge_verification_results
 
 

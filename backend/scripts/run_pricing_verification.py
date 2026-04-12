@@ -8,8 +8,8 @@ Run all pricing alignment checks and tests. Proof that:
 """
 
 import os
-import sys
 import subprocess
+import sys
 
 BACKEND = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if BACKEND not in sys.path:
@@ -77,7 +77,7 @@ def print_removal_confirmation():
     print("=" * 60)
     print("3. CONFIRMED REMOVALS & ALIGNMENT")
     print("=" * 60)
-    from pricing_plans import CREDIT_PLANS, TOKEN_BUNDLES, ADDONS, _speed_from_plan
+    from pricing_plans import ADDONS, CREDIT_PLANS, TOKEN_BUNDLES, _speed_from_plan
     from speed_tier_router import SpeedTierRouter
 
     print("REMOVED:")

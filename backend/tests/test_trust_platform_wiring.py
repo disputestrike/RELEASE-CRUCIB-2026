@@ -3,8 +3,8 @@ Proof that trust platform pieces are wired: manifests, scoring, preflight fixes,
 """
 
 import os
-import pytest
 
+import pytest
 from orchestration.trust.node_manifest import (
     enrich_plan_with_node_manifests,
     manifest_for_step_key,
@@ -90,8 +90,9 @@ async def test_preflight_checks_include_recommended_fix():
 
 
 def test_scan_routes_finds_fastapi_style():
-    from orchestration.verifier import _scan_workspace_for_route_declarations
     import tempfile
+
+    from orchestration.verifier import _scan_workspace_for_route_declarations
 
     with tempfile.TemporaryDirectory() as td:
         os.makedirs(os.path.join(td, "backend"), exist_ok=True)

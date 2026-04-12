@@ -9,7 +9,7 @@ import logging
 import os
 import re
 import sys
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from .runtime_health import skip_node_verify_env
 

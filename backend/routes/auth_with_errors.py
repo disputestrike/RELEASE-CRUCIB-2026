@@ -3,11 +3,12 @@ Authentication routes with error handling
 Shows pattern for all routes - wrap endpoints in try-except blocks
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+import logging
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr
-from typing import Optional
-import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["authentication"])

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from orchestration.capability_notice import (
     _long_goal_line,
     _preview_workspace_hint,

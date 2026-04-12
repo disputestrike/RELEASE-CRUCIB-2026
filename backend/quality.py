@@ -3,7 +3,7 @@
 """
 
 import re
-from typing import Dict, Any
+from typing import Any, Dict
 
 
 def count_imports(code: str) -> int:

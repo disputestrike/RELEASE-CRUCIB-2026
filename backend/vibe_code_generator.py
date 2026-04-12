@@ -3,10 +3,11 @@ Vibe-Aware Code Generator for CrucibAI
 Generates code that matches detected vibe and preferences
 """
 
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass
-from vibe_analysis import VibeAnalysis, CodeStyle, DesignPreference, ProjectComplexity
 import logging
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
+
+from vibe_analysis import CodeStyle, DesignPreference, ProjectComplexity, VibeAnalysis
 
 logger = logging.getLogger(__name__)
 

@@ -69,7 +69,7 @@ async def ide_debug_set_breakpoint(
     session_id: str, body: IDEBreakpointRequest, user: dict = Depends(_get_auth())
 ):
     """Set a breakpoint in a debug session."""
-    from ide_features import debugger_manager, BreakPoint
+    from ide_features import BreakPoint, debugger_manager
 
     bp = BreakPoint(
         file_path=body.file_path,

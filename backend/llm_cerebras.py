@@ -5,11 +5,12 @@ Used for free tier and high-speed inference.
 Uses streaming by default for reliability.
 """
 
-import os
-import logging
-import aiohttp
-from typing import List, Dict, Any, Optional, AsyncGenerator
 import json
+import logging
+import os
+from typing import Any, AsyncGenerator, Dict, List, Optional
+
+import aiohttp
 
 logger = logging.getLogger(__name__)
 

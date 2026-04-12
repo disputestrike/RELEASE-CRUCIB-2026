@@ -5,7 +5,7 @@ If unset, values are stored in plaintext (backward compatible).
 """
 
 import os
-from typing import Dict, Any
+from typing import Any, Dict
 
 _FERNET = None
 

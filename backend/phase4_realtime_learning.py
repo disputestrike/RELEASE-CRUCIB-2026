@@ -4,13 +4,13 @@ Implements live data ingestion, continuous retraining, and dynamic knowledge upd
 Enables CrucibAI to stay current and improve continuously.
 """
 
+import asyncio
+import json
 import logging
-from typing import Dict, List, Any, Optional, Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-import json
-import asyncio
+from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 

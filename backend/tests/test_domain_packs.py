@@ -2,7 +2,6 @@ import os
 import tempfile
 
 import pytest
-
 from orchestration.domain_packs import multitenant_intent, stripe_intent
 from orchestration.planner import generate_plan
 from orchestration.production_gate import scan_workspace_for_credential_patterns

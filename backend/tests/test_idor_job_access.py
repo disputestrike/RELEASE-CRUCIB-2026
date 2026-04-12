@@ -2,7 +2,6 @@
 
 import pytest
 from fastapi import HTTPException
-
 from server import _assert_job_owner_match
 
 

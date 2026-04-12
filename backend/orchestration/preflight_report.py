@@ -5,9 +5,9 @@ Emitted before DAG execution so operators see pass/fail per dependency.
 
 from __future__ import annotations
 
+import asyncio
 import os
 import shutil
-import asyncio
 from typing import Any, Dict, List
 
 from .browser_preview_verify import playwright_chromium_status, skip_browser_preview_env

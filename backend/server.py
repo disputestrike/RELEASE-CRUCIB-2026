@@ -1,108 +1,109 @@
+from pathlib import Path
+
+from dotenv import load_dotenv
 from fastapi import (
-    FastAPI,
     APIRouter,
-    HTTPException,
-    Depends,
     BackgroundTasks,
+    Body,
+    Depends,
+    FastAPI,
     File,
-    UploadFile,
     Form,
+    HTTPException,
+    Query,
     Request,
+    UploadFile,
     WebSocket,
     WebSocketDisconnect,
-    Query,
-    Body,
 )
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import (
-    StreamingResponse,
-    Response,
-    RedirectResponse,
     FileResponse,
+    RedirectResponse,
+    Response,
+    StreamingResponse,
 )
-from dotenv import load_dotenv
-from pathlib import Path
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 # Load .env before any module that reads LLM keys at import time (e.g. llm_router).
 ROOT_DIR = Path(__file__).resolve().parent
 load_dotenv(ROOT_DIR / ".env", override=True)
 
-from starlette.middleware.cors import CORSMiddleware
-from starlette.background import BackgroundTask
-from middleware import (
-    RateLimitMiddleware,
-    SecurityHeadersMiddleware,
-    RequestTrackerMiddleware,
-    RequestValidationMiddleware,
-    PerformanceMonitoringMiddleware,
-    HTTPSRedirectMiddleware,
-)
-from error_handlers import (
-    CrucibError,
-    ValidationError,
-    AuthenticationError,
-    DatabaseError,
-    ExternalServiceError,
-    log_error,
-    to_http_exception,
-)
-from validators import (
-    UserRegisterValidator,
-    UserLoginValidator,
-    ChatMessageValidator,
-    ProjectCreateValidator,
-    BuildPlanRequestValidator,
-    validate_email,
-    validate_password_strength,
-)
-from structured_logging import (
-    get_request_logger,
-    get_error_logger,
-    get_performance_logger,
-    get_audit_logger,
-    log_performance,
-    log_audit,
-)
-from api_docs_generator import generate_api_docs
-from endpoint_wrapper import wrap_all_endpoints, safe_endpoint
-import os
-import logging
-import httpx
-from pydantic import BaseModel, Field, EmailStr, model_validator
-from typing import List, Optional, Dict, Any
-import uuid
-from datetime import datetime, timezone, timedelta
-import jwt
-import bcrypt
 import asyncio
-import random
+import base64
+import io
 import json
+import logging
+import mimetypes
+import os
+import random
 import re
 import secrets
 import subprocess
 import sys
 import tempfile
-import base64
+import uuid
 import zipfile
-import io
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
 from urllib.parse import quote, urlencode
-import mimetypes
 
-from anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_model
-from env_encryption import encrypt_env, decrypt_env
+import bcrypt
+import httpx
+import jwt
 from agent_dag import (
     AGENT_DAG,
-    get_execution_phases,
     build_context_from_previous_agents,
+    get_execution_phases,
     get_system_prompt_for_agent,
 )
+from agents.code_repair_agent import CodeRepairAgent, coerce_text_output
+from anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_model
+from api_docs_generator import generate_api_docs
+from endpoint_wrapper import safe_endpoint, wrap_all_endpoints
+from env_encryption import decrypt_env, encrypt_env
+from error_handlers import (
+    AuthenticationError,
+    CrucibError,
+    DatabaseError,
+    ExternalServiceError,
+    ValidationError,
+    log_error,
+    to_http_exception,
+)
+from middleware import (
+    HTTPSRedirectMiddleware,
+    PerformanceMonitoringMiddleware,
+    RateLimitMiddleware,
+    RequestTrackerMiddleware,
+    RequestValidationMiddleware,
+    SecurityHeadersMiddleware,
+)
+from pydantic import BaseModel, EmailStr, Field, model_validator
 from real_agent_runner import (
     REAL_AGENT_NAMES,
-    run_real_agent,
     persist_agent_output,
+    run_real_agent,
     run_real_post_step,
 )
-from agents.code_repair_agent import CodeRepairAgent, coerce_text_output
+from starlette.background import BackgroundTask
+from starlette.middleware.cors import CORSMiddleware
+from structured_logging import (
+    get_audit_logger,
+    get_error_logger,
+    get_performance_logger,
+    get_request_logger,
+    log_audit,
+    log_performance,
+)
+from validators import (
+    BuildPlanRequestValidator,
+    ChatMessageValidator,
+    ProjectCreateValidator,
+    UserLoginValidator,
+    UserRegisterValidator,
+    validate_email,
+    validate_password_strength,
+)
 
 # Track the last plan/build state for debug visibility in production.
 LAST_BUILD_STATE = {
@@ -224,35 +225,28 @@ class CSRFMiddleware:
 
 # Agent Learning System — wired into production path
 from agent_recursive_learning import (
-    AgentMemory,
-    PerformanceTracker,
     AdaptiveStrategy,
+    AgentMemory,
     ExecutionStatus,
+    PerformanceTracker,
 )
-
-from critic_agent import CriticAgent, TruthModule
-
-from vector_memory import vector_memory as _vector_memory
-from pgvector_memory import pgvector_memory as _pgvector_memory
-from llm_router import router, classifier, TaskComplexity
-from dev_stub_llm import (
-    stub_build_enabled,
-    is_real_agent_only,
-    chat_llm_available,
-    REAL_AGENT_NO_LLM_KEYS_DETAIL,
-    plan_and_suggestions as _stub_plan_and_suggestions,
-    stub_multifile_markdown,
-    stub_file_dict,
-    detect_build_kind as _stub_detect_build_kind,
-)
-from credit_tracker import tracker
 from content_policy import screen_user_content
+from credit_tracker import tracker
+from critic_agent import CriticAgent, TruthModule
+from dev_stub_llm import REAL_AGENT_NO_LLM_KEYS_DETAIL, chat_llm_available
+from dev_stub_llm import detect_build_kind as _stub_detect_build_kind
+from dev_stub_llm import is_real_agent_only
+from dev_stub_llm import plan_and_suggestions as _stub_plan_and_suggestions
+from dev_stub_llm import stub_build_enabled, stub_file_dict, stub_multifile_markdown
+from llm_router import TaskComplexity, classifier, router
+from pgvector_memory import pgvector_memory as _pgvector_memory
 from provider_readiness import build_provider_readiness
+from vector_memory import vector_memory as _vector_memory
 
 # Monitoring & Metrics
 try:
     from metrics_system import metrics as _metrics
-    from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+    from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
     _metrics_available = True
 except ImportError:
@@ -274,7 +268,8 @@ async def _init_agent_learning():
     return _agent_memory
 
 
-from automation.models import AgentCreate, AgentUpdate, TriggerConfig, ActionConfig
+from agent_real_behavior import run_agent_real_behavior
+from agent_resilience import AgentError, generate_fallback, get_criticality, get_timeout
 from automation.constants import (
     CREDITS_PER_AGENT_RUN,
     INTERNAL_USER_ID,
@@ -284,18 +279,17 @@ from automation.constants import (
     WEBHOOK_RATE_LIMIT_PER_MINUTE,
 )
 from automation.executor import run_actions
-from automation.schedule import next_run_at, is_one_time
-from agent_real_behavior import run_agent_real_behavior
-from project_state import load_state, WORKSPACE_ROOT
+from automation.models import ActionConfig, AgentCreate, AgentUpdate, TriggerConfig
+from automation.schedule import is_one_time, next_run_at
+from code_quality import score_generated_code
+from project_state import WORKSPACE_ROOT, load_state
 from tool_schemas import (
-    ToolBrowserRequest,
-    ToolFileRequest,
     ToolApiRequest,
+    ToolBrowserRequest,
     ToolDatabaseRequest,
     ToolDeployRequest,
+    ToolFileRequest,
 )
-from agent_resilience import AgentError, get_criticality, get_timeout, generate_fallback
-from code_quality import score_generated_code
 
 try:
     from agents.image_generator import generate_images_for_app, parse_image_prompts
@@ -309,7 +303,7 @@ except ImportError:
     legal_check_request = None
 try:
     from utils.audit_log import AuditLogger
-    from utils.rbac import has_permission, Permission, get_user_role
+    from utils.rbac import Permission, get_user_role, has_permission
 except ImportError:
     AuditLogger = None
     has_permission = lambda u, p: True
@@ -407,11 +401,9 @@ security = HTTPBearer(auto_error=False)
 # LLM Configuration: Only Anthropic (Haiku) and Cerebras (free tier)
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 # Cerebras key pool — import from llm_router for consistent round-robin
-from llm_router import (
-    get_cerebras_key as _get_cerebras_key,
-    _CEREBRAS_KEYS as _CEREBRAS_KEY_POOL,
-    CEREBRAS_API_KEY,
-)
+from llm_router import _CEREBRAS_KEYS as _CEREBRAS_KEY_POOL
+from llm_router import CEREBRAS_API_KEY
+from llm_router import get_cerebras_key as _get_cerebras_key
 
 # Groq API configuration (third LLM fallback)
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "").strip()
@@ -873,21 +865,18 @@ class AgentAutomationBody(BaseModel):
     run_at: Optional[str] = None  # ISO datetime for scheduled
 
 
+# Admin constants from deps (used in auth flow and a few remaining inline routes)
+from deps import ADMIN_ROLES, ADMIN_USER_IDS
+from deps import get_current_admin as _get_current_admin_dep
+
 # ==================== CREDITS & PRICING (1 credit = 1000 tokens) ====================
 from pricing_plans import (
-    CREDIT_PLANS,
-    TOKEN_BUNDLES,
-    _speed_from_plan,
-    CREDITS_PER_TOKEN,
     ADDONS,
     ANNUAL_PRICES,
-)
-
-# Admin constants from deps (used in auth flow and a few remaining inline routes)
-from deps import (
-    ADMIN_USER_IDS,
-    ADMIN_ROLES,
-    get_current_admin as _get_current_admin_dep,
+    CREDIT_PLANS,
+    CREDITS_PER_TOKEN,
+    TOKEN_BUNDLES,
+    _speed_from_plan,
 )
 
 MIN_CREDITS_FOR_LLM = 5
@@ -2763,7 +2752,8 @@ def _extract_pdf_text_from_b64(b64_data: str) -> str:
         return "[Could not extract PDF text.]"
 
 
-from datetime import datetime as _dt, timezone as _tz
+from datetime import datetime as _dt
+from datetime import timezone as _tz
 
 
 def _build_chat_system_prompt(skills_context: str = "") -> str:
@@ -4063,8 +4053,8 @@ async def auth_google_callback(
             )
             return RedirectResponse(url=f"{frontend_base}/auth?error=no_token")
         try:
-            from google.oauth2 import id_token as google_id_token
             from google.auth.transport import requests as google_requests
+            from google.oauth2 import id_token as google_id_token
 
             payload = google_id_token.verify_oauth2_token(
                 id_token, google_requests.Request(), GOOGLE_CLIENT_ID
@@ -8022,7 +8012,8 @@ async def _run_single_agent_with_retry(
     speed_selector: str = "lite",
     available_credits: int = 0,
 ) -> Dict[str, Any]:
-    from agent_cache import get as cache_get, set as cache_set
+    from agent_cache import get as cache_get
+    from agent_cache import set as cache_set
 
     input_data = _agent_cache_input(agent_name, project_prompt, previous_outputs)
     cached = await cache_get(db, agent_name, input_data)
@@ -9502,19 +9493,18 @@ async def use_deployment_tool(
     return await agent.run(ctx)
 
 
-import sys as _sys
 import json as _json
+import sys as _sys
 
 _sys.path.insert(0, os.path.dirname(__file__))
 
 
 def _get_orchestration():
-    from orchestration import (
-        runtime_state,
-        dag_engine,
-        planner as planner_mod,
-        auto_runner as ar_mod,
-    )
+    from orchestration import auto_runner as ar_mod
+    from orchestration import dag_engine
+    from orchestration import planner as planner_mod
+    from orchestration import runtime_state
+
     from proof import proof_service as ps_mod
 
     return runtime_state, dag_engine, planner_mod, ar_mod, ps_mod
@@ -9527,7 +9517,7 @@ class CreateJobRequest(BaseModel):
 
 
 try:
-    from routes.orchestrator import PlanRequest, RunAutoRequest, CostEstimateRequest
+    from routes.orchestrator import CostEstimateRequest, PlanRequest, RunAutoRequest
 except ImportError:
     pass
 
@@ -9866,8 +9856,8 @@ async def resume_job_route(
 ):
     """Resume an interrupted job from its last checkpoint."""
     try:
-        from orchestration.runtime_health import collect_runtime_health_sync
         from orchestration.preflight_report import build_preflight_report
+        from orchestration.runtime_health import collect_runtime_health_sync
         from orchestration.runtime_state import append_job_event
 
         runtime_state, _, _, _, _ = _get_orchestration()
@@ -9961,8 +9951,9 @@ async def retry_step(job_id: str, step_id: str, user: dict = Depends(get_current
 
 # ── SSE stream ────────────────────────────────────────────────────────────────
 
-from fastapi.responses import StreamingResponse as _StreamingResponse
 import asyncio as _ac
+
+from fastapi.responses import StreamingResponse as _StreamingResponse
 
 
 @api_router.get("/jobs/{job_id}/stream")
@@ -9971,9 +9962,9 @@ async def stream_job_events(job_id: str, user: dict = Depends(get_current_user))
     Server-Sent Events stream for real-time job progress.
     Streams: job_started, step_started, step_completed, step_failed, job_completed, etc.
     """
+    from db_pg import get_pg_pool
     from orchestration.event_bus import subscribe, unsubscribe
     from orchestration.runtime_state import get_job_events as _get_stored
-    from db_pg import get_pg_pool
 
     runtime_state, _, _, _, _ = _get_orchestration()
     pool = await get_pg_pool()
@@ -10558,7 +10549,7 @@ async def init_postgres_primary():
         )
         return
     try:
-        from db_pg import get_db, run_migrations, ensure_all_tables
+        from db_pg import ensure_all_tables, get_db, run_migrations
 
         # Use idempotent runner (skips already-applied migrations via schema_migrations table)
         try:
@@ -10600,11 +10591,11 @@ async def init_postgres_primary():
         # Start production job worker with recovery
         try:
             from integrations.queue import (
-                run_worker,
                 enqueue_job,
                 get_job_status,
-                recover_incomplete_jobs,
                 init_queue_db,
+                recover_incomplete_jobs,
+                run_worker,
                 update_job_progress,
             )
 
@@ -10620,7 +10611,7 @@ async def init_postgres_primary():
 
             async def _handle_iterative_build(job_id: str, payload: dict):
                 """Worker handler — runs full iterative build async, survives disconnect."""
-                from iterative_builder import run_iterative_build, get_build_structure
+                from iterative_builder import get_build_structure, run_iterative_build
 
                 prompt = payload.get("prompt", "")
                 build_kind = payload.get("build_kind", "fullstack")
@@ -11045,7 +11036,9 @@ async def deploy_to_railway(
     Uses RAILWAY_DEPLOY_TOKEN env var (server-level) or user's stored token.
     Returns: { deploy_url, service_id, status }
     """
-    import httpx, base64
+    import base64
+
+    import httpx
 
     # Get files
     files: dict = {}
@@ -11197,7 +11190,7 @@ async def deploy_to_railway(
 
 # Include routers after all route declarations. Mount the frontend SPA last so it cannot shadow /api routes.
 try:
-    from routers import monitoring_router, health_router
+    from routers import health_router, monitoring_router
 
     app.include_router(health_router)
     app.include_router(monitoring_router)

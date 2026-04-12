@@ -5,11 +5,11 @@ Only allows whitelisted external API calls.
 Prevents agents from exfiltrating data or calling unauthorized services.
 """
 
-import os
 import logging
+import os
+import re
 from typing import Dict, List, Optional
 from urllib.parse import urlparse
-import re
 
 logger = logging.getLogger(__name__)
 

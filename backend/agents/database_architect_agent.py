@@ -6,11 +6,11 @@ Creates table definitions, relationships, and RLS policies automatically.
 
 import json
 import logging
-from typing import Dict, List, Optional
-from pydantic import BaseModel, Field
 from datetime import datetime
+from typing import Dict, List, Optional
 
 from anthropic_models import ANTHROPIC_SONNET_MODEL, normalize_anthropic_model
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 

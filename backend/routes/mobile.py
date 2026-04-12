@@ -25,10 +25,9 @@ import os
 from typing import Optional
 
 import httpx
+from deps import get_current_user, get_db
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-
-from deps import get_current_user, get_db
 
 logger = logging.getLogger(__name__)
 

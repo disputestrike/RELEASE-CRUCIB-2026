@@ -1,15 +1,15 @@
 """Spec Guardian and truthful score helpers."""
 
 import os
-import pytest
 
+import pytest
 from orchestration.spec_guardian import (
     evaluate_goal_against_runner,
     merge_plan_risk_flags_into_report,
 )
 from orchestration.truth_scores import (
-    compute_production_readiness,
     build_honest_scorecard,
+    compute_production_readiness,
 )
 
 

@@ -3,9 +3,9 @@ Layer 2: WEBHOOK & EVENT FLOW TEST
 Verify async flows: project creation, token deduction, Stripe webhook handling.
 """
 
-import pytest
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from conftest import register_and_get_headers
 
 

@@ -5,7 +5,8 @@ This module bridges between the extracted routes and the main server.py
 """
 
 from fastapi import FastAPI
-from backend.routes import auth, jobs, agents, monitoring, projects
+
+from backend.routes import agents, auth, jobs, monitoring, projects
 
 
 def register_all_routes(app: FastAPI) -> FastAPI:

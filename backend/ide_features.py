@@ -3,11 +3,11 @@ IDE Features for CrucibAI — debugger, profiler, linter (in-memory stubs).
 Enables IDE-style endpoints; real execution can be wired later.
 """
 
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, field
-import uuid
-import re
 import logging
+import re
+import uuid
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -116,9 +116,9 @@ class LinterManager:
         self, project_id: str, file_path: str, code: Optional[str] = None
     ) -> List[LintIssue]:
         """Run real linter: pyflakes for Python, node --check for JS/TS."""
+        import os
         import subprocess
         import tempfile
-        import os
 
         issues: List[LintIssue] = []
         if not code:

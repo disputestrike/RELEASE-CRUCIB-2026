@@ -3,7 +3,7 @@ Code quality scoring for generated frontend/backend/database/tests.
 Returns 0-100 overall and per-category breakdown.
 """
 
-from typing import Dict, Any
+from typing import Any, Dict
 
 
 def _count_imports(code: str) -> int:

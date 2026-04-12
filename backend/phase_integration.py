@@ -4,17 +4,17 @@ Integrates Domain Knowledge, Reasoning, Self-Correction, Real-Time Learning,
 Creative Problem-Solving, and Multi-Modal Understanding into unified system.
 """
 
-import logging
 import asyncio
-from typing import Dict, List, Any, Optional
+import logging
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from phase1_domain_knowledge import DomainKnowledgeBase, DomainAwareAgent
+from phase1_domain_knowledge import DomainAwareAgent, DomainKnowledgeBase
 from phase2_reasoning_engine import ChainOfThoughtReasoner
 from phase3_self_correction import SelfCorrectingCodeGenerator
 from phase4_realtime_learning import RealTimeLearningSystem
 from phase5_creative_solving import CreativeProblemSolver
-from phase6_multimodal import MultiModalUnderstanding, MediaInput
+from phase6_multimodal import MediaInput, MultiModalUnderstanding
 
 logger = logging.getLogger(__name__)
 

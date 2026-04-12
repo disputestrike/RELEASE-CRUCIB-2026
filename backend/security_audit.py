@@ -5,8 +5,8 @@ Checks for vulnerabilities, misconfigurations, and security best practices
 
 import os
 import re
-from typing import Dict, List, Tuple
 from datetime import datetime
+from typing import Dict, List, Tuple
 
 
 class SecurityAudit:

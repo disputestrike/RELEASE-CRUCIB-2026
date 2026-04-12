@@ -1,5 +1,4 @@
 import pytest
-
 from memory.service import get_memory_service
 
 

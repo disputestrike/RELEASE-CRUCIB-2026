@@ -3,19 +3,20 @@ REAL INTEGRATION TESTS FOR CRUCIBAI - FIXED
 Uses actual database, calls real endpoints, shows real failures
 """
 
-import pytest
 import asyncio
-import json
-import os
-from datetime import datetime, timedelta
-import jwt
 import hashlib
 import hmac
-from unittest.mock import patch, AsyncMock
-import subprocess
-import time
+import json
+import os
 import sqlite3
+import subprocess
 import tempfile
+import time
+from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, patch
+
+import jwt
+import pytest
 
 # ============================================================================
 # PHASE 1: TEST DATABASE SETUP

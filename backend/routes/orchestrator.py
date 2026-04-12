@@ -1,14 +1,15 @@
 from __future__ import annotations
+
+import asyncio
+import json as _json
 import logging
 import os
 import sys
-import asyncio
-import json as _json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -39,10 +40,10 @@ def _get_server_globals():
 
 def _get_server_helpers():
     from server import (
-        _user_credits,
         _assert_job_owner_match,
-        _resolve_job_project_id_for_user,
         _project_workspace_path,
+        _resolve_job_project_id_for_user,
+        _user_credits,
     )
 
     return (
@@ -53,20 +54,19 @@ def _get_server_helpers():
     )
 
 
-import sys as _sys
 import asyncio as _asyncio
+import sys as _sys
 
 _sys.path.insert(0, os.path.dirname(__file__))
 
 
 # Lazy-load orchestration modules to avoid circular imports
 def _get_orchestration():
-    from orchestration import (
-        runtime_state,
-        dag_engine,
-        planner as planner_mod,
-        auto_runner as ar_mod,
-    )
+    from orchestration import auto_runner as ar_mod
+    from orchestration import dag_engine
+    from orchestration import planner as planner_mod
+    from orchestration import runtime_state
+
     from proof import proof_service as ps_mod
 
     return runtime_state, dag_engine, planner_mod, ar_mod, ps_mod
@@ -580,8 +580,9 @@ async def orchestrator_runtime_health():
 async def _background_auto_runner_job(job_id: str, workspace_path: str) -> None:
     """Runs after HTTP response so the client can open SSE; do not use ensure_future here."""
     try:
-        from orchestration import runtime_state as _orch_rs, auto_runner as _orch_ar
         from db_pg import get_pg_pool
+        from orchestration import auto_runner as _orch_ar
+        from orchestration import runtime_state as _orch_rs
 
         pool = await get_pg_pool()
         if pool is None:
@@ -648,9 +649,10 @@ async def _background_auto_runner_job(job_id: str, workspace_path: str) -> None:
         logger.exception("auto_runner: background job %s raised", job_id)
         try:
             import traceback
+
+            from db_pg import get_pg_pool as _gp
             from orchestration import runtime_state as _ors
             from orchestration.event_bus import publish as _pub
-            from db_pg import get_pg_pool as _gp
 
             pool = await _gp()
             _ors.set_pool(pool)
@@ -686,8 +688,9 @@ async def _background_auto_runner_job(job_id: str, workspace_path: str) -> None:
 
 async def _background_resume_auto_job(job_id: str, workspace_path: str) -> None:
     try:
-        from orchestration import runtime_state as _orch_rs, auto_runner as _orch_ar
         from db_pg import get_pg_pool
+        from orchestration import auto_runner as _orch_ar
+        from orchestration import runtime_state as _orch_rs
 
         pool = await get_pg_pool()
         if pool is None:
@@ -733,9 +736,10 @@ async def _background_resume_auto_job(job_id: str, workspace_path: str) -> None:
         logger.exception("resume_job: background job %s raised", job_id)
         try:
             import traceback
+
+            from db_pg import get_pg_pool as _gp
             from orchestration import runtime_state as _ors
             from orchestration.event_bus import publish as _pub
-            from db_pg import get_pg_pool as _gp
 
             pool = await _gp()
             _ors.set_pool(pool)
@@ -787,8 +791,8 @@ async def run_auto(
         _project_workspace_path,
     ) = _get_server_helpers()
     try:
-        from orchestration.runtime_health import collect_runtime_health_sync
         from orchestration.preflight_report import build_preflight_report
+        from orchestration.runtime_health import collect_runtime_health_sync
         from orchestration.runtime_state import append_job_event
 
         runtime_state, _, _, _, _ = _get_orchestration()
@@ -816,6 +820,7 @@ async def run_auto(
 
         # Spec Guardian (Layer 1): record always; hard-block only when CRUCIBAI_SPEC_GUARD_MODE=strict
         import json as _sg_json
+
         from orchestration.spec_guardian import (
             evaluate_goal_against_runner,
             merge_plan_risk_flags_into_report,

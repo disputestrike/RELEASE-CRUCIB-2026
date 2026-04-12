@@ -15,11 +15,11 @@ Usage:
     results = await memory.search("project_123", "responsive navbar component", top_k=5)
 """
 
+import hashlib
 import json
 import logging
-import hashlib
-from typing import Dict, Any, Optional, List
 from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 

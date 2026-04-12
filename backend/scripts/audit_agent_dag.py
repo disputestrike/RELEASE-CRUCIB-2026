@@ -25,8 +25,8 @@ if str(_BACKEND) not in sys.path:
     sys.path.insert(0, str(_BACKEND))
 
 from agent_dag import AGENT_DAG  # noqa: E402
-from agent_real_behavior import (  # noqa: E402
-    ARTIFACT_PATHS,
+from agent_real_behavior import ARTIFACT_PATHS  # noqa: E402
+from agent_real_behavior import (
     POST_STEP_AGENTS,
     REAL_TOOL_AGENTS,
     STATE_WRITERS,

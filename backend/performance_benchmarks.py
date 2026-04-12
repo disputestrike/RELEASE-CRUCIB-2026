@@ -4,10 +4,10 @@ Measures response times, throughput, and resource usage
 """
 
 import asyncio
-import time
 import statistics
-from typing import List, Dict, Any
+import time
 from datetime import datetime
+from typing import Any, Dict, List
 
 
 class PerformanceBenchmark:

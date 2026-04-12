@@ -4,7 +4,7 @@ Converts Python list to JSON string before database insertion
 """
 
 import json
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 
 def serialize_blocked_steps(blocked_steps: List[str]) -> str:

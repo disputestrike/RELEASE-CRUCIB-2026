@@ -4,9 +4,9 @@ Tracks user choices and outcomes to improve auto-selection over time
 """
 
 import json
+import logging
 from datetime import datetime
 from typing import Dict, List
-import logging
 
 logger = logging.getLogger(__name__)
 

@@ -4,12 +4,12 @@ Exposes Prometheus /api/metrics and health-style endpoints.
 """
 
 from fastapi import APIRouter
-from starlette.responses import Response, PlainTextResponse
+from starlette.responses import PlainTextResponse, Response
 
 router = APIRouter(prefix="/api", tags=["monitoring"])
 
 try:
-    from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+    from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
     _metrics_available = True
 except ImportError:

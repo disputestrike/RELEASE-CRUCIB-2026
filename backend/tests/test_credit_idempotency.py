@@ -1,7 +1,6 @@
 """Credit usage idempotency (fifty-point #17)."""
 
 import pytest
-
 from credit_tracker import CreditTracker
 
 

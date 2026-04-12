@@ -9,34 +9,29 @@ import json
 import logging
 import os
 import re
-import time
 import textwrap
-from typing import Dict, Any, Optional, Callable, List
+import time
+from typing import Any, Callable, Dict, List, Optional
 
-from .runtime_state import update_step_state, append_job_event, save_checkpoint
-from .event_bus import publish
-from .verifier import verify_step
-from .fixer import (
-    apply_fix,
-    build_retry_plan,
-    classify_failure,
-)
-from .self_repair import (
-    attempt_verification_self_repair,
-    maybe_commit_workspace_repairs,
-)
-from .generated_app_template import build_frontend_file_set
 from agents.code_repair_agent import CodeRepairAgent
+from agents.database_architect_agent import (
+    SchemaToSQL,
+    heuristic_schema_from_requirements,
+)
+from anthropic_models import ANTHROPIC_HAIKU_MODEL
+
+from .compliance_sketch import build_compliance_sketch_markdown
+from .domain_packs import compliance_regulated_intent, multitenant_intent, stripe_intent
 from .enterprise_command_pack import (
     build_enterprise_backend_file_set,
     build_enterprise_database_file_set,
     enterprise_backend_routes,
     enterprise_command_intent,
 )
+from .event_bus import publish
+from .fixer import apply_fix, build_retry_plan, classify_failure
+from .generated_app_template import build_frontend_file_set
 from .generation_contract import parse_generation_contract, requires_full_system_builder
-from .swarm_agent_runner import run_swarm_agent_step
-from .domain_packs import compliance_regulated_intent, multitenant_intent, stripe_intent
-from .compliance_sketch import build_compliance_sketch_markdown
 from .multiregion_terraform_sketch import (
     build_multiregion_terraform_readme,
     multiregion_terraform_intent,
@@ -47,6 +42,11 @@ from .multiregion_terraform_sketch import (
     tf_multiregion_root_main,
     tf_multiregion_variables_tf,
 )
+from .multitenancy_rls_sql import (
+    MULTITENANCY_MIGRATION_FILENAME,
+    migration_001_app_schema_sql,
+    migration_002_multitenancy_rls_sql,
+)
 from .observability_workspace_pack import (
     build_observability_pack_markdown,
     docker_compose_observability_stub,
@@ -56,18 +56,15 @@ from .observability_workspace_pack import (
     otel_collector_config_stub,
     prometheus_config_stub,
 )
-from .multitenancy_rls_sql import (
-    MULTITENANCY_MIGRATION_FILENAME,
-    migration_001_app_schema_sql,
-    migration_002_multitenancy_rls_sql,
-)
-from .verification_api_smoke import healthcheck_sh_script
 from .publish_urls import published_app_url
-from anthropic_models import ANTHROPIC_HAIKU_MODEL
-from agents.database_architect_agent import (
-    SchemaToSQL,
-    heuristic_schema_from_requirements,
+from .runtime_state import append_job_event, save_checkpoint, update_step_state
+from .self_repair import (
+    attempt_verification_self_repair,
+    maybe_commit_workspace_repairs,
 )
+from .swarm_agent_runner import run_swarm_agent_step
+from .verification_api_smoke import healthcheck_sh_script
+from .verifier import verify_step
 
 logger = logging.getLogger(__name__)
 
@@ -828,8 +825,9 @@ async def handle_frontend_generate(
             logger.info(f"Attempting FrontendAgent...")
             # STEP 1: Try to use FrontendAgent with LLM
             try:
-                from agents.frontend_agent import FrontendAgent
                 import json
+
+                from agents.frontend_agent import FrontendAgent
 
                 agent = FrontendAgent()
                 logger.info(f"Agent instantiated: {agent.name}")
@@ -1147,8 +1145,9 @@ async def handle_backend_route(
         if goal and key in ["backend.models", "backend.routes"]:
             # Try BackendAgent with LLM
             try:
-                from agents.backend_agent import BackendAgent
                 import json
+
+                from agents.backend_agent import BackendAgent
 
                 agent = BackendAgent()
                 context = {

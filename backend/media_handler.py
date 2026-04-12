@@ -3,7 +3,7 @@ Media Handler: Manages image/video generation with fallbacks.
 """
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 

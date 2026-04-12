@@ -3,11 +3,11 @@ Agent Latency Optimization System
 Reduces latency through caching, batching, and parallel execution.
 """
 
-import hashlib
 import asyncio
-from typing import Dict, Any, List, Optional, Callable
-from datetime import datetime, timezone, timedelta
+import hashlib
 import json
+from datetime import datetime, timedelta, timezone
+from typing import Any, Callable, Dict, List, Optional
 
 
 class ResponseCache:

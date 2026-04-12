@@ -8,9 +8,9 @@ when run in-process. For full pass, start the backend (uvicorn server:app) then 
 CRUCIBAI_API_URL=http://localhost:8000 (and use a client that hits that URL instead of ASGITransport).
 """
 
+import os
 import subprocess
 import sys
-import os
 from datetime import datetime
 
 # Run from backend directory

@@ -1,15 +1,14 @@
 import os
 
 import pytest
-
 from orchestration.workspace_assembly_pipeline import (
     assembly_v2_enabled,
+    extract_json_file_maps,
+    materialize_merged_map,
     merge_last_writer,
     parse_proposed_files,
-    materialize_merged_map,
-    extract_json_file_maps,
-    write_assembly_merge_map,
     upsert_assembly_merge_map_paths,
+    write_assembly_merge_map,
 )
 
 

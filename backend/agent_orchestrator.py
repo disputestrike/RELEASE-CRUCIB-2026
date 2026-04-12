@@ -4,15 +4,16 @@ Coordinates multiple agents, handles dependencies, and optimizes execution.
 Implements recursive learning-based optimization.
 """
 
-from typing import Dict, Any, List, Optional, Callable
 import asyncio
 import logging
 from datetime import datetime, timezone
+from typing import Any, Callable, Dict, List, Optional
+
 from agent_recursive_learning import (
-    AgentMemory,
-    PerformanceTracker,
     AdaptiveStrategy,
+    AgentMemory,
     ExecutionStatus,
+    PerformanceTracker,
 )
 
 logger = logging.getLogger(__name__)

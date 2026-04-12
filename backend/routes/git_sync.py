@@ -53,7 +53,10 @@ async def git_sync_push_to_github(body: GitSyncBody, user: dict = Depends(_get_a
     Requires GITHUB_TOKEN env var (server-level) or user's stored github_token.
     Returns: { repo_url, clone_url, pushed_files }
     """
-    import base64, httpx, re
+    import base64
+    import re
+
+    import httpx
 
     db = _get_db()
     # Resolve files from project or task

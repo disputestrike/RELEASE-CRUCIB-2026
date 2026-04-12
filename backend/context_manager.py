@@ -2,9 +2,9 @@
 Context Manager: Intelligent context handling with smart summarization.
 """
 
-import logging
-from typing import Dict, Any, List
 import json
+import logging
+from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 

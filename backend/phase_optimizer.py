@@ -4,7 +4,7 @@ Given DAG phases and optional build_kind / project context, returns reordered or
 for more efficient builds.
 """
 
-from typing import List, Tuple, Dict, Any, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 
 def optimize_phases(

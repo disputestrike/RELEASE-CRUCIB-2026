@@ -6,8 +6,9 @@ No real API keys required for these tests (mocks used).
 """
 
 import os
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 
 
 def test_quality_score_computed_after_fake_build():

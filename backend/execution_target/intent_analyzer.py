@@ -4,8 +4,8 @@ Analyzes user requests to automatically determine which execution targets to use
 """
 
 import re
-from typing import Dict, List, Tuple
 from enum import Enum
+from typing import Dict, List, Tuple
 
 
 class ExecutionTarget(Enum):

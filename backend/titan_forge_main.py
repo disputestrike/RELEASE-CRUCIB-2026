@@ -16,38 +16,38 @@ Tests: tests/test_foundation.py (30+ test cases)
 No scaffolding. No mocks. Real implementation.
 """
 
-import os
+import hashlib
+import json
 import logging
+import os
+import uuid as uuid_lib
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 from functools import wraps
+from typing import Optional
 
-from fastapi import FastAPI, Request, HTTPException, Depends, status
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, EmailStr
 import jwt
+from cryptography.fernet import Fernet
+from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from passlib.context import CryptContext
+from pydantic import BaseModel, EmailStr
 from sqlalchemy import (
-    create_engine,
-    Column,
-    String,
-    Integer,
-    Boolean,
-    DateTime,
     JSON,
-    LargeBinary,
+    Boolean,
+    Column,
+    DateTime,
     ForeignKey,
+    Integer,
+    LargeBinary,
+    String,
+    create_engine,
     event,
     text,
 )
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.dialects.postgresql import UUID
-import uuid as uuid_lib
-import json
-import hashlib
-from cryptography.fernet import Fernet
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import Session, sessionmaker
 
 # ============================================================================
 # CONFIGURATION

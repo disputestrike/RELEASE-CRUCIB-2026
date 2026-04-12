@@ -3,14 +3,13 @@ import os
 import tempfile
 
 import pytest
-
-from orchestration.generation_contract import parse_generation_contract
-from orchestration.planner import generate_plan
 from orchestration.executor import (
     handle_backend_route,
     handle_db_migration,
     handle_frontend_generate,
 )
+from orchestration.generation_contract import parse_generation_contract
+from orchestration.planner import generate_plan
 
 FULL_SYSTEM_PROMPT = (
     "Build a multi-tenant SaaS with React frontend, Node backend, PostgreSQL, Redis caching, "

@@ -4,11 +4,11 @@ Tests all agents with realistic scenarios and load conditions.
 """
 
 import asyncio
-import time
 import random
-from typing import Dict, Any, List
-from datetime import datetime, timezone
 import statistics
+import time
+from datetime import datetime, timezone
+from typing import Any, Dict, List
 
 
 class AgentE2ETest:

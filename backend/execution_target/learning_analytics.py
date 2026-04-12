@@ -3,8 +3,8 @@ Learning Analytics
 Analyzes patterns in execution target choices
 """
 
-from typing import Dict, List
 import logging
+from typing import Dict, List
 
 logger = logging.getLogger(__name__)
 

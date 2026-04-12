@@ -1,9 +1,10 @@
 from __future__ import annotations
+
 import logging
 import uuid
+from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Dict
-from collections import defaultdict
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -38,7 +39,7 @@ def _get_token_constants():
 
 
 def _get_server_helpers():
-    from server import _user_credits, _ensure_credit_balance, _generate_referral_code
+    from server import _ensure_credit_balance, _generate_referral_code, _user_credits
 
     return _user_credits, _ensure_credit_balance, _generate_referral_code
 

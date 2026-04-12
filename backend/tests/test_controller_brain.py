@@ -1,5 +1,4 @@
 import pytest
-
 from orchestration.controller_brain import (
     build_live_job_progress,
     build_plan_controller_summary,

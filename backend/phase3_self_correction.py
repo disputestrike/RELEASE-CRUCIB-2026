@@ -4,13 +4,13 @@ Implements iterative code generation with testing and error correction.
 Enables CrucibAI to improve its own output.
 """
 
+import asyncio
+import json
 import logging
-from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-import json
-import asyncio
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 

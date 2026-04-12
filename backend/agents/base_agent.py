@@ -4,19 +4,20 @@ All agents inherit from BaseAgent and implement validate_input, validate_output,
 Now includes learning system, performance tracking, and Cerebras integration.
 """
 
-from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional
 import json
+import logging
 import os
 import time
-import logging
-from anthropic import AsyncAnthropic
+from abc import ABC, abstractmethod
+from typing import Any, Dict, Optional
+
 from agent_recursive_learning import (
-    AgentMemory,
-    PerformanceTracker,
     AdaptiveStrategy,
+    AgentMemory,
     ExecutionStatus,
+    PerformanceTracker,
 )
+from anthropic import AsyncAnthropic
 from anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_model
 from llm_cerebras import invoke_cerebras, invoke_cerebras_stream
 

@@ -4,8 +4,9 @@ Tests: Health, AI Chat, Auth, Tokens, Projects, Patterns, Build phases, Stripe.
 AI endpoints may return 503/500 when no API keys or missing LLM deps; tests accept 200, 503, 500.
 """
 
-import pytest
 import time
+
+import pytest
 
 # Allow 200 (success), 503 (service unavailable), 500 (e.g. missing google/anthropic/openai)
 AI_OK_STATUSES = (200, 503, 500)

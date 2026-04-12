@@ -7,15 +7,16 @@ Trust & Safety, Tenants/RBAC, Analytics, Commerce, and Auto-DB Schema Generation
 Register with: register_blueprint_routes(app)
 """
 
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Query, Body, Request
-from pydantic import BaseModel, Field, EmailStr
-from typing import List, Optional, Dict, Any
-import uuid
 import json
-import re
 import os
+import re
 import secrets
-from datetime import datetime, timezone, timedelta
+import uuid
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, Body, Depends, FastAPI, HTTPException, Query, Request
+from pydantic import BaseModel, EmailStr, Field
 
 # ---------------------------------------------------------------------------
 # Lazy imports from server.py — resolved at runtime to avoid circular imports
@@ -46,7 +47,7 @@ def _get_optional_user():
 # We resolve these once at module level after server has been imported.
 # But since server imports us, we use Depends with a callable wrapper.
 
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 # ---------------------------------------------------------------------------
 # Re-export dependencies so route declarations work cleanly
@@ -2550,8 +2551,9 @@ def _generate_schema_heuristic(
 
 async def _call_llm_for_schema(prompt: str, system: str) -> str:
     """Minimal LLM caller for schema generation. Tries Anthropic then Cerebras."""
-    import httpx
     import os
+
+    import httpx
     from anthropic_models import ANTHROPIC_HAIKU_MODEL
 
     # Try Anthropic first

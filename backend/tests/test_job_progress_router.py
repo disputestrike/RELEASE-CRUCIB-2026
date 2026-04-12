@@ -1,7 +1,6 @@
 import pytest
-from fastapi import HTTPException
-
 from api.routes import job_progress
+from fastapi import HTTPException
 
 
 @pytest.mark.asyncio

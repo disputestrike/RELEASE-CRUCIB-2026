@@ -17,18 +17,18 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import Response
-from pydantic import BaseModel, Field
-
+from deps import ADMIN_USER_IDS  # noqa: F401 (re-exported)
 from deps import (
-    ADMIN_USER_IDS,
+    ADMIN_ROLES,
     get_audit_logger,
+    get_current_admin,
     get_current_user,
     get_db,
 )
-from deps import ADMIN_ROLES, get_current_admin  # noqa: F401 (re-exported)
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from pricing_plans import TOKEN_BUNDLES
+from pydantic import BaseModel, Field
 
 # ── Constants ────────────────────────────────────────────────────────────────
 SUPPORT_GRANT_CAP_PER_MONTH = 50  # max credits support can grant per user per month

@@ -4,9 +4,9 @@ Coordinates execution of multiple targets in parallel or sequence
 """
 
 import asyncio
-from typing import Dict, List, Optional
-from enum import Enum
 import logging
+from enum import Enum
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 

@@ -2,7 +2,6 @@ import shutil
 from pathlib import Path
 
 import pytest
-
 from orchestration.agent_selection_logic import select_agents_for_goal
 from orchestration.planner import _should_use_agent_selection
 from orchestration.preview_gate import verify_preview_workspace

@@ -8,31 +8,31 @@ Pre-launch checklist policy (missing_inputs):
   CRUCIBAI_STRICT_PLAN_BLOCKERS=1 to allow blocking=True on individual items (future use).
 """
 
-import logging
 import json
+import logging
 import os
 import re
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 from pricing_plans import CREDIT_PLANS
 
-from .trust.node_manifest import enrich_plan_with_node_manifests
-from .multiregion_terraform_sketch import multiregion_terraform_intent
-from .observability_workspace_pack import (
-    observability_intent as observability_goal_intent,
-)
-from .generation_contract import parse_generation_contract
 from .agent_selection_logic import (
     explain_agent_selection,
     should_route_to_agent_selection,
+)
+from .controller_brain import build_plan_controller_summary
+from .generation_contract import parse_generation_contract
+from .generation_policy import goal_suggests_database
+from .multiregion_terraform_sketch import multiregion_terraform_intent
+from .observability_workspace_pack import (
+    observability_intent as observability_goal_intent,
 )
 from .spec_guardian import (
     evaluate_goal_against_runner,
     merge_plan_risk_flags_into_report,
 )
 from .swarm_agent_runner import build_agent_swarm_phases, uses_agent_swarm
-from .controller_brain import build_plan_controller_summary
-from .generation_policy import goal_suggests_database
+from .trust.node_manifest import enrich_plan_with_node_manifests
 
 logger = logging.getLogger(__name__)
 
@@ -312,10 +312,7 @@ def _build_phases(
     stack_contract: Optional[Dict[str, Any]] = None,
     selected_agents: Optional[list] = None,
 ) -> list:
-    from .generation_policy import (
-        fixed_planner_skip_auth,
-        fixed_planner_skip_database,
-    )
+    from .generation_policy import fixed_planner_skip_auth, fixed_planner_skip_database
 
     if _uses_intelligent_orchestration(goal, stack_contract):
         logger.info("Routing to intelligent agent selection / swarm path")

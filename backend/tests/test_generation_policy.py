@@ -1,5 +1,4 @@
 import pytest
-
 from orchestration.generation_policy import (
     fixed_planner_skip_auth,
     fixed_planner_skip_database,

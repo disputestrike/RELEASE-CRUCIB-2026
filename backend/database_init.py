@@ -4,11 +4,12 @@ Handles PostgreSQL setup, schema creation, and data initialization
 """
 
 import asyncio
-import os
 import logging
-from typing import Optional
-import asyncpg
+import os
 from datetime import datetime
+from typing import Optional
+
+import asyncpg
 
 logger = logging.getLogger(__name__)
 

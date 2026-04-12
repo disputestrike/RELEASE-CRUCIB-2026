@@ -8,12 +8,12 @@ in PostgreSQL only — there is no MongoDB in this stack.
 Schema: tables use (id TEXT PRIMARY KEY, doc JSONB NOT NULL) per 001_full_schema.sql.
 """
 
-import os
 import json
 import logging
+import os
 import uuid
-from typing import Optional, Dict, Any, List
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 _pool = None

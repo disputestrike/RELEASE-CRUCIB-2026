@@ -3,12 +3,12 @@ Vibe Analysis Engine for CrucibAI
 Analyzes natural language input to detect coding style, design preferences, and project complexity
 """
 
-import re
 import json
-from typing import Dict, List, Optional, Tuple, Any
-from dataclasses import dataclass, asdict
-from enum import Enum
 import logging
+import re
+from dataclasses import asdict, dataclass
+from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 

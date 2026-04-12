@@ -42,20 +42,17 @@ async def run_full_brain_repair(
     Layer 3 = what a developer does.
     Layer 4 = what a DevOps engineer does (adjust how the agent runs).
     """
-    from .workspace_reader import diagnose_workspace
-    from .self_repair import apply_self_repair
+    from agents.code_repair_agent import CodeRepairAgent
+
+    from .brain_intelligence import recall_best_fix, remember_fix, search_error_solution
     from .llm_code_repair import (
-        repair_file_with_llm,
         analyse_failure_with_llm,
         get_downstream_impact,
         llm_repair_callback,
+        repair_file_with_llm,
     )
-    from .brain_intelligence import (
-        recall_best_fix,
-        remember_fix,
-        search_error_solution,
-    )
-    from agents.code_repair_agent import CodeRepairAgent
+    from .self_repair import apply_self_repair
+    from .workspace_reader import diagnose_workspace
 
     logger.info(
         "brain: full repair start step=%s retry=%d error=%s",

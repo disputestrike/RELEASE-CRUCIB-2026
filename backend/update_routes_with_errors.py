@@ -4,8 +4,8 @@ Script to add error handling to all 39 API endpoints
 Adds try-except blocks and proper HTTP exception handling
 """
 
-import re
 import os
+import re
 
 
 def add_error_handling_to_route(endpoint_func_code: str) -> str:

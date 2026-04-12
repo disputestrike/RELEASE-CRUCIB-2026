@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import jwt
@@ -68,7 +68,9 @@ async def sso_login(
             },
         )
     # Build WorkOS authorization URL
-    import httpx, urllib.parse
+    import urllib.parse
+
+    import httpx
 
     params = {
         "client_id": workos_client_id,

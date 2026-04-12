@@ -7,7 +7,6 @@ import uuid
 from pathlib import Path
 
 import pytest
-
 from real_agent_runner import run_legacy_file_tool_writes
 
 

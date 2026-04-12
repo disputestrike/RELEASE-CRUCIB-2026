@@ -8,9 +8,9 @@ Runs:
 and reports pass/fail. Exit 0 if all pass.
 """
 
+import os
 import subprocess
 import sys
-import os
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 

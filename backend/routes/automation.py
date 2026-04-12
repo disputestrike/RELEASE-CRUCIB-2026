@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 logger = logging.getLogger(__name__)
@@ -33,7 +35,7 @@ async def create_automation_workflow(
 ):
     """Create a new automation workflow."""
     try:
-        from automation_engine import create_workflow, TriggerType
+        from automation_engine import TriggerType, create_workflow
 
         body = await request.json()
         wf_id = create_workflow(
@@ -52,7 +54,7 @@ async def fire_automation_trigger(
 ):
     """Manually fire a trigger (for testing)."""
     try:
-        from automation_engine import fire_trigger, TriggerType
+        from automation_engine import TriggerType, fire_trigger
 
         data = await request.json()
         data["user"] = {"id": user["id"], "email": user.get("email", "")}

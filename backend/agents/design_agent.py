@@ -2,8 +2,9 @@
 DesignAgent: Creates UI/UX specifications and design system.
 """
 
-from typing import Dict, Any
-from agents.base_agent import BaseAgent, AgentValidationError
+from typing import Any, Dict
+
+from agents.base_agent import AgentValidationError, BaseAgent
 from agents.registry import AgentRegistry
 
 

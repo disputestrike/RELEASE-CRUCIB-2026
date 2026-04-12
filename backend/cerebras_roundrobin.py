@@ -3,8 +3,8 @@ Cerebras API Key Round-Robin Router
 Prevents rate limiting by distributing requests across 5 API keys
 """
 
-import os
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 

@@ -3,11 +3,12 @@ Integration tests for CrucibAI critical paths
 Tests actual functionality, not just code structure
 """
 
-import pytest
 import asyncio
-from unittest.mock import Mock, AsyncMock, patch
-from datetime import datetime
 import json
+from datetime import datetime
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 
 
 @pytest.fixture

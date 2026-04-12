@@ -2,11 +2,11 @@
 Performance Monitor: Real-time metrics and monitoring for CrucibAI.
 """
 
-import time
 import logging
-from typing import Dict, Any, List
-from datetime import datetime, timedelta
+import time
 from collections import defaultdict
+from datetime import datetime, timedelta
+from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 

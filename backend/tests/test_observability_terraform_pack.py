@@ -4,7 +4,6 @@ import os
 import tempfile
 
 import pytest
-
 from orchestration.domain_packs import (
     multiregion_terraform_intent,
     observability_intent,

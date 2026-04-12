@@ -1,7 +1,6 @@
 """Agent DAG acyclicity (Fifty-point #19)."""
 
 import pytest
-
 from agent_dag import AGENT_DAG, get_execution_phases, topological_sort
 
 

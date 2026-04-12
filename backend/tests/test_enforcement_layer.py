@@ -6,7 +6,6 @@ import os
 import tempfile
 
 import pytest
-
 from orchestration.enforcement.critical_registry import (
     CRITICAL_FEATURES,
     matching_features,

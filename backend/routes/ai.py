@@ -5,13 +5,13 @@ validate-and-fix, async build, tests/docs generation.
 
 from __future__ import annotations
 
+import base64
 import logging
 import os
-import base64
 import uuid
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -89,32 +89,32 @@ async def ai_chat(
     user: dict = Depends(_get_authenticated_or_api_user()),
 ):
     """Multi-model AI chat with auto-selection and fallback on failure."""
-    from server import (
-        _call_llm_with_fallback,
-        _get_model_chain,
-        get_workspace_api_keys,
-        _effective_api_keys,
-        _user_credits,
-        MIN_CREDITS_FOR_LLM,
-        stub_build_enabled,
-        is_real_agent_only,
-        chat_llm_available,
-        REAL_AGENT_NO_LLM_KEYS_DETAIL,
-        _stub_detect_build_kind,
-        stub_multifile_markdown,
-        _merge_prior_turns_into_message,
-        _build_chat_system_prompt_for_request,
-        _needs_live_data,
-        _fetch_search_context,
-        CHAT_WITH_SEARCH_SYSTEM,
-        _extract_pdf_text_from_b64,
-        _is_conversational_message,
-        _speed_from_plan,
-        _ensure_credit_balance,
-        _tokens_to_credits,
-        screen_user_content,
-    )
     from fastapi import Request as _Req
+    from server import (
+        CHAT_WITH_SEARCH_SYSTEM,
+        MIN_CREDITS_FOR_LLM,
+        REAL_AGENT_NO_LLM_KEYS_DETAIL,
+        _build_chat_system_prompt_for_request,
+        _call_llm_with_fallback,
+        _effective_api_keys,
+        _ensure_credit_balance,
+        _extract_pdf_text_from_b64,
+        _fetch_search_context,
+        _get_model_chain,
+        _is_conversational_message,
+        _merge_prior_turns_into_message,
+        _needs_live_data,
+        _speed_from_plan,
+        _stub_detect_build_kind,
+        _tokens_to_credits,
+        _user_credits,
+        chat_llm_available,
+        get_workspace_api_keys,
+        is_real_agent_only,
+        screen_user_content,
+        stub_build_enabled,
+        stub_multifile_markdown,
+    )
 
     db = _get_db()
     if user is not None and not user.get("public_api"):
@@ -301,20 +301,21 @@ async def ai_chat_stream(
     user: dict = Depends(_get_authenticated_or_api_user()),
 ):
     """Stream AI response in chunks (real-time code streaming)."""
-    from server import (
-        _call_llm_with_fallback,
-        _get_model_chain,
-        get_workspace_api_keys,
-        _effective_api_keys,
-        _user_credits,
-        MIN_CREDITS_FOR_LLM,
-        is_real_agent_only,
-        chat_llm_available,
-        REAL_AGENT_NO_LLM_KEYS_DETAIL,
-        screen_user_content,
-        _merge_prior_turns_into_message,
-    )
     import json as _json
+
+    from server import (
+        MIN_CREDITS_FOR_LLM,
+        REAL_AGENT_NO_LLM_KEYS_DETAIL,
+        _call_llm_with_fallback,
+        _effective_api_keys,
+        _get_model_chain,
+        _merge_prior_turns_into_message,
+        _user_credits,
+        chat_llm_available,
+        get_workspace_api_keys,
+        is_real_agent_only,
+        screen_user_content,
+    )
 
     if (
         user
@@ -372,19 +373,20 @@ async def iterative_build(
     data: ChatMessage, user: dict = Depends(_get_authenticated_or_api_user())
 ):
     """Iterative AI build with streaming phases."""
-    from server import (
-        _call_llm_with_fallback,
-        _get_model_chain,
-        get_workspace_api_keys,
-        _effective_api_keys,
-        _user_credits,
-        MIN_CREDITS_FOR_LLM,
-        stub_build_enabled,
-        _stub_detect_build_kind,
-        stub_multifile_markdown,
-        screen_user_content,
-    )
     import json as _json
+
+    from server import (
+        MIN_CREDITS_FOR_LLM,
+        _call_llm_with_fallback,
+        _effective_api_keys,
+        _get_model_chain,
+        _stub_detect_build_kind,
+        _user_credits,
+        get_workspace_api_keys,
+        screen_user_content,
+        stub_build_enabled,
+        stub_multifile_markdown,
+    )
 
     if (
         user
@@ -504,9 +506,9 @@ async def validate_and_fix(
     """Validate code with LLM; if issues found, run auto-fix and return fixed code."""
     from server import (
         _call_llm_with_fallback,
+        _effective_api_keys,
         _get_model_chain,
         get_workspace_api_keys,
-        _effective_api_keys,
     )
 
     try:
@@ -566,7 +568,7 @@ async def ai_build_async(data: ChatMessage, user: dict = Depends(_get_auth())):
     Async iterative build — returns job_id immediately.
     Poll GET /api/jobs/{job_id} for progress and results.
     """
-    from server import _user_credits, MIN_CREDITS_FOR_LLM
+    from server import MIN_CREDITS_FOR_LLM, _user_credits
 
     if (
         user

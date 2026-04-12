@@ -5,7 +5,8 @@ Tests actual API connectivity and basic agent functionality.
 
 import asyncio
 import os
-from llm_cerebras import invoke_cerebras, CerebrasClient
+
+from llm_cerebras import CerebrasClient, invoke_cerebras
 
 
 async def test_cerebras_api():

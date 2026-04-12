@@ -474,8 +474,9 @@ async def search_error_solution(
     tavily_key = os.environ.get("TAVILY_API_KEY", "").strip()
     if tavily_key:
         try:
-            from tavily import TavilyClient
             import asyncio
+
+            from tavily import TavilyClient
 
             client = TavilyClient(api_key=tavily_key)
 
@@ -512,8 +513,8 @@ async def search_error_solution(
         try:
             import anthropic as _anthropic
             from anthropic_models import (
-                normalize_anthropic_model,
                 ANTHROPIC_SONNET_MODEL,
+                normalize_anthropic_model,
             )
 
             client = _anthropic.AsyncAnthropic(api_key=anthropic_key)

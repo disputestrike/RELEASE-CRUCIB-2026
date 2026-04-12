@@ -5,9 +5,9 @@ Validates all required environment variables at startup.
 Fails fast if critical vars are missing — no silent failures.
 """
 
+import logging
 import os
 import sys
-import logging
 
 logger = logging.getLogger(__name__)
 

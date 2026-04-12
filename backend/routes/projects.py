@@ -3,40 +3,50 @@ projects.py - Real project route implementations extracted from server.py.
 All 34 @projects_router routes plus supporting helpers and orchestration.
 """
 
-import os, logging, uuid, json, re, zipfile, io, base64, asyncio, mimetypes, subprocess, sys
-from datetime import datetime, timezone, timedelta
-from typing import Optional, List, Dict, Any
+import asyncio
+import base64
+import io
+import json
+import logging
+import mimetypes
+import os
+import re
+import subprocess
+import sys
+import uuid
+import zipfile
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 import jwt
-from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks, Query
-from fastapi.responses import StreamingResponse, FileResponse, Response
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel, Field, model_validator
-
+from code_quality import score_generated_code
 from deps import (
-    get_db,
+    JWT_ALGORITHM,
+    JWT_SECRET,
     get_audit_logger,
     get_current_user,
     get_current_user_sse,
+    get_db,
     get_optional_user,
     require_permission,
-    JWT_SECRET,
-    JWT_ALGORITHM,
 )
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
+from fastapi.responses import FileResponse, Response, StreamingResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pricing_plans import CREDITS_PER_TOKEN, _speed_from_plan
+from project_state import WORKSPACE_ROOT, load_state
+from pydantic import BaseModel, Field, model_validator
 from services.llm_service import (
+    _call_llm_with_fallback,
+    _effective_api_keys,
+    _get_model_chain,
     get_authenticated_or_api_user,
     get_workspace_api_keys,
-    _effective_api_keys,
-    _call_llm_with_fallback,
-    _get_model_chain,
 )
-from project_state import load_state, WORKSPACE_ROOT
-from code_quality import score_generated_code
-from pricing_plans import CREDITS_PER_TOKEN, _speed_from_plan
 
 try:
-    from utils.rbac import has_permission, Permission
+    from utils.rbac import Permission, has_permission
 except ImportError:
     has_permission = lambda u, p: True
     Permission = None
@@ -48,31 +58,33 @@ except ImportError:
 
 from agent_dag import (
     AGENT_DAG,
-    get_execution_phases,
     build_context_from_previous_agents,
+    get_execution_phases,
     get_system_prompt_for_agent,
 )
-from real_agent_runner import (
-    REAL_AGENT_NAMES,
-    run_real_agent,
-    persist_agent_output,
-    run_real_post_step,
-)
-from agents.code_repair_agent import CodeRepairAgent, coerce_text_output
 from agent_real_behavior import run_agent_real_behavior
-from agent_resilience import AgentError, get_criticality, get_timeout, generate_fallback
-from critic_agent import CriticAgent, TruthModule
-from vector_memory import vector_memory as _vector_memory
-from pgvector_memory import pgvector_memory as _pgvector_memory
 from agent_recursive_learning import AgentMemory, ExecutionStatus
+from agent_resilience import AgentError, generate_fallback, get_criticality, get_timeout
+from agents.code_repair_agent import CodeRepairAgent, coerce_text_output
+from content_policy import screen_user_content
+from critic_agent import CriticAgent, TruthModule
+from dev_stub_llm import (
+    REAL_AGENT_NO_LLM_KEYS_DETAIL,
+    chat_llm_available,
+    is_real_agent_only,
+)
+from dev_stub_llm import plan_and_suggestions as _stub_plan_and_suggestions
 from dev_stub_llm import (
     stub_build_enabled,
-    is_real_agent_only,
-    chat_llm_available,
-    REAL_AGENT_NO_LLM_KEYS_DETAIL,
-    plan_and_suggestions as _stub_plan_and_suggestions,
 )
-from content_policy import screen_user_content
+from pgvector_memory import pgvector_memory as _pgvector_memory
+from real_agent_runner import (
+    REAL_AGENT_NAMES,
+    persist_agent_output,
+    run_real_agent,
+    run_real_post_step,
+)
+from vector_memory import vector_memory as _vector_memory
 
 try:
     from agents.image_generator import generate_images_for_app, parse_image_prompts
@@ -831,7 +843,8 @@ async def _run_single_agent_with_retry(
     available_credits: int = 0,
 ) -> Dict[str, Any]:
     db = get_db()
-    from agent_cache import get as cache_get, set as cache_set
+    from agent_cache import get as cache_get
+    from agent_cache import set as cache_set
 
     input_data = _agent_cache_input(agent_name, project_prompt, previous_outputs)
     cached = await cache_get(db, agent_name, input_data)
@@ -3792,7 +3805,8 @@ async def _run_single_agent_with_retry(
     available_credits: int = 0,
 ) -> Dict[str, Any]:
     db = get_db()
-    from agent_cache import get as cache_get, set as cache_set
+    from agent_cache import get as cache_get
+    from agent_cache import set as cache_set
 
     input_data = _agent_cache_input(agent_name, project_prompt, previous_outputs)
     cached = await cache_get(db, agent_name, input_data)

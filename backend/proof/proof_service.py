@@ -4,9 +4,9 @@ Every verified action produces evidence stored here.
 """
 
 import hashlib
-import uuid
 import json
 import logging
+import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -239,8 +239,8 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
             merge_plan_risk_flags_into_report,
         )
         from orchestration.truth_scores import (
-            compute_production_readiness,
             build_honest_scorecard,
+            compute_production_readiness,
         )
 
         async with _pool.acquire() as conn:
@@ -327,6 +327,7 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
             pid = (jrow or {}).get("project_id")
             if pid:
                 from pathlib import Path
+
                 from project_state import WORKSPACE_ROOT
 
                 safe = str(pid).replace("..", "").strip()

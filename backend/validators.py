@@ -3,12 +3,13 @@ Comprehensive input validation module for CrucibAI
 Provides Pydantic validators, custom validation rules, and async validators
 """
 
-from pydantic import BaseModel, Field, EmailStr, validator, root_validator, constr
-from typing import Optional, List, Dict, Any, Pattern
+import re
 from datetime import datetime, timedelta
 from enum import Enum
-import re
+from typing import Any, Dict, List, Optional, Pattern
+
 from error_handlers import ValidationError
+from pydantic import BaseModel, EmailStr, Field, constr, root_validator, validator
 
 # ==================== VALIDATION PATTERNS ====================
 

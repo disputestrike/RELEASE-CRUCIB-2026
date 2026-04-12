@@ -5,6 +5,7 @@ Verifies app is up and critical endpoints respond (in-process via app_client).
 
 import time
 import uuid
+
 import pytest
 
 
@@ -1241,6 +1242,7 @@ async def test_smoke_background_runner_exception_has_precise_reason(
 ):
     """Background wrapper records explicit exception metadata, not generic background_crash."""
     import json
+
     import server
     from db_pg import get_pg_pool
     from orchestration import auto_runner, runtime_state

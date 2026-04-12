@@ -85,7 +85,7 @@ async def _call_anthropic_repair(
         import anthropic as _anthropic
 
         client = _anthropic.AsyncAnthropic(api_key=api_key)
-        from anthropic_models import normalize_anthropic_model, ANTHROPIC_SONNET_MODEL
+        from anthropic_models import ANTHROPIC_SONNET_MODEL, normalize_anthropic_model
 
         model = normalize_anthropic_model(
             os.environ.get("ANTHROPIC_MODEL"),

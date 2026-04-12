@@ -5,9 +5,9 @@ Run agents in parallel phases with context from previous agents; retry and fallb
 
 import asyncio
 import logging
-from datetime import datetime, timezone
-from typing import Dict, List, Any, Optional
 import uuid
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 
 from agents.code_repair_agent import coerce_text_output
 
@@ -310,11 +310,11 @@ async def run_orchestration_with_dag(project_id: str, user_id: str) -> Dict[str,
     Uses server's db, get_workspace_api_keys, _effective_api_keys, _get_model_chain, _call_llm_with_fallback (late import).
     """
     from server import (
-        db,
-        get_workspace_api_keys,
+        _call_llm_with_fallback,
         _effective_api_keys,
         _get_model_chain,
-        _call_llm_with_fallback,
+        db,
+        get_workspace_api_keys,
     )
 
     project = await db.projects.find_one({"id": project_id})

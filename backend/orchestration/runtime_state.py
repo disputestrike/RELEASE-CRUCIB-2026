@@ -3,11 +3,11 @@ runtime_state.py — Job and step state machine for CrucibAI Auto-Runner.
 All state is persisted to PostgreSQL. All mutations go through helpers here.
 """
 
-import uuid
 import json
 import logging
+import uuid
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 

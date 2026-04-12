@@ -10,12 +10,12 @@ Model routing policy:
   - FALLBACK → whichever key is available
 """
 
-import os
+import asyncio
 import json
 import logging
-import asyncio
-from typing import Optional, Dict, Any, List
+import os
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
 from anthropic_models import ANTHROPIC_SONNET_MODEL, normalize_anthropic_model
 

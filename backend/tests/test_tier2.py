@@ -3,27 +3,28 @@ Tests for Tier 2: MFA, Audit Log, RBAC.
 Run from repo root: pytest backend/tests/test_tier2.py -v
 """
 
-import pytest
 from datetime import datetime, timezone
+
+import pytest
 
 
 # Unit tests that don't require DB or app
 class TestRBAC:
     def test_get_user_role_default(self):
-        from utils.rbac import get_user_role, Role
+        from utils.rbac import Role, get_user_role
 
         assert get_user_role({}) == Role.OWNER
         assert get_user_role({"role": "viewer"}) == Role.VIEWER
 
     def test_has_permission_owner(self):
-        from utils.rbac import has_permission, Permission, Role
+        from utils.rbac import Permission, Role, has_permission
 
         user = {"role": Role.OWNER.value}
         assert has_permission(user, Permission.CREATE_PROJECT)
         assert has_permission(user, Permission.DEPLOY_PROJECT)
 
     def test_has_permission_viewer(self):
-        from utils.rbac import has_permission, Permission
+        from utils.rbac import Permission, has_permission
 
         user = {"role": "viewer"}
         assert has_permission(user, Permission.VIEW_PROJECT)

@@ -3,16 +3,17 @@ Structured logging module for CrucibAI
 Provides JSON logging, request/response logging, and performance tracking
 """
 
-import logging
 import json
-import time
+import logging
 import os
-from typing import Optional, Dict, Any
+import time
+import traceback
 from datetime import datetime
 from functools import wraps
-import traceback
-from pythonjsonlogger import jsonlogger
 from pathlib import Path
+from typing import Any, Dict, Optional
+
+from pythonjsonlogger import jsonlogger
 
 # ==================== SETUP ====================
 

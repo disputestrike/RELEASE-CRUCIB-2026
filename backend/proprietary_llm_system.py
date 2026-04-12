@@ -4,13 +4,13 @@ Trains a custom LLM on all CrucibAI data for 100% coverage
 """
 
 import asyncio
+import hashlib
 import json
-from typing import Dict, List, Any, Optional
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-import hashlib
-import logging
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 

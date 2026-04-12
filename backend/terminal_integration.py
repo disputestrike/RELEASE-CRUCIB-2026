@@ -3,16 +3,16 @@ Terminal integration for CrucibAI — real command execution in project workspac
 Sessions are keyed by project path; execute runs commands via subprocess in that path.
 """
 
-from typing import Dict, Any, List, Optional
-from dataclasses import dataclass, field
-from pathlib import Path
 import asyncio
-import subprocess
-import uuid
 import logging
 import os
 import shutil
+import subprocess
+import uuid
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 

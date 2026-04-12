@@ -8,9 +8,9 @@ Uses the PostgreSQL JSONB wrapper in db_pg.py (not raw asyncpg).
 import hashlib
 import logging
 import os
-from typing import Dict, Any, Optional
 from datetime import datetime, timezone
 from enum import Enum
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 

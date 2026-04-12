@@ -4,13 +4,13 @@ Implements hypothesis generation, novel architecture exploration, and pattern di
 Enables CrucibAI to think creatively and discover new solutions.
 """
 
+import json
 import logging
-from typing import Dict, List, Any, Optional, Set, Tuple
+import random
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-import json
-import random
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 logger = logging.getLogger(__name__)
 

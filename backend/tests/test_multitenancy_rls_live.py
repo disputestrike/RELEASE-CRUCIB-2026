@@ -13,7 +13,6 @@ from urllib.parse import unquote, urlparse
 
 import asyncpg
 import pytest
-
 from orchestration.multitenancy_rls_sql import (
     APP_ITEMS_DDL,
     migration_002_multitenancy_rls_sql,

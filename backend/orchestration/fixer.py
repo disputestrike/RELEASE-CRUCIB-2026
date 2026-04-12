@@ -6,7 +6,7 @@ Only touches the failed step's scope — never rewrites unrelated code.
 import logging
 import os
 import re
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 

@@ -5,15 +5,15 @@ All operations resolve from authenticated project_id or job_id.
 Raw server paths are never accepted from clients.
 """
 
+import io
 import logging
 import os
 import zipfile
-import io
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 logger = logging.getLogger(__name__)
 
@@ -66,8 +66,8 @@ async def _assert_project_access(project_id: str, user: dict) -> Path:
 async def _assert_job_access(job_id: str, user: dict) -> Path:
     """Verify user owns job and return workspace path."""
     try:
-        from server import _get_orchestration, _assert_job_owner_match
         from db_pg import get_pg_pool
+        from server import _assert_job_owner_match, _get_orchestration
 
         runtime_state, *_ = _get_orchestration()
         pool = await get_pg_pool()

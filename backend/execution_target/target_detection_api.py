@@ -3,10 +3,11 @@ API endpoint for execution target detection
 Provides auto-selection suggestions to frontend
 """
 
+import logging
+
+from execution_target.intent_analyzer import IntentAnalyzer
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from backend.execution_target.intent_analyzer import IntentAnalyzer
-import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/execution-target", tags=["execution-target"])

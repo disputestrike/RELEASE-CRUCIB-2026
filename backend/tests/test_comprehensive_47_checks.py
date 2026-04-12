@@ -4,14 +4,15 @@ Tests all 47 checks with real HTTP calls, database verification, and end-to-end 
 NOT just structural tests — ACTUAL FUNCTIONAL VERIFICATION
 """
 
-import pytest
 import asyncio
-import json
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
-from datetime import datetime, timedelta
-import jwt
 import hashlib
 import hmac
+import json
+from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
+
+import jwt
+import pytest
 
 # ============================================================================
 # PHASE 1: AUTHENTICATION & OAUTH (Checks 1-8)

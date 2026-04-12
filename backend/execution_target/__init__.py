@@ -9,12 +9,12 @@ Phases:
   Phase 4: Learning System - Improve confidence over time based on outcomes
 """
 
-from backend.execution_target.intent_analyzer import IntentAnalyzer, ExecutionTarget
-from backend.execution_target.target_detection_api import router as detection_router
-from backend.execution_target.dynamic_executor import DynamicExecutor, ExecutionMode
-from backend.execution_target.target_learning import TargetLearningSystem
-from backend.execution_target.learning_analytics import LearningAnalytics
-from backend.execution_target.integrated_api import router as integrated_router
+from execution_target.dynamic_executor import DynamicExecutor, ExecutionMode
+from execution_target.integrated_api import router as integrated_router
+from execution_target.intent_analyzer import ExecutionTarget, IntentAnalyzer
+from execution_target.learning_analytics import LearningAnalytics
+from execution_target.target_detection_api import router as detection_router
+from execution_target.target_learning import TargetLearningSystem
 
 __all__ = [
     "IntentAnalyzer",

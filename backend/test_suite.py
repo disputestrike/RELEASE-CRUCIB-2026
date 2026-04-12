@@ -3,14 +3,15 @@ Comprehensive test suite for CrucibAI backend
 Includes unit tests, integration tests, and endpoint tests
 """
 
-import pytest
 import asyncio
-import os
-from httpx import AsyncClient, ASGITransport
-from fastapi import FastAPI
-from datetime import datetime
-from typing import Dict, Any
 import json
+import os
+from datetime import datetime
+from typing import Any, Dict
+
+import pytest
+from fastapi import FastAPI
+from httpx import ASGITransport, AsyncClient
 
 # ==================== FIXTURES ====================
 

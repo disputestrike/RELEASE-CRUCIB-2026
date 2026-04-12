@@ -1,9 +1,9 @@
 import os
 import tempfile
 
+from orchestration.executor import _ensure_stripe_router_mounted, _main_py_sketch
 from orchestration.multitenancy_rls_sql import migration_002_multitenancy_rls_sql
 from orchestration.verification_security import verify_security_workspace
-from orchestration.executor import _ensure_stripe_router_mounted, _main_py_sketch
 
 
 def test_verify_security_finds_tenancy_and_stripe_sql():

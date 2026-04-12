@@ -5,8 +5,10 @@ Full-stack, full-structure generation matching Manus quality.
 Generates: TypeScript frontend + Express/Python backend + config files.
 """
 
-import asyncio, re, logging
-from typing import Dict, Optional, Callable
+import asyncio
+import logging
+import re
+from typing import Callable, Dict, Optional
 
 logger = logging.getLogger(__name__)
 

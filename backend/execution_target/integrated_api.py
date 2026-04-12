@@ -3,14 +3,14 @@ Integrated Execution Target API
 Combines detection, dynamic execution, and learning
 """
 
-from fastapi import APIRouter, HTTPException, WebSocket
-from pydantic import BaseModel
 import logging
 
-from backend.execution_target.intent_analyzer import IntentAnalyzer
-from backend.execution_target.dynamic_executor import DynamicExecutor, ExecutionMode
-from backend.execution_target.target_learning import TargetLearningSystem
-from backend.execution_target.learning_analytics import LearningAnalytics
+from execution_target.dynamic_executor import DynamicExecutor, ExecutionMode
+from execution_target.intent_analyzer import IntentAnalyzer
+from execution_target.learning_analytics import LearningAnalytics
+from execution_target.target_learning import TargetLearningSystem
+from fastapi import APIRouter, HTTPException, WebSocket
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/execution-target", tags=["execution-target"])

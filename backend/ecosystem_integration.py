@@ -2,8 +2,8 @@
 Ecosystem integration for CrucibAI — VS Code config, remote dev (stubs).
 """
 
-from typing import Dict, Any
 import logging
+from typing import Any, Dict
 
 logger = logging.getLogger(__name__)
 

@@ -4,10 +4,11 @@ CrucibAI Agent System Tests
 Tests for DAG engine, agent definitions, learning system, and critic module.
 """
 
-import pytest
-import json
 import ast
+import json
 from pathlib import Path
+
+import pytest
 
 # Paths relative to backend dir so tests pass from repo root or backend/
 _BACKEND_DIR = Path(__file__).resolve().parent.parent

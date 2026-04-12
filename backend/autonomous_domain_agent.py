@@ -4,14 +4,14 @@ Learns and applies domain knowledge automatically for ANY domain.
 Replaces static domain limitations with adaptive, expansive learning.
 """
 
-import logging
 import asyncio
-from typing import Dict, List, Any, Optional, Set, Tuple
+import json
+import logging
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-import json
-import re
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 logger = logging.getLogger(__name__)
 

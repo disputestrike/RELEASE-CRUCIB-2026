@@ -5,9 +5,10 @@ All tests use mocks — no real API or DB required for pass/fail.
 
 import asyncio
 import json
-import pytest
 from pathlib import Path
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent
 
@@ -41,7 +42,7 @@ class TestLLMBlackoutAndFallback:
     @pytest.mark.asyncio
     async def test_critical_agent_fallback_available(self):
         """Critical agents (Planner, Stack Selector) have fallbacks."""
-        from agent_resilience import generate_fallback, AGENT_CRITICALITY
+        from agent_resilience import AGENT_CRITICALITY, generate_fallback
 
         critical = [n for n, c in AGENT_CRITICALITY.items() if c == "critical"]
         for name in critical[:3]:  # at least first 3

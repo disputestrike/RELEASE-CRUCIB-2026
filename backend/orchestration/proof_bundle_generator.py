@@ -109,6 +109,7 @@ class ProofBundleGenerator:
         if not ws and pid:
             try:
                 from pathlib import Path
+
                 from project_state import WORKSPACE_ROOT
 
                 p = Path(WORKSPACE_ROOT) / pid

@@ -3,14 +3,15 @@ REAL INTEGRATION TESTS FOR CRUCIBAI
 Uses actual FastAPI server, actual PostgreSQL database, real endpoints
 """
 
-import pytest
 import asyncio
-import os
-from datetime import datetime, timedelta
-import jwt
 import json
-from fastapi.testclient import TestClient
+import os
 import sys
+from datetime import datetime, timedelta
+
+import jwt
+import pytest
+from fastapi.testclient import TestClient
 
 # Add backend to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))

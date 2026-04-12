@@ -7,9 +7,9 @@ Uses 123 agents to build a system for solving Millennium Prize Problems
 import asyncio
 import json
 import logging
+import sys
 from datetime import datetime
 from pathlib import Path
-import sys
 
 # Configure logging
 logging.basicConfig(
@@ -54,9 +54,9 @@ except:
 
 try:
     from agent_recursive_learning import (
+        AdaptiveStrategy,
         AgentMemory,
         PerformanceTracker,
-        AdaptiveStrategy,
     )
 except:
     AgentMemory = None

@@ -6,9 +6,9 @@ PostgreSQL: defaults match repo docker-compose (host 5434). Session start brings
 import asyncio
 import logging
 import os
+import shutil
 import sys
 import tempfile
-import shutil
 import uuid
 
 # asyncpg + Windows ProactorEventLoop causes "another operation is in progress" / wrong-loop errors.
@@ -17,8 +17,8 @@ if sys.platform == "win32":
 import socket
 import subprocess
 import time
-from pathlib import Path
 from copy import deepcopy
+from pathlib import Path
 
 import pytest
 
@@ -260,10 +260,9 @@ async def app_client():
     import sys
 
     sys.path.insert(0, str(Path(__file__).parent.parent))
-    from httpx import ASGITransport, AsyncClient
-
     import server as server_module
     from db_pg import close_pg_pool, get_db
+    from httpx import ASGITransport, AsyncClient
     from server import app
 
     await close_pg_pool()
@@ -286,6 +285,14 @@ async def app_client():
                 f"Start deps: docker compose up -d postgres redis (repo root). DATABASE_URL={os.environ.get('DATABASE_URL')!r}"
             )
 
+    # Sync deps module so extracted route modules (routes/auth.py etc.) also see the db
+    try:
+        import deps as _deps
+
+        _deps.init(db=server_module.db, audit_logger=server_module.audit_logger)
+    except Exception:
+        pass
+
     async with AsyncClient(
         transport=ASGITransport(app=app, raise_app_exceptions=False),
         base_url="http://test",
@@ -295,6 +302,12 @@ async def app_client():
 
     await close_pg_pool()
     server_module.db = None
+    try:
+        import deps as _deps
+
+        _deps.init(db=None, audit_logger=None)
+    except Exception:
+        pass
     server_module.audit_logger = None
 
 

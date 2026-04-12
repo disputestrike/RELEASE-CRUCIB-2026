@@ -3,22 +3,23 @@ Comprehensive test suite for CrucibAI agent system with recursive learning.
 Tests Cerebras API, learning system, and agent orchestration.
 """
 
-import pytest
 import asyncio
 import json
 from datetime import datetime, timezone
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
+from agent_orchestrator import AgentOrchestrator, AgentTask
 
 # Import systems to test
 from agent_recursive_learning import (
-    AgentMemory,
-    PerformanceTracker,
     AdaptiveStrategy,
+    AgentMemory,
     ExecutionStatus,
+    PerformanceTracker,
 )
+from agents.base_agent import AgentValidationError, BaseAgent
 from llm_cerebras import CerebrasClient, invoke_cerebras
-from agents.base_agent import BaseAgent, AgentValidationError
-from agent_orchestrator import AgentOrchestrator, AgentTask
 
 
 # Mock database for testing

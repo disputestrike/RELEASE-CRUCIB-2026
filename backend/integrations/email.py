@@ -3,9 +3,9 @@ Email: uses email_service when SMTP_* set, else no-op.
 Contact, enterprise, and automation workflows use this single path.
 """
 
-import os
 import logging
-from typing import Optional, Dict, Any
+import os
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 

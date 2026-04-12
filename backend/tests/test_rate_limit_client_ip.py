@@ -3,9 +3,8 @@
 from typing import List, Optional, Tuple
 
 import pytest
-from starlette.requests import Request
-
 from middleware import RateLimitMiddleware
+from starlette.requests import Request
 
 
 def _make_request(

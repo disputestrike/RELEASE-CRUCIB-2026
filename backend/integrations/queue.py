@@ -16,14 +16,14 @@ Without Redis: jobs stored in PostgreSQL automation_tasks table.
 Worker reads unfinished jobs from DB on every startup.
 """
 
-import os
 import asyncio
-import logging
-import uuid
 import json
+import logging
+import os
 import time
-from typing import Any, Callable, Dict, List, Optional, Awaitable
+import uuid
 from datetime import datetime, timezone
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
