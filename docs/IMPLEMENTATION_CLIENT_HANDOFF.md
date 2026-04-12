@@ -72,7 +72,7 @@ python scripts/audit_agent_dag.py --check
 | `proof_service.fetch_proof_items_raw(job_id)` | DB read for seal-time index build. |
 | `proof_service.get_proof` | Adds **`proof_index`** to the JSON returned by `GET /api/jobs/{job_id}/proof` when `workspace/<project_id>/META/proof_index.json` exists (after a successful sealed run). |
 | `workspace_assembly.seal_completed_job_workspace` | After `artifact_manifest.json` / `seal.json`, calls `write_meta_proof_index`. |
-| `ProofPanel.jsx` + `ProofPanel.css` | **Summary:** `by_path` list (50 paths). **Per row:** `by_proof_item_id[item.id]` shows resolved/missing path chips on each proof item. |
+| `ProofPanel.jsx` + `ProofPanel.css` | **Summary:** `by_path` list (50 paths). **Per row:** `by_proof_item_id[item.id]` shows resolved/missing path chips on each proof item. **Workspace ZIP** downloads `GET /api/jobs/{job_id}/export/full.zip` when a job id and token are present. |
 | `proof_bundle_generator.py` | **`workspace_meta/`** in the on-disk proof bundle: copies `META/proof_index.json`, `artifact_manifest.json`, `run_manifest.json`, `seal.json` when `job_state` has `workspace_path` or `project_id`. |
 | Path extraction | Embedded paths inside issue strings (e.g. `error in src/foo.tsx`) are picked up via regex in `proof_index.py`. |
 
