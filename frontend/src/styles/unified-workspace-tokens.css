@@ -470,12 +470,15 @@
 
 .uw-root .gc-composer-shell {
   border: none;
-  background: color-mix(in srgb, var(--uw-bg-elevated) 94%, var(--uw-text) 6%);
+  background: color-mix(in srgb, var(--uw-bg-elevated) 92%, var(--uw-text) 8%);
   box-shadow: 0 16px 40px color-mix(in srgb, #000 26%, transparent), inset 0 1px 0 color-mix(in srgb, var(--uw-text) 7%, transparent);
 }
 
+/* Light: white shell — do not gray-wash the composer (was color-mix read as “heavy gray”). */
 [data-theme='light'] .uw-root .gc-composer-shell {
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 .uw-root .gc-composer-footer {
@@ -484,5 +487,6 @@
 }
 
 [data-theme='light'] .uw-root .gc-composer-footer {
+  background: #fbfbfc;
   box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.06);
 }

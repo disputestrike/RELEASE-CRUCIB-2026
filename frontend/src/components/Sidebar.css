@@ -442,6 +442,16 @@
 .sidebar-task-row:hover { background: var(--theme-border, rgba(255,255,255,0.06)); color: var(--theme-text, #e4e4e7); }
 .sidebar-task-row.active { background: var(--theme-border, rgba(255,255,255,0.08)); color: var(--theme-text, #e4e4e7); font-weight: 500; }
 
+[data-theme='light'] .sidebar-task-row:hover {
+  background: rgba(15, 23, 42, 0.04);
+  color: var(--theme-text, #111827);
+}
+[data-theme='light'] .sidebar-task-row.active {
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--theme-text, #111827);
+  font-weight: 500;
+}
+
 .sidebar-task-row .sidebar-item-icon {
   flex-shrink: 0;
 }

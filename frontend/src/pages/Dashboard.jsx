@@ -31,10 +31,51 @@ const CHAT_ONLY_PATTERNS = [
   /^(how\s+are\s+you|what'?s\s+going\s+on|how\s+is\s+it\s+going)\s*[!.?]*$/i,
   /^(bye|goodbye|see\s*ya|later)\s*[!.?]*$/i,
 ];
-const BUILD_KEYWORDS = /\b(build|building|create|creating|make|making|develop|developing|design|generate|produce|build\s+me|create\s+(a|an)|make\s+me|develop\s+(a|an)|generate\s+(a|an))\b.*\b(app|application|website|web\s*app|webitsite|websit|wedsite|landing\s*page|dashboard|saas|mvp|api|backend|frontend|tool|platform|product)\b/i;
-/** Looser match for typos (e.g. "WEBITSIDE") or short phrases like "build me a site". */
+/** Collapse newlines so multiline specs still match (JS `.` does not cross `\n`). */
+function flattenIntentText(p) {
+  return (p || '').replace(/\r\n|\r|\n/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+const BUILD_KEYWORDS =
+  /\b(build|building|create|creating|make|making|develop|developing|design|generate|produce|build\s+me|create\s+(a|an)|make\s+me|develop\s+(a|an)|generate\s+(a|an))\b[\s\S]{0,8000}?\b(app|application|website|web\s*app|webitsite|websit|wedsite|landing\s*page|dashboard|saas|mvp|api|backend|frontend|tool|platform|product)\b/i;
+/** Looser match for typos (e.g. "WEBITSIDE") or phrases split across lines. */
 const BUILD_KEYWORDS_LOOSE =
-  /\b(build|building|create|creating|make|making|develop|developing)\b.{0,120}\b(web|app|site|page|saas|dash|api|mvp|tool|product|platform|frontend|backend)\b/i;
+  /\b(build|building|create|creating|make|making|develop|developing)\b[\s\S]{0,8000}?\b(web|app|site|page|saas|dash|api|mvp|tool|product|platform|frontend|backend)\b/i;
+
+/** Long technical briefs often omit the word "build" but clearly request software. */
+function looksLikeBuildSpec(flat) {
+  const f = (flat || '').toLowerCase();
+  if (f.length < 160) return false;
+  const signals = [
+    'react native',
+    'ios',
+    'android',
+    'expo',
+    'jest',
+    'playwright',
+    'e2e',
+    'swagger',
+    'microservice',
+    'rest api',
+    'graphql',
+    'stripe',
+    'postgres',
+    'mongodb',
+    'tailwind',
+    'fastapi',
+    'next.js',
+    'vite',
+    'kubernetes',
+    'docker',
+    'offline',
+    'multi-tenant',
+    'saas',
+    'dashboard',
+    'crm',
+  ];
+  const n = signals.filter((s) => f.includes(s)).length;
+  return n >= 2;
+}
 const AGENT_KEYWORDS = /\b(automate|schedule|cron|webhook|trigger|run\s+every|run\s+when|run\s+on|agent|automation|workflow)\b/i;
 
 /** Stringify bubble content so user/assistant lines always render (never [object Object]). */
@@ -149,9 +190,11 @@ async function inferBuildSpec(userPrompt, API, token) {
 async function detectIntent(prompt, API, token) {
   const p = prompt.trim();
   if (isDefinitelyChat(p)) return "chat";
-  let looksBuild = BUILD_KEYWORDS.test(p);
-  if (!looksBuild) looksBuild = BUILD_KEYWORDS_LOOSE.test(p);
-  const looksAgent = AGENT_KEYWORDS.test(p);
+  const flat = flattenIntentText(p);
+  let looksBuild = BUILD_KEYWORDS.test(flat);
+  if (!looksBuild) looksBuild = BUILD_KEYWORDS_LOOSE.test(flat);
+  if (!looksBuild) looksBuild = looksLikeBuildSpec(flat);
+  const looksAgent = AGENT_KEYWORDS.test(flat);
   if (!looksBuild && !looksAgent) return "chat";
 
   try {
