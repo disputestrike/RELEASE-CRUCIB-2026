@@ -37,6 +37,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'yarn'
+          cache-dependency-path: frontend/yarn.lock
       - name: Install frontend deps
         run: cd frontend && yarn install --frozen-lockfile
       - name: Lint
@@ -52,6 +53,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'yarn'
+          cache-dependency-path: frontend/yarn.lock
       - name: Install and audit frontend
         run: cd frontend && yarn install --frozen-lockfile && npm audit --audit-level=high || true
       - uses: actions/setup-python@v5
@@ -78,6 +80,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'yarn'
+          cache-dependency-path: frontend/yarn.lock
       - name: Install and test
         run: cd frontend && yarn install --frozen-lockfile && npm run test:coverage || npm test -- --watchAll=false
       - name: Upload coverage (optional)
@@ -175,6 +178,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'yarn'
+          cache-dependency-path: frontend/yarn.lock
       - name: Install frontend and Playwright
         run: cd frontend && yarn install --frozen-lockfile && npx playwright install --with-deps chromium
       - name: Build frontend

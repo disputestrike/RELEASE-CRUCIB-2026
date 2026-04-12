@@ -118,7 +118,7 @@ export default function GoalComposer({
   /** Hide quick-start chip row. */
   showQuickChips = true,
   /** `workspace` — lighter shell when embedded under UnifiedWorkspace. */
-  composerVariant = 'default',
+  composerVariant: _composerVariant = 'default',
   /** Raw API / server message for expandable “Technical details” (friendly string in `error`). */
   errorRaw = null,
   /** Hide title + subtitle block (unified workspace: composer sits under activity feed). */

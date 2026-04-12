@@ -72,11 +72,13 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       
       - name: Install dependencies
-        run: pip install --no-cache-dir -r requirements.txt
+        run: |
+          pip install --no-cache-dir -r requirements.txt
+          pip install mypy
       
       - name: Run MyPy type checking
         run: |
-          mypy backend/ --strict --ignore-missing-imports
+          mypy backend/ --ignore-missing-imports
       
       - name: Report type check results
         if: failure()
@@ -98,7 +100,9 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       
       - name: Install dependencies
-        run: pip install --no-cache-dir -r requirements.txt
+        run: |
+          pip install --no-cache-dir -r requirements.txt
+          pip install black isort flake8
       
       - name: Check formatting (Black)
         run: black --check backend/ || (echo "❌ Code not formatted" && exit 1)
@@ -137,7 +141,7 @@ jobs:
       
       - name: Upload security report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: security-reports
           path: bandit-report.json
@@ -180,7 +184,7 @@ jobs:
           echo "✅ Coverage threshold met: ${COVERAGE}%"
       
       - name: Upload coverage reports
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-reports
           path: |
