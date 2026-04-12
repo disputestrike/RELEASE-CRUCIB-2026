@@ -30,7 +30,10 @@ const CHAT_ONLY_PATTERNS = [
   /^(how\s+are\s+you|what'?s\s+going\s+on|how\s+is\s+it\s+going)\s*[!.?]*$/i,
   /^(bye|goodbye|see\s*ya|later)\s*[!.?]*$/i,
 ];
-const BUILD_KEYWORDS = /\b(build|create|make|develop|design|generate|produce|build\s+me|create\s+(a|an)|make\s+me|develop\s+(a|an)|generate\s+(a|an))\b.*\b(app|application|website|web\s*app|landing\s*page|dashboard|saas|mvp|api|backend|frontend|tool|platform|product)\b/i;
+const BUILD_KEYWORDS = /\b(build|building|create|creating|make|making|develop|developing|design|generate|produce|build\s+me|create\s+(a|an)|make\s+me|develop\s+(a|an)|generate\s+(a|an))\b.*\b(app|application|website|web\s*app|webitsite|websit|wedsite|landing\s*page|dashboard|saas|mvp|api|backend|frontend|tool|platform|product)\b/i;
+/** Looser match for typos (e.g. "WEBITSIDE") or short phrases like "build me a site". */
+const BUILD_KEYWORDS_LOOSE =
+  /\b(build|building|create|creating|make|making|develop|developing)\b.{0,120}\b(web|app|site|page|saas|dash|api|mvp|tool|product|platform|frontend|backend)\b/i;
 const AGENT_KEYWORDS = /\b(automate|schedule|cron|webhook|trigger|run\s+every|run\s+when|run\s+on|agent|automation|workflow)\b/i;
 
 /** Stringify bubble content so user/assistant lines always render (never [object Object]). */
@@ -145,7 +148,8 @@ async function inferBuildSpec(userPrompt, API, token) {
 async function detectIntent(prompt, API, token) {
   const p = prompt.trim();
   if (isDefinitelyChat(p)) return "chat";
-  const looksBuild = BUILD_KEYWORDS.test(p);
+  let looksBuild = BUILD_KEYWORDS.test(p);
+  if (!looksBuild) looksBuild = BUILD_KEYWORDS_LOOSE.test(p);
   const looksAgent = AGENT_KEYWORDS.test(p);
   if (!looksBuild && !looksAgent) return "chat";
 

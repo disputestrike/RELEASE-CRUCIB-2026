@@ -3,7 +3,7 @@
  * Tokens: ../styles/unified-workspace-tokens.css (scoped .uw-root).
  */
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth, API } from '../App';
 import axios from 'axios';
 import Editor from '@monaco-editor/react';
@@ -39,11 +39,14 @@ const RIGHT_ORDER = ['proof', 'explorer', 'replay', 'failure', 'preview', 'timel
 
 export default function UnifiedWorkspace() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const projectIdFromUrl = searchParams.get('projectId');
   const taskIdFromUrl = searchParams.get('taskId');
   const jobIdFromUrl = searchParams.get('jobId');
   const { token, user, loading: authLoading, ensureGuest } = useAuth();
   const sessionBootstrapRef = useRef(false);
+  const processedLocationHandoffRef = useRef(new Set());
 
   useEffect(() => {
     if (authLoading) return;
@@ -132,23 +135,6 @@ export default function UnifiedWorkspace() {
   const [error, setError] = useState(null);
   const [activePane, setActivePane] = useState('proof');
   const [failedStep, setFailedStep] = useState(null);
-  const [buildJobs, setBuildJobs] = useState([]);
-
-  const fetchBuildJobHistory = useCallback(() => {
-    if (!token || !API) return;
-    axios
-      .get(`${API}/orchestrator/build-jobs`, {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { limit: 30 },
-      })
-      .then((r) => setBuildJobs(r.data?.jobs || []))
-      .catch(() => {});
-  }, [token]);
-
-  useEffect(() => {
-    fetchBuildJobHistory();
-  }, [fetchBuildJobHistory, jobId]);
-
   useEffect(() => {
     if (!API) return;
     axios
@@ -376,6 +362,70 @@ export default function UnifiedWorkspace() {
   };
 
   /**
+   * POST /orchestrator/plan then POST /orchestrator/run-auto for a concrete goal string
+   * (used by composer Send and by dashboard handoff auto-start).
+   */
+  const runNewPlanAndAuto = useCallback(
+    async (goalText) => {
+      const trimmed = (goalText || '').trim();
+      if (!trimmed || authLoading || !token) return;
+      if (sendInFlightRef.current) return;
+      sendInFlightRef.current = true;
+      setLoading(true);
+      setError(null);
+      const headers = { Authorization: `Bearer ${token}` };
+      const planBody = { goal: trimmed, mode: 'auto', build_target: null };
+      const pid = (projectIdFromUrl || '').trim();
+      if (pid) planBody.project_id = pid;
+      try {
+        const res = await axios.post(`${API}/orchestrator/plan`, planBody, { headers });
+        const newJid = res.data.job_id;
+        setPlan(res.data.plan);
+        setCapabilityNotice(Array.isArray(res.data.capability_notice) ? res.data.capability_notice : []);
+        if (res.data.build_target_meta) setBuildTargetMeta(res.data.build_target_meta);
+        else if (res.data.build_target && buildTargets.length) {
+          setBuildTargetMeta(buildTargets.find((t) => t.id === res.data.build_target) || null);
+        }
+        if (res.data.build_target) setBuildTarget(res.data.build_target);
+        setEstimate(res.data.estimate);
+        setJobId(newJid);
+        setSearchParams(
+          (prev) => {
+            const next = new URLSearchParams(prev);
+            if (newJid) next.set('jobId', newJid);
+            return next;
+          },
+          { replace: true },
+        );
+
+        try {
+          await axios.post(`${API}/orchestrator/run-auto`, { job_id: newJid }, { headers });
+          setStage('running');
+        } catch (e) {
+          const d = e.response?.data?.detail;
+          let msg = 'Failed to start job.';
+          if (d && typeof d === 'object' && !Array.isArray(d)) {
+            if (Array.isArray(d.issues)) msg = d.issues.join(' ');
+            else if (d.message) msg = String(d.message);
+            else if (d.error === 'runtime_unsatisfied') {
+              msg = 'Runtime check failed: install Python and Node.js on the host running the API, then retry.';
+            }
+          } else if (typeof d === 'string') msg = d;
+          else if (Array.isArray(d)) msg = d.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join('; ');
+          setError(msg);
+          setStage('plan');
+        }
+      } catch (e) {
+        setError(e.response?.data?.detail || 'Failed to generate plan.');
+      } finally {
+        setLoading(false);
+        sendInFlightRef.current = false;
+      }
+    },
+    [API, token, authLoading, buildTargets, projectIdFromUrl, setSearchParams],
+  );
+
+  /**
    * Phase 1: one Send = POST /orchestrator/plan then POST /orchestrator/run-auto (same job).
    * If already in plan review (e.g. run-auto failed), Send only approves / starts run.
    */
@@ -397,59 +447,46 @@ export default function UnifiedWorkspace() {
       return;
     }
 
-    sendInFlightRef.current = true;
-    setLoading(true);
-    setError(null);
-    const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    try {
-      const res = await axios.post(
-        `${API}/orchestrator/plan`,
-        { goal: goal.trim(), mode: 'auto', build_target: null },
-        { headers },
-      );
-      const newJid = res.data.job_id;
-      setPlan(res.data.plan);
-      setCapabilityNotice(Array.isArray(res.data.capability_notice) ? res.data.capability_notice : []);
-      if (res.data.build_target_meta) setBuildTargetMeta(res.data.build_target_meta);
-      else if (res.data.build_target && buildTargets.length) {
-        setBuildTargetMeta(buildTargets.find((t) => t.id === res.data.build_target) || null);
-      }
-      if (res.data.build_target) setBuildTarget(res.data.build_target);
-      setEstimate(res.data.estimate);
-      setJobId(newJid);
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          if (newJid) next.set('jobId', newJid);
-          return next;
-        },
-        { replace: true },
-      );
-
-      try {
-        await axios.post(`${API}/orchestrator/run-auto`, { job_id: newJid }, { headers });
-        setStage('running');
-      } catch (e) {
-        const d = e.response?.data?.detail;
-        let msg = 'Failed to start job.';
-        if (d && typeof d === 'object' && !Array.isArray(d)) {
-          if (Array.isArray(d.issues)) msg = d.issues.join(' ');
-          else if (d.message) msg = String(d.message);
-          else if (d.error === 'runtime_unsatisfied') {
-            msg = 'Runtime check failed: install Python and Node.js on the host running the API, then retry.';
-          }
-        } else if (typeof d === 'string') msg = d;
-        else if (Array.isArray(d)) msg = d.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join('; ');
-        setError(msg);
-        setStage('plan');
-      }
-    } catch (e) {
-      setError(e.response?.data?.detail || 'Failed to generate plan.');
-    } finally {
-      setLoading(false);
-      sendInFlightRef.current = false;
-    }
+    await runNewPlanAndAuto(goal.trim());
   };
+
+  /** Home / dashboard: consume navigate(..., { state: { initialPrompt, autoStart } }). */
+  useEffect(() => {
+    const st = location.state;
+    if (!st || typeof st.initialPrompt !== 'string') return;
+    const raw = st.initialPrompt.trim();
+    if (!raw) return;
+    const key = typeof location.key === 'string' && location.key ? location.key : `handoff_${raw.slice(0, 40)}`;
+    if (processedLocationHandoffRef.current.has(key)) return;
+    processedLocationHandoffRef.current.add(key);
+
+    setGoal(raw);
+    if (st.autoStart) {
+      try {
+        sessionStorage.setItem('crucibai_autostart_goal', raw);
+      } catch (_) {
+        /* private mode / quota */
+      }
+    }
+    navigate(
+      { pathname: location.pathname, search: location.search || '' },
+      { replace: true, state: {} },
+    );
+  }, [location.key, location.state, location.pathname, location.search, navigate]);
+
+  /** After guest/session token is ready, start build from dashboard handoff (one shot). */
+  useEffect(() => {
+    if (authLoading || !token) return;
+    let goalText = '';
+    try {
+      goalText = (sessionStorage.getItem('crucibai_autostart_goal') || '').trim();
+      if (goalText) sessionStorage.removeItem('crucibai_autostart_goal');
+    } catch (_) {
+      return;
+    }
+    if (!goalText) return;
+    void runNewPlanAndAuto(goalText);
+  }, [token, authLoading, runNewPlanAndAuto]);
 
   const handleCancel = async () => {
     const jid = jobId || jobIdFromUrl;
@@ -507,20 +544,6 @@ export default function UnifiedWorkspace() {
     );
   };
 
-  const openBuildJob = useCallback(
-    (id) => {
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          next.set('jobId', id);
-          return next;
-        },
-        { replace: true },
-      );
-    },
-    [setSearchParams],
-  );
-
   const handleCodeChange = (value) => {
     setFiles((prev) => ({
       ...prev,
@@ -545,31 +568,6 @@ export default function UnifiedWorkspace() {
 
   return (
     <div className={`uw-root arp-root arp-ux-${uxMode}`}>
-      {token && buildJobs.length > 0 && (
-        <div className="arp-recent-builds" aria-label="Recent Auto-Runner jobs">
-          <span className="arp-recent-label">Recent builds</span>
-          <div className="arp-recent-scroll">
-            {buildJobs.map((j) => {
-              const g = j.goal || '';
-              const label = g.length > 56 ? `${g.slice(0, 56)}…` : g || j.id || '';
-              const active = j.id === effectiveJobId;
-              return (
-                <button
-                  key={j.id}
-                  type="button"
-                  className={`arp-recent-chip ${active ? 'active' : ''} st-${j.status || 'unknown'}`}
-                  title={j.goal || j.id}
-                  onClick={() => openBuildJob(j.id)}
-                >
-                  <span className="arp-recent-chip-status" aria-hidden />
-                  <span className="arp-recent-chip-text">{label || j.id}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       <div className="arp-layout arp-layout--no-inner-rail">
         <div className="arp-center-pane arp-center-pane--composer-bottom">
           <div className="arp-center-toolbar">

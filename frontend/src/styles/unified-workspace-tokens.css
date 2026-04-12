@@ -112,8 +112,7 @@
   border-left-color: var(--uw-border-strong);
 }
 [data-theme="light"] .uw-root .arp-topbar,
-[data-theme="light"] .uw-root .arp-pane-tabs,
-[data-theme="light"] .uw-root .arp-recent-builds {
+[data-theme="light"] .uw-root .arp-pane-tabs {
   border-color: var(--uw-border-strong);
 }
 
