@@ -364,9 +364,9 @@ async def _execute_job_loop(job_id: str, workspace_path: str, db_pool, total_ret
                         "error_message": err_txt,
                         "brain_strategy": repair.get("strategy", "unknown"),
                         "brain_explanation": repair.get("explanation", ""),
-                        "workspace_fixed": repair.get("workspace_fixed", False),
+                        "workspace_fixed": bool(repair.get("workspace_fixed", False)),
                         "files_repaired": repair.get("files_repaired", []),
-                        **repair.get("mutations", {}),
+                        "brain_mutations_json": repair.get("mutations") or {},
                     }
 
                     await append_job_event(

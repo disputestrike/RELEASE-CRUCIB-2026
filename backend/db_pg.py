@@ -746,6 +746,11 @@ CREATE TABLE IF NOT EXISTS job_steps (
 CREATE INDEX IF NOT EXISTS idx_job_steps_job ON job_steps(job_id);
 CREATE INDEX IF NOT EXISTS idx_job_steps_status ON job_steps(status);
 CREATE INDEX IF NOT EXISTS idx_job_steps_key ON job_steps(job_id, step_key);
+ALTER TABLE job_steps ADD COLUMN IF NOT EXISTS brain_strategy TEXT;
+ALTER TABLE job_steps ADD COLUMN IF NOT EXISTS brain_explanation TEXT;
+ALTER TABLE job_steps ADD COLUMN IF NOT EXISTS workspace_fixed BOOLEAN DEFAULT FALSE;
+ALTER TABLE job_steps ADD COLUMN IF NOT EXISTS files_repaired TEXT;
+ALTER TABLE job_steps ADD COLUMN IF NOT EXISTS brain_mutations_json TEXT DEFAULT '{}';
 CREATE TABLE IF NOT EXISTS job_events (
     id TEXT PRIMARY KEY,
     job_id TEXT NOT NULL,

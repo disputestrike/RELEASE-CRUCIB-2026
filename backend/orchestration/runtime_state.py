@@ -206,10 +206,40 @@ async def create_step(job_id: str, step_key: str, agent_name: str,
     return await get_step(step_id)
 
 
+def _hydrate_step_row(row: Dict[str, Any]) -> Dict[str, Any]:
+    """Merge brain_mutations_json into the step dict for executor/swarm consumers."""
+    d = dict(row)
+    raw = d.get("brain_mutations_json") or ""
+    if isinstance(raw, str) and raw.strip():
+        try:
+            mut = json.loads(raw)
+            if isinstance(mut, dict):
+                d.update(mut)
+        except json.JSONDecodeError:
+            pass
+    fr = d.get("files_repaired")
+    if isinstance(fr, str) and fr.strip().startswith("["):
+        try:
+            parsed = json.loads(fr)
+            if isinstance(parsed, list):
+                d["files_repaired"] = parsed
+        except json.JSONDecodeError:
+            pass
+    of = d.get("output_files")
+    if isinstance(of, str) and of.strip().startswith("["):
+        try:
+            parsed = json.loads(of)
+            if isinstance(parsed, list):
+                d["output_files"] = parsed
+        except json.JSONDecodeError:
+            pass
+    return d
+
+
 async def get_step(step_id: str) -> Optional[Dict[str, Any]]:
     async with _pool.acquire() as conn:
         row = await conn.fetchrow("SELECT * FROM job_steps WHERE id=$1", step_id)
-    return dict(row) if row else None
+    return _hydrate_step_row(dict(row)) if row else None
 
 
 async def get_steps(job_id: str) -> List[Dict[str, Any]]:
@@ -218,14 +248,27 @@ async def get_steps(job_id: str) -> List[Dict[str, Any]]:
             "SELECT * FROM job_steps WHERE job_id=$1 ORDER BY order_index, created_at",
             job_id
         )
-    return [dict(r) for r in rows]
+    return [_hydrate_step_row(dict(r)) for r in rows]
+
+
+def _coerce_step_update_values(extra: Dict[str, Any]) -> Dict[str, Any]:
+    """Serialize structured fields before UPDATE job_steps (asyncpg expects scalars)."""
+    out: Dict[str, Any] = {}
+    for k, v in (extra or {}).items():
+        if k in ("files_repaired", "output_files") and isinstance(v, (list, dict)):
+            out[k] = json.dumps(v)
+        elif k == "brain_mutations_json" and isinstance(v, (dict, list)):
+            out[k] = json.dumps(v)
+        else:
+            out[k] = v
+    return out
 
 
 async def update_step_state(step_id: str, status: str,
                             extra: Optional[Dict] = None) -> None:
     updates = {"status": status, "updated_at": _now()}
     if extra:
-        updates.update(extra)
+        updates.update(_coerce_step_update_values(extra))
     if status == "running":
         updates.setdefault("started_at", _now())
     if status in TERMINAL_STEP_STATES:
