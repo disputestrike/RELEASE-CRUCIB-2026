@@ -23,6 +23,7 @@ from .agent_selection_logic import explain_agent_selection, should_route_to_agen
 from .spec_guardian import evaluate_goal_against_runner, merge_plan_risk_flags_into_report
 from .swarm_agent_runner import build_agent_swarm_phases, uses_agent_swarm
 from .controller_brain import build_plan_controller_summary
+from .generation_policy import goal_suggests_database
 
 logger = logging.getLogger(__name__)
 
@@ -247,6 +248,10 @@ def _controller_summary(goal: str, selected_agents: list, phases: list) -> Dict[
 def _build_phases(goal: str, build_kind: str, integrations: list,
                   stack_contract: Optional[Dict[str, Any]] = None,
                   selected_agents: Optional[list] = None) -> list:
+    from .generation_policy import (
+        fixed_planner_skip_auth,
+        fixed_planner_skip_database,
+    )
     if _uses_intelligent_orchestration(goal, stack_contract):
         logger.info("Routing to intelligent agent selection / swarm path")
         phases = build_agent_swarm_phases(goal, stack_contract, selected_agents=selected_agents)
@@ -336,6 +341,51 @@ def _build_phases(goal: str, build_kind: str, integrations: list,
         )
         return phases
 
+    skip_db = fixed_planner_skip_database(build_kind, integrations)
+    skip_auth = fixed_planner_skip_auth(integrations)
+
+    backend_steps = []
+    if not skip_db:
+        backend_steps.append(
+            {"key": "backend.models", "agent": "Database Agent",
+             "name": "Define data models", "description": "Create DB schema and models",
+             "depends_on": ["planning.requirements"]},
+        )
+    backend_steps.append(
+        {
+            "key": "backend.routes",
+            "agent": "Backend Generation",
+            "name": "Generate API routes",
+            "description": "Create FastAPI/Express route handlers",
+            "depends_on": ["backend.models"] if not skip_db else ["planning.requirements"],
+        },
+    )
+    if not skip_auth:
+        backend_steps.append(
+            {
+                "key": "backend.auth",
+                "agent": "Auth Setup Agent",
+                "name": "Wire auth",
+                "description": "JWT auth, protected routes, RBAC",
+                "depends_on": ["backend.routes"],
+            },
+        )
+
+    database_phase = None
+    if not skip_db:
+        database_phase = {
+            "key": "database",
+            "label": "Database",
+            "steps": [
+                {"key": "database.migration", "agent": "Database Agent",
+                 "name": "Create migration", "description": "Write and apply DB migration",
+                 "depends_on": ["backend.models"]},
+                {"key": "database.seed", "agent": "Database Agent",
+                 "name": "Seed data", "description": "Insert initial/demo data",
+                 "depends_on": ["database.migration"]},
+            ],
+        }
+
     phases = [
         {
             "key": "planning",
@@ -366,30 +416,9 @@ def _build_phases(goal: str, build_kind: str, integrations: list,
         {
             "key": "backend",
             "label": "Backend",
-            "steps": [
-                {"key": "backend.models", "agent": "Database Agent",
-                 "name": "Define data models", "description": "Create DB schema and models",
-                 "depends_on": ["planning.requirements"]},
-                {"key": "backend.routes", "agent": "Backend Generation",
-                 "name": "Generate API routes", "description": "Create FastAPI/Express route handlers",
-                 "depends_on": ["backend.models"]},
-                {"key": "backend.auth", "agent": "Auth Setup Agent",
-                 "name": "Wire auth", "description": "JWT auth, protected routes, RBAC",
-                 "depends_on": ["backend.routes"]},
-            ]
+            "steps": backend_steps,
         },
-        {
-            "key": "database",
-            "label": "Database",
-            "steps": [
-                {"key": "database.migration", "agent": "Database Agent",
-                 "name": "Create migration", "description": "Write and apply DB migration",
-                 "depends_on": ["backend.models"]},
-                {"key": "database.seed", "agent": "Database Agent",
-                 "name": "Seed data", "description": "Insert initial/demo data",
-                 "depends_on": ["database.migration"]},
-            ]
-        },
+        *([] if database_phase is None else [database_phase]),
         {
             "key": "implementation",
             "label": "Delivery manifest",
@@ -461,7 +490,9 @@ async def generate_plan(goal: str,
     stack_contract = parse_generation_contract(goal)
     stack_contract["goal"] = goal
     build_kind = _detect_build_kind(goal)
-    integrations = _detect_integrations(goal)
+    integrations = list(_detect_integrations(goal))
+    if goal_suggests_database(goal) and "database" not in integrations:
+        integrations.append("database")
     risk_flags = _detect_risk_flags(goal, project_state, stack_contract)
     selection_explanation = explain_agent_selection(goal, stack_contract) if _uses_intelligent_orchestration(goal, stack_contract) else {}
     selected_agents = list(selection_explanation.get("selected_agents") or [])

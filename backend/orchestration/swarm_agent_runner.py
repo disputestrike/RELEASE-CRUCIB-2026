@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 from agent_dag import AGENT_DAG, get_execution_phases, _AGENT_RELEVANT_DEPS
 from agent_resilience import get_criticality
 
-from .agent_selection_logic import build_full_phases_from_dag, select_agents_for_goal
+from .agent_selection_logic import BASE_AGENTS, build_full_phases_from_dag, select_agents_for_goal
 from .runtime_state import get_steps, load_checkpoint
 
 
@@ -81,7 +81,7 @@ def build_agent_swarm_phases(
         chosen_agents = (
             select_agents_for_goal(goal, stack_contract)
             if goal
-            else list(AGENT_DAG.keys())
+            else list(BASE_AGENTS)
         )
 
     filtered = {name: AGENT_DAG[name] for name in chosen_agents if name in AGENT_DAG}

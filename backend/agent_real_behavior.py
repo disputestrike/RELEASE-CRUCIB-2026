@@ -41,7 +41,9 @@ STATE_WRITERS: Dict[str, str] = {
     "Design Iteration Agent": "design_iterations",
 }
 
-# Agent -> default workspace-relative path for artifact write
+# Agent -> default workspace-relative path for artifact write.
+# Broad map: a step only runs if it appears in the job DAG (planner + swarm selection).
+# Coherence policy: orchestration/generation_policy.py + agent_selection_logic (keywords, default support).
 ARTIFACT_PATHS: Dict[str, str] = {
     "Frontend Generation": "src/App.jsx",
     "Store Prep Agent": "store-submission/STORE_SUBMISSION_GUIDE.md",

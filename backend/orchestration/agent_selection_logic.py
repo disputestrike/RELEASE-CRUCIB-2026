@@ -13,6 +13,7 @@ from agent_dag import AGENT_DAG, get_execution_phases
 
 from .agent_audit_registry import agents_excluded_from_autorunner_selection
 from .directory_contracts import directory_profile_from_contract, stack_profile_from_contract
+from .generation_policy import legacy_broad_agent_support_enabled
 
 
 BASE_AGENTS = [
@@ -109,8 +110,9 @@ AGENT_KEYWORDS = {
     "edge": ["Edge Computing Agent", "Edge Deployment Agent"],
     "embedded": ["Microcontroller Firmware Agent", "IoT Sensor Agent"],
 
-    # Data / analytics
-    "data": ["ML Data Pipeline Agent", "Data Quality Agent", "Data Visualization Agent"],
+    # Data / analytics (avoid bare "data" — matches almost every spec; use phrases)
+    "data warehouse": ["Data Quality Agent", "Data Warehouse Agent", "Report Generation Agent"],
+    "data pipeline": ["ML Data Pipeline Agent", "Data Pipeline Agent"],
     "analytics": ["Data Visualization Agent", "Statistical Analysis Agent", "Jupyter Notebook Agent"],
     "jupyter": ["Jupyter Notebook Agent"],
     "notebook": ["Jupyter Notebook Agent"],
@@ -245,9 +247,12 @@ AGENT_KEYWORDS = {
     "app store": ["Store Prep Agent"],
 
     # Docs / content
-    "documentation": ["Documentation Agent", "API Documentation Agent"],
-    "docs": ["Documentation Agent", "API Documentation Agent"],
-    "api": ["API Documentation Agent", "API Integration", "API Tool Agent"],
+    "documentation": ["Documentation Agent"],
+    "docs": ["Documentation Agent"],
+    "openapi": ["API Documentation Agent", "API Integration"],
+    "swagger": ["API Documentation Agent", "API Integration"],
+    "graphql": ["GraphQL Agent", "API Integration"],
+    "grpc": ["API Integration"],
     "content": ["Content Agent", "SEO Agent"],
     "seo": ["SEO Agent", "Content Agent"],
     "marketing": ["Content Agent", "SEO Agent"],
@@ -406,7 +411,7 @@ def explain_agent_selection(goal: str, stack_contract: Dict | None = None) -> Di
             ("Kubernetes Advanced Agent", "Load Balancer Agent", "Message Queue Advanced Agent", "Database Optimization Agent", "Disaster Recovery Agent", "Monitoring Agent", "Docker Setup Agent", "GitHub Actions CI Agent"),
         )
 
-    if any(word in goal_lower for word in ("data", "analytics", "bigdata", "warehouse")):
+    if any(word in goal_lower for word in ("analytics", "bigdata", "warehouse")) or "data warehouse" in goal_lower:
         _record_rule_hit(
             selected,
             matched_rules,
@@ -466,7 +471,7 @@ def explain_agent_selection(goal: str, stack_contract: Dict | None = None) -> Di
     if any(word in goal_lower for word in ("api", "contract", "schema", "openapi")):
         _record_rule_hit(selected, matched_rules, "rule:api_contract", ("API Contract Validator Agent", "API Documentation Generation Agent"))
     
-    if any(word in goal_lower for word in ("database", "schema", "migration", "sql")):
+    if any(word in goal_lower for word in ("database", "schema", "migration", "sql", "postgres", "postgresql", "sqlite")):
         _record_rule_hit(selected, matched_rules, "rule:database_schema", ("Database Schema Validator Agent", "ORM Setup Agent"))
     
     if any(word in goal_lower for word in ("search", "elasticsearch", "algolia")):
@@ -499,7 +504,8 @@ def explain_agent_selection(goal: str, stack_contract: Dict | None = None) -> Di
     if any(word in goal_lower for word in ("adr", "architecture decision", "decision record", "technical decision")):
         _record_rule_hit(selected, matched_rules, "rule:architecture_decisions", ("Architecture Decision Records Agent",))
 
-    _record_rule_hit(selected, matched_rules, "rule:default_support", DEFAULT_SUPPORT_AGENTS)
+    if legacy_broad_agent_support_enabled():
+        _record_rule_hit(selected, matched_rules, "rule:default_support_legacy", DEFAULT_SUPPORT_AGENTS)
     selected = _dependency_closure(selected)
     selected_agents = sorted(selected)
     specialized_agents = sorted(agent for agent in selected_agents if agent not in ALWAYS_INCLUDED_AGENT_SET)
@@ -536,7 +542,12 @@ def should_route_to_agent_selection(goal: str, stack_contract: Dict | None = Non
     explanation = explain_agent_selection(goal, contract)
     # Only route if actual keywords or non-trivial rules fired.
     # Design/content surface rules alone are not enough — they fire on nearly every app.
-    COSMETIC_ONLY_RULES = {"rule:design_surface", "rule:content_surface", "rule:default_support"}
+    COSMETIC_ONLY_RULES = {
+        "rule:design_surface",
+        "rule:content_surface",
+        "rule:default_support",
+        "rule:default_support_legacy",
+    }
     meaningful_rules = [
         r for r in (explanation.get("matched_rules") or [])
         if r not in COSMETIC_ONLY_RULES
