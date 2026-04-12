@@ -97,13 +97,15 @@ python scripts/audit_agent_dag.py --check
 
 ---
 
-## What remains (phased — from your approved plan)
+## Phased plan — delivery status (P1–P7)
+
+All items in the approved slice below are **implemented in this repo**. Broader roadmap (Next-only execution mode, mobile, deeper proof automation, etc.) is tracked separately from this table.
 
 | Phase | Deliverable | Notes |
 |-------|----------------|-------|
 | P1 | `artifact_delta` on **every** step completion (executor → `append_job_event`) | **Shipped:** `artifact_delta` job_event after each successful `execute_step` (size+mtime snapshot diff; capped lists). Module: `orchestration/artifact_delta.py`. |
 | P2 | `WorkspaceAssemblyPipeline` (v1) | **Shipped; default on** (set `CRUCIBAI_ASSEMBLY_V2=0|false|no|off` to opt out). JSON maps, seal owners, profile-aware preview (`api_backend` skips Vite overlay), **`next_app_router`** `next-app-stub/*` fill, merge_map replace (file tool) + upsert (swarm), seal merge into `artifact_manifest` with **events overriding** same path (`path_last_writer.json` event-only). |
-| P3 | Thin legacy shim / remove duplicate writes | **Shim module:** `legacy_file_tool_writes.py` — used **only** when V2 is explicitly disabled via env. **Default-on V2 shipped**; deleting the legacy module entirely is optional follow-up once you no longer need the escape hatch. |
+| P3 | Thin legacy shim / remove duplicate writes | **Shim module:** `legacy_file_tool_writes.py` — **only** when `CRUCIBAI_ASSEMBLY_V2` is `0`/`false`/`no`/`off`, or when assembly V2 raises (fallback). **Default-on V2** removes duplicate writes in normal operation. Optional later: delete shim if you drop the escape hatch. **Regression:** `backend/tests/test_legacy_file_tool_writes.py`. |
 | P4 | `stack_contract` / profile drives `select_agents_for_goal` + directory contract tests | **`directory_profile`** on `parse_generation_contract` (`next_js` when Next is requested); **`directory_profile_from_contract`** + **`next_js`** layout checks (`app` / `src/app` / `pages`); `explain_agent_selection` returns `directory_profile`. |
 | P5 | Proof index ↔ `artifact_manifest` paths | **Shipped (v1):** … **Deeper (incremental):** `verification.api_smoke` **py_compile** proofs include explicit **`path`** (same as `file`); DB table-exists proofs already carry **`path`** when a migration `.sql` is known; bundle copies `path_last_writer.json` / `merge_map.json` when present. |
 | P6 | Single canonical export story | **Documented below** — two ZIP surfaces are intentional: job workspace export vs generic POST `/api/export/zip`. **`GET /api/jobs/{job_id}/export`** JSON discovery; **Proof** tab **Workspace ZIP** for `full.zip`. |
@@ -113,6 +115,7 @@ python scripts/audit_agent_dag.py --check
 
 | Mechanism | Role |
 |------------|------|
+| `GET /api/jobs/{job_id}/export` | **Discovery (JSON):** `href_full_zip`, workspace existence, `META/*` presence (Bearer). |
 | `GET /api/jobs/{job_id}/export/full.zip` | **Ownership / evidence:** zips the **project workspace** tied to the job (`WORKSPACE_ROOT/<project_id>`), including `META/*` after seal. Use for downloads, audits, handoff. |
 | `POST /api/export/zip` | **Ad-hoc / editor payloads:** request-body `files` map for one-off zips (dashboards, tools). Not the durable Auto-Runner workspace. |
 | Git push (`POST /api/git-sync/push`, PAT) | **Remote repo:** canonical for version control, not a filesystem ZIP. |
