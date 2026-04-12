@@ -65,9 +65,10 @@ export default function ProofPanel({ proof, jobId, onExport: _onExport, openWork
     if (!jobId || !token || !API) return;
     setZipBusy(true);
     try {
-      const res = await fetch(`${API}/jobs/${encodeURIComponent(jobId)}/export/full.zip`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(
+        `${API}/jobs/${encodeURIComponent(jobId)}/export/full.zip?profile=handoff`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
       if (!res.ok) {
         const errText = await res.text().catch(() => '');
         throw new Error(errText || res.statusText || `HTTP ${res.status}`);
@@ -76,7 +77,7 @@ export default function ProofPanel({ proof, jobId, onExport: _onExport, openWork
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `crucibai-job-${jobId}-full.zip`;
+      a.download = `crucibai-job-${jobId}-handoff.zip`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
@@ -84,7 +85,7 @@ export default function ProofPanel({ proof, jobId, onExport: _onExport, openWork
     } finally {
       setZipBusy(false);
     }
-  }, [jobId, token]);
+  }, [jobId, token, API]);
 
   const toggleItem = (idx) => {
     setExpandedItems((prev) => {
@@ -165,7 +166,7 @@ export default function ProofPanel({ proof, jobId, onExport: _onExport, openWork
               className="pp-export-btn"
               onClick={handleDownloadWorkspaceZip}
               disabled={zipBusy}
-              title="Download sealed project workspace (ZIP)"
+              title="Download handoff ZIP (app-focused; omits outputs/). Use API ?profile=full for complete tree including outputs/."
             >
               <FileArchive size={12} /> {zipBusy ? 'ZIP…' : 'Workspace ZIP'}
             </button>

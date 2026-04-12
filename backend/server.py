@@ -8443,6 +8443,7 @@ async def export_job_workspace_discovery(
             "workspace_root": str(root),
             "workspace_exists": root.is_dir(),
             "href_full_zip": f"/api/jobs/{job_id}/export/full.zip",
+            "href_handoff_zip": f"/api/jobs/{job_id}/export/full.zip?profile=handoff",
             "meta": {
                 "exists": meta.is_dir(),
                 "artifact_manifest": (meta / "artifact_manifest.json").is_file(),
@@ -8463,13 +8464,22 @@ async def export_job_workspace_discovery(
 async def export_job_workspace_full_zip(
     job_id: str,
     user: dict = Depends(get_current_user),
+    profile: str = Query(
+        "full",
+        description="full = entire workspace tree; handoff = app-focused (excludes outputs/ per-agent markdown)",
+    ),
 ):
     """
     Download the durable project workspace for this job as one ZIP (excludes node_modules, .git).
     Includes META/* manifests when present (written on successful job seal).
+    Use profile=handoff for a cleaner handoff ZIP without per-agent outputs/ markdown dumps.
     """
     try:
         from orchestration.workspace_assembly import iter_files_for_zip
+
+        prof = (profile or "full").strip().lower()
+        if prof not in ("full", "handoff"):
+            prof = "full"
 
         project_id = await _resolve_workspace_project_for_job(job_id, user)
         root = _project_workspace_path(project_id).resolve()
@@ -8479,7 +8489,7 @@ async def export_job_workspace_full_zip(
         os.close(fd)
         try:
             with zipfile.ZipFile(tmp_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-                for arcname, fp in iter_files_for_zip(root):
+                for arcname, fp in iter_files_for_zip(root, profile=prof):
                     try:
                         zf.write(str(fp), arcname=arcname)
                     except OSError:
@@ -8498,10 +8508,11 @@ async def export_job_workspace_full_zip(
                 pass
 
         safe = "".join(c if c.isalnum() or c in "-_" else "-" for c in job_id[:24])
+        suffix = "handoff" if prof == "handoff" else "full"
         return FileResponse(
             tmp_path,
             media_type="application/zip",
-            filename=f"crucibai-job-{safe}-full.zip",
+            filename=f"crucibai-job-{safe}-{suffix}.zip",
             background=BackgroundTask(_unlink, tmp_path),
         )
     except HTTPException:

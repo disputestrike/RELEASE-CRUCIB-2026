@@ -25,6 +25,9 @@ logger = logging.getLogger(__name__)
 
 SKIP_ZIP_DIRS = frozenset({"node_modules", ".git", "__pycache__", ".pytest_cache", ".venv", "venv"})
 
+# profile=handoff: omit per-agent markdown dumps; keep proof/META for transparency (use profile=full for everything).
+HANDOFF_ZIP_EXCLUDED_PREFIXES = ("outputs/",)
+
 
 def _sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
@@ -203,6 +206,13 @@ async def seal_completed_job_workspace(
         logger.warning("seal: workspace not a directory: %s", ws)
         return None
     try:
+        try:
+            from .readme_stack_guard import sanitize_readme_for_workspace
+
+            if sanitize_readme_for_workspace(root):
+                logger.info("seal: README.md aligned to detected workspace stack")
+        except Exception as _rg_e:
+            logger.warning("readme_stack_guard on seal: %s", _rg_e)
         run_m = build_run_manifest(job_id, steps)
         path_owners = await compute_path_last_writers_from_events(job_id)
         merge_overlay = merge_map_owner_overlay(root)
@@ -241,10 +251,21 @@ async def seal_completed_job_workspace(
         return None
 
 
-def iter_files_for_zip(workspace_root: Path):
-    """Yield (arcname, full_path) for zip builder."""
+def _zip_path_excluded_for_profile(arc_posix: str, profile: str) -> bool:
+    """When profile=handoff, drop bulky internal-only trees from the downloadable ZIP."""
+    prof = (profile or "full").strip().lower()
+    if prof != "handoff":
+        return False
+    a = arc_posix.replace("\\", "/").lstrip("/")
+    return any(a.startswith(p) or a == p.rstrip("/") for p in HANDOFF_ZIP_EXCLUDED_PREFIXES)
+
+
+def iter_files_for_zip(workspace_root: Path, profile: str = "full"):
+    """Yield (arcname, full_path) for zip builder. profile=handoff omits outputs/ agent markdown dumps."""
     root = workspace_root.resolve()
-    meta = root / "META"
+    prof = (profile or "full").strip().lower()
+    if prof not in ("full", "handoff"):
+        prof = "full"
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in SKIP_ZIP_DIRS and not d.startswith(".tmp")]
         for fn in filenames:
@@ -254,6 +275,8 @@ def iter_files_for_zip(workspace_root: Path):
             try:
                 arc = fp.resolve().relative_to(root).as_posix()
             except ValueError:
+                continue
+            if _zip_path_excluded_for_profile(arc, prof):
                 continue
             yield arc, fp
 

@@ -578,9 +578,10 @@ export default function UnifiedWorkspace() {
     if (!effectiveJobId || !token || !API) return;
     setZipBusy(true);
     try {
-      const res = await fetch(`${API}/jobs/${encodeURIComponent(effectiveJobId)}/export/full.zip`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(
+        `${API}/jobs/${encodeURIComponent(effectiveJobId)}/export/full.zip?profile=handoff`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
       if (!res.ok) {
         const errText = await res.text().catch(() => '');
         throw new Error(errText || res.statusText || `HTTP ${res.status}`);
@@ -589,7 +590,7 @@ export default function UnifiedWorkspace() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `crucibai-job-${effectiveJobId}-full.zip`;
+      a.download = `crucibai-job-${effectiveJobId}-handoff.zip`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
@@ -1230,7 +1231,7 @@ export default function UnifiedWorkspace() {
                           className="arp-topbar-btn"
                           style={{ fontSize: 11 }}
                           disabled={zipBusy}
-                          title="Download sealed workspace ZIP"
+                          title="Handoff ZIP (omits outputs/). Append ?profile=full to the export URL for the complete tree."
                           onClick={handleDownloadWorkspaceZip}
                         >
                           <FileArchive size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />
