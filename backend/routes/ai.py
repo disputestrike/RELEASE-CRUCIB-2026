@@ -565,10 +565,13 @@ async def validate_and_fix(
 @router.post("/ai/build/async")
 async def ai_build_async(data: ChatMessage, user: dict = Depends(_get_auth())):
     """
-    Async iterative build — returns job_id immediately.
-    Poll GET /api/jobs/{job_id} for progress and results.
+    Async iterative build — infers the appropriate build target from the goal.
+    Returns job_id immediately. Poll GET /api/jobs/{job_id} for progress and results.
+    
+    If the goal is ambiguous, returns clarification options instead of job_id.
     """
     from server import MIN_CREDITS_FOR_LLM, _user_credits
+    from orchestration.build_target_inference import infer_build_target, ask_for_build_target
 
     if (
         user
@@ -576,41 +579,46 @@ async def ai_build_async(data: ChatMessage, user: dict = Depends(_get_auth())):
         and _user_credits(user) < MIN_CREDITS_FOR_LLM
     ):
         raise HTTPException(status_code=402, detail="Insufficient credits.")
+    
     try:
+        goal = (data.message or "").strip()
+        if not goal:
+            raise HTTPException(status_code=400, detail="Goal/prompt is required.")
+        
+        # Step 1: Infer build target from goal
+        inferred_target, candidates, reasoning = infer_build_target(goal)
+        
+        # Step 2: If ambiguous, ask user to clarify instead of defaulting
+        if not inferred_target and not candidates:
+            # No inference possible — show all options
+            clarification = ask_for_build_target(goal)
+            return {
+                "status": "clarification_needed",
+                "message": clarification["question"],
+                "options": clarification["options"],
+                "reasoning": clarification["reasoning"],
+            }
+        
+        # Step 3: If multiple candidates, ask user to choose
+        if not inferred_target and candidates:
+            clarification = ask_for_build_target(goal)
+            return {
+                "status": "clarification_needed",
+                "message": clarification["question"],
+                "candidates": candidates,
+                "options": clarification["options"],
+                "reasoning": clarification["reasoning"],
+            }
+        
+        # Step 4: We have a confident inference — proceed with build
         from integrations.queue import enqueue_job
-
-        p = (data.message or "").lower()
-        build_kind = (
-            "mobile"
-            if any(
-                x in p for x in ["mobile", "react native", "expo", "ios app", "android"]
-            )
-            else (
-                "saas"
-                if any(x in p for x in ["saas", "dashboard", "admin panel"])
-                else (
-                    "landing"
-                    if any(
-                        x in p for x in ["landing page", "one page", "marketing page"]
-                    )
-                    else (
-                        "ai_agent"
-                        if any(x in p for x in ["agent", "automation", "chatbot"])
-                        else (
-                            "game"
-                            if any(x in p for x in ["game", "2d game", "browser game"])
-                            else "fullstack"
-                        )
-                    )
-                )
-            )
-        )
+        
         session_id = data.session_id or str(uuid.uuid4())
         job_id = await enqueue_job(
             "iterative_build",
             {
-                "prompt": data.message or "",
-                "build_kind": build_kind,
+                "prompt": goal,
+                "build_target": inferred_target,  # Use inferred target instead of build_kind
                 "user_id": user["id"] if user else None,
                 "session_id": session_id,
             },
@@ -618,10 +626,14 @@ async def ai_build_async(data: ChatMessage, user: dict = Depends(_get_auth())):
         return {
             "job_id": job_id,
             "session_id": session_id,
-            "build_kind": build_kind,
+            "build_target": inferred_target,
+            "build_target_label": f"Building {inferred_target}",
             "status": "queued",
             "poll_url": f"/api/jobs/{job_id}",
+            "reasoning": reasoning,
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
