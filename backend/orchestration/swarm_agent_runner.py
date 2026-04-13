@@ -83,7 +83,9 @@ def build_agent_swarm_phases(
     chosen_agents = selected_agents
     if chosen_agents is None:
         chosen_agents = (
-            select_agents_for_goal(goal, stack_contract) if goal else list(BASE_AGENTS)
+            select_agents_for_goal(goal, stack_contract)
+            if goal
+            else list(AGENT_DAG.keys())
         )
 
     filtered = {name: AGENT_DAG[name] for name in chosen_agents if name in AGENT_DAG}

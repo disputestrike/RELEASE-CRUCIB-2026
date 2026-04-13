@@ -114,7 +114,7 @@ class TestPublicPlannerEndpoints:
 
     def test_public_build_summary_returns_compact_plan(self, client, monkeypatch):
         """REAL TEST: /api/build/summary should return a trimmed public planner payload."""
-        import server
+        import routes.orchestrator as orch_routes
 
         class FakePlanner:
             @staticmethod
@@ -161,7 +161,7 @@ class TestPublicPlannerEndpoints:
                 }
 
         monkeypatch.setattr(
-            server, "_get_orchestration", lambda: (None, None, FakePlanner, None, None)
+            orch_routes, "_get_orchestration", lambda: (None, None, FakePlanner, None, None)
         )
 
         response = client.post(
