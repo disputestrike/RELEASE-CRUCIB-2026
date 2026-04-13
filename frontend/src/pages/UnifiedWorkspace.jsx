@@ -51,6 +51,16 @@ import './AutoRunnerPage.css';
 
 const RIGHT_ORDER = ['proof', 'explorer', 'replay', 'failure', 'preview', 'timeline', 'code'];
 
+function formatCoachReply(guidance) {
+  if (!guidance || typeof guidance !== 'object') return '';
+  const lines = [];
+  if (guidance.headline) lines.push(String(guidance.headline));
+  if (guidance.summary && guidance.summary !== guidance.headline) lines.push(String(guidance.summary));
+  const steps = Array.isArray(guidance.next_steps) ? guidance.next_steps : [];
+  if (steps.length) lines.push(steps.map((s, i) => `${i + 1}. ${s}`).join('\n'));
+  return lines.join('\n\n').trim();
+}
+
 function shortWorkspaceId(id) {
   if (!id || typeof id !== 'string') return '';
   if (id.length <= 16) return id;
@@ -71,6 +81,8 @@ export default function UnifiedWorkspace() {
   /** Same-tick handoff goal when router state + session can race with the autostart effect. */
   const handoffQueuedAutostartRef = useRef(null);
   const taskPromptHydratedForIdRef = useRef(null);
+  /** Prevents double plan/run when URL params change during dashboard handoff autostart. */
+  const workspaceAutostartDoneRef = useRef(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -768,8 +780,50 @@ export default function UnifiedWorkspace() {
       return;
     }
     if (seeminglyBusy && !steerMode) {
-      setError('A run is already in progress. Wait for it to finish, or open another task from the sidebar.');
-      setErrorRaw(null);
+      if (!jidSteer) {
+        setError('A run is already in progress. Wait for it to finish, or open another task from the sidebar.');
+        setErrorRaw(null);
+        return;
+      }
+      appendUserChat(submitted);
+      setGoal('');
+      clearBuildError();
+      sendInFlightRef.current = true;
+      setLoading(true);
+      try {
+        const headers = { Authorization: `Bearer ${token}` };
+        const res = await axios.post(
+          `${API}/jobs/${encodeURIComponent(jidSteer)}/steer`,
+          { message: submitted, resume: false },
+          { headers },
+        );
+        clearBuildError();
+        const coachText = formatCoachReply(res.data?.guidance);
+        if (coachText) {
+          const aid =
+            typeof crypto !== 'undefined' && crypto.randomUUID
+              ? crypto.randomUUID()
+              : `uw_coach_${Date.now()}`;
+          setUserChatMessages((prev) => [
+            ...prev,
+            {
+              id: aid,
+              body: coachText,
+              role: 'assistant',
+              jobId: jidSteer,
+              pendingBind: false,
+              ts: Date.now(),
+            },
+          ]);
+        }
+        refresh();
+      } catch (e) {
+        setGoal(submitted);
+        applyBuildError(detailToString(e.response?.data?.detail) || e.message || 'Could not send message.');
+      } finally {
+        setLoading(false);
+        sendInFlightRef.current = false;
+      }
       return;
     }
 
@@ -793,6 +847,7 @@ export default function UnifiedWorkspace() {
     processedLocationHandoffRef.current.add(key);
 
     if (st.autoStart) {
+      workspaceAutostartDoneRef.current = false;
       try {
         sessionStorage.setItem('crucibai_autostart_goal', raw);
       } catch (_) {
@@ -807,9 +862,14 @@ export default function UnifiedWorkspace() {
   }, [location.key, location.state, location.pathname, location.search, navigate]);
 
   /** After guest/session token + API base are ready, start build from dashboard handoff (one shot). */
+  const locSearch = location.search;
   useEffect(() => {
+    if (workspaceAutostartDoneRef.current) return;
     if (authLoading || !token || !API) return;
     if (sendInFlightRef.current) return;
+
+    const urlParams = new URLSearchParams(locSearch);
+    const autoStartUrl = urlParams.get('autoStart') === '1';
 
     let goalText = '';
     try {
@@ -831,9 +891,31 @@ export default function UnifiedWorkspace() {
     } catch (_) {
       return;
     }
+    if (!goalText && autoStartUrl) {
+      const pq = (urlParams.get('prompt') || '').trim();
+      if (pq) goalText = pq;
+    }
+    if (!goalText && autoStartUrl && taskIdFromUrl) {
+      const t = tasks.find((x) => x.id === taskIdFromUrl);
+      const p = t?.prompt != null ? String(t.prompt).trim() : '';
+      if (p && t?.type === 'build') goalText = p;
+    }
     if (!goalText) return;
 
-    let finished = false;
+    workspaceAutostartDoneRef.current = true;
+
+    if (autoStartUrl || urlParams.get('prompt')) {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('autoStart');
+          next.delete('prompt');
+          return next;
+        },
+        { replace: true },
+      );
+    }
+
     void (async () => {
       if (sendInFlightRef.current) return;
       try {
@@ -842,20 +924,9 @@ export default function UnifiedWorkspace() {
         await runNewPlanAndAuto(goalText);
       } catch (_) {
         /* runNewPlanAndAuto surfaces errors via applyBuildError */
-      } finally {
-        finished = true;
       }
     })();
-
-    return () => {
-      if (!finished) {
-        try {
-          sessionStorage.setItem('crucibai_autostart_goal', goalText);
-        } catch (_) { void 0; }
-        handoffQueuedAutostartRef.current = goalText;
-      }
-    };
-  }, [token, authLoading, API, runNewPlanAndAuto, appendUserChat]);
+  }, [token, authLoading, API, runNewPlanAndAuto, appendUserChat, locSearch, taskIdFromUrl, tasks, setSearchParams]);
 
   /** Sidebar reopen: `?taskId=` with no `jobId` — show stored build prompt in the composer (no auto-run). */
   useEffect(() => {

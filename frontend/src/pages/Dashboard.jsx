@@ -520,9 +520,13 @@ const Dashboard = () => {
       const spec = await inferBuildSpec(userPrompt, API, token).catch(() => userPrompt.trim());
       const taskName = (spec || userPrompt).slice(0, 60);
       const taskId = addTask({ name: taskName, prompt: spec || userPrompt, status: 'pending', type: 'build' });
+      stashWorkspaceAutostartGoal(spec || userPrompt);
+      const ws = new URLSearchParams();
+      if (taskId) ws.set('taskId', taskId);
+      ws.set('autoStart', '1');
       navigate({
         pathname: '/app/workspace',
-        search: taskId ? `?taskId=${encodeURIComponent(taskId)}` : '',
+        search: `?${ws.toString()}`,
         state: withWorkspaceHandoffNonce({
           initialPrompt: spec || userPrompt,
           autoStart: true,
@@ -628,9 +632,12 @@ const Dashboard = () => {
       })();
       const taskId = addTask({ name: taskName, prompt: chip.prompt, status: 'pending', type: 'build' });
       stashWorkspaceAutostartGoal(chip.prompt);
+      const ws = new URLSearchParams();
+      if (taskId) ws.set('taskId', taskId);
+      ws.set('autoStart', '1');
       navigate({
         pathname: '/app/workspace',
-        search: taskId ? `?taskId=${encodeURIComponent(taskId)}` : '',
+        search: `?${ws.toString()}`,
         state: withWorkspaceHandoffNonce({ initialPrompt: chip.prompt, autoStart: true })
       });
     }
@@ -900,9 +907,12 @@ const Dashboard = () => {
     })();
     const taskId = addTask({ name: taskName, prompt: spec, status: 'pending', type: 'build' });
     stashWorkspaceAutostartGoal(spec);
+    const ws = new URLSearchParams();
+    if (taskId) ws.set('taskId', taskId);
+    ws.set('autoStart', '1');
     navigate({
       pathname: '/app/workspace',
-      search: taskId ? `?taskId=${encodeURIComponent(taskId)}` : '',
+      search: `?${ws.toString()}`,
       state: withWorkspaceHandoffNonce({
         initialPrompt: spec,
         autoStart: true,

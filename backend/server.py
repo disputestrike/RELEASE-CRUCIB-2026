@@ -9954,7 +9954,7 @@ async def steer_job_route(
     Record a user steering message on a job (especially after failure) and optionally resume the runner.
     """
     try:
-        from orchestration.brain_narration import build_resume_coach_message
+        from orchestration.brain_narration import build_steering_guidance
         from orchestration.preflight_report import build_preflight_report
         from orchestration.runtime_health import collect_runtime_health_sync
         from orchestration.runtime_state import append_job_event
@@ -9975,18 +9975,23 @@ async def steer_job_route(
             "user_steering",
             {"message": msg[:12000], "resume_requested": bool(body.resume)},
         )
-        coach = build_resume_coach_message(msg)
+        coach = build_steering_guidance(
+            msg,
+            resume=bool(body.resume),
+            job_status=str(job.get("status") or ""),
+        )
+        guidance_kind = "resume_coach" if body.resume else "steering_note"
         await append_job_event(
             job_id,
             "brain_guidance",
-            {"kind": "resume_coach", **coach},
+            {"kind": guidance_kind, **coach},
         )
         from orchestration.event_bus import publish
 
         await publish(
             job_id,
             "brain_guidance",
-            {"kind": "resume_coach", **coach},
+            {"kind": guidance_kind, **coach},
         )
 
         if body.resume:

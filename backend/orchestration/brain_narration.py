@@ -90,3 +90,48 @@ def build_resume_coach_message(user_message: str) -> Dict[str, Any]:
             "If the same step fails, open the file from the error and edit locally, then Resume again.",
         ],
     }
+
+
+def build_steering_guidance(
+    user_message: str,
+    *,
+    resume: bool,
+    job_status: str,
+) -> Dict[str, Any]:
+    """
+    Coach copy for POST /jobs/{id}/steer.
+    When resume=True, use the post-failure resume coach.
+    When resume=False, avoid implying a retry was scheduled (job may still be running).
+    """
+    msg = (user_message or "").strip()
+    if resume:
+        return build_resume_coach_message(msg)
+    st = (job_status or "").strip().lower()
+    if st in ("running", "queued"):
+        return {
+            "headline": "Message recorded",
+            "summary": (
+                "Your note is saved on this job while the current run continues. "
+                "Agents can use it as extra context."
+            ),
+            "next_steps": [
+                "Watch the timeline and Preview for live progress.",
+                "If a step fails, open Failure for details, fix if needed, then Resume.",
+            ],
+        }
+    if st == "failed":
+        return {
+            "headline": "Note recorded",
+            "summary": (
+                "Your steering message is saved. Resume the build when you want the runner to retry with this context."
+            ),
+            "next_steps": [
+                "Review the Failure tab, edit files if needed, then tap Resume.",
+                "Or send another note and use Steer with resume when ready.",
+            ],
+        }
+    return {
+        "headline": "Note recorded",
+        "summary": f"Saved your note ({len(msg)} characters) on this job.",
+        "next_steps": ["Use workspace controls to continue when you are ready."],
+    }

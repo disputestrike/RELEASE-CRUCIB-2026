@@ -26,6 +26,14 @@
   gap: 6px;
 }
 
+.uw-chat-row--assistant {
+  align-items: flex-start;
+}
+
+.uw-chat-row--assistant .uw-chat-turn-label {
+  align-self: flex-start;
+}
+
 .uw-chat-bubble {
   max-width: 100%;
   text-align: right;
@@ -39,6 +47,16 @@
   word-break: break-word;
   box-shadow: none;
   border: none;
+}
+
+.uw-chat-bubble--assistant {
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--uw-surface-2, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--uw-border-subtle, rgba(255, 255, 255, 0.08));
+  font-size: 14px;
+  line-height: 1.55;
 }
 
 .uw-chat-meta-sep {

@@ -20,19 +20,24 @@ export default function WorkspaceUserChat({ messages = [], projectId = null }) {
   if (!messages.length) return null;
   return (
     <section className="uw-user-chat" aria-label="Your messages">
-      {messages.map((m) => (
-        <div key={m.id} className="uw-chat-row">
-          <div className="uw-chat-turn-label" aria-hidden>You</div>
-          <div className="uw-chat-bubble">{m.body}</div>
-          {m.jobId || projectId ? (
-            <div className="uw-chat-meta">
-              {m.jobId ? <span>Job {shortJobRef(m.jobId)}</span> : null}
-              {m.jobId && projectId ? <span className="uw-chat-meta-sep">·</span> : null}
-              {projectId ? <span>Project {shortProjectRef(projectId)}</span> : null}
+      {messages.map((m) => {
+        const isAssistant = m.role === 'assistant';
+        return (
+          <div key={m.id} className={`uw-chat-row${isAssistant ? ' uw-chat-row--assistant' : ''}`}>
+            <div className="uw-chat-turn-label" aria-hidden>
+              {isAssistant ? 'Build' : 'You'}
             </div>
-          ) : null}
-        </div>
-      ))}
+            <div className={`uw-chat-bubble${isAssistant ? ' uw-chat-bubble--assistant' : ''}`}>{m.body}</div>
+            {!isAssistant && (m.jobId || projectId) ? (
+              <div className="uw-chat-meta">
+                {m.jobId ? <span>Job {shortJobRef(m.jobId)}</span> : null}
+                {m.jobId && projectId ? <span className="uw-chat-meta-sep">·</span> : null}
+                {projectId ? <span>Project {shortProjectRef(projectId)}</span> : null}
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
     </section>
   );
 }
