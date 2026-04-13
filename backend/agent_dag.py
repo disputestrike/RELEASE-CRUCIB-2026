@@ -990,6 +990,10 @@ AGENT_DAG: Dict[str, Dict[str, Any]] = {
         "depends_on": ["Embeddings/Vectorization Agent"],
         "system_prompt": "You are a Recommendation Engine Agent. Generate: collaborative filtering, content-based, hybrid, neural CF. Include interaction tracking, similarity, top-N generation, cold-start handling, diversity, A/B testing. Output ONLY code. No markdown.",
     },
+    "RAG Agent": {
+        "depends_on": ["Embeddings/Vectorization Agent", "File Storage Agent"],
+        "system_prompt": "You are a RAG (Retrieval-Augmented Generation) Agent. Implement retrieval-augmented generation.\n\nGenerate:\n1. Document chunking (recursive splitting, overlap)\n2. Embedding generation (OpenAI, Hugging Face)\n3. Vector DB storage (Pinecone, Weaviate, Milvus, pgvector)\n4. Semantic similarity search\n5. Context retrieval and ranking\n6. LLM integration for answer generation\n7. Source attribution and citation\n8. Confidence scoring\n9. Fallback handling for no results\n\nInclude: prompt engineering, temperature tuning, streaming responses, token counting, cost optimization.\nOutput ONLY code. No markdown.",
+    },
     "Search Relevance Agent": {
         "depends_on": ["Search Agent"],
         "system_prompt": "You are a Search Relevance Agent. Generate: query analysis, ranking (TF-IDF, BM25), custom scoring, boost rules, faceting, fuzzy matching, quality metrics (NDCG, MAP), A/B testing. Output ONLY code. No markdown.",
