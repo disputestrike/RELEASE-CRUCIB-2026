@@ -12,7 +12,7 @@ import json
 import logging
 import os
 import re
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from pricing_plans import CREDIT_PLANS
 
@@ -305,6 +305,36 @@ def _controller_summary(
 # ── Phase builders ────────────────────────────────────────────────────────────
 
 
+def _attach_delivery_manifest_dependencies(phases: List[Dict[str, Any]]) -> None:
+    """
+    Gate implementation.delivery_manifest on every step before the implementation phase.
+
+    Without this, fixed plans used depends_on: [] (runnable immediately, parallel with planning)
+    and swarm plans relied on a single-phase barrier (only the last swarm wave), which could
+    let the manifest run before Frontend/Backend and starve real parallelism.
+    """
+    impl_idx: Optional[int] = None
+    for i, ph in enumerate(phases):
+        if ph.get("key") == "implementation":
+            impl_idx = i
+            break
+    if impl_idx is None:
+        return
+    prior_keys: List[str] = []
+    for ph in phases[:impl_idx]:
+        for st in ph.get("steps") or []:
+            k = st.get("key")
+            if k:
+                prior_keys.append(k)
+    for ph in phases:
+        if ph.get("key") != "implementation":
+            continue
+        for st in ph.get("steps") or []:
+            if st.get("key") == "implementation.delivery_manifest":
+                st["depends_on"] = prior_keys
+                return
+
+
 def _build_phases(
     goal: str,
     build_kind: str,
@@ -406,6 +436,7 @@ def _build_phases(
                 ],
             }
         )
+        _attach_delivery_manifest_dependencies(phases)
         return phases
 
     skip_db = fixed_planner_skip_database(build_kind, integrations)
@@ -530,7 +561,6 @@ def _build_phases(
                     "agent": "Delivery",
                     "name": "Delivery classification",
                     "description": "Write proof/DELIVERY_CLASSIFICATION.md (Implemented/Mocked/Stubbed/Unverified)",
-                    "depends_on": [],
                 },
             ],
         },
@@ -613,6 +643,7 @@ def _build_phases(
             }
         )
 
+    _attach_delivery_manifest_dependencies(phases)
     return phases
 
 

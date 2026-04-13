@@ -63,7 +63,18 @@ def _max_total_retries() -> int:
 
 
 POLL_INTERVAL_SEC = 0.5
-MAX_CONCURRENT_STEPS = 4
+
+
+def _max_concurrent_steps() -> int:
+    """Cap parallel step execution; override with CRUCIBAI_MAX_CONCURRENT_STEPS (min 1, max 32)."""
+    raw = (os.environ.get("CRUCIBAI_MAX_CONCURRENT_STEPS") or "").strip()
+    default = 8
+    if not raw:
+        return default
+    try:
+        return max(1, min(32, int(raw)))
+    except ValueError:
+        return default
 
 
 def _skip_duplicate_final_preview(steps: List[Dict[str, Any]]) -> bool:
@@ -338,8 +349,29 @@ async def _execute_job_loop(
             await asyncio.sleep(POLL_INTERVAL_SEC)
             continue
 
-        # Execute ready steps (up to MAX_CONCURRENT_STEPS in parallel)
-        batch = ready[:MAX_CONCURRENT_STEPS]
+        # Execute ready steps (up to N in parallel)
+        max_conc = _max_concurrent_steps()
+        batch = ready[:max_conc]
+        if len(batch) > 1:
+            logger.info(
+                "auto_runner: job %s parallel batch size=%s keys=%s",
+                job_id,
+                len(batch),
+                [s.get("step_key") for s in batch],
+            )
+        phases_in_batch = sorted(
+            {((s.get("phase") or "") or "").strip() for s in batch if (s.get("phase") or "").strip()}
+        )
+        phase_label = (
+            phases_in_batch[0]
+            if len(phases_in_batch) == 1
+            else f"parallel:{len(batch)}"
+        )
+        await update_job_state(
+            job_id,
+            "running",
+            {"current_phase": phase_label or "running"},
+        )
         tasks = [
             asyncio.create_task(_run_single_step(step, job, workspace_path, db_pool))
             for step in batch
@@ -915,10 +947,6 @@ async def _run_single_step(
     step: Dict, job: Dict, workspace_path: str, db_pool
 ) -> Dict[str, Any]:
     """Execute one step with retry-aware error handling."""
-    # Update current phase in job
-    await update_job_state(
-        job["id"], "running", {"current_phase": step.get("phase", "")}
-    )
     return await execute_step(
         step,
         job,

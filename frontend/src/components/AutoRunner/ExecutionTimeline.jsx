@@ -65,16 +65,15 @@ export default function ExecutionTimeline({
   const scrollRef = useRef(null);
   const bottomRef = useRef(null);
 
-  // Auto-expand running steps
+  // Auto-expand every in-flight step (parallel batches can have multiple running)
   useEffect(() => {
-    const runningStep = steps.find(s => s.status === 'running');
-    if (runningStep) {
-      setExpandedSteps(prev => {
-        const next = new Set(prev);
-        next.add(runningStep.id);
-        return next;
-      });
-    }
+    const runningIds = steps.filter(s => s.status === 'running').map(s => s.id);
+    if (!runningIds.length) return;
+    setExpandedSteps(prev => {
+      const next = new Set(prev);
+      runningIds.forEach(id => next.add(id));
+      return next;
+    });
   }, [steps]);
 
   useEffect(() => {
