@@ -264,6 +264,68 @@
   margin-top: auto;
   padding: 12px 16px 0;
   border-top: 1px solid var(--border-1);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.uw-workspace-error-banner {
+  width: 100%;
+  max-width: var(--uw-composer-max-width, min(920px, calc(100vw - 96px)));
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.uw-workspace-error-friendly {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--state-error, #ef4444) 8%, var(--bg-1));
+  border: 1px solid color-mix(in srgb, var(--state-error, #ef4444) 22%, transparent);
+}
+
+.uw-workspace-error-details-summary {
+  cursor: pointer;
+  user-select: none;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.uw-workspace-error-details-summary:hover {
+  color: var(--text-primary);
+}
+
+.uw-workspace-error-details-pre {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  max-height: 160px;
+  overflow: auto;
+  font-size: 11px;
+  line-height: 1.45;
+  border-radius: var(--radius-sm);
+  background: var(--bg-2);
+  border: 1px solid var(--border-1);
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-secondary);
+}
+
+.arp-right-context-line {
+  flex-shrink: 0;
+  padding: 6px 12px 8px 40px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--text-muted);
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--border-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Center column toolbar (default Auto Runner); unified workspace overrides in unified-workspace-tokens */

@@ -9,6 +9,16 @@
   line-height: 1.45;
 }
 
+.bgp-root--idle {
+  background: color-mix(in srgb, var(--uw-bg-elevated, #1a1a1a) 96%, #fff 4%);
+  border-color: color-mix(in srgb, var(--uw-text, #fff) 5%, transparent);
+}
+
+html[data-theme='light'] .bgp-root--idle {
+  background: #f3f4f6;
+  border-color: rgba(15, 23, 42, 0.06);
+}
+
 .bgp-header {
   display: flex;
   align-items: center;
@@ -169,4 +179,69 @@ html[data-theme='light'] .bgp-header {
 
 html[data-theme='light'] .bgp-next {
   color: #0d8f6e;
+}
+
+/* Activity chips — compact beats from the live stream */
+.bgp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+
+.bgp-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+  border: 1px solid color-mix(in srgb, var(--uw-text, #fff) 8%, transparent);
+  background: color-mix(in srgb, var(--uw-text, #fff) 4%, transparent);
+  color: var(--text-secondary, inherit);
+}
+
+.bgp-chip--ok {
+  border-color: color-mix(in srgb, var(--uw-accent-success, #10a37f) 35%, transparent);
+  background: color-mix(in srgb, var(--uw-accent-success, #10a37f) 12%, transparent);
+  color: var(--text-primary, inherit);
+}
+
+.bgp-chip--run {
+  border-color: color-mix(in srgb, var(--uw-accent-success, #10a37f) 22%, transparent);
+  background: color-mix(in srgb, var(--uw-accent-success, #10a37f) 7%, transparent);
+  color: var(--text-primary, inherit);
+}
+
+.bgp-chip--warn {
+  border-color: color-mix(in srgb, var(--state-error, #ef4444) 28%, transparent);
+  background: color-mix(in srgb, var(--state-error, #ef4444) 8%, transparent);
+  color: var(--text-primary, inherit);
+}
+
+.bgp-chip--info {
+  opacity: 0.95;
+}
+
+html[data-theme='light'] .bgp-chip {
+  border-color: rgba(15, 23, 42, 0.08);
+  background: rgba(15, 23, 42, 0.04);
+}
+
+html[data-theme='light'] .bgp-chip--ok {
+  border-color: rgba(13, 143, 110, 0.25);
+  background: rgba(13, 143, 110, 0.08);
+}
+
+html[data-theme='light'] .bgp-chip--run {
+  border-color: rgba(13, 143, 110, 0.18);
+  background: rgba(13, 143, 110, 0.06);
+}
+
+html[data-theme='light'] .bgp-chip--warn {
+  border-color: rgba(185, 28, 28, 0.2);
+  background: rgba(254, 242, 242, 0.7);
 }

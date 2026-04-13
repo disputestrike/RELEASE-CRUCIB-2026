@@ -50,6 +50,16 @@
   background: transparent;
 }
 
+.goal-composer--workspace .gc-composer-footer {
+  border-top: 1px solid color-mix(in srgb, var(--border-1, #e5e7eb) 55%, transparent);
+  background: transparent;
+}
+
+[data-theme='dark'] .goal-composer--workspace .gc-composer-footer {
+  border-top-color: color-mix(in srgb, var(--uw-text, #fff) 6%, transparent);
+  background: transparent;
+}
+
 .gc-error-wrap {
   display: flex;
   flex-direction: column;

@@ -29,6 +29,7 @@ function humanizeJobStatus(status) {
   const map = {
     running: 'Building',
     queued: 'In queue',
+    approved: 'Starting',
     failed: 'Needs attention',
     completed: 'Done',
     cancelled: 'Stopped',

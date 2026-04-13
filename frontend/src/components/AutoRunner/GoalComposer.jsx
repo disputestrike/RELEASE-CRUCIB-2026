@@ -117,6 +117,10 @@ export default function GoalComposer({
   showContinuation = true,
   /** Hide quick-start chip row. */
   showQuickChips = true,
+  /** Show cost estimate block under the composer. */
+  showCostEstimator = true,
+  /** Show “Detected” tags from goal text heuristics. */
+  showSmartTags = true,
   /** `workspace` — lighter shell when embedded under UnifiedWorkspace. */
   composerVariant: _composerVariant = 'default',
   /** Raw API / server message for expandable “Technical details” (friendly string in `error`). */
@@ -307,6 +311,7 @@ export default function GoalComposer({
     _composerVariant && _composerVariant !== 'default'
       ? `goal-composer goal-composer--${_composerVariant}`
       : 'goal-composer';
+  const isWorkspaceShell = _composerVariant === 'workspace';
 
   return (
     <div className={rootClass}>
@@ -386,20 +391,24 @@ export default function GoalComposer({
             >
               <Paperclip size={20} strokeWidth={2} />
             </button>
-            <button
-              type="button"
-              className="gc-icon-btn"
-              disabled={loading}
-              title="Open workspace"
-              onClick={() => navigate({ pathname: '/app/workspace' })}
-            >
-              <Monitor size={20} strokeWidth={2} />
-            </button>
+            {_composerVariant !== 'workspace' ? (
+              <button
+                type="button"
+                className="gc-icon-btn"
+                disabled={loading}
+                title="Open workspace"
+                onClick={() => navigate({ pathname: '/app/workspace' })}
+              >
+                <Monitor size={20} strokeWidth={2} />
+              </button>
+            ) : null}
           </div>
           <div className="gc-composer-footer-right" aria-label="Send options">
-            <Link to="/app/templates" className="gc-icon-btn gc-icon-btn--link" title="Templates & gallery">
-              <Globe size={20} strokeWidth={2} />
-            </Link>
+            {!isWorkspaceShell ? (
+              <Link to="/app/templates" className="gc-icon-btn gc-icon-btn--link" title="Templates & gallery">
+                <Globe size={20} strokeWidth={2} />
+              </Link>
+            ) : null}
             <button
               type="button"
               className={`gc-icon-btn ${listening ? 'gc-icon-btn-active' : ''}`}
@@ -453,7 +462,7 @@ export default function GoalComposer({
         </div>
       )}
 
-      {tags.length > 0 && (
+      {showSmartTags && tags.length > 0 && (
         <div className="gc-detect-row">
           <span className="gc-detect-label">Detected</span>
           <div className="gc-detect-tags">
@@ -466,16 +475,18 @@ export default function GoalComposer({
         </div>
       )}
 
-      <CostEstimator
-        goal={
-          hasContinuation && (continuationNotes || '').trim()
-            ? `${goal}\n\n--- Continuation ---\n${(continuationNotes || '').trim()}`
-            : goal
-        }
-        token={token}
-        buildTarget={buildTarget}
-        onEstimateReady={onEstimateReady}
-      />
+      {showCostEstimator ? (
+        <CostEstimator
+          goal={
+            hasContinuation && (continuationNotes || '').trim()
+              ? `${goal}\n\n--- Continuation ---\n${(continuationNotes || '').trim()}`
+              : goal
+          }
+          token={token}
+          buildTarget={buildTarget}
+          onEstimateReady={onEstimateReady}
+        />
+      ) : null}
 
       {authLoading && <div className="gc-hint">Starting your session…</div>}
 

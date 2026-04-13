@@ -27,6 +27,7 @@ import BuildReplay from '../components/AutoRunner/BuildReplay';
 import BuildCompletionCard from '../components/AutoRunner/BuildCompletionCard';
 import WorkspaceActivityFeed from '../components/AutoRunner/WorkspaceActivityFeed';
 import WorkspaceUserChat from '../components/AutoRunner/WorkspaceUserChat';
+import WorkspaceStatusDock from '../components/AutoRunner/WorkspaceStatusDock';
 import BrainGuidancePanel from '../components/AutoRunner/BrainGuidancePanel';
 import SystemStatusHUD from '../components/AutoRunner/SystemStatusHUD';
 import PreviewPanel from '../components/AutoRunner/PreviewPanel';
@@ -46,6 +47,11 @@ import { WorkspaceNavProvider } from '../workspace/WorkspaceNavContext';
 import { detailToString, formatWorkspaceBuildError } from '../workspace/workspaceErrorUtils';
 import { API_BASE } from '../apiBase';
 import { useTaskStore } from '../stores/useTaskStore';
+import {
+  deriveRightRailSubtitle,
+  isWorkspaceLiveBuildPhase,
+  selectWorkspacePreviewStatus,
+} from '../workspace/workspaceLiveUi';
 import '../styles/unified-workspace-tokens.css';
 import './AutoRunnerPage.css';
 
@@ -77,6 +83,8 @@ export default function UnifiedWorkspace() {
   const taskPromptHydratedForIdRef = useRef(null);
   /** Prevents double plan/run when URL params change during dashboard handoff autostart. */
   const workspaceAutostartDoneRef = useRef(false);
+  /** Open Preview once per job when a run is in motion (does not fight tab changes on re-render). */
+  const autoPreviewOnceForJobRef = useRef(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -730,8 +738,7 @@ export default function UnifiedWorkspace() {
         job?.status === 'blocked' ||
         (failedOrBlocked && job?.status !== 'queued'));
 
-    const seeminglyBusy =
-      stage === 'running' || job?.status === 'running' || job?.status === 'queued';
+    const seeminglyBusy = isWorkspaceLiveBuildPhase({ jobStatus: job?.status, stage });
 
     if (steerMode) {
       appendUserChat(submitted);
@@ -741,11 +748,30 @@ export default function UnifiedWorkspace() {
       setLoading(true);
       try {
         const headers = { Authorization: `Bearer ${token}` };
-        await axios.post(
+        const res = await axios.post(
           `${API}/jobs/${encodeURIComponent(activeJobId)}/steer`,
           { message: submitted, resume: true },
           { headers },
         );
+        clearBuildError();
+        const coachText = formatCoachReply(res.data?.guidance);
+        if (coachText) {
+          const aid =
+            typeof crypto !== 'undefined' && crypto.randomUUID
+              ? crypto.randomUUID()
+              : `uw_coach_${Date.now()}`;
+          setUserChatMessages((prev) => [
+            ...prev,
+            {
+              id: aid,
+              body: coachText,
+              role: 'assistant',
+              jobId: activeJobId,
+              pendingBind: false,
+              ts: Date.now(),
+            },
+          ]);
+        }
         setStage('running');
         refresh();
       } catch (e) {
@@ -1063,15 +1089,11 @@ export default function UnifiedWorkspace() {
     return 'Build stopped — open Failure or steer below, then Resume.';
   }, [latestFailure, failureStep]);
 
-  const previewIsBlocked =
-    job?.status === 'failed' || job?.status === 'cancelled' || job?.status === 'blocked';
-  const previewStatus = previewIsBlocked
-    ? 'blocked'
-    : isCompleted
-      ? 'ready'
-      : stage === 'running' || job?.status === 'running'
-        ? 'building'
-        : 'idle';
+  const previewStatus = selectWorkspacePreviewStatus({
+    jobStatus: job?.status,
+    stage,
+    isCompleted,
+  });
   const previewUrl =
     job?.preview_url ||
     job?.published_url ||
@@ -1083,6 +1105,19 @@ export default function UnifiedWorkspace() {
     if (typeof proof.total_proof_items === 'number') return proof.total_proof_items;
     return Object.values(proof.bundle || {}).reduce((s, arr) => s + (arr?.length || 0), 0);
   }, [proof]);
+
+  const rightRailSubtitle = useMemo(() => deriveRightRailSubtitle(events, steps), [events, steps]);
+
+  useEffect(() => {
+    if (!effectiveJobId || isCompleted) return;
+    const js = job?.status;
+    if (js === 'failed' || js === 'cancelled' || js === 'blocked') return;
+    if (!isWorkspaceLiveBuildPhase({ jobStatus: js, stage })) return;
+    if (autoPreviewOnceForJobRef.current === effectiveJobId) return;
+    autoPreviewOnceForJobRef.current = effectiveJobId;
+    setActivePane('preview');
+    setRightCollapsed(false);
+  }, [effectiveJobId, isCompleted, job?.status, stage]);
 
   return (
     <WorkspaceNavProvider value={workspaceNavValue}>
@@ -1207,14 +1242,34 @@ export default function UnifiedWorkspace() {
           </div>
 
           <div className="arp-center-pane-composer">
+            {error ? (
+              <div className="uw-workspace-error-banner">
+                <div className="uw-workspace-error-friendly">{error}</div>
+                {errorRaw ? (
+                  <details className="uw-workspace-error-details">
+                    <summary className="uw-workspace-error-details-summary">Technical details</summary>
+                    <pre className="uw-workspace-error-details-pre">{errorRaw}</pre>
+                  </details>
+                ) : null}
+              </div>
+            ) : null}
+            <WorkspaceStatusDock
+              jobId={effectiveJobId}
+              job={job}
+              steps={steps}
+              stage={stage}
+              events={events}
+              connectionMode={connectionMode}
+              loading={loading}
+            />
             <WorkspaceUserChat messages={userChatMessages} />
             <GoalComposer
               goal={goal}
               onGoalChange={setGoal}
               onSubmit={handleSend}
               loading={loading}
-              error={error}
-              errorRaw={errorRaw}
+              error={null}
+              errorRaw={null}
               token={token}
               onEstimateReady={setEstimate}
               authLoading={authLoading}
@@ -1224,26 +1279,20 @@ export default function UnifiedWorkspace() {
               showExecutionTargets={false}
               showContinuation={false}
               showQuickChips={false}
+              showCostEstimator={false}
+              showSmartTags={false}
               showComposerHeader={false}
               enterSends
               composerInputRows={3}
+              composerSubtitle={null}
               inputPlaceholder={
                 job?.status === 'failed' || job?.status === 'cancelled'
                   ? 'Tell us the fix — Enter sends; we continue this same run.'
                   : job?.status === 'blocked'
                     ? 'What should we do next? Enter sends and moves us forward.'
-                    : job?.status === 'running' || job?.status === 'queued'
+                    : isWorkspaceLiveBuildPhase({ jobStatus: job?.status, stage })
                       ? 'Steer anytime — Enter sends on this same run.'
                       : 'Goal or follow-up — Enter to send, Shift+Enter for a new line.'
-              }
-              composerSubtitle={
-                job?.status === 'failed' || job?.status === 'cancelled'
-                  ? 'Still on this run — your note is how we keep going.'
-                  : job?.status === 'blocked'
-                    ? 'Still on this run — send context and we resume from here.'
-                    : job?.status === 'running' || job?.status === 'queued'
-                      ? 'Still on this run — messages go straight into the live build.'
-                      : null
               }
               composerVariant="workspace"
             />
@@ -1331,6 +1380,11 @@ export default function UnifiedWorkspace() {
                   </button>
                 ))}
               </div>
+              {rightRailSubtitle ? (
+                <div className="arp-right-context-line" title={rightRailSubtitle}>
+                  {rightRailSubtitle}
+                </div>
+              ) : null}
 
               <div className="arp-pane-content">
                 {activePane === 'preview' && (

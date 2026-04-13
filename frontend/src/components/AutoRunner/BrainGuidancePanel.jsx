@@ -2,8 +2,9 @@
  * Single “brain voice” for the middle pane: status, milestones, blockers, and next actions
  * in one calm card (orchestrator guidance + failure context + composer hint).
  */
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Sparkles, ListOrdered } from 'lucide-react';
+import { extractActivityChips } from '../../workspace/workspaceLiveUi';
 import './BrainGuidancePanel.css';
 
 function parseGuidancePayload(raw) {
@@ -187,7 +188,39 @@ export default function BrainGuidancePanel({
   milestoneBatch = null,
   repairQueueLen = 0,
 }) {
-  if (!jobId) return null;
+  const activityChips = useMemo(
+    () => (jobId ? extractActivityChips(events, 10) : []),
+    [jobId, events],
+  );
+
+  if (!jobId) {
+    return (
+      <aside className="bgp-root bgp-root--idle" aria-label="Build overview">
+        <div className="bgp-header">
+          <Sparkles size={14} className="bgp-icon" aria-hidden />
+          <span>What&apos;s happening</span>
+        </div>
+        {workspaceStage === 'plan' ? (
+          <>
+            <p className="bgp-headline">Plan is on deck</p>
+            <p className="bgp-summary">
+              Your proposal appears below as soon as it&apos;s ready — one thread for plan, build, and fixes.
+            </p>
+            <NextCue>Next: review the plan card, then approve to start the run.</NextCue>
+          </>
+        ) : (
+          <>
+            <p className="bgp-headline">Start from one calm place</p>
+            <p className="bgp-summary">
+              The composer below stays the same conversation for your goal, approvals, live steering, and recovery —
+              nothing gets stranded in side threads.
+            </p>
+            <NextCue>Next: describe what you want, then press Enter to send.</NextCue>
+          </>
+        )}
+      </aside>
+    );
+  }
 
   const g = pickLatestGuidance(events);
   const failureSummary = summarizeFailureStep(failureStep);
@@ -298,8 +331,10 @@ export default function BrainGuidancePanel({
       return (
         <>
           <p className="bgp-headline">Plan is on deck</p>
-          <p className="bgp-summary">We&apos;re waiting on your go — nothing runs until you approve.</p>
-          <NextCue>Next: approve the plan card below to start the run.</NextCue>
+          <p className="bgp-summary">
+            Crucible continues working right after your reply — approve below to start the run, or edit the goal first.
+          </p>
+          <NextCue>Next: approve the plan card below.</NextCue>
         </>
       );
     }
@@ -330,6 +365,15 @@ export default function BrainGuidancePanel({
         <span>What&apos;s happening</span>
       </div>
       <MilestoneStrip batch={milestoneBatch} repairCount={repairQueueLen} />
+      {activityChips.length > 0 ? (
+        <div className="bgp-chips" aria-label="Recent actions">
+          {activityChips.map((c) => (
+            <span key={c.id} className={`bgp-chip bgp-chip--${c.kind}`}>
+              {c.label}
+            </span>
+          ))}
+        </div>
+      ) : null}
       {renderBody()}
     </aside>
   );

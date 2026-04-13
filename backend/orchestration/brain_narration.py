@@ -12,6 +12,72 @@ from typing import Any, Dict, List
 _last_progress_phase: Dict[str, str] = {}
 
 
+def build_execution_think_payload(
+    job: Dict[str, Any], steps: List[Dict[str, Any]]
+) -> Dict[str, Any]:
+    """
+    Pre-execution THINK: user-facing intent + plan, no chain-of-thought, no agent names.
+    Emitted once before the runner begins stepping the DAG.
+    """
+    phase = (job.get("current_phase") or "").strip().lower()
+    total = len(steps or [])
+    if total == 0:
+        return {
+            "kind": "execution_think",
+            "headline": "Getting organized",
+            "summary": "I'm lining up this run before work starts; if steps are missing, we'll surface that next.",
+            "next_steps": [],
+        }
+
+    completed = sum(1 for s in steps if s.get("status") == "completed")
+    pending = sum(1 for s in steps if s.get("status") == "pending")
+
+    if phase == "resuming_after_failure":
+        headline = "Continuing your run"
+        summary = (
+            "I'm picking up from where things stopped: addressing what blocked checks first, "
+            "then moving the rest of your plan forward on this same run."
+        )
+    elif completed == 0 and pending == total:
+        headline = "Starting your build"
+        summary = (
+            "I've reviewed your approved plan and I'm beginning execution: foundation and dependencies first, "
+            "then features and quality checks in order."
+        )
+    elif completed > 0:
+        headline = "Continuing your build"
+        summary = (
+            "I'm resuming this run, building on what's already done and finishing what's left in the plan."
+        )
+    else:
+        headline = "Starting your build"
+        summary = (
+            "I'm moving this plan forward step by step, keeping progress visible in Preview and Proof."
+        )
+
+    return {
+        "kind": "execution_think",
+        "headline": headline[:400],
+        "summary": summary[:900],
+        "next_steps": [
+            "You'll see updates here first; Preview and Proof fill in as outputs land.",
+        ],
+    }
+
+
+async def emit_execution_think_guidance(
+    job_id: str,
+    job: Dict[str, Any],
+    steps: List[Dict[str, Any]],
+) -> None:
+    payload = build_execution_think_payload(job, steps)
+    from .event_bus import publish
+    from .runtime_state import append_job_event
+
+    await append_job_event(job_id, "brain_guidance", payload)
+    await publish(job_id, "brain_guidance", payload)
+
+
 def build_failure_guidance(
     step_key: str,
     issues: List[str],

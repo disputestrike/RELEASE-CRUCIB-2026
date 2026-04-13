@@ -226,6 +226,20 @@ async def run_job_to_completion(
             {"kind": "execution_authority.json", **elite_job_metadata(job)},
         )
 
+        # Pre-execution THINK: user-facing brain line before any step runs (classify path + intent).
+        job_for_think = await get_job(job_id)
+        steps_for_think = await get_steps(job_id)
+        try:
+            from .brain_narration import emit_execution_think_guidance
+
+            await emit_execution_think_guidance(
+                job_id, job_for_think or job, steps_for_think
+            )
+        except Exception as _think_e:
+            logger.warning(
+                "auto_runner: execution think guidance skipped: %s", _think_e
+            )
+
         total_retries = 0
 
         # MAIN EXECUTION LOOP (wrapped with exception handler below)

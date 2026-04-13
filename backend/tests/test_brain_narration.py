@@ -1,6 +1,7 @@
 """Unit tests for brain narration / steering copy."""
 
 from orchestration.brain_narration import (
+    build_execution_think_payload,
     build_phase_progress_narrative,
     build_steering_guidance,
 )
@@ -32,6 +33,46 @@ def test_phase_progress_narrative_counts_and_humanizes():
     assert p["kind"] == "progress_narrative"
     assert "1/2" in p["summary"].replace(" ", "")
     assert "Verifying preview" in p["summary"]
+
+
+def test_execution_think_fresh_run_all_pending():
+    steps = [
+        {"status": "pending", "step_key": "a"},
+        {"status": "pending", "step_key": "b"},
+    ]
+    p = build_execution_think_payload({"current_phase": ""}, steps)
+    assert p["kind"] == "execution_think"
+    assert "starting" in p["headline"].lower()
+    assert "plan" in p["summary"].lower()
+
+
+def test_execution_think_resume_after_failure_phase():
+    steps = [
+        {"status": "completed", "step_key": "x"},
+        {"status": "pending", "step_key": "y"},
+    ]
+    p = build_execution_think_payload(
+        {"current_phase": "resuming_after_failure"}, steps
+    )
+    assert p["kind"] == "execution_think"
+    assert "continuing" in p["headline"].lower()
+    assert "blocked" in p["summary"].lower() or "stopped" in p["summary"].lower()
+
+
+def test_execution_think_mid_run_partial_progress():
+    steps = [
+        {"status": "completed", "step_key": "x"},
+        {"status": "pending", "step_key": "y"},
+    ]
+    p = build_execution_think_payload({"current_phase": "running"}, steps)
+    assert p["kind"] == "execution_think"
+    assert "continuing" in p["headline"].lower()
+
+
+def test_execution_think_no_steps():
+    p = build_execution_think_payload({"current_phase": ""}, [])
+    assert p["kind"] == "execution_think"
+    assert "organized" in p["headline"].lower() or "lining" in p["summary"].lower()
 
 
 def test_phase_progress_narrative_flags_blocked():

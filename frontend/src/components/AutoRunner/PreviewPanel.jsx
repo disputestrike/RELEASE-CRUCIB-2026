@@ -35,12 +35,12 @@ export default function PreviewPanel({
   const statusLabel = useRemote
     ? 'Live'
     : status === 'blocked'
-      ? 'On hold'
+      ? 'Paused'
       : status === 'building'
         ? 'Taking shape'
         : hasSandpack
           ? 'Preview'
-          : 'Waiting';
+          : 'Next up';
 
   return (
     <div className="preview-panel">
@@ -75,28 +75,30 @@ export default function PreviewPanel({
       <div className="pp-preview-body">
         {status === 'blocked' && hasSandpack && (
           <div className="pp-preview-blocked-banner" role="status">
-            <span className="pp-preview-blocked-title">Preview on hold — we&apos;ll resume with you</span>
+            <span className="pp-preview-blocked-title">Preview paused — we&apos;ll continue with you</span>
             <p className="pp-preview-blocked-hint">
               {typeof blockedDetail === 'string' && blockedDetail.trim()
                 ? blockedDetail
-                : 'Send a fix below — the sandbox below still shows the last good sync.'}
+                : 'Add a short note below — what you see here is the last good snapshot.'}
             </p>
           </div>
         )}
 
         {!useRemote && status === 'idle' && !hasSandpack && (
           <div className="pp-preview-idle">
-            <span className="pp-preview-idle-text">Something will appear here as soon as output is ready to show.</span>
+            <span className="pp-preview-idle-text">
+              Your preview will appear here as files land — stay on this tab and it will update on its own.
+            </span>
           </div>
         )}
 
         {status === 'blocked' && !hasSandpack && (
           <div className="pp-preview-blocked-full">
-            <span className="pp-preview-blocked-title">On hold — stays close</span>
+            <span className="pp-preview-blocked-title">Paused for a moment</span>
             <p className="pp-preview-blocked-hint">
               {typeof blockedDetail === 'string' && blockedDetail
                 ? blockedDetail
-                : 'Describe the fix below to resume — files in Code may still be up to date.'}
+                : 'Send a quick note below to continue — your files may already be ahead in Code.'}
             </p>
           </div>
         )}
@@ -104,7 +106,7 @@ export default function PreviewPanel({
         {status === 'building' && !hasSandpack && (
           <div className="pp-preview-building">
             <div className="pp-preview-shimmer" />
-            <span className="pp-preview-building-text">Preparing preview…</span>
+            <span className="pp-preview-building-text">Assembling your preview…</span>
             {blockedDetail ? (
               <p className="pp-preview-blocked-hint" title={typeof blockedDetail === 'string' ? blockedDetail : undefined}>
                 {typeof blockedDetail === 'string' ? blockedDetail : ''}
@@ -116,7 +118,7 @@ export default function PreviewPanel({
         {!useRemote && status === 'ready' && !hasSandpack && (
           <div className="pp-preview-idle">
             <span className="pp-preview-idle-text">
-              No React files loaded yet — open Files, reload from the header, or sync the workspace so Sandpack can run.
+              When your UI files are in the workspace, they&apos;ll run here — use Sync in the header if you need a fresh pull.
             </span>
           </div>
         )}
@@ -127,8 +129,8 @@ export default function PreviewPanel({
 
         {!useRemote && hasSandpack && sandpackDeps && sandpackIsFallback && (
           <div className="pp-preview-trust-banner" role="status">
-            Fallback preview: workspace had no runnable React entry, so a minimal shell is shown until files sync or
-            you add <code>/src/App.jsx</code>. Deployed output may differ until build targets match.
+            Starter shell: we&apos;re showing a minimal preview until your app entry is ready. Sync files or add{' '}
+            <code>/src/App.jsx</code> — deploy may differ until targets match.
           </div>
         )}
 

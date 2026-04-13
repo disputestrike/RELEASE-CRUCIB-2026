@@ -11,7 +11,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  border-bottom: 1px solid color-mix(in srgb, var(--border-1) 65%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--border-1) 48%, transparent);
   flex-shrink: 0;
 }
 
@@ -145,8 +145,8 @@
   padding: 10px 16px;
   background: color-mix(in srgb, var(--bg-1) 92%, transparent);
   border-radius: var(--radius-md);
-  border: 1px solid color-mix(in srgb, var(--border-1) 50%, transparent);
-  animation: pp-idle-breathe 2.8s ease-in-out infinite;
+  border: 1px solid color-mix(in srgb, var(--border-1) 42%, transparent);
+  animation: pp-idle-breathe 3.2s ease-in-out infinite;
 }
 
 @keyframes pp-idle-breathe {
@@ -192,7 +192,7 @@
     var(--border-1) 100%
   );
   background-size: 200% 100%;
-  animation: pp-shimmer 1.5s ease-in-out infinite;
+  animation: pp-shimmer 1.85s ease-in-out infinite;
 }
 
 @keyframes pp-shimmer {

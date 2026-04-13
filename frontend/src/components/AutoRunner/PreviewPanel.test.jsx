@@ -57,7 +57,7 @@ describe('PreviewPanel', () => {
     render(
       <PreviewPanel previewUrl={null} status="ready" sandpackFiles={{}} sandpackDeps={{}} filesReadyKey="t3" />,
     );
-    expect(screen.getByText(/No React files loaded/i)).toBeInTheDocument();
+    expect(screen.getByText(/When your UI files are in the workspace/i)).toBeInTheDocument();
   });
 
   test('shows building shimmer when status building and no sandpack yet', () => {
@@ -65,6 +65,7 @@ describe('PreviewPanel', () => {
       <PreviewPanel previewUrl={null} status="building" sandpackFiles={null} sandpackDeps={null} filesReadyKey="t4" />,
     );
     expect(container.querySelector('.pp-preview-building')).toBeTruthy();
+    expect(screen.getByText(/Assembling your preview/i)).toBeInTheDocument();
   });
 
   test('shows paused banner when status blocked and sandpack present', () => {
@@ -80,9 +81,9 @@ describe('PreviewPanel', () => {
         blockedDetail="Type error in App.jsx"
       />,
     );
-    expect(screen.getByRole('status')).toHaveTextContent(/Preview on hold/i);
+    expect(screen.getByRole('status')).toHaveTextContent(/Preview paused/i);
     expect(screen.getByText(/Type error in App.jsx/i)).toBeInTheDocument();
-    expect(document.querySelector('.pp-preview-status')?.textContent).toMatch(/On hold/i);
+    expect(document.querySelector('.pp-preview-status')?.textContent).toMatch(/Paused/i);
   });
 
   test('shows fallback trust banner when sandpackIsFallback', () => {
@@ -98,6 +99,6 @@ describe('PreviewPanel', () => {
         sandpackIsFallback
       />,
     );
-    expect(screen.getByRole('status')).toHaveTextContent(/Fallback preview/i);
+    expect(screen.getByRole('status')).toHaveTextContent(/Starter shell/i);
   });
 });
