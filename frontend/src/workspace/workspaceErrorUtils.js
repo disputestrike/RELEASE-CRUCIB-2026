@@ -19,6 +19,8 @@ export function detailToString(detail) {
   return String(detail);
 }
 
+const FRIENDLY_MAX = 420;
+
 export function formatWorkspaceBuildError(rawText) {
   const text = (rawText == null ? '' : String(rawText)).trim();
   if (!text) {
@@ -28,7 +30,10 @@ export function formatWorkspaceBuildError(rawText) {
     };
   }
   const lower = text.toLowerCase();
-  let friendly = 'Something went wrong. Please try again or adjust your request.';
+  const truncated =
+    text.length > FRIENDLY_MAX ? `${text.slice(0, FRIENDLY_MAX)}…` : text;
+  // Default: show real verifier output (long compile messages used to collapse to generic text).
+  let friendly = truncated;
 
   if (
     /credit|insufficient|balance|402|payment|quota|billing|anthropic|openai|api key|invalid_api|authentication|401|403|provider/.test(
@@ -40,8 +45,6 @@ export function formatWorkspaceBuildError(rawText) {
     friendly = 'Build failed due to a temporary provider or network issue. Try again in a moment.';
   } else if (/runtime_unsatisfied|python|node\.js|npm/.test(lower)) {
     friendly = 'Runtime check failed on the server. Install required runtimes and retry.';
-  } else if (text.length < 120 && !/http|stack|trace|exception/i.test(text)) {
-    friendly = text;
   }
 
   return { friendly, raw: text };
