@@ -85,13 +85,14 @@ async def test_tenancy_smoke_runs_with_database_url():
     except OSError:
         pytest.skip("PostgreSQL not reachable — skipping live tenancy smoke")
 
-    r = await verify_tenancy_smoke_workspace(".")
+    with tempfile.TemporaryDirectory() as tmp:
+        r = await verify_tenancy_smoke_workspace(tmp)
     # May return skipped proof items if DB lacks the RLS schema — that's fine
     if any(
         (p.get("payload") or {}).get("check") == "tenancy_smoke_skipped"
         for p in r["proof"]
     ):
-        pytest.skip("Tenancy smoke skipped by verifier (no RLS migration in workspace)")
+        pytest.skip("Tenancy smoke skipped by verifier (no DB / auth / RLS migration context)")
     assert r["passed"] is True
     assert any(
         (p.get("payload") or {}).get("check") == "tenancy_isolation_proven"

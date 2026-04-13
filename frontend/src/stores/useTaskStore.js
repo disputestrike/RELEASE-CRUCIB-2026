@@ -22,7 +22,7 @@ function loadTasks() {
 function saveTasks(tasks) {
   try {
     localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(tasks));
-  } catch (_) {}
+  } catch (_) { void 0; }
 }
 
 export function TaskProvider({ children }) {

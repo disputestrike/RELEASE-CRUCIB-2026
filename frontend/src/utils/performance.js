@@ -170,7 +170,7 @@ export const apiCache = new MemoryCache();
 /**
  * Cached fetch with automatic cache management
  */
-export const cachedFetch = async (url, options = {}, cacheTime = 3600000) => {
+export const cachedFetch = async (url, options = {}, _cacheTime = 3600000) => {
   const cacheKey = `${url}_${JSON.stringify(options)}`;
 
   // Check cache
@@ -257,13 +257,14 @@ export const useLazyImage = (ref) => {
       rootMargin: '50px'
     });
 
-    if (ref.current) {
-      observer.observe(ref.current);
+    const node = ref.current;
+    if (node) {
+      observer.observe(node);
     }
 
     return () => {
-      if (ref.current) {
-        observer.unobserve(ref.current);
+      if (node) {
+        observer.unobserve(node);
       }
     };
   }, [ref]);
@@ -397,6 +398,8 @@ export const useCleanup = (cleanup) => {
  * Memoize expensive computations
  */
 export const useMemoizedValue = (value, dependencies) => {
+  // Caller passes the dependency list (not always a literal); mirrors useMemo contract.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   return React.useMemo(() => value, dependencies);
 };
 
@@ -404,6 +407,7 @@ export const useMemoizedValue = (value, dependencies) => {
  * Memoize callbacks
  */
 export const useMemoizedCallback = (callback, dependencies) => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   return React.useCallback(callback, dependencies);
 };
 
@@ -495,6 +499,8 @@ export const VirtualList = React.memo(({
     </div>
   );
 });
+
+VirtualList.displayName = 'VirtualList';
 
 /**
  * Prevent unnecessary re-renders

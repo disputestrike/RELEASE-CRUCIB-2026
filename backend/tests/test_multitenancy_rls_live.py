@@ -56,7 +56,12 @@ async def test_rls_isolates_rows_and_blocks_cross_tenant_writes():
     role = "rls_r_" + uuid.uuid4().hex[:10]
     role_pw = "RlsTestPw09" + uuid.uuid4().hex[:12]
 
-    admin = await asyncpg.connect(**kw)
+    try:
+        admin = await asyncpg.connect(**kw)
+    except asyncpg.InvalidPasswordError:
+        pytest.skip("PostgreSQL credentials invalid for live RLS test")
+    except (OSError, asyncpg.CannotConnectNowError, asyncpg.PostgresConnectionError):
+        pytest.skip("PostgreSQL not reachable for live RLS test")
     try:
         await admin.execute(f'CREATE SCHEMA "{schema}"')
         await admin.execute(f'SET search_path TO "{schema}", public')

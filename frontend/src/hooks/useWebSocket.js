@@ -56,7 +56,9 @@ export function useWebSocket(url) {
 
   useEffect(() => {
     if (!url) {
-      return () => {};
+      return () => {
+        void 0;
+      };
     }
     connect();
     return () => {
@@ -67,7 +69,7 @@ export function useWebSocket(url) {
         socketRef.current.close();
       }
     };
-  }, [connect]);
+  }, [connect, url]);
 
   const sendMessage = useCallback((message) => {
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {

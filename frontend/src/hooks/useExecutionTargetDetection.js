@@ -4,7 +4,7 @@
  * Handles caching and confidence thresholds
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 
 const useExecutionTargetDetection = () => {
   const [targetSuggestion, setTargetSuggestion] = useState(null);

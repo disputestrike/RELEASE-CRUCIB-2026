@@ -10,7 +10,7 @@ const applyTheme = (theme) => {
 // Apply immediately on load (before React renders)
 applyTheme(getInitialTheme());
 
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import axios from "axios";
 
 // Error boundary so blank screen shows a message
@@ -262,7 +262,9 @@ const AuthProvider = ({ children }) => {
         setUser(mergeWorkspaceMode(res.data.user));
         return true;
       }
-    } catch (e) {}
+    } catch {
+      // Guest bootstrap is optional; caller falls back to demo / retry UI.
+    }
     return false;
   }, []);
 
@@ -285,7 +287,6 @@ const AuthProvider = ({ children }) => {
 // Onboarding route — authenticated only; if workspace_mode set, redirect to /app
 const OnboardingRoute = ({ children }) => {
   const { user, loading } = useAuth();
-  const location = useLocation();
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center p-6">

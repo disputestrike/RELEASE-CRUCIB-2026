@@ -253,6 +253,15 @@ async def run_swarm_agent_step(
     project_prompt = (job.get("goal") or "").strip()
     build_kind = (job.get("build_kind") or "").strip().lower() or "fullstack"
 
+    try:
+        from .brain_policy import get_agent_governor_preface
+
+        _gov = get_agent_governor_preface()
+        if _gov and not project_prompt.startswith("[GOVERNOR"):
+            project_prompt = f"{_gov}\n\n{project_prompt}"
+    except Exception:
+        pass
+
     previous_outputs = await _load_previous_agent_outputs(job_id, step)
     before = _workspace_file_snapshot(workspace_path)
 

@@ -72,12 +72,21 @@ def _user_id_from_auth_headers(auth_headers):
     return payload["user_id"]
 
 
+async def _get_pg_pool_or_skip():
+    """Layer 9 job/runtime smokes need Postgres (docker compose on DATABASE_URL)."""
+    try:
+        from db_pg import get_pg_pool
+
+        return await get_pg_pool()
+    except Exception as exc:
+        pytest.skip(f"PostgreSQL required for this smoke test: {exc}")
+
+
 async def _create_failed_smoke_job_step(auth_headers):
     """Create a user-owned failed job step for retry ownership smoke tests."""
-    from db_pg import get_pg_pool
     from orchestration import runtime_state
 
-    pool = await get_pg_pool()
+    pool = await _get_pg_pool_or_skip()
     runtime_state.set_pool(pool)
     user_id = _user_id_from_auth_headers(auth_headers)
     job = await runtime_state.create_job(
@@ -101,10 +110,9 @@ async def _create_failed_smoke_job_step(auth_headers):
 
 async def _create_smoke_auto_job(auth_headers):
     """Create a user-owned Auto-Runner job for execution-boundary smoke tests."""
-    from db_pg import get_pg_pool
     from orchestration import runtime_state
 
-    pool = await get_pg_pool()
+    pool = await _get_pg_pool_or_skip()
     runtime_state.set_pool(pool)
     user_id = _user_id_from_auth_headers(auth_headers)
     project_id = f"smoke-project-{uuid.uuid4().hex[:8]}"
@@ -178,10 +186,9 @@ async def test_smoke_critical_endpoints_respond(app_client):
 async def test_smoke_published_generated_app_url_serves_dist(app_client, auth_headers):
     """Completed generated jobs can serve a public in-platform generated-app URL."""
     import server
-    from db_pg import get_pg_pool
     from orchestration import runtime_state
 
-    pool = await get_pg_pool()
+    pool = await _get_pg_pool_or_skip()
     runtime_state.set_pool(pool)
     user_id = _user_id_from_auth_headers(auth_headers)
     project_id = f"published-smoke-{uuid.uuid4().hex[:8]}"
@@ -211,10 +218,9 @@ async def test_smoke_published_generated_app_rewrites_asset_paths_and_serves_job
 ):
     """Published app HTML must point at job-scoped assets, not CrucibAI's root frontend bundle."""
     import server
-    from db_pg import get_pg_pool
     from orchestration import runtime_state
 
-    pool = await get_pg_pool()
+    pool = await _get_pg_pool_or_skip()
     runtime_state.set_pool(pool)
     user_id = _user_id_from_auth_headers(auth_headers)
     project_id = f"published-assets-{uuid.uuid4().hex[:8]}"
@@ -249,10 +255,9 @@ async def test_smoke_published_generated_app_rewrites_asset_paths_and_serves_job
 async def test_smoke_published_missing_asset_returns_404(app_client, auth_headers):
     """Missing asset files should not silently fall back to index.html."""
     import server
-    from db_pg import get_pg_pool
     from orchestration import runtime_state
 
-    pool = await get_pg_pool()
+    pool = await _get_pg_pool_or_skip()
     runtime_state.set_pool(pool)
     user_id = _user_id_from_auth_headers(auth_headers)
     project_id = f"published-missing-{uuid.uuid4().hex[:8]}"
@@ -283,10 +288,9 @@ async def test_smoke_job_api_exposes_preview_url_for_completed_published_app(
 ):
     """Completed published jobs should return a preview_url so the workspace iframe can boot."""
     import server
-    from db_pg import get_pg_pool
     from orchestration import runtime_state
 
-    pool = await get_pg_pool()
+    pool = await _get_pg_pool_or_skip()
     runtime_state.set_pool(pool)
     user_id = _user_id_from_auth_headers(auth_headers)
     project_id = f"job-preview-{uuid.uuid4().hex[:8]}"
@@ -316,10 +320,9 @@ async def test_smoke_job_api_exposes_preview_url_for_completed_published_app(
 async def test_smoke_visual_edit_patches_owned_job_workspace(app_client, auth_headers):
     """Visual edit loop can patch a generated file and leaves an undo snapshot."""
     import server
-    from db_pg import get_pg_pool
     from orchestration import runtime_state
 
-    pool = await get_pg_pool()
+    pool = await _get_pg_pool_or_skip()
     runtime_state.set_pool(pool)
     user_id = _user_id_from_auth_headers(auth_headers)
     project_id = f"visual-edit-smoke-{uuid.uuid4().hex[:8]}"
@@ -358,11 +361,10 @@ async def test_smoke_visual_edit_patches_owned_job_workspace(app_client, auth_he
 
 async def test_smoke_visual_edit_rejects_cross_user_job(app_client, auth_headers):
     """Visual edit loop is scoped to the owning job user."""
-    from db_pg import get_pg_pool
     from orchestration import runtime_state
 
     other_headers = await _register_smoke_headers(app_client)
-    pool = await get_pg_pool()
+    pool = await _get_pg_pool_or_skip()
     runtime_state.set_pool(pool)
     user_id = _user_id_from_auth_headers(auth_headers)
     job = await runtime_state.create_job(
@@ -1089,9 +1091,9 @@ async def test_smoke_agents_from_description_creates_run_agent_automation(
     app_client, auth_headers, monkeypatch
 ):
     """Prompt-to-automation can save an automation that calls the app-building agent DAG."""
-    import server
+    import routes.agents as agents_mod
 
-    async def fake_llm_with_fallback(**kwargs):
+    async def fake_llm_with_fallback(*args, **kwargs):
         return (
             """
             {
@@ -1112,7 +1114,7 @@ async def test_smoke_agents_from_description_creates_run_agent_automation(
             "test-model",
         )
 
-    monkeypatch.setattr(server, "_call_llm_with_fallback", fake_llm_with_fallback)
+    monkeypatch.setattr(agents_mod, "_call_llm_with_fallback", fake_llm_with_fallback)
 
     r = await app_client.post(
         "/api/agents/from-description",
@@ -1135,15 +1137,15 @@ async def test_smoke_agent_run_executes_run_agent_action(
     app_client, auth_headers, monkeypatch
 ):
     """Manual automation runs execute saved run_agent actions and persist output."""
-    import server
+    import routes.agents as agents_mod
 
     calls = []
 
-    async def fake_llm_with_fallback(**kwargs):
+    async def fake_llm_with_fallback(*args, **kwargs):
         calls.append(kwargs)
         return ("Bridge run output", "test-model")
 
-    monkeypatch.setattr(server, "_call_llm_with_fallback", fake_llm_with_fallback)
+    monkeypatch.setattr(agents_mod, "_call_llm_with_fallback", fake_llm_with_fallback)
 
     create = {
         "name": "Manual bridge proof",
@@ -1244,10 +1246,9 @@ async def test_smoke_background_runner_exception_has_precise_reason(
     import json
 
     import server
-    from db_pg import get_pg_pool
     from orchestration import auto_runner, runtime_state
 
-    pool = await get_pg_pool()
+    pool = await _get_pg_pool_or_skip()
     runtime_state.set_pool(pool)
     job_id, _project_id = await _create_smoke_auto_job(auth_headers)
 

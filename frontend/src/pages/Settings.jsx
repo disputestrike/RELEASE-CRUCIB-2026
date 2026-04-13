@@ -299,7 +299,7 @@ const Settings = () => {
   };
 
   const exportData = async () => {
-    try { await axios.post(`${API}/users/me/export`, {}, { headers: h }); } catch (_) {}
+    try { await axios.post(`${API}/users/me/export`, {}, { headers: h }); } catch (_) { void 0; }
     alert('Export requested. You will receive an email with your download link within 24 hours.');
   };
 

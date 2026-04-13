@@ -6,7 +6,24 @@ from orchestration.verifier import verify_compile_workspace
 
 
 @pytest.mark.asyncio
-async def test_verify_compile_workspace_flags_prose_preamble_in_jsx():
+async def test_verify_compile_workspace_flags_prose_preamble_in_jsx(monkeypatch):
+    """Prose strip is real; esbuild is mocked (Windows SelectorEventLoop cannot spawn subprocess)."""
+    calls = []
+
+    class FakeProcess:
+        returncode = 0
+
+        async def communicate(self, _input=None):
+            return (b"", b"")
+
+    async def fake_exec(*cmd, **kwargs):
+        calls.append((cmd, kwargs))
+        return FakeProcess()
+
+    monkeypatch.setattr(
+        "orchestration.verifier.asyncio.create_subprocess_exec", fake_exec
+    )
+
     with tempfile.TemporaryDirectory() as d:
         src = os.path.join(d, "src")
         os.makedirs(src, exist_ok=True)
@@ -25,6 +42,7 @@ export default function App() {
         # Proof should show the prose was stripped
         proof_checks = [p.get("check") for p in result.get("proof", [])]
         assert "prose_auto_stripped" in proof_checks
+        assert calls, "expected esbuild subprocess invocation after prose strip"
 
 
 @pytest.mark.asyncio

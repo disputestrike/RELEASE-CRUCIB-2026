@@ -819,13 +819,13 @@ export default function UnifiedWorkspace() {
         handoffQueuedAutostartRef.current = null;
         try {
           sessionStorage.removeItem('crucibai_autostart_goal');
-        } catch (_) {}
+        } catch (_) { void 0; }
       } else {
         goalText = (sessionStorage.getItem('crucibai_autostart_goal') || '').trim();
         if (goalText) {
           try {
             sessionStorage.removeItem('crucibai_autostart_goal');
-          } catch (_) {}
+          } catch (_) { void 0; }
         }
       }
     } catch (_) {
@@ -851,7 +851,7 @@ export default function UnifiedWorkspace() {
       if (!finished) {
         try {
           sessionStorage.setItem('crucibai_autostart_goal', goalText);
-        } catch (_) {}
+        } catch (_) { void 0; }
         handoffQueuedAutostartRef.current = goalText;
       }
     };
@@ -869,7 +869,7 @@ export default function UnifiedWorkspace() {
     if (!task?.prompt?.trim() || task.type !== 'build' || task.status !== 'pending') return;
     try {
       if ((sessionStorage.getItem('crucibai_autostart_goal') || '').trim()) return;
-    } catch (_) {}
+    } catch (_) { void 0; }
     if (goal.trim() || userChatMessages.length > 0) return;
     taskPromptHydratedForIdRef.current = taskIdFromUrl;
     setGoal(String(task.prompt).trim());

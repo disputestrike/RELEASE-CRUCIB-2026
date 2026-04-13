@@ -154,7 +154,7 @@ async def test_build_plan_with_auth(app_client):
     """Layer 1e: Build plan with auth returns 200 (or 402 if insufficient credits)."""
     from unittest.mock import AsyncMock, patch
 
-    import server as server_mod
+    import routes.projects as projects_mod
 
     auth_headers = await register_and_get_headers(app_client)
     llm_returns = [
@@ -168,7 +168,7 @@ async def test_build_plan_with_auth(app_client):
         return ("Plan\nLet me build this now.", 10)
 
     with patch.object(
-        server_mod, "_call_llm_with_fallback", new=AsyncMock(side_effect=_fake_llm)
+        projects_mod, "_call_llm_with_fallback", new=AsyncMock(side_effect=_fake_llm)
     ):
         r = await app_client.post(
             "/api/build/plan",

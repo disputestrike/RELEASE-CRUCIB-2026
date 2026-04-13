@@ -20,6 +20,20 @@ TEST_PASSWORD = os.environ.get("TEST_USER_PASSWORD", "GoldenPath_Test_2026!")
 TIMEOUT_SECONDS = int(os.environ.get("TEST_JOB_TIMEOUT", "300"))  # 5 min
 
 
+@pytest.fixture(scope="module", autouse=True)
+def _golden_path_requires_live_server():
+    """These tests hit TEST_BASE_URL (default localhost:8000), not in-process app_client."""
+    try:
+        with httpx.Client(timeout=3.0) as c:
+            r = c.get(f"{BASE_URL}/api/health")
+    except Exception as exc:
+        pytest.skip(f"Golden path: no server at {BASE_URL} ({exc})")
+    if r.status_code != 200:
+        pytest.skip(
+            f"Golden path: health not OK at {BASE_URL} (status {r.status_code})"
+        )
+
+
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 

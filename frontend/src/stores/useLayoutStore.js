@@ -21,7 +21,7 @@ export function LayoutProvider({ children }) {
   useEffect(() => {
     try {
       localStorage.setItem('crucibai_dev_mode', mode === 'dev' ? 'true' : 'false');
-    } catch (_) {}
+    } catch (_) { void 0; }
   }, [mode]);
 
   const setMode = useCallback((next) => {

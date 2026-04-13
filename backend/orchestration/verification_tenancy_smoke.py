@@ -156,8 +156,9 @@ async def verify_tenancy_smoke_workspace(workspace_path: str) -> Dict[str, Any]:
         # Connection refused / unreachable = DB not available, not a code bug.
         # In test environments (CRUCIBAI_TEST=1) or when DB is simply not running,
         # treat this as skipped rather than failed so unit tests pass without Postgres.
+        err_lower = err_str.lower()
         is_conn_error = any(
-            kw in err_str.lower()
+            kw in err_lower
             for kw in (
                 "connect call failed",
                 "connection refused",
@@ -168,18 +169,37 @@ async def verify_tenancy_smoke_workspace(workspace_path: str) -> Dict[str, Any]:
                 "[errno",
             )
         )
+        # Wrong credentials on a reachable host (common when shell DATABASE_URL != docker test DB).
+        is_auth_error = any(
+            kw in err_lower
+            for kw in (
+                "password authentication failed",
+                "authentication failed",
+                "invalid_authorization_specification",
+            )
+        )
         in_test_env = (
             os.environ.get("CRUCIBAI_TEST", "") == "1"
             or os.environ.get("CRUCIBAI_TEST_DB_UNAVAILABLE", "") == "1"
         )
-        if is_conn_error and in_test_env:
+        if (is_conn_error or is_auth_error) and in_test_env:
+            reason = (
+                "db_unreachable_test_env"
+                if is_conn_error
+                else "db_auth_failed_test_env"
+            )
+            skip_title = (
+                "Tenancy smoke skipped (database unreachable in test environment)"
+                if is_conn_error
+                else "Tenancy smoke skipped (database credentials invalid in test environment)"
+            )
             proof.append(
                 _pi(
                     "verification",
-                    "Tenancy smoke skipped (database unreachable in test environment)",
+                    skip_title,
                     {
                         "check": "tenancy_smoke_skipped",
-                        "reason": "db_unreachable_test_env",
+                        "reason": reason,
                     },
                     verification_class="presence",
                 ),

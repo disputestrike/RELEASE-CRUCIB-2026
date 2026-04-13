@@ -10,10 +10,12 @@ from orchestration.artifact_delta import (
 def test_diff_fingerprints_detects_added_removed_modified(tmp_path):
     a = Path(tmp_path) / "a.txt"
     b = Path(tmp_path) / "b.txt"
-    a.write_text("1", encoding="utf-8")
+    # Content must change *byte length* as well as mtime: fingerprint is (size, mtime_ns)
+    # only; on Windows/OneDrive two 1-byte writes can share the same coarse mtime.
+    a.write_text("before", encoding="utf-8")
     b.write_text("x", encoding="utf-8")
     before = snapshot_workspace_fingerprints(Path(tmp_path))
-    a.write_text("2", encoding="utf-8")
+    a.write_text("after-longer", encoding="utf-8")
     b.unlink()
     c = Path(tmp_path) / "c.txt"
     c.write_text("z", encoding="utf-8")

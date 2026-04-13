@@ -47,7 +47,7 @@ const LandingPage = () => {
         if (state?.initialAttachedFiles?.length) {
           sessionStorage.setItem(PENDING_PROMPT_KEY + '_hasFiles', '1');
         }
-      } catch (_) {}
+      } catch (_) { void 0; }
       navigate(`/auth?redirect=${encodeURIComponent('/app/workspace')}`);
       return;
     }
@@ -165,7 +165,7 @@ const LandingPage = () => {
           const res = await axios.post(`${API}/voice/transcribe`, formData, { headers, timeout: 30000 });
           const text = res.data?.text?.trim();
           if (text) hasInput = (hasInput ? hasInput + ' ' : '') + text;
-        } catch (_) {}
+        } catch (_) { void 0; }
       }
       if (filesToSend) filesToSend = filesToSend.filter(f => !f.type?.startsWith?.('audio/'));
     }

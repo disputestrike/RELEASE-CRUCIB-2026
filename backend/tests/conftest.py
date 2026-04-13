@@ -76,13 +76,30 @@ def _ensure_temp_paths():
 
 def _ensure_test_env():
     """Defaults so in-process FastAPI tests match docker-compose.local.yml and pass env_setup."""
+    # Match repo docker-compose test Postgres (host 5434). Developer shells often export a
+    # production DATABASE_URL; under pytest we prefer the local test DSN so asyncpg pool
+    # and RLS tests are deterministic. Opt out: TEST_DATABASE_URL=... or CRUCIBAI_USE_ENV_DATABASE_URL=1.
     test_database_url = os.environ.get("TEST_DATABASE_URL", "").strip()
+    default_dsn = "postgresql://crucibai:crucibai@127.0.0.1:5434/crucibai"
     if test_database_url:
         os.environ["DATABASE_URL"] = test_database_url
-    elif not os.environ.get("DATABASE_URL", "").strip():
-        os.environ["DATABASE_URL"] = (
-            "postgresql://crucibai:crucibai@127.0.0.1:5434/crucibai"
+    else:
+        gh = os.environ.get("GITHUB_ACTIONS", "").strip().lower() == "true"
+        in_pytest = bool(os.environ.get("PYTEST_VERSION"))
+        trust_env = os.environ.get("CRUCIBAI_USE_ENV_DATABASE_URL", "").strip().lower() in (
+            "1",
+            "true",
+            "yes",
         )
+        existing = os.environ.get("DATABASE_URL", "").strip()
+        if gh and existing:
+            pass
+        elif in_pytest and not trust_env:
+            os.environ["DATABASE_URL"] = default_dsn
+        elif in_pytest and trust_env and existing:
+            pass
+        elif not existing:
+            os.environ["DATABASE_URL"] = default_dsn
     if not os.environ.get("REDIS_URL", "").strip():
         os.environ["REDIS_URL"] = "redis://127.0.0.1:6381/0"
     if not os.environ.get("JWT_SECRET", "").strip():

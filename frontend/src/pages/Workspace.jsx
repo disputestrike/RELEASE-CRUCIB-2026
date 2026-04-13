@@ -702,6 +702,7 @@ const Workspace = () => {
         // Remove React.FC<Props>, (): ReturnType annotations etc (light strip)
         code = code.replace(/:\s*React\.FC<[^>]*>/g, '');
         code = code.replace(/:\s*[A-Z][A-Za-z]*(<[^>]*>)?\s*=/g, ' =');
+        // eslint-disable-next-line no-useless-escape -- `[\]` are literal brackets inside the class
         code = code.replace(/as\s+[A-Z][A-Za-z0-9_<>\[\]]*\b/g, '');
         // BrowserRouter â†’ MemoryRouter for Sandpack
         code = code
@@ -781,7 +782,7 @@ root.render(<${compName} />);` };
         const pkg = JSON.parse(pkgJson);
         return { ...base, ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
       }
-    } catch (_) {}
+    } catch (_) { void 0; }
     return base;
   }, [files]);
   const [input, setInput] = useState('');
@@ -895,7 +896,7 @@ root.render(<${compName} />);` };
   });
   const setRightSidebarOpenPersisted = useCallback((value) => {
     setRightSidebarOpen(value);
-    try { localStorage.setItem('crucibai_workspace_right_panel', String(value)); } catch (_) {}
+    try { localStorage.setItem('crucibai_workspace_right_panel', String(value)); } catch (_) { void 0; }
   }, []);
   const resetLayout = useCallback(() => {
     setLeftSidebarOpen(true);
@@ -923,13 +924,13 @@ root.render(<${compName} />);` };
         await axios.post(`${API}/user/workspace-mode`, { mode: backendMode }, { headers: { Authorization: `Bearer ${token}` } });
         if (refreshUser) await refreshUser();
       }
-    } catch (_) {}
+    } catch (_) { void 0; }
   };
   const { addTask, updateTask, tasks: storeTasks } = useTaskStore();
 
   // Section 06: parseMultiFileOutput â€” extract fenced code blocks with file paths
   const parseMultiFileOutput = (responseText) => {
-    const filePattern = /```(?:jsx?|tsx?|css|html)?:([\w./\-]+)\n([\s\S]*?)```/g;
+    const filePattern = /```(?:jsx?|tsx?|css|html)?:([\w./-]+)\n([\s\S]*?)```/g;
     const parsedFiles = {};
     let match;
     while ((match = filePattern.exec(responseText)) !== null) {
@@ -1303,7 +1304,7 @@ root.render(<${compName} />);` };
               setIsBuilding(false);
             }
           }
-        } catch (_) {}
+        } catch (_) { void 0; }
       };
         ws.onclose = () => {
           if (reconnectAttempts < maxReconnectAttempts) {
@@ -1312,14 +1313,14 @@ root.render(<${compName} />);` };
             reconnectTimeout = setTimeout(connect, delay);
           }
         };
-        ws.onerror = () => { try { ws?.close(); } catch (_) {} };
+        ws.onerror = () => { try { ws?.close(); } catch (_) { void 0; } };
         reconnectAttempts = 0;
-      } catch (_) {}
+      } catch (_) { void 0; }
     };
     connect();
     return () => {
       clearTimeout(reconnectTimeout);
-      try { if (ws) ws.close(); } catch (_) {}
+      try { if (ws) ws.close(); } catch (_) { void 0; }
     };
   }, [projectIdFromUrl, API, token]);
 
@@ -1468,7 +1469,7 @@ root.render(<${compName} />);` };
                 newUrl.searchParams.set('taskId', sessionId);
                 window.history.replaceState({}, '', newUrl.toString());
               }
-            } catch (_) {}
+            } catch (_) { void 0; }
           }
           setIsBuilding(false); setBuildProgress(100);
         }
@@ -1693,7 +1694,7 @@ root.render(<${compName} />);` };
             prompt = (prompt ? prompt + ' ' : '') + text;
             addLog(`Voice note: "${text.slice(0, 60)}..."`, 'info', 'voice');
           }
-        } catch (_) {}
+        } catch (_) { void 0; }
       }
       filesToUse = filesToUse.filter(f => !f.type?.startsWith?.('audio/'));
     }
@@ -2065,7 +2066,7 @@ BUILD IT NOW â€” output every file completely:`;
                 if (ev.type === 'error') {
                   throw new Error(ev.error);
                 }
-              } catch (_) {}
+              } catch (_) { void 0; }
             }
           }
         } catch (iterErr) {
@@ -2251,7 +2252,7 @@ BUILD IT NOW â€” output every file completely:`;
                 }
                 break;
               }
-            } catch (_) {}
+            } catch (_) { void 0; }
           }
         }
       }

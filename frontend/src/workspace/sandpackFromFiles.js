@@ -35,6 +35,7 @@ function buildSandpackFilesMap(files) {
       code = code.replace(/^import\s+type\s+.*?;?$/gm, '');
       code = code.replace(/:\s*React\.FC<[^>]*>/g, '');
       code = code.replace(/:\s*[A-Z][A-Za-z]*(<[^>]*>)?\s*=/g, ' =');
+      // eslint-disable-next-line no-useless-escape -- `[\]` are literal brackets inside the class
       code = code.replace(/as\s+[A-Z][A-Za-z0-9_<>\[\]]*\b/g, '');
       code = code
         .replace(/import\s*\{\s*BrowserRouter(\s*,\s*|\s+as\s+\w+\s*,?\s*)/g, 'import { MemoryRouter$1')

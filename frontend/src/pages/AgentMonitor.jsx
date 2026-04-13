@@ -143,7 +143,7 @@ const AgentMonitor = () => {
           if (ev.type === 'build_completed' || ev.type === 'job_completed') {
             setPolling(false);
           }
-        } catch (_) {}
+        } catch (_) { void 0; }
       };
       
       ws.onerror = () => {

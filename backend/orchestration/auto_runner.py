@@ -154,15 +154,27 @@ async def run_job_to_completion(
             proof_service.set_pool(db_pool)
 
         await update_job_state(job_id, "running")
+        _bp_meta: dict = {}
+        try:
+            from .brain_policy import job_started_policy_meta
+
+            _bp_meta = job_started_policy_meta() or {}
+        except Exception:
+            pass
         await publish(
             job_id,
             "job_started",
-            {"job_id": job_id, "mode": job.get("mode"), "goal": job.get("goal", "")},
+            {
+                "job_id": job_id,
+                "mode": job.get("mode"),
+                "goal": job.get("goal", ""),
+                **_bp_meta,
+            },
         )
         await append_job_event(
             job_id,
             "job_started",
-            {"mode": job.get("mode"), "goal": job.get("goal", "")},
+            {"mode": job.get("mode"), "goal": job.get("goal", ""), **_bp_meta},
         )
 
         # ── Pre-build intelligence briefing ────────────────────────────────────

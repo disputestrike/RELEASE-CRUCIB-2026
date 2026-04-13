@@ -33,6 +33,7 @@ from .spec_guardian import (
 )
 from .swarm_agent_runner import build_agent_swarm_phases, uses_agent_swarm
 from .trust.node_manifest import enrich_plan_with_node_manifests
+from .brain_policy import attach_brain_policy_to_plan
 
 logger = logging.getLogger(__name__)
 
@@ -811,6 +812,10 @@ async def generate_plan(
     }
 
     enriched_plan = enrich_plan_with_node_manifests(plan)
+    try:
+        attach_brain_policy_to_plan(enriched_plan)
+    except Exception:
+        logger.debug("planner: brain policy attach skipped", exc_info=True)
 
     try:
         from memory.service import get_memory_service

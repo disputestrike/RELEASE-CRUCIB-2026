@@ -25,7 +25,7 @@ function stashWorkspaceAutostartGoal(text) {
   if (!raw) return;
   try {
     sessionStorage.setItem('crucibai_autostart_goal', raw);
-  } catch (_) {}
+  } catch (_) { void 0; }
 }
 
 /**
@@ -491,7 +491,7 @@ const Dashboard = () => {
           const res = await axios.post(`${API}/voice/transcribe`, formData, { headers, timeout: 30000 });
           const text = res.data?.text?.trim();
           if (text) userPrompt = (userPrompt ? userPrompt + ' ' : '') + text;
-        } catch (_) {}
+        } catch (_) { void 0; }
       }
       filesToSend = filesToSend.filter(f => !f.type?.startsWith?.('audio/'));
     }
@@ -869,7 +869,7 @@ const Dashboard = () => {
     try {
       await navigator.clipboard.writeText(payload);
       done();
-    } catch (_) {}
+    } catch (_) { void 0; }
   };
 
   const toggleMsgReaction = (i, dir) => {

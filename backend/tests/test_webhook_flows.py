@@ -65,7 +65,7 @@ async def test_stripe_webhook_rejects_invalid_signature(app_client):
 @pytest.mark.asyncio
 async def test_build_plan_returns_structure(app_client):
     """Build plan endpoint returns plan text or suggestions when credits sufficient."""
-    import server as server_mod
+    import routes.projects as projects_mod
 
     auth_headers = await register_and_get_headers(app_client)
     llm_returns = [
@@ -79,7 +79,7 @@ async def test_build_plan_returns_structure(app_client):
         return ("Plan\nLet me build this now.", 10)
 
     with patch.object(
-        server_mod, "_call_llm_with_fallback", new=AsyncMock(side_effect=_fake_llm)
+        projects_mod, "_call_llm_with_fallback", new=AsyncMock(side_effect=_fake_llm)
     ):
         r = await app_client.post(
             "/api/build/plan",

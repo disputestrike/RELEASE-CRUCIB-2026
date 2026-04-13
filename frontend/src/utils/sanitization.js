@@ -140,7 +140,7 @@ export const validateURL = (url) => {
  * Validate phone number (basic)
  */
 export const validatePhoneNumber = (phone) => {
-  const phoneRegex = /^[\d\s\-\+\(\)]{10,}$/;
+  const phoneRegex = /^[-\d\s()+]{10,}$/;
   return phoneRegex.test(phone.replace(/\s/g, ''));
 };
 
@@ -209,8 +209,8 @@ export const getSafeFilename = (filename) => {
 
   // Remove path separators and dangerous characters
   return filename
-    .replace(/[\/\\]/g, '')
-    .replace(/[^\w\s\-\.]/g, '')
+    .replace(/[/\\]/g, '')
+    .replace(/[^\w\s.-]/g, '')
     .replace(/\s+/g, '_')
     .substring(0, 255);
 };
