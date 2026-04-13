@@ -51,19 +51,27 @@ function formatProofTypeLabel(t) {
 }
 
 function MilestoneHint({ batch, repairCount }) {
-  if (!batch || typeof batch !== 'object') return null;
-  const phase = String(batch.phase || '').trim();
-  const keys = Array.isArray(batch.completed_step_keys) ? batch.completed_step_keys : [];
-  if (!phase && keys.length === 0 && !(repairCount > 0)) return null;
-  const tail = keys.length ? `${keys.length} step${keys.length === 1 ? '' : 's'} in last verified batch` : null;
+  const rc = typeof repairCount === 'number' && repairCount > 0 ? repairCount : 0;
+  const b = batch && typeof batch === 'object' ? batch : null;
+  const phase = b ? String(b.phase || '').trim() : '';
+  const keys = b && Array.isArray(b.completed_step_keys) ? b.completed_step_keys : [];
+  if (!phase && keys.length === 0 && rc <= 0) return null;
+  const tail = keys.length
+    ? `${keys.length} verified step${keys.length === 1 ? '' : 's'} in the latest batch`
+    : null;
   return (
     <div className="pp-milestone-hint" role="status">
-      <span className="pp-milestone-label">Runner checkpoint</span>
+      <span className="pp-milestone-label">Saved progress</span>
       <p className="pp-milestone-text">
         {phase ? <strong>{phase}</strong> : null}
         {phase && tail ? ' · ' : null}
         {tail}
-        {repairCount > 0 ? ` · ${repairCount} repair event${repairCount === 1 ? '' : 's'} recorded` : null}
+        {rc > 0 ? (
+          <>
+            {phase || tail ? ' · ' : null}
+            {rc} steering / repair note{rc === 1 ? '' : 's'} recorded
+          </>
+        ) : null}
       </p>
     </div>
   );
@@ -154,8 +162,8 @@ export default function ProofPanel({
         <span className="proof-empty-title">{jobId ? 'Loading proof…' : 'No proof yet'}</span>
         <span className="proof-empty-desc">
           {jobId
-            ? 'Evidence accumulates as verified steps complete. If this stays empty, check Timeline or your API connection — the rest of the workspace still works.'
-            : 'Open a job from the sidebar to see verifiable evidence for that build.'}
+            ? 'Verified steps append evidence here. If nothing appears after a while, check your connection — your workspace still works.'
+            : 'Pick a job in the sidebar to see evidence for that build.'}
         </span>
       </div>
     );

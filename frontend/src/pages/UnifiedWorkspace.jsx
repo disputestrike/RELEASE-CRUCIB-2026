@@ -1127,6 +1127,18 @@ export default function UnifiedWorkspace() {
                 <div className="uw-build-identity-title">{buildDisplayTitle}</div>
               </div>
             )}
+            <BrainGuidancePanel
+              jobId={effectiveJobId}
+              workspaceStage={stage}
+              jobHydrating={Boolean(effectiveJobId && !job && loading)}
+              events={events}
+              jobStatus={job?.status}
+              failureStep={failureStep}
+              proof={proof}
+              latestFailure={latestFailure}
+              milestoneBatch={milestoneBatch}
+              repairQueueLen={repairQueueLen}
+            />
             <WorkspaceActivityFeed
               stage={stage}
               plan={plan}
@@ -1139,15 +1151,6 @@ export default function UnifiedWorkspace() {
               fallbackGoal={goal}
               hideGoalEcho={userChatMessages.length > 0}
               openWorkspacePath={openWorkspacePath}
-            />
-            <BrainGuidancePanel
-              events={events}
-              jobStatus={job?.status}
-              failureStep={failureStep}
-              proof={proof}
-              latestFailure={latestFailure}
-              milestoneBatch={milestoneBatch}
-              repairQueueLen={repairQueueLen}
             />
 
             {stage === 'plan' && plan && (
@@ -1225,14 +1228,22 @@ export default function UnifiedWorkspace() {
               enterSends
               composerInputRows={3}
               inputPlaceholder={
-                job?.status === 'failed'
-                  ? 'What should change? Press Enter to send, Shift+Enter for a new line.'
-                  : 'Steer the build or ask a question — Enter to send, Shift+Enter for a new line.'
+                job?.status === 'failed' || job?.status === 'cancelled'
+                  ? 'Tell us the fix — Enter sends; we continue this same run.'
+                  : job?.status === 'blocked'
+                    ? 'What should we do next? Enter sends and moves us forward.'
+                    : job?.status === 'running' || job?.status === 'queued'
+                      ? 'Steer anytime — Enter sends on this same run.'
+                      : 'Goal or follow-up — Enter to send, Shift+Enter for a new line.'
               }
               composerSubtitle={
-                job?.status === 'failed'
-                  ? 'Build paused — your message is saved on the job and the runner can resume with it (workspace stays).'
-                  : null
+                job?.status === 'failed' || job?.status === 'cancelled'
+                  ? 'Still on this run — your note is how we keep going.'
+                  : job?.status === 'blocked'
+                    ? 'Still on this run — send context and we resume from here.'
+                    : job?.status === 'running' || job?.status === 'queued'
+                      ? 'Still on this run — messages go straight into the live build.'
+                      : null
               }
               composerVariant="workspace"
             />

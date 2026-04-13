@@ -11,7 +11,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  border-bottom: 1px solid var(--border-1);
+  border-bottom: 1px solid color-mix(in srgb, var(--border-1) 65%, transparent);
   flex-shrink: 0;
 }
 
@@ -37,7 +37,8 @@
 .pp-preview-status {
   font-size: 10px;
   color: var(--text-muted);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: inherit;
+  font-weight: 500;
 }
 
 .pp-preview-actions {
@@ -140,11 +141,22 @@
 
 .pp-preview-idle-text {
   font-size: 12px;
-  color: var(--text-muted);
-  padding: 12px 20px;
-  background: var(--bg-1);
+  color: var(--text-secondary);
+  padding: 10px 16px;
+  background: color-mix(in srgb, var(--bg-1) 92%, transparent);
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-1);
+  border: 1px solid color-mix(in srgb, var(--border-1) 50%, transparent);
+  animation: pp-idle-breathe 2.8s ease-in-out infinite;
+}
+
+@keyframes pp-idle-breathe {
+  0%,
+  100% {
+    opacity: 0.88;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .pp-preview-building {
@@ -189,9 +201,10 @@
 }
 
 .pp-preview-building-text {
-  font-size: 11px;
-  color: var(--text-muted);
-  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-weight: 500;
 }
 
 .pp-preview-iframe {

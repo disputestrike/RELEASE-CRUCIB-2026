@@ -80,9 +80,9 @@ describe('PreviewPanel', () => {
         blockedDetail="Type error in App.jsx"
       />,
     );
-    expect(screen.getByRole('status')).toHaveTextContent(/Preview paused/i);
+    expect(screen.getByRole('status')).toHaveTextContent(/Preview on hold/i);
     expect(screen.getByText(/Type error in App.jsx/i)).toBeInTheDocument();
-    expect(document.querySelector('.pp-preview-status')?.textContent).toMatch(/Paused/i);
+    expect(document.querySelector('.pp-preview-status')?.textContent).toMatch(/On hold/i);
   });
 
   test('shows fallback trust banner when sandpackIsFallback', () => {

@@ -35,12 +35,12 @@ export default function PreviewPanel({
   const statusLabel = useRemote
     ? 'Live'
     : status === 'blocked'
-      ? 'Paused'
+      ? 'On hold'
       : status === 'building'
-        ? 'Building'
+        ? 'Taking shape'
         : hasSandpack
-          ? 'Sandbox'
-          : 'Idle';
+          ? 'Preview'
+          : 'Waiting';
 
   return (
     <div className="preview-panel">
@@ -75,28 +75,28 @@ export default function PreviewPanel({
       <div className="pp-preview-body">
         {status === 'blocked' && hasSandpack && (
           <div className="pp-preview-blocked-banner" role="status">
-            <span className="pp-preview-blocked-title">Preview paused — build needs a fix</span>
+            <span className="pp-preview-blocked-title">Preview on hold — we&apos;ll resume with you</span>
             <p className="pp-preview-blocked-hint">
               {typeof blockedDetail === 'string' && blockedDetail.trim()
                 ? blockedDetail
-                : 'Fix the failing step or add a steering note below, then Resume. Sandbox below may still reflect last synced files.'}
+                : 'Send a fix below — the sandbox below still shows the last good sync.'}
             </p>
           </div>
         )}
 
         {!useRemote && status === 'idle' && !hasSandpack && (
           <div className="pp-preview-idle">
-            <span className="pp-preview-idle-text">Preview will appear after build completes, or run an iterative build to load Sandpack.</span>
+            <span className="pp-preview-idle-text">Something will appear here as soon as output is ready to show.</span>
           </div>
         )}
 
         {status === 'blocked' && !hasSandpack && (
           <div className="pp-preview-blocked-full">
-            <span className="pp-preview-blocked-title">Preview paused</span>
+            <span className="pp-preview-blocked-title">On hold — stays close</span>
             <p className="pp-preview-blocked-hint">
               {typeof blockedDetail === 'string' && blockedDetail
                 ? blockedDetail
-                : 'Fix the failing step or add a steering note below, then Resume. Files already in the workspace may still open in Code.'}
+                : 'Describe the fix below to resume — files in Code may still be up to date.'}
             </p>
           </div>
         )}
@@ -104,7 +104,7 @@ export default function PreviewPanel({
         {status === 'building' && !hasSandpack && (
           <div className="pp-preview-building">
             <div className="pp-preview-shimmer" />
-            <span className="pp-preview-building-text">Building…</span>
+            <span className="pp-preview-building-text">Preparing preview…</span>
             {blockedDetail ? (
               <p className="pp-preview-blocked-hint" title={typeof blockedDetail === 'string' ? blockedDetail : undefined}>
                 {typeof blockedDetail === 'string' ? blockedDetail : ''}
@@ -116,9 +116,7 @@ export default function PreviewPanel({
         {!useRemote && status === 'ready' && !hasSandpack && (
           <div className="pp-preview-idle">
             <span className="pp-preview-idle-text">
-              Build finished, but no React files loaded for Sandpack yet. Open the Files tab, use &quot;Reload files from
-              server&quot; in the header, or confirm this job&apos;s workspace synced (job-scoped workspace API uses your
-              job id).
+              No React files loaded yet — open Files, reload from the header, or sync the workspace so Sandpack can run.
             </span>
           </div>
         )}

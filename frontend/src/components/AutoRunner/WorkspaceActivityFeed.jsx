@@ -24,6 +24,20 @@ function stepLabel(s) {
   return humanizeAgentLabel(deinternal || 'Step');
 }
 
+function humanizeJobStatus(status) {
+  const s = String(status || '').toLowerCase();
+  const map = {
+    running: 'Building',
+    queued: 'In queue',
+    failed: 'Needs attention',
+    completed: 'Done',
+    cancelled: 'Stopped',
+    blocked: 'Paused',
+    pending: 'Starting',
+  };
+  return map[s] || (status ? String(status).replace(/_/g, ' ') : '');
+}
+
 function formatEvent(ev) {
   const t = ev.type || ev.event_type;
   const p = ev.payload || {};
@@ -106,16 +120,22 @@ export default function WorkspaceActivityFeed({
   const goalLine = goalRaw.slice(0, 240);
   const goalTruncated = goalRaw.length > 240;
 
+  const hasOptionalLog = sortedSteps.length > 0 || feedEvents.length > 0 || totalSteps > 0;
+
   return (
-    <section className="uw-activity-feed" aria-label="Live activity">
-      <div className="uw-af-surface">
+    <section className="uw-activity-feed" aria-label="Behind the scenes">
+      <div className="uw-af-surface uw-af-surface--secondary">
         <div className="uw-af-top">
-          <p className="uw-af-heading">Live activity</p>
+          <p className="uw-af-heading uw-af-heading--secondary">Behind the scenes</p>
           <div className="uw-af-meta">
-            {job?.status ? <span className="uw-af-pill">{job.status}</span> : loading ? <span className="uw-af-pill">…</span> : null}
-            <span className={`uw-af-live uw-af-live--${connectionMode}`} title="Stream status">
+            {job?.status ? (
+              <span className="uw-af-pill">{humanizeJobStatus(job.status)}</span>
+            ) : loading ? (
+              <span className="uw-af-pill">…</span>
+            ) : null}
+            <span className={`uw-af-live uw-af-live--${connectionMode}`} title="Connection to your run">
               <span className="uw-af-live-dot" aria-hidden />
-              {connectionMode === 'stream' ? 'Live' : connectionMode === 'polling' ? 'Polling' : 'Offline'}
+              {connectionMode === 'stream' ? 'Live' : connectionMode === 'polling' ? 'Syncing' : 'Offline'}
             </span>
           </div>
         </div>
@@ -151,30 +171,6 @@ export default function WorkspaceActivityFeed({
           </div>
         )}
 
-        {sortedSteps.length > 0 && (
-          <details className="uw-af-step-details">
-            <summary className="uw-af-step-summary">Technical step list ({sortedSteps.length})</summary>
-            <ul className="uw-af-checklist">
-              {sortedSteps.map((s) => (
-                <li key={s.id} className={`uw-af-check st-${s.status}`}>
-                  <span className="uw-af-check-ic" aria-hidden>
-                    {s.status === 'completed' ? (
-                      <Check size={14} strokeWidth={2.5} />
-                    ) : s.status === 'running' || s.status === 'verifying' ? (
-                      <Loader2 className="uw-af-spin" size={14} />
-                    ) : s.status === 'failed' || s.status === 'blocked' ? (
-                      <span className="uw-af-dot uw-af-dot--err" />
-                    ) : (
-                      <Circle size={11} strokeWidth={1.5} className="uw-af-pending-ring" />
-                    )}
-                  </span>
-                  <span className="uw-af-check-label">{stepLabel(s)}</span>
-                </li>
-              ))}
-            </ul>
-          </details>
-        )}
-
         {openWorkspacePath && latestWritePaths.length > 0 && (
           <div className="uw-af-writes" aria-label="Latest workspace writes">
             <p className="uw-af-writes-label">Open in Code</p>
@@ -190,21 +186,50 @@ export default function WorkspaceActivityFeed({
           </div>
         )}
 
-        {feedEvents.length > 0 && (
-          <ul className="uw-af-stream">
-            {feedEvents.map((row) => (
-              <li key={row.id}>{row.text}</li>
-            ))}
-          </ul>
-        )}
+        {hasOptionalLog ? (
+          <details className="uw-af-optional-log">
+            <summary className="uw-af-optional-summary">
+              Timeline &amp; steps
+              {sortedSteps.length > 0 ? ` (${sortedSteps.length})` : ''}
+            </summary>
+            {sortedSteps.length > 0 ? (
+              <ul className="uw-af-checklist">
+                {sortedSteps.map((s) => (
+                  <li key={s.id} className={`uw-af-check st-${s.status}`}>
+                    <span className="uw-af-check-ic" aria-hidden>
+                      {s.status === 'completed' ? (
+                        <Check size={14} strokeWidth={2.5} />
+                      ) : s.status === 'running' || s.status === 'verifying' ? (
+                        <Loader2 className="uw-af-spin" size={14} />
+                      ) : s.status === 'failed' || s.status === 'blocked' ? (
+                        <span className="uw-af-dot uw-af-dot--err" />
+                      ) : (
+                        <Circle size={11} strokeWidth={1.5} className="uw-af-pending-ring" />
+                      )}
+                    </span>
+                    <span className="uw-af-check-label">{stepLabel(s)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
 
-        {totalSteps > 0 && (
-          <div className="uw-af-foot">
-            <span>
-              {completedCount} / {totalSteps} steps
-            </span>
-          </div>
-        )}
+            {feedEvents.length > 0 ? (
+              <ul className="uw-af-stream">
+                {feedEvents.map((row) => (
+                  <li key={row.id}>{row.text}</li>
+                ))}
+              </ul>
+            ) : null}
+
+            {totalSteps > 0 ? (
+              <div className="uw-af-foot">
+                <span>
+                  {completedCount} / {totalSteps} steps
+                </span>
+              </div>
+            ) : null}
+          </details>
+        ) : null}
       </div>
     </section>
   );
