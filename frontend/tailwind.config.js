@@ -20,8 +20,8 @@ module.exports = {
   			bg: { 0: "#0B0D10", 1: "#111418", 2: "#171B20", 3: "#1E242B" },
   			text: { strong: "#F3F5F7", primary: "#D7DCE1", secondary: "#9AA3AD", muted: "#707984" },
   			border: { 1: "#242B33", 2: "#313A45" },
-  			state: { success: "#3FB950", warning: "#D29922", error: "#F85149", info: "#58A6FF" },
-  			accent: { primary: "#8B949E" },
+  			state: { success: "#333333", warning: "#666666", error: "#1a1a1a", info: "#999999" },
+  			accent: { primary: "#4a5568" },
   			kimi: {
   				bg: 'var(--kimi-bg)',
   				'elevated': 'var(--kimi-bg-elevated)',

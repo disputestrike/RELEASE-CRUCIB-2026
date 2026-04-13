@@ -20,8 +20,8 @@
   --bg-0: #0B0D10; --bg-1: #111418; --bg-2: #171B20; --bg-3: #1E242B;
   --border-1: #242B33; --border-2: #313A45;
   --text-strong: #F3F5F7; --text-primary: #D7DCE1; --text-secondary: #9AA3AD; --text-muted: #707984;
-  --state-success: #3FB950; --state-warning: #D29922; --state-error: #F85149; --state-info: #58A6FF;
-  --accent: #8B949E;
+  --state-success: #333333; --state-warning: #666666; --state-error: #1a1a1a; --state-info: #999999;
+  --accent: #4a5568;
   --transition-ui: 180ms cubic-bezier(0.16, 1, 0.3, 1);
   --radius-sm: 8px; --radius-md: 10px; --radius-lg: 12px; --radius-xl: 16px;
   --shadow-panel: 0 0 0 1px rgba(255,255,255,0.03), 0 8px 24px rgba(0,0,0,0.28);
@@ -47,8 +47,8 @@
   --theme-border-vis: rgba(255,255,255,0.2);
   --theme-text:      #e4e4e7;
   --theme-muted:     #a1a1aa;
-  --theme-accent:    #3b82f6;
-  --theme-accent-h:  #2563eb;
+  --theme-accent:    #666666;
+  --theme-accent-h:  #4a4a4a;
   --theme-input:     #27272a;
   --theme-select:    #27272a;
   --theme-select-text: #e4e4e7;
@@ -56,7 +56,7 @@
   --chat-user-bg:   #3f3f46;
   --chat-ai-bg:     #27272a;
   --chat-text:      #f4f4f5;
-  --chat-error:     #f87171;
+  --chat-error:     #4a4a4a;
 }
 
 [data-theme="light"] {
@@ -67,8 +67,8 @@
   --theme-border-vis: rgba(15, 23, 42, 0.12);
   --theme-text:      #111827;
   --theme-muted:     #4b5563;
-  --theme-accent:    #2563eb;
-  --theme-accent-h:  #1d4ed8;
+  --theme-accent:    #4a4a4a;
+  --theme-accent-h:  #333333;
   --theme-input:     #ffffff;
   --theme-select:    #ffffff;
   --theme-select-text: #111827;
@@ -76,7 +76,7 @@
   --chat-user-bg:   #eef2ff;
   --chat-ai-bg:     #ffffff;
   --chat-text:      #111827;
-  --chat-error:     #b91c1c;
+  --chat-error:     #333333;
 }
 
 /* Logo wordmark — follows app theme; marketing nav uses kimi ink so dark theme ≠ invisible text on light headers */
