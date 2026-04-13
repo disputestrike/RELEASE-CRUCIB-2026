@@ -717,12 +717,23 @@ export default function UnifiedWorkspace() {
     if (!goal.trim() || authLoading || !token || !API) return;
     if (sendInFlightRef.current) return;
     const submitted = goal.trim();
-    appendUserChat(submitted);
-    setGoal('');
-    clearBuildError();
-
     const jidSteer = jobId || jobIdFromUrl;
-    if (jidSteer && job?.status === 'failed') {
+    const jidExisting = jobId || jobIdFromUrl;
+
+    const workerActive = steps.some((s) => s.status === 'running' || s.status === 'verifying');
+    const failedOrBlocked = steps.some((s) => s.status === 'failed' || s.status === 'blocked');
+    /** True when this job has a hard failure we can address with steer+resume (even if job row lags). */
+    const steerMode =
+      Boolean(jidSteer) &&
+      (job?.status === 'failed' || (failedOrBlocked && !workerActive && job?.status !== 'queued'));
+
+    const seeminglyBusy =
+      stage === 'running' || job?.status === 'running' || job?.status === 'queued';
+
+    if (steerMode) {
+      appendUserChat(submitted);
+      setGoal('');
+      clearBuildError();
       sendInFlightRef.current = true;
       setLoading(true);
       try {
@@ -735,6 +746,7 @@ export default function UnifiedWorkspace() {
         setStage('running');
         refresh();
       } catch (e) {
+        setGoal(submitted);
         applyBuildError(detailToString(e.response?.data?.detail) || e.message || 'Steer / resume failed.');
       } finally {
         setLoading(false);
@@ -743,8 +755,10 @@ export default function UnifiedWorkspace() {
       return;
     }
 
-    const jidExisting = jobId || jobIdFromUrl;
     if (stage === 'plan' && jidExisting) {
+      appendUserChat(submitted);
+      setGoal('');
+      clearBuildError();
       sendInFlightRef.current = true;
       try {
         await handleApprove();
@@ -753,12 +767,15 @@ export default function UnifiedWorkspace() {
       }
       return;
     }
-    if (stage === 'running' || job?.status === 'running' || job?.status === 'queued') {
+    if (seeminglyBusy && !steerMode) {
       setError('A run is already in progress. Wait for it to finish, or open another task from the sidebar.');
       setErrorRaw(null);
       return;
     }
 
+    appendUserChat(submitted);
+    setGoal('');
+    clearBuildError();
     await runNewPlanAndAuto(submitted);
   };
 

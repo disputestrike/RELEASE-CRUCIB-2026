@@ -297,8 +297,13 @@ export default function GoalComposer({
     </>
   );
 
+  const rootClass =
+    _composerVariant && _composerVariant !== 'default'
+      ? `goal-composer goal-composer--${_composerVariant}`
+      : 'goal-composer';
+
   return (
-    <div className="goal-composer">
+    <div className={rootClass}>
       {showComposerHeader && (
         <div className="gc-header">
           <h2 className="gc-title">{composerTitle}</h2>
