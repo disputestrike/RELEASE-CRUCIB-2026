@@ -2,10 +2,14 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-const Card = React.forwardRef(({ className, ...props }, ref) => (
+const Card = React.forwardRef(({ className, featured, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("rounded-xl border bg-card text-card-foreground shadow", className)}
+    className={cn(
+      "rounded-xl border bg-card text-card-foreground shadow",
+      featured && "tracing-beam",
+      className
+    )}
     {...props} />
 ))
 Card.displayName = "Card"
@@ -21,7 +25,7 @@ CardHeader.displayName = "CardHeader"
 const CardTitle = React.forwardRef(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("font-semibold leading-none tracking-tight", className)}
+    className={cn("font-semibold leading-none tracking-tight", "font-serif", className)}
     {...props} />
 ))
 CardTitle.displayName = "CardTitle"

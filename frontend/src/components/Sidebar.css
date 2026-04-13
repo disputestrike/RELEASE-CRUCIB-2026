@@ -8,9 +8,11 @@
   height: 100%;
   background: var(--theme-surface);
   overflow: hidden;
-  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   color: var(--theme-text);
   /* Single-line border is on .layout-sidebar (Manus-like); no double border here */
+  /* Optional: Apply glassmorphism for elevated effect */
+  /* @apply glass; */
 }
 
 .sidebar-header {

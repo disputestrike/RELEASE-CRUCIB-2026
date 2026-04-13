@@ -15,6 +15,9 @@
 @import '@fontsource/fira-code/400.css';
 @import '@fontsource/fira-code/500.css';
 
+/* Surface Strategies: Tracing Beam, Glassmorphism, Grid Borders */
+@import './surface-strategies.css';
+
 /* ── CrucibAI Design Tokens ──────────────────────────────────────────────── */
 :root {
   --bg-0: #0B0D10; --bg-1: #111418; --bg-2: #171B20; --bg-3: #1E242B;
@@ -573,4 +576,41 @@ code, pre, .mono {
   --chat-user-bg:   #1A1A1A;
   --chat-ai-bg:     #F3F1ED;
   --chat-text:      #1A1A1A;
+}
+
+/* ── Table & Grid Styling (Grid Borders strategy) ────────────────────── */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+table thead {
+  border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] table thead {
+  border-bottom-color: rgba(0, 0, 0, 0.15);
+}
+
+table th,
+table td {
+  border-right: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  padding: 12px;
+  text-align: left;
+}
+
+[data-theme="light"] table th,
+[data-theme="light"] table td {
+  border-right-color: rgba(0, 0, 0, 0.08);
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+
+table th:last-child,
+table td:last-child {
+  border-right: none;
+}
+
+table tbody tr:last-child td {
+  border-bottom: none;
 }
