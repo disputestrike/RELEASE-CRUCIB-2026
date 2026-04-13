@@ -187,8 +187,8 @@
 }
 
 .gc-icon-btn-active {
-  color: var(--state-info, #38bdf8);
-  background: rgba(56, 189, 248, 0.08);
+  color: #666666;
+  background: rgba(102, 102, 102, 0.08);
 }
 
 .gc-continuation {
@@ -300,9 +300,9 @@
   border: 1px solid var(--border-1);
   color: var(--text-secondary);
 }
-.gc-interp-backend { color: var(--state-info); border-color: rgba(88,166,255,0.25); }
-.gc-interp-auth    { color: var(--state-warning); border-color: rgba(210,153,34,0.25); }
-.gc-interp-db      { color: var(--state-success); border-color: rgba(63,185,80,0.25); }
+.gc-interp-backend { color: #666666; border-color: rgba(102, 102, 102, 0.25); }
+.gc-interp-auth    { color: #999999; border-color: rgba(153, 153, 153, 0.25); }
+.gc-interp-db      { color: #333333; border-color: rgba(51, 51, 51, 0.25); }
 
 .gc-detect-row {
   display: flex;
@@ -327,9 +327,9 @@
   font-weight: 500;
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(96, 165, 250, 0.12);
-  color: #93c5fd;
-  border: 1px solid rgba(96, 165, 250, 0.35);
+  background: rgba(102, 102, 102, 0.08);
+  color: #666666;
+  border: 1px solid rgba(102, 102, 102, 0.25);
 }
 
 .gc-hint {
@@ -338,13 +338,13 @@
   margin: 0;
 }
 .gc-hint-warn {
-  color: var(--state-warning);
+  color: #999999;
 }
 .gc-linkish {
   background: none;
   border: none;
   padding: 0;
-  color: var(--state-info);
+  color: #666666;
   text-decoration: underline;
   cursor: pointer;
   font-size: inherit;
@@ -354,10 +354,10 @@
 /* Error */
 .gc-error {
   font-size: 12px;
-  color: var(--state-error);
+  color: #333333;
   padding: 8px 12px;
-  background: rgba(248,81,73,0.06);
-  border: 1px solid rgba(248,81,73,0.2);
+  background: rgba(51, 51, 51, 0.06);
+  border: 1px solid rgba(51, 51, 51, 0.2);
   border-radius: var(--radius-sm);
 }
 
@@ -396,8 +396,8 @@
   background: var(--bg-3);
 }
 .gc-bt-card.active {
-  border-color: var(--state-info, #38bdf8);
-  box-shadow: 0 0 0 1px var(--state-info, #38bdf8);
+  border-color: #666666;
+  box-shadow: 0 0 0 1px #666666;
 }
 .gc-bt-title {
   font-size: 12px;

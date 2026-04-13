@@ -16,7 +16,7 @@
 @import '@fontsource/fira-code/500.css';
 
 /* Surface Strategies: Tracing Beam, Glassmorphism, Grid Borders */
-@import './surface-strategies.css';
+@import './styles/surface-strategies.css';
 
 /* ── CrucibAI Design Tokens ──────────────────────────────────────────────── */
 :root {
