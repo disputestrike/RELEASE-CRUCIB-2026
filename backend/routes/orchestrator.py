@@ -619,6 +619,7 @@ async def _background_auto_runner_job(job_id: str, workspace_path: str) -> None:
                     )
             except Exception:
                 logger.exception("auto_runner: elite directive for job %s", job_id)
+        await _orch_ar.prepare_failed_job_for_rerun(job_id)
         result = await _orch_ar.run_job_to_completion(
             job_id, workspace_path=workspace_path or "", db_pool=pool
         )

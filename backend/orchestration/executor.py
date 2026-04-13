@@ -65,6 +65,8 @@ from .self_repair import (
 from .swarm_agent_runner import run_swarm_agent_step
 from .verification_api_smoke import healthcheck_sh_script
 from .verifier import verify_step
+from .verifier_issue_files import candidate_files_from_verification_issues
+from .brain_narration import build_failure_guidance
 
 logger = logging.getLogger(__name__)
 
@@ -1926,8 +1928,15 @@ async def execute_step(
                 "compile_error",
                 "runtime_error",
             }:
+                from_issues = candidate_files_from_verification_issues(
+                    issues_list, workspace_path or ""
+                )
                 candidate_files = list(
-                    dict.fromkeys((result.get("output_files") or []) + changed_paths)
+                    dict.fromkeys(
+                        (result.get("output_files") or [])
+                        + changed_paths
+                        + from_issues
+                    )
                 )
                 # Use LLM repair callback so CodeRepairAgent can fix novel bugs
                 try:
@@ -2104,6 +2113,26 @@ async def execute_step(
             step_key, vf.vr, duration_ms=duration_ms
         )
         failure_payload.update({"error": error_msg})
+        try:
+            guidance = build_failure_guidance(
+                step_key,
+                list(vf.vr.get("issues") or []),
+                failure_reason=str(vf.vr.get("failure_reason") or ""),
+            )
+            await append_job_event(
+                job_id,
+                "brain_guidance",
+                {"kind": "failure_coach", **guidance},
+                step_id=step_id,
+            )
+            await publish(
+                job_id,
+                "brain_guidance",
+                {"step_key": step_key, **guidance},
+                step_id=step_id,
+            )
+        except Exception as _bg_e:
+            logger.debug("executor: brain_guidance skipped: %s", _bg_e)
         logger.warning("executor: step %s verification failed: %s", step_key, error_msg)
         await update_step_state(
             step_id,

@@ -35,6 +35,7 @@ from .runtime_state import (
     load_checkpoint,
     save_checkpoint,
     update_job_state,
+    update_step_state,
 )
 from .verifier import verify_step
 
@@ -973,6 +974,49 @@ def _build_completion_summary(steps: list, proof: Dict) -> Dict[str, Any]:
 # ── Checkpoint resume ─────────────────────────────────────────────────────────
 
 
+async def prepare_failed_job_for_rerun(job_id: str) -> int:
+    """
+    User continued after a terminal failure: re-open the job so the runner loop runs again.
+
+    Resets failed/blocked steps to pending and moves job status back to running.
+    Returns number of steps reset (0 if job was not failed).
+    """
+    job = await get_job(job_id)
+    if not job or job.get("status") != "failed":
+        return 0
+    steps = await get_steps(job_id)
+    n = 0
+    for step in steps:
+        st = step.get("status")
+        if st in ("failed", "blocked"):
+            await update_step_state(
+                step["id"],
+                "pending",
+                {
+                    "error_message": "",
+                    "verifier_status": "",
+                },
+            )
+            n += 1
+    await update_job_state(
+        job_id,
+        "running",
+        {"current_phase": "resuming_after_failure"},
+    )
+    await append_job_event(
+        job_id,
+        "job_reactivated",
+        {"reason": "failed_job_rerun", "steps_reset": n},
+    )
+    await publish(
+        job_id,
+        "job_reactivated",
+        {"reason": "failed_job_rerun", "steps_reset": n},
+    )
+    logger.info("auto_runner: reactivated job %s (%d steps reset)", job_id, n)
+    return n
+
+
 async def resume_job(
     job_id: str, workspace_path: str = "", db_pool=None
 ) -> Dict[str, Any]:
@@ -984,10 +1028,10 @@ async def resume_job(
     if db_pool:
         proof_service.set_pool(db_pool)
 
+    await prepare_failed_job_for_rerun(job_id)
+
     # Reset any 'running' steps back to 'pending' (they were interrupted)
     steps = await get_steps(job_id)
-    from .runtime_state import update_step_state
-
     for step in steps:
         if step["status"] == "running":
             await update_step_state(step["id"], "pending")

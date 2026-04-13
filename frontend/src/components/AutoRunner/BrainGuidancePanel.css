@@ -1,0 +1,76 @@
+.bgp-root {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(99, 102, 241, 0.06);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.bgp-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--uw-text, #e4e4e7);
+}
+
+.bgp-icon {
+  color: #a5b4fc;
+  flex-shrink: 0;
+}
+
+.bgp-step {
+  margin-left: auto;
+  font-weight: 400;
+  font-size: 10px;
+  opacity: 0.75;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bgp-headline {
+  margin: 0 0 6px;
+  color: var(--uw-text, #fafafa);
+}
+
+.bgp-summary {
+  margin: 0 0 8px;
+  opacity: 0.88;
+  font-size: 11px;
+}
+
+.bgp-muted {
+  margin: 0;
+  opacity: 0.8;
+  font-size: 11px;
+}
+
+.bgp-steps-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.75;
+  margin-bottom: 4px;
+}
+
+.bgp-ol {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.bgp-ol li {
+  margin-bottom: 4px;
+}
+
+html[data-theme='light'] .bgp-root {
+  border-color: rgba(0, 0, 0, 0.08);
+  background: rgba(99, 102, 241, 0.08);
+}

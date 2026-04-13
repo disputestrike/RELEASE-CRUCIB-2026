@@ -68,7 +68,13 @@ function handleStreamPayload(data, jobId, token, setters) {
     }
   }
 
-  if (data.type === 'job_completed' || data.type === 'job_failed') {
+  if (
+    data.type === 'job_completed' ||
+    data.type === 'job_failed' ||
+    data.type === 'brain_guidance' ||
+    data.type === 'job_reactivated' ||
+    data.type === 'user_steering'
+  ) {
     fetchJobState();
   }
 

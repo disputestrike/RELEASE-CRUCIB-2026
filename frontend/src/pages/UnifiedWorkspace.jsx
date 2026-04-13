@@ -27,6 +27,7 @@ import BuildReplay from '../components/AutoRunner/BuildReplay';
 import BuildCompletionCard from '../components/AutoRunner/BuildCompletionCard';
 import WorkspaceActivityFeed from '../components/AutoRunner/WorkspaceActivityFeed';
 import WorkspaceUserChat from '../components/AutoRunner/WorkspaceUserChat';
+import BrainGuidancePanel from '../components/AutoRunner/BrainGuidancePanel';
 import SystemStatusHUD from '../components/AutoRunner/SystemStatusHUD';
 import PreviewPanel from '../components/AutoRunner/PreviewPanel';
 import ResizableDivider from '../components/AutoRunner/ResizableDivider';
@@ -720,6 +721,28 @@ export default function UnifiedWorkspace() {
     setGoal('');
     clearBuildError();
 
+    const jidSteer = jobId || jobIdFromUrl;
+    if (jidSteer && job?.status === 'failed') {
+      sendInFlightRef.current = true;
+      setLoading(true);
+      try {
+        const headers = { Authorization: `Bearer ${token}` };
+        await axios.post(
+          `${API}/jobs/${encodeURIComponent(jidSteer)}/steer`,
+          { message: submitted, resume: true },
+          { headers },
+        );
+        setStage('running');
+        refresh();
+      } catch (e) {
+        applyBuildError(detailToString(e.response?.data?.detail) || e.message || 'Steer / resume failed.');
+      } finally {
+        setLoading(false);
+        sendInFlightRef.current = false;
+      }
+      return;
+    }
+
     const jidExisting = jobId || jobIdFromUrl;
     if (stage === 'plan' && jidExisting) {
       sendInFlightRef.current = true;
@@ -862,8 +885,12 @@ export default function UnifiedWorkspace() {
     if (!jid || !step) return;
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      await axios.post(`${API}/jobs/${jid}/retry-step/${step.id}`, {}, { headers });
+      await axios.post(`${API}/jobs/${encodeURIComponent(jid)}/retry-step/${encodeURIComponent(step.id)}`, {}, { headers });
       setFailedStep(null);
+      if (job?.status === 'failed') {
+        await axios.post(`${API}/jobs/${encodeURIComponent(jid)}/resume`, {}, { headers });
+        setStage('running');
+      }
       refresh();
     } catch (_) {
       /* ignore */
@@ -1004,6 +1031,7 @@ export default function UnifiedWorkspace() {
               </div>
             )}
             <WorkspaceUserChat messages={userChatMessages} projectId={effectiveProjectId} />
+            <BrainGuidancePanel events={events} jobStatus={job?.status} />
             <WorkspaceActivityFeed
               stage={stage}
               plan={plan}
@@ -1031,7 +1059,7 @@ export default function UnifiedWorkspace() {
               />
             )}
 
-            {(stage === 'running' || stage === 'completed') && (
+            {(stage === 'running' || stage === 'completed' || job?.status === 'failed') && (
               <div className="arp-execution-area">
                 {isCompleted && (
                   <BuildCompletionCard
@@ -1085,7 +1113,11 @@ export default function UnifiedWorkspace() {
               showContinuation={false}
               showQuickChips={false}
               showComposerHeader={false}
-              composerSubtitle={null}
+              composerSubtitle={
+                job?.status === 'failed'
+                  ? 'Build stopped — describe what to change, then Send. We save your note and resume the runner (workspace + completed steps stay).'
+                  : null
+              }
               composerVariant="workspace"
             />
           </div>

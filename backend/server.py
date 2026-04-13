@@ -572,6 +572,13 @@ class ChatResponse(BaseModel):
     session_id: str
 
 
+class JobSteerRequest(BaseModel):
+    """User note while a job is failed or paused — optional resume of the auto-runner."""
+
+    message: str = Field(default="", max_length=20000)
+    resume: bool = True
+
+
 class TokenPurchase(BaseModel):
     bundle: str
 
@@ -9921,12 +9928,103 @@ async def resume_job_route(
             root = _project_workspace_path(pid).resolve()
             root.mkdir(parents=True, exist_ok=True)
             ws = str(root)
+        from routes.orchestrator import _background_resume_auto_job
+
         background_tasks.add_task(_background_resume_auto_job, job_id, ws)
         return {
             "success": True,
             "job_id": job_id,
             "stream_url": f"/api/jobs/{job_id}/stream",
             "websocket_url": f"/api/job/{job_id}/progress",
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/jobs/{job_id}/steer")
+async def steer_job_route(
+    job_id: str,
+    body: JobSteerRequest,
+    background_tasks: BackgroundTasks,
+    user: dict = Depends(get_current_user),
+):
+    """
+    Record a user steering message on a job (especially after failure) and optionally resume the runner.
+    """
+    try:
+        from orchestration.brain_narration import build_resume_coach_message
+        from orchestration.preflight_report import build_preflight_report
+        from orchestration.runtime_health import collect_runtime_health_sync
+        from orchestration.runtime_state import append_job_event
+
+        runtime_state, _, _, _, _ = _get_orchestration()
+        from db_pg import get_pg_pool
+
+        pool = await get_pg_pool()
+        runtime_state.set_pool(pool)
+        job = await runtime_state.get_job(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+        _assert_job_owner_match(job.get("user_id"), user)
+
+        msg = (body.message or "").strip()
+        await append_job_event(
+            job_id,
+            "user_steering",
+            {"message": msg[:12000], "resume_requested": bool(body.resume)},
+        )
+        coach = build_resume_coach_message(msg)
+        await append_job_event(
+            job_id,
+            "brain_guidance",
+            {"kind": "resume_coach", **coach},
+        )
+        from orchestration.event_bus import publish
+
+        await publish(
+            job_id,
+            "brain_guidance",
+            {"kind": "resume_coach", **coach},
+        )
+
+        if body.resume:
+            preflight = await build_preflight_report()
+            await append_job_event(
+                job_id,
+                "preflight_report",
+                {"preflight": preflight, "kind": "preflight_report.json"},
+            )
+            if not preflight["passed"]:
+                sync = collect_runtime_health_sync()
+                raise HTTPException(
+                    status_code=503,
+                    detail={
+                        "error": "runtime_unsatisfied",
+                        "message": "Preflight failed — runtimes, package managers, or health checks.",
+                        "issues": preflight["issues"],
+                        "runtimes": sync,
+                        "preflight_report": preflight,
+                    },
+                )
+            ws = ""
+            pid = job.get("project_id")
+            if pid:
+                root = _project_workspace_path(pid).resolve()
+                root.mkdir(parents=True, exist_ok=True)
+                ws = str(root)
+            from routes.orchestrator import _background_resume_auto_job
+
+            background_tasks.add_task(_background_resume_auto_job, job_id, ws)
+
+        return {
+            "success": True,
+            "job_id": job_id,
+            "recorded": True,
+            "resume_started": bool(body.resume),
+            "guidance": coach,
+            "stream_url": f"/api/jobs/{job_id}/stream",
         }
     except HTTPException:
         raise

@@ -112,9 +112,13 @@ async def run_full_brain_repair(
         and not f.get("file", "").startswith("proof_bundle")
     ]
 
-    # Only call LLM for repair on retry 1+ (retry 0 = first attempt, no LLM needed yet)
+    # LLM repair: normally retry 1+; verification/implementation gates need fixes on first failure too.
+    verify_or_impl = (step_key or "").startswith(
+        ("verification.", "implementation.")
+    )
+    allow_llm = retry_count >= 1 or verify_or_impl
     if (
-        retry_count >= 1
+        allow_llm
         and critical_unfixed
         and workspace_path
         and os.path.isdir(workspace_path)
@@ -163,7 +167,7 @@ async def run_full_brain_repair(
 
     # ── Web search for unknown errors ────────────────────────────────────────
     web_search_result = None
-    if retry_count >= 1 and not (
+    if allow_llm and not (
         repair_result.get("fixed_count", 0) > 0
         or any(r.get("fixed") for r in llm_repairs)
     ):
@@ -193,7 +197,7 @@ async def run_full_brain_repair(
             )
 
     # Causal chain analysis — understand what else will break
-    if retry_count >= 1:
+    if allow_llm:
         try:
             from .workspace_reader import list_workspace_files, read_workspace_file
 
