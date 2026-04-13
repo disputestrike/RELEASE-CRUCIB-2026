@@ -167,9 +167,10 @@
 }
 
 .message-user {
-  align-items: flex-start;
+  align-items: flex-end;
+  align-self: flex-end;
   width: 100%;
-  max-width: 720px;
+  max-width: min(85%, 30rem);
 }
 
 .message-user .message-content {
@@ -179,12 +180,14 @@
   border: none;
   box-shadow: none;
   max-width: 100%;
+  text-align: right;
 }
 
 .message-assistant {
   align-items: flex-start;
+  align-self: flex-start;
   width: 100%;
-  max-width: 720px;
+  max-width: min(92%, 36rem);
 }
 
 .message-assistant .message-content {
@@ -194,6 +197,7 @@
   border-radius: 0;
   box-shadow: none;
   max-width: 100%;
+  text-align: left;
 }
 
 .message-system {

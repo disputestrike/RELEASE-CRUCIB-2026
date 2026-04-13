@@ -100,19 +100,20 @@ function formatMsgContent(c) {
   return typeof c === 'object' ? JSON.stringify(c) : String(c);
 }
 
-/** Chat message — flat document block, long messages with Show more */
+/** Chat message — flat block: assistant left, user right; Show more for long text */
 function ChatMessage({ msg }) {
   const [expanded, setExpanded] = useState(false);
   const content = formatMsgContent(msg.content);
   const isLong = content.length > 300 || (content.match(/\n/g) || []).length > 4;
   const showContent = expanded || !isLong ? content : content.slice(0, 300) + (content.length > 300 ? '...' : '');
+  const user = msg.role === 'user';
   return (
-    <div className="flex w-full max-w-[720px] mx-auto justify-start">
-      <div className="w-full min-w-0">
-        <div className="text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--theme-muted, #71717a)' }}>
-          {msg.role === 'user' ? 'You' : 'CrucibAI'}
+    <div className={`flex w-full max-w-[720px] mx-auto ${user ? 'justify-end' : 'justify-start'}`}>
+      <div className={`min-w-0 ${user ? 'max-w-[min(85%,30rem)] flex flex-col items-end' : 'max-w-[min(92%,36rem)] flex flex-col items-start'}`}>
+        <div className={`text-[11px] font-semibold uppercase tracking-wide mb-1 w-full ${user ? 'text-right' : 'text-left'}`} style={{ color: 'var(--theme-muted, #71717a)' }}>
+          {user ? 'You' : 'CrucibAI'}
         </div>
-        <pre className="whitespace-pre-wrap font-sans text-[15px] leading-[1.6]" style={{ color: 'var(--theme-text, #e4e4e7)' }}>{showContent}</pre>
+        <pre className={`whitespace-pre-wrap font-sans text-[15px] leading-[1.6] ${user ? 'text-right' : 'text-left'}`} style={{ color: 'var(--theme-text, #e4e4e7)' }}>{showContent}</pre>
         {isLong && (
           <button
             type="button"
@@ -3297,16 +3298,27 @@ BUILD IT NOW â€” output every file completely:`;
               </div>
             )}
 
-            {/* Chat messages — document blocks, left-aligned */}
+            {/* Chat messages — flat blocks: assistant left, user right (no bubbles) */}
             {messages.map((msg, i) => (
-              <div key={i} className="flex w-full max-w-[720px] mx-auto justify-start">
-                <div className="w-full min-w-0">
-                  <div className="text-[11px] font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--theme-muted, #71717a)' }}>
+              <div
+                key={i}
+                className={`flex w-full max-w-[720px] mx-auto ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`min-w-0 ${msg.role === 'user' ? 'max-w-[min(85%,30rem)] flex flex-col items-end' : 'max-w-[min(92%,36rem)] flex flex-col items-start'}`}
+                >
+                  <div
+                    className={`text-[11px] font-semibold uppercase tracking-wide mb-1 w-full ${msg.role === 'user' ? 'text-right' : 'text-left'}`}
+                    style={{ color: 'var(--theme-muted, #71717a)' }}
+                  >
                     {msg.role === 'user' ? 'You' : 'CrucibAI'}
                   </div>
-                  <div className="text-[15px] leading-[1.6]" style={{ color: msg.error ? 'var(--chat-error, #f87171)' : 'var(--theme-text, #e4e4e7)' }}>
+                  <div
+                    className={`text-[15px] leading-[1.6] w-full ${msg.role === 'user' ? 'text-right' : 'text-left'}`}
+                    style={{ color: msg.error ? 'var(--chat-error, #f87171)' : 'var(--theme-text, #e4e4e7)' }}
+                  >
                     {msg.isBuilding ? (
-                      <div className="flex items-center gap-2">
+                      <div className={`flex items-center gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" style={{ color: 'var(--theme-accent)' }} />
                         <span style={{ color: 'var(--theme-muted, #a1a1aa)' }}>{formatMsgContent(msg.content)}</span>
                       </div>
@@ -3317,10 +3329,10 @@ BUILD IT NOW â€” output every file completely:`;
                         onViewLogs={() => setActivePanel('console')}
                       />
                     ) : (
-                      <pre className="whitespace-pre-wrap font-sans text-[15px] leading-[1.6] m-0">{formatMsgContent(msg.content)}</pre>
+                      <pre className={`whitespace-pre-wrap font-sans text-[15px] leading-[1.6] m-0 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>{formatMsgContent(msg.content)}</pre>
                     )}
                     {msg.hasCode && (
-                      <div className="workspace-code-actions mt-3 flex flex-wrap items-center gap-2">
+                      <div className={`workspace-code-actions mt-3 flex flex-wrap items-center gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <button type="button" onClick={() => setActivePanel('preview')} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition" style={{ color: 'var(--theme-muted, #a1a1aa)' }}>
                           <Eye className="w-3 h-3" /> Preview
                         </button>
