@@ -116,10 +116,59 @@ export default function PreviewPanel({
         )}
 
         {!useRemote && status === 'ready' && !hasSandpack && (
-          <div className="pp-preview-idle">
-            <span className="pp-preview-idle-text">
-              When your UI files are in the workspace, they&apos;ll run here — use Sync in the header if you need a fresh pull.
-            </span>
+          <div className="pp-preview-ready-fallback">
+            <div className="pp-preview-fallback-message">
+              <span className="pp-preview-idle-text">
+                Build complete! Add your UI files below or use Sync to pull generated code.
+              </span>
+            </div>
+            {/* Show minimal Sandpack shell for immediate interactivity */}
+            {sandpackDeps && (
+              <div className="pp-sandpack-host" style={{ flex: 1, minHeight: '300px' }}>
+                <SandpackProvider
+                  key={filesReadyKey}
+                  files={{
+                    '/src/App.jsx': {
+                      code: `export default function App() {
+  return (
+    <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
+      <h1>Ready to code</h1>
+      <p>Sync files or add your components to get started.</p>
+    </div>
+  );
+}`,
+                    },
+                    '/src/index.js': {
+                      code: `import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App.jsx';
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);`,
+                    },
+                  }}
+                  theme={document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'}
+                  template="react"
+                  customSetup={{ dependencies: sandpackDeps }}
+                  options={{
+                    autoReload: true,
+                    recompileMode: 'delayed',
+                    recompileDelay: 500,
+                  }}
+                >
+                  <SandpackErrorBoundary>
+                    <SandpackPreview showOpenInCodeSandbox={false} style={{ height: '100%', minHeight: 280 }} />
+                  </SandpackErrorBoundary>
+                </SandpackProvider>
+              </div>
+            )}
+            {!sandpackDeps && (
+              <div className="pp-preview-waiting">
+                <span className="pp-preview-idle-text">
+                  Dependencies loading — check back in a moment.
+                </span>
+              </div>
+            )}
           </div>
         )}
 
