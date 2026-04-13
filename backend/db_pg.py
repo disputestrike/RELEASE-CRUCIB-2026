@@ -728,6 +728,7 @@ REQUIRED_TABLES = [
     "products",
     "orders",
     "app_db_schemas",
+    "agent_cache",
     # Auto-Runner / orchestration (relational, not JSONB doc store)
     "jobs",
     "job_steps",
@@ -784,6 +785,7 @@ CREATE TABLE IF NOT EXISTS products (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEF
 CREATE TABLE IF NOT EXISTS orders (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS app_db_schemas (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS user_skills (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS agent_cache (id TEXT PRIMARY KEY, doc JSONB NOT NULL DEFAULT '{}');
 """
 
 # Relational orchestration tables (no FK to JSONB projects/users — avoids bootstrap ordering issues)

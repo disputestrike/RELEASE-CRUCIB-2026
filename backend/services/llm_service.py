@@ -26,6 +26,7 @@ from dev_stub_llm import detect_build_kind as _stub_detect_build_kind
 from dev_stub_llm import is_real_agent_only
 from dev_stub_llm import plan_and_suggestions as _stub_plan_and_suggestions
 from dev_stub_llm import stub_build_enabled, stub_file_dict, stub_multifile_markdown
+from llm_router import CEREBRAS_MODEL
 from llm_router import TaskComplexity, classifier
 from llm_router import get_cerebras_key as _get_cerebras_key
 from llm_router import router as llm_router
@@ -347,7 +348,7 @@ def _get_model_chain(
 ) -> List[Dict[str, str]]:
     """Return a list of {provider, model} dicts to try in order.
 
-    Cerebras (llama-3.3-70b) for fast/simple tasks; Haiku for complex/build tasks.
+    Cerebras (default llama3.1-8b, env CEREBRAS_MODEL) for fast/simple tasks; Haiku for complex/build tasks.
     ``force_complex=True`` always selects Haiku (for iterative builds).
     """
     cerebras_key = (effective_keys or {}).get("cerebras") or os.environ.get(
@@ -373,16 +374,16 @@ def _get_model_chain(
             )
             if complexity == "fast" and cerebras_key:
                 chain = [
-                    {"provider": "cerebras", "model": "llama-3.3-70b"},
+                    {"provider": "cerebras", "model": CEREBRAS_MODEL},
                     {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
                 ]
             elif anthropic_key:
                 chain = [
                     {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
-                    {"provider": "cerebras", "model": "llama-3.3-70b"},
+                    {"provider": "cerebras", "model": CEREBRAS_MODEL},
                 ]
             elif cerebras_key:
-                chain = [{"provider": "cerebras", "model": "llama-3.3-70b"}]
+                chain = [{"provider": "cerebras", "model": CEREBRAS_MODEL}]
             else:
                 chain = MODEL_FALLBACK_CHAINS
     else:
@@ -511,7 +512,7 @@ async def _call_llama_direct(
 async def _call_cerebras_direct(
     message: str,
     system_message: str,
-    model: str = "llama-3.3-70b",
+    model: str = "llama3.1-8b",
     api_key: Optional[str] = None,
 ) -> str:
     """Call Cerebras Llama via Cerebras AI API with key-rotation on rate limits."""

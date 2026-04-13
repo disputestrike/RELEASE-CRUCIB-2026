@@ -17,7 +17,7 @@ from typing import Any, Mapping, MutableMapping
 from anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_model
 
 ANTHROPIC_MODEL_DEFAULT = ANTHROPIC_HAIKU_MODEL
-CEREBRAS_MODEL_DEFAULT = "llama-3.3-70b"
+CEREBRAS_MODEL_DEFAULT = "llama3.1-8b"
 LLAMA_MODEL_DEFAULT = "meta-llama/Llama-2-70b-chat-hf"
 CEREBRAS_KEY_ENV_NAMES = ["CEREBRAS_API_KEY"] + [
     f"CEREBRAS_API_KEY_{i}" for i in range(1, 6)

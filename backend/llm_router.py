@@ -7,8 +7,8 @@ Routes requests to Cerebras, Haiku, or Sonnet based on:
 - Speed selector (lite, pro, max)
 - Credit availability
 
-Free tier:    Cerebras llama-3.3-70b (fast, high quality)
-Paid lite:    Cerebras llama-3.3-70b (fast)
+Free tier:    Cerebras (default llama3.1-8b; override CEREBRAS_MODEL)
+Paid lite:    Cerebras (same)
 Paid pro/max: Claude Haiku (paid quality)
 Critical/complex (paid pro+): Claude Sonnet (highest quality)
 """
@@ -59,8 +59,8 @@ def get_cerebras_key() -> str:
 
 # Backwards compat — single key reference (first key or empty)
 CEREBRAS_API_KEY = _CEREBRAS_KEYS[0] if _CEREBRAS_KEYS else ""
-# Cerebras llama-3.3-70b: 70B parameters, dramatically better than 8b, same cost
-CEREBRAS_MODEL = "llama-3.3-70b"
+# Cerebras model id (API changes retired llama-3.3-70b). Set CEREBRAS_MODEL on Railway.
+CEREBRAS_MODEL = (os.environ.get("CEREBRAS_MODEL") or "llama3.1-8b").strip()
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
 HAIKU_MODEL = ANTHROPIC_HAIKU_MODEL
@@ -273,7 +273,7 @@ class LLMRouter:
                 "provider": "together",
             },
             "cerebras": {
-                "name": "Cerebras llama-3.3-70b",
+                "name": f"Cerebras {CEREBRAS_MODEL}",
                 "cost_per_1m_tokens": 0.27,
                 "speed": "very_fast",
                 "quality": 8.5,

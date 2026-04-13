@@ -1639,6 +1639,11 @@ MODEL_CONFIG = {
 MODEL_FALLBACK_CHAINS = [
     {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
 ]
+
+
+def _cerebras_fallback_model_id() -> str:
+    """Cerebras chat model id (llama-3.3-70b retired on API). Override with CEREBRAS_MODEL."""
+    return (os.environ.get("CEREBRAS_MODEL") or "llama3.1-8b").strip()
 # Map user-facing model key -> chain (only Haiku)
 MODEL_CHAINS = {
     "auto": None,  # use MODEL_CONFIG + MODEL_FALLBACK_CHAINS
@@ -2224,7 +2229,7 @@ def _get_model_chain(
     force_complex: bool = False,
 ):
     """Get list of (provider, model) to try. effective_keys = merged user Settings + server .env keys.
-    Cerebras (llama-3.3-70b) for fast/simple tasks. Haiku for complex/build tasks.
+    Cerebras (default llama3.1-8b, env CEREBRAS_MODEL) for fast/simple tasks. Haiku for complex/build tasks.
     force_complex=True always selects Haiku (for iterative builds)."""
     cerebras_key = (effective_keys or {}).get("cerebras") or os.environ.get(
         "CEREBRAS_API_KEY"
@@ -2249,17 +2254,17 @@ def _get_model_chain(
             if complexity == "fast" and cerebras_key:
                 # Cerebras first for fast tasks, Haiku fallback
                 chain = [
-                    {"provider": "cerebras", "model": "llama-3.3-70b"},
+                    {"provider": "cerebras", "model": _cerebras_fallback_model_id()},
                     {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
                 ]
             elif anthropic_key:
                 # Haiku first for complex tasks, Cerebras fallback
                 chain = [
                     {"provider": "anthropic", "model": ANTHROPIC_HAIKU_MODEL},
-                    {"provider": "cerebras", "model": "llama-3.3-70b"},
+                    {"provider": "cerebras", "model": _cerebras_fallback_model_id()},
                 ]
             elif cerebras_key:
-                chain = [{"provider": "cerebras", "model": "llama-3.3-70b"}]
+                chain = [{"provider": "cerebras", "model": _cerebras_fallback_model_id()}]
             else:
                 chain = MODEL_FALLBACK_CHAINS
     else:
@@ -2319,7 +2324,7 @@ async def _call_anthropic_direct(
 async def _call_cerebras_direct(
     prompt: str,
     system: str,
-    model: str = "llama-3.3-70b",
+    model: str = "llama3.1-8b",
     api_key: Optional[str] = None,
 ) -> str:
     """Call Cerebras API directly (free tier fallback). Uses api_key or CEREBRAS_API_KEY."""
@@ -2448,7 +2453,7 @@ async def _call_llama_direct(
 async def _call_cerebras_direct(
     message: str,
     system_message: str,
-    model: str = "llama-3.3-70b",
+    model: str = "llama3.1-8b",
     api_key: str = None,
 ) -> str:
     """Call Cerebras Llama 2 70B."""
