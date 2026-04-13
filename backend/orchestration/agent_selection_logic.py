@@ -44,6 +44,12 @@ DEFAULT_SUPPORT_AGENTS = [
 
 ALWAYS_INCLUDED_AGENT_SET = frozenset(BASE_AGENTS + DEFAULT_SUPPORT_AGENTS)
 
+# Explicit WebGL / 3D stack goals: allow agents the audit marks as 3D "orphans" so
+# Three.js / Babylon / Cesium builds still get a render-capable swarm.
+RENDER_STACK_SELECTION_KEYWORDS = frozenset(
+    {"3d", "webgl", "three.js", "babylon", "cesium", "webgpu"}
+)
+
 
 AGENT_KEYWORDS = {
     # 3D / rendering
@@ -204,9 +210,15 @@ AGENT_KEYWORDS = {
     ],
     "raspberry pi": ["IoT Platform Selector Agent", "Microcontroller Firmware Agent"],
     "sensor": ["IoT Sensor Agent", "IoT Data Pipeline Agent"],
-    "device": [
+    # Bare "device" matches SaaS copy ("device fingerprint", etc.) — use explicit IoT phrases only.
+    "iot device": [
         "IoT Platform Selector Agent",
         "Microcontroller Firmware Agent",
+        "IoT Cloud Backend Agent",
+    ],
+    "connected device": [
+        "IoT Platform Selector Agent",
+        "IoT Sensor Agent",
         "IoT Cloud Backend Agent",
     ],
     "mqtt": ["IoT Communication Agent"],
@@ -231,13 +243,12 @@ AGENT_KEYWORDS = {
     "jupyter": ["Jupyter Notebook Agent"],
     "notebook": ["Jupyter Notebook Agent"],
     "statistical": ["Statistical Analysis Agent"],
-    "visualization": [
-        "Data Visualization Agent",
-        "3D Model Agent",
-        "3D Scene Agent",
-        "3D Interaction Agent",
-    ],
-    "dashboard": ["Data Visualization Agent", "IoT Dashboard Agent"],
+    # "visualization" alone is usually charts/KPIs, not 3D — Three/WebGL keywords cover 3D.
+    "visualization": ["Data Visualization Agent"],
+    "data visualization": ["Data Visualization Agent"],
+    "chart": ["Data Visualization Agent"],
+    "dashboard": ["Data Visualization Agent"],
+    "iot dashboard": ["IoT Dashboard Agent", "Data Visualization Agent"],
     "report": ["Report Generation Agent", "Data Visualization Agent"],
     "eda": ["Jupyter Notebook Agent", "Statistical Analysis Agent"],
     "warehouse": [
@@ -380,7 +391,8 @@ AGENT_KEYWORDS = {
     "oauth": ["OAuth Provider Agent"],
     "2fa": ["2FA Agent"],
     "password": ["Auth Setup Agent"],
-    "encryption": ["Network Security Agent", "IoT Security Agent"],
+    "encryption": ["Network Security Agent", "Security Checker"],
+    "iot security": ["IoT Security Agent", "Network Security Agent"],
     "rbac": ["RBAC Agent"],
     "permission": ["RBAC Agent"],
     # Payments / comms
@@ -400,8 +412,8 @@ AGENT_KEYWORDS = {
         "Native Config Agent",
         "Store Prep Agent",
         "Mobile Responsive Agent",
-        "IoT Mobile App Agent",
     ],
+    "iot mobile": ["IoT Mobile App Agent", "IoT Communication Agent"],
     "ios": ["Native Config Agent", "Store Prep Agent"],
     "android": ["Native Config Agent", "Store Prep Agent"],
     "react native": ["Native Config Agent"],
@@ -431,6 +443,8 @@ ROUTING_NOISE_KEYWORDS: frozenset[str] = frozenset(
         "analytics",
         "report",
         "visualization",
+        "data visualization",
+        "chart",
         "search",
         "auth",
         "authentication",
@@ -579,9 +593,15 @@ def _record_rule_hit(
     matched_rules: List[str],
     label: str,
     agents: tuple[str, ...] | list[str],
+    *,
+    bypass_exclusion: bool = False,
 ) -> None:
     block = agents_excluded_from_autorunner_selection()
-    additions = [agent for agent in agents if agent in AGENT_DAG and agent not in block]
+    additions = [
+        agent
+        for agent in agents
+        if agent in AGENT_DAG and (bypass_exclusion or agent not in block)
+    ]
     if not additions:
         return
     before = len(selected)
@@ -602,7 +622,13 @@ def explain_agent_selection(
 
     for keyword, agents in AGENT_KEYWORDS.items():
         if _keyword_match(keyword, goal_text):
-            _record_rule_hit(selected, matched_rules, f"keyword:{keyword}", agents)
+            _record_rule_hit(
+                selected,
+                matched_rules,
+                f"keyword:{keyword}",
+                agents,
+                bypass_exclusion=keyword in RENDER_STACK_SELECTION_KEYWORDS,
+            )
             matched_keywords.append(keyword)
 
     if contract.get("mobile"):
@@ -1077,8 +1103,17 @@ def explain_agent_selection(
         )
     selected = _dependency_closure(selected)
     cap = agent_selection_hard_cap()
+    # Explicit 3D / WebGL render stack (Three.js, etc.) must keep specialized agents;
+    # the hard cap is for generic SaaS noise, not real-time 3D work.
+    explicit_render_stack = bool(
+        set(matched_keywords) & RENDER_STACK_SELECTION_KEYWORDS
+    )
     # Full-system contract explicitly opts into broad DAG — do not trim (still warn in planner).
-    if cap and not contract.get("requires_full_system_builder"):
+    if (
+        cap
+        and not contract.get("requires_full_system_builder")
+        and not explicit_render_stack
+    ):
         selected = _apply_hard_agent_cap(selected, cap, matched_rules)
     selected_agents = sorted(selected)
     specialized_agents = sorted(

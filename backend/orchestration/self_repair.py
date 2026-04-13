@@ -12,7 +12,7 @@ so existing callers don't break.
 import logging
 import os
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +86,106 @@ def _read_safe(workspace_path: str, rel_path: str) -> Optional[str]:
             return f.read()
     except OSError:
         return None
+
+
+# ── Missing npm module (bundler / TS) ───────────────────────────────────────
+
+_MISSING_MODULE_PATTERNS: Tuple[re.Pattern, ...] = (
+    re.compile(r"Cannot find module ['\"]([^'\"]+)['\"]", re.I),
+    re.compile(r"Can't resolve ['\"]([^'\"]+)['\"]", re.I),
+    re.compile(r"Failed to resolve import ['\"]([^'\"]+)['\"]", re.I),
+    re.compile(r"Unable to resolve path to module ['\"]([^'\"]+)['\"]", re.I),
+    re.compile(r"Could not resolve ['\"]([^'\"]+)['\"]", re.I),
+)
+
+# Pin common packages; unknown names get a conservative caret range so npm can resolve.
+NPM_KNOWN_VERSIONS: Dict[str, str] = {
+    "axios": "^1.6.0",
+    "react-redux": "^9.1.0",
+    "redux": "^5.0.0",
+    "@reduxjs/toolkit": "^2.2.0",
+    "zustand": "^4.5.0",
+    "framer-motion": "^11.0.0",
+    "@tanstack/react-query": "^5.0.0",
+    "lucide-react": "^0.400.0",
+    "date-fns": "^3.0.0",
+    "clsx": "^2.1.0",
+    "tailwind-merge": "^2.2.0",
+}
+
+
+def _npm_root_package(spec: str) -> Optional[str]:
+    s = (spec or "").strip()
+    if not s or s.startswith(".") or s.startswith("/"):
+        return None
+    if s.startswith("@/") or s.startswith("~/"):
+        return None
+    if s.startswith("@"):
+        parts = s.split("/")
+        if len(parts) >= 2:
+            return f"{parts[0]}/{parts[1]}"
+        return s
+    return s.split("/")[0]
+
+
+def _extract_missing_npm_spec(error_message: str) -> Optional[str]:
+    if not error_message:
+        return None
+    for pat in _MISSING_MODULE_PATTERNS:
+        m = pat.search(error_message)
+        if m:
+            return m.group(1).strip()
+    return None
+
+
+def try_add_missing_npm_dependency(
+    workspace_path: str, error_message: str
+) -> Dict[str, Any]:
+    """If error text names an unresolved npm package, add it to package.json dependencies."""
+    import json
+
+    spec = _extract_missing_npm_spec(error_message)
+    if not spec:
+        return {"fixed": False, "reason": "no_missing_module_pattern"}
+    pkg_key = _npm_root_package(spec)
+    if not pkg_key:
+        return {"fixed": False, "reason": "relative_or_alias_import"}
+
+    content = _read_safe(workspace_path, "package.json")
+    pkg: Dict[str, Any] = {}
+    if content:
+        try:
+            pkg = json.loads(content)
+        except json.JSONDecodeError:
+            pkg = {}
+    if not isinstance(pkg, dict):
+        pkg = {}
+    if not pkg:
+        pkg = {
+            "name": "crucibai-generated-app",
+            "version": "0.1.0",
+            "private": True,
+            "type": "module",
+        }
+    deps = pkg.setdefault("dependencies", {})
+    if not isinstance(deps, dict):
+        deps = {}
+        pkg["dependencies"] = deps
+    if pkg_key in deps:
+        return {"fixed": False, "reason": "already_installed", "package": pkg_key}
+
+    version = NPM_KNOWN_VERSIONS.get(pkg_key) or NPM_KNOWN_VERSIONS.get(spec)
+    if not version:
+        version = "^1.0.0"
+    deps[pkg_key] = version
+    _safe_write(workspace_path, "package.json", json.dumps(pkg, indent=2))
+    return {
+        "fixed": True,
+        "file": "package.json",
+        "package": pkg_key,
+        "version": version,
+        "action": "add_npm_dependency",
+    }
 
 
 # ── Repair functions ───────────────────────────────────────────────────────────
@@ -274,6 +374,13 @@ async def apply_self_repair(
 
     if not workspace_path or not os.path.isdir(workspace_path):
         return {"repairs": [], "fixed_count": 0, "workspace_accessible": False}
+
+    # 0. Unresolved npm package from bundler / verifier output (before broader diagnosis)
+    if error_message:
+        r0 = try_add_missing_npm_dependency(workspace_path, error_message)
+        repairs.append({"type": "add_npm_dependency", **r0})
+        if r0.get("fixed"):
+            fixed_count += 1
 
     root_cause = diagnosis.get("root_cause", "unknown")
     findings = diagnosis.get("findings", [])

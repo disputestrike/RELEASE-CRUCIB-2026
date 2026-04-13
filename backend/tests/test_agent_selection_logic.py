@@ -120,6 +120,73 @@ def test_tenant_data_model_does_not_match_ml_model_keyword():
     )
 
 
+SAAS_MVP_PROMPT = (
+    "Build a SaaS MVP with login, password reset, Stripe subscription billing, "
+    "an admin dashboard with charts and KPI visualization, and device fingerprinting for fraud."
+)
+
+
+def test_saas_mvp_avoids_iot_and_3d_false_positive_agents():
+    agents = set(select_agents_for_goal(SAAS_MVP_PROMPT))
+    assert "Data Visualization Agent" in agents
+    assert "IoT Dashboard Agent" not in agents
+    assert "IoT Mobile App Agent" not in agents
+    assert "IoT Security Agent" not in agents
+    assert "Microcontroller Firmware Agent" not in agents
+    for name in (
+        "3D Model Agent",
+        "3D Scene Agent",
+        "3D Interaction Agent",
+        "3D Engine Selector Agent",
+    ):
+        assert name not in agents
+
+
+def test_iot_dashboard_prompt_includes_iot_dashboard_agent():
+    agents = set(
+        select_agents_for_goal(
+            "MQTT telemetry with an IoT dashboard for connected devices and sensors"
+        )
+    )
+    assert "IoT Dashboard Agent" in agents
+
+
+def test_generic_encryption_does_not_select_iot_security_agent():
+    agents = set(
+        select_agents_for_goal(
+            "Add at-rest encryption for PostgreSQL and TLS for the REST API"
+        )
+    )
+    assert "IoT Security Agent" not in agents
+    assert "Network Security Agent" in agents
+
+
+def test_three_js_prompt_still_selects_3d_stack():
+    agents = set(
+        select_agents_for_goal("3D product viewer with Three.js, WebGL, and orbit controls")
+    )
+    assert "3D Model Agent" in agents or "3D Scene Agent" in agents
+
+
+def test_generic_mobile_does_not_select_iot_mobile_agent():
+    agents = set(
+        select_agents_for_goal(
+            "Progressive web app with mobile responsive layout and touch-friendly UI"
+        )
+    )
+    assert "IoT Mobile App Agent" not in agents
+    assert "Mobile Responsive Agent" in agents
+
+
+def test_iot_mobile_phrase_selects_iot_mobile_agent():
+    agents = set(
+        select_agents_for_goal(
+            "Companion IoT mobile app to pair BLE sensors and show live readings"
+        )
+    )
+    assert "IoT Mobile App Agent" in agents
+
+
 def test_server_legacy_orchestration_registry_is_dag_backed():
     import pathlib
 

@@ -9,7 +9,7 @@ module determines WHAT to change before trying again — not just logs it.
 import logging
 import os
 import re
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -17,10 +17,29 @@ logger = logging.getLogger(__name__)
 # ── Repair actions ─────────────────────────────────────────────────────────────
 
 
-import logging
-import os
-import re
-from typing import Any, Dict, List, Optional
+def _summarize_deterministic_repairs(repair_result: Dict[str, Any]) -> str:
+    parts: List[str] = []
+    for r in repair_result.get("repairs") or []:
+        if not r.get("fixed"):
+            continue
+        t = r.get("type", "")
+        if t == "add_npm_dependency":
+            parts.append(f"Added npm package {r.get('package', '?')}.")
+        elif t in ("strip_prose", "strip_prose_scan"):
+            parts.append(f"Removed prose from {r.get('file', 'a file')}.")
+        elif t == "repair_app_jsx":
+            parts.append("Repaired src/App.jsx.")
+        elif t == "repair_package_json":
+            parts.append("Normalized package.json.")
+        elif t == "repair_entry_point":
+            parts.append("Repaired src/main.jsx entry point.")
+        elif t == "repair_vite_config":
+            parts.append("Added or repaired vite.config.js.")
+        elif t == "repair_index_html":
+            parts.append("Added or repaired index.html.")
+        else:
+            parts.append(f"Applied fix ({t}).")
+    return " ".join(parts).strip()[:900]
 
 
 async def run_full_brain_repair(
@@ -96,6 +115,28 @@ async def run_full_brain_repair(
         repair_result.get("fixed_count", 0),
         [r.get("type") for r in repair_result.get("repairs", [])],
     )
+
+    raw_id = (job or {}).get("id") if job else None
+    jid = str(raw_id) if raw_id is not None else None
+    if repair_result.get("fixed_count", 0) > 0 and jid:
+        summary = _summarize_deterministic_repairs(repair_result)
+        if summary:
+            try:
+                from .event_bus import publish
+                from .runtime_state import append_job_event
+
+                payload = {
+                    "kind": "deterministic_repair",
+                    "headline": "Applied an automatic fix",
+                    "summary": summary,
+                    "next_steps": [
+                        "Re-running verification on the updated workspace.",
+                    ],
+                }
+                await append_job_event(jid, "brain_guidance", payload)
+                await publish(jid, "brain_guidance", payload)
+            except Exception as e:
+                logger.warning("brain: could not emit deterministic_repair guidance: %s", e)
 
     # ── Layer 3: LLM repair for files that deterministic couldn't fix ─────────
     llm_repairs: List[Dict[str, Any]] = []

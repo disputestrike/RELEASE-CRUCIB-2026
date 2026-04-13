@@ -1173,6 +1173,7 @@ export default function UnifiedWorkspace() {
               latestFailure={latestFailure}
               milestoneBatch={milestoneBatch}
               repairQueueLen={repairQueueLen}
+              steps={steps}
             />
             <WorkspaceActivityFeed
               stage={stage}

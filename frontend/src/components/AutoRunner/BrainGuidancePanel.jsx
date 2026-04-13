@@ -138,6 +138,23 @@ function EvidenceBlock({ text, repairMeta }) {
   );
 }
 
+function StepProgressPreservedLine({ steps, jobStatus }) {
+  if (!Array.isArray(steps) || steps.length === 0) return null;
+  const terminal =
+    jobStatus === 'failed' ||
+    jobStatus === 'cancelled' ||
+    jobStatus === 'blocked';
+  if (!terminal) return null;
+  const total = steps.length;
+  const completed = steps.filter((s) => s?.status === 'completed').length;
+  return (
+    <p className="bgp-progress-preserved">
+      {completed} of {total} steps completed. Progress from finished steps is preserved — you can steer
+      and resume from here.
+    </p>
+  );
+}
+
 function MilestoneStrip({ batch, repairCount }) {
   if (!batch || typeof batch !== 'object') {
     if (repairCount > 0) {
@@ -187,6 +204,7 @@ export default function BrainGuidancePanel({
   latestFailure = null,
   milestoneBatch = null,
   repairQueueLen = 0,
+  steps = [],
 }) {
   const activityChips = useMemo(
     () => (jobId ? extractActivityChips(events, 10) : []),
@@ -285,6 +303,7 @@ export default function BrainGuidancePanel({
         return (
           <>
             <p className="bgp-headline">What happened</p>
+            <StepProgressPreservedLine steps={steps} jobStatus={jobStatus} />
             <p className="bgp-summary">{failureSummary}</p>
             <EvidenceBlock text={evidenceText} repairMeta={latestFailure} />
             <NextCue>
@@ -296,6 +315,7 @@ export default function BrainGuidancePanel({
       return (
         <>
           <p className="bgp-headline">We&apos;re ready to continue</p>
+          <StepProgressPreservedLine steps={steps} jobStatus={jobStatus} />
           <EvidenceBlock text={evidenceText} repairMeta={latestFailure} />
           <NextCue>Next: one short note below is enough — we pick up forward motion on the same run.</NextCue>
         </>
@@ -306,6 +326,7 @@ export default function BrainGuidancePanel({
       return (
         <>
           <p className="bgp-headline">Holding so we don&apos;t guess wrong</p>
+          <StepProgressPreservedLine steps={steps} jobStatus={jobStatus} />
           <p className="bgp-summary">
             {failureSummary || 'We paused until you point us forward — that keeps the build safe and deliberate.'}
           </p>

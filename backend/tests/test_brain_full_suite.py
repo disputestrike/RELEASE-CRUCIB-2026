@@ -332,6 +332,38 @@ class TestSelfRepair:
             assert result["workspace_accessible"] is True
 
     @pytest.mark.asyncio
+    async def test_apply_self_repair_adds_npm_dependency_from_bundler_error(self):
+        from orchestration.self_repair import apply_self_repair
+
+        with tempfile.TemporaryDirectory() as d:
+            pkg = {
+                "name": "t",
+                "version": "1.0.0",
+                "private": True,
+                "dependencies": {"react": "^18.2.0"},
+            }
+            with open(os.path.join(d, "package.json"), "w") as f:
+                json.dump(pkg, f)
+            diagnosis = {
+                "root_cause": "unknown",
+                "findings": [],
+                "affected_files": [],
+                "has_app_jsx": True,
+            }
+            err = "Error: Can't resolve 'axios' in '/tmp/src/App.jsx'"
+            result = await apply_self_repair(d, diagnosis, "verification.preview", err)
+            assert result["fixed_count"] >= 1
+            types = [r.get("type") for r in result.get("repairs", [])]
+            assert "add_npm_dependency" in types
+            add_rows = [
+                r for r in result["repairs"] if r.get("type") == "add_npm_dependency"
+            ]
+            assert any(r.get("fixed") for r in add_rows)
+            with open(os.path.join(d, "package.json")) as f:
+                out = json.load(f)
+            assert "axios" in out.get("dependencies", {})
+
+    @pytest.mark.asyncio
     async def test_apply_self_repair_inaccessible_workspace(self):
         from orchestration.self_repair import apply_self_repair
 

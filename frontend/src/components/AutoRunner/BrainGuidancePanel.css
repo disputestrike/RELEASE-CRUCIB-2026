@@ -63,6 +63,17 @@ html[data-theme='light'] .bgp-root--idle {
   color: var(--text-secondary, inherit);
 }
 
+.bgp-progress-preserved {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary, inherit);
+  background: color-mix(in srgb, var(--uw-accent-success, #10a37f) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--uw-accent-success, #10a37f) 28%, transparent);
+}
+
 .bgp-next {
   margin: 10px 0 0;
   padding-top: 10px;
