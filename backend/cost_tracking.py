@@ -135,9 +135,13 @@ class CostAnalyzer:
         older = self.cost_history[-window_size * 2 : -window_size]
 
         recent_avg = sum(c.total_cost for c in recent) / len(recent)
-        older_avg = sum(c.total_cost for c in older) / len(older) if older else recent_avg
+        older_avg = (
+            sum(c.total_cost for c in older) / len(older) if older else recent_avg
+        )
 
-        percent_change = ((recent_avg - older_avg) / older_avg * 100) if older_avg > 0 else 0
+        percent_change = (
+            ((recent_avg - older_avg) / older_avg * 100) if older_avg > 0 else 0
+        )
 
         return {
             "recent_average": recent_avg,

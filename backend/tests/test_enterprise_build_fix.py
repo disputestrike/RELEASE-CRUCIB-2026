@@ -2,7 +2,6 @@ import os
 import tempfile
 
 import pytest
-
 from orchestration.executor import (
     handle_backend_route,
     handle_db_migration,
@@ -10,7 +9,6 @@ from orchestration.executor import (
 )
 from orchestration.generated_app_template import build_frontend_file_set
 from orchestration.preview_gate import verify_preview_workspace
-
 
 HELIOS_PROMPT = """
 AEGIS OMEGA BUILD — END-TO-END ELITE AUTONOMOUS SYSTEM TEST
@@ -46,22 +44,28 @@ def test_enterprise_frontend_template_builds_product_not_prompt_echo():
     assert "Sign in (demo)" in files["src/pages/LoginPage.jsx"]
     assert "Dashboard" in files["src/pages/DashboardPage.jsx"]
     assert "MASTER EXECUTION DIRECTIVE" not in files["src/pages/HomePage.jsx"]
-    assert "You are an elite autonomous engineering" not in files["src/pages/HomePage.jsx"]
+    assert (
+        "You are an elite autonomous engineering" not in files["src/pages/HomePage.jsx"]
+    )
 
 
 @pytest.mark.asyncio
 async def test_enterprise_frontend_handler_bypasses_generic_agent(monkeypatch):
-    from agents.frontend_agent import FrontendAgent
     import orchestration.plan_context as plan_context
+    from agents.frontend_agent import FrontendAgent
 
     async def should_not_run(self, context):  # pragma: no cover - failure guard
-        raise AssertionError("FrontendAgent should not run for enterprise command intent")
+        raise AssertionError(
+            "FrontendAgent should not run for enterprise command intent"
+        )
 
     async def fake_fetch_build_target(job_id):
         return "fullstack"
 
     monkeypatch.setattr(FrontendAgent, "execute", should_not_run)
-    monkeypatch.setattr(plan_context, "fetch_build_target_for_job", fake_fetch_build_target)
+    monkeypatch.setattr(
+        plan_context, "fetch_build_target_for_job", fake_fetch_build_target
+    )
     monkeypatch.setenv("CRUCIBAI_SKIP_BROWSER_PREVIEW", "1")
 
     with tempfile.TemporaryDirectory() as d:
@@ -84,7 +88,9 @@ async def test_enterprise_backend_handler_writes_human_approval_api(monkeypatch)
     from agents.backend_agent import BackendAgent
 
     async def should_not_run(self, context):  # pragma: no cover - failure guard
-        raise AssertionError("BackendAgent should not run for enterprise command intent")
+        raise AssertionError(
+            "BackendAgent should not run for enterprise command intent"
+        )
 
     monkeypatch.setattr(BackendAgent, "execute", should_not_run)
 
@@ -101,7 +107,10 @@ async def test_enterprise_backend_handler_writes_human_approval_api(monkeypatch)
         assert "/api/policies/{policy_id}/enforce" in main_py
         assert "Explicit human approval role required" in main_py
         assert "CRUCIBAI_SECURITY_HEADERS" in main_py
-        assert any(route["path"] == "/api/policies/{policy_id}/enforce" for route in result["routes_added"])
+        assert any(
+            route["path"] == "/api/policies/{policy_id}/enforce"
+            for route in result["routes_added"]
+        )
 
 
 @pytest.mark.asyncio
@@ -125,5 +134,8 @@ async def test_enterprise_database_handler_writes_enterprise_schema_and_seed():
         assert "CREATE TABLE IF NOT EXISTS quotes" in schema_sql
         assert "pending_review" in schema_sql
         assert "Helios Aegis" in seed_sql
-        assert "db/migrations/001_enterprise_command_schema.sql" in migration["output_files"]
+        assert (
+            "db/migrations/001_enterprise_command_schema.sql"
+            in migration["output_files"]
+        )
         assert "db/seeds/001_enterprise_seed.sql" in seed["output_files"]

@@ -3,6 +3,7 @@ PostgreSQL / JSONB index helpers for CrucibAI tables.
 Called at app startup to keep queries fast at scale.
 Failures are logged but do not crash the app (e.g. missing perms).
 """
+
 import logging
 
 logger = logging.getLogger(__name__)

@@ -5,6 +5,7 @@ Loads `proof/ELITE_EXECUTION_DIRECTIVE.md` or falls back to `load_elite_autonomo
 attaches metadata to the in-memory job dict for handlers and verification, and builds
 fragments for agent/LLM payloads.
 """
+
 from __future__ import annotations
 
 import logging

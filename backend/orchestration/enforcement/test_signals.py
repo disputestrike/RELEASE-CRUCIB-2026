@@ -1,11 +1,15 @@
 """Detect skipped / deferred critical tests from proof payloads and workspace stubs."""
+
 from __future__ import annotations
 
 import os
 import re
 from typing import Any, Dict, List, Set
 
-_SKIP_RE = re.compile(r"\bSKIPPED\b|\bskip(ped)?\b|\bxfail\b|\bnot\s+configured\b|\bmanual\s+only\b|\bdeferred\b", re.I)
+_SKIP_RE = re.compile(
+    r"\bSKIPPED\b|\bskip(ped)?\b|\bxfail\b|\bnot\s+configured\b|\bmanual\s+only\b|\bdeferred\b",
+    re.I,
+)
 
 
 def skip_checks_from_flat(flat: List[Dict[str, Any]]) -> Set[str]:
@@ -34,7 +38,16 @@ def parse_test_results_file(workspace_path: str) -> List[str]:
     except OSError:
         return []
     flagged: List[str] = []
-    keywords = ("rbac", "tenant", "tenancy", "auth", "stripe", "webhook", "approval", "isolation")
+    keywords = (
+        "rbac",
+        "tenant",
+        "tenancy",
+        "auth",
+        "stripe",
+        "webhook",
+        "approval",
+        "isolation",
+    )
     for line in lines:
         if not _SKIP_RE.search(line):
             continue
@@ -57,7 +70,9 @@ def critical_skip_violations(
     for feat_id, checks in feature_skip_checks.items():
         for c in checks:
             if c.lower() in from_flat:
-                issues.append(f"Critical feature '{feat_id}': verification signaled skip ({c})")
+                issues.append(
+                    f"Critical feature '{feat_id}': verification signaled skip ({c})"
+                )
     for line in parse_test_results_file(workspace_path):
         issues.append(f"TEST_RESULTS skip line: {line}")
     return issues

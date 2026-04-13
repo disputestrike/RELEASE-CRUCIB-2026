@@ -1,9 +1,9 @@
 """Deploy step verification: file proofs for deploy.build artifacts."""
+
 import os
 import tempfile
 
 import pytest
-
 from orchestration.verifier import verify_deploy_step
 
 

@@ -1,4 +1,5 @@
 """Structured logs carry correlation_id alongside request_id (fifty-point #35)."""
+
 import json
 import logging
 

@@ -2,6 +2,7 @@
 High-level compliance checklist artifact — educational only, not legal advice.
 Emitted when goals suggest regulated domains (fintech, healthcare, etc.).
 """
+
 from __future__ import annotations
 
 

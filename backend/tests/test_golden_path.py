@@ -6,11 +6,13 @@ Tests: create job → plan → steps → completion → files → deploy artifac
 Run with:
     pytest backend/tests/test_golden_path.py -v
 """
+
 import asyncio
 import os
 import time
-import pytest
+
 import httpx
+import pytest
 
 BASE_URL = os.environ.get("TEST_BASE_URL", "http://localhost:8000")
 TEST_EMAIL = os.environ.get("TEST_USER_EMAIL", "test_golden@crucibai.test")
@@ -20,23 +22,30 @@ TIMEOUT_SECONDS = int(os.environ.get("TEST_JOB_TIMEOUT", "300"))  # 5 min
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
+
 async def get_auth_token(client: httpx.AsyncClient) -> str:
     """Register or login test user and return bearer token."""
     # Try register first
-    r = await client.post(f"{BASE_URL}/api/auth/register", json={
-        "name": "Golden Path Tester",
-        "email": TEST_EMAIL,
-        "password": TEST_PASSWORD,
-    })
+    r = await client.post(
+        f"{BASE_URL}/api/auth/register",
+        json={
+            "name": "Golden Path Tester",
+            "email": TEST_EMAIL,
+            "password": TEST_PASSWORD,
+        },
+    )
     if r.status_code in (200, 201):
         data = r.json()
         return data.get("token") or data.get("access_token") or ""
 
     # Already exists — login
-    r = await client.post(f"{BASE_URL}/api/auth/login", json={
-        "email": TEST_EMAIL,
-        "password": TEST_PASSWORD,
-    })
+    r = await client.post(
+        f"{BASE_URL}/api/auth/login",
+        json={
+            "email": TEST_EMAIL,
+            "password": TEST_PASSWORD,
+        },
+    )
     assert r.status_code == 200, f"Login failed: {r.status_code} {r.text[:200]}"
     data = r.json()
     return data.get("token") or data.get("access_token") or ""
@@ -87,6 +96,7 @@ async def wait_for_job_completion(
 
 # ── Tests ──────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_health():
     """API health check passes."""
@@ -94,7 +104,11 @@ async def test_health():
         r = await client.get(f"{BASE_URL}/api/health")
         assert r.status_code == 200, f"Health check failed: {r.text}"
         data = r.json()
-        assert data.get("status") in ("ok", "healthy", "running"), f"Unexpected health: {data}"
+        assert data.get("status") in (
+            "ok",
+            "healthy",
+            "running",
+        ), f"Unexpected health: {data}"
 
 
 @pytest.mark.asyncio
@@ -123,10 +137,16 @@ async def test_create_job_and_plan():
 
         r = await client.post(
             f"{BASE_URL}/api/jobs",
-            json={"goal": "Build a simple counter app with increment and decrement buttons", "mode": "auto"},
+            json={
+                "goal": "Build a simple counter app with increment and decrement buttons",
+                "mode": "auto",
+            },
             headers=headers,
         )
-        assert r.status_code in (200, 201), f"Job creation failed: {r.status_code} {r.text[:500]}"
+        assert r.status_code in (
+            200,
+            201,
+        ), f"Job creation failed: {r.status_code} {r.text[:500]}"
         data = r.json()
 
         assert data.get("success") or data.get("job"), f"Unexpected response: {data}"
@@ -136,7 +156,9 @@ async def test_create_job_and_plan():
 
         plan = data.get("plan", {})
         assert plan, "No plan returned"
-        print(f"  Created job {job_id} with plan containing {len(plan.get('phases', []))} phases")
+        print(
+            f"  Created job {job_id} with plan containing {len(plan.get('phases', []))} phases"
+        )
 
 
 @pytest.mark.skipif(
@@ -147,7 +169,7 @@ async def test_create_job_and_plan():
 async def test_full_golden_path():
     """
     Full golden path: create job → wait for completion → verify files → verify deploy artifacts.
-    
+
     Only runs when TEST_RUN_FULL_BUILD=1 is set (uses real LLM, takes 5-15 minutes).
     """
     async with httpx.AsyncClient(timeout=30) as client:
@@ -157,7 +179,10 @@ async def test_full_golden_path():
         # 1. Create job
         r = await client.post(
             f"{BASE_URL}/api/jobs",
-            json={"goal": "Build a todo list app with add, complete, and delete items", "mode": "auto"},
+            json={
+                "goal": "Build a todo list app with add, complete, and delete items",
+                "mode": "auto",
+            },
             headers=headers,
         )
         assert r.status_code in (200, 201), f"Job creation failed: {r.text[:300]}"
@@ -179,7 +204,9 @@ async def test_full_golden_path():
         r = await client.get(f"{BASE_URL}/api/jobs/{job_id}/steps", headers=headers)
         assert r.status_code == 200
         steps_data = r.json()
-        step_list = steps_data if isinstance(steps_data, list) else steps_data.get("steps", [])
+        step_list = (
+            steps_data if isinstance(steps_data, list) else steps_data.get("steps", [])
+        )
         completed = [s for s in step_list if s.get("status") == "completed"]
         total = len(step_list)
         completion_pct = (len(completed) / total * 100) if total else 0
@@ -187,16 +214,22 @@ async def test_full_golden_path():
         assert completion_pct >= 80, f"Too few steps completed: {completion_pct:.0f}%"
 
         # 4. Verify workspace files exist
-        r = await client.get(f"{BASE_URL}/api/jobs/{job_id}/workspace/files", headers=headers)
+        r = await client.get(
+            f"{BASE_URL}/api/jobs/{job_id}/workspace/files", headers=headers
+        )
         assert r.status_code == 200
         files_data = r.json()
         file_list = files_data.get("files", [])
         file_paths = [f["path"] if isinstance(f, dict) else f for f in file_list]
         print(f"  Workspace files: {len(file_paths)}")
 
-        has_frontend = any("App.jsx" in p or "App.tsx" in p or "index.html" in p for p in file_paths)
+        has_frontend = any(
+            "App.jsx" in p or "App.tsx" in p or "index.html" in p for p in file_paths
+        )
         has_package = any("package.json" in p for p in file_paths)
-        assert has_frontend or has_package, f"No frontend files found. Got: {file_paths[:10]}"
+        assert (
+            has_frontend or has_package
+        ), f"No frontend files found. Got: {file_paths[:10]}"
 
         # 5. Verify App.jsx is valid code (not prose)
         if any("App.jsx" in p for p in file_paths):
@@ -209,7 +242,14 @@ async def test_full_golden_path():
             if r.status_code == 200:
                 content = r.json().get("content", "")
                 first_line = content.strip().split("\n")[0].lower() if content else ""
-                prose_words = ["i ", "here", "appreciate", "certainly", "this is", "the following"]
+                prose_words = [
+                    "i ",
+                    "here",
+                    "appreciate",
+                    "certainly",
+                    "this is",
+                    "the following",
+                ]
                 is_prose = any(first_line.startswith(w) for w in prose_words)
                 assert not is_prose, f"App.jsx starts with prose: {first_line[:100]}"
                 print(f"  App.jsx first line: {first_line[:80]}")
@@ -236,15 +276,24 @@ async def test_workspace_isolation():
         pw = "Isolation_Test_2026!"
 
         async def get_token(email):
-            r = await client.post(f"{BASE_URL}/api/auth/register", json={
-                "name": f"Isolation {email[0].upper()}",
-                "email": email,
-                "password": pw,
-            })
+            r = await client.post(
+                f"{BASE_URL}/api/auth/register",
+                json={
+                    "name": f"Isolation {email[0].upper()}",
+                    "email": email,
+                    "password": pw,
+                },
+            )
             if r.status_code in (200, 201):
                 return r.json().get("token") or r.json().get("access_token") or ""
-            r = await client.post(f"{BASE_URL}/api/auth/login", json={"email": email, "password": pw})
-            return r.json().get("token") or r.json().get("access_token") or "" if r.status_code == 200 else ""
+            r = await client.post(
+                f"{BASE_URL}/api/auth/login", json={"email": email, "password": pw}
+            )
+            return (
+                r.json().get("token") or r.json().get("access_token") or ""
+                if r.status_code == 200
+                else ""
+            )
 
         token_a = await get_token(email_a)
         token_b = await get_token(email_b)
@@ -270,7 +319,7 @@ async def test_workspace_isolation():
 
         # User B tries to access User A's job → should get 403
         r = await client.get(f"{BASE_URL}/api/jobs/{job_id}", headers=headers_b)
-        assert r.status_code == 403, (
-            f"Expected 403 but got {r.status_code} — User B accessed User A's job!"
-        )
+        assert (
+            r.status_code == 403
+        ), f"Expected 403 but got {r.status_code} — User B accessed User A's job!"
         print(f"  ✅ Workspace isolation confirmed: got {r.status_code} as expected")

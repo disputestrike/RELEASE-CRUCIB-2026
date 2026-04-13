@@ -1,7 +1,7 @@
 """Job owner checks (Fifty-point #6) — pure unit tests for `_assert_job_owner_match`."""
+
 import pytest
 from fastapi import HTTPException
-
 from server import _assert_job_owner_match
 
 
@@ -40,7 +40,10 @@ def test_job_owner_match_blocks_wrong_user():
 @pytest.mark.parametrize(
     "owner_id,user_payload",
     [
-        ("550e8400-e29b-41d4-a716-446655440000", {"id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8", "email": "x@y.com"}),
+        (
+            "550e8400-e29b-41d4-a716-446655440000",
+            {"id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8", "email": "x@y.com"},
+        ),
         ("job_owner_99", {"id": "job_owner_00", "email": "other@y.com"}),
     ],
 )

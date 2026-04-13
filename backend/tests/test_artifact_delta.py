@@ -1,6 +1,10 @@
 from pathlib import Path
 
-from orchestration.artifact_delta import cap_delta, diff_fingerprints, snapshot_workspace_fingerprints
+from orchestration.artifact_delta import (
+    cap_delta,
+    diff_fingerprints,
+    snapshot_workspace_fingerprints,
+)
 
 
 def test_diff_fingerprints_detects_added_removed_modified(tmp_path):

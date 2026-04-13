@@ -10,13 +10,13 @@ Implements:
 - Database indexing
 """
 
+import hashlib
 import logging
 import time
-from typing import Optional, Dict, Any, List, Callable
-from functools import wraps, lru_cache
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-import hashlib
+from functools import lru_cache, wraps
+from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -66,9 +66,7 @@ class QueryOptimizer:
         # Check for common issues
         if "SELECT *" in query_text.upper():
             analysis["issues"].append("SELECT * used - specify columns")
-            analysis["recommendations"].append(
-                "Replace SELECT * with specific columns"
-            )
+            analysis["recommendations"].append("Replace SELECT * with specific columns")
             analysis["estimated_improvement_percent"] += 10
 
         if "NOT IN" in query_text.upper():
@@ -177,9 +175,7 @@ class QueryOptimizer:
             "min_execution_time_ms": min(execution_times),
             "max_execution_time_ms": max(execution_times),
             "slow_queries": len(self.slow_queries),
-            "slow_query_percentage": (
-                len(self.slow_queries) / len(self.metrics) * 100
-            ),
+            "slow_query_percentage": (len(self.slow_queries) / len(self.metrics) * 100),
         }
 
 
@@ -265,9 +261,7 @@ class CacheManager:
             "hit_count": self.hit_count,
             "miss_count": self.miss_count,
             "total_requests": total,
-            "hit_rate_percent": (
-                (self.hit_count / total * 100) if total > 0 else 0
-            ),
+            "hit_rate_percent": ((self.hit_count / total * 100) if total > 0 else 0),
             "cached_items": len(self.cache),
         }
 
@@ -466,21 +460,15 @@ class IndexOptimizer:
             # Extract table names and columns from query
             if "WHERE" in query.query_text.upper():
                 # Recommend index on WHERE columns
-                recommendations.append(
-                    f"CREATE INDEX idx_where ON table(column)"
-                )
+                recommendations.append(f"CREATE INDEX idx_where ON table(column)")
 
             if "JOIN" in query.query_text.upper():
                 # Recommend index on JOIN columns
-                recommendations.append(
-                    f"CREATE INDEX idx_join ON table(join_column)"
-                )
+                recommendations.append(f"CREATE INDEX idx_join ON table(join_column)")
 
             if "ORDER BY" in query.query_text.upper():
                 # Recommend index on ORDER BY columns
-                recommendations.append(
-                    f"CREATE INDEX idx_order ON table(order_column)"
-                )
+                recommendations.append(f"CREATE INDEX idx_order ON table(order_column)")
 
         self.index_recommendations = recommendations
 

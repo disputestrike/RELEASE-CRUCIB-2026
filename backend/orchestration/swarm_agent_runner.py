@@ -4,6 +4,7 @@ This module lets the relational Auto-Runner execute the existing AGENT_DAG
 instead of falling back to small fixed frontend/backend phases for complex
 multi-stack or enterprise-style requests.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -14,12 +15,15 @@ from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
-from agent_dag import AGENT_DAG, get_execution_phases, _AGENT_RELEVANT_DEPS
+from agent_dag import _AGENT_RELEVANT_DEPS, AGENT_DAG, get_execution_phases
 from agent_resilience import get_criticality
 
-from .agent_selection_logic import BASE_AGENTS, build_full_phases_from_dag, select_agents_for_goal
+from .agent_selection_logic import (
+    BASE_AGENTS,
+    build_full_phases_from_dag,
+    select_agents_for_goal,
+)
 from .runtime_state import get_steps, load_checkpoint
-
 
 SWARM_STEP_PREFIX = "agents"
 _COMPLEX_SWARM_MARKERS = (
@@ -81,7 +85,7 @@ def build_agent_swarm_phases(
         chosen_agents = (
             select_agents_for_goal(goal, stack_contract)
             if goal
-            else list(BASE_AGENTS)
+            else list(AGENT_DAG.keys())
         )
 
     filtered = {name: AGENT_DAG[name] for name in chosen_agents if name in AGENT_DAG}
@@ -100,7 +104,9 @@ def build_agent_swarm_phases(
                 if dep in AGENT_DAG
             ]
             prompt = (AGENT_DAG.get(agent_name, {}).get("system_prompt") or "").strip()
-            description = prompt.splitlines()[0][:180] if prompt else f"Run {agent_name}"
+            description = (
+                prompt.splitlines()[0][:180] if prompt else f"Run {agent_name}"
+            )
             steps.append(
                 {
                     "key": swarm_step_key(agent_name),
@@ -136,14 +142,18 @@ def _workspace_file_snapshot(workspace_path: str) -> Dict[str, str]:
             try:
                 rel = os.path.relpath(full, workspace_path).replace("\\", "/")
                 stat = os.stat(full)
-                digest = hashlib.sha256(f"{stat.st_mtime_ns}:{stat.st_size}".encode("utf-8")).hexdigest()
+                digest = hashlib.sha256(
+                    f"{stat.st_mtime_ns}:{stat.st_size}".encode("utf-8")
+                ).hexdigest()
                 snapshot[rel] = digest
             except OSError:
                 continue
     return snapshot
 
 
-async def _load_previous_agent_outputs(job_id: str, current_step: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+async def _load_previous_agent_outputs(
+    job_id: str, current_step: Dict[str, Any]
+) -> Dict[str, Dict[str, Any]]:
     previous_outputs: Dict[str, Dict[str, Any]] = {}
     try:
         all_steps = await get_steps(job_id)
@@ -163,7 +173,9 @@ async def _load_previous_agent_outputs(job_id: str, current_step: Dict[str, Any]
             checkpoint = None
         if not checkpoint:
             continue
-        agent_name = step.get("agent_name") or checkpoint.get("agent_name") or step["step_key"]
+        agent_name = (
+            step.get("agent_name") or checkpoint.get("agent_name") or step["step_key"]
+        )
         result = checkpoint.get("result")
         if isinstance(result, dict):
             previous_outputs[agent_name] = result
@@ -202,7 +214,9 @@ async def _run_server_swarm_agent(
     available_credits = 0
     try:
         if user_id:
-            user = await server.db.users.find_one({"id": user_id}, {"plan": 1, "credit_balance": 1})
+            user = await server.db.users.find_one(
+                {"id": user_id}, {"plan": 1, "credit_balance": 1}
+            )
             if user:
                 user_tier = user.get("plan", "free")
                 available_credits = user.get("credit_balance", 0) or 0
@@ -225,7 +239,9 @@ async def _run_server_swarm_agent(
     )
 
 
-async def run_swarm_agent_step(step: Dict[str, Any], job: Dict[str, Any], workspace_path: str = "") -> Dict[str, Any]:
+async def run_swarm_agent_step(
+    step: Dict[str, Any], job: Dict[str, Any], workspace_path: str = ""
+) -> Dict[str, Any]:
     """Execute one AGENT_DAG step through the existing server-side swarm runtime."""
     agent_name = step.get("agent_name") or step.get("name") or ""
     if agent_name not in AGENT_DAG:
@@ -250,7 +266,9 @@ async def run_swarm_agent_step(step: Dict[str, Any], job: Dict[str, Any], worksp
 
     # Apply context reduction if brain said so
     if use_minimal_context or context_reduce_factor is not None:
-        factor = float(context_reduce_factor) if context_reduce_factor is not None else 0.3
+        factor = (
+            float(context_reduce_factor) if context_reduce_factor is not None else 0.3
+        )
         # Rebuild previous_outputs with reduced context
         relevant = _AGENT_RELEVANT_DEPS.get(agent_name, list(previous_outputs.keys()))
         reduced_outputs = {}
@@ -272,13 +290,21 @@ async def run_swarm_agent_step(step: Dict[str, Any], job: Dict[str, Any], worksp
         logger.info(
             "brain_repair: %s retry=%d strategy=reduce_context factor=%.1f "
             "outputs=%d total_chars=%d",
-            agent_name, retry_count_for_brain, factor, len(previous_outputs), total,
+            agent_name,
+            retry_count_for_brain,
+            factor,
+            len(previous_outputs),
+            total,
         )
 
     # If brain said switch model, set env for this call
     if force_model == "cerebras":
         os.environ["CRUCIBAI_FORCE_CEREBRAS"] = "1"
-        logger.info("brain_repair: %s retry=%d forcing Cerebras", agent_name, retry_count_for_brain)
+        logger.info(
+            "brain_repair: %s retry=%d forcing Cerebras",
+            agent_name,
+            retry_count_for_brain,
+        )
     else:
         os.environ.pop("CRUCIBAI_FORCE_CEREBRAS", None)
 
@@ -305,22 +331,29 @@ async def run_swarm_agent_step(step: Dict[str, Any], job: Dict[str, Any], worksp
     status = str(result.get("status") or "").lower()
     if status in ("failed", "failed_with_fallback", "skipped"):
         criticality = get_criticality(agent_name)
-        if agent_name in _CORE_NO_FALLBACK_AGENTS or criticality in ("critical", "high"):
+        if agent_name in _CORE_NO_FALLBACK_AGENTS or criticality in (
+            "critical",
+            "high",
+        ):
             raise RuntimeError(
                 f"swarm_agent_failed:{agent_name}:{result.get('reason') or status}"
             )
 
     after = _workspace_file_snapshot(workspace_path)
     changed_files = sorted(
-        rel for rel, digest in after.items()
-        if before.get(rel) != digest
+        rel for rel, digest in after.items() if before.get(rel) != digest
     )
 
     try:
-        from orchestration.workspace_assembly_pipeline import assembly_v2_enabled, materialize_swarm_agent_output
+        from orchestration.workspace_assembly_pipeline import (
+            assembly_v2_enabled,
+            materialize_swarm_agent_output,
+        )
 
         if assembly_v2_enabled() and workspace_path:
-            extra_written = materialize_swarm_agent_output(workspace_path, agent_name, result)
+            extra_written = materialize_swarm_agent_output(
+                workspace_path, agent_name, result
+            )
             if extra_written:
                 changed_files = sorted(set(changed_files + extra_written))
     except Exception as e:
@@ -328,8 +361,12 @@ async def run_swarm_agent_step(step: Dict[str, Any], job: Dict[str, Any], worksp
 
     artifact_path = f"outputs/{slugify_agent_name(agent_name)}.md"
     artifacts = []
-    if workspace_path and os.path.isfile(os.path.join(workspace_path, artifact_path.replace("/", os.sep))):
-        artifacts.append({"kind": "agent_output", "path": artifact_path, "agent": agent_name})
+    if workspace_path and os.path.isfile(
+        os.path.join(workspace_path, artifact_path.replace("/", os.sep))
+    ):
+        artifacts.append(
+            {"kind": "agent_output", "path": artifact_path, "agent": agent_name}
+        )
 
     return {
         "output": result.get("output") or result.get("result") or "",

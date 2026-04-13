@@ -7,56 +7,69 @@ Trust & Safety, Tenants/RBAC, Analytics, Commerce, and Auto-DB Schema Generation
 Register with: register_blueprint_routes(app)
 """
 
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Query, Body, Request
-from pydantic import BaseModel, Field, EmailStr
-from typing import List, Optional, Dict, Any
-import uuid
 import json
-import re
 import os
+import re
 import secrets
-from datetime import datetime, timezone, timedelta
+import uuid
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, Body, Depends, FastAPI, HTTPException, Query, Request
+from pydantic import BaseModel, EmailStr, Field
 
 # ---------------------------------------------------------------------------
 # Lazy imports from server.py — resolved at runtime to avoid circular imports
 # ---------------------------------------------------------------------------
 
+
 def _get_db():
     """Return the global db instance from server.py."""
     import server
+
     return server.db
 
 
 def _get_current_user():
     """Return get_current_user dependency from server.py."""
     import server
+
     return server.get_current_user
 
 
 def _get_optional_user():
     """Return get_optional_user dependency from server.py."""
     import server
+
     return server.get_optional_user
 
 
 # We resolve these once at module level after server has been imported.
 # But since server imports us, we use Depends with a callable wrapper.
 
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 # ---------------------------------------------------------------------------
 # Re-export dependencies so route declarations work cleanly
 # ---------------------------------------------------------------------------
 
-async def _resolve_current_user(credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False))):
+
+async def _resolve_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
+):
     """Forward to server.get_current_user at call time."""
     import server
+
     return await server.get_current_user(credentials)
 
 
-async def _resolve_optional_user(credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)), request: Request = None):
+async def _resolve_optional_user(
+    credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
+    request: Request = None,
+):
     """Forward to server.get_optional_user at call time."""
     import server
+
     return await server.get_optional_user(credentials, request)
 
 
@@ -72,8 +85,10 @@ def get_optional_user():  # noqa: used as Depends
 # Convenience: typed db access
 # ---------------------------------------------------------------------------
 
+
 def _db():
     import server
+
     return server.db
 
 
@@ -92,6 +107,7 @@ appdb_router = APIRouter(prefix="/api", tags=["app-db"])
 # ===========================================================================
 # 1. PERSONAS / STUDIO MODULE
 # ===========================================================================
+
 
 class PersonaCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
@@ -121,12 +137,18 @@ async def list_personas(user: dict = Depends(_resolve_current_user)):
     db = _db()
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready")
-    personas = await db.personas.find({"user_id": user["id"]}).sort("created_at", -1).to_list(100)
+    personas = (
+        await db.personas.find({"user_id": user["id"]})
+        .sort("created_at", -1)
+        .to_list(100)
+    )
     return {"personas": personas, "count": len(personas)}
 
 
 @personas_router.post("/personas", status_code=201)
-async def create_persona(body: PersonaCreate, user: dict = Depends(_resolve_current_user)):
+async def create_persona(
+    body: PersonaCreate, user: dict = Depends(_resolve_current_user)
+):
     """Create a new persona."""
     db = _db()
     if db is None:
@@ -164,7 +186,9 @@ async def get_persona(persona_id: str, user: dict = Depends(_resolve_current_use
 
 
 @personas_router.put("/personas/{persona_id}")
-async def update_persona(persona_id: str, body: PersonaUpdate, user: dict = Depends(_resolve_current_user)):
+async def update_persona(
+    persona_id: str, body: PersonaUpdate, user: dict = Depends(_resolve_current_user)
+):
     """Update a persona."""
     db = _db()
     if db is None:
@@ -174,7 +198,9 @@ async def update_persona(persona_id: str, body: PersonaUpdate, user: dict = Depe
         raise HTTPException(status_code=404, detail="Persona not found")
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
     updates["updated_at"] = datetime.now(timezone.utc).isoformat()
-    await db.personas.update_one({"id": persona_id, "user_id": user["id"]}, {"$set": updates})
+    await db.personas.update_one(
+        {"id": persona_id, "user_id": user["id"]}, {"$set": updates}
+    )
     updated = await db.personas.find_one({"id": persona_id, "user_id": user["id"]})
     return {"status": "updated", "persona": updated}
 
@@ -193,7 +219,9 @@ async def delete_persona(persona_id: str, user: dict = Depends(_resolve_current_
 
 
 @personas_router.post("/personas/{persona_id}/activate")
-async def activate_persona(persona_id: str, user: dict = Depends(_resolve_current_user)):
+async def activate_persona(
+    persona_id: str, user: dict = Depends(_resolve_current_user)
+):
     """Set this persona as the active one (deactivates all others)."""
     db = _db()
     if db is None:
@@ -204,12 +232,26 @@ async def activate_persona(persona_id: str, user: dict = Depends(_resolve_curren
     # Deactivate all user's personas
     all_personas = await db.personas.find({"user_id": user["id"]}).to_list(200)
     for p in all_personas:
-        await db.personas.update_one({"id": p["id"]}, {"$set": {"is_active": False, "updated_at": datetime.now(timezone.utc).isoformat()}})
+        await db.personas.update_one(
+            {"id": p["id"]},
+            {
+                "$set": {
+                    "is_active": False,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+        )
     # Activate the target persona
     now = datetime.now(timezone.utc).isoformat()
-    await db.personas.update_one({"id": persona_id, "user_id": user["id"]}, {"$set": {"is_active": True, "updated_at": now}})
+    await db.personas.update_one(
+        {"id": persona_id, "user_id": user["id"]},
+        {"$set": {"is_active": True, "updated_at": now}},
+    )
     # Also store active persona ref on user record
-    await db.users.update_one({"id": user["id"]}, {"$set": {"active_persona_id": persona_id, "updated_at": now}})
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {"active_persona_id": persona_id, "updated_at": now}},
+    )
     activated = await db.personas.find_one({"id": persona_id, "user_id": user["id"]})
     return {"status": "activated", "persona": activated}
 
@@ -217,6 +259,7 @@ async def activate_persona(persona_id: str, user: dict = Depends(_resolve_curren
 # ===========================================================================
 # 2. KNOWLEDGE / RAG MODULE
 # ===========================================================================
+
 
 class KnowledgeUpload(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
@@ -259,12 +302,18 @@ async def list_knowledge_sources(user: dict = Depends(_resolve_current_user)):
     db = _db()
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready")
-    sources = await db.knowledge_sources.find({"user_id": user["id"]}).sort("created_at", -1).to_list(200)
+    sources = (
+        await db.knowledge_sources.find({"user_id": user["id"]})
+        .sort("created_at", -1)
+        .to_list(200)
+    )
     return {"sources": sources, "count": len(sources)}
 
 
 @knowledge_router.post("/knowledge/upload", status_code=201)
-async def upload_knowledge_document(body: KnowledgeUpload, user: dict = Depends(_resolve_current_user)):
+async def upload_knowledge_document(
+    body: KnowledgeUpload, user: dict = Depends(_resolve_current_user)
+):
     """Upload a text document as a knowledge source."""
     db = _db()
     if db is None:
@@ -308,7 +357,9 @@ async def upload_knowledge_document(body: KnowledgeUpload, user: dict = Depends(
 
 
 @knowledge_router.post("/knowledge/url", status_code=201)
-async def ingest_knowledge_url(body: KnowledgeURL, user: dict = Depends(_resolve_current_user)):
+async def ingest_knowledge_url(
+    body: KnowledgeURL, user: dict = Depends(_resolve_current_user)
+):
     """Ingest a URL as a knowledge source (stored as pending for async processing)."""
     db = _db()
     if db is None:
@@ -328,33 +379,53 @@ async def ingest_knowledge_url(body: KnowledgeURL, user: dict = Depends(_resolve
         "updated_at": now,
     }
     await db.knowledge_sources.insert_one(source)
-    return {"status": "pending", "source": source, "message": "URL queued for ingestion"}
+    return {
+        "status": "pending",
+        "source": source,
+        "message": "URL queued for ingestion",
+    }
 
 
 @knowledge_router.get("/knowledge/{source_id}")
-async def get_knowledge_source(source_id: str, user: dict = Depends(_resolve_current_user)):
+async def get_knowledge_source(
+    source_id: str, user: dict = Depends(_resolve_current_user)
+):
     """Get a knowledge source and its document chunks."""
     db = _db()
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready")
-    source = await db.knowledge_sources.find_one({"id": source_id, "user_id": user["id"]})
+    source = await db.knowledge_sources.find_one(
+        {"id": source_id, "user_id": user["id"]}
+    )
     if not source:
         raise HTTPException(status_code=404, detail="Knowledge source not found")
-    docs = await db.knowledge_documents.find({"source_id": source_id, "user_id": user["id"]}).sort("chunk_index", 1).to_list(500)
+    docs = (
+        await db.knowledge_documents.find(
+            {"source_id": source_id, "user_id": user["id"]}
+        )
+        .sort("chunk_index", 1)
+        .to_list(500)
+    )
     return {"source": source, "documents": docs, "chunk_count": len(docs)}
 
 
 @knowledge_router.delete("/knowledge/{source_id}")
-async def delete_knowledge_source(source_id: str, user: dict = Depends(_resolve_current_user)):
+async def delete_knowledge_source(
+    source_id: str, user: dict = Depends(_resolve_current_user)
+):
     """Delete a knowledge source and all its document chunks."""
     db = _db()
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready")
-    source = await db.knowledge_sources.find_one({"id": source_id, "user_id": user["id"]})
+    source = await db.knowledge_sources.find_one(
+        {"id": source_id, "user_id": user["id"]}
+    )
     if not source:
         raise HTTPException(status_code=404, detail="Knowledge source not found")
     # Delete all chunks
-    docs = await db.knowledge_documents.find({"source_id": source_id, "user_id": user["id"]}).to_list(1000)
+    docs = await db.knowledge_documents.find(
+        {"source_id": source_id, "user_id": user["id"]}
+    ).to_list(1000)
     for doc in docs:
         await db.knowledge_documents.delete_one({"id": doc["id"]})
     await db.knowledge_sources.delete_one({"id": source_id, "user_id": user["id"]})
@@ -362,7 +433,9 @@ async def delete_knowledge_source(source_id: str, user: dict = Depends(_resolve_
 
 
 @knowledge_router.post("/knowledge/search")
-async def search_knowledge(body: KnowledgeSearch, user: dict = Depends(_resolve_current_user)):
+async def search_knowledge(
+    body: KnowledgeSearch, user: dict = Depends(_resolve_current_user)
+):
     """Semantic search across knowledge documents (MVP: keyword text match)."""
     db = _db()
     if db is None:
@@ -403,12 +476,26 @@ async def list_knowledge_documents(
     db = _db()
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready")
-    source = await db.knowledge_sources.find_one({"id": source_id, "user_id": user["id"]})
+    source = await db.knowledge_sources.find_one(
+        {"id": source_id, "user_id": user["id"]}
+    )
     if not source:
         raise HTTPException(status_code=404, detail="Knowledge source not found")
-    docs = await db.knowledge_documents.find({"source_id": source_id, "user_id": user["id"]}).sort("chunk_index", 1).to_list(500)
-    paged = docs[offset: offset + limit]
-    return {"source_id": source_id, "documents": paged, "total": len(docs), "limit": limit, "offset": offset}
+    docs = (
+        await db.knowledge_documents.find(
+            {"source_id": source_id, "user_id": user["id"]}
+        )
+        .sort("chunk_index", 1)
+        .to_list(500)
+    )
+    paged = docs[offset : offset + limit]
+    return {
+        "source_id": source_id,
+        "documents": paged,
+        "total": len(docs),
+        "limit": limit,
+        "offset": offset,
+    }
 
 
 # ===========================================================================
@@ -436,14 +523,14 @@ def _generate_embed_code(channel: dict) -> str:
     name = channel.get("name", "CrucibAI Widget")
     backend_url = os.environ.get("BACKEND_URL", "https://api.crucibai.com")
     return (
-        f'<!-- CrucibAI Web Widget: {name} -->\n'
-        f'<script\n'
+        f"<!-- CrucibAI Web Widget: {name} -->\n"
+        f"<script\n"
         f'  src="{backend_url}/widget.js"\n'
         f'  data-channel-id="{channel_id}"\n'
         f'  data-name="{name}"\n'
-        f'  async\n'
-        f'></script>\n'
-        f'<!-- End CrucibAI Widget -->'
+        f"  async\n"
+        f"></script>\n"
+        f"<!-- End CrucibAI Widget -->"
     )
 
 
@@ -453,18 +540,27 @@ async def list_channels(user: dict = Depends(_resolve_current_user)):
     db = _db()
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready")
-    channels = await db.channels.find({"user_id": user["id"]}).sort("created_at", -1).to_list(200)
+    channels = (
+        await db.channels.find({"user_id": user["id"]})
+        .sort("created_at", -1)
+        .to_list(200)
+    )
     return {"channels": channels, "count": len(channels)}
 
 
 @channels_router.post("/channels", status_code=201)
-async def create_channel(body: ChannelCreate, user: dict = Depends(_resolve_current_user)):
+async def create_channel(
+    body: ChannelCreate, user: dict = Depends(_resolve_current_user)
+):
     """Create a new channel."""
     db = _db()
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready")
     if body.type not in VALID_CHANNEL_TYPES:
-        raise HTTPException(status_code=400, detail=f"Invalid channel type. Must be one of: {', '.join(VALID_CHANNEL_TYPES)}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid channel type. Must be one of: {', '.join(VALID_CHANNEL_TYPES)}",
+        )
     now = datetime.now(timezone.utc).isoformat()
     doc = {
         "id": str(uuid.uuid4()),
@@ -497,7 +593,9 @@ async def get_channel(channel_id: str, user: dict = Depends(_resolve_current_use
 
 
 @channels_router.put("/channels/{channel_id}")
-async def update_channel(channel_id: str, body: ChannelUpdate, user: dict = Depends(_resolve_current_user)):
+async def update_channel(
+    channel_id: str, body: ChannelUpdate, user: dict = Depends(_resolve_current_user)
+):
     """Update a channel."""
     db = _db()
     if db is None:
@@ -507,7 +605,9 @@ async def update_channel(channel_id: str, body: ChannelUpdate, user: dict = Depe
         raise HTTPException(status_code=404, detail="Channel not found")
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
     updates["updated_at"] = datetime.now(timezone.utc).isoformat()
-    await db.channels.update_one({"id": channel_id, "user_id": user["id"]}, {"$set": updates})
+    await db.channels.update_one(
+        {"id": channel_id, "user_id": user["id"]}, {"$set": updates}
+    )
     updated = await db.channels.find_one({"id": channel_id, "user_id": user["id"]})
     return {"status": "updated", "channel": updated}
 
@@ -544,13 +644,19 @@ async def test_channel(channel_id: str, user: dict = Depends(_resolve_current_us
         if not webhook:
             result = {"ok": False, "message": "No Slack webhook_url configured."}
         else:
-            result = {"ok": True, "message": "Slack webhook URL is configured. Test message not sent in MVP."}
+            result = {
+                "ok": True,
+                "message": "Slack webhook URL is configured. Test message not sent in MVP.",
+            }
     elif channel_type == "whatsapp":
         phone = (doc.get("config") or {}).get("phone_number_id")
         if not phone:
             result = {"ok": False, "message": "No WhatsApp phone_number_id configured."}
         else:
-            result = {"ok": True, "message": "WhatsApp channel is configured. Test message not sent in MVP."}
+            result = {
+                "ok": True,
+                "message": "WhatsApp channel is configured. Test message not sent in MVP.",
+            }
     else:
         result = {"ok": False, "message": "Unknown channel type."}
     return {"channel_id": channel_id, "type": channel_type, **result}
@@ -566,7 +672,10 @@ async def get_embed_code(channel_id: str, user: dict = Depends(_resolve_current_
     if not doc:
         raise HTTPException(status_code=404, detail="Channel not found")
     if doc.get("type") != "web_widget":
-        raise HTTPException(status_code=400, detail="Embed code is only available for web_widget channels")
+        raise HTTPException(
+            status_code=400,
+            detail="Embed code is only available for web_widget channels",
+        )
     embed_code = _generate_embed_code(doc)
     return {"channel_id": channel_id, "embed_code": embed_code}
 
@@ -613,11 +722,17 @@ async def get_session_stats(
         cutoff = None
     all_sessions = await db.app_sessions.find({"user_id": user["id"]}).to_list(10000)
     if cutoff:
-        all_sessions = [s for s in all_sessions if (s.get("created_at") or "") >= cutoff]
+        all_sessions = [
+            s for s in all_sessions if (s.get("created_at") or "") >= cutoff
+        ]
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
     total = len(all_sessions)
     active = sum(1 for s in all_sessions if s.get("status") == "active")
-    ended_today = sum(1 for s in all_sessions if s.get("status") == "ended" and (s.get("ended_at") or "") >= today_start)
+    ended_today = sum(
+        1
+        for s in all_sessions
+        if s.get("status") == "ended" and (s.get("ended_at") or "") >= today_start
+    )
     # Avg duration in seconds
     durations = []
     for s in all_sessions:
@@ -655,13 +770,22 @@ async def list_sessions(
         query["status"] = status
     if channel_id:
         query["channel_id"] = channel_id
-    all_sessions = await db.app_sessions.find(query).sort("created_at", -1).to_list(10000)
-    paged = all_sessions[offset: offset + limit]
-    return {"sessions": paged, "total": len(all_sessions), "limit": limit, "offset": offset}
+    all_sessions = (
+        await db.app_sessions.find(query).sort("created_at", -1).to_list(10000)
+    )
+    paged = all_sessions[offset : offset + limit]
+    return {
+        "sessions": paged,
+        "total": len(all_sessions),
+        "limit": limit,
+        "offset": offset,
+    }
 
 
 @sessions_router.post("/sessions", status_code=201)
-async def create_session(body: SessionCreate, user: dict = Depends(_resolve_current_user)):
+async def create_session(
+    body: SessionCreate, user: dict = Depends(_resolve_current_user)
+):
     """Create a new session."""
     db = _db()
     if db is None:
@@ -692,12 +816,18 @@ async def get_session(session_id: str, user: dict = Depends(_resolve_current_use
     session = await db.app_sessions.find_one({"id": session_id, "user_id": user["id"]})
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
-    messages = await db.session_messages.find({"session_id": session_id}).sort("created_at", 1).to_list(500)
+    messages = (
+        await db.session_messages.find({"session_id": session_id})
+        .sort("created_at", 1)
+        .to_list(500)
+    )
     return {"session": session, "messages": messages}
 
 
 @sessions_router.get("/sessions/{session_id}/transcript")
-async def get_session_transcript(session_id: str, user: dict = Depends(_resolve_current_user)):
+async def get_session_transcript(
+    session_id: str, user: dict = Depends(_resolve_current_user)
+):
     """Get the full plain-text transcript for a session."""
     db = _db()
     if db is None:
@@ -705,7 +835,11 @@ async def get_session_transcript(session_id: str, user: dict = Depends(_resolve_
     session = await db.app_sessions.find_one({"id": session_id, "user_id": user["id"]})
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
-    messages = await db.session_messages.find({"session_id": session_id}).sort("created_at", 1).to_list(500)
+    messages = (
+        await db.session_messages.find({"session_id": session_id})
+        .sort("created_at", 1)
+        .to_list(500)
+    )
     lines = []
     for m in messages:
         role = (m.get("role") or "unknown").upper()
@@ -722,7 +856,9 @@ async def get_session_transcript(session_id: str, user: dict = Depends(_resolve_
 
 
 @sessions_router.patch("/sessions/{session_id}")
-async def patch_session(session_id: str, body: SessionPatch, user: dict = Depends(_resolve_current_user)):
+async def patch_session(
+    session_id: str, body: SessionPatch, user: dict = Depends(_resolve_current_user)
+):
     """Update session status or metadata."""
     db = _db()
     if db is None:
@@ -731,7 +867,10 @@ async def patch_session(session_id: str, body: SessionPatch, user: dict = Depend
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     if body.status and body.status not in VALID_SESSION_STATUSES:
-        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {', '.join(VALID_SESSION_STATUSES)}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid status. Must be one of: {', '.join(VALID_SESSION_STATUSES)}",
+        )
     now = datetime.now(timezone.utc).isoformat()
     updates: Dict[str, Any] = {"updated_at": now}
     if body.status:
@@ -740,7 +879,9 @@ async def patch_session(session_id: str, body: SessionPatch, user: dict = Depend
             updates["ended_at"] = now
     if body.metadata is not None:
         updates["metadata"] = body.metadata
-    await db.app_sessions.update_one({"id": session_id, "user_id": user["id"]}, {"$set": updates})
+    await db.app_sessions.update_one(
+        {"id": session_id, "user_id": user["id"]}, {"$set": updates}
+    )
     updated = await db.app_sessions.find_one({"id": session_id, "user_id": user["id"]})
     return {"status": "updated", "session": updated}
 
@@ -759,7 +900,9 @@ async def add_session_message(
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     if session.get("status") == "ended":
-        raise HTTPException(status_code=400, detail="Cannot add messages to an ended session")
+        raise HTTPException(
+            status_code=400, detail="Cannot add messages to an ended session"
+        )
     now = datetime.now(timezone.utc).isoformat()
     msg = {
         "id": str(uuid.uuid4()),
@@ -774,7 +917,12 @@ async def add_session_message(
     owner_id = session.get("user_id")
     await db.app_sessions.update_one(
         {"id": session_id},
-        {"$set": {"message_count": session.get("message_count", 0) + 1, "updated_at": now}},
+        {
+            "$set": {
+                "message_count": session.get("message_count", 0) + 1,
+                "updated_at": now,
+            }
+        },
     )
     return {"status": "created", "message": msg}
 
@@ -784,7 +932,8 @@ async def add_session_message(
 # ===========================================================================
 
 PROFANITY_WORDS = {
-    "badword1", "badword2",  # placeholder; extend with real list in production
+    "badword1",
+    "badword2",  # placeholder; extend with real list in production
 }
 
 CLAIM_TYPES = {"approved", "blocked"}
@@ -828,7 +977,9 @@ async def get_safety_policies(user: dict = Depends(_resolve_current_user)):
 
 
 @safety_router.put("/safety/policies")
-async def update_safety_policies(body: SafetyPoliciesUpdate, user: dict = Depends(_resolve_current_user)):
+async def update_safety_policies(
+    body: SafetyPoliciesUpdate, user: dict = Depends(_resolve_current_user)
+):
     """Update safety policies for the current user."""
     db = _db()
     if db is None:
@@ -861,7 +1012,11 @@ async def list_claims(user: dict = Depends(_resolve_current_user)):
     db = _db()
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready")
-    claims = await db.claims_ledger.find({"user_id": user["id"]}).sort("created_at", -1).to_list(500)
+    claims = (
+        await db.claims_ledger.find({"user_id": user["id"]})
+        .sort("created_at", -1)
+        .to_list(500)
+    )
     return {"claims": claims, "count": len(claims)}
 
 
@@ -872,7 +1027,10 @@ async def add_claim(body: ClaimCreate, user: dict = Depends(_resolve_current_use
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready")
     if body.type not in CLAIM_TYPES:
-        raise HTTPException(status_code=400, detail=f"Invalid claim type. Must be one of: {', '.join(CLAIM_TYPES)}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid claim type. Must be one of: {', '.join(CLAIM_TYPES)}",
+        )
     now = datetime.now(timezone.utc).isoformat()
     doc = {
         "id": str(uuid.uuid4()),
@@ -900,7 +1058,9 @@ async def delete_claim(claim_id: str, user: dict = Depends(_resolve_current_user
 
 
 @safety_router.post("/safety/moderate")
-async def moderate_text(body: ModerateText, user: dict = Depends(_resolve_current_user)):
+async def moderate_text(
+    body: ModerateText, user: dict = Depends(_resolve_current_user)
+):
     """Check text against the user's safety policies. Returns {safe, flags, score}."""
     db = _db()
     if db is None:
@@ -918,7 +1078,7 @@ async def moderate_text(body: ModerateText, user: dict = Depends(_resolve_curren
     score = 0.0
     # Profanity check
     if block_profanity:
-        words = set(re.findall(r'\b\w+\b', text_lower))
+        words = set(re.findall(r"\b\w+\b", text_lower))
         hit_words = words & PROFANITY_WORDS
         if hit_words:
             flags.append({"type": "profanity", "matches": list(hit_words)})
@@ -934,7 +1094,9 @@ async def moderate_text(body: ModerateText, user: dict = Depends(_resolve_curren
             flags.append({"type": "blocked_claim", "claim": claim})
             score += 0.4
     # Allowed topics override
-    allowed_hit = any(t in text_lower for t in allowed_topics) if allowed_topics else False
+    allowed_hit = (
+        any(t in text_lower for t in allowed_topics) if allowed_topics else False
+    )
     safe = len(flags) == 0 or allowed_hit
     score = min(round(score, 2), 1.0)
     # Log to audit
@@ -963,8 +1125,12 @@ async def get_safety_audit(
     db = _db()
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready")
-    all_entries = await db.safety_audit_log.find({"user_id": user["id"]}).sort("created_at", -1).to_list(5000)
-    paged = all_entries[offset: offset + limit]
+    all_entries = (
+        await db.safety_audit_log.find({"user_id": user["id"]})
+        .sort("created_at", -1)
+        .to_list(5000)
+    )
+    paged = all_entries[offset : offset + limit]
     return {"audit": paged, "total": len(all_entries), "limit": limit, "offset": offset}
 
 
@@ -1006,7 +1172,9 @@ async def get_workspace(user: dict = Depends(_resolve_current_user)):
 
 
 @workspace_router.post("/workspace", status_code=201)
-async def create_workspace(body: WorkspaceCreate, user: dict = Depends(_resolve_current_user)):
+async def create_workspace(
+    body: WorkspaceCreate, user: dict = Depends(_resolve_current_user)
+):
     """Create a new workspace for the current user."""
     db = _db()
     if db is None:
@@ -1044,23 +1212,32 @@ async def list_workspace_members(user: dict = Depends(_resolve_current_user)):
     member_self = await db.tenant_members.find_one({"user_id": user["id"]})
     if not member_self:
         raise HTTPException(status_code=404, detail="Workspace not found")
-    members = await db.tenant_members.find({"tenant_id": member_self["tenant_id"]}).to_list(200)
+    members = await db.tenant_members.find(
+        {"tenant_id": member_self["tenant_id"]}
+    ).to_list(200)
     return {"members": members, "count": len(members)}
 
 
 @workspace_router.post("/workspace/members/invite", status_code=201)
-async def invite_member(body: InviteMember, user: dict = Depends(_resolve_current_user)):
+async def invite_member(
+    body: InviteMember, user: dict = Depends(_resolve_current_user)
+):
     """Invite a member to the workspace by email."""
     db = _db()
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready")
     if body.role not in VALID_ROLES:
-        raise HTTPException(status_code=400, detail=f"Invalid role. Must be one of: {', '.join(VALID_ROLES)}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid role. Must be one of: {', '.join(VALID_ROLES)}",
+        )
     member_self = await db.tenant_members.find_one({"user_id": user["id"]})
     if not member_self:
         raise HTTPException(status_code=404, detail="Workspace not found")
     if member_self.get("role") not in ("owner", "admin"):
-        raise HTTPException(status_code=403, detail="Only owners and admins can invite members")
+        raise HTTPException(
+            status_code=403, detail="Only owners and admins can invite members"
+        )
     tenant_id = member_self["tenant_id"]
     now = datetime.now(timezone.utc).isoformat()
     token = secrets.token_urlsafe(32)
@@ -1085,7 +1262,9 @@ async def invite_member(body: InviteMember, user: dict = Depends(_resolve_curren
 
 
 @workspace_router.delete("/workspace/members/{target_user_id}")
-async def remove_member(target_user_id: str, user: dict = Depends(_resolve_current_user)):
+async def remove_member(
+    target_user_id: str, user: dict = Depends(_resolve_current_user)
+):
     """Remove a member from the workspace."""
     db = _db()
     if db is None:
@@ -1094,30 +1273,49 @@ async def remove_member(target_user_id: str, user: dict = Depends(_resolve_curre
     if not member_self:
         raise HTTPException(status_code=404, detail="Workspace not found")
     if member_self.get("role") not in ("owner", "admin"):
-        raise HTTPException(status_code=403, detail="Only owners and admins can remove members")
+        raise HTTPException(
+            status_code=403, detail="Only owners and admins can remove members"
+        )
     if target_user_id == user["id"]:
-        raise HTTPException(status_code=400, detail="Cannot remove yourself from the workspace")
-    target = await db.tenant_members.find_one({"user_id": target_user_id, "tenant_id": member_self["tenant_id"]})
+        raise HTTPException(
+            status_code=400, detail="Cannot remove yourself from the workspace"
+        )
+    target = await db.tenant_members.find_one(
+        {"user_id": target_user_id, "tenant_id": member_self["tenant_id"]}
+    )
     if not target:
         raise HTTPException(status_code=404, detail="Member not found in workspace")
-    await db.tenant_members.delete_one({"user_id": target_user_id, "tenant_id": member_self["tenant_id"]})
+    await db.tenant_members.delete_one(
+        {"user_id": target_user_id, "tenant_id": member_self["tenant_id"]}
+    )
     return {"status": "removed", "user_id": target_user_id}
 
 
 @workspace_router.patch("/workspace/members/{target_user_id}")
-async def update_member_role(target_user_id: str, body: UpdateMemberRole, user: dict = Depends(_resolve_current_user)):
+async def update_member_role(
+    target_user_id: str,
+    body: UpdateMemberRole,
+    user: dict = Depends(_resolve_current_user),
+):
     """Update a member's role."""
     db = _db()
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready")
     if body.role not in VALID_ROLES:
-        raise HTTPException(status_code=400, detail=f"Invalid role. Must be one of: {', '.join(VALID_ROLES)}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid role. Must be one of: {', '.join(VALID_ROLES)}",
+        )
     member_self = await db.tenant_members.find_one({"user_id": user["id"]})
     if not member_self:
         raise HTTPException(status_code=404, detail="Workspace not found")
     if member_self.get("role") not in ("owner", "admin"):
-        raise HTTPException(status_code=403, detail="Only owners and admins can change roles")
-    target = await db.tenant_members.find_one({"user_id": target_user_id, "tenant_id": member_self["tenant_id"]})
+        raise HTTPException(
+            status_code=403, detail="Only owners and admins can change roles"
+        )
+    target = await db.tenant_members.find_one(
+        {"user_id": target_user_id, "tenant_id": member_self["tenant_id"]}
+    )
     if not target:
         raise HTTPException(status_code=404, detail="Member not found in workspace")
     now = datetime.now(timezone.utc).isoformat()
@@ -1125,7 +1323,9 @@ async def update_member_role(target_user_id: str, body: UpdateMemberRole, user: 
         {"user_id": target_user_id, "tenant_id": member_self["tenant_id"]},
         {"$set": {"role": body.role, "updated_at": now}},
     )
-    updated = await db.tenant_members.find_one({"user_id": target_user_id, "tenant_id": member_self["tenant_id"]})
+    updated = await db.tenant_members.find_one(
+        {"user_id": target_user_id, "tenant_id": member_self["tenant_id"]}
+    )
     return {"status": "updated", "member": updated}
 
 
@@ -1138,9 +1338,13 @@ async def list_invitations(user: dict = Depends(_resolve_current_user)):
     member_self = await db.tenant_members.find_one({"user_id": user["id"]})
     if not member_self:
         raise HTTPException(status_code=404, detail="Workspace not found")
-    invites = await db.workspace_invitations.find(
-        {"tenant_id": member_self["tenant_id"], "status": "pending"}
-    ).sort("created_at", -1).to_list(200)
+    invites = (
+        await db.workspace_invitations.find(
+            {"tenant_id": member_self["tenant_id"], "status": "pending"}
+        )
+        .sort("created_at", -1)
+        .to_list(200)
+    )
     return {"invitations": invites, "count": len(invites)}
 
 
@@ -1150,9 +1354,13 @@ async def accept_invitation(token: str, user: dict = Depends(_resolve_current_us
     db = _db()
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready")
-    invite = await db.workspace_invitations.find_one({"token": token, "status": "pending"})
+    invite = await db.workspace_invitations.find_one(
+        {"token": token, "status": "pending"}
+    )
     if not invite:
-        raise HTTPException(status_code=404, detail="Invitation not found or already used")
+        raise HTTPException(
+            status_code=404, detail="Invitation not found or already used"
+        )
     # Check not expired
     now = datetime.now(timezone.utc)
     expires_at_str = invite.get("expires_at", "")
@@ -1164,9 +1372,13 @@ async def accept_invitation(token: str, user: dict = Depends(_resolve_current_us
         pass
     now_iso = now.isoformat()
     # Add user as member
-    existing_member = await db.tenant_members.find_one({"user_id": user["id"], "tenant_id": invite["tenant_id"]})
+    existing_member = await db.tenant_members.find_one(
+        {"user_id": user["id"], "tenant_id": invite["tenant_id"]}
+    )
     if existing_member:
-        raise HTTPException(status_code=400, detail="You are already a member of this workspace")
+        raise HTTPException(
+            status_code=400, detail="You are already a member of this workspace"
+        )
     member = {
         "id": str(uuid.uuid4()),
         "tenant_id": invite["tenant_id"],
@@ -1178,7 +1390,14 @@ async def accept_invitation(token: str, user: dict = Depends(_resolve_current_us
     await db.tenant_members.insert_one(member)
     # Mark invite as accepted
     await db.workspace_invitations.update_one(
-        {"token": token}, {"$set": {"status": "accepted", "accepted_at": now_iso, "accepted_by": user["id"]}}
+        {"token": token},
+        {
+            "$set": {
+                "status": "accepted",
+                "accepted_at": now_iso,
+                "accepted_by": user["id"],
+            }
+        },
     )
     tenant = await db.tenants.find_one({"id": invite["tenant_id"]})
     return {"status": "accepted", "workspace": tenant, "role": invite["role"]}
@@ -1187,6 +1406,7 @@ async def accept_invitation(token: str, user: dict = Depends(_resolve_current_us
 # ===========================================================================
 # 7. ANALYTICS EVENTS
 # ===========================================================================
+
 
 class AnalyticsEvent(BaseModel):
     event_type: str = Field(..., min_length=1, max_length=100)
@@ -1235,10 +1455,12 @@ async def get_analytics_summary(
         cutoff = (now - timedelta(days=30)).isoformat()
     else:
         cutoff = None
+
     def apply_cutoff(items):
         if cutoff:
             return [i for i in items if (i.get("created_at") or "") >= cutoff]
         return items
+
     all_tasks = await db.tasks.find({"user_id": user["id"]}).to_list(10000)
     all_sessions = await db.app_sessions.find({"user_id": user["id"]}).to_list(10000)
     all_events = await db.analytics_events.find({"user_id": user["id"]}).to_list(10000)
@@ -1286,7 +1508,9 @@ async def get_build_analytics(
     return {
         "period": period,
         "total_builds": total,
-        "builds_per_day": [{"date": d, "count": c} for d, c in sorted(builds_per_day.items())],
+        "builds_per_day": [
+            {"date": d, "count": c} for d, c in sorted(builds_per_day.items())
+        ],
         "build_kinds": [{"kind": k, "count": c} for k, c in kind_counts.items()],
         "success_rate": success_rate,
     }
@@ -1325,9 +1549,13 @@ async def get_session_analytics(
     return {
         "period": period,
         "total_sessions": len(sessions),
-        "sessions_per_day": [{"date": d, "count": c} for d, c in sorted(sessions_per_day.items())],
+        "sessions_per_day": [
+            {"date": d, "count": c} for d, c in sorted(sessions_per_day.items())
+        ],
         "avg_duration_seconds": avg_duration,
-        "channels_breakdown": [{"channel_id": k, "count": v} for k, v in channel_counts.items()],
+        "channels_breakdown": [
+            {"channel_id": k, "count": v} for k, v in channel_counts.items()
+        ],
     }
 
 
@@ -1391,21 +1619,33 @@ async def list_products(user: dict = Depends(_resolve_current_user)):
     db = _db()
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready")
-    products = await db.products.find({"user_id": user["id"]}).sort("created_at", -1).to_list(200)
+    products = (
+        await db.products.find({"user_id": user["id"]})
+        .sort("created_at", -1)
+        .to_list(200)
+    )
     return {"products": products, "count": len(products)}
 
 
 @commerce_router.post("/commerce/products", status_code=201)
-async def create_product(body: ProductCreate, user: dict = Depends(_resolve_current_user)):
+async def create_product(
+    body: ProductCreate, user: dict = Depends(_resolve_current_user)
+):
     """Create a new product."""
     db = _db()
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready")
     if body.type not in VALID_PRODUCT_TYPES:
-        raise HTTPException(status_code=400, detail=f"Invalid product type. Must be one of: {', '.join(VALID_PRODUCT_TYPES)}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid product type. Must be one of: {', '.join(VALID_PRODUCT_TYPES)}",
+        )
     currency = body.currency.lower()
     if currency not in VALID_CURRENCIES:
-        raise HTTPException(status_code=400, detail=f"Invalid currency. Supported: {', '.join(VALID_CURRENCIES)}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid currency. Supported: {', '.join(VALID_CURRENCIES)}",
+        )
     now = datetime.now(timezone.utc).isoformat()
     doc = {
         "id": str(uuid.uuid4()),
@@ -1427,7 +1667,9 @@ async def create_product(body: ProductCreate, user: dict = Depends(_resolve_curr
 
 
 @commerce_router.put("/commerce/products/{product_id}")
-async def update_product(product_id: str, body: ProductUpdate, user: dict = Depends(_resolve_current_user)):
+async def update_product(
+    product_id: str, body: ProductUpdate, user: dict = Depends(_resolve_current_user)
+):
     """Update a product."""
     db = _db()
     if db is None:
@@ -1439,7 +1681,9 @@ async def update_product(product_id: str, body: ProductUpdate, user: dict = Depe
     if "currency" in updates:
         updates["currency"] = updates["currency"].lower()
     updates["updated_at"] = datetime.now(timezone.utc).isoformat()
-    await db.products.update_one({"id": product_id, "user_id": user["id"]}, {"$set": updates})
+    await db.products.update_one(
+        {"id": product_id, "user_id": user["id"]}, {"$set": updates}
+    )
     updated = await db.products.find_one({"id": product_id, "user_id": user["id"]})
     return {"status": "updated", "product": updated}
 
@@ -1467,8 +1711,12 @@ async def list_orders(
     db = _db()
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready")
-    all_orders = await db.orders.find({"user_id": user["id"]}).sort("created_at", -1).to_list(10000)
-    paged = all_orders[offset: offset + limit]
+    all_orders = (
+        await db.orders.find({"user_id": user["id"]})
+        .sort("created_at", -1)
+        .to_list(10000)
+    )
+    paged = all_orders[offset : offset + limit]
     return {"orders": paged, "total": len(all_orders), "limit": limit, "offset": offset}
 
 
@@ -1485,7 +1733,9 @@ async def get_order(order_id: str, user: dict = Depends(_resolve_current_user)):
 
 
 @commerce_router.post("/commerce/checkout")
-async def create_checkout(body: CheckoutCreate, request: Request, user: dict = Depends(_resolve_current_user)):
+async def create_checkout(
+    body: CheckoutCreate, request: Request, user: dict = Depends(_resolve_current_user)
+):
     """Create a Stripe checkout session for a product."""
     db = _db()
     if db is None:
@@ -1500,9 +1750,13 @@ async def create_checkout(body: CheckoutCreate, request: Request, user: dict = D
         raise HTTPException(status_code=503, detail="Stripe is not configured")
     try:
         import stripe
+
         stripe.api_key = stripe_secret
         frontend_url = os.environ.get("FRONTEND_URL", str(request.base_url)).rstrip("/")
-        success_url = body.success_url or f"{frontend_url}/commerce/success?session_id={{CHECKOUT_SESSION_ID}}"
+        success_url = (
+            body.success_url
+            or f"{frontend_url}/commerce/success?session_id={{CHECKOUT_SESSION_ID}}"
+        )
         cancel_url = body.cancel_url or f"{frontend_url}/commerce/cancel"
         # Create or reuse Stripe price
         stripe_price_id = product.get("stripe_price_id")
@@ -1525,7 +1779,13 @@ async def create_checkout(body: CheckoutCreate, request: Request, user: dict = D
             now = datetime.now(timezone.utc).isoformat()
             await db.products.update_one(
                 {"id": product["id"]},
-                {"$set": {"stripe_product_id": sp["id"], "stripe_price_id": stripe_price_id, "updated_at": now}},
+                {
+                    "$set": {
+                        "stripe_product_id": sp["id"],
+                        "stripe_price_id": stripe_price_id,
+                        "updated_at": now,
+                    }
+                },
             )
         mode = "subscription" if product.get("type") == "subscription" else "payment"
         checkout_session = stripe.checkout.Session.create(
@@ -1568,17 +1828,22 @@ async def get_commerce_stats(user: dict = Depends(_resolve_current_user)):
     db = _db()
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready")
-    orders = await db.orders.find({"user_id": user["id"], "status": "paid"}).to_list(10000)
+    orders = await db.orders.find({"user_id": user["id"], "status": "paid"}).to_list(
+        10000
+    )
     total_revenue = sum(o.get("amount", 0) for o in orders)
     total_orders = len(orders)
     # MRR: subscription orders in last 30 days
     cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
-    products = await db.products.find({"user_id": user["id"], "type": "subscription"}).to_list(200)
+    products = await db.products.find(
+        {"user_id": user["id"], "type": "subscription"}
+    ).to_list(200)
     sub_product_ids = {p["id"] for p in products}
     mrr = sum(
         o.get("amount", 0)
         for o in orders
-        if o.get("product_id") in sub_product_ids and (o.get("created_at") or "") >= cutoff
+        if o.get("product_id") in sub_product_ids
+        and (o.get("created_at") or "") >= cutoff
     )
     return {
         "total_revenue": round(total_revenue, 2),
@@ -1590,6 +1855,7 @@ async def get_commerce_stats(user: dict = Depends(_resolve_current_user)):
 # ===========================================================================
 # 9. AUTO-DB SCHEMA GENERATION
 # ===========================================================================
+
 
 class AppDBProvision(BaseModel):
     project_id: Optional[str] = None
@@ -1605,30 +1871,139 @@ class AppDBRegenerate(BaseModel):
     features: Optional[List[str]] = None
 
 
-def _generate_schema_heuristic(description: str, project_name: str, features: List[str]) -> Dict[str, Any]:
+def _generate_schema_heuristic(
+    description: str, project_name: str, features: List[str]
+) -> Dict[str, Any]:
     """
     Generate a complete PostgreSQL schema + Supabase-compatible setup from a
     project description using keyword heuristics. Used as fallback when LLM
     is unavailable or returns invalid JSON.
     """
-    name_slug = re.sub(r'[^a-z0-9_]', '_', (project_name or "app").lower())[:30]
+    name_slug = re.sub(r"[^a-z0-9_]", "_", (project_name or "app").lower())[:30]
     desc_lower = description.lower()
     feature_set = set(f.lower() for f in (features or []))
 
     # Heuristic feature detection
     has_users = True  # always
     has_auth = True
-    has_teams = any(w in desc_lower for w in ("team", "organization", "org", "workspace", "tenant", "company", "member", "multi-tenant"))
+    has_teams = any(
+        w in desc_lower
+        for w in (
+            "team",
+            "organization",
+            "org",
+            "workspace",
+            "tenant",
+            "company",
+            "member",
+            "multi-tenant",
+        )
+    )
     # Posts / knowledge base / articles / FAQ
-    has_posts = any(w in desc_lower for w in ("post", "article", "blog", "content", "publish", "knowledge", "faq", "document", "wiki", "guide", "help"))
-    has_products = any(w in desc_lower for w in ("product", "item", "listing", "sku", "store", "shop", "e-commerce", "ecommerce", "catalog", "inventory"))
-    has_orders = any(w in desc_lower for w in ("order", "purchase", "checkout", "buy", "payment", "invoice", "cart"))
+    has_posts = any(
+        w in desc_lower
+        for w in (
+            "post",
+            "article",
+            "blog",
+            "content",
+            "publish",
+            "knowledge",
+            "faq",
+            "document",
+            "wiki",
+            "guide",
+            "help",
+        )
+    )
+    has_products = any(
+        w in desc_lower
+        for w in (
+            "product",
+            "item",
+            "listing",
+            "sku",
+            "store",
+            "shop",
+            "e-commerce",
+            "ecommerce",
+            "catalog",
+            "inventory",
+        )
+    )
+    has_orders = any(
+        w in desc_lower
+        for w in ("order", "purchase", "checkout", "buy", "payment", "invoice", "cart")
+    )
     # Messages / chat / sessions — covers live chat + sessions
-    has_messages = any(w in desc_lower for w in ("message", "chat", "inbox", "conversation", "dm", "session", "transcript", "live chat", "support chat", "agent", "escalat"))
-    has_tasks = any(w in desc_lower for w in ("task", "todo", "issue", "ticket", "kanban", "sprint", "project management"))
-    has_files = any(w in desc_lower for w in ("file", "upload", "attachment", "media", "image", "video", "csv", "pdf", "storage"))
-    has_analytics = any(w in desc_lower for w in ("analytic", "metric", "dashboard", "report", "stat", "event tracking", "funnel", "insight"))
-    has_subscriptions = any(w in desc_lower for w in ("subscription", "plan", "billing", "stripe", "saas", "pricing", "tier", "upgrade"))
+    has_messages = any(
+        w in desc_lower
+        for w in (
+            "message",
+            "chat",
+            "inbox",
+            "conversation",
+            "dm",
+            "session",
+            "transcript",
+            "live chat",
+            "support chat",
+            "agent",
+            "escalat",
+        )
+    )
+    has_tasks = any(
+        w in desc_lower
+        for w in (
+            "task",
+            "todo",
+            "issue",
+            "ticket",
+            "kanban",
+            "sprint",
+            "project management",
+        )
+    )
+    has_files = any(
+        w in desc_lower
+        for w in (
+            "file",
+            "upload",
+            "attachment",
+            "media",
+            "image",
+            "video",
+            "csv",
+            "pdf",
+            "storage",
+        )
+    )
+    has_analytics = any(
+        w in desc_lower
+        for w in (
+            "analytic",
+            "metric",
+            "dashboard",
+            "report",
+            "stat",
+            "event tracking",
+            "funnel",
+            "insight",
+        )
+    )
+    has_subscriptions = any(
+        w in desc_lower
+        for w in (
+            "subscription",
+            "plan",
+            "billing",
+            "stripe",
+            "saas",
+            "pricing",
+            "tier",
+            "upgrade",
+        )
+    )
 
     # Feature flag overrides
     if "teams" in feature_set or "organizations" in feature_set:
@@ -1689,10 +2064,26 @@ def _generate_schema_heuristic(description: str, project_name: str, features: Li
     ]
 
     api_routes: List[Dict[str, str]] = [
-        {"method": "POST", "path": "/auth/register", "description": "Register a new user"},
-        {"method": "POST", "path": "/auth/login", "description": "Login and receive JWT"},
-        {"method": "GET", "path": "/users/me", "description": "Get current user profile"},
-        {"method": "PATCH", "path": "/users/me", "description": "Update current user profile"},
+        {
+            "method": "POST",
+            "path": "/auth/register",
+            "description": "Register a new user",
+        },
+        {
+            "method": "POST",
+            "path": "/auth/login",
+            "description": "Login and receive JWT",
+        },
+        {
+            "method": "GET",
+            "path": "/users/me",
+            "description": "Get current user profile",
+        },
+        {
+            "method": "PATCH",
+            "path": "/users/me",
+            "description": "Update current user profile",
+        },
     ]
 
     env_vars: List[str] = [
@@ -1744,7 +2135,11 @@ def _generate_schema_heuristic(description: str, project_name: str, features: Li
             {"method": "GET", "path": "/teams", "description": "List user's teams"},
             {"method": "POST", "path": "/teams", "description": "Create a team"},
             {"method": "GET", "path": "/teams/{id}", "description": "Get team details"},
-            {"method": "POST", "path": "/teams/{id}/invite", "description": "Invite a member"},
+            {
+                "method": "POST",
+                "path": "/teams/{id}/invite",
+                "description": "Invite a member",
+            },
         ]
 
     if has_posts:
@@ -1776,7 +2171,11 @@ def _generate_schema_heuristic(description: str, project_name: str, features: Li
         api_routes += [
             {"method": "GET", "path": "/posts", "description": "List published posts"},
             {"method": "POST", "path": "/posts", "description": "Create a post"},
-            {"method": "GET", "path": "/posts/{id}", "description": "Get post by id or slug"},
+            {
+                "method": "GET",
+                "path": "/posts/{id}",
+                "description": "Get post by id or slug",
+            },
             {"method": "PUT", "path": "/posts/{id}", "description": "Update a post"},
             {"method": "DELETE", "path": "/posts/{id}", "description": "Delete a post"},
         ]
@@ -1810,10 +2209,26 @@ def _generate_schema_heuristic(description: str, project_name: str, features: Li
             "",
         ]
         api_routes += [
-            {"method": "GET", "path": "/products", "description": "List active products"},
-            {"method": "POST", "path": "/products", "description": "Create a product (admin)"},
-            {"method": "GET", "path": "/products/{id}", "description": "Get product detail"},
-            {"method": "PUT", "path": "/products/{id}", "description": "Update product (admin)"},
+            {
+                "method": "GET",
+                "path": "/products",
+                "description": "List active products",
+            },
+            {
+                "method": "POST",
+                "path": "/products",
+                "description": "Create a product (admin)",
+            },
+            {
+                "method": "GET",
+                "path": "/products/{id}",
+                "description": "Get product detail",
+            },
+            {
+                "method": "PUT",
+                "path": "/products/{id}",
+                "description": "Update product (admin)",
+            },
         ]
 
     if has_orders:
@@ -1843,9 +2258,17 @@ def _generate_schema_heuristic(description: str, project_name: str, features: Li
             "",
         ]
         api_routes += [
-            {"method": "POST", "path": "/checkout", "description": "Create Stripe checkout session"},
+            {
+                "method": "POST",
+                "path": "/checkout",
+                "description": "Create Stripe checkout session",
+            },
             {"method": "GET", "path": "/orders", "description": "List user's orders"},
-            {"method": "GET", "path": "/orders/{id}", "description": "Get order detail"},
+            {
+                "method": "GET",
+                "path": "/orders/{id}",
+                "description": "Get order detail",
+            },
         ]
         env_vars.append("STRIPE_SECRET_KEY=<your-stripe-secret-key>")
         env_vars.append("STRIPE_WEBHOOK_SECRET=<your-stripe-webhook-secret>")
@@ -1883,10 +2306,26 @@ def _generate_schema_heuristic(description: str, project_name: str, features: Li
             "",
         ]
         api_routes += [
-            {"method": "GET", "path": "/conversations", "description": "List user's conversations"},
-            {"method": "POST", "path": "/conversations", "description": "Start a conversation"},
-            {"method": "GET", "path": "/conversations/{id}/messages", "description": "Get messages"},
-            {"method": "POST", "path": "/conversations/{id}/messages", "description": "Send a message"},
+            {
+                "method": "GET",
+                "path": "/conversations",
+                "description": "List user's conversations",
+            },
+            {
+                "method": "POST",
+                "path": "/conversations",
+                "description": "Start a conversation",
+            },
+            {
+                "method": "GET",
+                "path": "/conversations/{id}/messages",
+                "description": "Get messages",
+            },
+            {
+                "method": "POST",
+                "path": "/conversations/{id}/messages",
+                "description": "Send a message",
+            },
         ]
 
     if has_tasks:
@@ -1931,7 +2370,11 @@ def _generate_schema_heuristic(description: str, project_name: str, features: Li
         api_routes += [
             {"method": "GET", "path": "/tasks", "description": "List tasks"},
             {"method": "POST", "path": "/tasks", "description": "Create a task"},
-            {"method": "PATCH", "path": "/tasks/{id}", "description": "Update task status/fields"},
+            {
+                "method": "PATCH",
+                "path": "/tasks/{id}",
+                "description": "Update task status/fields",
+            },
             {"method": "DELETE", "path": "/tasks/{id}", "description": "Delete a task"},
         ]
 
@@ -1962,8 +2405,16 @@ def _generate_schema_heuristic(description: str, project_name: str, features: Li
             "",
         ]
         api_routes += [
-            {"method": "POST", "path": "/files/upload", "description": "Upload a file (multipart)"},
-            {"method": "GET", "path": "/files/{id}", "description": "Get file metadata"},
+            {
+                "method": "POST",
+                "path": "/files/upload",
+                "description": "Upload a file (multipart)",
+            },
+            {
+                "method": "GET",
+                "path": "/files/{id}",
+                "description": "Get file metadata",
+            },
             {"method": "DELETE", "path": "/files/{id}", "description": "Delete a file"},
         ]
         env_vars.append("SUPABASE_STORAGE_BUCKET=<your-storage-bucket>")
@@ -1986,8 +2437,16 @@ def _generate_schema_heuristic(description: str, project_name: str, features: Li
             "",
         ]
         api_routes += [
-            {"method": "POST", "path": "/analytics/event", "description": "Track an event"},
-            {"method": "GET", "path": "/analytics/summary", "description": "Get analytics summary"},
+            {
+                "method": "POST",
+                "path": "/analytics/event",
+                "description": "Track an event",
+            },
+            {
+                "method": "GET",
+                "path": "/analytics/summary",
+                "description": "Get analytics summary",
+            },
         ]
 
     if has_subscriptions:
@@ -2018,9 +2477,21 @@ def _generate_schema_heuristic(description: str, project_name: str, features: Li
             "",
         ]
         api_routes += [
-            {"method": "GET", "path": "/subscriptions/me", "description": "Get current subscription"},
-            {"method": "POST", "path": "/subscriptions/upgrade", "description": "Upgrade plan"},
-            {"method": "POST", "path": "/subscriptions/cancel", "description": "Cancel subscription"},
+            {
+                "method": "GET",
+                "path": "/subscriptions/me",
+                "description": "Get current subscription",
+            },
+            {
+                "method": "POST",
+                "path": "/subscriptions/upgrade",
+                "description": "Upgrade plan",
+            },
+            {
+                "method": "POST",
+                "path": "/subscriptions/cancel",
+                "description": "Cancel subscription",
+            },
         ]
 
     # Updated_at trigger (generic)
@@ -2037,7 +2508,12 @@ def _generate_schema_heuristic(description: str, project_name: str, features: Li
         "-- Apply to tables with updated_at",
         "DO $$ DECLARE t TEXT;",
         "BEGIN",
-        "  FOREACH t IN ARRAY ARRAY['users'" + (", 'teams'" if has_teams else "") + (", 'posts'" if has_posts else "") + (", 'products'" if has_products else "") + (", 'orders'" if has_orders else "") + "]",
+        "  FOREACH t IN ARRAY ARRAY['users'"
+        + (", 'teams'" if has_teams else "")
+        + (", 'posts'" if has_posts else "")
+        + (", 'products'" if has_products else "")
+        + (", 'orders'" if has_orders else "")
+        + "]",
         "  LOOP",
         "    EXECUTE format(",
         "      'CREATE TRIGGER set_updated_at BEFORE UPDATE ON %I FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()',",
@@ -2072,10 +2548,12 @@ def _generate_schema_heuristic(description: str, project_name: str, features: Li
 # LLM-powered schema generation (Tier 1)
 # ---------------------------------------------------------------------------
 
+
 async def _call_llm_for_schema(prompt: str, system: str) -> str:
     """Minimal LLM caller for schema generation. Tries Anthropic then Cerebras."""
-    import httpx
     import os
+
+    import httpx
     from anthropic_models import ANTHROPIC_HAIKU_MODEL
 
     # Try Anthropic first
@@ -2103,7 +2581,7 @@ async def _call_llm_for_schema(prompt: str, system: str) -> str:
                 "https://api.cerebras.ai/v1/chat/completions",
                 headers={"Authorization": f"Bearer {cerebras_key}"},
                 json={
-                    "model": "llama3.1-8b",
+                    "model": "llama-3.3-70b",
                     "max_tokens": 4096,
                     "temperature": 0.1,
                     "messages": [
@@ -2172,18 +2650,20 @@ def _llm_json_to_sql(schema_json: dict) -> dict:
     fk_map: Dict[str, str] = {}  # "table.col" -> "ref_table(ref_col) ON DELETE ..."
     for rel in relationships:
         frm = rel.get("from", "")  # e.g. "posts.author_id"
-        to = rel.get("to", "")    # e.g. "users.id"
+        to = rel.get("to", "")  # e.g. "users.id"
         on_delete = rel.get("on_delete", "SET NULL").upper()
         if frm and to and "." in frm and "." in to:
             ref_table, ref_col = to.split(".", 1)
-            fk_map[frm.lower()] = f"REFERENCES {ref_table}({ref_col}) ON DELETE {on_delete}"
+            fk_map[frm.lower()] = (
+                f"REFERENCES {ref_table}({ref_col}) ON DELETE {on_delete}"
+            )
 
     tables_sql_parts = [
         "-- ============================================================",
         "-- AUTO-GENERATED SCHEMA (LLM-powered by CrucibAI)",
         "-- ============================================================",
         "",
-        '-- Enable UUID extension',
+        "-- Enable UUID extension",
         'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";',
         "",
     ]
@@ -2281,7 +2761,9 @@ def _llm_json_to_sql(schema_json: dict) -> dict:
 
     # updated_at trigger
     if tables_with_updated_at:
-        arr_literal = "ARRAY[" + ", ".join(f"'{t}'" for t in tables_with_updated_at) + "]"
+        arr_literal = (
+            "ARRAY[" + ", ".join(f"'{t}'" for t in tables_with_updated_at) + "]"
+        )
         tables_sql_parts += [
             "-- =========== UPDATED_AT TRIGGER ===========",
             "CREATE OR REPLACE FUNCTION update_updated_at_column()",
@@ -2312,8 +2794,7 @@ def _llm_json_to_sql(schema_json: dict) -> dict:
         if tbl and vals_dict:
             cols_str = ", ".join(vals_dict.keys())
             vals_str = ", ".join(
-                f"'{v}'" if isinstance(v, str) else str(v)
-                for v in vals_dict.values()
+                f"'{v}'" if isinstance(v, str) else str(v) for v in vals_dict.values()
             )
             seed_parts.append(
                 f"INSERT INTO {tbl} ({cols_str}) VALUES ({vals_str}) ON CONFLICT DO NOTHING;"
@@ -2323,19 +2804,25 @@ def _llm_json_to_sql(schema_json: dict) -> dict:
     # API routes — normalise to {method, path, description}
     api_routes_spec: List[Dict[str, str]] = []
     for route in api_routes_raw:
-        api_routes_spec.append({
-            "method": route.get("method", "GET"),
-            "path": route.get("path", "/"),
-            "description": route.get("description", ""),
-        })
+        api_routes_spec.append(
+            {
+                "method": route.get("method", "GET"),
+                "path": route.get("path", "/"),
+                "description": route.get("description", ""),
+            }
+        )
 
     # Env vars
-    env_vars_needed: List[str] = list(env_vars_raw) if env_vars_raw else [
-        "SUPABASE_URL=https://<project-ref>.supabase.co",
-        "SUPABASE_ANON_KEY=<your-anon-key>",
-        "DATABASE_URL=postgresql://postgres:<password>@db.<project-ref>.supabase.co:5432/postgres",
-        "JWT_SECRET=<your-jwt-secret>",
-    ]
+    env_vars_needed: List[str] = (
+        list(env_vars_raw)
+        if env_vars_raw
+        else [
+            "SUPABASE_URL=https://<project-ref>.supabase.co",
+            "SUPABASE_ANON_KEY=<your-anon-key>",
+            "DATABASE_URL=postgresql://postgres:<password>@db.<project-ref>.supabase.co:5432/postgres",
+            "JWT_SECRET=<your-jwt-secret>",
+        ]
+    )
 
     # Feature flags — infer from table names
     table_names = {t["name"].lower() for t in table_info_list}
@@ -2382,29 +2869,29 @@ async def _generate_schema_llm(
         "You MUST respond with ONLY valid JSON — no markdown, no explanation, no code fences. "
         "The JSON must conform EXACTLY to this structure:\n"
         "{\n"
-        '  \"tables\": [\n'
+        '  "tables": [\n'
         "    {\n"
-        '      \"name\": \"users\",\n'
-        '      \"columns\": [\n'
-        "        {\"name\": \"id\", \"type\": \"UUID\", \"primary\": true, \"default\": \"uuid_generate_v4()\"},\n"
-        "        {\"name\": \"email\", \"type\": \"TEXT\", \"unique\": true, \"nullable\": false},\n"
-        "        {\"name\": \"name\", \"type\": \"TEXT\"},\n"
-        "        {\"name\": \"created_at\", \"type\": \"TIMESTAMPTZ\", \"default\": \"NOW()\"}\n"
+        '      "name": "users",\n'
+        '      "columns": [\n'
+        '        {"name": "id", "type": "UUID", "primary": true, "default": "uuid_generate_v4()"},\n'
+        '        {"name": "email", "type": "TEXT", "unique": true, "nullable": false},\n'
+        '        {"name": "name", "type": "TEXT"},\n'
+        '        {"name": "created_at", "type": "TIMESTAMPTZ", "default": "NOW()"}\n'
         "      ],\n"
-        '      \"indexes\": [\"email\"],\n'
-        '      \"rls\": \"users can only read/write their own row\"\n'
+        '      "indexes": ["email"],\n'
+        '      "rls": "users can only read/write their own row"\n'
         "    }\n"
         "  ],\n"
-        '  \"relationships\": [\n'
-        "    {\"from\": \"posts.author_id\", \"to\": \"users.id\", \"on_delete\": \"CASCADE\"}\n"
+        '  "relationships": [\n'
+        '    {"from": "posts.author_id", "to": "users.id", "on_delete": "CASCADE"}\n'
         "  ],\n"
-        '  \"api_routes\": [\n'
-        "    {\"method\": \"POST\", \"path\": \"/auth/register\", \"description\": \"Register user\", \"auth\": false},\n"
-        "    {\"method\": \"GET\", \"path\": \"/users/me\", \"description\": \"Get profile\", \"auth\": true}\n"
+        '  "api_routes": [\n'
+        '    {"method": "POST", "path": "/auth/register", "description": "Register user", "auth": false},\n'
+        '    {"method": "GET", "path": "/users/me", "description": "Get profile", "auth": true}\n'
         "  ],\n"
-        '  \"env_vars\": [\"SUPABASE_URL\", \"SUPABASE_ANON_KEY\", \"DATABASE_URL\", \"JWT_SECRET\"],\n'
-        '  \"seed_data\": [\n'
-        "    {\"table\": \"users\", \"values\": {\"email\": \"admin@example.com\", \"name\": \"Admin\", \"role\": \"admin\"}}\n"
+        '  "env_vars": ["SUPABASE_URL", "SUPABASE_ANON_KEY", "DATABASE_URL", "JWT_SECRET"],\n'
+        '  "seed_data": [\n'
+        '    {"table": "users", "values": {"email": "admin@example.com", "name": "Admin", "role": "admin"}}\n'
         "  ]\n"
         "}"
     )
@@ -2450,6 +2937,7 @@ async def _generate_schema_llm(
 
     # Fallback to heuristic
     import logging
+
     logging.getLogger(__name__).warning(
         "_generate_schema_llm falling back to heuristic: %s", last_exc
     )
@@ -2459,7 +2947,9 @@ async def _generate_schema_llm(
 
 
 @appdb_router.post("/app-db/provision", status_code=201)
-async def provision_app_db(body: AppDBProvision, user: dict = Depends(_resolve_current_user)):
+async def provision_app_db(
+    body: AppDBProvision, user: dict = Depends(_resolve_current_user)
+):
     """
     Generate a complete PostgreSQL schema + Supabase-compatible setup from a
     project description. CrucibAI's #1 competitive advantage vs Lovable.
@@ -2481,7 +2971,9 @@ async def provision_app_db(body: AppDBProvision, user: dict = Depends(_resolve_c
         raise HTTPException(status_code=400, detail="description or task_id required")
     project_id = body.project_id or str(uuid.uuid4())
     if body.project_id:
-        project = await db.projects.find_one({"id": body.project_id, "user_id": user["id"]}, {"id": 1})
+        project = await db.projects.find_one(
+            {"id": body.project_id, "user_id": user["id"]}, {"id": 1}
+        )
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
     project_name = body.project_name or f"Project {project_id[:8]}"
@@ -2516,15 +3008,19 @@ async def provision_app_db(body: AppDBProvision, user: dict = Depends(_resolve_c
 
 
 @appdb_router.get("/app-db/{project_id}")
-async def get_app_db_schema(project_id: str, user: dict = Depends(_resolve_current_user)):
+async def get_app_db_schema(
+    project_id: str, user: dict = Depends(_resolve_current_user)
+):
     """Get the most recent generated schema for a project."""
     db = _db()
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready")
     # Find latest version for this project
-    schemas = await db.app_db_schemas.find(
-        {"project_id": project_id, "user_id": user["id"]}
-    ).sort("created_at", -1).to_list(10)
+    schemas = (
+        await db.app_db_schemas.find({"project_id": project_id, "user_id": user["id"]})
+        .sort("created_at", -1)
+        .to_list(10)
+    )
     if not schemas:
         raise HTTPException(status_code=404, detail="Schema not found for this project")
     latest = schemas[0]
@@ -2539,9 +3035,11 @@ async def regenerate_app_db_schema(
     db = _db()
     if db is None:
         raise HTTPException(status_code=503, detail="Database not ready")
-    existing_schemas = await db.app_db_schemas.find(
-        {"project_id": project_id, "user_id": user["id"]}
-    ).sort("created_at", -1).to_list(5)
+    existing_schemas = (
+        await db.app_db_schemas.find({"project_id": project_id, "user_id": user["id"]})
+        .sort("created_at", -1)
+        .to_list(5)
+    )
     if not existing_schemas:
         raise HTTPException(status_code=404, detail="Project schema not found")
     latest = existing_schemas[0]
@@ -2582,6 +3080,7 @@ async def regenerate_app_db_schema(
 # ===========================================================================
 # REGISTRATION
 # ===========================================================================
+
 
 def register_blueprint_routes(app: FastAPI) -> None:
     """

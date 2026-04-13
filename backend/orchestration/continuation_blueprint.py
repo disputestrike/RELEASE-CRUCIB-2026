@@ -1,4 +1,5 @@
 """Write proof/CONTINUATION_BLUEPRINT.md when a job cannot complete successfully."""
+
 from __future__ import annotations
 
 import os

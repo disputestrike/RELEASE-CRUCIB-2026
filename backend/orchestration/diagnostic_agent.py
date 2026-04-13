@@ -5,6 +5,7 @@ Reads the actual error output, classifies the root cause with precision,
 and returns a structured repair plan. Used by the fixer before every retry
 so retries are targeted — not blind generic patches.
 """
+
 import logging
 import os
 import re
@@ -156,12 +157,14 @@ def diagnose(
     failure_reason = verification_result.get("failure_reason", "") or ""
 
     # Build a single string from all available error context
-    all_context = " ".join([
-        error_message,
-        failure_reason,
-        error_log or "",
-        " ".join(str(i) for i in issues),
-    ]).lower()
+    all_context = " ".join(
+        [
+            error_message,
+            failure_reason,
+            error_log or "",
+            " ".join(str(i) for i in issues),
+        ]
+    ).lower()
 
     # Run through classifiers in priority order
     failure_class = "unknown"
@@ -188,7 +191,8 @@ def diagnose(
         "failure_class": failure_class,
         "description": class_def["description"],
         "fix_strategy": class_def["fix_strategy"],
-        "target_files": class_def["target_files"] + ([specific_file] if specific_file else []),
+        "target_files": class_def["target_files"]
+        + ([specific_file] if specific_file else []),
         "severity": class_def["severity"],
         "specific_file": specific_file,
         "specific_line": specific_line,
@@ -198,7 +202,9 @@ def diagnose(
         "raw_error_snippet": all_context[:500],
         "issues": issues,
         "step_key": step.get("step_key", "unknown"),
-        "explanation": _build_explanation(failure_class, specific_file, specific_line, issues),
+        "explanation": _build_explanation(
+            failure_class, specific_file, specific_line, issues
+        ),
         "repair_actions": _build_repair_actions(failure_class, specific_file, issues),
     }
 
@@ -308,29 +314,33 @@ def diagnose_from_proof_bundle(proof_bundle: Dict[str, Any]) -> List[Dict[str, A
 
     # Synthesize a fake step from proof bundle data
     if "missing_file_evidence" in blockers:
-        diagnoses.append({
-            "failure_class": "missing_file_evidence",
-            "description": "No file evidence in proof — agents ran but wrote nothing verifiable",
-            "fix_strategy": "fix_output_capture",
-            "repair_actions": [
-                "Ensure agent output is captured in proof bundle",
-                "Check that output_preview is populated from step output not output_ref",
-            ],
-            "severity": "high",
-        })
+        diagnoses.append(
+            {
+                "failure_class": "missing_file_evidence",
+                "description": "No file evidence in proof — agents ran but wrote nothing verifiable",
+                "fix_strategy": "fix_output_capture",
+                "repair_actions": [
+                    "Ensure agent output is captured in proof bundle",
+                    "Check that output_preview is populated from step output not output_ref",
+                ],
+                "severity": "high",
+            }
+        )
 
     trust = proof_bundle.get("trust_score", 0)
     if trust == 0:
-        diagnoses.append({
-            "failure_class": "zero_trust_score",
-            "description": "Trust score is 0 — no runtime or experience verification passed",
-            "fix_strategy": "fix_verification_depth",
-            "repair_actions": [
-                "Ensure at least one runtime check passes (not just presence)",
-                "Wire preview visual evidence",
-                "Fix experience-class verification",
-            ],
-            "severity": "critical",
-        })
+        diagnoses.append(
+            {
+                "failure_class": "zero_trust_score",
+                "description": "Trust score is 0 — no runtime or experience verification passed",
+                "fix_strategy": "fix_verification_depth",
+                "repair_actions": [
+                    "Ensure at least one runtime check passes (not just presence)",
+                    "Wire preview visual evidence",
+                    "Fix experience-class verification",
+                ],
+                "severity": "critical",
+            }
+        )
 
     return diagnoses

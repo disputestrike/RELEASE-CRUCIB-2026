@@ -5,6 +5,7 @@ This is what I do manually: read App.jsx line 1, check package.json,
 scan server.py imports, look at the proof bundle. The brain needs to
 do the same thing before deciding how to fix a failure.
 """
+
 import json
 import logging
 import os
@@ -17,15 +18,46 @@ logger = logging.getLogger(__name__)
 # ── File reading ───────────────────────────────────────────────────────────────
 
 PROSE_PREFIXES = (
-    "i ", "i'", "here ", "here'", "appreciate", "certainly", "sure,",
-    "below", "based on", "as requested", "i have", "i'll", "let me",
-    "of course", "happy to", "glad to", "please find", "the following",
-    "above is", "this is", "note:", "note that", "in this", "we have",
+    "i ",
+    "i'",
+    "here ",
+    "here'",
+    "appreciate",
+    "certainly",
+    "sure,",
+    "below",
+    "based on",
+    "as requested",
+    "i have",
+    "i'll",
+    "let me",
+    "of course",
+    "happy to",
+    "glad to",
+    "please find",
+    "the following",
+    "above is",
+    "this is",
+    "note:",
+    "note that",
+    "in this",
+    "we have",
 )
 
 CODE_EXTENSIONS = {
-    ".jsx", ".tsx", ".js", ".ts", ".py", ".css", ".scss",
-    ".json", ".yaml", ".yml", ".html", ".sh", ".sql",
+    ".jsx",
+    ".tsx",
+    ".js",
+    ".ts",
+    ".py",
+    ".css",
+    ".scss",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".html",
+    ".sh",
+    ".sql",
 }
 
 
@@ -120,37 +152,39 @@ def check_python_syntax(content: str) -> List[str]:
 # Maps failure step → ordered list of (file, check_fn, fix_hint)
 ROOT_CAUSE_GRAPH = {
     "verification.preview": [
-        ("src/App.jsx",      "jsx_syntax",    "regenerate_frontend"),
-        ("src/main.jsx",     "jsx_syntax",    "regenerate_entry_point"),
-        ("package.json",     "json_valid",    "regenerate_package_json"),
-        ("vite.config.js",   "text_exists",   "fix_vite_config"),
-        ("src/App.tsx",      "jsx_syntax",    "regenerate_frontend"),
+        ("src/App.jsx", "jsx_syntax", "regenerate_frontend"),
+        ("src/main.jsx", "jsx_syntax", "regenerate_entry_point"),
+        ("package.json", "json_valid", "regenerate_package_json"),
+        ("vite.config.js", "text_exists", "fix_vite_config"),
+        ("src/App.tsx", "jsx_syntax", "regenerate_frontend"),
     ],
     "verification.compile": [
-        ("src/App.jsx",      "jsx_syntax",    "regenerate_frontend"),
-        ("server.py",        "python_syntax", "regenerate_backend"),
-        ("src/main.jsx",     "jsx_syntax",    "regenerate_entry_point"),
+        ("src/App.jsx", "jsx_syntax", "regenerate_frontend"),
+        ("server.py", "python_syntax", "regenerate_backend"),
+        ("src/main.jsx", "jsx_syntax", "regenerate_entry_point"),
     ],
     "verification.security": [
-        ("server.py",        "python_syntax", "regenerate_backend"),
-        ("server.py",        "hardcoded_secrets", "fix_secrets"),
+        ("server.py", "python_syntax", "regenerate_backend"),
+        ("server.py", "hardcoded_secrets", "fix_secrets"),
     ],
     "agents.database_agent": [
-        ("schema.sql",       "text_exists",   "regenerate_schema"),
-        ("server.py",        "python_syntax", "check_backend"),
+        ("schema.sql", "text_exists", "regenerate_schema"),
+        ("server.py", "python_syntax", "check_backend"),
     ],
     "agents.frontend_generation": [
-        ("src/App.jsx",      "jsx_syntax",    "regenerate_frontend"),
-        ("src/main.jsx",     "text_exists",   "regenerate_entry_point"),
+        ("src/App.jsx", "jsx_syntax", "regenerate_frontend"),
+        ("src/main.jsx", "text_exists", "regenerate_entry_point"),
     ],
     "agents.backend_generation": [
-        ("server.py",        "python_syntax", "regenerate_backend"),
-        ("requirements.txt", "text_exists",   "regenerate_requirements"),
+        ("server.py", "python_syntax", "regenerate_backend"),
+        ("requirements.txt", "text_exists", "regenerate_requirements"),
     ],
 }
 
 
-def _check_file(workspace_path: str, rel_path: str, check_type: str) -> Tuple[bool, List[str]]:
+def _check_file(
+    workspace_path: str, rel_path: str, check_type: str
+) -> Tuple[bool, List[str]]:
     """Run a specific check on a file. Returns (passed, issues)."""
     content = read_workspace_file(workspace_path, rel_path)
 
@@ -183,8 +217,11 @@ def _check_file(workspace_path: str, rel_path: str, check_type: str) -> Tuple[bo
     if check_type == "hardcoded_secrets":
         if not content:
             return True, []
-        patterns = [r'secret\s*=\s*["\'][^"\']{8,}', r'password\s*=\s*["\'][^"\']{8,}',
-                    r'api_key\s*=\s*["\'][^"\']{8,}']
+        patterns = [
+            r'secret\s*=\s*["\'][^"\']{8,}',
+            r'password\s*=\s*["\'][^"\']{8,}',
+            r'api_key\s*=\s*["\'][^"\']{8,}',
+        ]
         for p in patterns:
             if re.search(p, content, re.IGNORECASE):
                 return False, [f"{rel_path} may contain hardcoded secret"]
@@ -194,6 +231,7 @@ def _check_file(workspace_path: str, rel_path: str, check_type: str) -> Tuple[bo
 
 
 # ── Full workspace diagnosis ───────────────────────────────────────────────────
+
 
 def diagnose_workspace(
     workspace_path: str,
@@ -215,7 +253,9 @@ def diagnose_workspace(
     if not workspace_path or not os.path.isdir(workspace_path):
         return {
             "workspace_readable": False,
-            "findings": [{"issue": "Workspace path not accessible", "severity": "critical"}],
+            "findings": [
+                {"issue": "Workspace path not accessible", "severity": "critical"}
+            ],
             "root_cause": "workspace_missing",
             "recommended_fix": "trigger_redeploy",
             "affected_files": [],
@@ -225,7 +265,10 @@ def diagnose_workspace(
     checks = ROOT_CAUSE_GRAPH.get(failed_step_key, [])
     # Also run generic checks if step key has a prefix match
     for key, check_list in ROOT_CAUSE_GRAPH.items():
-        if failed_step_key.startswith(key.split(".")[0] + ".") and key != failed_step_key:
+        if (
+            failed_step_key.startswith(key.split(".")[0] + ".")
+            and key != failed_step_key
+        ):
             checks = checks + check_list
 
     for rel_path, check_type, fix_hint in checks:
@@ -264,14 +307,16 @@ def diagnose_workspace(
             continue
         prose = detect_prose_in_file(content)
         if prose:
-            findings.append({
-                "file": rel,
-                "check": "prose_preamble",
-                "issues": [f"File starts with prose: {prose!r}"],
-                "first_line": prose,
-                "severity": "critical",
-                "fix_hint": "strip_prose_and_regenerate",
-            })
+            findings.append(
+                {
+                    "file": rel,
+                    "check": "prose_preamble",
+                    "issues": [f"File starts with prose: {prose!r}"],
+                    "first_line": prose,
+                    "severity": "critical",
+                    "fix_hint": "strip_prose_and_regenerate",
+                }
+            )
             if rel not in affected_files:
                 affected_files.append(rel)
             prose_found = True
@@ -284,25 +329,32 @@ def diagnose_workspace(
     if proof_bundle:
         trust = proof_bundle.get("trust_score", -1)
         if trust == 0:
-            findings.append({
-                "file": "proof_bundle",
-                "check": "trust_score",
-                "issues": ["Trust score is 0 — no runtime verification passed"],
-                "severity": "high",
-                "fix_hint": "fix_verification_depth",
-            })
+            findings.append(
+                {
+                    "file": "proof_bundle",
+                    "check": "trust_score",
+                    "issues": ["Trust score is 0 — no runtime verification passed"],
+                    "severity": "high",
+                    "fix_hint": "fix_verification_depth",
+                }
+            )
         output_previews = [
-            item for item in (proof_bundle.get("bundle", {}).get("generic") or [])
+            item
+            for item in (proof_bundle.get("bundle", {}).get("generic") or [])
             if (item.get("payload") or {}).get("output_preview") in (None, "None", "")
         ]
         if len(output_previews) > 10:
-            findings.append({
-                "file": "proof_bundle",
-                "check": "output_preview_none",
-                "issues": [f"{len(output_previews)} agents produced no output preview"],
-                "severity": "medium",
-                "fix_hint": "fix_output_capture",
-            })
+            findings.append(
+                {
+                    "file": "proof_bundle",
+                    "check": "output_preview_none",
+                    "issues": [
+                        f"{len(output_previews)} agents produced no output preview"
+                    ],
+                    "severity": "medium",
+                    "fix_hint": "fix_output_capture",
+                }
+            )
 
     # 4. Check package.json for required deps
     pkg_content = read_workspace_file(workspace_path, "package.json")
@@ -313,24 +365,28 @@ def diagnose_workspace(
             required = {"react", "react-dom"}
             missing = required - set(deps.keys())
             if missing:
-                findings.append({
-                    "file": "package.json",
-                    "check": "required_deps",
-                    "issues": [f"Missing required deps: {', '.join(missing)}"],
-                    "severity": "critical",
-                    "fix_hint": "regenerate_package_json",
-                })
+                findings.append(
+                    {
+                        "file": "package.json",
+                        "check": "required_deps",
+                        "issues": [f"Missing required deps: {', '.join(missing)}"],
+                        "severity": "critical",
+                        "fix_hint": "regenerate_package_json",
+                    }
+                )
                 if root_cause is None:
                     root_cause = "missing_dependencies"
                     recommended_fix = "regenerate_package_json"
         except json.JSONDecodeError:
-            findings.append({
-                "file": "package.json",
-                "check": "json_valid",
-                "issues": ["package.json is not valid JSON"],
-                "severity": "critical",
-                "fix_hint": "regenerate_package_json",
-            })
+            findings.append(
+                {
+                    "file": "package.json",
+                    "check": "json_valid",
+                    "issues": ["package.json is not valid JSON"],
+                    "severity": "critical",
+                    "fix_hint": "regenerate_package_json",
+                }
+            )
 
     # 5. Parse error_message for specific file/line info
     file_match = re.search(r"([\w/.-]+\.(jsx?|tsx?|py|sql)):(\d+)", error_message or "")
@@ -342,15 +398,19 @@ def diagnose_workspace(
             lines = content.split("\n")
             if 0 < err_line <= len(lines):
                 err_line_content = lines[err_line - 1]
-                findings.append({
-                    "file": err_file,
-                    "check": "error_location",
-                    "issues": [f"Error at line {err_line}: {err_line_content[:120]}"],
-                    "line": err_line,
-                    "line_content": err_line_content,
-                    "severity": "critical",
-                    "fix_hint": "fix_at_error_location",
-                })
+                findings.append(
+                    {
+                        "file": err_file,
+                        "check": "error_location",
+                        "issues": [
+                            f"Error at line {err_line}: {err_line_content[:120]}"
+                        ],
+                        "line": err_line,
+                        "line_content": err_line_content,
+                        "severity": "critical",
+                        "fix_hint": "fix_at_error_location",
+                    }
+                )
                 if err_file not in affected_files:
                     affected_files.append(err_file)
 
@@ -358,8 +418,12 @@ def diagnose_workspace(
     logger.info(
         "workspace_reader.diagnose: step=%s files=%d findings=%d critical=%d "
         "root_cause=%s fix=%s",
-        failed_step_key, len(all_files), len(findings),
-        len(critical_findings), root_cause, recommended_fix,
+        failed_step_key,
+        len(all_files),
+        len(findings),
+        len(critical_findings),
+        root_cause,
+        recommended_fix,
     )
 
     return {

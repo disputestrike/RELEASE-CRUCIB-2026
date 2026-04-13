@@ -3,6 +3,7 @@ Deploy-time gate: multitenant RLS migrations require backend code to document / 
 
 Sketches must mention set_config (or asyncpg execute) with app.tenant_id so operators wire RLS before querying app_items.
 """
+
 from __future__ import annotations
 
 import os
@@ -23,7 +24,9 @@ def workspace_has_multitenancy_rls_migration(workspace_path: str) -> bool:
         nl = name.lower()
         if nl.endswith(".sql") and ("multitenancy" in nl or "rls" in nl):
             try:
-                with open(os.path.join(mig, name), encoding="utf-8", errors="replace") as fh:
+                with open(
+                    os.path.join(mig, name), encoding="utf-8", errors="replace"
+                ) as fh:
                     body = fh.read().lower()
             except OSError:
                 continue
@@ -55,7 +58,9 @@ def tenant_context_gate_enabled() -> bool:
     return raw not in ("0", "false", "no", "off")
 
 
-def verify_tenant_context_for_deploy(workspace_path: str) -> Tuple[List[str], List[Dict[str, Any]]]:
+def verify_tenant_context_for_deploy(
+    workspace_path: str,
+) -> Tuple[List[str], List[Dict[str, Any]]]:
     """
     Returns (issues, proof_rows) — issues non-empty should fail deploy.build verification.
     """

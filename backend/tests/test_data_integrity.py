@@ -2,7 +2,9 @@
 Layer 3: DATA INTEGRITY TEST
 Concurrent requests, failure recovery, consistent state.
 """
+
 import asyncio
+
 import pytest
 from conftest import register_and_get_headers
 
@@ -10,6 +12,7 @@ from conftest import register_and_get_headers
 @pytest.mark.asyncio
 async def test_concurrent_public_reads(app_client):
     """Multiple concurrent GETs to public endpoints all succeed."""
+
     async def get_health():
         return await app_client.get("/api/health", timeout=5)
 

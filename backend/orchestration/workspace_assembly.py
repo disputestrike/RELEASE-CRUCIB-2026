@@ -11,6 +11,7 @@ Writes under <workspace>/META/:
 Multi-file merge pipeline is default-on (``CRUCIBAI_ASSEMBLY_V2`` opt-out); legacy four-file writer lives in ``real_agent_runner.run_legacy_file_tool_writes``;
 this module is the mandatory evidence + ZIP source-of-truth hook.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -23,7 +24,9 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-SKIP_ZIP_DIRS = frozenset({"node_modules", ".git", "__pycache__", ".pytest_cache", ".venv", "venv"})
+SKIP_ZIP_DIRS = frozenset(
+    {"node_modules", ".git", "__pycache__", ".pytest_cache", ".venv", "venv"}
+)
 
 # profile=handoff: omit per-agent markdown dumps; keep proof/META for transparency (use profile=full for everything).
 HANDOFF_ZIP_EXCLUDED_PREFIXES = ("outputs/",)
@@ -46,11 +49,19 @@ def build_artifact_manifest(
     files: List[Dict[str, Any]] = []
     owners = path_owners or {}
     if not root.is_dir():
-        return {"root": str(root), "generated_at": datetime.now(timezone.utc).isoformat(), "files": []}
+        return {
+            "root": str(root),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "files": [],
+        }
 
     for dirpath, dirnames, filenames in os.walk(root):
         # prune dirs in-place
-        dnames = [d for d in list(dirnames) if d not in SKIP_ZIP_DIRS and not d.startswith(".tmp")]
+        dnames = [
+            d
+            for d in list(dirnames)
+            if d not in SKIP_ZIP_DIRS and not d.startswith(".tmp")
+        ]
         dirnames[:] = dnames
         for fn in filenames:
             if fn.startswith(".") and fn not in (".env.example",):
@@ -92,7 +103,9 @@ def build_artifact_manifest(
 
 def build_run_manifest(job_id: str, steps: List[Dict[str, Any]]) -> Dict[str, Any]:
     rows = []
-    for s in sorted(steps, key=lambda x: (x.get("order_index") or 0, x.get("step_key") or "")):
+    for s in sorted(
+        steps, key=lambda x: (x.get("order_index") or 0, x.get("step_key") or "")
+    ):
         rows.append(
             {
                 "step_id": s.get("id"),
@@ -102,7 +115,11 @@ def build_run_manifest(job_id: str, steps: List[Dict[str, Any]]) -> Dict[str, An
                 "status": s.get("status"),
                 "order_index": s.get("order_index"),
                 "depends_on": s.get("depends_on"),
-                "error_message": (s.get("error_message") or "")[:500] if s.get("error_message") else "",
+                "error_message": (
+                    (s.get("error_message") or "")[:500]
+                    if s.get("error_message")
+                    else ""
+                ),
             }
         )
     return {
@@ -146,7 +163,9 @@ def merge_map_owner_overlay(workspace_root: Path) -> Dict[str, Dict[str, Any]]:
     return owners
 
 
-async def compute_path_last_writers_from_events(job_id: str) -> Dict[str, Dict[str, Any]]:
+async def compute_path_last_writers_from_events(
+    job_id: str,
+) -> Dict[str, Dict[str, Any]]:
     """
     P2 — Last step that reported each path in ``dag_node_completed.output_files`` wins.
     """
@@ -257,7 +276,9 @@ def _zip_path_excluded_for_profile(arc_posix: str, profile: str) -> bool:
     if prof != "handoff":
         return False
     a = arc_posix.replace("\\", "/").lstrip("/")
-    return any(a.startswith(p) or a == p.rstrip("/") for p in HANDOFF_ZIP_EXCLUDED_PREFIXES)
+    return any(
+        a.startswith(p) or a == p.rstrip("/") for p in HANDOFF_ZIP_EXCLUDED_PREFIXES
+    )
 
 
 def iter_files_for_zip(workspace_root: Path, profile: str = "full"):
@@ -267,7 +288,9 @@ def iter_files_for_zip(workspace_root: Path, profile: str = "full"):
     if prof not in ("full", "handoff"):
         prof = "full"
     for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [d for d in dirnames if d not in SKIP_ZIP_DIRS and not d.startswith(".tmp")]
+        dirnames[:] = [
+            d for d in dirnames if d not in SKIP_ZIP_DIRS and not d.startswith(".tmp")
+        ]
         for fn in filenames:
             fp = Path(dirpath) / fn
             if not fp.is_file():

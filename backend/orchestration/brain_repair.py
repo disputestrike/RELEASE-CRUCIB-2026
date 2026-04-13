@@ -5,6 +5,7 @@ a real fix before retry so each attempt is different from the last.
 This is wired into the auto_runner retry loop. When a step fails, this
 module determines WHAT to change before trying again — not just logs it.
 """
+
 import logging
 import os
 import re
@@ -41,24 +42,23 @@ async def run_full_brain_repair(
     Layer 3 = what a developer does.
     Layer 4 = what a DevOps engineer does (adjust how the agent runs).
     """
-    from .workspace_reader import diagnose_workspace
-    from .self_repair import apply_self_repair
+    from agents.code_repair_agent import CodeRepairAgent
+
+    from .brain_intelligence import recall_best_fix, remember_fix, search_error_solution
     from .llm_code_repair import (
-        repair_file_with_llm,
         analyse_failure_with_llm,
         get_downstream_impact,
         llm_repair_callback,
+        repair_file_with_llm,
     )
-    from .brain_intelligence import (
-        recall_best_fix,
-        remember_fix,
-        search_error_solution,
-    )
-    from agents.code_repair_agent import CodeRepairAgent
+    from .self_repair import apply_self_repair
+    from .workspace_reader import diagnose_workspace
 
     logger.info(
         "brain: full repair start step=%s retry=%d error=%s",
-        step_key, retry_count, error_message[:120],
+        step_key,
+        retry_count,
+        error_message[:120],
     )
 
     # ── Layer 1: Read workspace ───────────────────────────────────────────────
@@ -102,20 +102,30 @@ async def run_full_brain_repair(
     causal_analysis: Dict[str, Any] = {}
 
     critical_unfixed = [
-        f for f in diagnosis.get("critical_findings", [])
-        if f.get("file") and f.get("file") not in [
+        f
+        for f in diagnosis.get("critical_findings", [])
+        if f.get("file")
+        and f.get("file")
+        not in [
             r.get("file") for r in repair_result.get("repairs", []) if r.get("fixed")
         ]
         and not f.get("file", "").startswith("proof_bundle")
     ]
 
     # Only call LLM for repair on retry 1+ (retry 0 = first attempt, no LLM needed yet)
-    if retry_count >= 1 and critical_unfixed and workspace_path and os.path.isdir(workspace_path):
+    if (
+        retry_count >= 1
+        and critical_unfixed
+        and workspace_path
+        and os.path.isdir(workspace_path)
+    ):
         for finding in critical_unfixed[:3]:  # Max 3 LLM repair calls per retry
             rel_path = finding.get("file", "")
             if not rel_path:
                 continue
-            logger.info("brain: calling LLM to repair %s (retry=%d)", rel_path, retry_count)
+            logger.info(
+                "brain: calling LLM to repair %s (retry=%d)", rel_path, retry_count
+            )
             llm_result = await repair_file_with_llm(
                 workspace_path=workspace_path,
                 rel_path=rel_path,
@@ -130,7 +140,8 @@ async def run_full_brain_repair(
         if workspace_path:
             affected_files = diagnosis.get("affected_files", [])
             py_json_files = [
-                f for f in affected_files
+                f
+                for f in affected_files
                 if f.endswith((".py", ".json", ".yaml", ".yml"))
             ]
             if py_json_files:
@@ -141,21 +152,33 @@ async def run_full_brain_repair(
                     llm_repair=llm_repair_callback,
                 )
                 if repaired:
-                    llm_repairs.append({"fixed": True, "files": repaired, "method": "code_repair_agent_llm"})
+                    llm_repairs.append(
+                        {
+                            "fixed": True,
+                            "files": repaired,
+                            "method": "code_repair_agent_llm",
+                        }
+                    )
                     logger.info("brain: CodeRepairAgent+LLM fixed %s", repaired)
 
     # ── Web search for unknown errors ────────────────────────────────────────
     web_search_result = None
-    if retry_count >= 1 and not (repair_result.get("fixed_count", 0) > 0 or
-                                  any(r.get("fixed") for r in llm_repairs)):
+    if retry_count >= 1 and not (
+        repair_result.get("fixed_count", 0) > 0
+        or any(r.get("fixed") for r in llm_repairs)
+    ):
         # Nothing fixed it yet — search the web for solutions
         ext_map = {
-            ".jsx": "React JSX", ".tsx": "TypeScript React", ".py": "Python FastAPI",
-            ".js": "JavaScript", ".json": "JSON",
+            ".jsx": "React JSX",
+            ".tsx": "TypeScript React",
+            ".py": "Python FastAPI",
+            ".js": "JavaScript",
+            ".json": "JSON",
         }
         lang = ""
         if diagnosis.get("affected_files"):
             import os as _os
+
             ext = _os.path.splitext(diagnosis["affected_files"][0])[1].lower()
             lang = ext_map.get(ext, "")
         logger.info("brain: searching web for solution (retry=%d)", retry_count)
@@ -165,12 +188,15 @@ async def run_full_brain_repair(
             language=lang,
         )
         if web_search_result:
-            logger.info("brain: web search found solution (%d chars)", len(web_search_result))
+            logger.info(
+                "brain: web search found solution (%d chars)", len(web_search_result)
+            )
 
     # Causal chain analysis — understand what else will break
     if retry_count >= 1:
         try:
             from .workspace_reader import list_workspace_files, read_workspace_file
+
             snapshot = {}
             if workspace_path and os.path.isdir(workspace_path):
                 for rel in list_workspace_files(workspace_path)[:25]:
@@ -211,13 +237,13 @@ async def run_full_brain_repair(
 
     all_repaired_files = [
         r.get("file") for r in repair_result.get("repairs", []) if r.get("fixed")
-    ] + [
-        r.get("file") for r in llm_repairs if r.get("fixed") and r.get("file")
-    ]
+    ] + [r.get("file") for r in llm_repairs if r.get("fixed") and r.get("file")]
 
     logger.info(
         "brain: repair complete det=%d llm=%d total=%d files=%s strategy=%s",
-        det_fixed, llm_fixed, total_fixed,
+        det_fixed,
+        llm_fixed,
+        total_fixed,
         all_repaired_files[:3],
         param_mutations.get("strategy"),
     )
@@ -305,7 +331,10 @@ async def apply_targeted_repair(
             )
 
     # ── PROSE IN CODE: LLM wrote English into source file ─────────────────────
-    elif any(k in err for k in ["found 'appreciate'", "expected \";\"", "prose", "transform failed"]):
+    elif any(
+        k in err
+        for k in ["found 'appreciate'", 'expected ";"', "prose", "transform failed"]
+    ):
         mutations["enforce_code_only"] = True
         mutations["prepend_system_instruction"] = (
             "CRITICAL: Output ONLY valid code. "
@@ -316,7 +345,10 @@ async def apply_targeted_repair(
         explanation = f"Prose-in-code detected (attempt {retry_count+1}): injecting hard code-only constraint"
 
     # ── SYNTAX ERROR: broken code in file ─────────────────────────────────────
-    elif any(k in err for k in ["syntaxerror", "syntax error", "unexpected token", "esbuild failed"]):
+    elif any(
+        k in err
+        for k in ["syntaxerror", "syntax error", "unexpected token", "esbuild failed"]
+    ):
         # Point to the specific file and line if available
         file_match = re.search(r"([\w/.-]+\.(jsx?|tsx?|py)):(\d+)", error_message or "")
         if file_match:
@@ -330,7 +362,10 @@ async def apply_targeted_repair(
         )
 
     # ── MISSING IMPORT / MODULE NOT FOUND ─────────────────────────────────────
-    elif any(k in err for k in ["cannot find module", "module not found", "failed to resolve import"]):
+    elif any(
+        k in err
+        for k in ["cannot find module", "module not found", "failed to resolve import"]
+    ):
         mutations["prepend_system_instruction"] = (
             "All imports must use only packages available in package.json. "
             "Do not import from '@/' aliases unless vite.config.js defines them. "
@@ -343,7 +378,9 @@ async def apply_targeted_repair(
     elif "rate limit" in err or "429" in err:
         # Just wait more — the delay is handled by exponential backoff
         strategy = "rate_limit_backoff"
-        explanation = f"Rate limit (attempt {retry_count+1}): will back off before retry"
+        explanation = (
+            f"Rate limit (attempt {retry_count+1}): will back off before retry"
+        )
 
     # ── UNKNOWN: escalate aggressively ────────────────────────────────────────
     else:
@@ -351,14 +388,17 @@ async def apply_targeted_repair(
             mutations["use_minimal_context"] = True
             mutations["force_minimal_prompt"] = True
         strategy = "unknown_escalating"
-        explanation = (
-            f"Unknown error (attempt {retry_count+1}): "
-            + ("reducing to minimal context" if retry_count >= 2 else "retrying as-is")
+        explanation = f"Unknown error (attempt {retry_count+1}): " + (
+            "reducing to minimal context" if retry_count >= 2 else "retrying as-is"
         )
 
     logger.info(
         "brain_repair: step=%s agent=%s attempt=%d strategy=%s — %s",
-        step_key, agent_name, retry_count + 1, strategy, explanation,
+        step_key,
+        agent_name,
+        retry_count + 1,
+        strategy,
+        explanation,
     )
 
     return {

@@ -2,12 +2,13 @@
 Vibe Analysis Engine for CrucibAI
 Analyzes natural language input to detect coding style, design preferences, and project complexity
 """
-import re
+
 import json
-from typing import Dict, List, Optional, Tuple, Any
-from dataclasses import dataclass, asdict
-from enum import Enum
 import logging
+import re
+from dataclasses import asdict, dataclass
+from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -78,10 +79,54 @@ class VibeAnalysis:
 
 class VibeAnalyzer:
     def __init__(self):
-        self.minimalist_keywords = ["clean", "simple", "minimal", "concise", "lean", "lightweight", "efficient", "fast", "quick", "short", "compact"]
-        self.verbose_keywords = ["detailed", "comprehensive", "thorough", "well-documented", "explained", "clear", "descriptive", "verbose", "full"]
-        self.functional_keywords = ["functional", "immutable", "pure", "lambda", "map", "filter", "reduce", "compose", "higher-order", "declarative"]
-        self.oop_keywords = ["class", "object", "inheritance", "polymorphism", "encapsulation", "method", "property", "instance", "constructor", "interface"]
+        self.minimalist_keywords = [
+            "clean",
+            "simple",
+            "minimal",
+            "concise",
+            "lean",
+            "lightweight",
+            "efficient",
+            "fast",
+            "quick",
+            "short",
+            "compact",
+        ]
+        self.verbose_keywords = [
+            "detailed",
+            "comprehensive",
+            "thorough",
+            "well-documented",
+            "explained",
+            "clear",
+            "descriptive",
+            "verbose",
+            "full",
+        ]
+        self.functional_keywords = [
+            "functional",
+            "immutable",
+            "pure",
+            "lambda",
+            "map",
+            "filter",
+            "reduce",
+            "compose",
+            "higher-order",
+            "declarative",
+        ]
+        self.oop_keywords = [
+            "class",
+            "object",
+            "inheritance",
+            "polymorphism",
+            "encapsulation",
+            "method",
+            "property",
+            "instance",
+            "constructor",
+            "interface",
+        ]
         self.framework_keywords = {
             "react": ["react", "jsx", "hooks", "component", "state", "props"],
             "vue": ["vue", "vuex", "template", "directive"],
@@ -104,15 +149,34 @@ class VibeAnalyzer:
         self.design_keywords = {
             "dark_mode": ["dark", "dark mode", "night", "black", "dark theme"],
             "light_mode": ["light", "light mode", "bright", "white", "light theme"],
-            "animated": ["animated", "animation", "motion", "smooth", "transition", "interactive"],
+            "animated": [
+                "animated",
+                "animation",
+                "motion",
+                "smooth",
+                "transition",
+                "interactive",
+            ],
             "minimal": ["minimal", "minimalist", "clean", "simple", "flat"],
             "colorful": ["colorful", "vibrant", "bright", "gradient", "color"],
-            "professional": ["professional", "corporate", "business", "formal", "enterprise"],
+            "professional": [
+                "professional",
+                "corporate",
+                "business",
+                "formal",
+                "enterprise",
+            ],
             "playful": ["playful", "fun", "creative", "quirky", "unique"],
             "accessible": ["accessible", "a11y", "wcag", "inclusive"],
         }
         self.focus_keywords = {
-            "accessibility": ["accessible", "a11y", "wcag", "inclusive", "screen reader"],
+            "accessibility": [
+                "accessible",
+                "a11y",
+                "wcag",
+                "inclusive",
+                "screen reader",
+            ],
             "performance": ["fast", "performance", "optimize", "speed", "efficient"],
             "security": ["secure", "security", "encryption", "auth", "protection"],
             "testing": ["test", "testing", "unit test", "integration test", "coverage"],
@@ -121,8 +185,20 @@ class VibeAnalyzer:
         self.complexity_indicators = {
             "simple": ["simple", "basic", "starter", "beginner", "todo", "crud"],
             "moderate": ["medium", "moderate", "intermediate", "feature", "dashboard"],
-            "complex": ["complex", "advanced", "sophisticated", "algorithm", "optimization"],
-            "enterprise": ["enterprise", "scale", "distributed", "microservice", "cloud"],
+            "complex": [
+                "complex",
+                "advanced",
+                "sophisticated",
+                "algorithm",
+                "optimization",
+            ],
+            "enterprise": [
+                "enterprise",
+                "scale",
+                "distributed",
+                "microservice",
+                "cloud",
+            ],
         }
 
     def analyze(self, text: str) -> VibeAnalysis:
@@ -139,8 +215,12 @@ class VibeAnalyzer:
         documentation = self._has_focus(text_lower, "documentation")
         keywords = self._extract_keywords(text_lower)
         mood = self._detect_mood(text_lower)
-        suggestions = self._generate_suggestions(code_style, design_prefs, complexity, frameworks, languages)
-        confidence = self._calculate_confidence(code_style, design_prefs, complexity, frameworks, languages)
+        suggestions = self._generate_suggestions(
+            code_style, design_prefs, complexity, frameworks, languages
+        )
+        confidence = self._calculate_confidence(
+            code_style, design_prefs, complexity, frameworks, languages
+        )
         return VibeAnalysis(
             raw_input=text,
             code_style=code_style,
@@ -161,9 +241,13 @@ class VibeAnalyzer:
 
     def _detect_code_style(self, text: str) -> CodeStyle:
         scores = {
-            CodeStyle.MINIMALIST: sum(1 for kw in self.minimalist_keywords if kw in text),
+            CodeStyle.MINIMALIST: sum(
+                1 for kw in self.minimalist_keywords if kw in text
+            ),
             CodeStyle.VERBOSE: sum(1 for kw in self.verbose_keywords if kw in text),
-            CodeStyle.FUNCTIONAL: sum(1 for kw in self.functional_keywords if kw in text),
+            CodeStyle.FUNCTIONAL: sum(
+                1 for kw in self.functional_keywords if kw in text
+            ),
             CodeStyle.OOP: sum(1 for kw in self.oop_keywords if kw in text),
             CodeStyle.PROCEDURAL: 0,
         }
@@ -190,34 +274,65 @@ class VibeAnalyzer:
         return ProjectComplexity.MODERATE
 
     def _detect_frameworks(self, text: str) -> List[str]:
-        return [fw for fw, kws in self.framework_keywords.items() if any(kw in text for kw in kws)]
+        return [
+            fw
+            for fw, kws in self.framework_keywords.items()
+            if any(kw in text for kw in kws)
+        ]
 
     def _detect_languages(self, text: str) -> List[str]:
-        return [lang for lang, kws in self.language_keywords.items() if any(kw in text for kw in kws)]
+        return [
+            lang
+            for lang, kws in self.language_keywords.items()
+            if any(kw in text for kw in kws)
+        ]
 
     def _has_focus(self, text: str, focus_area: str) -> bool:
         kws = self.focus_keywords.get(focus_area, [])
         return any(kw in text for kw in kws)
 
     def _extract_keywords(self, text: str) -> List[str]:
-        all_kw = set(self.minimalist_keywords + self.verbose_keywords + self.functional_keywords + self.oop_keywords)
+        all_kw = set(
+            self.minimalist_keywords
+            + self.verbose_keywords
+            + self.functional_keywords
+            + self.oop_keywords
+        )
         words = [w.strip(".,!?;:") for w in text.split() if w.strip(".,!?;:") in all_kw]
         return list(dict.fromkeys(words))[:10]
 
     def _detect_mood(self, text: str) -> str:
         scores = {
-            "professional": sum(1 for w in ["professional", "enterprise", "business", "corporate"] if w in text),
-            "casual": sum(1 for w in ["casual", "fun", "simple", "easy", "quick"] if w in text),
-            "creative": sum(1 for w in ["creative", "unique", "design", "beautiful", "elegant"] if w in text),
-            "technical": sum(1 for w in ["algorithm", "optimization", "performance", "architecture"] if w in text),
+            "professional": sum(
+                1
+                for w in ["professional", "enterprise", "business", "corporate"]
+                if w in text
+            ),
+            "casual": sum(
+                1 for w in ["casual", "fun", "simple", "easy", "quick"] if w in text
+            ),
+            "creative": sum(
+                1
+                for w in ["creative", "unique", "design", "beautiful", "elegant"]
+                if w in text
+            ),
+            "technical": sum(
+                1
+                for w in ["algorithm", "optimization", "performance", "architecture"]
+                if w in text
+            ),
         }
         best = max(scores, key=scores.get)
         return best if scores[best] > 0 else "professional"
 
-    def _generate_suggestions(self, code_style, design_prefs, complexity, frameworks, languages) -> List[str]:
+    def _generate_suggestions(
+        self, code_style, design_prefs, complexity, frameworks, languages
+    ) -> List[str]:
         suggestions = []
         if code_style == CodeStyle.MINIMALIST:
-            suggestions.append("Use concise variable names and avoid unnecessary comments")
+            suggestions.append(
+                "Use concise variable names and avoid unnecessary comments"
+            )
         elif code_style == CodeStyle.VERBOSE:
             suggestions.append("Add comprehensive documentation and detailed comments")
         if DesignPreference.ACCESSIBLE in design_prefs:
@@ -226,7 +341,9 @@ class VibeAnalyzer:
             suggestions.append("Consider using React or Vue for UI development")
         return suggestions
 
-    def _calculate_confidence(self, code_style, design_prefs, complexity, frameworks, languages) -> float:
+    def _calculate_confidence(
+        self, code_style, design_prefs, complexity, frameworks, languages
+    ) -> float:
         score = 0.5
         if frameworks:
             score += 0.15

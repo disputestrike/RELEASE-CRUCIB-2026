@@ -75,7 +75,9 @@ class _InMemoryIndex:
             self.vectors.pop(vid, None)
 
 
-def _metadata_matches_filter(metadata: Dict[str, Any], filter_spec: Optional[Dict[str, Any]]) -> bool:
+def _metadata_matches_filter(
+    metadata: Dict[str, Any], filter_spec: Optional[Dict[str, Any]]
+) -> bool:
     if not filter_spec:
         return True
     for key, condition in (filter_spec or {}).items():
@@ -92,6 +94,7 @@ def _metadata_matches_filter(metadata: Dict[str, Any], filter_spec: Optional[Dic
 
 try:
     from pinecone import Pinecone, ServerlessSpec  # type: ignore
+
     _PINECONE_AVAILABLE = True
 except Exception:
     _PINECONE_AVAILABLE = False
@@ -133,6 +136,7 @@ class _FallbackAsyncOpenAI:
 
 try:
     from openai import AsyncOpenAI as _OpenAIAsyncClient  # type: ignore
+
     _OPENAI_AVAILABLE = True
 except Exception:
     _OPENAI_AVAILABLE = False
@@ -299,7 +303,9 @@ class VectorMemory:
                 results = await results
             matches = list(results.get("matches", []))
             matches.sort(
-                key=lambda match: str((match.get("metadata") or {}).get("timestamp") or ""),
+                key=lambda match: str(
+                    (match.get("metadata") or {}).get("timestamp") or ""
+                ),
                 reverse=True,
             )
             recent = []
@@ -343,7 +349,10 @@ class VectorMemory:
             )
             if inspect.isawaitable(results):
                 results = await results
-            return sum(int((match.get("metadata") or {}).get("tokens", 0)) for match in results.get("matches", []))
+            return sum(
+                int((match.get("metadata") or {}).get("tokens", 0))
+                for match in results.get("matches", [])
+            )
         except Exception as exc:
             logger.warning("VectorMemory count_project_tokens failed: %s", exc)
             return 0

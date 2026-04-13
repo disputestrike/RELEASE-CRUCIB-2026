@@ -1,4 +1,5 @@
 """Agent DAG audit script must stay in sync with committed manifests."""
+
 import subprocess
 import sys
 from pathlib import Path
@@ -18,9 +19,10 @@ def test_audit_agent_dag_check_passes():
 
 
 def test_audit_row_count_matches_dag_import():
-    from agent_dag import AGENT_DAG
-    from pathlib import Path
     import json
+    from pathlib import Path
+
+    from agent_dag import AGENT_DAG
 
     root = Path(__file__).resolve().parents[2]
     data = json.loads((root / "docs" / "agent_audit.json").read_text(encoding="utf-8"))

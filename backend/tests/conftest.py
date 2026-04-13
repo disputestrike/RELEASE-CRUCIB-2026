@@ -2,12 +2,13 @@
 Pytest fixtures and config for CrucibAI backend tests.
 PostgreSQL: defaults match repo docker-compose (host 5434). Session start brings up deps when possible.
 """
+
 import asyncio
 import logging
 import os
+import shutil
 import sys
 import tempfile
-import shutil
 import uuid
 
 # asyncpg + Windows ProactorEventLoop causes "another operation is in progress" / wrong-loop errors.
@@ -16,8 +17,8 @@ if sys.platform == "win32":
 import socket
 import subprocess
 import time
-from pathlib import Path
 from copy import deepcopy
+from pathlib import Path
 
 import pytest
 
@@ -75,14 +76,19 @@ def _ensure_temp_paths():
 
 def _ensure_test_env():
     """Defaults so in-process FastAPI tests match docker-compose.local.yml and pass env_setup."""
-    if os.environ.get("TEST_DATABASE_URL"):
-        os.environ["DATABASE_URL"] = os.environ["TEST_DATABASE_URL"]
+    test_database_url = os.environ.get("TEST_DATABASE_URL", "").strip()
+    if test_database_url:
+        os.environ["DATABASE_URL"] = test_database_url
     elif not os.environ.get("DATABASE_URL", "").strip():
-        os.environ["DATABASE_URL"] = "postgresql://crucibai:crucibai@127.0.0.1:5434/crucibai"
+        os.environ["DATABASE_URL"] = (
+            "postgresql://crucibai:crucibai@127.0.0.1:5434/crucibai"
+        )
     if not os.environ.get("REDIS_URL", "").strip():
         os.environ["REDIS_URL"] = "redis://127.0.0.1:6381/0"
     if not os.environ.get("JWT_SECRET", "").strip():
-        os.environ["JWT_SECRET"] = "test-jwt-secret-for-pytest-minimum-32-characters-long"
+        os.environ["JWT_SECRET"] = (
+            "test-jwt-secret-for-pytest-minimum-32-characters-long"
+        )
     if not os.environ.get("GOOGLE_CLIENT_ID", "").strip():
         os.environ["GOOGLE_CLIENT_ID"] = "test.apps.googleusercontent.com"
     if not os.environ.get("GOOGLE_CLIENT_SECRET", "").strip():
@@ -91,10 +97,6 @@ def _ensure_test_env():
         os.environ["FRONTEND_URL"] = "http://localhost:3000"
     os.environ["CRUCIBAI_DEV"] = "1"
     os.environ["CRUCIBAI_TEST"] = "1"
-    if os.environ.get("TEST_DATABASE_URL"):
-        os.environ["DATABASE_URL"] = os.environ["TEST_DATABASE_URL"]
-    else:
-        os.environ["DATABASE_URL"] = "postgresql://crucibai:crucibai@127.0.0.1:5434/crucibai"
 
 
 _ensure_test_env()
@@ -107,6 +109,59 @@ os.environ.setdefault("CRUCIBAI_LOG_DIR", str((_TEST_TEMP_ROOT / "logs").resolve
 pytest_plugins = ("pytest_asyncio",)
 
 
+def _apply_projection(row, projection):
+    if not projection:
+        return row
+    include = {k for k, v in projection.items() if v}
+    exclude = {k for k, v in projection.items() if not v}
+    if include:
+        row = {k: v for k, v in row.items() if k in include}
+    for k in exclude:
+        row.pop(k, None)
+    return row
+
+
+class _InMemoryCursor:
+    """Motor-style cursor returned by ``_InMemoryCollection.find``."""
+
+    def __init__(self, rows, projection=None):
+        self._rows = rows
+        self._projection = projection
+        self._sort_keys = []
+        self._skip_n = 0
+        self._limit_n = 0
+
+    def sort(self, key_or_list, direction=None):
+        if isinstance(key_or_list, list):
+            self._sort_keys = key_or_list
+        else:
+            self._sort_keys = [(key_or_list, direction or 1)]
+        return self
+
+    def skip(self, n):
+        self._skip_n = n
+        return self
+
+    def limit(self, n):
+        self._limit_n = n
+        return self
+
+    async def to_list(self, length=None):
+        results = list(self._rows)
+        if self._sort_keys:
+            for key, direction in reversed(self._sort_keys):
+                results.sort(
+                    key=lambda r, k=key: r.get(k, ""),
+                    reverse=(direction == -1),
+                )
+        if self._skip_n:
+            results = results[self._skip_n:]
+        limit = self._limit_n or length
+        if limit:
+            results = results[:limit]
+        return [_apply_projection(deepcopy(r), self._projection) for r in results]
+
+
 class _InMemoryCollection:
     def __init__(self):
         self._rows = []
@@ -115,23 +170,26 @@ class _InMemoryCollection:
     def _matches(row, query):
         return all(row.get(k) == v for k, v in (query or {}).items())
 
-    async def find_one(self, query, projection=None):
-        for row in self._rows:
-            if self._matches(row, query):
-                result = deepcopy(row)
-                if projection:
-                    include_keys = {k for k, v in projection.items() if v}
-                    exclude_keys = {k for k, v in projection.items() if not v}
-                    if include_keys:
-                        result = {k: v for k, v in result.items() if k in include_keys}
-                    for key in exclude_keys:
-                        result.pop(key, None)
-                return result
+    async def find_one(self, query=None, projection=None, sort=None):
+        rows = [r for r in self._rows if self._matches(r, query)]
+        if sort:
+            sort_list = sort if isinstance(sort, list) else [sort]
+            for key, direction in reversed(sort_list):
+                rows.sort(
+                    key=lambda r, k=key: r.get(k, ""),
+                    reverse=(direction == -1),
+                )
+        if rows:
+            return _apply_projection(deepcopy(rows[0]), projection)
         return None
+
+    def find(self, query=None, projection=None):
+        matched = [r for r in self._rows if self._matches(r, query)]
+        return _InMemoryCursor(matched, projection)
 
     async def insert_one(self, document):
         self._rows.append(deepcopy(document))
-        return {"inserted_id": document.get("id")}
+        return type("InsertResult", (), {"inserted_id": document.get("id")})()
 
     async def update_one(self, query, update, upsert=False):
         target = None
@@ -150,6 +208,28 @@ class _InMemoryCollection:
             target[key] = target.get(key, 0) + value
         return {"matched_count": 1, "modified_count": 1}
 
+    async def count_documents(self, query=None):
+        return sum(1 for row in self._rows if self._matches(row, query))
+
+    async def delete_one(self, query):
+        for i, row in enumerate(self._rows):
+            if self._matches(row, query):
+                self._rows.pop(i)
+                return {"deleted_count": 1}
+        return {"deleted_count": 0}
+
+    async def delete_many(self, query=None):
+        before = len(self._rows)
+        self._rows = [r for r in self._rows if not self._matches(r, query)]
+        return {"deleted_count": before - len(self._rows)}
+
+    async def insert_many(self, documents):
+        ids = []
+        for doc in documents:
+            self._rows.append(deepcopy(doc))
+            ids.append(doc.get("id"))
+        return {"inserted_ids": ids}
+
 
 class _FakeDb:
     def __init__(self):
@@ -157,6 +237,11 @@ class _FakeDb:
         self.projects = _InMemoryCollection()
         self.tasks = _InMemoryCollection()
         self.examples = _InMemoryCollection()
+
+    def __getattr__(self, name):
+        col = _InMemoryCollection()
+        object.__setattr__(self, name, col)
+        return col
 
 
 def pytest_sessionstart(session):
@@ -167,7 +252,16 @@ def pytest_sessionstart(session):
     if not skip_compose and compose.is_file():
         try:
             subprocess.run(
-                ["docker", "compose", "-f", str(compose), "up", "-d", "postgres", "redis"],
+                [
+                    "docker",
+                    "compose",
+                    "-f",
+                    str(compose),
+                    "up",
+                    "-d",
+                    "postgres",
+                    "redis",
+                ],
                 cwd=str(_REPO_ROOT),
                 timeout=120,
                 capture_output=True,
@@ -223,7 +317,9 @@ def pytest_sessionstart(session):
     asyncio.run(_migrate_once())
 
 
-BASE_URL = os.environ.get("CRUCIBAI_API_URL", os.environ.get("REACT_APP_BACKEND_URL", "http://localhost:8000"))
+BASE_URL = os.environ.get(
+    "CRUCIBAI_API_URL", os.environ.get("REACT_APP_BACKEND_URL", "http://localhost:8000")
+)
 
 
 @pytest.fixture(scope="session")
@@ -242,10 +338,9 @@ async def app_client():
     import sys
 
     sys.path.insert(0, str(Path(__file__).parent.parent))
-    from httpx import ASGITransport, AsyncClient
-
     import server as server_module
     from db_pg import close_pg_pool, get_db
+    from httpx import ASGITransport, AsyncClient
     from server import app
 
     await close_pg_pool()
@@ -261,12 +356,25 @@ async def app_client():
     except Exception as e:
         if os.environ.get("CRUCIBAI_TEST_DB_UNAVAILABLE") == "1":
             server_module.db = _FakeDb()
-            server_module.audit_logger = None
+            try:
+                from utils.audit_log import AuditLogger as DbAuditLogger
+
+                server_module.audit_logger = DbAuditLogger(server_module.db)
+            except Exception:
+                server_module.audit_logger = None
         else:
             pytest.fail(
                 f"PostgreSQL required for tests ({e}). "
                 f"Start deps: docker compose up -d postgres redis (repo root). DATABASE_URL={os.environ.get('DATABASE_URL')!r}"
             )
+
+    # Sync deps module so extracted route modules (routes/auth.py etc.) also see the db
+    try:
+        import deps as _deps
+
+        _deps.init(db=server_module.db, audit_logger=server_module.audit_logger)
+    except Exception:
+        pass
 
     async with AsyncClient(
         transport=ASGITransport(app=app, raise_app_exceptions=False),
@@ -277,6 +385,12 @@ async def app_client():
 
     await close_pg_pool()
     server_module.db = None
+    try:
+        import deps as _deps
+
+        _deps.init(db=None, audit_logger=None)
+    except Exception:
+        pass
     server_module.audit_logger = None
 
 
@@ -325,7 +439,10 @@ async def auth_headers_with_project(app_client, auth_headers):
         headers=auth_headers,
         timeout=15,
     )
-    assert r.status_code in (200, 201), f"Project create failed: {r.status_code} {r.text}"
+    assert r.status_code in (
+        200,
+        201,
+    ), f"Project create failed: {r.status_code} {r.text}"
     data = r.json()
     project = data.get("project") or data
     project_id = project.get("id")

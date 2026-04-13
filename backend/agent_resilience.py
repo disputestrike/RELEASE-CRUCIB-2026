@@ -1,6 +1,7 @@
 """
 Agent error handling, retry, criticality, timeouts, and fallbacks.
 """
+
 from typing import Dict, Optional
 
 # Criticality: critical = stop build; high = continue with fallback; low/medium = skip
@@ -203,7 +204,11 @@ AGENT_ERROR_MESSAGES: Dict[str, Dict[str, str]] = {
 def get_error_message(agent_name: str, error_code: str) -> Optional[str]:
     """Return user-friendly message for agent failure."""
     msgs = AGENT_ERROR_MESSAGES.get(agent_name, {})
-    return msgs.get(error_code) or msgs.get("empty_output") or f"Agent {agent_name} failed."
+    return (
+        msgs.get(error_code)
+        or msgs.get("empty_output")
+        or f"Agent {agent_name} failed."
+    )
 
 
 def generate_fallback(agent_name: str) -> str:

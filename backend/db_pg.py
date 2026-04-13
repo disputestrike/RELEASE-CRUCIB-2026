@@ -7,12 +7,13 @@ in PostgreSQL only — there is no MongoDB in this stack.
 
 Schema: tables use (id TEXT PRIMARY KEY, doc JSONB NOT NULL) per 001_full_schema.sql.
 """
-import os
+
 import json
 import logging
+import os
 import uuid
-from typing import Optional, Dict, Any, List
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 _pool = None
@@ -43,24 +44,14 @@ async def get_pg_pool():
         async def init_conn(conn):
             """Register JSONB codec so asyncpg returns dicts, not strings."""
             await conn.set_type_codec(
-                'jsonb',
-                encoder=json.dumps,
-                decoder=json.loads,
-                schema='pg_catalog'
+                "jsonb", encoder=json.dumps, decoder=json.loads, schema="pg_catalog"
             )
             await conn.set_type_codec(
-                'json',
-                encoder=json.dumps,
-                decoder=json.loads,
-                schema='pg_catalog'
+                "json", encoder=json.dumps, decoder=json.loads, schema="pg_catalog"
             )
 
         _pool = await asyncpg.create_pool(
-            url,
-            min_size=2,
-            max_size=10,
-            command_timeout=60,
-            init=init_conn
+            url, min_size=2, max_size=10, command_timeout=60, init=init_conn
         )
         logger.info("✅ PostgreSQL pool created with JSONB codec")
         return _pool
@@ -86,6 +77,8 @@ def is_pg_available() -> bool:
 
 # Aliases
 get_pool = get_pg_pool
+
+
 async def close_pool():
     await close_pg_pool()
 
@@ -93,9 +86,21 @@ async def close_pool():
 class PGFindCursor:
     """Per-query find chain so concurrent handlers do not mutate shared PGCollection state."""
 
-    __slots__ = ("_col", "_query", "_projection", "_sort_spec", "_skip_count", "_limit_count")
+    __slots__ = (
+        "_col",
+        "_query",
+        "_projection",
+        "_sort_spec",
+        "_skip_count",
+        "_limit_count",
+    )
 
-    def __init__(self, col: "PGCollection", query: Dict[str, Any], projection: Optional[Dict[str, Any]]):
+    def __init__(
+        self,
+        col: "PGCollection",
+        query: Dict[str, Any],
+        projection: Optional[Dict[str, Any]],
+    ):
         self._col = col
         self._query = dict(query or {})
         self._projection = projection
@@ -161,7 +166,7 @@ class PGCollection:
     All tables follow the schema:
         id TEXT PRIMARY KEY,
         doc JSONB NOT NULL DEFAULT '{}'
-    
+
     Composite PK tables (agent_status, workspace_env) use their own PK columns.
     """
 
@@ -170,7 +175,10 @@ class PGCollection:
         self.table_name = table_name
 
     def _select_sql_columns(self) -> str:
-        if self.table_name in COMPOSITE_PK_TABLES or self.table_name in LEGACY_ID_TABLES:
+        if (
+            self.table_name in COMPOSITE_PK_TABLES
+            or self.table_name in LEGACY_ID_TABLES
+        ):
             return "doc"
         if self.table_name == "referral_codes":
             return "code, doc"
@@ -191,7 +199,7 @@ class PGCollection:
 
     def _get_id_from_doc(self, doc: Dict) -> Optional[str]:
         """Extract the document ID - check 'id' first, then '_id'."""
-        return doc.get('id') or doc.get('_id')
+        return doc.get("id") or doc.get("_id")
 
     def _parse_doc(self, raw) -> Dict:
         """Parse a JSONB value from asyncpg - may be str, dict, or None."""
@@ -232,11 +240,13 @@ class PGCollection:
 
         for key, value in query.items():
             # Special case: 'id' or '_id' maps to the actual PK column
-            if key in ('id', '_id'):
+            if key in ("id", "_id"):
                 if isinstance(value, dict):
                     for op, op_value in value.items():
                         if op == "$in":
-                            placeholders = ", ".join([f"${param_idx + i}" for i in range(len(op_value))])
+                            placeholders = ", ".join(
+                                [f"${param_idx + i}" for i in range(len(op_value))]
+                            )
                             conditions.append(f"id IN ({placeholders})")
                             params.extend(op_value)
                             param_idx += len(op_value)
@@ -258,11 +268,15 @@ class PGCollection:
                             params.append(op_value)
                             param_idx += 1
                         elif isinstance(op_value, (int, float)):
-                            conditions.append(f"(doc->>'{key}')::numeric = ${param_idx}::numeric")
+                            conditions.append(
+                                f"(doc->>'{key}')::numeric = ${param_idx}::numeric"
+                            )
                             params.append(op_value)
                             param_idx += 1
                         elif isinstance(op_value, bool):
-                            conditions.append(f"(doc->>'{key}')::boolean = ${param_idx}::boolean")
+                            conditions.append(
+                                f"(doc->>'{key}')::boolean = ${param_idx}::boolean"
+                            )
                             params.append(op_value)
                             param_idx += 1
                         else:
@@ -271,28 +285,36 @@ class PGCollection:
                             param_idx += 1
                     elif op == "$gte":
                         if _is_numeric_scalar(op_value):
-                            conditions.append(f"(doc->>'{key}')::numeric >= ${param_idx}::numeric")
+                            conditions.append(
+                                f"(doc->>'{key}')::numeric >= ${param_idx}::numeric"
+                            )
                         else:
                             conditions.append(f"(doc->>'{key}') >= ${param_idx}")
                         params.append(op_value)
                         param_idx += 1
                     elif op == "$lte":
                         if _is_numeric_scalar(op_value):
-                            conditions.append(f"(doc->>'{key}')::numeric <= ${param_idx}::numeric")
+                            conditions.append(
+                                f"(doc->>'{key}')::numeric <= ${param_idx}::numeric"
+                            )
                         else:
                             conditions.append(f"(doc->>'{key}') <= ${param_idx}")
                         params.append(op_value)
                         param_idx += 1
                     elif op == "$gt":
                         if _is_numeric_scalar(op_value):
-                            conditions.append(f"(doc->>'{key}')::numeric > ${param_idx}::numeric")
+                            conditions.append(
+                                f"(doc->>'{key}')::numeric > ${param_idx}::numeric"
+                            )
                         else:
                             conditions.append(f"(doc->>'{key}') > ${param_idx}")
                         params.append(op_value)
                         param_idx += 1
                     elif op == "$lt":
                         if _is_numeric_scalar(op_value):
-                            conditions.append(f"(doc->>'{key}')::numeric < ${param_idx}::numeric")
+                            conditions.append(
+                                f"(doc->>'{key}')::numeric < ${param_idx}::numeric"
+                            )
                         else:
                             conditions.append(f"(doc->>'{key}') < ${param_idx}")
                         params.append(op_value)
@@ -302,12 +324,16 @@ class PGCollection:
                         params.append(op_value)
                         param_idx += 1
                     elif op == "$in":
-                        placeholders = ", ".join([f"${param_idx + i}::jsonb" for i in range(len(op_value))])
+                        placeholders = ", ".join(
+                            [f"${param_idx + i}::jsonb" for i in range(len(op_value))]
+                        )
                         conditions.append(f"doc->'{key}' IN ({placeholders})")
                         params.extend(op_value)
                         param_idx += len(op_value)
                     elif op == "$nin":
-                        placeholders = ", ".join([f"${param_idx + i}::jsonb" for i in range(len(op_value))])
+                        placeholders = ", ".join(
+                            [f"${param_idx + i}::jsonb" for i in range(len(op_value))]
+                        )
                         conditions.append(f"doc->'{key}' NOT IN ({placeholders})")
                         params.extend(op_value)
                         param_idx += len(op_value)
@@ -319,11 +345,15 @@ class PGCollection:
                     params.append(value)
                     param_idx += 1
                 elif isinstance(value, (int, float)):
-                    conditions.append(f"(doc->>'{key}')::numeric = ${param_idx}::numeric")
+                    conditions.append(
+                        f"(doc->>'{key}')::numeric = ${param_idx}::numeric"
+                    )
                     params.append(value)
                     param_idx += 1
                 elif isinstance(value, bool):
-                    conditions.append(f"(doc->>'{key}')::boolean = ${param_idx}::boolean")
+                    conditions.append(
+                        f"(doc->>'{key}')::boolean = ${param_idx}::boolean"
+                    )
                     params.append(value)
                     param_idx += 1
                 else:
@@ -407,7 +437,9 @@ class PGCollection:
                 return doc
             return None
 
-    def find(self, query: Dict[str, Any] = None, projection: Dict = None) -> PGFindCursor:
+    def find(
+        self, query: Dict[str, Any] = None, projection: Dict = None
+    ) -> PGFindCursor:
         """Return an isolated cursor (safe under concurrent requests)."""
         return PGFindCursor(self, query or {}, projection)
 
@@ -448,19 +480,20 @@ class PGCollection:
                 return {"_id": pk, "id": pk, "inserted_id": pk}
 
         # Get or generate the id
-        doc_id = document.get('id') or document.get('_id')
+        doc_id = document.get("id") or document.get("_id")
         if not doc_id:
             doc_id = self._generate_id()
-            document['id'] = doc_id
+            document["id"] = doc_id
 
         # Ensure doc has 'id' field
-        document['id'] = doc_id
+        document["id"] = doc_id
 
         async with self.pool.acquire() as conn:
             try:
                 await conn.execute(
                     f"INSERT INTO {self.table_name} (id, doc) VALUES ($1, $2::jsonb)",
-                    doc_id, document
+                    doc_id,
+                    document,
                 )
             except Exception as e:
                 err = str(e).lower()
@@ -475,16 +508,20 @@ class PGCollection:
         ids = []
         async with self.pool.acquire() as conn:
             for doc in documents:
-                doc_id = doc.get('id') or doc.get('_id') or self._generate_id()
-                doc['id'] = doc_id
+                doc_id = doc.get("id") or doc.get("_id") or self._generate_id()
+                doc["id"] = doc_id
                 try:
                     await conn.execute(
                         f"INSERT INTO {self.table_name} (id, doc) VALUES ($1, $2::jsonb)",
-                        doc_id, doc
+                        doc_id,
+                        doc,
                     )
                     ids.append(doc_id)
                 except Exception as e:
-                    if "duplicate" not in str(e).lower() and "unique" not in str(e).lower():
+                    if (
+                        "duplicate" not in str(e).lower()
+                        and "unique" not in str(e).lower()
+                    ):
                         raise
         return {"inserted_ids": ids}
 
@@ -495,13 +532,14 @@ class PGCollection:
             return {"matched_count": 0, "modified_count": 0}
 
         updated_doc = self._apply_update_operators(doc, update)
-        updated_doc['updated_at'] = datetime.utcnow().isoformat()
+        updated_doc["updated_at"] = datetime.utcnow().isoformat()
 
-        doc_id = updated_doc.get('id') or updated_doc.get('_id')
+        doc_id = updated_doc.get("id") or updated_doc.get("_id")
         async with self.pool.acquire() as conn:
             await conn.execute(
                 f"UPDATE {self.table_name} SET doc = $1::jsonb WHERE id = $2",
-                updated_doc, doc_id
+                updated_doc,
+                doc_id,
             )
 
         return {"matched_count": 1, "modified_count": 1}
@@ -516,11 +554,12 @@ class PGCollection:
         async with self.pool.acquire() as conn:
             for doc in docs:
                 updated_doc = self._apply_update_operators(doc, update)
-                updated_doc['updated_at'] = datetime.utcnow().isoformat()
-                doc_id = updated_doc.get('id') or updated_doc.get('_id')
+                updated_doc["updated_at"] = datetime.utcnow().isoformat()
+                doc_id = updated_doc.get("id") or updated_doc.get("_id")
                 await conn.execute(
                     f"UPDATE {self.table_name} SET doc = $1::jsonb WHERE id = $2",
-                    updated_doc, doc_id
+                    updated_doc,
+                    doc_id,
                 )
                 modified += 1
 
@@ -532,7 +571,7 @@ class PGCollection:
         if not doc:
             return {"deleted_count": 0}
 
-        doc_id = doc.get('id') or doc.get('_id')
+        doc_id = doc.get("id") or doc.get("_id")
         async with self.pool.acquire() as conn:
             await conn.execute(f"DELETE FROM {self.table_name} WHERE id = $1", doc_id)
 
@@ -546,8 +585,10 @@ class PGCollection:
 
         async with self.pool.acquire() as conn:
             for doc in docs:
-                doc_id = doc.get('id') or doc.get('_id')
-                await conn.execute(f"DELETE FROM {self.table_name} WHERE id = $1", doc_id)
+                doc_id = doc.get("id") or doc.get("_id")
+                await conn.execute(
+                    f"DELETE FROM {self.table_name} WHERE id = $1", doc_id
+                )
 
         return {"deleted_count": len(docs)}
 
@@ -556,23 +597,28 @@ class PGCollection:
         query = query or {}
         async with self.pool.acquire() as conn:
             where_clause, params = self._build_where(query)
-            sql = f"SELECT COUNT(*) as count FROM {self.table_name} WHERE {where_clause}"
+            sql = (
+                f"SELECT COUNT(*) as count FROM {self.table_name} WHERE {where_clause}"
+            )
             row = await conn.fetchrow(sql, *params)
-            return row['count'] if row else 0
+            return row["count"] if row else 0
 
-    async def replace_one(self, query: Dict[str, Any], replacement: Dict[str, Any]) -> Dict:
+    async def replace_one(
+        self, query: Dict[str, Any], replacement: Dict[str, Any]
+    ) -> Dict:
         """Replace one document."""
         doc = await self.find_one(query)
         if not doc:
             return {"matched_count": 0, "modified_count": 0}
 
-        doc_id = doc.get('id') or doc.get('_id')
-        replacement['id'] = doc_id
-        replacement['updated_at'] = datetime.utcnow().isoformat()
+        doc_id = doc.get("id") or doc.get("_id")
+        replacement["id"] = doc_id
+        replacement["updated_at"] = datetime.utcnow().isoformat()
         async with self.pool.acquire() as conn:
             await conn.execute(
                 f"UPDATE {self.table_name} SET doc = $1::jsonb WHERE id = $2",
-                replacement, doc_id
+                replacement,
+                doc_id,
             )
 
         return {"matched_count": 1, "modified_count": 1}
@@ -637,19 +683,58 @@ async def run_migrations():
 
 # All tables that must exist — used as safety net after migrations
 REQUIRED_TABLES = [
-    "users", "projects", "project_logs", "agent_status", "chat_history",
-    "workspace_env", "token_ledger", "token_usage", "tasks", "saved_prompts", "user_agents",
-    "agent_runs", "referral_codes", "referrals", "api_keys", "enterprise_inquiries",
+    "users",
+    "projects",
+    "project_logs",
+    "agent_status",
+    "chat_history",
+    "workspace_env",
+    "token_ledger",
+    "token_usage",
+    "tasks",
+    "saved_prompts",
+    "user_agents",
+    "agent_runs",
+    "referral_codes",
+    "referrals",
+    "api_keys",
+    "enterprise_inquiries",
     "contact_submissions",
-    "backup_codes", "mfa_setup_temp", "shares", "blocked_requests",
-    "agent_memory", "automation_tasks", "audit_log", "examples", "exports", "monitoring_events",
+    "backup_codes",
+    "mfa_setup_temp",
+    "shares",
+    "blocked_requests",
+    "agent_memory",
+    "automation_tasks",
+    "audit_log",
+    "examples",
+    "exports",
+    "monitoring_events",
     # Blueprint modules
-    "personas", "knowledge_sources", "knowledge_documents", "channels",
-    "app_sessions", "session_messages", "claims_ledger", "safety_policies",
-    "safety_audit_log", "tenants", "tenant_members", "workspace_invitations",
-    "analytics_events", "session_metrics", "products", "orders", "app_db_schemas",
+    "personas",
+    "knowledge_sources",
+    "knowledge_documents",
+    "channels",
+    "app_sessions",
+    "session_messages",
+    "claims_ledger",
+    "safety_policies",
+    "safety_audit_log",
+    "tenants",
+    "tenant_members",
+    "workspace_invitations",
+    "analytics_events",
+    "session_metrics",
+    "products",
+    "orders",
+    "app_db_schemas",
     # Auto-Runner / orchestration (relational, not JSONB doc store)
-    "jobs", "job_steps", "job_events", "job_checkpoints", "proof_items", "build_plans",
+    "jobs",
+    "job_steps",
+    "job_events",
+    "job_checkpoints",
+    "proof_items",
+    "build_plans",
 ]
 
 ENSURE_TABLES_SQL = """

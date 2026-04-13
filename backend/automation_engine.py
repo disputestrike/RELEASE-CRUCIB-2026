@@ -4,12 +4,13 @@ CrucibAI Automation Engine
 Triggers + Actions + Workflows + Scheduler
 Enables "when X happens → do Y" automations.
 """
+
 import asyncio
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Callable, Any
 from enum import Enum
+from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ class TriggerType(str, Enum):
     BUILD_COMPLETE = "build_complete"
     USER_SIGNUP = "user_signup"
     PAYMENT_SUCCESS = "payment_success"
-    SCHEDULE = "schedule"          # cron-style
+    SCHEDULE = "schedule"  # cron-style
     WEBHOOK = "webhook"
     MANUAL = "manual"
 
@@ -158,30 +159,34 @@ def setup_default_workflows():
     create_workflow(
         name="Welcome Email on Signup",
         trigger=TriggerType.USER_SIGNUP,
-        steps=[{
-            "name": "send_welcome",
-            "action": ActionType.SEND_EMAIL,
-            "config": {
-                "template": "welcome",
-                "subject": "Welcome to CrucibAI!",
-                "to": "{{user.email}}",
+        steps=[
+            {
+                "name": "send_welcome",
+                "action": ActionType.SEND_EMAIL,
+                "config": {
+                    "template": "welcome",
+                    "subject": "Welcome to CrucibAI!",
+                    "to": "{{user.email}}",
+                },
             }
-        }]
+        ],
     )
 
     # Build complete notification
     create_workflow(
         name="Build Complete Notification",
         trigger=TriggerType.BUILD_COMPLETE,
-        steps=[{
-            "name": "notify",
-            "action": ActionType.SEND_EMAIL,
-            "config": {
-                "template": "build_complete",
-                "subject": "Your build is ready!",
-                "to": "{{user.email}}",
+        steps=[
+            {
+                "name": "notify",
+                "action": ActionType.SEND_EMAIL,
+                "config": {
+                    "template": "build_complete",
+                    "subject": "Your build is ready!",
+                    "to": "{{user.email}}",
+                },
             }
-        }]
+        ],
     )
 
     logger.info("Default workflows registered")
@@ -192,6 +197,7 @@ async def _action_send_email(config: dict, context: dict) -> dict:
     """Send an email via integrations.email (SMTP when configured)."""
     try:
         from integrations.email import send_email_sync
+
         to = (config.get("to") or "").strip()
         if not to:
             return {"status": "error", "error": "No recipient"}
@@ -213,6 +219,7 @@ async def _action_deploy_vercel(config: dict, context: dict) -> dict:
 async def _action_call_webhook(config: dict, context: dict) -> dict:
     """Call an external webhook URL."""
     import httpx
+
     url = config.get("url")
     if not url:
         return {"status": "error", "error": "No URL configured"}

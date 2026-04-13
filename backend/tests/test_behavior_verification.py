@@ -1,9 +1,9 @@
 """Behavioral verification: bundled into verification.security; planner deploy gate; helpers."""
+
 import os
 import tempfile
 
 import pytest
-
 from orchestration.planner import generate_plan
 from orchestration.verification_stripe_replay import verify_stripe_replay_workspace
 
@@ -13,10 +13,15 @@ def test_stripe_replay_proves_idempotency():
         mig = os.path.join(d, "db", "migrations")
         os.makedirs(mig)
         with open(os.path.join(mig, "003_stripe.sql"), "w", encoding="utf-8") as f:
-            f.write("CREATE TABLE IF NOT EXISTS stripe_events_processed (id TEXT PRIMARY KEY);\n")
+            f.write(
+                "CREATE TABLE IF NOT EXISTS stripe_events_processed (id TEXT PRIMARY KEY);\n"
+            )
         r = verify_stripe_replay_workspace(d)
         assert r["passed"] is True
-        assert any((p.get("payload") or {}).get("check") == "stripe_webhook_idempotency_proven" for p in r["proof"])
+        assert any(
+            (p.get("payload") or {}).get("check") == "stripe_webhook_idempotency_proven"
+            for p in r["proof"]
+        )
 
 
 @pytest.mark.asyncio
@@ -25,7 +30,10 @@ async def test_rbac_verification_skips_without_url():
 
     r = await verify_rbac_enforcement_workspace("/tmp/nonexistent-workspace-xyz")
     assert r["passed"] is True
-    assert any((p.get("payload") or {}).get("check") == "rbac_smoke_skipped" for p in r["proof"])
+    assert any(
+        (p.get("payload") or {}).get("check") == "rbac_smoke_skipped"
+        for p in r["proof"]
+    )
 
 
 @pytest.mark.asyncio
@@ -47,7 +55,11 @@ async def test_planner_multitenant_stripe_same_security_gate():
         "Multi-tenant B2B SaaS with Postgres RLS and Stripe subscriptions",
         project_state={"env_vars": {"STRIPE_SECRET_KEY": "x"}},
     )
-    deploy = next(s for s in next(p for p in plan["phases"] if p["key"] == "deploy")["steps"] if s["key"] == "deploy.build")
+    deploy = next(
+        s
+        for s in next(p for p in plan["phases"] if p["key"] == "deploy")["steps"]
+        if s["key"] == "deploy.build"
+    )
     assert deploy["depends_on"] == ["verification.elite_builder"]
 
 
@@ -55,7 +67,11 @@ async def test_planner_multitenant_stripe_same_security_gate():
 async def test_tenancy_smoke_runs_with_database_url():
     """Uses DATABASE_URL when PostgreSQL is reachable (conftest / CI)."""
     import socket
-    from orchestration.verification_tenancy_smoke import verify_tenancy_smoke_workspace, _dsn_parts
+
+    from orchestration.verification_tenancy_smoke import (
+        _dsn_parts,
+        verify_tenancy_smoke_workspace,
+    )
 
     dsn = os.environ.get("DATABASE_URL", "").strip()
     if not dsn or "postgres" not in dsn.lower():
@@ -71,10 +87,16 @@ async def test_tenancy_smoke_runs_with_database_url():
 
     r = await verify_tenancy_smoke_workspace(".")
     # May return skipped proof items if DB lacks the RLS schema — that's fine
-    if any((p.get("payload") or {}).get("check") == "tenancy_smoke_skipped" for p in r["proof"]):
+    if any(
+        (p.get("payload") or {}).get("check") == "tenancy_smoke_skipped"
+        for p in r["proof"]
+    ):
         pytest.skip("Tenancy smoke skipped by verifier (no RLS migration in workspace)")
     assert r["passed"] is True
-    assert any((p.get("payload") or {}).get("check") == "tenancy_isolation_proven" for p in r["proof"])
+    assert any(
+        (p.get("payload") or {}).get("check") == "tenancy_isolation_proven"
+        for p in r["proof"]
+    )
 
 
 @pytest.mark.asyncio
@@ -102,7 +124,9 @@ async def test_verify_step_security_merges_behavior_bundle():
 
 
 @pytest.mark.asyncio
-async def test_tenancy_strict_fails_without_postgres_when_migration_present(monkeypatch):
+async def test_tenancy_strict_fails_without_postgres_when_migration_present(
+    monkeypatch,
+):
     from orchestration.verification_tenancy_smoke import verify_tenancy_smoke_workspace
 
     monkeypatch.delenv("DATABASE_URL", raising=False)
@@ -110,7 +134,9 @@ async def test_tenancy_strict_fails_without_postgres_when_migration_present(monk
     with tempfile.TemporaryDirectory() as d:
         mig = os.path.join(d, "db", "migrations")
         os.makedirs(mig)
-        with open(os.path.join(mig, "002_multitenancy_rls.sql"), "w", encoding="utf-8") as f:
+        with open(
+            os.path.join(mig, "002_multitenancy_rls.sql"), "w", encoding="utf-8"
+        ) as f:
             f.write("ALTER TABLE x ENABLE ROW LEVEL SECURITY;\n")
         r = await verify_tenancy_smoke_workspace(d)
         assert r["passed"] is False

@@ -2,8 +2,11 @@
 DAG Audit Test — verifies all agents in AGENT_DAG are properly defined with required fields.
 Run with: python3 test_dag_audit.py
 """
+
 import json
+
 from agent_dag import AGENT_DAG, get_execution_phases, get_system_prompt_for_agent
+
 
 def audit_dag():
     phases = get_execution_phases(AGENT_DAG)
@@ -43,18 +46,19 @@ def audit_dag():
 
     return results
 
+
 if __name__ == "__main__":
     results = audit_dag()
     print(f"=== DAG AUDIT REPORT ===")
     print(f"Total agents: {results['total']}")
     print(f"Phases: {results['phases']}")
     print(f"Issues found: {len(results['issues'])}")
-    for issue in results['issues']:
+    for issue in results["issues"]:
         print(f"  ⚠️  {issue}")
 
     print(f"\nAgent coverage:")
-    missing_prompts = [a for a in results['agents'] if not a['has_system_prompt']]
-    missing_dag = [a for a in results['agents'] if not a['has_dag_entry']]
+    missing_prompts = [a for a in results["agents"] if not a["has_system_prompt"]]
+    missing_dag = [a for a in results["agents"] if not a["has_dag_entry"]]
     print(f"  Missing DAG entry: {len(missing_dag)}")
     print(f"  Missing system prompt: {len(missing_prompts)}")
 
@@ -63,9 +67,11 @@ if __name__ == "__main__":
         for a in missing_prompts[:20]:
             print(f"  - {a['name']} (phase {a['phase']})")
 
-    print(f"\n{'✅ ALL AGENTS OK' if not results['issues'] else '⚠️  ISSUES FOUND — see above'}")
+    print(
+        f"\n{'✅ ALL AGENTS OK' if not results['issues'] else '⚠️  ISSUES FOUND — see above'}"
+    )
 
     # Save report
-    with open('dag_audit_report.json', 'w') as f:
+    with open("dag_audit_report.json", "w") as f:
         json.dump(results, f, indent=2)
     print(f"\nFull report saved to dag_audit_report.json")

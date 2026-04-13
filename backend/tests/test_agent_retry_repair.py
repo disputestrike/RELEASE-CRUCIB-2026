@@ -25,7 +25,10 @@ async def test_agent_cache_input_handles_structured_previous_outputs(monkeypatch
         "Build an ML recommendation engine",
         {
             "ML Framework Selector Agent": {
-                "output": {"recommended_framework": "tensorflow", "reasoning": "GPU support"}
+                "output": {
+                    "recommended_framework": "tensorflow",
+                    "reasoning": "GPU support",
+                }
             }
         },
     )
@@ -55,7 +58,9 @@ async def test_run_single_agent_with_context_repairs_invalid_python_output(monke
     )
     monkeypatch.setattr(server, "persist_agent_output", lambda *args, **kwargs: None)
     monkeypatch.setattr(server, "run_agent_real_behavior", lambda *args, **kwargs: None)
-    monkeypatch.setattr(server, "run_real_post_step", AsyncMock(side_effect=_no_post_step))
+    monkeypatch.setattr(
+        server, "run_real_post_step", AsyncMock(side_effect=_no_post_step)
+    )
     monkeypatch.setattr(server, "_init_agent_learning", AsyncMock(return_value=None))
     monkeypatch.setattr(server, "_vector_memory", _UnavailableVectorMemory())
     monkeypatch.setattr(server, "_pgvector_memory", _UnavailableVectorMemory())
@@ -73,5 +78,9 @@ async def test_run_single_agent_with_context_repairs_invalid_python_output(monke
 
     assert result["status"] == "completed"
     assert result["repair_metadata"]["status"] == "repaired"
-    assert result["repair_metadata"]["strategy"] in {"add_missing_colons", "ensure_block_body", "llm_repair"}
+    assert result["repair_metadata"]["strategy"] in {
+        "add_missing_colons",
+        "ensure_block_body",
+        "llm_repair",
+    }
     assert "async def create_job(data: dict):" in result["output"]

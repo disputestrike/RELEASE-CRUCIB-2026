@@ -85,7 +85,7 @@ export default function ProofPanel({ proof, jobId, onExport: _onExport, openWork
     } finally {
       setZipBusy(false);
     }
-  }, [jobId, token, API]);
+  }, [jobId, token]);
 
   const toggleItem = (idx) => {
     setExpandedItems((prev) => {

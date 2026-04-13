@@ -3,12 +3,13 @@ verifier.py — Step-level verification after each execution.
 Returns a structured result with passed/score/issues/proof.
 Never lets a step be marked complete without evidence.
 """
+
 import asyncio
 import logging
 import os
 import re
 import sys
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from .runtime_health import skip_node_verify_env
 
@@ -94,8 +95,10 @@ def _scan_workspace_for_route_declarations(
 
 # ── Verification result helpers ───────────────────────────────────────────────
 
-def _result(passed: bool, score: int, issues: List[str],
-            proof: List[Dict]) -> Dict[str, Any]:
+
+def _result(
+    passed: bool, score: int, issues: List[str], proof: List[Dict]
+) -> Dict[str, Any]:
     return {"passed": passed, "score": score, "issues": issues, "proof": proof}
 
 
@@ -133,7 +136,7 @@ def _proof_item(
     p = dict(payload)
     if verification_class:
         p["verification_class"] = verification_class
-    return {"proof_type": proof_type, "title": title, "payload": p}
+    return {"proof_type": proof_type, "check": proof_type, "title": title, "payload": p}
 
 
 def _first_meaningful_line(text: str) -> str:
@@ -145,12 +148,35 @@ def _first_meaningful_line(text: str) -> str:
 
 
 PROSE_PREFIXES_VERIFIER = (
-    "i ", "i'", "here ", "here'", "appreciate", "certainly", "sure,",
-    "below", "based on", "as requested", "i have", "i'll", "let me",
-    "of course", "happy to", "glad to", "please find", "the following",
-    "above is", "this is", "note:", "note that", "in this", "we have",
-    "the code", "the following code", "the component",
+    "i ",
+    "i'",
+    "here ",
+    "here'",
+    "appreciate",
+    "certainly",
+    "sure,",
+    "below",
+    "based on",
+    "as requested",
+    "i have",
+    "i'll",
+    "let me",
+    "of course",
+    "happy to",
+    "glad to",
+    "please find",
+    "the following",
+    "above is",
+    "this is",
+    "note:",
+    "note that",
+    "in this",
+    "we have",
+    "the code",
+    "the following code",
+    "the component",
 )
+
 
 def _strip_prose_lines(text: str) -> str:
     """Strip LLM prose lines from the top of a code file."""
@@ -194,7 +220,9 @@ def _npx_bin() -> str:
     return "npx.cmd" if os.name == "nt" else "npx"
 
 
-async def _verify_frontend_source_file(full: str, rel: str, workspace_path: str) -> Dict[str, Any]:
+async def _verify_frontend_source_file(
+    full: str, rel: str, workspace_path: str
+) -> Dict[str, Any]:
     issues: List[str] = []
     proof: List[Dict[str, Any]] = []
     try:
@@ -215,13 +243,15 @@ async def _verify_frontend_source_file(full: str, rel: str, workspace_path: str)
                 text = cleaned
                 proof.append(
                     _proof_item(
-                        "syntax",
+                        "prose_auto_stripped",
                         f"Auto-stripped prose in {rel}",
                         {"file": rel, "path": rel, "stripped_line": prose[:80]},
                         verification_class="syntax",
                     )
                 )
-                logger.info("verifier: auto-stripped prose from %s: %s", rel, prose[:60])
+                logger.info(
+                    "verifier: auto-stripped prose from %s: %s", rel, prose[:60]
+                )
             except OSError:
                 issues.append(f"Prose preamble detected in {rel}: {prose}")
                 return _result(False, 20, issues, proof)
@@ -262,13 +292,20 @@ async def _verify_frontend_source_file(full: str, rel: str, workspace_path: str)
             timeout=20,
         )
         if result.returncode != 0:
-            issues.append(f"esbuild failed {rel}: {stderr.decode(errors='replace')[:220]}")
+            issues.append(
+                f"esbuild failed {rel}: {stderr.decode(errors='replace')[:220]}"
+            )
         else:
             proof.append(
                 _proof_item(
                     "compile",
                     f"esbuild OK: {rel}",
-                    {"file": rel, "path": rel, "command": cmd, "mode": "stdin_transform"},
+                    {
+                        "file": rel,
+                        "path": rel,
+                        "command": cmd,
+                        "mode": "stdin_transform",
+                    },
                     verification_class="syntax",
                 ),
             )
@@ -282,8 +319,10 @@ async def _verify_frontend_source_file(full: str, rel: str, workspace_path: str)
 
 # ── Step-type verifiers ───────────────────────────────────────────────────────
 
-async def verify_frontend_step(step: Dict[str, Any],
-                                workspace_path: str) -> Dict[str, Any]:
+
+async def verify_frontend_step(
+    step: Dict[str, Any], workspace_path: str
+) -> Dict[str, Any]:
     issues = []
     proof = []
     step_key = step.get("step_key", "")
@@ -310,7 +349,9 @@ async def verify_frontend_step(step: Dict[str, Any],
     # Syntax check with real JSX/TSX validation
     for f in output_files:
         full = os.path.join(workspace_path, f)
-        if not full.endswith((".jsx", ".tsx", ".js", ".ts")) or not os.path.exists(full):
+        if not full.endswith((".jsx", ".tsx", ".js", ".ts")) or not os.path.exists(
+            full
+        ):
             continue
         file_result = await _verify_frontend_source_file(full, f, workspace_path)
         issues.extend(file_result["issues"])
@@ -320,8 +361,9 @@ async def verify_frontend_step(step: Dict[str, Any],
     return _result(len(issues) == 0, score, issues, proof)
 
 
-async def verify_backend_step(step: Dict[str, Any],
-                               workspace_path: str) -> Dict[str, Any]:
+async def verify_backend_step(
+    step: Dict[str, Any], workspace_path: str
+) -> Dict[str, Any]:
     issues = []
     proof = []
     step_key = step.get("step_key", "")
@@ -329,13 +371,24 @@ async def verify_backend_step(step: Dict[str, Any],
     for route in step.get("routes_added") or []:
         method = route.get("method") or "GET"
         path = route.get("path") or ""
-        proof.append(_proof_item(
-            "route", f"{method} {path}".strip() or "route",
-            {"method": method, "path": path, "description": route.get("description", "")},
-        ))
+        proof.append(
+            _proof_item(
+                "route",
+                f"{method} {path}".strip() or "route",
+                {
+                    "method": method,
+                    "path": path,
+                    "description": route.get("description", ""),
+                },
+            )
+        )
 
     output_files = step.get("output_files") or []
-    if step_key.startswith("backend.") and not output_files and not (step.get("routes_added") or []):
+    if (
+        step_key.startswith("backend.")
+        and not output_files
+        and not (step.get("routes_added") or [])
+    ):
         issues.append("Backend step produced no files and no routes_added")
 
     for f in output_files:
@@ -364,10 +417,13 @@ async def verify_backend_step(step: Dict[str, Any],
                         err = stderr.decode(errors="replace")[:400]
                         issues.append(f"Python syntax error in {f}: {err}")
                     else:
-                        proof.append(_proof_item(
-                            "compile", f"Python syntax OK: {f}",
-                            {"file": f, "path": f, "command": list(cmd)},
-                        ))
+                        proof.append(
+                            _proof_item(
+                                "compile",
+                                f"Python syntax OK: {f}",
+                                {"file": f, "path": f, "command": list(cmd)},
+                            )
+                        )
                 except FileNotFoundError:
                     issues.append(
                         "Python interpreter not found for py_compile "
@@ -388,7 +444,11 @@ async def verify_backend_step(step: Dict[str, Any],
             ),
         )
 
-    if workspace_path and os.path.isdir(workspace_path) and step_key == "backend.routes":
+    if (
+        workspace_path
+        and os.path.isdir(workspace_path)
+        and step_key == "backend.routes"
+    ):
         for decl in _scan_workspace_for_route_declarations(workspace_path):
             proof.append(
                 _proof_item(
@@ -408,32 +468,33 @@ async def verify_backend_step(step: Dict[str, Any],
     return _result(len(issues) == 0, score, issues, proof)
 
 
-async def verify_db_step(step: Dict[str, Any],
-                          db_pool=None, workspace_path: str = "") -> Dict[str, Any]:
+async def verify_db_step(
+    step: Dict[str, Any], db_pool=None, workspace_path: str = ""
+) -> Dict[str, Any]:
     issues = []
     proof = []
     step_key = step.get("step_key", "")
 
     tables_created = step.get("tables_created") or []
     migration_files = [
-        f for f in (step.get("output_files") or [])
-        if str(f).lower().endswith(".sql")
+        f for f in (step.get("output_files") or []) if str(f).lower().endswith(".sql")
     ]
     if workspace_path and migration_files:
         for f in migration_files:
             full = os.path.join(workspace_path, f)
             if os.path.exists(full):
-                proof.append(_proof_item(
-                    "db", f"SQL artifact: {f}",
-                    {"path": f, "kind": "migration_or_seed"},
-                ))
+                proof.append(
+                    _proof_item(
+                        "db",
+                        f"SQL artifact: {f}",
+                        {"path": f, "kind": "migration_or_seed"},
+                    )
+                )
             else:
                 issues.append(f"Expected SQL file missing: {f}")
 
     if step_key.startswith("database.") and not tables_created and not migration_files:
-        issues.append(
-            "Database step produced no .sql artifacts and no tables_created"
-        )
+        issues.append("Database step produced no .sql artifacts and no tables_created")
 
     if db_pool and tables_created:
         try:
@@ -441,12 +502,16 @@ async def verify_db_step(step: Dict[str, Any],
                 for table in tables_created:
                     row = await conn.fetchrow(
                         "SELECT EXISTS(SELECT FROM information_schema.tables WHERE table_name=$1)",
-                        table
+                        table,
                     )
                     if row and row[0]:
                         mig0 = migration_files[0] if migration_files else ""
-                        payload = {"table": table, "path": mig0} if mig0 else {"table": table}
-                        proof.append(_proof_item("db", f"Table exists: {table}", payload))
+                        payload = (
+                            {"table": table, "path": mig0} if mig0 else {"table": table}
+                        )
+                        proof.append(
+                            _proof_item("db", f"Table exists: {table}", payload)
+                        )
                     else:
                         issues.append(f"Table not found: {table}")
         except Exception as e:
@@ -456,7 +521,9 @@ async def verify_db_step(step: Dict[str, Any],
     return _result(len(issues) == 0, score, issues, proof)
 
 
-async def verify_deploy_step(step: Dict[str, Any], workspace_path: str = "") -> Dict[str, Any]:
+async def verify_deploy_step(
+    step: Dict[str, Any], workspace_path: str = ""
+) -> Dict[str, Any]:
     issues = []
     proof = []
     step_key = step.get("step_key", "")
@@ -489,7 +556,9 @@ async def verify_deploy_step(step: Dict[str, Any], workspace_path: str = "") -> 
                         verification_class="runtime",
                     ),
                 )
-            strict = os.environ.get("CRUCIBAI_PRODUCTION_GATE_STRICT", "").strip().lower() in (
+            strict = os.environ.get(
+                "CRUCIBAI_PRODUCTION_GATE_STRICT", ""
+            ).strip().lower() in (
                 "1",
                 "true",
                 "yes",
@@ -509,7 +578,9 @@ async def verify_deploy_step(step: Dict[str, Any], workspace_path: str = "") -> 
                 )
 
         for rel in step.get("output_files") or []:
-            full = os.path.normpath(os.path.join(workspace_path, rel.replace("/", os.sep)))
+            full = os.path.normpath(
+                os.path.join(workspace_path, rel.replace("/", os.sep))
+            )
             if os.path.isfile(full):
                 pl: Dict[str, Any] = {"path": rel, "exists": True}
                 if rel.replace("\\", "/") == "docs/COMPLIANCE_SKETCH.md":
@@ -533,8 +604,11 @@ async def verify_deploy_step(step: Dict[str, Any], workspace_path: str = "") -> 
     if deploy_url:
         try:
             import aiohttp
+
             async with aiohttp.ClientSession() as session:
-                async with session.get(deploy_url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                async with session.get(
+                    deploy_url, timeout=aiohttp.ClientTimeout(total=10)
+                ) as resp:
                     if resp.status < 400:
                         proof.append(
                             _proof_item(
@@ -545,7 +619,9 @@ async def verify_deploy_step(step: Dict[str, Any], workspace_path: str = "") -> 
                             ),
                         )
                     else:
-                        issues.append(f"Deploy URL returned {resp.status}: {deploy_url}")
+                        issues.append(
+                            f"Deploy URL returned {resp.status}: {deploy_url}"
+                        )
                         if not failure_reason:
                             failure_reason = "deploy_smoke_check_failed"
         except Exception as e:
@@ -553,7 +629,9 @@ async def verify_deploy_step(step: Dict[str, Any], workspace_path: str = "") -> 
             if not failure_reason:
                 failure_reason = "deploy_smoke_check_failed"
     elif step_key == "deploy.publish":
-        require_live_publish = os.environ.get("CRUCIBAI_REQUIRE_LIVE_DEPLOY_PUBLISH", "").strip().lower() in (
+        require_live_publish = os.environ.get(
+            "CRUCIBAI_REQUIRE_LIVE_DEPLOY_PUBLISH", ""
+        ).strip().lower() in (
             "1",
             "true",
             "yes",
@@ -600,7 +678,9 @@ STEP_TYPE_MAP = {
 }
 
 
-async def verify_compile_workspace(workspace_path: str, max_files: int = 28) -> Dict[str, Any]:
+async def verify_compile_workspace(
+    workspace_path: str, max_files: int = 28
+) -> Dict[str, Any]:
     """Cross-cut syntax check for JS entrypoints (depth, not only declared output_files)."""
     issues: List[str] = []
     proof: List[Dict] = []
@@ -621,9 +701,15 @@ async def verify_compile_workspace(workspace_path: str, max_files: int = 28) -> 
         for name in files:
             if checked >= max_files:
                 break
-            if (
-                not name.endswith((".js", ".jsx", ".ts", ".tsx"))
-                or name.endswith((".test.js", ".test.jsx", ".spec.js", ".spec.jsx", ".test.ts", ".test.tsx"))
+            if not name.endswith((".js", ".jsx", ".ts", ".tsx")) or name.endswith(
+                (
+                    ".test.js",
+                    ".test.jsx",
+                    ".spec.js",
+                    ".spec.jsx",
+                    ".test.ts",
+                    ".test.tsx",
+                )
             ):
                 continue
             full = os.path.join(root, name)
@@ -640,8 +726,9 @@ async def verify_compile_workspace(workspace_path: str, max_files: int = 28) -> 
     return _result(len(issues) == 0, score, issues, proof)
 
 
-async def verify_step(step: Dict[str, Any], workspace_path: str = "",
-                       db_pool=None) -> Dict[str, Any]:
+async def verify_step(
+    step: Dict[str, Any], workspace_path: str = "", db_pool=None
+) -> Dict[str, Any]:
     """
     Run the appropriate verifier for this step type.
     Falls back to a minimal check if no specific verifier matches.
@@ -681,7 +768,9 @@ async def verify_step(step: Dict[str, Any], workspace_path: str = "",
                 rr = verify_rls_workspace(workspace_path or "")
                 return _result(rr["passed"], rr["score"], rr["issues"], rr["proof"])
             if step_key == "verification.behavior":
-                from .verification_behavior_bundle import verify_behavior_bundle_workspace
+                from .verification_behavior_bundle import (
+                    verify_behavior_bundle_workspace,
+                )
 
                 br = await verify_behavior_bundle_workspace(workspace_path or "")
                 return _result(br["passed"], br["score"], br["issues"], br["proof"])
@@ -724,9 +813,16 @@ async def verify_step(step: Dict[str, Any], workspace_path: str = "",
                     ],
                 )
             return _result(
-                True, 82, [],
-                [_proof_item("generic", f"Verification step recorded: {step_key}",
-                             {"step_key": step_key})],
+                True,
+                82,
+                [],
+                [
+                    _proof_item(
+                        "generic",
+                        f"Verification step recorded: {step_key}",
+                        {"step_key": step_key},
+                    )
+                ],
             )
     except Exception as e:
         logger.exception("verification branch error for %s", step_key)
@@ -744,20 +840,29 @@ async def verify_step(step: Dict[str, Any], workspace_path: str = "",
         else:
             # Generic: record that the step ran with real output preview
             raw_output = (
-                step.get("output") or
-                step.get("result") or
-                step.get("output_ref") or
-                step.get("code") or
-                ""
+                step.get("output")
+                or step.get("result")
+                or step.get("output_ref")
+                or step.get("code")
+                or ""
             )
             if isinstance(raw_output, dict):
                 import json as _json
+
                 raw_output = _json.dumps(raw_output)
             output_preview = str(raw_output)[:300] if raw_output else ""
-            result = _result(True, 85, [],
-                             [_proof_item("generic", f"Step executed: {step_key}",
-                                         {"step_key": step_key,
-                                          "output_preview": output_preview})])
+            result = _result(
+                True,
+                85,
+                [],
+                [
+                    _proof_item(
+                        "generic",
+                        f"Step executed: {step_key}",
+                        {"step_key": step_key, "output_preview": output_preview},
+                    )
+                ],
+            )
     except Exception as e:
         logger.exception("verifier error for step %s", step_key)
         result = _result(False, 0, [f"Verifier threw exception: {str(e)}"], [])

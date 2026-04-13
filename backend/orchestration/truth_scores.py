@@ -1,12 +1,15 @@
 """
 Truthful multi-axis scores — pipeline success ≠ production-ready ≠ spec compliance.
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List
 
 
-def compute_production_readiness(flat: List[Dict[str, Any]], bundle: Dict[str, List]) -> Dict[str, Any]:
+def compute_production_readiness(
+    flat: List[Dict[str, Any]], bundle: Dict[str, List]
+) -> Dict[str, Any]:
     """
     Heuristic 0–100: evidence of tests, security checks, deploy ping, compile, routes, screenshot.
     Capped honestly — missing enterprise artifacts (RLS, idempotent webhooks) cannot be inferred from proof.
@@ -20,7 +23,9 @@ def compute_production_readiness(flat: List[Dict[str, Any]], bundle: Dict[str, L
     else:
         reasons.append("no_test_proof_autorunner_template")
 
-    ver_titles = " ".join((i.get("title") or "").lower() for i in bundle.get("verification", []) or [])
+    ver_titles = " ".join(
+        (i.get("title") or "").lower() for i in bundle.get("verification", []) or []
+    )
     titles_lower = [(i.get("title") or "").lower() for i in flat]
     if "security" in ver_titles or any("security" in t for t in titles_lower):
         score += 12
@@ -35,7 +40,10 @@ def compute_production_readiness(flat: List[Dict[str, Any]], bundle: Dict[str, L
         score += min(8, 100 - score)
         reasons.append("stripe_idempotency_sql_in_security_proof")
 
-    if any((i.get("payload") or {}).get("check") == "rls_policies_in_migrations" for i in flat):
+    if any(
+        (i.get("payload") or {}).get("check") == "rls_policies_in_migrations"
+        for i in flat
+    ):
         score += min(8, 100 - score)
         reasons.append("rls_policies_detected_in_verification_proof")
 
@@ -43,26 +51,46 @@ def compute_production_readiness(flat: List[Dict[str, Any]], bundle: Dict[str, L
         score += min(12, 100 - score)
         reasons.append("rls_policy_structure_valid_in_proof")
 
-    if any((i.get("payload") or {}).get("check") == "tenancy_isolation_proven" for i in flat):
+    if any(
+        (i.get("payload") or {}).get("check") == "tenancy_isolation_proven"
+        for i in flat
+    ):
         score += min(14, 100 - score)
         reasons.append("tenancy_smoke_live_isolation")
 
-    if any((i.get("payload") or {}).get("check") == "stripe_webhook_idempotency_proven" for i in flat):
+    if any(
+        (i.get("payload") or {}).get("check") == "stripe_webhook_idempotency_proven"
+        for i in flat
+    ):
         score += min(10, 100 - score)
         reasons.append("stripe_replay_idempotency_proven")
 
-    if any((i.get("payload") or {}).get("check") in ("rbac_escalation_blocked", "rbac_anonymous_blocked") for i in flat):
+    if any(
+        (i.get("payload") or {}).get("check")
+        in ("rbac_escalation_blocked", "rbac_anonymous_blocked")
+        for i in flat
+    ):
         score += min(8, 100 - score)
         reasons.append("rbac_enforcement_smoke")
 
-    if any((i.get("payload") or {}).get("check") == "tenant_context_guc_wired_in_backend_sketch" for i in flat):
+    if any(
+        (i.get("payload") or {}).get("check")
+        == "tenant_context_guc_wired_in_backend_sketch"
+        for i in flat
+    ):
         score += min(6, 100 - score)
         reasons.append("tenant_guc_deploy_gate_passed")
 
-    if any((i.get("payload") or {}).get("check") == "observability_pack_present" for i in flat):
+    if any(
+        (i.get("payload") or {}).get("check") == "observability_pack_present"
+        for i in flat
+    ):
         score += min(4, 100 - score)
         reasons.append("observability_stub_pack_in_workspace")
-    if any((i.get("payload") or {}).get("check") == "multiregion_terraform_sketch_present" for i in flat):
+    if any(
+        (i.get("payload") or {}).get("check") == "multiregion_terraform_sketch_present"
+        for i in flat
+    ):
         score += min(4, 100 - score)
         reasons.append("multiregion_terraform_sketch_in_workspace")
 

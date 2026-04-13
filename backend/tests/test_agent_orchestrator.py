@@ -1,9 +1,9 @@
 """Crew orchestrator stubs."""
+
 import os
 import tempfile
 
 import pytest
-
 from orchestration.agent_orchestrator import architect_crew, run_crew_for_goal
 
 
@@ -39,7 +39,9 @@ async def test_run_crew_writes_elite_proof_when_system_prompt_set():
         )
         assert not out.get("skipped")
         assert "proof/ELITE_EXECUTION_DIRECTIVE.md" in out["written"]
-        proof = open(os.path.join(d, "proof", "ELITE_EXECUTION_DIRECTIVE.md"), encoding="utf-8").read()
+        proof = open(
+            os.path.join(d, "proof", "ELITE_EXECUTION_DIRECTIVE.md"), encoding="utf-8"
+        ).read()
         assert "SHA256 prefix" in proof
         assert "Elite directive" in proof
 

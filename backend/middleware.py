@@ -3,17 +3,18 @@ Advanced middleware for CrucibAI
 Includes rate limiting, security headers, CORS, and request tracking
 """
 
+import asyncio
+import logging
 import os
 import time
-import logging
 import uuid
-from typing import Dict, Optional, Callable
 from collections import defaultdict
 from datetime import datetime, timedelta
+from typing import Callable, Dict, Optional
+
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -29,12 +30,25 @@ class HTTPSRedirectMiddleware(BaseHTTPMiddleware):
     """When HTTPS_REDIRECT=1, redirect HTTP to HTTPS using X-Forwarded-Proto (for production behind proxy)."""
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        if os.environ.get("HTTPS_REDIRECT", "").strip().lower() not in ("1", "true", "yes"):
+        if os.environ.get("HTTPS_REDIRECT", "").strip().lower() not in (
+            "1",
+            "true",
+            "yes",
+        ):
             return await call_next(request)
-        proto = (request.headers.get("X-Forwarded-Proto") or request.url.scheme or "").strip().lower()
+        proto = (
+            (request.headers.get("X-Forwarded-Proto") or request.url.scheme or "")
+            .strip()
+            .lower()
+        )
         if proto == "https":
             return await call_next(request)
-        host = request.headers.get("X-Forwarded-Host") or request.headers.get("Host") or request.url.netloc or "localhost"
+        host = (
+            request.headers.get("X-Forwarded-Host")
+            or request.headers.get("Host")
+            or request.url.netloc
+            or "localhost"
+        )
         url = f"https://{host}{request.url.path}"
         if request.url.query:
             url += f"?{request.url.query}"
@@ -89,7 +103,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return max(1, int(raw))
         return max(self.requests_per_minute * 3, 120)
 
-    def _prune(self, bucket: Dict[str, list], key: str, now: float, window: float = 60.0) -> None:
+    def _prune(
+        self, bucket: Dict[str, list], key: str, now: float, window: float = 60.0
+    ) -> None:
         cutoff = now - window
         bucket[key] = [t for t in bucket[key] if t > cutoff]
 
@@ -172,17 +188,19 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """
     Add security headers to all responses
     """
-    
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         response = await call_next(request)
-        
+
         # Security headers
         response.headers["X-Content-Type-Options"] = "nosniff"
         # NOTE: X-Frame-Options is intentionally set to SAMEORIGIN (not DENY)
         # because Sandpack renders previews inside iframes on the same origin.
         response.headers["X-Frame-Options"] = "SAMEORIGIN"
         response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains"
+        )
         # SECURITY: CSP policy for React frontend + Sandpack preview
         # Sandpack requires: frame-src for iframes, worker-src for web workers,
         # script-src 'unsafe-eval' for the bundler, and wss: for HMR websockets.
@@ -202,13 +220,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         )
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = (
-            "geolocation=(), "
-            "microphone=(), "
-            "camera=(), "
-            "payment=()"
+            "geolocation=(), " "microphone=(), " "camera=(), " "payment=()"
         )
-        
+
         return response
+
 
 class RequestTrackerMiddleware(BaseHTTPMiddleware):
     """
@@ -217,7 +233,9 @@ class RequestTrackerMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Generate request ID (accept inbound header or emit UUID for log/metrics correlation)
-        request_id = (request.headers.get("X-Request-ID") or "").strip() or str(uuid.uuid4())
+        request_id = (request.headers.get("X-Request-ID") or "").strip() or str(
+            uuid.uuid4()
+        )
         request.state.request_id = request_id
         tenant_hdr = (request.headers.get("X-Tenant-ID") or "").strip()
 
@@ -226,12 +244,10 @@ class RequestTrackerMiddleware(BaseHTTPMiddleware):
         log_request_event = None
         observe_http_request = None
         try:
-            from orchestration.observability import (
-                bind_http_request_context as _bind,
-                clear_http_request_context as _clear,
-                log_request_event as _log_ev,
-                observe_http_request as _observe,
-            )
+            from orchestration.observability import bind_http_request_context as _bind
+            from orchestration.observability import clear_http_request_context as _clear
+            from orchestration.observability import log_request_event as _log_ev
+            from orchestration.observability import observe_http_request as _observe
 
             bind_http_request_context = _bind
             clear_http_request_context = _clear
@@ -312,11 +328,12 @@ class RequestTrackerMiddleware(BaseHTTPMiddleware):
 
         return response
 
+
 class CORSMiddleware(BaseHTTPMiddleware):
     """
     Enhanced CORS middleware with configurable origins
     """
-    
+
     def __init__(
         self,
         app,
@@ -324,70 +341,82 @@ class CORSMiddleware(BaseHTTPMiddleware):
         allow_methods: list = None,
         allow_headers: list = None,
         allow_credentials: bool = True,
-        max_age: int = 3600
+        max_age: int = 3600,
     ):
         super().__init__(app)
         # CRITICAL: Never allow * with credentials in production
         if allow_origins is None:
-            allow_origins = os.environ.get('CORS_ORIGINS', 'http://localhost:3000').split(',')
+            allow_origins = os.environ.get(
+                "CORS_ORIGINS", "http://localhost:3000"
+            ).split(",")
             if "*" in allow_origins and allow_credentials:
-                logger.error("SECURITY: CORS with allow_credentials=True and allow_origins=['*'] is a vulnerability!")
+                logger.error(
+                    "SECURITY: CORS with allow_credentials=True and allow_origins=['*'] is a vulnerability!"
+                )
                 allow_origins = ["http://localhost:3000"]
         self.allow_origins = allow_origins
-        self.allow_methods = allow_methods or ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+        self.allow_methods = allow_methods or [
+            "GET",
+            "POST",
+            "PUT",
+            "DELETE",
+            "OPTIONS",
+            "PATCH",
+        ]
         self.allow_headers = allow_headers or [
             "Content-Type",
             "Authorization",
             "X-Requested-With",
             "X-Request-ID",
-            "Accept"
+            "Accept",
         ]
         self.allow_credentials = allow_credentials
         self.max_age = max_age
-    
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Handle preflight requests
         if request.method == "OPTIONS":
             return self._preflight_response(request)
-        
+
         # Process request
         response = await call_next(request)
-        
+
         # Add CORS headers
         self._add_cors_headers(response, request)
-        
+
         return response
-    
+
     def _preflight_response(self, request: Request) -> Response:
         """Handle CORS preflight requests"""
         response = Response()
         self._add_cors_headers(response, request)
         return response
-    
+
     def _add_cors_headers(self, response: Response, request: Request) -> None:
         """Add CORS headers to response"""
         origin = request.headers.get("Origin")
-        
+
         # Check if origin is allowed
         if self.allow_origins == ["*"]:
             response.headers["Access-Control-Allow-Origin"] = "*"
         elif origin in self.allow_origins:
             response.headers["Access-Control-Allow-Origin"] = origin
-        
+
         response.headers["Access-Control-Allow-Methods"] = ", ".join(self.allow_methods)
         response.headers["Access-Control-Allow-Headers"] = ", ".join(self.allow_headers)
         response.headers["Access-Control-Max-Age"] = str(self.max_age)
-        
+
         if self.allow_credentials:
             response.headers["Access-Control-Allow-Credentials"] = "true"
+
 
 class RequestValidationMiddleware(BaseHTTPMiddleware):
     """
     Validate requests for security and compliance
     """
-    
+
     MAX_BODY_SIZE = 100 * 1024 * 1024  # 100MB
-    
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Check content length
         content_length = request.headers.get("Content-Length")
@@ -396,20 +425,19 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
                 status_code=413,
                 content={
                     "error": "Payload too large",
-                    "message": f"Maximum payload size is {self.MAX_BODY_SIZE} bytes"
-                }
+                    "message": f"Maximum payload size is {self.MAX_BODY_SIZE} bytes",
+                },
             )
-        
+
         # Check for suspicious headers
         if self._has_suspicious_headers(request):
-            logger.warning(f"Suspicious request from {request.client.host if request.client else 'unknown'}")
-            return JSONResponse(
-                status_code=400,
-                content={"error": "Invalid request"}
+            logger.warning(
+                f"Suspicious request from {request.client.host if request.client else 'unknown'}"
             )
-        
+            return JSONResponse(status_code=400, content={"error": "Invalid request"})
+
         return await call_next(request)
-    
+
     def _has_suspicious_headers(self, request: Request) -> bool:
         """Check for suspicious headers"""
         suspicious_patterns = [
@@ -418,32 +446,33 @@ class RequestValidationMiddleware(BaseHTTPMiddleware):
             "<script",
             "javascript:",
             "onerror=",
-            "onclick="
+            "onclick=",
         ]
-        
+
         for header_value in request.headers.values():
             for pattern in suspicious_patterns:
                 if pattern.lower() in header_value.lower():
                     return True
-        
+
         return False
+
 
 class PerformanceMonitoringMiddleware(BaseHTTPMiddleware):
     """
     Monitor performance and log slow requests
     """
-    
+
     SLOW_REQUEST_THRESHOLD = 5.0  # 5 seconds
-    
+
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         start_time = time.time()
         response = await call_next(request)
         duration = time.time() - start_time
-        
+
         if duration > self.SLOW_REQUEST_THRESHOLD:
             logger.warning(
                 f"Slow request: {request.method} {request.url.path} "
                 f"took {duration:.3f}s (threshold: {self.SLOW_REQUEST_THRESHOLD}s)"
             )
-        
+
         return response

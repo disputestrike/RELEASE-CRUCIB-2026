@@ -1,4 +1,5 @@
 """P3 — regression for legacy four-file File Tool path (CRUCIBAI_ASSEMBLY_V2 opt-out / fallback)."""
+
 from __future__ import annotations
 
 import shutil
@@ -6,11 +7,12 @@ import uuid
 from pathlib import Path
 
 import pytest
-
 from real_agent_runner import run_legacy_file_tool_writes
 
 
-def _extract(out, filepath: str = "") -> str:  # noqa: ARG001 — matches legacy extract_code shape
+def _extract(
+    out, filepath: str = ""
+) -> str:  # noqa: ARG001 — matches legacy extract_code shape
     if isinstance(out, str):
         return out.strip()
     if isinstance(out, dict):

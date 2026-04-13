@@ -9,10 +9,10 @@ Implements:
 - Whitelist-based access control
 """
 
-import logging
 import ipaddress
+import logging
 import socket
-from typing import Optional, Set, List
+from typing import List, Optional, Set
 from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
@@ -206,11 +206,7 @@ class SafeRequestHandler:
         self.validator = validator or SSRFValidator()
 
     def make_request(
-        self,
-        url: str,
-        method: str = "GET",
-        timeout: int = 10,
-        **kwargs
+        self, url: str, method: str = "GET", timeout: int = 10, **kwargs
     ) -> Optional[dict]:
         """
         Make HTTP request safely.

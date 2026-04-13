@@ -7,6 +7,7 @@ swarm agents the planner still expects (e.g. Smart Contract Agent) until wiring 
 This module targets **3D / WebGL / immersive** cluster agents that are common false
 positives from short keywords ("ar", "vr", "canvas") without blocking blockchain / infra paths.
 """
+
 from __future__ import annotations
 
 import json

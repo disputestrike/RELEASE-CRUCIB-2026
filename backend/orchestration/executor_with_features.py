@@ -19,4 +19,9 @@ def get_executor_with_features(job_id: str, project_id: str) -> ExecutorWithFeat
     return ExecutorWithFeatures(job_id, project_id)
 
 
-__all__ = ["ExecutorWithFeatures", "get_executor_with_features", "WiredExecutor", "get_wired_executor"]
+__all__ = [
+    "ExecutorWithFeatures",
+    "get_executor_with_features",
+    "WiredExecutor",
+    "get_wired_executor",
+]

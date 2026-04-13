@@ -2,10 +2,12 @@
 Vibe-Aware Code Generator for CrucibAI
 Generates code that matches detected vibe and preferences
 """
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass
-from vibe_analysis import VibeAnalysis, CodeStyle, DesignPreference, ProjectComplexity
+
 import logging
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
+
+from vibe_analysis import CodeStyle, DesignPreference, ProjectComplexity, VibeAnalysis
 
 logger = logging.getLogger(__name__)
 
@@ -22,16 +24,46 @@ class GeneratedCode:
 
 
 class VibeCodeGenerator:
-    def generate(self, vibe: VibeAnalysis, prompt: str, language: Optional[str] = None) -> GeneratedCode:
-        lang = language or (vibe.detected_languages[0] if vibe.detected_languages else "javascript")
-        framework = vibe.detected_frameworks[0] if vibe.detected_frameworks else "vanilla"
+    def generate(
+        self, vibe: VibeAnalysis, prompt: str, language: Optional[str] = None
+    ) -> GeneratedCode:
+        lang = language or (
+            vibe.detected_languages[0] if vibe.detected_languages else "javascript"
+        )
+        framework = (
+            vibe.detected_frameworks[0] if vibe.detected_frameworks else "vanilla"
+        )
         code = self._generate_code_for_language(lang, framework, prompt, vibe)
-        comments_level = "minimal" if vibe.code_style == CodeStyle.MINIMALIST else ("comprehensive" if vibe.code_style == CodeStyle.VERBOSE else "moderate")
-        structure = "simple" if vibe.project_complexity == ProjectComplexity.SIMPLE else ("scalable" if vibe.project_complexity == ProjectComplexity.ENTERPRISE else "modular")
+        comments_level = (
+            "minimal"
+            if vibe.code_style == CodeStyle.MINIMALIST
+            else (
+                "comprehensive" if vibe.code_style == CodeStyle.VERBOSE else "moderate"
+            )
+        )
+        structure = (
+            "simple"
+            if vibe.project_complexity == ProjectComplexity.SIMPLE
+            else (
+                "scalable"
+                if vibe.project_complexity == ProjectComplexity.ENTERPRISE
+                else "modular"
+            )
+        )
         explanation = f"Generated {lang} code using {framework}. Style: {vibe.code_style.value}, Complexity: {vibe.project_complexity.value}, Mood: {vibe.mood}."
-        return GeneratedCode(language=lang, framework=framework, code=code, style=vibe.code_style.value, comments_level=comments_level, structure=structure, explanation=explanation)
+        return GeneratedCode(
+            language=lang,
+            framework=framework,
+            code=code,
+            style=vibe.code_style.value,
+            comments_level=comments_level,
+            structure=structure,
+            explanation=explanation,
+        )
 
-    def _generate_code_for_language(self, language: str, framework: str, prompt: str, vibe: VibeAnalysis) -> str:
+    def _generate_code_for_language(
+        self, language: str, framework: str, prompt: str, vibe: VibeAnalysis
+    ) -> str:
         if language in ("javascript", "typescript"):
             if framework == "react":
                 return self._generate_react_code(prompt, vibe)

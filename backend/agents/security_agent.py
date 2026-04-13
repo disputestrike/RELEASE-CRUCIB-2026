@@ -1,8 +1,10 @@
 ﻿"""
 SecurityAgent: Security audit, vulnerability scanning, and fixes.
 """
-from typing import Dict, Any
-from agents.base_agent import BaseAgent, AgentValidationError
+
+from typing import Any, Dict
+
+from agents.base_agent import AgentValidationError, BaseAgent
 from agents.registry import AgentRegistry
 
 
@@ -10,55 +12,66 @@ from agents.registry import AgentRegistry
 class SecurityAgent(BaseAgent):
     """
     Performs security audit and provides fixes.
-    
+
     Input:
         - user_prompt: str
         - frontend_output: dict (optional, from FrontendAgent)
         - backend_output: dict (optional, from BackendAgent)
-    
+
     Output:
         - vulnerabilities: list of vulnerability findings
         - security_config: dict with security configurations
         - security_score: str
         - recommendations: list of security recommendations
     """
-    
+
     def validate_input(self, context: Dict[str, Any]) -> bool:
         super().validate_input(context)
-        
+
         if "user_prompt" not in context:
-            raise AgentValidationError(f"{self.name}: Missing required field 'user_prompt'")
-        
+            raise AgentValidationError(
+                f"{self.name}: Missing required field 'user_prompt'"
+            )
+
         return True
-    
+
     def validate_output(self, result: Dict[str, Any]) -> bool:
         super().validate_output(result)
-        
+
         # Check required fields
-        required = ["vulnerabilities", "security_config", "security_score", "recommendations"]
+        required = [
+            "vulnerabilities",
+            "security_config",
+            "security_score",
+            "recommendations",
+        ]
         for field in required:
             if field not in result:
-                raise AgentValidationError(f"{self.name}: Missing required field '{field}'")
-        
+                raise AgentValidationError(
+                    f"{self.name}: Missing required field '{field}'"
+                )
+
         # Validate vulnerabilities is a list
         if not isinstance(result["vulnerabilities"], list):
             raise AgentValidationError(f"{self.name}: vulnerabilities must be a list")
-        
+
         # Validate security_config is a dict
         if not isinstance(result["security_config"], dict):
-            raise AgentValidationError(f"{self.name}: security_config must be a dictionary")
-        
+            raise AgentValidationError(
+                f"{self.name}: security_config must be a dictionary"
+            )
+
         # Validate recommendations is a list
         if not isinstance(result["recommendations"], list):
             raise AgentValidationError(f"{self.name}: recommendations must be a list")
-        
+
         return True
-    
+
     async def execute(self, context: Dict[str, Any]) -> Dict[str, Any]:
         user_prompt = context.get("user_prompt", "")
         frontend_output = context.get("frontend_output", {})
         backend_output = context.get("backend_output", {})
-        
+
         # Build context from code outputs
         context_info = ""
         if frontend_output:
@@ -66,7 +79,7 @@ class SecurityAgent(BaseAgent):
             context_info += "\n\nFrontend Code Review:\n"
             for filename in list(files.keys())[:3]:  # Sample a few files
                 context_info += f"- {filename}\n"
-        
+
         if backend_output:
             files = backend_output.get("files", {})
             context_info += "\n\nBackend Code Review:\n"
@@ -75,7 +88,7 @@ class SecurityAgent(BaseAgent):
             context_info += f"- {len(endpoints)} API endpoints to secure\n"
             for filename in list(files.keys())[:3]:
                 context_info += f"- {filename}\n"
-        
+
         system_prompt = f"""You are an expert Security Audit agent. Your job is to identify vulnerabilities and provide security recommendations.
 
 Project Requirements:
@@ -157,16 +170,15 @@ Quality expectations:
             system_prompt=system_prompt,
             model="claude-haiku-4-5-20251001",
             temperature=0.7,
-            max_tokens=2000
+            max_tokens=2000,
         )
-        
+
         # Parse JSON response
         data = self.parse_json_response(response)
-        
+
         # Add metadata
         data["_tokens_used"] = tokens
         data["_model_used"] = "claude-haiku-4-5-20251001"
         data["_agent"] = self.name
-        
-        return data
 
+        return data

@@ -1,4 +1,5 @@
 """Elite execution prompt: repo path, env gate, fingerprint."""
+
 from __future__ import annotations
 
 import os

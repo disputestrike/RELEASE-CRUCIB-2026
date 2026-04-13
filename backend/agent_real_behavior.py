@@ -2,10 +2,11 @@
 Maps all 120 DAG agents to real behavior: state write, artifact (file) write, or tool run.
 Called after each agent run so every agent has a verifiable effect (state, file, or tool result).
 """
+
 import json
 import logging
-import re
 import os
+import re
 from typing import Any, Dict, List, Optional
 
 from project_state import load_state, update_state
@@ -149,23 +150,65 @@ TOOL_RUNNER_STATE_KEYS: Dict[str, str] = {
 }
 
 # Agents that already run real tools in run_real_post_step (we only write their result to state)
-POST_STEP_AGENTS = frozenset({"Test Executor", "Security Checker", "UX Auditor", "Performance Analyzer"})
+POST_STEP_AGENTS = frozenset(
+    {"Test Executor", "Security Checker", "UX Auditor", "Performance Analyzer"}
+)
 
 # Real tool agents (File, Browser, API, Database, Deployment) - we only append to tool_log
-REAL_TOOL_AGENTS = frozenset({
-    "Browser Tool Agent", "File Tool Agent", "API Tool Agent", "Database Tool Agent", "Deployment Tool Agent",
-})
+REAL_TOOL_AGENTS = frozenset(
+    {
+        "Browser Tool Agent",
+        "File Tool Agent",
+        "API Tool Agent",
+        "Database Tool Agent",
+        "Deployment Tool Agent",
+    }
+)
 
 
 _PROSE_PREFIXES = (
-    "i ", "i'", "here ", "here'", "this ", "the following",
-    "appreciate", "certainly", "sure,", "below", "based on",
-    "as requested", "i have", "i'll", "let me", "of course",
-    "happy to", "glad to", "please find", "above is", "this is",
-    "the above", "note:", "note that", "in this", "we have",
+    "i ",
+    "i'",
+    "here ",
+    "here'",
+    "this ",
+    "the following",
+    "appreciate",
+    "certainly",
+    "sure,",
+    "below",
+    "based on",
+    "as requested",
+    "i have",
+    "i'll",
+    "let me",
+    "of course",
+    "happy to",
+    "glad to",
+    "please find",
+    "above is",
+    "this is",
+    "the above",
+    "note:",
+    "note that",
+    "in this",
+    "we have",
 )
 
-_CODE_EXTENSIONS = {".jsx", ".tsx", ".js", ".ts", ".py", ".css", ".scss", ".json", ".yaml", ".yml", ".html", ".sh"}
+_CODE_EXTENSIONS = {
+    ".jsx",
+    ".tsx",
+    ".js",
+    ".ts",
+    ".py",
+    ".css",
+    ".scss",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".html",
+    ".sh",
+}
 _FENCE_RE = re.compile(r"```(?P<lang>[a-zA-Z0-9_+-]*)\s*\n(?P<body>.*?)```", re.DOTALL)
 _FENCE_ONLY_RE = re.compile(r"^\s*```[a-zA-Z0-9_+-]*\s*$")
 _LANGUAGE_HINTS = {
@@ -185,7 +228,9 @@ _LANGUAGE_HINTS = {
 
 
 def _strip_fence_lines(text: str) -> str:
-    return "\n".join(line for line in text.splitlines() if not _FENCE_ONLY_RE.match(line))
+    return "\n".join(
+        line for line in text.splitlines() if not _FENCE_ONLY_RE.match(line)
+    )
 
 
 def _extract_best_fenced_block(content: str, filepath: str = "") -> str:
@@ -266,9 +311,25 @@ def run_agent_real_behavior(
         key = STATE_WRITERS[agent_name]
         value = out_str
         if key in ("plan", "feedback_log", "design_iterations"):
-            value = [line.strip() for line in out_str.split("\n") if line.strip()] if out_str else []
-        elif key in ("requirements", "stack", "design_spec", "brand_spec", "vibe_spec", "voice_requirements",
-                     "aesthetic_report", "team_preferences", "mood", "accessibility_vibe", "performance_vibe", "creative_ideas"):
+            value = (
+                [line.strip() for line in out_str.split("\n") if line.strip()]
+                if out_str
+                else []
+            )
+        elif key in (
+            "requirements",
+            "stack",
+            "design_spec",
+            "brand_spec",
+            "vibe_spec",
+            "voice_requirements",
+            "aesthetic_report",
+            "team_preferences",
+            "mood",
+            "accessibility_vibe",
+            "performance_vibe",
+            "creative_ideas",
+        ):
             parsed = _parse_json_safe(out_str)
             value = parsed if parsed is not None else {"raw": out_str[:10000]}
         elif key == "memory_summary":
@@ -285,7 +346,10 @@ def run_agent_real_behavior(
         state_key = TOOL_RUNNER_STATE_KEYS[agent_name]
         try:
             if state_key == "test_results":
-                update_state(project_id, {"test_results": {"output": out_str[:15000], "raw": result}})
+                update_state(
+                    project_id,
+                    {"test_results": {"output": out_str[:15000], "raw": result}},
+                )
             else:
                 update_state(project_id, {state_key: out_str[:15000]})
         except Exception as e:
@@ -301,7 +365,13 @@ def run_agent_real_behavior(
         elif agent_name == "Bundle Analyzer Agent":
             cmd = ["npx", "source-map-explorer", "dist/*.js"]
         elif agent_name == "Lighthouse Agent":
-            cmd = ["npx", "lighthouse", "http://localhost:3000", "--output=json", "--chrome-flags=--headless"]
+            cmd = [
+                "npx",
+                "lighthouse",
+                "http://localhost:3000",
+                "--output=json",
+                "--chrome-flags=--headless",
+            ]
         elif agent_name == "Dependency Audit Agent":
             cmd = ["npm", "audit"]
         if cmd:
@@ -321,7 +391,11 @@ def run_agent_real_behavior(
             content = out_str
         if content:
             try:
-                execute_tool(project_id, "file", {"action": "write", "path": path, "content": content})
+                execute_tool(
+                    project_id,
+                    "file",
+                    {"action": "write", "path": path, "content": content},
+                )
             except Exception as e:
                 logger.warning("artifact write %s: %s", agent_name, e)
         return
@@ -363,11 +437,15 @@ def run_agent_real_behavior(
         try:
             state = load_state(project_id)
             log = state.get("tool_log", [])
-            log.append({
-                "agent": agent_name,
-                "output_preview": out_str[:500] if out_str and out_str != "None" else "",
-                "has_output": bool(out_str and out_str not in ("None", "")),
-            })
+            log.append(
+                {
+                    "agent": agent_name,
+                    "output_preview": (
+                        out_str[:500] if out_str and out_str != "None" else ""
+                    ),
+                    "has_output": bool(out_str and out_str not in ("None", "")),
+                }
+            )
             # Also store on result so verifier can pick it up
             if isinstance(result, dict):
                 result["output_preview"] = out_str[:300] if out_str else ""

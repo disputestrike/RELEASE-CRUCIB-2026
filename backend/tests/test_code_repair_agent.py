@@ -1,7 +1,6 @@
 import ast
 
 import pytest
-
 from agents.code_repair_agent import CodeRepairAgent, coerce_text_output
 
 
@@ -20,7 +19,11 @@ async def test_code_repair_agent_fixes_missing_python_colon():
     assert repaired["valid"] is True
     assert repaired["repaired"] is True
     assert repaired["language"] == "python"
-    assert repaired["strategy"] in {"add_missing_colons", "ensure_block_body", "llm_repair"}
+    assert repaired["strategy"] in {
+        "add_missing_colons",
+        "ensure_block_body",
+        "llm_repair",
+    }
     ast.parse(repaired["output"])
     assert "async def create_job(data: dict):" in repaired["output"]
 

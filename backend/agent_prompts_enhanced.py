@@ -34,10 +34,9 @@ Success Criteria:
         "output_format": "numbered_list",
         "examples": [
             "1. Design database schema\n2. Create API\n3. Build frontend",
-            "1. Setup authentication\n2. Create user dashboard\n3. Add payment processing"
-        ]
+            "1. Setup authentication\n2. Create user dashboard\n3. Add payment processing",
+        ],
     },
-    
     "Requirements Clarifier": {
         "prompt": """You are an expert Requirements Analyst. Your job is to clarify ambiguous requirements.
 
@@ -66,10 +65,9 @@ Success Criteria:
         "output_format": "question_list",
         "examples": [
             "Who is the target user?\nWhat's the primary use case?\nDo you need real-time features?",
-            "What's your budget?\nWhat's the timeline?\nDo you need mobile support?"
-        ]
+            "What's your budget?\nWhat's the timeline?\nDo you need mobile support?",
+        ],
     },
-    
     "Stack Selector": {
         "prompt": """You are an expert Technology Stack Selector. Your job is to recommend the best tech stack.
 
@@ -112,10 +110,9 @@ Success Criteria:
         "output_format": "json",
         "examples": [
             '{"frontend": "React", "backend": "Node.js", "database": "MongoDB"}',
-            '{"frontend": "Vue", "backend": "Django", "database": "PostgreSQL"}'
-        ]
+            '{"frontend": "Vue", "backend": "Django", "database": "PostgreSQL"}',
+        ],
     },
-    
     "Frontend Generation": {
         "prompt": """You are an expert Frontend Developer. Your job is to generate complete, production-ready frontend code.
 
@@ -157,10 +154,9 @@ Success Criteria:
         "output_format": "code",
         "examples": [
             "React component with hooks and state management",
-            "Multi-page app with routing"
-        ]
+            "Multi-page app with routing",
+        ],
     },
-    
     "Backend Generation": {
         "prompt": """You are an expert Backend Developer. Your job is to generate complete, production-ready backend code.
 
@@ -204,10 +200,9 @@ Success Criteria:
         "output_format": "code",
         "examples": [
             "FastAPI app with routes and models",
-            "Express.js app with middleware"
-        ]
+            "Express.js app with middleware",
+        ],
     },
-    
     "Database Agent": {
         "prompt": """You are an expert Database Designer. Your job is to design database schema.
 
@@ -249,10 +244,9 @@ Success Criteria:
         "output_format": "sql",
         "examples": [
             "SQL schema with users, projects, tasks",
-            "PostgreSQL schema with JSONB columns"
-        ]
+            "PostgreSQL schema with JSONB columns",
+        ],
     },
-    
     "Security Checker": {
         "prompt": """You are an expert Security Auditor. Your job is to check code for security issues.
 
@@ -282,10 +276,9 @@ Success Criteria:
         "output_format": "checklist",
         "examples": [
             "SQL Injection: PASS\nXSS: PASS\nCSRF: FAIL",
-            "Auth: PASS\nEncryption: PASS\nRate Limit: FAIL"
-        ]
+            "Auth: PASS\nEncryption: PASS\nRate Limit: FAIL",
+        ],
     },
-    
     "Test Generation": {
         "prompt": """You are an expert Test Engineer. Your job is to generate comprehensive tests.
 
@@ -321,10 +314,9 @@ Success Criteria:
         "output_format": "code",
         "examples": [
             "pytest tests for FastAPI endpoints",
-            "Jest tests for Express routes"
-        ]
+            "Jest tests for Express routes",
+        ],
     },
-    
     "Image Generation": {
         "prompt": """You are an expert Image Prompt Engineer. Your job is to create detailed image generation prompts.
 
@@ -355,10 +347,9 @@ Success Criteria:
         "output_format": "json",
         "examples": [
             '{"hero": "Professional business image...", "feature_1": "Team collaboration...", "feature_2": "Dashboard view..."}',
-            '{"hero": "Modern tech startup office...", "feature_1": "Developers coding...", "feature_2": "Analytics dashboard..."}'
-        ]
+            '{"hero": "Modern tech startup office...", "feature_1": "Developers coding...", "feature_2": "Analytics dashboard..."}',
+        ],
     },
-    
     "Deployment Agent": {
         "prompt": """You are an expert DevOps Engineer. Your job is to provide deployment instructions.
 
@@ -393,10 +384,11 @@ Success Criteria:
         "output_format": "steps",
         "examples": [
             "1. Setup database\n2. Install dependencies\n3. Run migrations\n4. Start server",
-            "1. Deploy to Heroku\n2. Set env vars\n3. Run migrations\n4. Monitor with Sentry"
-        ]
-    }
+            "1. Deploy to Heroku\n2. Set env vars\n3. Run migrations\n4. Monitor with Sentry",
+        ],
+    },
 }
+
 
 def get_enhanced_prompt(agent_name: str) -> str:
     """Get enhanced prompt for an agent."""
@@ -404,11 +396,13 @@ def get_enhanced_prompt(agent_name: str) -> str:
         return ENHANCED_PROMPTS[agent_name]["prompt"]
     return None
 
+
 def get_output_format(agent_name: str) -> str:
     """Get expected output format for an agent."""
     if agent_name in ENHANCED_PROMPTS:
         return ENHANCED_PROMPTS[agent_name]["output_format"]
     return "text"
+
 
 def get_examples(agent_name: str) -> list:
     """Get examples for an agent."""

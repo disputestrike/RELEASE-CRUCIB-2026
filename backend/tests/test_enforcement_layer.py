@@ -1,12 +1,15 @@
 """Elite enforcement layer: registry, gates, reports."""
+
 from __future__ import annotations
 
 import os
 import tempfile
 
 import pytest
-
-from orchestration.enforcement.critical_registry import CRITICAL_FEATURES, matching_features
+from orchestration.enforcement.critical_registry import (
+    CRITICAL_FEATURES,
+    matching_features,
+)
 from orchestration.enforcement.enforcement_engine import (
     evaluate_enforcement,
     write_enforcement_artifacts,
@@ -37,12 +40,20 @@ def test_evaluate_enforcement_strict_blocks_auth_without_proof(monkeypatch):
     try:
         with tempfile.TemporaryDirectory() as d:
             os.makedirs(os.path.join(d, "proof"), exist_ok=True)
-            with open(os.path.join(d, "proof", "DELIVERY_CLASSIFICATION.md"), "w", encoding="utf-8") as f:
-                f.write("## Implemented\nx\n## Mocked\ny\n## Stubbed\nz\n## Unverified\nw\n")
+            with open(
+                os.path.join(d, "proof", "DELIVERY_CLASSIFICATION.md"),
+                "w",
+                encoding="utf-8",
+            ) as f:
+                f.write(
+                    "## Implemented\nx\n## Mocked\ny\n## Stubbed\nz\n## Unverified\nw\n"
+                )
             r = evaluate_enforcement(d, "JWT auth login API", [], {})
             assert r["advisory_would_block"] is True
             assert r["blocked"] is True
-            assert any("Authentication" in i or "auth" in i.lower() for i in r["issues"])
+            assert any(
+                "Authentication" in i or "auth" in i.lower() for i in r["issues"]
+            )
     finally:
         monkeypatch.delenv("CRUCIBAI_ENFORCEMENT_GATE", raising=False)
 
@@ -51,8 +62,14 @@ def test_evaluate_enforcement_advisory_does_not_block(monkeypatch):
     monkeypatch.delenv("CRUCIBAI_ENFORCEMENT_GATE", raising=False)
     with tempfile.TemporaryDirectory() as d:
         os.makedirs(os.path.join(d, "proof"), exist_ok=True)
-        with open(os.path.join(d, "proof", "DELIVERY_CLASSIFICATION.md"), "w", encoding="utf-8") as f:
-            f.write("## Implemented\nx\n## Mocked\ny\n## Stubbed\nz\n## Unverified\nw\n")
+        with open(
+            os.path.join(d, "proof", "DELIVERY_CLASSIFICATION.md"),
+            "w",
+            encoding="utf-8",
+        ) as f:
+            f.write(
+                "## Implemented\nx\n## Mocked\ny\n## Stubbed\nz\n## Unverified\nw\n"
+            )
         r = evaluate_enforcement(d, "JWT auth login API", [], {})
         assert r["advisory_would_block"] is True
         assert r["blocked"] is False
@@ -63,9 +80,22 @@ def test_presence_only_routes_fail_api_gate_strict(monkeypatch):
     try:
         with tempfile.TemporaryDirectory() as d:
             os.makedirs(os.path.join(d, "proof"), exist_ok=True)
-            with open(os.path.join(d, "proof", "DELIVERY_CLASSIFICATION.md"), "w", encoding="utf-8") as f:
-                f.write("## Implemented\nx\n## Mocked\ny\n## Stubbed\nz\n## Unverified\nw\n")
-            bundle = {"routes": [{"path": "/x"}], "files": [], "database": [], "verification": [], "deploy": [], "generic": []}
+            with open(
+                os.path.join(d, "proof", "DELIVERY_CLASSIFICATION.md"),
+                "w",
+                encoding="utf-8",
+            ) as f:
+                f.write(
+                    "## Implemented\nx\n## Mocked\ny\n## Stubbed\nz\n## Unverified\nw\n"
+                )
+            bundle = {
+                "routes": [{"path": "/x"}],
+                "files": [],
+                "database": [],
+                "verification": [],
+                "deploy": [],
+                "generic": [],
+            }
             flat = [
                 {
                     "proof_type": "route",
@@ -75,7 +105,9 @@ def test_presence_only_routes_fail_api_gate_strict(monkeypatch):
             ]
             r = evaluate_enforcement(d, "FastAPI REST backend", flat, bundle)
             assert r["blocked"] is True
-            assert any("health" in i.lower() or "core_api" in i.lower() for i in r["issues"])
+            assert any(
+                "health" in i.lower() or "core_api" in i.lower() for i in r["issues"]
+            )
     finally:
         monkeypatch.delenv("CRUCIBAI_ENFORCEMENT_GATE", raising=False)
 
@@ -85,8 +117,14 @@ def test_rbac_negative_proof_passes_auth_feature(monkeypatch):
     try:
         with tempfile.TemporaryDirectory() as d:
             os.makedirs(os.path.join(d, "proof"), exist_ok=True)
-            with open(os.path.join(d, "proof", "DELIVERY_CLASSIFICATION.md"), "w", encoding="utf-8") as f:
-                f.write("## Implemented\nx\n## Mocked\ny\n## Stubbed\nz\n## Unverified\nw\n")
+            with open(
+                os.path.join(d, "proof", "DELIVERY_CLASSIFICATION.md"),
+                "w",
+                encoding="utf-8",
+            ) as f:
+                f.write(
+                    "## Implemented\nx\n## Mocked\ny\n## Stubbed\nz\n## Unverified\nw\n"
+                )
             flat = [
                 {
                     "proof_type": "api",
@@ -108,9 +146,21 @@ def test_skipped_rbac_signal_strict(monkeypatch):
     try:
         with tempfile.TemporaryDirectory() as d:
             os.makedirs(os.path.join(d, "proof"), exist_ok=True)
-            with open(os.path.join(d, "proof", "DELIVERY_CLASSIFICATION.md"), "w", encoding="utf-8") as f:
-                f.write("## Implemented\nx\n## Mocked\ny\n## Stubbed\nz\n## Unverified\nw\n")
-            flat = [{"proof_type": "generic", "title": "skip", "payload": {"check": "rbac_smoke_skipped"}}]
+            with open(
+                os.path.join(d, "proof", "DELIVERY_CLASSIFICATION.md"),
+                "w",
+                encoding="utf-8",
+            ) as f:
+                f.write(
+                    "## Implemented\nx\n## Mocked\ny\n## Stubbed\nz\n## Unverified\nw\n"
+                )
+            flat = [
+                {
+                    "proof_type": "generic",
+                    "title": "skip",
+                    "payload": {"check": "rbac_smoke_skipped"},
+                }
+            ]
             r = evaluate_enforcement(d, "RBAC admin roles", flat, {})
             assert r["blocked"] is True
             assert any("skip" in i.lower() for i in r["issues"])
@@ -128,7 +178,11 @@ def test_write_enforcement_artifacts_creates_files():
 
 
 def test_strength_health_endpoint_is_runtime():
-    item = {"proof_type": "api", "title": "health", "payload": {"check": "health_endpoint"}}
+    item = {
+        "proof_type": "api",
+        "title": "health",
+        "payload": {"check": "health_endpoint"},
+    }
     name, rank = strength_for_flat_item(item)
     assert name == "runtime"
     assert rank == RANK["runtime"]

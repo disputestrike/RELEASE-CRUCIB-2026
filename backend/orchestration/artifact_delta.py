@@ -4,6 +4,7 @@ P1 — Per-step workspace fingerprint diff for job_events (telemetry).
 Emits structured added / removed / modified path lists without hashing file bodies
 (size + mtime only). Uses the same directory pruning as workspace manifests.
 """
+
 from __future__ import annotations
 
 import os
@@ -29,7 +30,9 @@ def snapshot_workspace_fingerprints(workspace_root: Path) -> Fingerprint:
         dirnames[:] = [
             d
             for d in dirnames
-            if d not in SKIP_ZIP_DIRS and not d.startswith(".tmp") and not (d.startswith(".") and d not in (".", ".."))
+            if d not in SKIP_ZIP_DIRS
+            and not d.startswith(".tmp")
+            and not (d.startswith(".") and d not in (".", ".."))
         ]
         for fn in filenames:
             if count >= _MAX_SNAPSHOT_FILES:
@@ -47,7 +50,10 @@ def snapshot_workspace_fingerprints(workspace_root: Path) -> Fingerprint:
                 st = p.stat()
             except OSError:
                 continue
-            out[rel] = (int(st.st_size), float(getattr(st, "st_mtime_ns", st.st_mtime * 1e9)))
+            out[rel] = (
+                int(st.st_size),
+                float(getattr(st, "st_mtime_ns", st.st_mtime * 1e9)),
+            )
             count += 1
     return out
 

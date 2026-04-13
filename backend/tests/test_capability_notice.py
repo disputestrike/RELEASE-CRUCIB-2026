@@ -1,8 +1,8 @@
 """capability_notice_lines: target-aligned mega-spec and preview hints."""
+
 from __future__ import annotations
 
 import pytest
-
 from orchestration.capability_notice import (
     _long_goal_line,
     _preview_workspace_hint,
@@ -51,7 +51,9 @@ def test_mega_goal_notice_respects_target(target: str, needle_forbidden: str):
     lines = capability_notice_lines(goal, build_target=target)
     joined = " ".join(lines)
     assert needle_forbidden not in joined
-    assert _long_goal_line(target) in lines or any(_long_goal_line(target) in ln for ln in lines)
+    assert _long_goal_line(target) in lines or any(
+        _long_goal_line(target) in ln for ln in lines
+    )
 
 
 def test_short_goal_still_has_platform_line():

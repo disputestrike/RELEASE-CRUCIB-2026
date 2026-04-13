@@ -2,6 +2,7 @@
 verification.security — static checks for tenancy / Stripe sketches and obvious footguns.
 Not a full SAST; complements production_gate secret scan on deploy.build.
 """
+
 from __future__ import annotations
 
 import json
@@ -22,7 +23,9 @@ def _read_sql_migrations(workspace_path: str) -> str:
         if not name.endswith(".sql"):
             continue
         try:
-            with open(os.path.join(mig, name), encoding="utf-8", errors="replace") as fh:
+            with open(
+                os.path.join(mig, name), encoding="utf-8", errors="replace"
+            ) as fh:
                 parts.append(fh.read())
         except OSError:
             continue
@@ -49,11 +52,15 @@ def _pi(
     return {"proof_type": proof_type, "title": title, "payload": p}
 
 
-def _vr(passed: bool, score: int, issues: List[str], proof: List[Dict[str, Any]]) -> Dict[str, Any]:
+def _vr(
+    passed: bool, score: int, issues: List[str], proof: List[Dict[str, Any]]
+) -> Dict[str, Any]:
     return {"passed": passed, "score": score, "issues": issues, "proof": proof}
 
 
-def _npm_audit_if_enabled(workspace_path: str) -> Tuple[List[str], List[Dict[str, Any]]]:
+def _npm_audit_if_enabled(
+    workspace_path: str,
+) -> Tuple[List[str], List[Dict[str, Any]]]:
     """Optional npm audit during verification.security (off by default; can be slow)."""
     issues: List[str] = []
     proof: List[Dict[str, Any]] = []
@@ -97,7 +104,11 @@ def _npm_audit_if_enabled(workspace_path: str) -> Tuple[List[str], List[Dict[str
                 verification_class="runtime",
             ),
         )
-        strict = os.environ.get("CRUCIBAI_NPM_AUDIT_STRICT", "").strip().lower() in ("1", "true", "yes")
+        strict = os.environ.get("CRUCIBAI_NPM_AUDIT_STRICT", "").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+        )
         if strict and r.returncode != 0:
             issues.append("npm audit reported issues (CRUCIBAI_NPM_AUDIT_STRICT=1)")
     except subprocess.TimeoutExpired:
@@ -164,7 +175,11 @@ def verify_security_workspace(workspace_path: str) -> Dict[str, Any]:
                         _pi(
                             "verification",
                             f"Security: RLS migration structurally valid ({name})",
-                            {"check": "rls_syntax_valid", "file": name, "status": "pass"},
+                            {
+                                "check": "rls_syntax_valid",
+                                "file": name,
+                                "status": "pass",
+                            },
                             verification_class="runtime",
                         ),
                     )
@@ -192,7 +207,9 @@ def verify_security_workspace(workspace_path: str) -> Dict[str, Any]:
     if not main_py.strip():
         issues.append("backend/main.py missing or empty")
     else:
-        if "CORSMiddleware" in main_py and ("allow_origins=[\"*\"]" in main_py or "allow_origins=['*']" in main_py):
+        if "CORSMiddleware" in main_py and (
+            'allow_origins=["*"]' in main_py or "allow_origins=['*']" in main_py
+        ):
             proof.append(
                 _pi(
                     "verification",
@@ -260,7 +277,9 @@ def verify_security_workspace(workspace_path: str) -> Dict[str, Any]:
                 verification_class="presence",
             ),
         )
-    tf_sketch = os.path.join(workspace_path, "terraform", "multiregion_sketch", "main.tf")
+    tf_sketch = os.path.join(
+        workspace_path, "terraform", "multiregion_sketch", "main.tf"
+    )
     if os.path.isfile(tf_sketch):
         proof.append(
             _pi(

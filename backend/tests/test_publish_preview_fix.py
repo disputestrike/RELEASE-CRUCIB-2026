@@ -8,7 +8,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 
-def _install_published_job(monkeypatch, workspace_root, *, job_id: str = "job-preview-123"):
+def _install_published_job(
+    monkeypatch, workspace_root, *, job_id: str = "job-preview-123"
+):
     import server
     from orchestration import runtime_state
 
@@ -33,7 +35,11 @@ def _install_published_job(monkeypatch, workspace_root, *, job_id: str = "job-pr
 
 @pytest.fixture
 def workspace_root():
-    root = Path(__file__).resolve().parents[2] / ".tmp_pytest_manual" / f"published-{uuid.uuid4().hex}"
+    root = (
+        Path(__file__).resolve().parents[2]
+        / ".tmp_pytest_manual"
+        / f"published-{uuid.uuid4().hex}"
+    )
     root.mkdir(parents=True, exist_ok=True)
     try:
         yield root
@@ -41,7 +47,9 @@ def workspace_root():
         shutil.rmtree(root, ignore_errors=True)
 
 
-def test_published_route_rewrites_assets_and_serves_job_bundle(monkeypatch, workspace_root):
+def test_published_route_rewrites_assets_and_serves_job_bundle(
+    monkeypatch, workspace_root
+):
     import server
 
     root, job_id = _install_published_job(monkeypatch, workspace_root)
@@ -49,14 +57,16 @@ def test_published_route_rewrites_assets_and_serves_job_bundle(monkeypatch, work
         """<!doctype html><html><head><script type="module" src="/assets/app.js"></script></head><body><div id="root"></div></body></html>""",
         encoding="utf-8",
     )
-    (root / "dist" / "assets" / "app.js").write_text("console.log('published-preview-ok');", encoding="utf-8")
+    (root / "dist" / "assets" / "app.js").write_text(
+        "console.log('published-preview-ok');", encoding="utf-8"
+    )
 
     with TestClient(server.app) as client:
         html = client.get(f"/published/{job_id}/")
         asset = client.get(f"/published/{job_id}/assets/app.js")
 
     assert html.status_code == 200
-    assert f'/published/{job_id}/assets/app.js' in html.text
+    assert f"/published/{job_id}/assets/app.js" in html.text
     assert '<base href="/published/job-preview-123/">' in html.text
     assert asset.status_code == 200
     assert "published-preview-ok" in asset.text
@@ -65,8 +75,12 @@ def test_published_route_rewrites_assets_and_serves_job_bundle(monkeypatch, work
 def test_published_route_missing_asset_returns_404(monkeypatch, workspace_root):
     import server
 
-    root, job_id = _install_published_job(monkeypatch, workspace_root, job_id="job-missing-123")
-    (root / "dist" / "index.html").write_text("<!doctype html><h1>Missing asset</h1>", encoding="utf-8")
+    root, job_id = _install_published_job(
+        monkeypatch, workspace_root, job_id="job-missing-123"
+    )
+    (root / "dist" / "index.html").write_text(
+        "<!doctype html><h1>Missing asset</h1>", encoding="utf-8"
+    )
 
     with TestClient(server.app) as client:
         response = client.get(f"/published/{job_id}/assets/missing.js")
@@ -82,7 +96,9 @@ def test_enrich_job_public_urls_sets_preview_and_deploy(monkeypatch, workspace_r
     project_id = "project-enrich-123"
     root = server._project_workspace_path(project_id)
     (root / "dist").mkdir(parents=True, exist_ok=True)
-    (root / "dist" / "index.html").write_text("<!doctype html><h1>Preview</h1>", encoding="utf-8")
+    (root / "dist" / "index.html").write_text(
+        "<!doctype html><h1>Preview</h1>", encoding="utf-8"
+    )
 
     enriched = server._enrich_job_public_urls(
         {
@@ -92,6 +108,15 @@ def test_enrich_job_public_urls_sets_preview_and_deploy(monkeypatch, workspace_r
         }
     )
 
-    assert enriched["preview_url"] == "https://crucibai.example.com/published/job-enrich-123/"
-    assert enriched["published_url"] == "https://crucibai.example.com/published/job-enrich-123/"
-    assert enriched["deploy_url"] == "https://crucibai.example.com/published/job-enrich-123/"
+    assert (
+        enriched["preview_url"]
+        == "https://crucibai.example.com/published/job-enrich-123/"
+    )
+    assert (
+        enriched["published_url"]
+        == "https://crucibai.example.com/published/job-enrich-123/"
+    )
+    assert (
+        enriched["deploy_url"]
+        == "https://crucibai.example.com/published/job-enrich-123/"
+    )

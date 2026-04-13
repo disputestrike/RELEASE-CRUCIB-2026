@@ -13,6 +13,7 @@ Claude forgets everything between conversations.
 Codex doesn't share knowledge between repos.
 CrucibAI compounds knowledge across all agents × all users × all time.
 """
+
 import hashlib
 import json
 import logging
@@ -25,10 +26,12 @@ logger = logging.getLogger(__name__)
 
 # ── Cross-session memory ───────────────────────────────────────────────────────
 
+
 async def _get_pool():
     """Get Postgres pool."""
     try:
         from db_pg import get_pg_pool
+
         return await get_pg_pool()
     except Exception:
         return None
@@ -88,10 +91,11 @@ def _error_signature(error_message: str, step_key: str) -> str:
     """Create a normalized signature for an error to enable lookups."""
     # Normalize: remove UUIDs, timestamps, line numbers
     import re
-    normalized = re.sub(r'[0-9a-f]{8}-[0-9a-f-]{27}', 'UUID', error_message or "")
-    normalized = re.sub(r'line \d+', 'line N', normalized)
-    normalized = re.sub(r':\d+:\d+', ':N:N', normalized)
-    normalized = re.sub(r'\b\d+\b', 'N', normalized)
+
+    normalized = re.sub(r"[0-9a-f]{8}-[0-9a-f-]{27}", "UUID", error_message or "")
+    normalized = re.sub(r"line \d+", "line N", normalized)
+    normalized = re.sub(r":\d+:\d+", ":N:N", normalized)
+    normalized = re.sub(r"\b\d+\b", "N", normalized)
     normalized = normalized.lower().strip()[:200]
     key = f"{step_key}:{normalized}"
     return hashlib.md5(key.encode()).hexdigest()[:16]
@@ -117,7 +121,9 @@ async def remember_fix(
             existing = await conn.fetchrow(
                 "SELECT id, success_count, failure_count FROM brain_fix_memory "
                 "WHERE error_signature = $1 AND step_key = $2 AND fix_type = $3",
-                sig, step_key, fix_type,
+                sig,
+                step_key,
+                fix_type,
             )
             if existing:
                 if success:
@@ -125,7 +131,8 @@ async def remember_fix(
                         "UPDATE brain_fix_memory SET success_count = success_count + 1, "
                         "success = TRUE, last_seen_at = NOW(), retry_count_when_fixed = $1 "
                         "WHERE id = $2",
-                        retry_count, existing["id"],
+                        retry_count,
+                        existing["id"],
                     )
                 else:
                     await conn.execute(
@@ -140,14 +147,20 @@ async def remember_fix(
                     "retry_count_when_fixed, files_repaired, goal_keywords, "
                     "success_count, failure_count) "
                     "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
-                    sig, step_key, fix_type, fix_description[:500], success,
+                    sig,
+                    step_key,
+                    fix_type,
+                    fix_description[:500],
+                    success,
                     retry_count,
                     json.dumps(files_repaired or []),
                     goal_keywords or [],
                     1 if success else 0,
                     0 if success else 1,
                 )
-        logger.debug("brain_intelligence: remembered fix sig=%s success=%s", sig, success)
+        logger.debug(
+            "brain_intelligence: remembered fix sig=%s success=%s", sig, success
+        )
     except Exception as e:
         logger.warning("brain_intelligence: remember_fix failed: %s", e)
 
@@ -172,7 +185,8 @@ async def recall_best_fix(
                 "FROM brain_fix_memory "
                 "WHERE error_signature = $1 AND step_key = $2 AND success = TRUE "
                 "ORDER BY success_count DESC LIMIT 3",
-                sig, step_key,
+                sig,
+                step_key,
             )
             if not rows:
                 return None
@@ -208,10 +222,28 @@ async def store_build_dna(
         return
     try:
         import re
+
         # Extract keywords from goal
-        stop_words = {"a", "an", "the", "and", "or", "with", "for", "that", "this",
-                      "build", "create", "make", "me", "my", "our", "app", "application"}
-        words = re.findall(r'\b[a-z]{3,}\b', goal.lower())
+        stop_words = {
+            "a",
+            "an",
+            "the",
+            "and",
+            "or",
+            "with",
+            "for",
+            "that",
+            "this",
+            "build",
+            "create",
+            "make",
+            "me",
+            "my",
+            "our",
+            "app",
+            "application",
+        }
+        words = re.findall(r"\b[a-z]{3,}\b", goal.lower())
         keywords = list(dict.fromkeys(w for w in words if w not in stop_words))[:20]
 
         goal_hash = hashlib.md5(goal.encode()).hexdigest()[:16]
@@ -221,9 +253,14 @@ async def store_build_dna(
                 "(goal_hash, goal_keywords, step_completion_pct, quality_score, "
                 "successful_agents, failed_agents, fix_patterns, total_steps) "
                 "VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
-                goal_hash, keywords, step_completion_pct, quality_score,
-                successful_agents, failed_agents,
-                json.dumps(fix_patterns), total_steps,
+                goal_hash,
+                keywords,
+                step_completion_pct,
+                quality_score,
+                successful_agents,
+                failed_agents,
+                json.dumps(fix_patterns),
+                total_steps,
             )
         logger.debug("brain_intelligence: stored build DNA hash=%s", goal_hash)
     except Exception as e:
@@ -240,9 +277,27 @@ async def find_similar_builds(goal: str, limit: int = 5) -> List[Dict[str, Any]]
         return []
     try:
         import re
-        stop_words = {"a", "an", "the", "and", "or", "with", "for", "that", "this",
-                      "build", "create", "make", "me", "my", "our", "app", "application"}
-        words = re.findall(r'\b[a-z]{3,}\b', goal.lower())
+
+        stop_words = {
+            "a",
+            "an",
+            "the",
+            "and",
+            "or",
+            "with",
+            "for",
+            "that",
+            "this",
+            "build",
+            "create",
+            "make",
+            "me",
+            "my",
+            "our",
+            "app",
+            "application",
+        }
+        words = re.findall(r"\b[a-z]{3,}\b", goal.lower())
         keywords = list(dict.fromkeys(w for w in words if w not in stop_words))[:10]
 
         if not keywords:
@@ -259,7 +314,8 @@ async def find_similar_builds(goal: str, limit: int = 5) -> List[Dict[str, Any]]
                 "AND array_length(ARRAY(SELECT unnest(goal_keywords) INTERSECT "
                 "SELECT unnest($1::text[])), 1) > 0 "
                 "ORDER BY overlap DESC, quality_score DESC LIMIT $2",
-                keywords, limit,
+                keywords,
+                limit,
             )
             return [
                 {
@@ -280,6 +336,7 @@ async def find_similar_builds(goal: str, limit: int = 5) -> List[Dict[str, Any]]
 
 # ── Predictive failure prevention ─────────────────────────────────────────────
 
+
 async def predict_failures(goal: str) -> List[Dict[str, Any]]:
     """
     Before a build starts, scan the goal for patterns that historically fail.
@@ -294,7 +351,10 @@ async def predict_failures(goal: str) -> List[Dict[str, Any]]:
             "pattern": r"stripe.*connect|connect.*stripe",
             "risk": "Stripe Connect requires specific OAuth flow setup",
             "prevention": "Add STRIPE_CONNECT_CLIENT_ID to env, use targeted context for Stripe agents",
-            "affected_agents": ["stripe_subscription_agent", "stripe_integration_agent"],
+            "affected_agents": [
+                "stripe_subscription_agent",
+                "stripe_integration_agent",
+            ],
         },
         {
             "pattern": r"websocket.*real.?time|real.?time.*websocket|multiplayer",
@@ -329,23 +389,31 @@ async def predict_failures(goal: str) -> List[Dict[str, Any]]:
     ]
 
     import re
+
     goal_lower = goal.lower()
     for p in KNOWN_RISKY_PATTERNS:
         if re.search(p["pattern"], goal_lower):
-            predictions.append({
-                "risk": p["risk"],
-                "prevention": p["prevention"],
-                "affected_agents": p["affected_agents"],
-                "confidence": "high",
-                "source": "static_pattern",
-            })
+            predictions.append(
+                {
+                    "risk": p["risk"],
+                    "prevention": p["prevention"],
+                    "affected_agents": p["affected_agents"],
+                    "confidence": "high",
+                    "source": "static_pattern",
+                }
+            )
 
     # Also check DB for historically failed patterns on similar goals
     if pool:
         try:
             import re as re2
+
             stop_words = {"a", "an", "the", "and", "or", "with"}
-            kw = [w for w in re2.findall(r'\b[a-z]{4,}\b', goal_lower) if w not in stop_words][:8]
+            kw = [
+                w
+                for w in re2.findall(r"\b[a-z]{4,}\b", goal_lower)
+                if w not in stop_words
+            ][:8]
             if kw:
                 async with pool.acquire() as conn:
                     rows = await conn.fetch(
@@ -357,22 +425,29 @@ async def predict_failures(goal: str) -> List[Dict[str, Any]]:
                         kw,
                     )
                     for row in rows:
-                        fail_rate = row["failure_count"] / max(1, row["failure_count"] + row["success_count"])
+                        fail_rate = row["failure_count"] / max(
+                            1, row["failure_count"] + row["success_count"]
+                        )
                         if fail_rate > 0.5:
-                            predictions.append({
-                                "risk": f"{row['step_key']} historically fails {int(fail_rate*100)}% of the time on similar goals",
-                                "prevention": f"Pre-apply fix: {row['fix_type']}",
-                                "affected_agents": [row["step_key"]],
-                                "confidence": "medium",
-                                "source": "historical_data",
-                            })
+                            predictions.append(
+                                {
+                                    "risk": f"{row['step_key']} historically fails {int(fail_rate*100)}% of the time on similar goals",
+                                    "prevention": f"Pre-apply fix: {row['fix_type']}",
+                                    "affected_agents": [row["step_key"]],
+                                    "confidence": "medium",
+                                    "source": "historical_data",
+                                }
+                            )
         except Exception as e:
-            logger.warning("brain_intelligence: predict_failures DB query failed: %s", e)
+            logger.warning(
+                "brain_intelligence: predict_failures DB query failed: %s", e
+            )
 
     return predictions
 
 
 # ── Web search for repair ──────────────────────────────────────────────────────
+
 
 async def search_error_solution(
     error_message: str,
@@ -386,10 +461,11 @@ async def search_error_solution(
     """
     # Build a targeted search query
     import re
+
     # Extract the core error — strip UUIDs, paths, line numbers
-    clean_error = re.sub(r'[0-9a-f]{8}-[0-9a-f-]{27}', '', error_message or "")
-    clean_error = re.sub(r'/[\w/.-]+\.[\w]+:\d+', '', clean_error)
-    clean_error = re.sub(r'\s+', ' ', clean_error).strip()[:150]
+    clean_error = re.sub(r"[0-9a-f]{8}-[0-9a-f-]{27}", "", error_message or "")
+    clean_error = re.sub(r"/[\w/.-]+\.[\w]+:\d+", "", clean_error)
+    clean_error = re.sub(r"\s+", " ", clean_error).strip()[:150]
 
     lang_hint = f" {language}" if language else ""
     query = f"{clean_error}{lang_hint} fix site:stackoverflow.com OR site:github.com"
@@ -398,8 +474,10 @@ async def search_error_solution(
     tavily_key = os.environ.get("TAVILY_API_KEY", "").strip()
     if tavily_key:
         try:
-            from tavily import TavilyClient
             import asyncio
+
+            from tavily import TavilyClient
+
             client = TavilyClient(api_key=tavily_key)
 
             def _search():
@@ -409,6 +487,7 @@ async def search_error_solution(
                     max_results=3,
                     include_answer=True,
                 )
+
             resp = await asyncio.to_thread(_search)
             parts = []
             if resp.get("answer"):
@@ -420,7 +499,10 @@ async def search_error_solution(
                     parts.append(f"[{title}]: {content}")
             if parts:
                 result = "\n\n".join(parts)[:2000]
-                logger.info("brain_intelligence: web search found solution for %s", clean_error[:60])
+                logger.info(
+                    "brain_intelligence: web search found solution for %s",
+                    clean_error[:60],
+                )
                 return result
         except Exception as e:
             logger.warning("brain_intelligence: Tavily search failed: %s", e)
@@ -430,19 +512,27 @@ async def search_error_solution(
     if anthropic_key:
         try:
             import anthropic as _anthropic
-            from anthropic_models import normalize_anthropic_model, ANTHROPIC_SONNET_MODEL
+            from anthropic_models import (
+                ANTHROPIC_SONNET_MODEL,
+                normalize_anthropic_model,
+            )
+
             client = _anthropic.AsyncAnthropic(api_key=anthropic_key)
             model = normalize_anthropic_model(None, default=ANTHROPIC_SONNET_MODEL)
             response = await client.messages.create(
                 model=model,
                 max_tokens=800,
                 tools=[{"type": "web_search_20250305", "name": "web_search"}],
-                messages=[{
-                    "role": "user",
-                    "content": f"Search for: how to fix this error in a {language or 'web'} application: {clean_error}. Return only the solution, concisely.",
-                }],
+                messages=[
+                    {
+                        "role": "user",
+                        "content": f"Search for: how to fix this error in a {language or 'web'} application: {clean_error}. Return only the solution, concisely.",
+                    }
+                ],
             )
-            text_blocks = [b.text for b in response.content if hasattr(b, "text") and b.text]
+            text_blocks = [
+                b.text for b in response.content if hasattr(b, "text") and b.text
+            ]
             if text_blocks:
                 result = " ".join(text_blocks)[:2000]
                 logger.info("brain_intelligence: Anthropic web search found solution")
@@ -454,6 +544,7 @@ async def search_error_solution(
 
 
 # ── Pre-build intelligence briefing ───────────────────────────────────────────
+
 
 async def get_prebuild_intelligence(goal: str) -> Dict[str, Any]:
     """
@@ -467,7 +558,7 @@ async def get_prebuild_intelligence(goal: str) -> Dict[str, Any]:
     common_fixes = {}
     agents_to_watch = set()
     for build in similar:
-        for agent in (build.get("failed_agents") or []):
+        for agent in build.get("failed_agents") or []:
             agents_to_watch.add(agent)
         for fix_key, fix_val in (build.get("fix_patterns") or {}).items():
             common_fixes[fix_key] = fix_val
@@ -491,13 +582,15 @@ async def get_prebuild_intelligence(goal: str) -> Dict[str, Any]:
     if predictions:
         logger.info(
             "brain_intelligence: prebuild briefing — %d similar builds, %d predicted failures",
-            len(similar), len(predictions),
+            len(similar),
+            len(predictions),
         )
 
     return briefing
 
 
 # ── Post-build learning ────────────────────────────────────────────────────────
+
 
 async def record_build_outcome(
     goal: str,
@@ -551,5 +644,7 @@ async def record_build_outcome(
 
     logger.info(
         "brain_intelligence: recorded build outcome job=%s completion=%.0f%% quality=%d",
-        job_id[:8], step_completion_pct, quality_score,
+        job_id[:8],
+        step_completion_pct,
+        quality_score,
     )

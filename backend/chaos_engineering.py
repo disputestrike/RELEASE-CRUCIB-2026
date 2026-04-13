@@ -12,12 +12,12 @@ Implements:
 
 import logging
 import random
+import threading
 import time
-from typing import Optional, Callable, Any
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-import threading
+from typing import Any, Callable, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -268,8 +268,7 @@ class ChaosInjector:
     def get_active_experiments(self) -> dict:
         """Get active experiments."""
         return {
-            name: thread.is_alive()
-            for name, thread in self.active_experiments.items()
+            name: thread.is_alive() for name, thread in self.active_experiments.items()
         }
 
     def stop_experiment(self, experiment_name: str) -> bool:

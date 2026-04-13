@@ -92,7 +92,7 @@ jobs:
         run: npm audit --audit-level=moderate || true
 
       - name: Upload security reports
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: security-reports
           path: |
@@ -111,7 +111,7 @@ jobs:
           POSTGRES_PASSWORD: crucibai
           POSTGRES_DB: crucibai
         options: >-
-          --health-cmd pg_isready -U crucibai -d crucibai
+          --health-cmd "pg_isready -U crucibai -d crucibai"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
@@ -182,7 +182,7 @@ jobs:
           name: codecov-umbrella
 
       - name: Upload coverage artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-reports
           path: backend/htmlcov/

@@ -4,6 +4,7 @@ Shown in plan API so users calibrate expectations (preview + proof still work on
 
 ``build_target`` ties notices to the selected execution mode (broad platform, honest per-run scope).
 """
+
 from __future__ import annotations
 
 from typing import List, Optional
@@ -77,18 +78,54 @@ def capability_notice_lines(goal: str, build_target: Optional[str] = None) -> Li
         lines.append(_long_goal_line(tid))
 
     triggers = [
-        ("langgraph", "LangGraph / custom agent frameworks: extend in-repo or a follow-up run if you need full runtime wiring."),
-        ("crewai", "CrewAI-style crews: optional sketches in this pass; customize step keys in your fork if needed."),
-        ("pinecone", "Vector DBs (Pinecone/Weaviate): connect in your project or a follow-up run (not auto-wired by default)."),
-        ("weaviate", "Vector DBs (Pinecone/Weaviate): connect in your project or a follow-up run (not auto-wired by default)."),
-        ("testcontainers", "Testcontainers / k6: add to your CI or extend the DAG in a follow-up run."),
-        ("playwright", "Playwright E2E: add as a project step or follow-up run (not a default DAG step)."),
-        ("k6", "k6 / load testing: run in your CI or extend the pipeline when you need it."),
-        ("phase_8", "Phase-gated reports (PHASE_X_REPORT.md): add as explicit steps if your process requires them."),
-        ("omega build", "Very large “Omega”-style platform goals: this pass emits scaffold + proofs—grow with continuation runs."),
-        ("self-improving", "Self-improving / scheduled optimization: implement in your deployment layer beyond the default runner."),
-        ("slack", "Slack / email escalation: add webhooks or SMTP in your app (not pre-wired in the default runner)."),
-        ("soc 2", "SOC 2 / audit packs: checklist sketches here—harden with your compliance process."),
+        (
+            "langgraph",
+            "LangGraph / custom agent frameworks: extend in-repo or a follow-up run if you need full runtime wiring.",
+        ),
+        (
+            "crewai",
+            "CrewAI-style crews: optional sketches in this pass; customize step keys in your fork if needed.",
+        ),
+        (
+            "pinecone",
+            "Vector DBs (Pinecone/Weaviate): connect in your project or a follow-up run (not auto-wired by default).",
+        ),
+        (
+            "weaviate",
+            "Vector DBs (Pinecone/Weaviate): connect in your project or a follow-up run (not auto-wired by default).",
+        ),
+        (
+            "testcontainers",
+            "Testcontainers / k6: add to your CI or extend the DAG in a follow-up run.",
+        ),
+        (
+            "playwright",
+            "Playwright E2E: add as a project step or follow-up run (not a default DAG step).",
+        ),
+        (
+            "k6",
+            "k6 / load testing: run in your CI or extend the pipeline when you need it.",
+        ),
+        (
+            "phase_8",
+            "Phase-gated reports (PHASE_X_REPORT.md): add as explicit steps if your process requires them.",
+        ),
+        (
+            "omega build",
+            "Very large “Omega”-style platform goals: this pass emits scaffold + proofs—grow with continuation runs.",
+        ),
+        (
+            "self-improving",
+            "Self-improving / scheduled optimization: implement in your deployment layer beyond the default runner.",
+        ),
+        (
+            "slack",
+            "Slack / email escalation: add webhooks or SMTP in your app (not pre-wired in the default runner).",
+        ),
+        (
+            "soc 2",
+            "SOC 2 / audit packs: checklist sketches here—harden with your compliance process.",
+        ),
     ]
     for needle, msg in triggers:
         if needle in gl and msg not in lines:

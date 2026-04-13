@@ -3,12 +3,14 @@ CrucibAI Authentication Tests
 ===============================
 Tests for OAuth flow, JWT tokens, session management, and protected routes.
 """
-import pytest
-import jwt
+
 import uuid
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from datetime import datetime, timezone, timedelta
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import jwt
+import pytest
 
 # Resolve paths from this file so tests pass from repo root or backend/
 _BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -53,7 +55,10 @@ class TestJWTTokenGeneration:
 
     def test_invalid_secret_raises(self):
         """Tokens signed with wrong secret should fail verification."""
-        payload = {"user_id": TEST_USER_ID, "exp": datetime.now(timezone.utc) + timedelta(hours=1)}
+        payload = {
+            "user_id": TEST_USER_ID,
+            "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+        }
         token = jwt.encode(payload, TEST_JWT_SECRET, algorithm="HS256")
         with pytest.raises(jwt.InvalidSignatureError):
             jwt.decode(token, "wrong-secret", algorithms=["HS256"])
@@ -86,15 +91,17 @@ class TestOAuthCallbackFlow:
         """Redirect URLs should use request.base_url, not hardcoded domains."""
         content = _read_server()
         # Should not contain hardcoded Railway or production URLs in OAuth
-        assert "crucibai.up.railway.app/api/auth" not in content, \
-            "Found hardcoded Railway URL in OAuth — should use request.base_url"
+        assert (
+            "crucibai.up.railway.app/api/auth" not in content
+        ), "Found hardcoded Railway URL in OAuth — should use request.base_url"
 
     def test_frontend_redirect_after_auth(self):
         """After OAuth, user should be redirected to frontend with token."""
         content = _read_server()
         # Should redirect to frontend with token parameter
-        assert "?token=" in content or "token=" in content, \
-            "OAuth callback should redirect with token parameter"
+        assert (
+            "?token=" in content or "token=" in content
+        ), "OAuth callback should redirect with token parameter"
 
 
 class TestProtectedRoutes:

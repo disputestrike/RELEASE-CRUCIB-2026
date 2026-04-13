@@ -1,8 +1,10 @@
 """
 Fortune 100 Layer 1B: Admin security and access control.
 """
-import pytest
+
 import uuid
+
+import pytest
 from conftest import register_and_get_headers
 from test_admin import register_admin_and_get_headers
 
@@ -10,6 +12,7 @@ from test_admin import register_admin_and_get_headers
 async def register_user_with_role(app_client, role: str = "owner"):
     """Register user, set admin_role, return (headers, user_id, email)."""
     from server import db
+
     email = f"admin-{role}-{uuid.uuid4().hex[:10]}@example.com"
     r = await app_client.post(
         "/api/auth/register",
@@ -130,7 +133,9 @@ async def test_support_exceeds_cap_403(app_client):
 async def test_analyst_can_view_analytics(app_client):
     """Analyst role can view analytics."""
     headers, _, _ = await register_user_with_role(app_client, "analyst")
-    r = await app_client.get("/api/admin/analytics/overview", headers=headers, timeout=10)
+    r = await app_client.get(
+        "/api/admin/analytics/overview", headers=headers, timeout=10
+    )
     assert r.status_code == 200
 
 

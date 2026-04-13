@@ -2,6 +2,7 @@
 First-class DAG node metadata: runtime, timeouts, expected artifacts, verification classes.
 Merged into planner output so plans and UI can show operator truth.
 """
+
 from __future__ import annotations
 
 import copy
@@ -126,7 +127,12 @@ _MANIFESTS: Dict[str, Dict[str, Any]] = {
     "verification.preview": {
         "runtime": "python+node",
         "entry": "verify_preview_workspace + browser_preview_verify (thread-isolated Playwright)",
-        "expected_artifacts": ["npm ci/build logs", "dist/", "screenshot PNG", "console capture"],
+        "expected_artifacts": [
+            "npm ci/build logs",
+            "dist/",
+            "screenshot PNG",
+            "console capture",
+        ],
         "timeout_sec": 900,
         "retry_policy": {"max_retries": 2, "backoff": "linear"},
         "verification_classes": ["runtime", "experience"],

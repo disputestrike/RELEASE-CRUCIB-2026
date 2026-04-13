@@ -2,7 +2,6 @@ import os
 import shutil
 
 import pytest
-
 from agent_dag import AGENT_DAG
 from orchestration.executor import _get_handler, handle_agent_swarm_step
 from orchestration.planner import generate_plan
@@ -12,7 +11,6 @@ from orchestration.swarm_agent_runner import (
     swarm_step_key,
     uses_agent_swarm,
 )
-
 
 FULL_SYSTEM_PROMPT = (
     "Build a multi-tenant SaaS with React frontend, Node backend, PostgreSQL, Redis caching, "
@@ -70,7 +68,11 @@ def test_get_handler_routes_agents_prefix_to_swarm_handler():
 @pytest.mark.asyncio
 async def test_run_swarm_agent_step_rejects_core_fallback(monkeypatch):
     async def fake_server_runner(**kwargs):
-        return {"status": "failed_with_fallback", "reason": "llm failed", "output": "placeholder"}
+        return {
+            "status": "failed_with_fallback",
+            "reason": "llm failed",
+            "output": "placeholder",
+        }
 
     monkeypatch.setattr(
         "orchestration.swarm_agent_runner._run_server_swarm_agent",
@@ -83,14 +85,21 @@ async def test_run_swarm_agent_step_rejects_core_fallback(monkeypatch):
         "agent_name": "Frontend Generation",
         "order_index": 1,
     }
-    job = {"id": "job-1", "project_id": "proj-1", "user_id": "user-1", "goal": FULL_SYSTEM_PROMPT}
+    job = {
+        "id": "job-1",
+        "project_id": "proj-1",
+        "user_id": "user-1",
+        "goal": FULL_SYSTEM_PROMPT,
+    }
 
     workspace = "tmp_swarm_agent_fallback"
     if os.path.isdir(workspace):
         shutil.rmtree(workspace, ignore_errors=True)
     os.makedirs(workspace, exist_ok=True)
     try:
-        with pytest.raises(RuntimeError, match="swarm_agent_failed:Frontend Generation"):
+        with pytest.raises(
+            RuntimeError, match="swarm_agent_failed:Frontend Generation"
+        ):
             await run_swarm_agent_step(step, job, workspace)
     finally:
         shutil.rmtree(workspace, ignore_errors=True)

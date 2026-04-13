@@ -6,18 +6,19 @@ Integrates with the existing _call_llm_with_fallback in server.py.
 
 Usage:
     from critic_agent import CriticAgent, TruthModule
-    
+
     critic = CriticAgent()
     review = await critic.review_build(project_id, agent_outputs, llm_caller)
-    
+
     truth = TruthModule()
     verdict = await truth.verify_claims(agent_outputs, llm_caller)
 """
+
 import json
 import logging
 import re
-from typing import Dict, Any, Optional, List, Callable, Awaitable, Tuple
 from datetime import datetime, timezone
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -58,14 +59,14 @@ Output valid JSON with this structure:
     ) -> Dict[str, Any]:
         """
         Review all agent outputs from a completed build.
-        
+
         Args:
             project_id: The project being reviewed
             agent_outputs: Dict of agent_name -> {output, tokens_used, status}
             llm_caller: The _call_llm_with_fallback function from server.py
             model_chain: LLM model chain to use
             api_keys: API keys dict
-            
+
         Returns:
             Dict with overall_score, agent_reviews, pass_rate, recommendations
         """
@@ -75,7 +76,9 @@ Output valid JSON with this structure:
         failed = 0
 
         for agent_name, output_data in agent_outputs.items():
-            output_text = str(output_data.get("output", "") or output_data.get("result", ""))
+            output_text = str(
+                output_data.get("output", "") or output_data.get("result", "")
+            )
             if not output_text or len(output_text) < 20:
                 continue
 
@@ -91,14 +94,16 @@ Output valid JSON with this structure:
                     failed += 1
             except Exception as e:
                 logger.warning(f"Critic review failed for {agent_name}: {e}")
-                reviews.append({
-                    "agent_name": agent_name,
-                    "score": 0,
-                    "verdict": "error",
-                    "issues": [f"Review failed: {str(e)}"],
-                    "suggestions": [],
-                    "summary": "Could not review this agent's output",
-                })
+                reviews.append(
+                    {
+                        "agent_name": agent_name,
+                        "score": 0,
+                        "verdict": "error",
+                        "issues": [f"Review failed: {str(e)}"],
+                        "suggestions": [],
+                        "summary": "Could not review this agent's output",
+                    }
+                )
 
         agent_count = max(len(reviews), 1)
         overall_score = round(total_score / agent_count, 1)
@@ -144,7 +149,7 @@ Return your review as valid JSON."""
 
         try:
             # Try to parse JSON from the response
-            json_match = re.search(r'\{[\s\S]*\}', response)
+            json_match = re.search(r"\{[\s\S]*\}", response)
             if json_match:
                 review = json.loads(json_match.group())
                 review["agent_name"] = agent_name
@@ -166,21 +171,25 @@ Return your review as valid JSON."""
         """Generate overall recommendations from all reviews."""
         recommendations = []
         low_scores = [r for r in reviews if r.get("score", 0) < 7]
-        
+
         if low_scores:
             names = ", ".join(r["agent_name"] for r in low_scores[:5])
             recommendations.append(f"Re-run or improve these agents: {names}")
-        
+
         all_issues = []
         for r in reviews:
             all_issues.extend(r.get("issues", []))
-        
+
         if len(all_issues) > 5:
-            recommendations.append(f"Total issues found: {len(all_issues)}. Consider a full rebuild.")
-        
+            recommendations.append(
+                f"Total issues found: {len(all_issues)}. Consider a full rebuild."
+            )
+
         if not recommendations:
-            recommendations.append("Build quality is acceptable. No critical issues found.")
-        
+            recommendations.append(
+                "Build quality is acceptable. No critical issues found."
+            )
+
         return recommendations
 
 
@@ -224,14 +233,14 @@ Be brutally honest. Output valid JSON:
     ) -> Dict[str, Any]:
         """
         Verify that the build output matches the original project prompt.
-        
+
         Args:
             agent_outputs: All agent outputs from the build
             llm_caller: The _call_llm_with_fallback function
             model_chain: LLM model chain
             api_keys: API keys
             project_prompt: The original user request
-            
+
         Returns:
             Truth verification report
         """
@@ -274,7 +283,7 @@ Return your truth assessment as valid JSON."""
                 api_keys=api_keys,
             )
 
-            json_match = re.search(r'\{[\s\S]*\}', response)
+            json_match = re.search(r"\{[\s\S]*\}", response)
             if json_match:
                 result = json.loads(json_match.group())
                 result["timestamp"] = datetime.now(timezone.utc).isoformat()

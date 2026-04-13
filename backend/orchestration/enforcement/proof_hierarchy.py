@@ -3,6 +3,7 @@ Proof strength hierarchy (weakest → strongest).
 
 Used to score features and to enforce: presence/syntax alone cannot satisfy critical features.
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Tuple
@@ -112,15 +113,26 @@ def max_strength_rank_for_feature(
         # Scoped relevance: title/hints match feature family
         hint_hit = any(h in title for h in presence_hints)
         generic_strong = rank >= RANK["runtime"] and (
-            hint_hit or not presence_hints or feat_id in ("core_api_behavior", "tenant_isolation", "rbac", "auth")
+            hint_hit
+            or not presence_hints
+            or feat_id in ("core_api_behavior", "tenant_isolation", "rbac", "auth")
         )
-        if feat_id == "core_api_behavior" and check in ("health_endpoint", "health_path_literal"):
+        if feat_id == "core_api_behavior" and check in (
+            "health_endpoint",
+            "health_path_literal",
+        ):
             generic_strong = True
         if feat_id == "tenant_isolation" and check == "tenancy_isolation_proven":
             generic_strong = True
-        if feat_id in ("auth", "rbac") and check in ("rbac_anonymous_blocked", "rbac_escalation_blocked"):
+        if feat_id in ("auth", "rbac") and check in (
+            "rbac_anonymous_blocked",
+            "rbac_escalation_blocked",
+        ):
             generic_strong = True
-        if feat_id == "integration_behavior" and check == "stripe_webhook_idempotency_proven":
+        if (
+            feat_id == "integration_behavior"
+            and check == "stripe_webhook_idempotency_proven"
+        ):
             generic_strong = True
 
         if generic_strong or (hint_hit and rank > max_r):

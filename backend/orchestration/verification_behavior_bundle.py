@@ -3,6 +3,7 @@ verification.behavior — tenancy isolation + Stripe idempotency + RBAC smoke in
 
 Also invoked from verification.security so every Auto-Runner job runs behavioral gates without extra DAG nodes.
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List
@@ -21,9 +22,9 @@ def merge_verification_results(parts: List[Dict[str, Any]]) -> Dict[str, Any]:
 
 
 async def verify_behavior_bundle_workspace(workspace_path: str) -> Dict[str, Any]:
-    from .verification_tenancy_smoke import verify_tenancy_smoke_workspace
-    from .verification_stripe_replay import verify_stripe_replay_workspace
     from .verification_rbac import verify_rbac_enforcement_workspace
+    from .verification_stripe_replay import verify_stripe_replay_workspace
+    from .verification_tenancy_smoke import verify_tenancy_smoke_workspace
 
     stripe = verify_stripe_replay_workspace(workspace_path or "")
     tenancy = await verify_tenancy_smoke_workspace(workspace_path or "")

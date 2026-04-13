@@ -8,7 +8,6 @@ from datetime import datetime, timezone
 from typing import Any, Dict
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
-
 from orchestration.controller_brain import build_live_job_progress
 from orchestration.runtime_state import get_job, get_job_events, get_steps
 
@@ -77,7 +76,9 @@ def _event_message(event: Dict[str, Any]) -> str:
         return str(payload["failure_reason"])
     step_key = payload.get("step_key")
     agent_name = payload.get("agent_name") or payload.get("agent")
-    event_type = str(event.get("event_type") or event.get("type") or "event").replace("_", " ")
+    event_type = str(event.get("event_type") or event.get("type") or "event").replace(
+        "_", " "
+    )
     if agent_name and step_key:
         return f"{agent_name} ({step_key}) {event_type}"
     if agent_name:
@@ -117,7 +118,9 @@ async def _load_job_progress_payload(job_id: str) -> Dict[str, Any]:
             top_k=5,
         )
     except Exception:
-        logger.debug("job-progress memory context unavailable for %s", job_id, exc_info=True)
+        logger.debug(
+            "job-progress memory context unavailable for %s", job_id, exc_info=True
+        )
     controller["logs"] = [
         {
             "timestamp": event.get("created_at"),
@@ -174,7 +177,9 @@ async def websocket_job_progress(websocket: WebSocket, job_id: str):
     await manager.connect(job_id, websocket)
     try:
         bootstrap = await _load_job_progress_payload(job_id)
-        await websocket.send_text(json.dumps({"type": "bootstrap", "payload": bootstrap}))
+        await websocket.send_text(
+            json.dumps({"type": "bootstrap", "payload": bootstrap})
+        )
         while True:
             data = await websocket.receive_text()
             if data == "ping":
@@ -199,6 +204,8 @@ async def broadcast_event(job_id: str, event_type: str, **data):
     except HTTPException:
         logger.debug("job-progress snapshot unavailable for %s", job_id)
     except Exception:
-        logger.debug("job-progress snapshot refresh failed for %s", job_id, exc_info=True)
+        logger.debug(
+            "job-progress snapshot refresh failed for %s", job_id, exc_info=True
+        )
     await manager.broadcast(job_id, event)
     logger.debug("job-progress [%s] -> %s", event_type, job_id)

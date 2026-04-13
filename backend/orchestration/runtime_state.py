@@ -2,24 +2,37 @@
 runtime_state.py — Job and step state machine for CrucibAI Auto-Runner.
 All state is persisted to PostgreSQL. All mutations go through helpers here.
 """
-import uuid
+
 import json
 import logging
+import uuid
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 # ── State enums ──────────────────────────────────────────────────────────────
 
 JOB_STATES = [
-    "planned", "approved", "queued", "running",
-    "blocked", "failed", "completed", "cancelled"
+    "planned",
+    "approved",
+    "queued",
+    "running",
+    "blocked",
+    "failed",
+    "completed",
+    "cancelled",
 ]
 
 STEP_STATES = [
-    "pending", "running", "verifying", "retrying",
-    "failed", "completed", "blocked", "skipped"
+    "pending",
+    "running",
+    "verifying",
+    "retrying",
+    "failed",
+    "completed",
+    "blocked",
+    "skipped",
 ]
 
 TERMINAL_JOB_STATES = {"completed", "failed", "cancelled"}
@@ -42,13 +55,15 @@ def _now() -> datetime:
 
 # Columns that must be datetime objects for asyncpg (never ISO strings from JSON round-trips)
 _TS_KEYS = frozenset({"created_at", "updated_at", "started_at", "completed_at"})
-_JSON_TEXT_KEYS = frozenset({
-    "blocked_steps",
-    "failed_step_keys",
-    "non_completed",
-    "error_details",
-    "failure_details",
-})
+_JSON_TEXT_KEYS = frozenset(
+    {
+        "blocked_steps",
+        "failed_step_keys",
+        "non_completed",
+        "error_details",
+        "failure_details",
+    }
+)
 
 
 def _as_timestamptz(val: Any) -> Any:
@@ -75,11 +90,17 @@ def _coerce_ts_updates(updates: Dict[str, Any]) -> None:
 def _coerce_json_text_updates(updates: Dict[str, Any]) -> None:
     """Coerce structured job metadata into TEXT columns before asyncpg binding."""
     for k in list(updates.keys()):
-        if k in _JSON_TEXT_KEYS and updates[k] is not None and not isinstance(updates[k], str):
+        if (
+            k in _JSON_TEXT_KEYS
+            and updates[k] is not None
+            and not isinstance(updates[k], str)
+        ):
             updates[k] = json.dumps(updates[k], default=str)
 
 
-async def ensure_job_fk_prerequisites(project_id: str, user_id: Optional[str] = None) -> None:
+async def ensure_job_fk_prerequisites(
+    project_id: str, user_id: Optional[str] = None
+) -> None:
     """
     jobs.project_id and jobs.user_id may reference projects(id) / users(id) (from migration 003).
     Auto-Runner often uses user.id or a synthetic id as project_id with no prior project row — insert stubs.
@@ -94,11 +115,13 @@ async def ensure_job_fk_prerequisites(project_id: str, user_id: Optional[str] = 
             ON CONFLICT (id) DO NOTHING
             """,
             pid,
-            json.dumps({
-                "scope": "auto_runner",
-                "title": "Auto-Runner workspace",
-                "status": "active",
-            }),
+            json.dumps(
+                {
+                    "scope": "auto_runner",
+                    "title": "Auto-Runner workspace",
+                    "status": "active",
+                }
+            ),
         )
         if user_id and str(user_id).strip():
             uid = str(user_id).strip()
@@ -108,28 +131,41 @@ async def ensure_job_fk_prerequisites(project_id: str, user_id: Optional[str] = 
                 ON CONFLICT (id) DO NOTHING
                 """,
                 uid,
-                json.dumps({
-                    "scope": "session",
-                    "email": f"{uid[:12]}@placeholder.local",
-                    "name": "User",
-                }),
+                json.dumps(
+                    {
+                        "scope": "session",
+                        "email": f"{uid[:12]}@placeholder.local",
+                        "name": "User",
+                    }
+                ),
             )
 
 
 # ── Job helpers ──────────────────────────────────────────────────────────────
 
-async def create_job(project_id: str, mode: str = "guided", goal: str = "",
-                     user_id: Optional[str] = None) -> Dict[str, Any]:
+
+async def create_job(
+    project_id: str, mode: str = "guided", goal: str = "", user_id: Optional[str] = None
+) -> Dict[str, Any]:
     await ensure_job_fk_prerequisites(project_id, user_id)
     job_id = str(uuid.uuid4())
     created = updated = _now()
     async with _pool.acquire() as conn:
         # Use distinct placeholders for the two timestamps (some asyncpg paths mishandle $5,$5)
-        await conn.execute("""
+        await conn.execute(
+            """
             INSERT INTO jobs (id, project_id, status, mode, goal, current_phase,
                               created_at, updated_at, retry_count, quality_score, user_id)
             VALUES ($1,$2,'planned',$3,$4,'planning',$5,$6,0,0,$7)
-        """, job_id, project_id, mode, goal, created, updated, user_id)
+        """,
+            job_id,
+            project_id,
+            mode,
+            goal,
+            created,
+            updated,
+            user_id,
+        )
     return await get_job(job_id)
 
 
@@ -139,8 +175,9 @@ async def get_job(job_id: str) -> Optional[Dict[str, Any]]:
     return dict(row) if row else None
 
 
-async def update_job_state(job_id: str, status: str,
-                           extra: Optional[Dict] = None) -> None:
+async def update_job_state(
+    job_id: str, status: str, extra: Optional[Dict] = None
+) -> None:
     updates = {"status": status, "updated_at": _now()}
     if extra:
         updates.update(extra)
@@ -153,17 +190,14 @@ async def update_job_state(job_id: str, status: str,
     set_clause = ", ".join(f"{k}=${i+2}" for i, k in enumerate(updates))
     vals = list(updates.values())
     async with _pool.acquire() as conn:
-        await conn.execute(
-            f"UPDATE jobs SET {set_clause} WHERE id=$1",
-            job_id, *vals
-        )
+        await conn.execute(f"UPDATE jobs SET {set_clause} WHERE id=$1", job_id, *vals)
 
 
 async def list_jobs(project_id: str) -> List[Dict[str, Any]]:
     async with _pool.acquire() as conn:
         rows = await conn.fetch(
             "SELECT * FROM jobs WHERE project_id=$1 ORDER BY created_at DESC LIMIT 50",
-            project_id
+            project_id,
         )
     return [dict(r) for r in rows]
 
@@ -191,18 +225,34 @@ async def list_jobs_for_user(user_id: str, limit: int = 40) -> List[Dict[str, An
 
 # ── Step helpers ─────────────────────────────────────────────────────────────
 
-async def create_step(job_id: str, step_key: str, agent_name: str,
-                      phase: str, depends_on: Optional[List[str]] = None,
-                      order_index: int = 0) -> Dict[str, Any]:
+
+async def create_step(
+    job_id: str,
+    step_key: str,
+    agent_name: str,
+    phase: str,
+    depends_on: Optional[List[str]] = None,
+    order_index: int = 0,
+) -> Dict[str, Any]:
     step_id = str(uuid.uuid4())
     now = _now()
     deps = json.dumps(depends_on or [])
     async with _pool.acquire() as conn:
-        await conn.execute("""
+        await conn.execute(
+            """
             INSERT INTO job_steps (id, job_id, step_key, agent_name, phase,
                 status, depends_on_json, created_at, retry_count, order_index)
             VALUES ($1,$2,$3,$4,$5,'pending',$6,$7,0,$8)
-        """, step_id, job_id, step_key, agent_name, phase, deps, now, order_index)
+        """,
+            step_id,
+            job_id,
+            step_key,
+            agent_name,
+            phase,
+            deps,
+            now,
+            order_index,
+        )
     return await get_step(step_id)
 
 
@@ -246,7 +296,7 @@ async def get_steps(job_id: str) -> List[Dict[str, Any]]:
     async with _pool.acquire() as conn:
         rows = await conn.fetch(
             "SELECT * FROM job_steps WHERE job_id=$1 ORDER BY order_index, created_at",
-            job_id
+            job_id,
         )
     return [_hydrate_step_row(dict(r)) for r in rows]
 
@@ -264,8 +314,9 @@ def _coerce_step_update_values(extra: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
-async def update_step_state(step_id: str, status: str,
-                            extra: Optional[Dict] = None) -> None:
+async def update_step_state(
+    step_id: str, status: str, extra: Optional[Dict] = None
+) -> None:
     updates = {"status": status, "updated_at": _now()}
     if extra:
         updates.update(_coerce_step_update_values(extra))
@@ -278,74 +329,102 @@ async def update_step_state(step_id: str, status: str,
     vals = list(updates.values())
     async with _pool.acquire() as conn:
         await conn.execute(
-            f"UPDATE job_steps SET {set_clause} WHERE id=$1",
-            step_id, *vals
+            f"UPDATE job_steps SET {set_clause} WHERE id=$1", step_id, *vals
         )
 
 
 # ── Event helpers ─────────────────────────────────────────────────────────────
 
-async def append_job_event(job_id: str, event_type: str,
-                           payload: Optional[Dict] = None,
-                           step_id: Optional[str] = None) -> str:
+
+async def append_job_event(
+    job_id: str,
+    event_type: str,
+    payload: Optional[Dict] = None,
+    step_id: Optional[str] = None,
+) -> str:
     event_id = str(uuid.uuid4())
     async with _pool.acquire() as conn:
-        await conn.execute("""
+        await conn.execute(
+            """
             INSERT INTO job_events (id, job_id, step_id, event_type, payload_json, created_at)
             VALUES ($1,$2,$3,$4,$5,$6)
-        """, event_id, job_id, step_id, event_type,
-            json.dumps(payload or {}), _now())
+        """,
+            event_id,
+            job_id,
+            step_id,
+            event_type,
+            json.dumps(payload or {}),
+            _now(),
+        )
     return event_id
 
 
-async def get_job_events(job_id: str, since_id: Optional[str] = None,
-                         limit: int = 200) -> List[Dict[str, Any]]:
+async def get_job_events(
+    job_id: str, since_id: Optional[str] = None, limit: int = 200
+) -> List[Dict[str, Any]]:
     async with _pool.acquire() as conn:
         if since_id:
-            rows = await conn.fetch("""
+            rows = await conn.fetch(
+                """
                 SELECT * FROM job_events
                 WHERE job_id=$1 AND created_at > (
                     SELECT created_at FROM job_events WHERE id=$2
                 )
                 ORDER BY created_at LIMIT $3
-            """, job_id, since_id, limit)
+            """,
+                job_id,
+                since_id,
+                limit,
+            )
         else:
             rows = await conn.fetch(
                 "SELECT * FROM job_events WHERE job_id=$1 ORDER BY created_at LIMIT $2",
-                job_id, limit
+                job_id,
+                limit,
             )
     return [dict(r) for r in rows]
 
 
 # ── Checkpoint helpers ────────────────────────────────────────────────────────
 
-async def save_checkpoint(job_id: str, checkpoint_key: str,
-                          snapshot: Dict[str, Any]) -> None:
+
+async def save_checkpoint(
+    job_id: str, checkpoint_key: str, snapshot: Dict[str, Any]
+) -> None:
     cp_id = str(uuid.uuid4())
     async with _pool.acquire() as conn:
-        await conn.execute("""
+        await conn.execute(
+            """
             INSERT INTO job_checkpoints (id, job_id, checkpoint_key, snapshot_json, created_at)
             VALUES ($1,$2,$3,$4,$5)
             ON CONFLICT (job_id, checkpoint_key)
             DO UPDATE SET snapshot_json=$4, created_at=$5
-        """, cp_id, job_id, checkpoint_key, json.dumps(snapshot), _now())
+        """,
+            cp_id,
+            job_id,
+            checkpoint_key,
+            json.dumps(snapshot),
+            _now(),
+        )
 
 
-async def load_checkpoint(job_id: str,
-                          checkpoint_key: str) -> Optional[Dict[str, Any]]:
+async def load_checkpoint(job_id: str, checkpoint_key: str) -> Optional[Dict[str, Any]]:
     async with _pool.acquire() as conn:
-        row = await conn.fetchrow("""
+        row = await conn.fetchrow(
+            """
             SELECT snapshot_json FROM job_checkpoints
             WHERE job_id=$1 AND checkpoint_key=$2
             ORDER BY created_at DESC LIMIT 1
-        """, job_id, checkpoint_key)
+        """,
+            job_id,
+            checkpoint_key,
+        )
     return json.loads(row["snapshot_json"]) if row else None
 
 
 async def get_all_checkpoints(job_id: str) -> List[Dict[str, Any]]:
     async with _pool.acquire() as conn:
         rows = await conn.fetch(
-            "SELECT * FROM job_checkpoints WHERE job_id=$1 ORDER BY created_at",
-            job_id
+            "SELECT * FROM job_checkpoints WHERE job_id=$1 ORDER BY created_at", job_id
         )
     return [dict(r) for r in rows]

@@ -1,5 +1,10 @@
 """Provider readiness and live-model wiring tests."""
-from provider_readiness import build_provider_readiness, env_contract, selected_chain_for_prompt
+
+from provider_readiness import (
+    build_provider_readiness,
+    env_contract,
+    selected_chain_for_prompt,
+)
 
 
 def test_provider_env_contract_names_are_exact():

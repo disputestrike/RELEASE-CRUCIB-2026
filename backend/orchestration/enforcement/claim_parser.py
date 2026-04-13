@@ -1,4 +1,5 @@
 """Extract capability claims from goal and workspace text; match against proof."""
+
 from __future__ import annotations
 
 import re

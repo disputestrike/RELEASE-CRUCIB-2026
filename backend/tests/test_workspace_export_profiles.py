@@ -1,4 +1,5 @@
 """Export ZIP profiles and README stack alignment."""
+
 import json
 from pathlib import Path
 
@@ -12,7 +13,9 @@ def test_iter_files_for_zip_handoff_skips_outputs(tmp_path):
     (root / "outputs").mkdir()
     (root / "outputs" / "Planner.md").write_text("noise", encoding="utf-8")
     (root / "src").mkdir()
-    (root / "src" / "App.jsx").write_text("export default function App(){}", encoding="utf-8")
+    (root / "src" / "App.jsx").write_text(
+        "export default function App(){}", encoding="utf-8"
+    )
 
     full = {a for a, _ in iter_files_for_zip(root, "full")}
     handoff = {a for a, _ in iter_files_for_zip(root, "handoff")}

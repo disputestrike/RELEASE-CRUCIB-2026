@@ -5,9 +5,10 @@ dag_engine.py — Dependency-aware DAG scheduler for job steps.
 - Node-level retry (never reruns whole job)
 - Downstream blocking on unrecoverable failure
 """
+
 import json
 import logging
-from typing import List, Dict, Any, Set, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from .runtime_state import get_steps, update_step_state
 
@@ -39,10 +40,7 @@ async def get_ready_steps(job_id: str) -> List[Dict[str, Any]]:
         if step["status"] != "pending":
             continue
         deps = _parse_depends_on(step.get("depends_on_json"))
-        all_done = all(
-            by_key.get(dep, {}).get("status") == "completed"
-            for dep in deps
-        )
+        all_done = all(by_key.get(dep, {}).get("status") == "completed" for dep in deps)
         if all_done:
             ready.append(step)
     return ready
@@ -107,9 +105,16 @@ async def block_dependents(job_id: str, failed_step_key: str) -> None:
             continue
         deps = _parse_depends_on(step.get("depends_on_json"))
         if failed_step_key in deps:
-            await update_step_state(step["id"], "blocked",
-                                    {"error_message": f"Blocked by failed dep: {failed_step_key}"})
-            logger.info("dag_engine: blocked step %s (dep %s failed)", step["step_key"], failed_step_key)
+            await update_step_state(
+                step["id"],
+                "blocked",
+                {"error_message": f"Blocked by failed dep: {failed_step_key}"},
+            )
+            logger.info(
+                "dag_engine: blocked step %s (dep %s failed)",
+                step["step_key"],
+                failed_step_key,
+            )
             # Recursively block transitive dependents
             await block_dependents(job_id, step["step_key"])
 
@@ -136,14 +141,16 @@ def build_dag_from_plan(plan: Dict[str, Any]) -> List[Dict[str, Any]]:
             else:
                 deps = list(step.get("depends_on") or [])
 
-            steps.append({
-                "step_key": step_key,
-                "agent_name": step.get("agent", phase_key),
-                "phase": phase_key,
-                "depends_on": deps,
-                "order_index": order,
-                "description": step.get("description", ""),
-            })
+            steps.append(
+                {
+                    "step_key": step_key,
+                    "agent_name": step.get("agent", phase_key),
+                    "phase": phase_key,
+                    "depends_on": deps,
+                    "order_index": order,
+                    "description": step.get("description", ""),
+                }
+            )
             current_phase_keys.append(step_key)
             order += 1
 

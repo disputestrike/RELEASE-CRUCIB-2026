@@ -4,33 +4,40 @@ Script to add error handling to all 39 API endpoints
 Adds try-except blocks and proper HTTP exception handling
 """
 
-import re
 import os
+import re
+
 
 def add_error_handling_to_route(endpoint_func_code: str) -> str:
     """
     Wraps an endpoint function with try-except error handling.
-    
+
     Args:
         endpoint_func_code: The original endpoint function code
-        
+
     Returns:
         Updated code with error handling
     """
-    
+
     # Extract function signature
-    sig_match = re.match(r'(@router\.\w+\([^)]*\).*?\nasync def \w+\([^)]*\)[^:]*:)', endpoint_func_code, re.DOTALL)
+    sig_match = re.match(
+        r"(@router\.\w+\([^)]*\).*?\nasync def \w+\([^)]*\)[^:]*:)",
+        endpoint_func_code,
+        re.DOTALL,
+    )
     if not sig_match:
         return endpoint_func_code
-    
+
     sig = sig_match.group(1)
-    body = endpoint_func_code[len(sig):]
-    
+    body = endpoint_func_code[len(sig) :]
+
     # Indent body by 4 spaces
-    indented_body = '\n'.join(['    ' + line if line.strip() else line for line in body.split('\n')])
-    
+    indented_body = "\n".join(
+        ["    " + line if line.strip() else line for line in body.split("\n")]
+    )
+
     # Create new function with error handling
-    new_func = f'''{sig}
+    new_func = f"""{sig}
     \"\"\"Endpoint with error handling\"\"\"
     try:
 {indented_body}
@@ -40,9 +47,10 @@ def add_error_handling_to_route(endpoint_func_code: str) -> str:
     except Exception as e:
         logger.error(f"Unexpected error: {{str(e)}}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
-'''
-    
+"""
+
     return new_func
+
 
 # INSTRUCTIONS FOR MANUAL APPLICATION
 # ====================================
@@ -84,5 +92,6 @@ def add_error_handling_to_route(endpoint_func_code: str) -> str:
 #         logger.error(f"Unexpected error: {str(e)}", exc_info=True)
 #         raise HTTPException(status_code=500, detail="Internal server error")
 
-print("✅ Error handling pattern ready. Apply to all 39 endpoints manually or run automated migration.")
-
+print(
+    "✅ Error handling pattern ready. Apply to all 39 endpoints manually or run automated migration."
+)

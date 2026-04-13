@@ -15,31 +15,32 @@ Key design:
 Without Redis: jobs stored in PostgreSQL automation_tasks table.
 Worker reads unfinished jobs from DB on every startup.
 """
-import os
+
 import asyncio
-import logging
-import uuid
 import json
+import logging
+import os
 import time
-from typing import Any, Callable, Dict, List, Optional, Awaitable
+import uuid
 from datetime import datetime, timezone
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-_QUEUE_KEY      = "crucibai:queue:active"
+_QUEUE_KEY = "crucibai:queue:active"
 _PROCESSING_KEY = "crucibai:queue:processing"
-_DLQ_KEY        = "crucibai:queue:dlq"
-_JOB_PREFIX     = "crucibai:job:"
-_JOB_TTL        = 172800  # 48 hours in seconds
-_STALE_TIMEOUT  = 600     # jobs processing > 10min assumed crashed
+_DLQ_KEY = "crucibai:queue:dlq"
+_JOB_PREFIX = "crucibai:job:"
+_JOB_TTL = 172800  # 48 hours in seconds
+_STALE_TIMEOUT = 600  # jobs processing > 10min assumed crashed
 
 # ── In-process fallback store (PostgreSQL-backed on startup) ──────────────────
-_memory_queue: List[str] = []          # list of job_ids
-_memory_jobs:  Dict[str, Dict] = {}    # job_id → full job dict
-_redis_client  = None
-_db_ref        = None  # set by init_queue_db()
-_worker_task   = None
+_memory_queue: List[str] = []  # list of job_ids
+_memory_jobs: Dict[str, Dict] = {}  # job_id → full job dict
+_redis_client = None
+_db_ref = None  # set by init_queue_db()
+_worker_task = None
 
 
 def get_queue() -> Dict[str, Any]:
@@ -75,6 +76,7 @@ async def _get_redis():
 
     try:
         import redis.asyncio as redis
+
         _redis_client = redis.from_url(
             os.environ["REDIS_URL"],
             decode_responses=True,
@@ -93,21 +95,22 @@ async def _get_redis():
 
 # ── Job CRUD ──────────────────────────────────────────────────────────────────
 
+
 def _make_job(name: str, payload: dict, job_id: str = None) -> dict:
     return {
-        "id":           job_id or str(uuid.uuid4()),
-        "name":         name,
-        "payload":      payload,
-        "status":       "queued",
-        "progress":     0,
-        "message":      "",
-        "attempts":     0,
+        "id": job_id or str(uuid.uuid4()),
+        "name": name,
+        "payload": payload,
+        "status": "queued",
+        "progress": 0,
+        "message": "",
+        "attempts": 0,
         "max_attempts": 3,
-        "result":       None,
-        "error":        None,
-        "created_at":   datetime.now(timezone.utc).isoformat(),
-        "updated_at":   datetime.now(timezone.utc).isoformat(),
-        "started_at":   None,
+        "result": None,
+        "error": None,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "started_at": None,
         "completed_at": None,
     }
 
@@ -147,6 +150,7 @@ async def _load_job_pg(job_id: str) -> Optional[dict]:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
+
 async def enqueue_job(name: str, payload: dict, job_id: str = None) -> str:
     """Enqueue a job. Returns job_id. Survives container restart via Redis or PostgreSQL."""
     job = _make_job(name, payload, job_id)
@@ -183,7 +187,9 @@ async def get_job_status(job_id: str) -> Optional[dict]:
     return await _load_job_pg(job_id)
 
 
-async def update_job_progress(job_id: str, progress: int, status: str = "running", message: str = ""):
+async def update_job_progress(
+    job_id: str, progress: int, status: str = "running", message: str = ""
+):
     """Update job progress 0-100."""
     now = datetime.now(timezone.utc).isoformat()
     r = await _get_redis()
@@ -192,28 +198,44 @@ async def update_job_progress(job_id: str, progress: int, status: str = "running
             raw = await r.get(f"{_JOB_PREFIX}{job_id}")
             if raw:
                 job = json.loads(raw)
-                job.update({"status": status, "progress": progress,
-                            "message": message, "updated_at": now})
+                job.update(
+                    {
+                        "status": status,
+                        "progress": progress,
+                        "message": message,
+                        "updated_at": now,
+                    }
+                )
                 await r.set(f"{_JOB_PREFIX}{job_id}", json.dumps(job), ex=_JOB_TTL)
                 return
         except Exception:
             pass
     # Memory fallback
     if job_id in _memory_jobs:
-        _memory_jobs[job_id].update({"status": status, "progress": progress,
-                                      "message": message, "updated_at": now})
+        _memory_jobs[job_id].update(
+            {
+                "status": status,
+                "progress": progress,
+                "message": message,
+                "updated_at": now,
+            }
+        )
         await _save_job_pg(_memory_jobs[job_id])
 
 
 async def complete_job(job_id: str, result: Any = None):
     now = datetime.now(timezone.utc).isoformat()
-    await _update_job(job_id, {"status": "complete", "progress": 100,
-                                "result": result, "completed_at": now})
+    await _update_job(
+        job_id,
+        {"status": "complete", "progress": 100, "result": result, "completed_at": now},
+    )
 
 
 async def fail_job(job_id: str, error: str):
     now = datetime.now(timezone.utc).isoformat()
-    job = await _update_job(job_id, {"status": "failed", "error": error, "failed_at": now})
+    job = await _update_job(
+        job_id, {"status": "failed", "error": error, "failed_at": now}
+    )
 
     # Send to dead-letter queue
     r = await _get_redis()
@@ -245,6 +267,7 @@ async def _update_job(job_id: str, fields: dict) -> Optional[dict]:
 
 
 # ── Worker ────────────────────────────────────────────────────────────────────
+
 
 async def _dequeue(r) -> Optional[dict]:
     """Pop next job from queue."""
@@ -293,11 +316,15 @@ async def recover_incomplete_jobs():
                         if (now_ts - started_ts) > _STALE_TIMEOUT:
                             job["status"] = "queued"
                             job["attempts"] = job.get("attempts", 0)
-                            await r.set(f"{_JOB_PREFIX}{jid}", json.dumps(job), ex=_JOB_TTL)
+                            await r.set(
+                                f"{_JOB_PREFIX}{jid}", json.dumps(job), ex=_JOB_TTL
+                            )
                             await r.rpush(_QUEUE_KEY, jid)
                             await r.srem(_PROCESSING_KEY, jid)
                             recovered += 1
-                            logger.info("Recovered stale job: %s [%s]", jid[:8], job.get("name"))
+                            logger.info(
+                                "Recovered stale job: %s [%s]", jid[:8], job.get("name")
+                            )
                     except Exception:
                         pass
         except Exception as e:
@@ -306,7 +333,9 @@ async def recover_incomplete_jobs():
     # PostgreSQL recovery: find queued/running jobs not in memory
     if _db_ref:
         try:
-            cursor = _db_ref.automation_tasks.find({"doc.status": {"$in": ["queued", "running"]}})
+            cursor = _db_ref.automation_tasks.find(
+                {"doc.status": {"$in": ["queued", "running"]}}
+            )
             async for row in cursor:
                 job = row.get("doc", {})
                 jid = job.get("id")
@@ -330,7 +359,9 @@ async def recover_incomplete_jobs():
     return recovered
 
 
-async def run_worker(handlers: Dict[str, Callable[..., Awaitable[None]]], poll_interval: float = 1.0):
+async def run_worker(
+    handlers: Dict[str, Callable[..., Awaitable[None]]], poll_interval: float = 1.0
+):
     """
     Persistent worker loop.
     - Dequeues jobs, dispatches to handler by name
@@ -338,7 +369,10 @@ async def run_worker(handlers: Dict[str, Callable[..., Awaitable[None]]], poll_i
     - Failed jobs → dead-letter queue
     - Survives individual job errors without stopping
     """
-    logger.info("✅ Job worker started (backend=%s)", "Redis" if _use_redis() else "PostgreSQL/memory")
+    logger.info(
+        "✅ Job worker started (backend=%s)",
+        "Redis" if _use_redis() else "PostgreSQL/memory",
+    )
 
     while True:
         try:
@@ -355,28 +389,41 @@ async def run_worker(handlers: Dict[str, Callable[..., Awaitable[None]]], poll_i
                     logger.warning("No handler for job '%s'", name)
                     await fail_job(jid, f"No handler for '{name}'")
                     if r:
-                        try: await r.srem(_PROCESSING_KEY, jid)
-                        except Exception: pass
+                        try:
+                            await r.srem(_PROCESSING_KEY, jid)
+                        except Exception:
+                            pass
                     continue
 
                 now = datetime.now(timezone.utc).isoformat()
-                await _update_job(jid, {"status": "running", "attempts": attempts, "started_at": now})
-                logger.info("Processing job %s [%s] attempt %d/%d",
-                            jid[:8], name, attempts, job.get("max_attempts", 3))
+                await _update_job(
+                    jid, {"status": "running", "attempts": attempts, "started_at": now}
+                )
+                logger.info(
+                    "Processing job %s [%s] attempt %d/%d",
+                    jid[:8],
+                    name,
+                    attempts,
+                    job.get("max_attempts", 3),
+                )
 
                 try:
                     await handler(jid, job["payload"])
                     await complete_job(jid)
                     if r:
-                        try: await r.srem(_PROCESSING_KEY, jid)
-                        except Exception: pass
+                        try:
+                            await r.srem(_PROCESSING_KEY, jid)
+                        except Exception:
+                            pass
                     logger.info("✅ Job complete: %s", jid[:8])
 
                 except Exception as e:
                     logger.error("Job %s failed (attempt %d): %s", jid[:8], attempts, e)
                     if r:
-                        try: await r.srem(_PROCESSING_KEY, jid)
-                        except Exception: pass
+                        try:
+                            await r.srem(_PROCESSING_KEY, jid)
+                        except Exception:
+                            pass
 
                     if attempts < job.get("max_attempts", 3):
                         # Re-queue for retry with backoff
@@ -391,12 +438,19 @@ async def run_worker(handlers: Dict[str, Callable[..., Awaitable[None]]], poll_i
                                 _memory_queue.append(jid)
                         else:
                             _memory_queue.append(jid)
-                        logger.warning("Job %s re-queued (attempt %d, backoff %ds)",
-                                       jid[:8], attempts, backoff)
+                        logger.warning(
+                            "Job %s re-queued (attempt %d, backoff %ds)",
+                            jid[:8],
+                            attempts,
+                            backoff,
+                        )
                     else:
                         await fail_job(jid, str(e))
-                        logger.error("Job %s permanently failed after %d attempts",
-                                     jid[:8], attempts)
+                        logger.error(
+                            "Job %s permanently failed after %d attempts",
+                            jid[:8],
+                            attempts,
+                        )
             else:
                 await asyncio.sleep(poll_interval)
 

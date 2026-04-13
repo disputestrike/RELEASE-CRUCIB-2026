@@ -3,6 +3,7 @@ P4 — Minimal directory layout contracts keyed by `stack_profile` / `recommende
 
 Used for golden validation and future UI hints; does not enforce at runtime yet.
 """
+
 from __future__ import annotations
 
 import os
@@ -37,7 +38,12 @@ _DIRECTORY_CONTRACTS: Dict[str, Dict[str, Any]] = {
 
 def stack_profile_from_contract(contract: Optional[Dict[str, Any]]) -> str:
     c = contract or {}
-    return str(c.get("stack_profile") or c.get("recommended_build_target") or "vite_react").strip() or "vite_react"
+    return (
+        str(
+            c.get("stack_profile") or c.get("recommended_build_target") or "vite_react"
+        ).strip()
+        or "vite_react"
+    )
 
 
 def directory_profile_from_contract(contract: Optional[Dict[str, Any]]) -> str:

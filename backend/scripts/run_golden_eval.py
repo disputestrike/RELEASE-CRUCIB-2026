@@ -3,6 +3,7 @@
 Run pytest -m golden; print JSON score (Fifty-point #43, #50). Non-zero exit if any golden test fails.
 CI: called from .github/workflows/ci-verify-full.yml after the full pytest job (golden is a subset).
 """
+
 from __future__ import annotations
 
 import argparse

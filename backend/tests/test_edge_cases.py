@@ -1,12 +1,14 @@
 """
 Edge-case tests: rate limiting, OAuth state handling, JWT refresh, protected routes.
 """
-import os
+
 import base64
 import json
-import pytest
+import os
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent
 
@@ -22,8 +24,11 @@ class TestRateLimiting:
             # Re-import would use new env; but app is already built. So we test that
             # the rate limit code path exists and returns 429 when limit is hit.
             # Alternative: call an endpoint that has strict limit (STRICT_RATE_LIMITS)
-            from middleware import RateLimitMiddleware, STRICT_RATE_LIMITS
-            assert STRICT_RATE_LIMITS is not None or hasattr(RateLimitMiddleware, "_check_limit")
+            from middleware import STRICT_RATE_LIMITS, RateLimitMiddleware
+
+            assert STRICT_RATE_LIMITS is not None or hasattr(
+                RateLimitMiddleware, "_check_limit"
+            )
 
     def test_rate_limit_config_exists(self):
         """Server uses RATE_LIMIT_PER_MINUTE env."""
@@ -39,7 +44,9 @@ class TestOAuthStateParameter:
         """Callback decodes state with try/except; invalid base64 does not crash."""
         content = (_BACKEND_DIR / "server.py").read_text(encoding="utf-8")
         # State is decoded in callback
-        assert "state" in content and ("b64" in content or "base64" in content or "decode" in content)
+        assert "state" in content and (
+            "b64" in content or "base64" in content or "decode" in content
+        )
         assert "except" in content or "try" in content
 
     def test_oauth_state_is_base64_json(self):
@@ -56,18 +63,28 @@ class TestJWTRefresh:
 
     def test_jwt_expiry_in_payload(self):
         """Token creation uses exp claim."""
+        from datetime import datetime, timedelta, timezone
+
         import jwt
-        from datetime import datetime, timezone, timedelta
-        payload = {"user_id": "u1", "exp": datetime.now(timezone.utc) + timedelta(hours=1)}
+
+        payload = {
+            "user_id": "u1",
+            "exp": datetime.now(timezone.utc) + timedelta(hours=1),
+        }
         token = jwt.encode(payload, "secret", algorithm="HS256")
         decoded = jwt.decode(token, "secret", algorithms=["HS256"])
         assert "exp" in decoded
 
     def test_expired_jwt_rejected(self):
         """Expired token decode raises."""
+        from datetime import datetime, timedelta, timezone
+
         import jwt
-        from datetime import datetime, timezone, timedelta
-        payload = {"user_id": "u1", "exp": datetime.now(timezone.utc) - timedelta(minutes=1)}
+
+        payload = {
+            "user_id": "u1",
+            "exp": datetime.now(timezone.utc) - timedelta(minutes=1),
+        }
         token = jwt.encode(payload, "secret", algorithm="HS256")
         with pytest.raises(jwt.ExpiredSignatureError):
             jwt.decode(token, "secret", algorithms=["HS256"])

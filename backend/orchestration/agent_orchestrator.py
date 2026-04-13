@@ -4,6 +4,7 @@ Crew-style multi-agent orchestration (stubs) — complements the DAG executor.
 Runs lightweight, deterministic "agent" steps without LLM calls by default; swap Agent.execute
 for a model call when keys are configured. Writes markdown/SQL sketches into the job workspace.
 """
+
 from __future__ import annotations
 
 import logging
@@ -40,9 +41,8 @@ class Agent:
             )
         snippet = (task or "")[:120]
         elite = (
-            (context.get("elite_system_prompt") or context.get("system_prompt") or "")
-            .strip()
-        )
+            context.get("elite_system_prompt") or context.get("system_prompt") or ""
+        ).strip()
         digest = ""
         if elite:
             digest = (
@@ -310,11 +310,12 @@ async def run_crew_for_goal(
                 "# Elite execution directive (injected at planning.requirements)\n\n"
                 "Full source: `config/agent_prompts/ELITE_AUTONOMOUS_PROMPT.md` in the CrucibAI repo.\n\n"
                 f"SHA256 prefix: `{fp}`\n\n"
-                "---\n\n"
-                + excerpt
+                "---\n\n" + excerpt
             )
             _write("proof/ELITE_EXECUTION_DIRECTIVE.md", body)
         except Exception as exc:
-            logger.warning("crew: could not write proof/ELITE_EXECUTION_DIRECTIVE.md: %s", exc)
+            logger.warning(
+                "crew: could not write proof/ELITE_EXECUTION_DIRECTIVE.md: %s", exc
+            )
 
     return {"written": written, "crew": result, "skipped": False}

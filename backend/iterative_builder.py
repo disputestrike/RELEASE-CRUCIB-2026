@@ -4,8 +4,12 @@ CrucibAI Iterative Builder
 Full-stack, full-structure generation matching Manus quality.
 Generates: TypeScript frontend + Express/Python backend + config files.
 """
-import asyncio, re, logging
-from typing import Dict, Optional, Callable
+
+import asyncio
+import logging
+import re
+from typing import Callable, Dict, Optional
+
 logger = logging.getLogger(__name__)
 
 # ── Static config files injected on every build ───────────────────────────────
@@ -20,7 +24,7 @@ STATIC_FILES = {
         "/.prettierignore": "node_modules\ndist\nbuild\n.next",
         "/tsconfig.json": '{\n  "compilerOptions": {\n    "target": "ES2020",\n    "useDefineForClassFields": true,\n    "lib": ["ES2020", "DOM", "DOM.Iterable"],\n    "module": "ESNext",\n    "skipLibCheck": true,\n    "moduleResolution": "bundler",\n    "allowImportingTsExtensions": true,\n    "resolveJsonModule": true,\n    "isolatedModules": true,\n    "noEmit": true,\n    "jsx": "react-jsx",\n    "strict": true,\n    "noUnusedLocals": true,\n    "noUnusedParameters": true,\n    "noFallthroughCasesInSwitch": true\n  },\n  "include": ["src"],\n  "references": [{ "path": "./tsconfig.node.json" }]\n}',
         "/tsconfig.node.json": '{\n  "compilerOptions": {\n    "composite": true,\n    "skipLibCheck": true,\n    "module": "ESNext",\n    "moduleResolution": "bundler",\n    "allowSyntheticDefaultImports": true\n  },\n  "include": ["vite.config.ts"]\n}',
-        "/vite.config.ts": 'import { defineConfig } from \'vite\';\nimport react from \'@vitejs/plugin-react\';\n\nexport default defineConfig({\n  plugins: [react()],\n  server: { port: 3000 },\n});',
+        "/vite.config.ts": "import { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\n\nexport default defineConfig({\n  plugins: [react()],\n  server: { port: 3000 },\n});",
         "/components.json": '{\n  "$schema": "https://ui.shadcn.com/schema.json",\n  "style": "default",\n  "rsc": false,\n  "tsx": true,\n  "tailwind": {\n    "config": "tailwind.config.js",\n    "css": "src/index.css",\n    "baseColor": "slate",\n    "cssVariables": true\n  },\n  "aliases": {\n    "components": "@/components",\n    "utils": "@/lib/utils"\n  }\n}',
     },
     "saas": {},
@@ -330,16 +334,16 @@ def get_static_files(build_kind: str) -> Dict[str, str]:
 
 
 def parse_files_from_response(text: str) -> Dict[str, str]:
-    pattern = r'```(?:tsx?|jsx?|css|html|json|md|ya?ml|sh)?:(/[\w./\-]+)\n([\s\S]*?)```'
+    pattern = r"```(?:tsx?|jsx?|css|html|json|md|ya?ml|sh)?:(/[\w./\-]+)\n([\s\S]*?)```"
     files = {}
     for m in re.finditer(pattern, text):
         path, code = m.group(1).strip(), m.group(2).strip()
         if code and len(code) > 10:
             files[path] = code
     if not files:
-        plain = re.findall(r'```(?:tsx?|jsx?)\n([\s\S]*?)```', text)
+        plain = re.findall(r"```(?:tsx?|jsx?)\n([\s\S]*?)```", text)
         if plain:
-            files['/src/App.tsx'] = plain[0].strip()
+            files["/src/App.tsx"] = plain[0].strip()
     return files
 
 
@@ -392,11 +396,19 @@ RULES:
             static_keys = set(get_static_files(build_kind).keys())
             generated = sorted(k for k in all_files.keys() if k not in static_keys)
             if generated:
-                context = f"\nALREADY GENERATED:\n" + "\n".join(f"  {p}" for p in generated)
-                app_key = next((k for k in ['/src/App.tsx','/src/App.jsx'] if k in all_files), None)
+                context = f"\nALREADY GENERATED:\n" + "\n".join(
+                    f"  {p}" for p in generated
+                )
+                app_key = next(
+                    (k for k in ["/src/App.tsx", "/src/App.jsx"] if k in all_files),
+                    None,
+                )
                 if app_key:
                     context += f"\n\nApp.tsx (for consistent imports):\n```\n{all_files[app_key][:500]}\n...\n```"
-                const_key = next((k for k in ['/src/const.ts','/src/const.js'] if k in all_files), None)
+                const_key = next(
+                    (k for k in ["/src/const.ts", "/src/const.js"] if k in all_files),
+                    None,
+                )
                 if const_key:
                     context += f"\n\nconst.ts (use this data):\n```\n{all_files[const_key][:400]}\n...\n```"
 
@@ -420,7 +432,7 @@ Every file must be fully implemented with real content for: {prompt}"""
             else:
                 logger.warning(f"  → no files parsed from response")
             if on_progress:
-                await on_progress(pass_info['name'], dict(all_files))
+                await on_progress(pass_info["name"], dict(all_files))
         except Exception as e:
             logger.error(f"Pass {pass_info['name']} failed: {e}")
 

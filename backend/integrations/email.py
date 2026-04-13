@@ -2,9 +2,10 @@
 Email: uses email_service when SMTP_* set, else no-op.
 Contact, enterprise, and automation workflows use this single path.
 """
-import os
+
 import logging
-from typing import Optional, Dict, Any
+import os
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,7 @@ def _get_email_service():
         return None
     try:
         from email_service import EmailService
+
         _EmailService = EmailService()
         return _EmailService
     except Exception as e:
@@ -42,7 +44,9 @@ async def send_email(
     if not svc:
         return False
     try:
-        await svc.send_email(to_email=to, subject=subject, html_body=body_html or "", text_body=body_text)
+        await svc.send_email(
+            to_email=to, subject=subject, html_body=body_html or "", text_body=body_text
+        )
         return True
     except Exception as e:
         logger.exception("Send email failed: %s", e)
@@ -53,6 +57,7 @@ def send_email_sync(to: str, subject: str, body_text: str) -> bool:
     """Synchronous send (for server contact/enterprise that use smtplib)."""
     import smtplib
     from email.mime.text import MIMEText
+
     host = os.environ.get("SMTP_HOST")
     if not host:
         return False
@@ -65,7 +70,9 @@ def send_email_sync(to: str, subject: str, body_text: str) -> bool:
         with smtplib.SMTP(host, port) as s:
             if os.environ.get("SMTP_USER"):
                 s.starttls()
-                s.login(os.environ.get("SMTP_USER", ""), os.environ.get("SMTP_PASSWORD", ""))
+                s.login(
+                    os.environ.get("SMTP_USER", ""), os.environ.get("SMTP_PASSWORD", "")
+                )
             s.send_message(msg)
         return True
     except Exception as e:

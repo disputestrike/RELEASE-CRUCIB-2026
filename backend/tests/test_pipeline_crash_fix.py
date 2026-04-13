@@ -1,10 +1,9 @@
 import json
-from pathlib import Path
 import os
 import tempfile
+from pathlib import Path
 
 import pytest
-
 from orchestration.auto_runner import _step_failure_context
 from orchestration.executor import (
     _ensure_backend_elite_hardening,
@@ -42,7 +41,9 @@ async def test_preview_verifier_preserves_failure_reason():
 
 
 @pytest.mark.asyncio
-async def test_elite_builder_verifier_preserves_failed_checks_and_recommendation(monkeypatch):
+async def test_elite_builder_verifier_preserves_failed_checks_and_recommendation(
+    monkeypatch,
+):
     monkeypatch.setenv("CRUCIBAI_ELITE_BUILDER_GATE", "strict")
     with tempfile.TemporaryDirectory() as d:
         result = await verify_step(
@@ -134,7 +135,9 @@ def test_executor_failure_payload_includes_precise_metadata():
     }
 
     message = _verification_failure_message("verification.elite_builder", vr)
-    payload = _verification_failure_payload("verification.elite_builder", vr, duration_ms=12)
+    payload = _verification_failure_payload(
+        "verification.elite_builder", vr, duration_ms=12
+    )
 
     assert "elite_checks_failed" in message
     assert "delivery_classification" in message
@@ -166,8 +169,8 @@ def test_auto_runner_failure_context_preserves_verification_reason():
 
 @pytest.mark.asyncio
 async def test_frontend_empty_agent_output_falls_back_to_preview_scaffold(monkeypatch):
-    from agents.frontend_agent import FrontendAgent
     import orchestration.plan_context as plan_context
+    from agents.frontend_agent import FrontendAgent
 
     async def empty_execute(self, context):
         return {"files": {}, "structure": {}, "setup_instructions": []}
@@ -176,7 +179,9 @@ async def test_frontend_empty_agent_output_falls_back_to_preview_scaffold(monkey
         return "vite_react"
 
     monkeypatch.setattr(FrontendAgent, "execute", empty_execute)
-    monkeypatch.setattr(plan_context, "fetch_build_target_for_job", fake_fetch_build_target)
+    monkeypatch.setattr(
+        plan_context, "fetch_build_target_for_job", fake_fetch_build_target
+    )
 
     with tempfile.TemporaryDirectory() as d:
         result = await handle_frontend_generate(
@@ -194,8 +199,8 @@ async def test_frontend_empty_agent_output_falls_back_to_preview_scaffold(monkey
 
 @pytest.mark.asyncio
 async def test_live_frontend_output_gets_preview_contract_hardening(monkeypatch):
-    from agents.frontend_agent import FrontendAgent
     import orchestration.plan_context as plan_context
+    from agents.frontend_agent import FrontendAgent
 
     async def thin_execute(self, context):
         return {
@@ -206,13 +211,20 @@ async def test_live_frontend_output_gets_preview_contract_hardening(monkeypatch)
                         "private": True,
                         "version": "0.1.0",
                         "type": "module",
-                        "scripts": {"dev": "vite", "build": "vite build", "preview": "vite preview"},
+                        "scripts": {
+                            "dev": "vite",
+                            "build": "vite build",
+                            "preview": "vite preview",
+                        },
                         "dependencies": {
                             "react": "^18.2.0",
                             "react-dom": "^18.2.0",
                             "react-router-dom": "^6.22.0",
                         },
-                        "devDependencies": {"vite": "^5.4.11", "@vitejs/plugin-react": "^4.3.4"},
+                        "devDependencies": {
+                            "vite": "^5.4.11",
+                            "@vitejs/plugin-react": "^4.3.4",
+                        },
                     }
                 ),
                 "index.html": "<!doctype html><html><body><div id='root'></div><script type='module' src='/src/main.jsx'></script></body></html>",
@@ -225,7 +237,9 @@ async def test_live_frontend_output_gets_preview_contract_hardening(monkeypatch)
         return "vite_react"
 
     monkeypatch.setattr(FrontendAgent, "execute", thin_execute)
-    monkeypatch.setattr(plan_context, "fetch_build_target_for_job", fake_fetch_build_target)
+    monkeypatch.setattr(
+        plan_context, "fetch_build_target_for_job", fake_fetch_build_target
+    )
     monkeypatch.setenv("CRUCIBAI_SKIP_BROWSER_PREVIEW", "1")
 
     with tempfile.TemporaryDirectory() as d:
@@ -252,7 +266,9 @@ def test_preview_contract_merge_removes_invalid_react_router_types_dependency():
             "devDependencies": {"@types/react-router-dom": "6.2.1"},
         }
     )
-    fallback = json.dumps({"dependencies": {"zustand": "^4.5.0"}, "devDependencies": {}})
+    fallback = json.dumps(
+        {"dependencies": {"zustand": "^4.5.0"}, "devDependencies": {}}
+    )
 
     merged = json.loads(_merge_package_dependencies(existing, fallback))
 
@@ -275,7 +291,9 @@ async def test_fallback_scaffold_passes_preview_and_elite_gates(monkeypatch):
             _safe_write(d, rel, content)
         _safe_write(d, "backend/main.py", _main_py_sketch(multitenant=False))
         _ensure_backend_elite_hardening(d)
-        await handle_delivery_manifest({"step_key": "implementation.delivery_manifest"}, job, d)
+        await handle_delivery_manifest(
+            {"step_key": "implementation.delivery_manifest"}, job, d
+        )
 
         preview = await verify_preview_workspace(d)
         elite = await verify_step(
@@ -315,7 +333,9 @@ async def health():
 """,
         )
 
-        result = await handle_delivery_manifest({"step_key": "implementation.delivery_manifest"}, job, d)
+        result = await handle_delivery_manifest(
+            {"step_key": "implementation.delivery_manifest"}, job, d
+        )
 
         assert "package.json" in result["output_files"]
         assert "index.html" in result["output_files"]
@@ -354,7 +374,9 @@ def _repo_root() -> Path:
 def test_browser_preview_installs_dev_dependencies_for_vite():
     from pathlib import Path
 
-    source = (_repo_root() / "backend/orchestration/browser_preview_verify.py").read_text(encoding="utf-8")
+    source = (
+        _repo_root() / "backend/orchestration/browser_preview_verify.py"
+    ).read_text(encoding="utf-8")
 
     assert '"--include=dev"' in source
     assert '"install", "--include=dev", "--no-fund", "--no-audit"' in source
@@ -364,7 +386,9 @@ def test_production_image_installs_playwright_chromium():
     from pathlib import Path
 
     dockerfile = (_repo_root() / "Dockerfile").read_text(encoding="utf-8")
-    preflight = (_repo_root() / "backend/orchestration/preflight_report.py").read_text(encoding="utf-8")
+    preflight = (_repo_root() / "backend/orchestration/preflight_report.py").read_text(
+        encoding="utf-8"
+    )
 
     assert "python -m playwright install --with-deps chromium" in dockerfile
     assert '"id": "playwright_chromium"' in preflight
@@ -375,11 +399,16 @@ def test_published_app_url_uses_public_base(monkeypatch):
 
     monkeypatch.setenv("CRUCIBAI_PUBLIC_BASE_URL", "https://crucibai.example.com/")
 
-    assert published_app_url("job-123") == "https://crucibai.example.com/published/job-123/"
+    assert (
+        published_app_url("job-123")
+        == "https://crucibai.example.com/published/job-123/"
+    )
 
 
 @pytest.mark.asyncio
-async def test_deploy_publish_emits_public_generated_app_url_when_configured(monkeypatch):
+async def test_deploy_publish_emits_public_generated_app_url_when_configured(
+    monkeypatch,
+):
     monkeypatch.setenv("CRUCIBAI_PUBLIC_BASE_URL", "https://crucibai.example.com")
     with tempfile.TemporaryDirectory() as d:
         result = await handle_deploy(
@@ -388,9 +417,15 @@ async def test_deploy_publish_emits_public_generated_app_url_when_configured(mon
             d,
         )
 
-        assert result["deploy_url"] == "https://crucibai.example.com/published/job-public-url/"
+        assert (
+            result["deploy_url"]
+            == "https://crucibai.example.com/published/job-public-url/"
+        )
         assert "deploy/PUBLISH.md" in result["output_files"]
-        assert "https://crucibai.example.com/published/job-public-url/" in open(
-            os.path.join(d, "deploy", "PUBLISH.md"),
-            encoding="utf-8",
-        ).read()
+        assert (
+            "https://crucibai.example.com/published/job-public-url/"
+            in open(
+                os.path.join(d, "deploy", "PUBLISH.md"),
+                encoding="utf-8",
+            ).read()
+        )

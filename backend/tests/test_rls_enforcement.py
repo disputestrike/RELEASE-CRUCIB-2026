@@ -1,13 +1,13 @@
 """
 Structural RLS checks (validate_rls_syntax, verification.rls) — complements test_multitenancy_rls_live.py.
 """
+
 from __future__ import annotations
 
 import os
 import tempfile
 
 import pytest
-
 from orchestration.multitenancy_rls_sql import (
     migration_002_multitenancy_rls_sql,
     validate_rls_syntax,
@@ -47,7 +47,10 @@ def test_verify_rls_workspace_finds_and_validates_migration_file():
         res = verify_rls_workspace(d)
         assert res["passed"] is True
         assert res["score"] == 100
-        assert any((p.get("payload") or {}).get("check") == "rls_syntax_valid" for p in res["proof"])
+        assert any(
+            (p.get("payload") or {}).get("check") == "rls_syntax_valid"
+            for p in res["proof"]
+        )
 
 
 def test_verify_rls_workspace_fails_without_migrations_dir():
@@ -77,7 +80,9 @@ async def test_verifier_rls_step():
     with tempfile.TemporaryDirectory() as d:
         mig = os.path.join(d, "db", "migrations")
         os.makedirs(mig)
-        with open(os.path.join(mig, "002_multitenancy_rls.sql"), "w", encoding="utf-8") as f:
+        with open(
+            os.path.join(mig, "002_multitenancy_rls.sql"), "w", encoding="utf-8"
+        ) as f:
             f.write(sql)
         out = await verify_step({"step_key": "verification.rls"}, workspace_path=d)
         assert out["passed"] is True

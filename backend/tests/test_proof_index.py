@@ -54,10 +54,14 @@ def test_build_proof_index_document():
             "payload": {"path": "ghost.py"},
         },
     ]
-    doc = build_proof_index_document("job-1", art, items, {"s1": "agents.frontend", "s2": "agents.backend"})
+    doc = build_proof_index_document(
+        "job-1", art, items, {"s1": "agents.frontend", "s2": "agents.backend"}
+    )
     assert doc["proof_item_count"] == 2
     assert "p1" in doc.get("by_proof_item_id", {})
-    assert doc["by_proof_item_id"]["p1"]["paths_resolved_in_manifest"] == ["src/App.jsx"]
+    assert doc["by_proof_item_id"]["p1"]["paths_resolved_in_manifest"] == [
+        "src/App.jsx"
+    ]
     e0 = doc["entries"][0]
     assert "src/App.jsx" in e0["paths_resolved_in_manifest"]
     e1 = doc["entries"][1]

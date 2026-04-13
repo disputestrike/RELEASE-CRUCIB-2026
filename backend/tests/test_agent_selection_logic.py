@@ -1,7 +1,10 @@
 from agent_dag import AGENT_DAG
-from orchestration.agent_selection_logic import _keyword_match, build_full_phases_from_dag, select_agents_for_goal
+from orchestration.agent_selection_logic import (
+    _keyword_match,
+    build_full_phases_from_dag,
+    select_agents_for_goal,
+)
 from orchestration.planner import _should_use_agent_selection
-
 
 FULL_SYSTEM_PROMPT = (
     "Build a multi-tenant SaaS with React frontend, Node backend, PostgreSQL, Redis caching, "
@@ -15,7 +18,11 @@ HELIOS_PROMPT = (
 
 
 def test_select_agents_for_goal_picks_infrastructure_and_tool_agents():
-    agents = set(select_agents_for_goal(FULL_SYSTEM_PROMPT, {"requires_full_system_builder": True}))
+    agents = set(
+        select_agents_for_goal(
+            FULL_SYSTEM_PROMPT, {"requires_full_system_builder": True}
+        )
+    )
 
     assert "File Tool Agent" in agents
     assert "Kubernetes Advanced Agent" in agents
@@ -26,7 +33,11 @@ def test_select_agents_for_goal_picks_infrastructure_and_tool_agents():
 
 
 def test_select_agents_for_goal_expands_dependencies():
-    agents = set(select_agents_for_goal("Build a dapp with smart contracts and web3 wallet support"))
+    agents = set(
+        select_agents_for_goal(
+            "Build a dapp with smart contracts and web3 wallet support"
+        )
+    )
 
     assert "Smart Contract Agent" in agents
     assert "Blockchain Selector Agent" in agents
@@ -55,7 +66,9 @@ def test_negated_ar_phrase_does_not_pull_ar_vr_agent():
 
 
 def test_select_agents_for_helios_includes_business_and_compliance_agents():
-    agents = set(select_agents_for_goal(HELIOS_PROMPT, {"requires_full_system_builder": True}))
+    agents = set(
+        select_agents_for_goal(HELIOS_PROMPT, {"requires_full_system_builder": True})
+    )
 
     assert "Approval Flow Agent" in agents
     assert "Business Rules Engine Agent" in agents
@@ -66,7 +79,9 @@ def test_select_agents_for_helios_includes_business_and_compliance_agents():
 
 
 def test_build_full_phases_from_dag_only_uses_selected_agents():
-    selected = select_agents_for_goal("Build a Kubernetes dashboard with Redis, RabbitMQ, and WebSockets")
+    selected = select_agents_for_goal(
+        "Build a Kubernetes dashboard with Redis, RabbitMQ, and WebSockets"
+    )
     phases = build_full_phases_from_dag(selected, AGENT_DAG)
     flat = [agent for phase in phases for agent in phase]
 
@@ -85,6 +100,7 @@ def test_should_use_agent_selection_routes_specialized_prompts():
 
 def test_server_legacy_orchestration_registry_is_dag_backed():
     import pathlib
+
     # Resolve from this test file's location: tests/ -> backend/ -> server.py
     server_path = pathlib.Path(__file__).parent.parent / "server.py"
     if not server_path.exists():
@@ -98,8 +114,8 @@ def test_server_legacy_orchestration_registry_is_dag_backed():
 
     assert "_token_budget_for_orchestration_agent" in source
     assert "for phase in get_execution_phases(AGENT_DAG)" in source
-    assert '/debug/agent-info' in source
-    assert '/debug/agent-selection-logs' in source
+    assert "/debug/agent-info" in source
+    assert "/debug/agent-selection-logs" in source
     assert '@api_router.post("/build")' in source
     assert '"/api/build"' in source
-    assert 'LAST_BUILD_STATE' in source
+    assert "LAST_BUILD_STATE" in source

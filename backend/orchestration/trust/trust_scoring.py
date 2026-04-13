@@ -2,6 +2,7 @@
 Weighted verification truth: Presence 10%, Syntax 20%, Runtime 40%, Experience 30%.
 Trust score penalizes missing classes and claims without evidence.
 """
+
 from __future__ import annotations
 
 import hashlib

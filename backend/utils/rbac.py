@@ -1,14 +1,17 @@
 """
 RBAC: role-based access control (owner, admin, developer, viewer).
 """
+
 from enum import Enum
 from typing import Optional
+
 
 class Role(str, Enum):
     OWNER = "owner"
     ADMIN = "admin"
     DEVELOPER = "developer"
     VIEWER = "viewer"
+
 
 class Permission(str, Enum):
     MANAGE_BILLING = "manage_billing"
@@ -22,19 +25,31 @@ class Permission(str, Enum):
     MANAGE_MFA = "manage_mfa"
     INVITE_MEMBERS = "invite_members"
 
+
 ROLE_PERMISSIONS = {
     Role.OWNER: list(Permission),
     Role.ADMIN: [
-        Permission.CREATE_PROJECT, Permission.EDIT_PROJECT, Permission.DELETE_PROJECT,
-        Permission.DEPLOY_PROJECT, Permission.VIEW_PROJECT, Permission.EDIT_SETTINGS,
-        Permission.VIEW_AUDIT, Permission.MANAGE_MFA, Permission.INVITE_MEMBERS,
+        Permission.CREATE_PROJECT,
+        Permission.EDIT_PROJECT,
+        Permission.DELETE_PROJECT,
+        Permission.DEPLOY_PROJECT,
+        Permission.VIEW_PROJECT,
+        Permission.EDIT_SETTINGS,
+        Permission.VIEW_AUDIT,
+        Permission.MANAGE_MFA,
+        Permission.INVITE_MEMBERS,
     ],
     Role.DEVELOPER: [
-        Permission.CREATE_PROJECT, Permission.EDIT_PROJECT, Permission.DEPLOY_PROJECT,
-        Permission.VIEW_PROJECT, Permission.EDIT_SETTINGS, Permission.MANAGE_MFA,
+        Permission.CREATE_PROJECT,
+        Permission.EDIT_PROJECT,
+        Permission.DEPLOY_PROJECT,
+        Permission.VIEW_PROJECT,
+        Permission.EDIT_SETTINGS,
+        Permission.MANAGE_MFA,
     ],
     Role.VIEWER: [Permission.VIEW_PROJECT, Permission.VIEW_AUDIT],
 }
+
 
 def get_user_role(user: dict) -> Role:
     """Return user's role; default owner for backward compatibility."""
@@ -42,6 +57,7 @@ def get_user_role(user: dict) -> Role:
     if r in ("owner", "admin", "developer", "viewer"):
         return Role(r)
     return Role.OWNER
+
 
 def has_permission(user: dict, permission: Permission) -> bool:
     """Check if user has permission."""

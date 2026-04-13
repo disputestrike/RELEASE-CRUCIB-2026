@@ -2,6 +2,7 @@
 Fortune 100 Layer 1: Full API route coverage.
 Every endpoint is exercised with appropriate auth and validated for expected status/schema.
 """
+
 import pytest
 from conftest import register_and_get_headers
 
@@ -36,22 +37,42 @@ AUTH_GET = [
 # POST routes that REQUIRE AUTH - (path, min_body, accept_status)
 AUTH_POST = [
     ("/api/build/plan", {"prompt": "a landing page"}, [200, 402, 500]),
-    ("/api/projects", {"name": "t", "description": "d", "project_type": "web", "requirements": {}}, [200, 201, 402]),
+    (
+        "/api/projects",
+        {"name": "t", "description": "d", "project_type": "web", "requirements": {}},
+        [200, 201, 402],
+    ),
     ("/api/prompts/save", {"name": "test", "content": "x"}, [200, 201, 422]),
     ("/api/workspace/env", {"env": {}}, [200, 201]),
 ]
 
 # POST routes that accept optional auth - (path, body, statuses)
 POST_PUBLIC_OR_AUTH = [
-    ("/api/auth/register", {"email": "cov@test.com", "password": "x", "name": "x"}, [200, 201, 400, 422]),
+    (
+        "/api/auth/register",
+        {"email": "cov@test.com", "password": "x", "name": "x"},
+        [200, 201, 400, 422],
+    ),
     ("/api/auth/login", {"email": "x@x.com", "password": "x"}, [200, 401]),
     ("/api/ai/chat", {"message": "hi", "session_id": "cov"}, [200, 401, 500]),
-    ("/api/ai/analyze", {"content": "const x=1;", "doc_type": "text", "task": "summarize"}, [200, 401, 500]),
-    ("/api/ai/validate-and-fix", {"code": "x", "language": "javascript"}, [200, 401, 500]),
+    (
+        "/api/ai/analyze",
+        {"content": "const x=1;", "doc_type": "text", "task": "summarize"},
+        [200, 401, 500],
+    ),
+    (
+        "/api/ai/validate-and-fix",
+        {"code": "x", "language": "javascript"},
+        [200, 401, 500],
+    ),
     ("/api/rag/query", {"query": "test"}, [200, 401, 500]),
     ("/api/search", {"query": "test"}, [200, 401, 500]),
     ("/api/export/zip", {"files": {}}, [200, 401]),
-    ("/api/build/from-reference", {"url": "https://example.com"}, [200, 401, 400, 422, 500]),
+    (
+        "/api/build/from-reference",
+        {"url": "https://example.com"},
+        [200, 401, 400, 422, 500],
+    ),
 ]
 
 # Paths with dynamic IDs - need placeholder
@@ -109,7 +130,9 @@ async def test_auth_post_with_token(app_client):
     headers = await register_and_get_headers(app_client)
     for path, body, accept in AUTH_POST:
         r = await app_client.post(path, json=body, headers=headers, timeout=30)
-        assert r.status_code in accept, f"POST {path}: expected one of {accept}, got {r.status_code}"
+        assert (
+            r.status_code in accept
+        ), f"POST {path}: expected one of {accept}, got {r.status_code}"
 
 
 @pytest.mark.asyncio
@@ -117,7 +140,9 @@ async def test_post_public_or_auth_routes(app_client):
     """POST routes that accept public or auth return acceptable status."""
     for path, body, accept in POST_PUBLIC_OR_AUTH:
         r = await app_client.post(path, json=body, timeout=15)
-        assert r.status_code in accept, f"POST {path}: expected one of {accept}, got {r.status_code}"
+        assert (
+            r.status_code in accept
+        ), f"POST {path}: expected one of {accept}, got {r.status_code}"
 
 
 @pytest.mark.asyncio
@@ -125,7 +150,9 @@ async def test_dynamic_paths(app_client):
     """Routes with dynamic IDs return expected status (401 or 404 for unknown)."""
     for path, accept in DYNAMIC_GET:
         r = await app_client.get(path, timeout=5)
-        assert r.status_code in accept, f"GET {path}: expected one of {accept}, got {r.status_code}"
+        assert (
+            r.status_code in accept
+        ), f"GET {path}: expected one of {accept}, got {r.status_code}"
 
 
 @pytest.mark.asyncio
@@ -166,7 +193,12 @@ async def test_generate_doc_slides_sheets(app_client):
         ("/api/generate/sheets", {"topic": "Test", "columns": ["A", "B"]}),
     ]:
         r = await app_client.post(path, json=body, timeout=30)
-        assert r.status_code in (200, 401, 422, 500), f"POST {path}: got {r.status_code}"
+        assert r.status_code in (
+            200,
+            401,
+            422,
+            500,
+        ), f"POST {path}: got {r.status_code}"
 
 
 @pytest.mark.asyncio
@@ -186,7 +218,13 @@ async def test_ai_extra_routes(app_client):
     ]
     for path, body in routes:
         r = await app_client.post(path, json=body, timeout=20)
-        assert r.status_code in (200, 401, 400, 422, 500), f"POST {path}: got {r.status_code}"
+        assert r.status_code in (
+            200,
+            401,
+            400,
+            422,
+            500,
+        ), f"POST {path}: got {r.status_code}"
 
 
 @pytest.mark.asyncio
@@ -213,7 +251,12 @@ async def test_agent_run_routes_with_auth(app_client):
     ]
     for path, body in routes:
         r = await app_client.post(path, json=body, headers=headers, timeout=45)
-        assert r.status_code in (200, 401, 402, 500), f"POST {path}: got {r.status_code}"
+        assert r.status_code in (
+            200,
+            401,
+            402,
+            500,
+        ), f"POST {path}: got {r.status_code}"
 
 
 @pytest.mark.asyncio
@@ -235,12 +278,20 @@ async def test_files_analyze_route(app_client):
 @pytest.mark.asyncio
 async def test_mfa_routes_require_auth(app_client):
     """MFA routes return 401 without token."""
-    for path in ["/api/mfa/setup", "/api/mfa/status", "/api/mfa/verify", "/api/mfa/disable"]:
+    for path in [
+        "/api/mfa/setup",
+        "/api/mfa/status",
+        "/api/mfa/verify",
+        "/api/mfa/disable",
+    ]:
         if "status" in path:
             r = await app_client.get(path, timeout=5)
         else:
             r = await app_client.post(path, json={}, timeout=5)
-        assert r.status_code in (401, 422), f"{path}: expected 401/422, got {r.status_code}"
+        assert r.status_code in (
+            401,
+            422,
+        ), f"{path}: expected 401/422, got {r.status_code}"
 
 
 @pytest.mark.asyncio
@@ -256,7 +307,12 @@ async def test_exports_route_with_auth(app_client):
     headers = await register_and_get_headers(app_client)
     r = await app_client.get("/api/exports", headers=headers, timeout=10)
     assert r.status_code == 200
-    r2 = await app_client.post("/api/exports", json={"project_id": "dummy", "format": "zip"}, headers=headers, timeout=15)
+    r2 = await app_client.post(
+        "/api/exports",
+        json={"project_id": "dummy", "format": "zip"},
+        headers=headers,
+        timeout=15,
+    )
     assert r2.status_code in (200, 400, 404)
 
 
@@ -266,7 +322,12 @@ async def test_templates_and_projects_from_template(app_client):
     r = await app_client.get("/api/templates", timeout=5)
     assert r.status_code == 200
     headers = await register_and_get_headers(app_client)
-    r2 = await app_client.post("/api/projects/from-template", json={"template_id": "minimal"}, headers=headers, timeout=15)
+    r2 = await app_client.post(
+        "/api/projects/from-template",
+        json={"template_id": "minimal"},
+        headers=headers,
+        timeout=15,
+    )
     assert r2.status_code in (200, 201, 400, 404)
 
 
@@ -274,7 +335,12 @@ async def test_templates_and_projects_from_template(app_client):
 async def test_share_create_and_get(app_client):
     """POST /share/create, GET /share/{token}."""
     headers = await register_and_get_headers(app_client)
-    r = await app_client.post("/api/share/create", json={"project_id": "dummy", "expires_hours": 24}, headers=headers, timeout=10)
+    r = await app_client.post(
+        "/api/share/create",
+        json={"project_id": "dummy", "expires_hours": 24},
+        headers=headers,
+        timeout=10,
+    )
     assert r.status_code in (200, 201, 400, 404)
     r2 = await app_client.get("/api/share/bad-token-cov", timeout=5)
     assert r2.status_code in (200, 404)

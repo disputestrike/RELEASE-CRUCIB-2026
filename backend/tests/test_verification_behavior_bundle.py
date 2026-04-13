@@ -1,15 +1,25 @@
 """Unit tests for verification behavior bundle merge + explicit verify_step."""
+
 import os
 import tempfile
 
 import pytest
-
 from orchestration.verification_behavior_bundle import merge_verification_results
 
 
 def test_merge_verification_all_pass_uses_min_score():
-    a = {"passed": True, "score": 100, "issues": [], "proof": [{"proof_type": "a", "title": "A", "payload": {}}]}
-    b = {"passed": True, "score": 88, "issues": [], "proof": [{"proof_type": "b", "title": "B", "payload": {}}]}
+    a = {
+        "passed": True,
+        "score": 100,
+        "issues": [],
+        "proof": [{"proof_type": "a", "title": "A", "payload": {}}],
+    }
+    b = {
+        "passed": True,
+        "score": 88,
+        "issues": [],
+        "proof": [{"proof_type": "b", "title": "B", "payload": {}}],
+    }
     m = merge_verification_results([a, b])
     assert m["passed"] is True
     assert m["score"] == 88

@@ -2,10 +2,11 @@
 proof_service.py — Proof persistence and retrieval.
 Every verified action produces evidence stored here.
 """
+
 import hashlib
-import uuid
 import json
 import logging
+import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -38,12 +39,20 @@ def _empty_bundle(job_id: str) -> Dict[str, Any]:
         "total_proof_items": 0,
         "verification_proof_items": 0,
         "category_counts": {
-            "files": 0, "routes": 0, "database": 0,
-            "verification": 0, "deploy": 0, "generic": 0,
+            "files": 0,
+            "routes": 0,
+            "database": 0,
+            "verification": 0,
+            "deploy": 0,
+            "generic": 0,
         },
         "bundle": {
-            "files": [], "routes": [], "database": [],
-            "verification": [], "deploy": [], "generic": [],
+            "files": [],
+            "routes": [],
+            "database": [],
+            "verification": [],
+            "deploy": [],
+            "generic": [],
         },
         "bundle_sha256": compute_bundle_integrity_sha256([]),
         "build_contract": empty_contract(job_id),
@@ -62,9 +71,9 @@ def _empty_bundle(job_id: str) -> Dict[str, Any]:
     }
 
 
-async def store_proof(job_id: str, step_id: str,
-                       proof_type: str, title: str,
-                       payload: Dict[str, Any]) -> str:
+async def store_proof(
+    job_id: str, step_id: str, proof_type: str, title: str, payload: Dict[str, Any]
+) -> str:
     if _pool is None:
         logger.error(
             "proof_service.store_proof: DB pool not set (call proof_service.set_pool); skipping persist"
@@ -72,12 +81,20 @@ async def store_proof(job_id: str, step_id: str,
         return ""
     proof_id = str(uuid.uuid4())
     async with _pool.acquire() as conn:
-        await conn.execute("""
+        await conn.execute(
+            """
             INSERT INTO proof_items (id, job_id, step_id, proof_type, title,
                                      payload_json, created_at)
             VALUES ($1,$2,$3,$4,$5,$6,$7)
-        """, proof_id, job_id, step_id, proof_type, title,
-            json.dumps(payload), _now())
+        """,
+            proof_id,
+            job_id,
+            step_id,
+            proof_type,
+            title,
+            json.dumps(payload),
+            _now(),
+        )
     return proof_id
 
 
@@ -112,12 +129,13 @@ async def fetch_proof_items_raw(job_id: str) -> List[Dict[str, Any]]:
 async def get_proof(job_id: str) -> Dict[str, Any]:
     """Return proof bundle grouped by category for the proof panel UI."""
     if _pool is None:
-        logger.warning("proof_service.get_proof: DB pool not set; returning empty bundle")
+        logger.warning(
+            "proof_service.get_proof: DB pool not set; returning empty bundle"
+        )
         return _empty_bundle(job_id)
     async with _pool.acquire() as conn:
         rows = await conn.fetch(
-            "SELECT * FROM proof_items WHERE job_id=$1 ORDER BY created_at",
-            job_id
+            "SELECT * FROM proof_items WHERE job_id=$1 ORDER BY created_at", job_id
         )
 
     items = [dict(r) for r in rows]
@@ -148,22 +166,28 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
             payload = json.loads(item.get("payload_json") or "{}")
         except Exception:
             pass
-        bundle[category].append({
-            "id": item["id"],
-            "type": item["proof_type"],
-            "proof_type": item["proof_type"],
-            "title": item["title"],
-            "payload": payload,
-            "created_at": str(item["created_at"]),
-        })
+        bundle[category].append(
+            {
+                "id": item["id"],
+                "type": item["proof_type"],
+                "proof_type": item["proof_type"],
+                "title": item["title"],
+                "payload": payload,
+                "created_at": str(item["created_at"]),
+            }
+        )
 
     # Quality score from real stored rows only (no UI fabrication)
     total_items = len(items)
-    verified_items = sum(1 for i in items if i.get("proof_type") in ("compile", "api", "test"))
+    verified_items = sum(
+        1 for i in items if i.get("proof_type") in ("compile", "api", "test")
+    )
     if total_items == 0:
         quality_score = 0.0
     else:
-        quality_score = float(min(100, round(70 + (verified_items / max(1, total_items)) * 30)))
+        quality_score = float(
+            min(100, round(70 + (verified_items / max(1, total_items)) * 30))
+        )
 
     category_counts = {k: len(v) for k, v in bundle.items()}
 
@@ -210,8 +234,14 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
     spec_compliance = 100.0
     spec_guard_snapshot: Dict[str, Any] = {}
     try:
-        from orchestration.spec_guardian import evaluate_goal_against_runner, merge_plan_risk_flags_into_report
-        from orchestration.truth_scores import compute_production_readiness, build_honest_scorecard
+        from orchestration.spec_guardian import (
+            evaluate_goal_against_runner,
+            merge_plan_risk_flags_into_report,
+        )
+        from orchestration.truth_scores import (
+            build_honest_scorecard,
+            compute_production_readiness,
+        )
 
         async with _pool.acquire() as conn:
             gj = await conn.fetchrow("SELECT goal FROM jobs WHERE id=$1", job_id)
@@ -234,7 +264,9 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
             evaluate_goal_against_runner(goal, build_target=plan_bt),
             build_target=plan_bt,
         )
-        spec_compliance = float(spec_guard_snapshot.get("spec_compliance_percent") or 100.0)
+        spec_compliance = float(
+            spec_guard_snapshot.get("spec_compliance_percent") or 100.0
+        )
 
         prod = compute_production_readiness(flat, bundle)
         scorecard = build_honest_scorecard(
@@ -275,7 +307,9 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
             bundle_sha256=bundle_sha256,
             quality_score=quality_score,
             trust_score=float(trust.get("trust_score") or 0.0),
-            production_readiness_score=float(prod.get("production_readiness_score") or 0.0),
+            production_readiness_score=float(
+                prod.get("production_readiness_score") or 0.0
+            ),
         )
     except Exception:
         logger.exception("proof_service.get_proof: build contract failed")
@@ -287,10 +321,13 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
     try:
         if _pool is not None:
             async with _pool.acquire() as conn:
-                jrow = await conn.fetchrow("SELECT project_id FROM jobs WHERE id = $1", job_id)
+                jrow = await conn.fetchrow(
+                    "SELECT project_id FROM jobs WHERE id = $1", job_id
+                )
             pid = (jrow or {}).get("project_id")
             if pid:
                 from pathlib import Path
+
                 from project_state import WORKSPACE_ROOT
 
                 safe = str(pid).replace("..", "").strip()

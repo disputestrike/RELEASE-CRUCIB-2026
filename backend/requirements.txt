@@ -145,3 +145,6 @@ prometheus-client==0.21.1
 opentelemetry-api==1.28.0
 opentelemetry-sdk==1.28.0
 redis>=5.0.0
+
+# E2B cloud sandbox (optional — enables isolated code execution)
+# e2b-code-interpreter>=0.0.5  # install and set E2B_API_KEY to enable

@@ -24,6 +24,7 @@ Policy (summary)
 * Scaffold: default ``minimal`` (META only); set ``CRUCIBAI_WORKSPACE_SCAFFOLD_MODE=full``
   to restore legacy empty dirs.
 """
+
 from __future__ import annotations
 
 import os
@@ -32,7 +33,9 @@ from typing import List
 
 
 def legacy_broad_agent_support_enabled() -> bool:
-    return os.environ.get("CRUCIBAI_LEGACY_BROAD_AGENT_SUPPORT", "").strip().lower() in (
+    return os.environ.get(
+        "CRUCIBAI_LEGACY_BROAD_AGENT_SUPPORT", ""
+    ).strip().lower() in (
         "1",
         "true",
         "yes",
@@ -40,7 +43,10 @@ def legacy_broad_agent_support_enabled() -> bool:
 
 
 def workspace_scaffold_mode() -> str:
-    return os.environ.get("CRUCIBAI_WORKSPACE_SCAFFOLD_MODE", "minimal").strip().lower() or "minimal"
+    return (
+        os.environ.get("CRUCIBAI_WORKSPACE_SCAFFOLD_MODE", "minimal").strip().lower()
+        or "minimal"
+    )
 
 
 def fixed_planner_skip_database(build_kind: str, integrations: List[str]) -> bool:

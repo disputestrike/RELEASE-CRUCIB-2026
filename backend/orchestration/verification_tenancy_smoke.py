@@ -3,6 +3,7 @@ verification.tenancy_smoke — live Postgres: two tenants, RLS must hide the oth
 
 Requires DATABASE_URL (postgresql). Skips with reduced score when unset (local dev without Docker).
 """
+
 from __future__ import annotations
 
 import os
@@ -113,29 +114,41 @@ async def verify_tenancy_smoke_workspace(workspace_path: str) -> Dict[str, Any]:
         )
         try:
             await user_conn.execute(f'SET search_path TO "{schema}", public')
-            await user_conn.execute("SELECT set_config('app.tenant_id', $1, false)", str(id_a))
+            await user_conn.execute(
+                "SELECT set_config('app.tenant_id', $1, false)", str(id_a)
+            )
             n = await user_conn.fetchval("SELECT count(*) FROM app_items")
             if n != 1:
-                issues.append(f"Tenancy smoke: expected 1 visible row for tenant A, got {n}")
+                issues.append(
+                    f"Tenancy smoke: expected 1 visible row for tenant A, got {n}"
+                )
             title = await user_conn.fetchval("SELECT title FROM app_items")
             if title != "row-a":
                 issues.append("Tenancy smoke: wrong row visible for tenant A")
 
-            await user_conn.execute("SELECT set_config('app.tenant_id', $1, false)", str(id_b))
+            await user_conn.execute(
+                "SELECT set_config('app.tenant_id', $1, false)", str(id_b)
+            )
             if await user_conn.fetchval("SELECT count(*) FROM app_items") != 1:
                 issues.append("Tenancy smoke: tenant B should see exactly 1 row")
 
-            await user_conn.execute("SELECT set_config('app.tenant_id', $1, false)", str(id_a))
+            await user_conn.execute(
+                "SELECT set_config('app.tenant_id', $1, false)", str(id_a)
+            )
             try:
                 await user_conn.execute(
                     "INSERT INTO app_items (title, tenant_id) VALUES ($1, $2)",
                     "evil",
                     id_b,
                 )
-                issues.append("Tenancy smoke: cross-tenant INSERT should be blocked by RLS")
+                issues.append(
+                    "Tenancy smoke: cross-tenant INSERT should be blocked by RLS"
+                )
             except asyncpg.PostgresError as e:
                 if "row-level security" not in str(e).lower():
-                    issues.append(f"Tenancy smoke: unexpected error on cross-tenant insert: {e}")
+                    issues.append(
+                        f"Tenancy smoke: unexpected error on cross-tenant insert: {e}"
+                    )
         finally:
             await user_conn.close()
     except Exception as e:
@@ -145,16 +158,29 @@ async def verify_tenancy_smoke_workspace(workspace_path: str) -> Dict[str, Any]:
         # treat this as skipped rather than failed so unit tests pass without Postgres.
         is_conn_error = any(
             kw in err_str.lower()
-            for kw in ("connect call failed", "connection refused", "could not connect",
-                       "connection timed out", "errno 111", "errno 61", "[errno")
+            for kw in (
+                "connect call failed",
+                "connection refused",
+                "could not connect",
+                "connection timed out",
+                "errno 111",
+                "errno 61",
+                "[errno",
+            )
         )
-        in_test_env = os.environ.get("CRUCIBAI_TEST", "") == "1" or os.environ.get("CRUCIBAI_TEST_DB_UNAVAILABLE", "") == "1"
+        in_test_env = (
+            os.environ.get("CRUCIBAI_TEST", "") == "1"
+            or os.environ.get("CRUCIBAI_TEST_DB_UNAVAILABLE", "") == "1"
+        )
         if is_conn_error and in_test_env:
             proof.append(
                 _pi(
                     "verification",
                     "Tenancy smoke skipped (database unreachable in test environment)",
-                    {"check": "tenancy_smoke_skipped", "reason": "db_unreachable_test_env"},
+                    {
+                        "check": "tenancy_smoke_skipped",
+                        "reason": "db_unreachable_test_env",
+                    },
                     verification_class="presence",
                 ),
             )
@@ -178,10 +204,18 @@ async def verify_tenancy_smoke_workspace(workspace_path: str) -> Dict[str, Any]:
             _pi(
                 "verification",
                 "Tenancy smoke: two tenants, no cross-tenant reads; cross-tenant write blocked by RLS",
-                {"check": "tenancy_isolation_proven", "workspace": bool(workspace_path)},
+                {
+                    "check": "tenancy_isolation_proven",
+                    "workspace": bool(workspace_path),
+                },
                 verification_class="runtime",
             ),
         )
 
     score = 100 if not issues else max(25, 100 - len(issues) * 30)
-    return {"passed": len(issues) == 0, "score": score, "issues": issues, "proof": proof}
+    return {
+        "passed": len(issues) == 0,
+        "score": score,
+        "issues": issues,
+        "proof": proof,
+    }

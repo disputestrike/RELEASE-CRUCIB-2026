@@ -2,6 +2,7 @@
 Multi-region / multi-cloud Terraform **sketches** — educational stubs, not production modules.
 Emitted when goals mention Terraform plus AWS/GCP/Azure and/or multi-region / DR patterns.
 """
+
 from __future__ import annotations
 
 import re
@@ -70,7 +71,7 @@ _Schema: crucibai.multiregion_terraform_sketch/v1_
 
 
 def tf_aws_region_stub_main() -> str:
-    return '''# AWS region stub — add VPC, subnets, TGW, and RDS cross-region read replicas as needed.
+    return """# AWS region stub — add VPC, subnets, TGW, and RDS cross-region read replicas as needed.
 terraform {
   required_version = ">= 1.5"
   required_providers {
@@ -105,11 +106,11 @@ output "region" {
   value       = var.region
   description = "Configured AWS region"
 }
-'''
+"""
 
 
 def tf_gcp_region_stub_main() -> str:
-    return '''# GCP region stub — add VPC, subnets, Cloud SQL HA, and multi-region GCS as needed.
+    return """# GCP region stub — add VPC, subnets, Cloud SQL HA, and multi-region GCS as needed.
 terraform {
   required_version = ">= 1.5"
   required_providers {
@@ -143,11 +144,11 @@ provider "google" {
 output "region" {
   value = var.region
 }
-'''
+"""
 
 
 def tf_azure_region_stub_main() -> str:
-    return '''# Azure region stub — add VNet, peering, and geo-redundant storage / Cosmos as needed.
+    return """# Azure region stub — add VNet, peering, and geo-redundant storage / Cosmos as needed.
 terraform {
   required_version = ">= 1.5"
   required_providers {
@@ -175,11 +176,11 @@ provider "azurerm" {
 output "location" {
   value = var.location
 }
-'''
+"""
 
 
 def tf_multiregion_root_main() -> str:
-    return '''# Example root — wire credentials via env vars or CI OIDC before apply.
+    return """# Example root — wire credentials via env vars or CI OIDC before apply.
 # terraform init
 # terraform plan -var="aws_primary_region=us-east-1" -var="aws_secondary_region=us-west-2"
 
@@ -213,11 +214,11 @@ module "aws_secondary" {
 output "aws_primary_region" {
   value = module.aws_primary.region
 }
-'''
+"""
 
 
 def tf_multiregion_variables_tf() -> str:
-    return '''variable "environment" {
+    return """variable "environment" {
   type    = string
   default = "dev"
 }
@@ -251,12 +252,12 @@ variable "azure_location" {
   type    = string
   default = "eastus"
 }
-'''
+"""
 
 
 def tf_multiregion_outputs_tf() -> str:
-    return '''output "stub_note" {
+    return """output "stub_note" {
   value       = "Terraform sketch only — add networking, data replication, and DNS before production."
   description = "Reminder"
 }
-'''
+"""

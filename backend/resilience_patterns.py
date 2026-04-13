@@ -177,7 +177,7 @@ class RetryPolicy:
 
     def _calculate_delay(self, attempt: int) -> float:
         """Calculate delay for exponential backoff."""
-        delay = self.initial_delay * (self.exponential_base ** attempt)
+        delay = self.initial_delay * (self.exponential_base**attempt)
         delay = min(delay, self.max_delay)
 
         if self.jitter:
@@ -272,7 +272,9 @@ class RateLimiter:
 
 
 # Global resilience patterns
-database_circuit_breaker = CircuitBreaker("database", failure_threshold=5, recovery_timeout=30)
+database_circuit_breaker = CircuitBreaker(
+    "database", failure_threshold=5, recovery_timeout=30
+)
 s3_circuit_breaker = CircuitBreaker("s3", failure_threshold=5, recovery_timeout=30)
 api_circuit_breaker = CircuitBreaker("api", failure_threshold=10, recovery_timeout=60)
 

@@ -1,13 +1,15 @@
 """Rate limit middleware client IP extraction (Fifty-point #16)."""
+
 from typing import List, Optional, Tuple
 
 import pytest
+from middleware import RateLimitMiddleware
 from starlette.requests import Request
 
-from middleware import RateLimitMiddleware
 
-
-def _make_request(*, client_host: str, headers: Optional[List[Tuple[bytes, bytes]]] = None) -> Request:
+def _make_request(
+    *, client_host: str, headers: Optional[List[Tuple[bytes, bytes]]] = None
+) -> Request:
     hdrs = headers or []
     scope = {
         "type": "http",

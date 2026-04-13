@@ -1,11 +1,11 @@
 """Elite execution authority: job context, model block, gate integration."""
+
 from __future__ import annotations
 
 import os
 import tempfile
 
 import pytest
-
 from orchestration.elite_builder_gate import verify_elite_builder_workspace
 from orchestration.elite_prompt_loader import write_elite_directive_to_workspace
 from orchestration.execution_authority import (
@@ -19,7 +19,11 @@ from orchestration.execution_authority import (
 def test_resolve_reads_workspace_file_first():
     with tempfile.TemporaryDirectory() as d:
         os.makedirs(os.path.join(d, "proof"), exist_ok=True)
-        with open(os.path.join(d, "proof", "ELITE_EXECUTION_DIRECTIVE.md"), "w", encoding="utf-8") as f:
+        with open(
+            os.path.join(d, "proof", "ELITE_EXECUTION_DIRECTIVE.md"),
+            "w",
+            encoding="utf-8",
+        ) as f:
             f.write("workspace elite body")
         text, src = resolve_elite_execution_text(d)
         assert src == "workspace_file"
@@ -65,16 +69,26 @@ async def test_tenancy_goal_gate_fails_when_classification_has_no_runtime_hints(
     """Presence of 'RLS' alone is insufficient for tenancy-tagged goals."""
     with tempfile.TemporaryDirectory() as d:
         os.makedirs(os.path.join(d, "proof"), exist_ok=True)
-        with open(os.path.join(d, "proof", "ELITE_EXECUTION_DIRECTIVE.md"), "w", encoding="utf-8") as f:
+        with open(
+            os.path.join(d, "proof", "ELITE_EXECUTION_DIRECTIVE.md"),
+            "w",
+            encoding="utf-8",
+        ) as f:
             f.write("elite")
-        with open(os.path.join(d, "proof", "DELIVERY_CLASSIFICATION.md"), "w", encoding="utf-8") as f:
+        with open(
+            os.path.join(d, "proof", "DELIVERY_CLASSIFICATION.md"),
+            "w",
+            encoding="utf-8",
+        ) as f:
             f.write(
                 "## Implemented\nRLS policies declared in migrations only.\n"
                 "## Mocked\nn/a\n## Stubbed\nn/a\n## Unverified\nn/a\n"
             )
         os.environ["CRUCIBAI_ELITE_BUILDER_GATE"] = "strict"
         try:
-            r = await verify_elite_builder_workspace(d, job_goal="multi-tenant Postgres RLS")
+            r = await verify_elite_builder_workspace(
+                d, job_goal="multi-tenant Postgres RLS"
+            )
             assert r["passed"] is False
             assert any("Tenancy-related goal" in i for i in r["issues"])
         finally:
@@ -106,9 +120,17 @@ def test_continuation_blueprint_writes_under_workspace():
 async def test_elite_builder_gate_passes_with_manifest_and_directive():
     with tempfile.TemporaryDirectory() as d:
         os.makedirs(os.path.join(d, "proof"), exist_ok=True)
-        with open(os.path.join(d, "proof", "ELITE_EXECUTION_DIRECTIVE.md"), "w", encoding="utf-8") as f:
+        with open(
+            os.path.join(d, "proof", "ELITE_EXECUTION_DIRECTIVE.md"),
+            "w",
+            encoding="utf-8",
+        ) as f:
             f.write("elite")
-        with open(os.path.join(d, "proof", "DELIVERY_CLASSIFICATION.md"), "w", encoding="utf-8") as f:
+        with open(
+            os.path.join(d, "proof", "DELIVERY_CLASSIFICATION.md"),
+            "w",
+            encoding="utf-8",
+        ) as f:
             f.write(
                 "## Implemented\nx\n## Mocked\ny\n## Stubbed\nz\n## Unverified\nw\n"
                 "tenancy pytest runtime isolation\n"
@@ -146,9 +168,17 @@ async def test_elite_builder_gate_passes_with_manifest_and_directive():
 async def test_elite_builder_gate_fails_missing_labels():
     with tempfile.TemporaryDirectory() as d:
         os.makedirs(os.path.join(d, "proof"), exist_ok=True)
-        with open(os.path.join(d, "proof", "ELITE_EXECUTION_DIRECTIVE.md"), "w", encoding="utf-8") as f:
+        with open(
+            os.path.join(d, "proof", "ELITE_EXECUTION_DIRECTIVE.md"),
+            "w",
+            encoding="utf-8",
+        ) as f:
             f.write("e")
-        with open(os.path.join(d, "proof", "DELIVERY_CLASSIFICATION.md"), "w", encoding="utf-8") as f:
+        with open(
+            os.path.join(d, "proof", "DELIVERY_CLASSIFICATION.md"),
+            "w",
+            encoding="utf-8",
+        ) as f:
             f.write("only implemented section\n## Implemented\n")
         os.environ["CRUCIBAI_ELITE_BUILDER_GATE"] = "strict"
         try:
@@ -163,9 +193,17 @@ async def test_elite_builder_gate_fails_missing_labels():
 async def test_elite_builder_gate_advisory_softens():
     with tempfile.TemporaryDirectory() as d:
         os.makedirs(os.path.join(d, "proof"), exist_ok=True)
-        with open(os.path.join(d, "proof", "ELITE_EXECUTION_DIRECTIVE.md"), "w", encoding="utf-8") as f:
+        with open(
+            os.path.join(d, "proof", "ELITE_EXECUTION_DIRECTIVE.md"),
+            "w",
+            encoding="utf-8",
+        ) as f:
             f.write("e")
-        with open(os.path.join(d, "proof", "DELIVERY_CLASSIFICATION.md"), "w", encoding="utf-8") as f:
+        with open(
+            os.path.join(d, "proof", "DELIVERY_CLASSIFICATION.md"),
+            "w",
+            encoding="utf-8",
+        ) as f:
             f.write("bad")
         os.environ["CRUCIBAI_ELITE_BUILDER_GATE"] = "advisory"
         try:

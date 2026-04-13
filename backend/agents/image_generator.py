@@ -2,11 +2,13 @@
 Image generation via Together.ai. Generates hero and feature images for built apps.
 Legal: Generated images are for user's app only; no scraping or unauthorized use.
 """
-import os
-from agents.base_agent import BaseAgent
+
 import json
 import logging
-from typing import Dict, Any, Optional
+import os
+from typing import Any, Dict, Optional
+
+from agents.base_agent import BaseAgent
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +24,7 @@ async def generate_image(prompt: str) -> Optional[str]:
         return None
     try:
         from together import Together
+
         client = Together(api_key=TOGETHER_API_KEY)
         response = client.images.generate(
             model=IMAGE_MODEL,
@@ -68,7 +71,9 @@ def parse_image_prompts(llm_output: str) -> Dict[str, str]:
         return {}
 
 
-async def generate_images_for_app(design_description: str, prompts_dict: Optional[Dict[str, str]] = None) -> Dict[str, str]:
+async def generate_images_for_app(
+    design_description: str, prompts_dict: Optional[Dict[str, str]] = None
+) -> Dict[str, str]:
     """
     Generate multiple images for an app. Either use prompts_dict (from Image Generation agent)
     or derive from design_description. Returns {"hero": "url", "feature_1": "url", "feature_2": "url"}.

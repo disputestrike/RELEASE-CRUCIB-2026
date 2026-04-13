@@ -1,4 +1,5 @@
 """Golden tests: Idempotency-Key header parsing for LLM credit paths (#17)."""
+
 import pytest
 from starlette.requests import Request
 

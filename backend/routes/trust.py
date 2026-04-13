@@ -1,4 +1,5 @@
 """Public trust routes for benchmark and security posture evidence."""
+
 from __future__ import annotations
 
 import json
@@ -44,8 +45,12 @@ def create_trust_router(root_dir: Path) -> APIRouter:
     @router.get("/trust/benchmark-summary")
     async def trust_benchmark_summary():
         """Public benchmark summary for trust/status/benchmark pages."""
-        summary_path = _first_existing(path / "summary.json" for path in proof_candidates)
-        pass_fail_path = _first_existing(path / "PASS_FAIL.md" for path in proof_candidates)
+        summary_path = _first_existing(
+            path / "summary.json" for path in proof_candidates
+        )
+        pass_fail_path = _first_existing(
+            path / "PASS_FAIL.md" for path in proof_candidates
+        )
         if not summary_path:
             return {
                 "status": "not_available",
@@ -54,14 +59,19 @@ def create_trust_router(root_dir: Path) -> APIRouter:
                 "passed_count": 0,
                 "pass_rate": 0,
                 "average_score": 0,
-                "proof": {"summary": "proof/benchmarks/repeatability_v1/summary.json", "pass_fail": None},
+                "proof": {
+                    "summary": "proof/benchmarks/repeatability_v1/summary.json",
+                    "pass_fail": None,
+                },
                 "cases": [],
             }
         try:
             data = _load_json(summary_path)
         except Exception as exc:
             logger.warning("trust_benchmark_summary parse failed: %s", exc)
-            raise HTTPException(status_code=503, detail="Benchmark proof summary unreadable")
+            raise HTTPException(
+                status_code=503, detail="Benchmark proof summary unreadable"
+            )
         return {
             "status": "ready" if data.get("passed") else "failing",
             "benchmark_version": data.get("benchmark_version"),
@@ -76,7 +86,11 @@ def create_trust_router(root_dir: Path) -> APIRouter:
             "blockers": data.get("blockers") or [],
             "proof": {
                 "summary": "proof/benchmarks/repeatability_v1/summary.json",
-                "pass_fail": "proof/benchmarks/repeatability_v1/PASS_FAIL.md" if pass_fail_path else None,
+                "pass_fail": (
+                    "proof/benchmarks/repeatability_v1/PASS_FAIL.md"
+                    if pass_fail_path
+                    else None
+                ),
             },
             "cases": [
                 {
@@ -129,21 +143,30 @@ def create_trust_router(root_dir: Path) -> APIRouter:
     @router.get("/trust/full-systems-summary")
     async def trust_full_systems_summary():
         """Public summary of the latest full systems gate proof."""
-        summary_path = _first_existing(path / "summary.json" for path in full_systems_candidates)
-        pass_fail_path = _first_existing(path / "PASS_FAIL.md" for path in full_systems_candidates)
+        summary_path = _first_existing(
+            path / "summary.json" for path in full_systems_candidates
+        )
+        pass_fail_path = _first_existing(
+            path / "PASS_FAIL.md" for path in full_systems_candidates
+        )
         if not summary_path:
             return {
                 "status": "not_available",
                 "message": "Full systems gate proof has not been generated in this deployment.",
                 "required_failures": None,
                 "gates": [],
-                "proof": {"summary": "proof/full_systems/summary.json", "pass_fail": None},
+                "proof": {
+                    "summary": "proof/full_systems/summary.json",
+                    "pass_fail": None,
+                },
             }
         try:
             data = _load_json(summary_path)
         except Exception as exc:
             logger.warning("trust_full_systems_summary parse failed: %s", exc)
-            raise HTTPException(status_code=503, detail="Full systems proof summary unreadable")
+            raise HTTPException(
+                status_code=503, detail="Full systems proof summary unreadable"
+            )
 
         results = data.get("results") or []
         gates = []
@@ -151,12 +174,14 @@ def create_trust_router(root_dir: Path) -> APIRouter:
             for item in results:
                 if not isinstance(item, dict):
                     continue
-                gates.append({
-                    "name": item.get("name"),
-                    "required": bool(item.get("required")),
-                    "status": item.get("status"),
-                    "duration_seconds": item.get("duration_seconds"),
-                })
+                gates.append(
+                    {
+                        "name": item.get("name"),
+                        "required": bool(item.get("required")),
+                        "status": item.get("status"),
+                        "duration_seconds": item.get("duration_seconds"),
+                    }
+                )
         required_failures = data.get("required_failures")
         return {
             "status": "ready" if required_failures == 0 else "failing",
@@ -166,7 +191,9 @@ def create_trust_router(root_dir: Path) -> APIRouter:
             "gates": gates,
             "proof": {
                 "summary": "proof/full_systems/summary.json",
-                "pass_fail": "proof/full_systems/PASS_FAIL.md" if pass_fail_path else None,
+                "pass_fail": (
+                    "proof/full_systems/PASS_FAIL.md" if pass_fail_path else None
+                ),
             },
         }
 

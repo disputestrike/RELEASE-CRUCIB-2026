@@ -13,57 +13,70 @@ Adds:
 Wire into server.py by importing and calling setup_gauntlet_routes(app, db)
 """
 
-import os
-import json
-import uuid
 import asyncio
+import json
+import os
+import uuid
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
-from sqlalchemy import Column, String, Boolean, DateTime, JSON, create_engine
+from sqlalchemy import JSON, Boolean, Column, DateTime, String, create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session, sessionmaker
 
 # Database models for Gauntlet tracking
 
 Base = declarative_base()
 
+
 class GauntletRun(Base):
     """Track a Gauntlet execution run."""
+
     __tablename__ = "gauntlet_runs"
-    
+
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
-    
+
     # Status tracking
-    status = Column(String, default="pending")  # pending, in_progress, phase_1, phase_2, phase_3, phase_4, complete, blocked
+    status = Column(
+        String, default="pending"
+    )  # pending, in_progress, phase_1, phase_2, phase_3, phase_4, complete, blocked
     spec_file = Column(String, nullable=False, default="proof/GAUNTLET_SPEC.md")
-    
+
     # Phase completion flags
     phase_1_complete = Column(Boolean, default=False)
     phase_2_complete = Column(Boolean, default=False)
     phase_3_complete = Column(Boolean, default=False)
     phase_4_complete = Column(Boolean, default=False)
-    
+
     # Final status
     elite_verified = Column(Boolean, default=False)
-    
+
     # Output tracking
     proof_files = Column(JSON, default=dict)  # {"filename": "path", ...}
-    test_results = Column(JSON, default=dict)  # {"phase_2": {"passed": 35, "failed": 0}, ...}
+    test_results = Column(
+        JSON, default=dict
+    )  # {"phase_2": {"passed": 35, "failed": 0}, ...}
     error_message = Column(String, nullable=True)
-    
+
     # User tracking (if applicable)
     user_id = Column(String, nullable=True)
-    
+
     def to_dict(self):
         return {
             "id": self.id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "started_at": self.started_at.isoformat() if self.started_at else None,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "completed_at": (
+                self.completed_at.isoformat() if self.completed_at else None
+            ),
             "status": self.status,
             "phase_1_complete": self.phase_1_complete,
             "phase_2_complete": self.phase_2_complete,
@@ -78,14 +91,21 @@ class GauntletRun(Base):
 
 # Request/Response models
 
+
 class GauntletStartRequest(BaseModel):
     """Request to start a Gauntlet execution."""
-    spec_file: str = Field(default="proof/GAUNTLET_SPEC.md", description="Path to GAUNTLET_SPEC.md")
-    user_id: Optional[str] = Field(default=None, description="Optional user ID for tracking")
+
+    spec_file: str = Field(
+        default="proof/GAUNTLET_SPEC.md", description="Path to GAUNTLET_SPEC.md"
+    )
+    user_id: Optional[str] = Field(
+        default=None, description="Optional user ID for tracking"
+    )
 
 
 class GauntletStartResponse(BaseModel):
     """Response when Gauntlet execution starts."""
+
     status: str = "gauntlet_started"
     executor_id: str
     phases: Dict[str, Any]
@@ -94,6 +114,7 @@ class GauntletStartResponse(BaseModel):
 
 class GauntletStatusResponse(BaseModel):
     """Response with Gauntlet execution status."""
+
     status: str
     executor_id: str
     created_at: Optional[str]
@@ -137,9 +158,8 @@ PHASE 4 (Verification - 3 hours):
   - Run verification script, output exit code (0 = ELITE VERIFIED, 1 = CRITICAL BLOCK)
 
 Output: JSON dispatch plan for agents with success criteria for each phase.
-No theater. Everything must be executable and testable."""
+No theater. Everything must be executable and testable.""",
     },
-    
     "Gauntlet Backend Builder": {
         "depends_on": ["Gauntlet Executor", "Backend Generation"],
         "system_prompt": """You are the Gauntlet Backend Builder. Build the Titan Forge backend in phases:
@@ -172,9 +192,8 @@ PHASE 3 (Business Logic):
 
 PHASE 4: Continue as specified in gauntlet executor.
 
-Build real, working code. No scaffolding. All code must be testable."""
+Build real, working code. No scaffolding. All code must be testable.""",
     },
-    
     "Gauntlet Test Builder": {
         "depends_on": ["Gauntlet Executor", "Test Generation"],
         "system_prompt": """You are the Gauntlet Test Builder. Generate comprehensive tests in phases:
@@ -205,9 +224,8 @@ Requirements:
   - Tests prove the code works
   - No fakes or theater
 
-Output: tests/test_*.py files, all executable"""
+Output: tests/test_*.py files, all executable""",
     },
-    
     "Gauntlet Proof Builder": {
         "depends_on": ["Gauntlet Backend Builder", "Gauntlet Test Builder"],
         "system_prompt": """You are the Gauntlet Proof Builder. Generate proof documents that prove what was built.
@@ -236,9 +254,8 @@ Include:
   - Honest statements about limitations
   - All evidence of what was built
 
-Output: proof/*.md files with complete evidence"""
+Output: proof/*.md files with complete evidence""",
     },
-    
     "Gauntlet Verifier": {
         "depends_on": ["Gauntlet Backend Builder", "Gauntlet Test Builder"],
         "system_prompt": """You are the Gauntlet Verifier. Generate phase4_verify.sh script that:
@@ -256,17 +273,18 @@ Output: scripts/phase4_verify.sh (executable bash script)
   - Well-commented
   - Clear error messages
   - Proper exit codes
-  - Runnable from any directory"""
+  - Runnable from any directory""",
     },
 }
 
 
 # Service functions to integrate into server.py
 
+
 async def setup_gauntlet_integration(app, db_session: Optional[Session] = None):
     """
     Set up Gauntlet integration in FastAPI app.
-    
+
     Call this during app startup:
       @app.on_event("startup")
       async def startup():
@@ -276,10 +294,12 @@ async def setup_gauntlet_integration(app, db_session: Optional[Session] = None):
     return {"status": "ready"}
 
 
-async def start_gauntlet_execution(request: GauntletStartRequest, db: Session) -> Dict[str, Any]:
+async def start_gauntlet_execution(
+    request: GauntletStartRequest, db: Session
+) -> Dict[str, Any]:
     """Start a new Gauntlet execution."""
     executor_id = str(uuid.uuid4())
-    
+
     # Create DB record
     gauntlet_run = GauntletRun(
         id=executor_id,
@@ -290,7 +310,7 @@ async def start_gauntlet_execution(request: GauntletStartRequest, db: Session) -
     )
     db.add(gauntlet_run)
     db.commit()
-    
+
     # Return dispatch plan for agents
     return {
         "status": "gauntlet_started",
@@ -305,19 +325,31 @@ async def start_gauntlet_execution(request: GauntletStartRequest, db: Session) -
             "phase_2": {
                 "name": "Foundation",
                 "duration_hours": 5,
-                "agents_to_dispatch": ["Gauntlet Backend Builder", "Gauntlet Test Builder", "Gauntlet Proof Builder"],
+                "agents_to_dispatch": [
+                    "Gauntlet Backend Builder",
+                    "Gauntlet Test Builder",
+                    "Gauntlet Proof Builder",
+                ],
                 "status": "pending",
             },
             "phase_3": {
                 "name": "Business Logic",
                 "duration_hours": 7,
-                "agents_to_dispatch": ["Gauntlet Backend Builder", "Gauntlet Test Builder", "Gauntlet Proof Builder"],
+                "agents_to_dispatch": [
+                    "Gauntlet Backend Builder",
+                    "Gauntlet Test Builder",
+                    "Gauntlet Proof Builder",
+                ],
                 "status": "pending",
             },
             "phase_4": {
                 "name": "Verification",
                 "duration_hours": 3,
-                "agents_to_dispatch": ["Gauntlet Test Builder", "Gauntlet Proof Builder", "Gauntlet Verifier"],
+                "agents_to_dispatch": [
+                    "Gauntlet Test Builder",
+                    "Gauntlet Proof Builder",
+                    "Gauntlet Verifier",
+                ],
                 "status": "pending",
             },
         },
@@ -329,17 +361,19 @@ async def start_gauntlet_execution(request: GauntletStartRequest, db: Session) -
 async def get_gauntlet_status(executor_id: str, db: Session) -> Dict[str, Any]:
     """Get status of a Gauntlet execution."""
     gauntlet_run = db.query(GauntletRun).filter(GauntletRun.id == executor_id).first()
-    
+
     if not gauntlet_run:
         return {"error": "Gauntlet run not found", "executor_id": executor_id}
-    
-    phases_complete = sum([
-        gauntlet_run.phase_1_complete,
-        gauntlet_run.phase_2_complete,
-        gauntlet_run.phase_3_complete,
-        gauntlet_run.phase_4_complete,
-    ])
-    
+
+    phases_complete = sum(
+        [
+            gauntlet_run.phase_1_complete,
+            gauntlet_run.phase_2_complete,
+            gauntlet_run.phase_3_complete,
+            gauntlet_run.phase_4_complete,
+        ]
+    )
+
     current_phase = None
     if gauntlet_run.phase_1_complete and not gauntlet_run.phase_2_complete:
         current_phase = "phase_2"
@@ -347,16 +381,24 @@ async def get_gauntlet_status(executor_id: str, db: Session) -> Dict[str, Any]:
         current_phase = "phase_3"
     elif gauntlet_run.phase_3_complete and not gauntlet_run.phase_4_complete:
         current_phase = "phase_4"
-    
+
     return {
         "status": gauntlet_run.status,
         "executor_id": executor_id,
-        "created_at": gauntlet_run.created_at.isoformat() if gauntlet_run.created_at else None,
-        "started_at": gauntlet_run.started_at.isoformat() if gauntlet_run.started_at else None,
-        "completed_at": gauntlet_run.completed_at.isoformat() if gauntlet_run.completed_at else None,
+        "created_at": (
+            gauntlet_run.created_at.isoformat() if gauntlet_run.created_at else None
+        ),
+        "started_at": (
+            gauntlet_run.started_at.isoformat() if gauntlet_run.started_at else None
+        ),
+        "completed_at": (
+            gauntlet_run.completed_at.isoformat() if gauntlet_run.completed_at else None
+        ),
         "phases_complete": phases_complete,
         "current_phase": current_phase,
-        "proof_files_generated": list(gauntlet_run.proof_files.keys()) if gauntlet_run.proof_files else [],
+        "proof_files_generated": (
+            list(gauntlet_run.proof_files.keys()) if gauntlet_run.proof_files else []
+        ),
         "test_results": gauntlet_run.test_results,
         "elite_verified": gauntlet_run.elite_verified,
         "error_message": gauntlet_run.error_message,
@@ -459,7 +501,7 @@ Execution Flow:
    Total: ~16 hours autonomous CrucibAI execution
    Output: 2,500+ lines of code, 85+ tests, 12 proof documents
 """)
-    
+
     # Print agent configs
     print("\nGAUNTLET AGENTS:")
     for name, config in GAUNTLET_AGENTS.items():

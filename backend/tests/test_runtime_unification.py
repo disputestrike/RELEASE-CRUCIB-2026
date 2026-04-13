@@ -2,7 +2,6 @@ import shutil
 from pathlib import Path
 
 import pytest
-
 from orchestration.agent_selection_logic import select_agents_for_goal
 from orchestration.planner import _should_use_agent_selection
 from orchestration.preview_gate import verify_preview_workspace
@@ -48,12 +47,20 @@ async def test_preview_gate_includes_preflight_feedback(monkeypatch):
     )
     components_dir = src_dir / "components"
     components_dir.mkdir()
-    (components_dir / "Shell.jsx").write_text("export default function Shell(){ return null }", encoding="utf-8")
+    (components_dir / "Shell.jsx").write_text(
+        "export default function Shell(){ return null }", encoding="utf-8"
+    )
 
     async def fake_execute(self, context):
         return {
             "status": "ISSUES_FOUND",
-            "critical_issues": [{"file": "vite.config.js", "issue": "missing config", "suggestion": "create vite config"}],
+            "critical_issues": [
+                {
+                    "file": "vite.config.js",
+                    "issue": "missing config",
+                    "suggestion": "create vite config",
+                }
+            ],
             "warnings": [],
             "total_files_checked": 4,
         }
@@ -61,8 +68,13 @@ async def test_preview_gate_includes_preflight_feedback(monkeypatch):
     async def fake_browser_preview(workspace_path):
         return {"passed": True, "issues": [], "proof": []}
 
-    monkeypatch.setattr("agents.preview_validator_agent.PreviewValidatorAgent.execute", fake_execute)
-    monkeypatch.setattr("orchestration.browser_preview_verify.verify_browser_preview", fake_browser_preview)
+    monkeypatch.setattr(
+        "agents.preview_validator_agent.PreviewValidatorAgent.execute", fake_execute
+    )
+    monkeypatch.setattr(
+        "orchestration.browser_preview_verify.verify_browser_preview",
+        fake_browser_preview,
+    )
 
     try:
         result = await verify_preview_workspace(str(workspace))
@@ -76,6 +88,7 @@ async def test_preview_gate_includes_preflight_feedback(monkeypatch):
 
 def test_server_mounts_job_progress_router():
     import pathlib
+
     _server = pathlib.Path(__file__).resolve().parents[1] / "server.py"
     source = _server.read_text(encoding="utf-8", errors="replace")
 
