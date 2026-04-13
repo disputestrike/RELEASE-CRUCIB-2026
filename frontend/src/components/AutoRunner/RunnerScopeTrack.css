@@ -19,7 +19,7 @@
 }
 
 .rst-icon {
-  color: var(--state-info, #3b82f6);
+  color: var(--state-info, #666666);
   flex-shrink: 0;
 }
 

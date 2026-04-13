@@ -71,12 +71,12 @@
 }
 
 .wfv-binary a {
-  color: var(--state-info, #6ea8fe);
+  color: var(--state-info, #666666);
 }
 
 .wfv-error {
   padding: 16px;
-  color: var(--state-error, #f87171);
+  color: var(--state-error, #333333);
   font-size: 13px;
 }
 

@@ -153,7 +153,7 @@ button.fd-file-link {
   text-align: left;
 }
 button.fd-file-link:hover {
-  border-color: var(--state-info, #3b82f6);
+  border-color: var(--state-info, #666666);
   color: var(--text-primary, #fff);
 }
 

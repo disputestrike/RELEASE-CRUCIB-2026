@@ -58,7 +58,7 @@
 
 .wsd-state--working,
 .wsd-state--queued {
-  color: var(--uw-accent-success, #10a37f);
+  color: var(--uw-accent-success, #666666);
 }
 
 .wsd-state--waiting {
@@ -84,7 +84,7 @@
 }
 
 .wsd-sync--stream {
-  color: var(--uw-accent-success, #10a37f);
+  color: var(--uw-accent-success, #666666);
 }
 
 .wsd-sync--polling {

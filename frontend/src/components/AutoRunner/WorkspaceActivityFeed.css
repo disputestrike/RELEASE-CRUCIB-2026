@@ -103,12 +103,12 @@
 }
 
 .uw-af-live--stream .uw-af-live-dot {
-  background: var(--uw-accent-success, #10a37f);
+  background: var(--uw-accent-success, #666666);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--uw-accent-success) 28%, transparent);
 }
 
 .uw-af-live--polling .uw-af-live-dot {
-  background: var(--uw-accent-success, #10a37f);
+  background: var(--uw-accent-success, #666666);
   opacity: 0.55;
   box-shadow: none;
 }
@@ -225,7 +225,7 @@
 
 .uw-af-check.st-running .uw-af-check-ic,
 .uw-af-check.st-verifying .uw-af-check-ic {
-  color: var(--uw-accent-success, #10a37f);
+  color: var(--uw-accent-success, #666666);
 }
 
 .uw-af-check.st-failed .uw-af-check-ic,
