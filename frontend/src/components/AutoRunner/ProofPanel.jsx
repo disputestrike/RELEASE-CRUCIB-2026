@@ -43,7 +43,40 @@ function payloadSummary(payload) {
   }
 }
 
-export default function ProofPanel({ proof, jobId, onExport: _onExport, openWorkspacePath }) {
+function formatProofTypeLabel(t) {
+  if (t === 'milestone') return 'Milestone';
+  if (t === 'verification_failed') return 'Verification failed';
+  if (t === 'step_exception') return 'Step error';
+  return t || '';
+}
+
+function MilestoneHint({ batch, repairCount }) {
+  if (!batch || typeof batch !== 'object') return null;
+  const phase = String(batch.phase || '').trim();
+  const keys = Array.isArray(batch.completed_step_keys) ? batch.completed_step_keys : [];
+  if (!phase && keys.length === 0 && !(repairCount > 0)) return null;
+  const tail = keys.length ? `${keys.length} step${keys.length === 1 ? '' : 's'} in last verified batch` : null;
+  return (
+    <div className="pp-milestone-hint" role="status">
+      <span className="pp-milestone-label">Runner checkpoint</span>
+      <p className="pp-milestone-text">
+        {phase ? <strong>{phase}</strong> : null}
+        {phase && tail ? ' · ' : null}
+        {tail}
+        {repairCount > 0 ? ` · ${repairCount} repair event${repairCount === 1 ? '' : 's'} recorded` : null}
+      </p>
+    </div>
+  );
+}
+
+export default function ProofPanel({
+  proof,
+  jobId,
+  onExport: _onExport,
+  openWorkspacePath,
+  milestoneBatch = null,
+  repairQueueLen = 0,
+}) {
   const { token } = useAuth();
   const [activeTab, setActiveTab] = useState('files');
   const [expandedItems, setExpandedItems] = useState(new Set());
@@ -118,8 +151,12 @@ export default function ProofPanel({ proof, jobId, onExport: _onExport, openWork
     return (
       <div className="proof-panel proof-empty">
         <ShieldCheck size={24} />
-        <span className="proof-empty-title">No proof items yet</span>
-        <span className="proof-empty-desc">Run a job to generate verifiable evidence.</span>
+        <span className="proof-empty-title">{jobId ? 'Loading proof…' : 'No proof yet'}</span>
+        <span className="proof-empty-desc">
+          {jobId
+            ? 'Evidence accumulates as verified steps complete. If this stays empty, check Timeline or your API connection — the rest of the workspace still works.'
+            : 'Open a job from the sidebar to see verifiable evidence for that build.'}
+        </span>
       </div>
     );
   }
@@ -138,6 +175,7 @@ export default function ProofPanel({ proof, jobId, onExport: _onExport, openWork
 
   return (
     <div className="proof-panel">
+      <MilestoneHint batch={milestoneBatch} repairCount={repairQueueLen} />
       {proof.proofFetchFailed && (
         <p className="pp-breakdown-empty" role="alert" style={{ margin: '0 0 12px' }}>
           Could not load proof from the server (offline, wrong API URL, or error). Fix the connection, then reload this page.
@@ -145,7 +183,10 @@ export default function ProofPanel({ proof, jobId, onExport: _onExport, openWork
       )}
       {totalItems === 0 && !proof.proofFetchFailed && (
         <p className="pp-breakdown-empty" style={{ margin: '0 0 12px' }}>
-          Proof is written after each step passes verification. Zeros usually mean the run never executed steps (check <strong>Timeline</strong> / <strong>Failure</strong> for errors), or the job has no DAG steps — use <strong>Plan</strong> then <strong>Approve &amp; Run</strong> again. Restart the <strong>backend</strong> after backend code changes.
+          Proof rows are stored after each verified step (including milestone records when the verifier omits detail).
+          Zeros usually mean the run never executed steps (check <strong>Timeline</strong> / <strong>Failure</strong>),
+          or the job has no DAG steps — use <strong>Plan</strong> then <strong>Approve &amp; Run</strong> again. Restart
+          the <strong>backend</strong> after backend code changes.
         </p>
       )}
       <div className="pp-header">
@@ -313,7 +354,7 @@ export default function ProofPanel({ proof, jobId, onExport: _onExport, openWork
                     {isExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
                   </button>
                   <div className="pp-item-left">
-                    <span className="pp-item-type-badge">{item.type || activeTab}</span>
+                    <span className="pp-item-type-badge">{formatProofTypeLabel(item.type || activeTab)}</span>
                   </div>
                   <div className="pp-item-content">
                     <div className="pp-item-title">{item.title}</div>

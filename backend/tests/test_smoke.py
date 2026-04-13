@@ -1286,6 +1286,7 @@ async def test_smoke_job_state_routes_require_auth(app_client, auth_headers):
         ("GET", f"/api/jobs/{job_id}/proof", None),
         ("GET", f"/api/jobs/{job_id}/trust-report", None),
         ("GET", f"/api/jobs/{job_id}/stream", None),
+        ("GET", f"/api/jobs/{job_id}/checkpoint/latest_failure", None),
     ]
     for method, path, body in endpoints:
         if method == "POST":
@@ -1307,6 +1308,7 @@ async def test_smoke_job_state_routes_reject_unowned_job(app_client, auth_header
         f"/api/jobs/{job_id}/proof",
         f"/api/jobs/{job_id}/trust-report",
         f"/api/jobs/{job_id}/stream",
+        f"/api/jobs/{job_id}/checkpoint/latest_failure",
     ]
     for path in endpoints:
         r = await app_client.get(path, headers=auth_headers, timeout=10)
@@ -1334,6 +1336,41 @@ async def test_smoke_job_proof_includes_build_contract(app_client, auth_headers)
     assert contract.get("goal") == "Build a smoke app"
     assert contract.get("deploy_ready") is False
     assert "missing_verification_evidence" in contract.get("blockers", [])
+
+
+async def test_smoke_job_checkpoint_get_roundtrip(app_client, auth_headers):
+    """GET /api/jobs/{job_id}/checkpoint/{key} returns persisted snapshot for the owner."""
+    from orchestration import runtime_state
+
+    job_id, _project_id = await _create_smoke_auto_job(auth_headers)
+    pool = await _get_pg_pool_or_skip()
+    runtime_state.set_pool(pool)
+    await runtime_state.save_checkpoint(
+        job_id,
+        "latest_failure",
+        {"error_message": "smoke_ckpt", "step_key": "verify"},
+    )
+    r = await app_client.get(
+        f"/api/jobs/{job_id}/checkpoint/latest_failure",
+        headers=auth_headers,
+        timeout=10,
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body.get("success") is True
+    assert body.get("checkpoint_key") == "latest_failure"
+    assert body.get("data", {}).get("error_message") == "smoke_ckpt"
+
+
+async def test_smoke_job_checkpoint_rejects_invalid_key(app_client, auth_headers):
+    """Checkpoint keys are restricted to [a-zA-Z0-9_-]{1,64}."""
+    job_id, _project_id = await _create_smoke_auto_job(auth_headers)
+    r = await app_client.get(
+        f"/api/jobs/{job_id}/checkpoint/not!allowed",
+        headers=auth_headers,
+        timeout=10,
+    )
+    assert r.status_code == 400, r.text
 
 
 async def test_smoke_orchestrator_plan_rejects_unowned_project(

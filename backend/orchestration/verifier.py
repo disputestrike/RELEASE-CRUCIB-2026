@@ -738,6 +738,34 @@ async def verify_step(
     prefix = step_key.split(".")[0] if "." in step_key else step.get("phase", "")
 
     try:
+        touched = list(step.get("output_files") or [])
+        if workspace_path and touched:
+            from .file_language_sanity import sniff_touched_files_language_mismatch
+
+            lang_issues = sniff_touched_files_language_mismatch(
+                workspace_path, touched
+            )
+            if lang_issues:
+                early = _result(
+                    False,
+                    28,
+                    lang_issues,
+                    [
+                        _proof_item(
+                            "compile",
+                            "File extension vs content mismatch (early gate)",
+                            {
+                                "kind": "language_mismatch",
+                                "sample_paths": touched[:24],
+                            },
+                            verification_class="syntax",
+                        )
+                    ],
+                )
+                early["failure_reason"] = "language_mismatch"
+                early["stage"] = "file_language_sanity"
+                return early
+
         if prefix == "verification":
             if step_key == "verification.preview":
                 from .preview_gate import verify_preview_workspace

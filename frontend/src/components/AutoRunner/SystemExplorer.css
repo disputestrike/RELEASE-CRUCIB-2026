@@ -364,7 +364,7 @@ button.se-deploy-artifact-path-btn {
   background: transparent;
   border: none;
   padding: 0;
-  color: var(--state-info, #60a5fa);
+  color: var(--text-secondary);
   text-decoration: underline;
 }
 .se-deploy-artifact-badge {
@@ -376,8 +376,8 @@ button.se-deploy-artifact-path-btn {
   letter-spacing: 0.04em;
   padding: 2px 6px;
   border-radius: var(--radius-sm);
-  background: rgba(88, 166, 255, 0.12);
-  color: var(--state-info);
+  background: var(--uw-accent-success-dim, rgba(16, 163, 127, 0.12));
+  color: var(--uw-accent-success, #10a37f);
 }
 
 .se-dag-caption {

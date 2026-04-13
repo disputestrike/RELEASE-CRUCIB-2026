@@ -75,6 +75,18 @@ def agent_selection_warn_threshold() -> Optional[int]:
         return None
 
 
+def agent_selection_hard_cap() -> Optional[int]:
+    """Upper bound on swarm agents after dependency closure (governor). None = disabled."""
+    p = load_brain_policy()
+    sel = p.get("agent_selection") or {}
+    raw = sel.get("hard_max_selected_agents")
+    try:
+        n = int(raw)
+        return n if n > 0 else None
+    except (TypeError, ValueError):
+        return None
+
+
 def get_agent_governor_preface() -> str:
     """Short block prepended to swarm agent prompts (policy enforcement at router)."""
     if not load_brain_policy():

@@ -42,3 +42,9 @@ def test_job_started_policy_meta_keys():
     meta = bp.job_started_policy_meta()
     if meta:
         assert "brain_policy_version" in meta
+
+
+def test_agent_selection_hard_cap_configured():
+    from orchestration.brain_policy import agent_selection_hard_cap
+
+    assert agent_selection_hard_cap() == 40

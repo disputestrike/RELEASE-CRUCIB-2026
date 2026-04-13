@@ -31,6 +31,43 @@
   color: var(--text-muted);
 }
 
+.pp-milestone-hint {
+  margin: 0;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-1);
+  background: color-mix(in srgb, var(--bg-2) 88%, transparent);
+}
+
+.pp-milestone-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.pp-milestone-text {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.pp-milestone-text strong {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.proof-empty .pp-milestone-hint {
+  border-bottom: none;
+  width: 100%;
+  max-width: 360px;
+  border-radius: 8px;
+  text-align: left;
+}
+
 /* Header */
 .pp-header {
   display: flex;
@@ -48,7 +85,7 @@
 
 .pp-score-num {
   font-size: 22px;
-  font-weight: 700;
+  font-weight: 600;
   font-family: 'JetBrains Mono', monospace;
   color: var(--text-strong);
 }
@@ -592,7 +629,7 @@ button.pp-proof-index-path-btn {
   background: transparent;
   border: none;
   padding: 0;
-  color: var(--state-info, #60a5fa);
+  color: var(--text-secondary);
   text-decoration: underline;
   word-break: break-all;
 }

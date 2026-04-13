@@ -57,7 +57,7 @@ from .observability_workspace_pack import (
     prometheus_config_stub,
 )
 from .publish_urls import published_app_url
-from .runtime_state import append_job_event, save_checkpoint, update_step_state
+from .runtime_state import append_job_event, load_checkpoint, save_checkpoint, update_step_state
 from .self_repair import (
     attempt_verification_self_repair,
     maybe_commit_workspace_repairs,
@@ -67,6 +67,7 @@ from .verification_api_smoke import healthcheck_sh_script
 from .verifier import verify_step
 from .verifier_issue_files import candidate_files_from_verification_issues
 from .brain_narration import build_failure_guidance
+from .context_registry import merge_file_ownership
 
 logger = logging.getLogger(__name__)
 
@@ -124,6 +125,69 @@ def _record_verifier_metrics(step_key: str, vr: Dict[str, Any]) -> None:
         metrics.verification_runs_total.labels(step_key=step_key, outcome=outcome).inc()
     except Exception:
         pass
+
+
+async def _persist_latest_failure_checkpoint(
+    job_id: str,
+    *,
+    step_id: str,
+    step_key: str,
+    error_msg: str,
+    duration_ms: int,
+    verification: Optional[Dict[str, Any]] = None,
+    exc_type: Optional[str] = None,
+    step: Optional[Dict[str, Any]] = None,
+) -> None:
+    """Durable last-failure snapshot for resume / UI (key=latest_failure, upserts)."""
+    from datetime import datetime, timezone
+
+    payload: Dict[str, Any] = {
+        "step_id": step_id,
+        "step_key": step_key,
+        "error_message": (error_msg or "")[:2000],
+        "duration_ms": duration_ms,
+        "recorded_at": datetime.now(timezone.utc).isoformat(),
+    }
+    if verification is not None:
+        payload["status"] = "failed_verification"
+        payload["failure_reason"] = verification.get("failure_reason")
+        payload["issues"] = (verification.get("issues") or [])[:30]
+        payload["stage"] = verification.get("stage")
+        payload["verifier_score"] = verification.get("score")
+    else:
+        payload["status"] = "step_exception"
+        if exc_type:
+            payload["exc_type"] = exc_type
+    if step:
+        payload["retry_count"] = int(step.get("retry_count") or 0)
+        if step.get("brain_strategy"):
+            payload["brain_strategy"] = str(step.get("brain_strategy"))[:160]
+        if step.get("brain_explanation"):
+            payload["brain_explanation"] = str(step.get("brain_explanation"))[:800]
+    try:
+        await save_checkpoint(job_id, "latest_failure", payload)
+    except Exception:
+        logger.debug("persist latest_failure checkpoint skipped", exc_info=True)
+    try:
+        rq_prev = await load_checkpoint(job_id, "repair_queue") or {}
+        rq_items = list(rq_prev.get("items") or [])
+        rq_items.append(
+            {
+                "step_key": step_key,
+                "status": payload.get("status"),
+                "failure_reason": payload.get("failure_reason"),
+                "error_excerpt": (error_msg or "")[:400],
+                "recorded_at": payload.get("recorded_at"),
+            }
+        )
+        rq_items = rq_items[-40:]
+        await save_checkpoint(
+            job_id,
+            "repair_queue",
+            {"items": rq_items, "count": len(rq_items)},
+        )
+    except Exception:
+        logger.debug("persist repair_queue checkpoint skipped", exc_info=True)
 
 
 def _main_py_sketch(*, multitenant: bool) -> str:
@@ -1839,8 +1903,6 @@ async def execute_step(
         handler = _get_handler(step_key)
         result = await handler(step, job, workspace_path, db_pool=db_pool)
 
-        duration_ms = int((time.monotonic() - t0) * 1000)
-
         # 3. Verify
         await update_step_state(step_id, "verifying")
         await publish(
@@ -1984,7 +2046,12 @@ async def execute_step(
         if not vr.get("passed"):
             raise VerificationFailed(vr)
 
-        # 4. Persist proof
+        duration_total_ms = int((time.monotonic() - t0) * 1000)
+        outs = list(result.get("output_files") or [])
+        arts = list(result.get("artifacts") or [])
+
+        # 4. Persist proof (synthetic milestone when verifier omits rows — keeps Proof trustworthy)
+        proof_rows_persisted = 0
         if proof_service:
             for p in vr.get("proof", []):
                 await proof_service.store_proof(
@@ -1994,6 +2061,36 @@ async def execute_step(
                     title=p["title"],
                     payload=p["payload"],
                 )
+                proof_rows_persisted += 1
+            if proof_rows_persisted == 0:
+                await proof_service.store_proof(
+                    job_id=job_id,
+                    step_id=step_id,
+                    proof_type="milestone",
+                    title=f"Verified step: {step_key}"[:200],
+                    payload={
+                        "kind": "milestone_fallback",
+                        "step_key": step_key,
+                        "verifier_score": vr.get("score"),
+                        "output_files_sample": outs[:40],
+                        "artifacts_sample": arts[:20],
+                        "duration_ms": duration_total_ms,
+                        "note": "Verifier returned no proof rows; this records a passed step so the Proof panel reflects real progress.",
+                    },
+                )
+                proof_rows_persisted += 1
+
+        if workspace_path and outs:
+            try:
+                merge_file_ownership(
+                    workspace_path,
+                    job_id=job_id,
+                    step_key=step_key,
+                    paths=outs,
+                    verification_status="verified",
+                )
+            except Exception as _cr_e:
+                logger.debug("context_registry: merge skipped %s", _cr_e)
 
         # 5. Mark completed
         await update_step_state(
@@ -2010,7 +2107,7 @@ async def execute_step(
             "step_completed",
             {
                 "step_key": step_key,
-                "duration_ms": duration_ms,
+                "duration_ms": duration_total_ms,
                 "verifier_score": vr["score"],
             },
             step_id=step_id,
@@ -2037,8 +2134,6 @@ async def execute_step(
             except Exception as ex:
                 logger.debug("artifact_delta: emit skipped: %s", ex)
         t_end_ms = int(time.time() * 1000)
-        outs = list(result.get("output_files") or [])
-        arts = result.get("artifacts") or []
         await append_job_event(
             job_id,
             "dag_node_completed",
@@ -2046,11 +2141,11 @@ async def execute_step(
                 "step_key": step_key,
                 "step_id": step_id,
                 "ended_at_ms": t_end_ms,
-                "duration_ms": duration_ms,
+                "duration_ms": duration_total_ms,
                 "output_files": outs[:80],
                 "artifacts": arts[:40],
                 "verifier_score": vr["score"],
-                "proof_count": len(vr.get("proof") or []),
+                "proof_count": proof_rows_persisted,
                 "execution_mode": "executed",
                 "skipped": False,
             },
@@ -2062,9 +2157,10 @@ async def execute_step(
             {
                 "step_key": step_key,
                 "step_id": step_id,
-                "duration_ms": duration_ms,
+                "duration_ms": duration_total_ms,
                 "score": vr["score"],
                 "proof": vr.get("proof", []),
+                "proof_rows_persisted": proof_rows_persisted,
             },
         )
 
@@ -2080,6 +2176,9 @@ async def execute_step(
                 "score": vr["score"],
                 "output": str(result.get("output", ""))[:500],
                 "result": result,
+                "duration_ms": duration_total_ms,
+                "output_files": outs[:120],
+                "proof_rows_persisted": proof_rows_persisted,
             },
         )
 
@@ -2090,7 +2189,7 @@ async def execute_step(
                 "job_id": job_id,
                 "step_id": step_id,
                 "step_key": step_key,
-                "duration_ms": duration_ms,
+                "duration_ms": duration_total_ms,
                 "verifier_score": vr["score"],
                 "output_files": outs[:40],
                 "status": "completed",
@@ -2134,6 +2233,47 @@ async def execute_step(
         except Exception as _bg_e:
             logger.debug("executor: brain_guidance skipped: %s", _bg_e)
         logger.warning("executor: step %s verification failed: %s", step_key, error_msg)
+        if proof_service:
+            try:
+                await proof_service.store_proof(
+                    job_id=job_id,
+                    step_id=step_id,
+                    proof_type="verification_failed",
+                    title=f"Failed verification: {step_key}"[:200],
+                    payload={
+                        "kind": "verification_failed",
+                        "step_key": step_key,
+                        "failure_reason": vf.vr.get("failure_reason"),
+                        "issues": (vf.vr.get("issues") or [])[:24],
+                        "failed_checks": (vf.vr.get("failed_checks") or [])[:24],
+                        "verifier_score": vf.vr.get("score"),
+                        "stage": vf.vr.get("stage"),
+                        "duration_ms": duration_ms,
+                    },
+                )
+            except Exception:
+                logger.debug("executor: verification_failed proof row skipped", exc_info=True)
+        ofs_fail = list(step.get("output_files") or [])
+        if workspace_path and ofs_fail:
+            try:
+                merge_file_ownership(
+                    workspace_path,
+                    job_id=job_id,
+                    step_key=step_key,
+                    paths=ofs_fail,
+                    verification_status="failed_verification",
+                )
+            except Exception as _m_e:
+                logger.debug("context_registry: merge on failure skipped %s", _m_e)
+        await _persist_latest_failure_checkpoint(
+            job_id,
+            step_id=step_id,
+            step_key=step_key,
+            error_msg=error_msg,
+            duration_ms=duration_ms,
+            verification=vf.vr,
+            step=step,
+        )
         await update_step_state(
             step_id,
             "failed",
@@ -2179,7 +2319,45 @@ async def execute_step(
         duration_ms = int((time.monotonic() - t0) * 1000)
         error_msg = str(exc)[:500]
         logger.warning("executor: step %s failed: %s", step_key, error_msg)
+        if proof_service:
+            try:
+                await proof_service.store_proof(
+                    job_id=job_id,
+                    step_id=step_id,
+                    proof_type="step_exception",
+                    title=f"Step error: {step_key}"[:200],
+                    payload={
+                        "kind": "step_exception",
+                        "step_key": step_key,
+                        "error": error_msg,
+                        "exc_type": type(exc).__name__,
+                        "duration_ms": duration_ms,
+                    },
+                )
+            except Exception:
+                logger.debug("executor: step_exception proof row skipped", exc_info=True)
+        ofs_ex = list(step.get("output_files") or [])
+        if workspace_path and ofs_ex:
+            try:
+                merge_file_ownership(
+                    workspace_path,
+                    job_id=job_id,
+                    step_key=step_key,
+                    paths=ofs_ex,
+                    verification_status="step_error",
+                )
+            except Exception:
+                logger.debug("context_registry: merge on exception skipped", exc_info=True)
 
+        await _persist_latest_failure_checkpoint(
+            job_id,
+            step_id=step_id,
+            step_key=step_key,
+            error_msg=error_msg,
+            duration_ms=duration_ms,
+            exc_type=type(exc).__name__,
+            step=step,
+        )
         await update_step_state(
             step_id,
             "failed",

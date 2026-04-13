@@ -126,6 +126,12 @@ export default function GoalComposer({
   composerTitle = 'Auto-Runner',
   /** undefined = default copy; null = hide subtitle entirely */
   composerSubtitle,
+  /** Unified workspace: Enter submits, Shift+Enter newline */
+  enterSends = false,
+  /** Textarea row count (workspace keeps this small) */
+  composerInputRows = 5,
+  /** Override default textarea placeholder */
+  inputPlaceholder,
 }) {
   const navigate = useNavigate();
   const tags = useMemo(() => (goal.length >= 12 ? smartTags(goal) : []), [goal]);
@@ -337,10 +343,18 @@ export default function GoalComposer({
       <div className="gc-composer-shell">
         <textarea
           className="gc-input"
-          placeholder="e.g. Build a proof-validation microservice with REST API, database persistence, tests, and deploy to Railway."
+          placeholder={
+            inputPlaceholder ||
+            'e.g. Build a proof-validation microservice with REST API, database persistence, tests, and deploy to Railway.'
+          }
           value={goal}
           onChange={(e) => onGoalChange(e.target.value)}
-          rows={5}
+          rows={composerInputRows}
+          onKeyDown={(e) => {
+            if (!enterSends || e.key !== 'Enter' || e.shiftKey) return;
+            e.preventDefault();
+            if (!loading && goal.trim() && token && !authLoading) onSubmit?.();
+          }}
         />
         <div className="gc-composer-footer">
           <div className="gc-composer-footer-left" aria-label="Add context">
@@ -400,8 +414,8 @@ export default function GoalComposer({
               className={`gc-submit-send ${!loading && goal.trim() && token && !authLoading ? 'gc-submit-send--ready' : ''}`}
               onClick={onSubmit}
               disabled={loading || !goal.trim() || authLoading || !token}
-              title="Generate plan"
-              aria-label="Generate plan"
+              title={enterSends ? 'Send' : 'Generate plan'}
+              aria-label={enterSends ? 'Send' : 'Generate plan'}
             >
               {loading ? <Loader2 size={22} strokeWidth={2} className="gc-submit-spin" /> : <ArrowUp size={22} strokeWidth={2.25} />}
             </button>

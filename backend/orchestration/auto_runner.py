@@ -38,6 +38,7 @@ from .runtime_state import (
     update_step_state,
 )
 from .verifier import verify_step
+from .brain_narration import clear_progress_narrative_cache, maybe_emit_progress_narrative
 
 logger = logging.getLogger(__name__)
 
@@ -559,6 +560,30 @@ async def _execute_job_loop(
                             "brain_explanation": repair["explanation"],
                         },
                     )
+
+        try:
+            from datetime import datetime, timezone
+
+            ok_keys: List[str] = []
+            for step, result in zip(batch, results):
+                if isinstance(result, Exception):
+                    continue
+                if isinstance(result, dict) and result.get("success"):
+                    sk = step.get("step_key")
+                    if sk:
+                        ok_keys.append(str(sk))
+            if ok_keys:
+                await save_checkpoint(
+                    job_id,
+                    "last_milestone_batch",
+                    {
+                        "phase": phase_label,
+                        "completed_step_keys": ok_keys[:32],
+                        "recorded_at": datetime.now(timezone.utc).isoformat(),
+                    },
+                )
+        except Exception:
+            logger.debug("auto_runner: milestone checkpoint skipped", exc_info=True)
 
     # Finalize job
     steps = await get_steps(job_id)
@@ -1094,6 +1119,7 @@ async def _finalize_job_with_failure(job_id: str, reason: str, details: str) -> 
 async def _ensure_job_finalized(job_id: str) -> None:
     """Ensure job has a terminal state (SUCCESS, FAILED, or CANCELED)."""
     try:
+        clear_progress_narrative_cache(job_id)
         job = await get_job(job_id)
         if not job:
             return

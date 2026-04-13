@@ -98,6 +98,28 @@ def test_should_use_agent_selection_routes_specialized_prompts():
     assert not _should_use_agent_selection("Build a simple todo app")
 
 
+def test_should_use_agent_selection_false_for_small_portal_without_special_rules():
+    """Generic product language should not expand the DAG via keyword:* noise alone."""
+    assert not _should_use_agent_selection(
+        "Build a customer portal with profile pages and account settings."
+    )
+
+
+def test_ml_model_phrase_still_enables_selection():
+    assert _should_use_agent_selection(
+        "Train an ml model to predict churn with scikit-learn"
+    )
+
+
+def test_tenant_data_model_does_not_match_ml_model_keyword():
+    from orchestration.agent_selection_logic import _keyword_match
+
+    assert not _keyword_match(
+        "ml model",
+        "Multi-tenant B2B SaaS with tenant data model, OAuth, and CRM pipeline.",
+    )
+
+
 def test_server_legacy_orchestration_registry_is_dag_backed():
     import pathlib
 

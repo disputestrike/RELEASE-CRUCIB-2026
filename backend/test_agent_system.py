@@ -42,6 +42,22 @@ class MockCollection:
         self.data = []
         self.id_counter = 0
 
+    @staticmethod
+    def _doc_matches(doc: dict, query: dict) -> bool:
+        """Subset of Mongo operators used by agent_recursive_learning tests."""
+        for key, expected in query.items():
+            if isinstance(expected, dict):
+                if "$gte" in expected:
+                    if doc.get(key) is None:
+                        return False
+                    if doc.get(key) < expected["$gte"]:
+                        return False
+                else:
+                    return False
+            elif doc.get(key) != expected:
+                return False
+        return True
+
     async def insert_one(self, doc):
         self.id_counter += 1
         doc["_id"] = str(self.id_counter)
@@ -50,18 +66,17 @@ class MockCollection:
 
     async def find_one(self, query):
         for doc in self.data:
-            if all(doc.get(k) == v for k, v in query.items()):
+            if self._doc_matches(doc, query):
                 return doc
         return None
 
-    async def find(self, query):
-        return MockCursor(
-            [d for d in self.data if all(d.get(k) == v for k, v in query.items())]
-        )
+    def find(self, query):
+        """Motor: find() is synchronous and returns a cursor; only to_list() is async."""
+        return MockCursor([d for d in self.data if self._doc_matches(d, query)])
 
     async def update_one(self, query, update):
         for doc in self.data:
-            if all(doc.get(k) == v for k, v in query.items()):
+            if self._doc_matches(doc, query):
                 if "$set" in update:
                     doc.update(update["$set"])
                 if "$inc" in update:
@@ -78,7 +93,7 @@ class MockCollection:
         return {"deleted_count": 0}
 
     async def count_documents(self, query):
-        return sum(1 for d in self.data if all(d.get(k) == v for k, v in query.items()))
+        return sum(1 for d in self.data if self._doc_matches(d, query))
 
 
 class MockCursor:
@@ -249,8 +264,11 @@ class TestCerebrasIntegration:
     async def test_cerebras_client_missing_key(self):
         """Test Cerebras client with missing API key"""
         with patch.dict("os.environ", {}, clear=True):
-            with pytest.raises(ValueError):
-                CerebrasClient()
+            with patch(
+                "cerebras_roundrobin.get_next_cerebras_key", return_value=None
+            ):
+                with pytest.raises(ValueError):
+                    CerebrasClient()
 
 
 class TestBaseAgent:

@@ -45,28 +45,28 @@ class TestOutputValidator:
     def test_validate_python_code_valid(self):
         """Test valid Python code."""
         code = "def hello():\n    return 'world'"
-        is_valid, error = CodeValidator.validate_python(code)
-        assert is_valid
-        assert error == ""
+        result = CodeValidator.validate_python(code)
+        assert result["is_valid"]
+        assert result["errors"] == []
 
     def test_validate_python_code_invalid(self):
         """Test invalid Python code."""
         code = "def hello(\n    return 'world'"  # Missing closing paren
-        is_valid, error = CodeValidator.validate_python(code)
-        assert not is_valid
-        assert "Syntax error" in error
+        result = CodeValidator.validate_python(code)
+        assert not result["is_valid"]
+        assert any("Syntax error" in e for e in result["errors"])
 
     def test_validate_sql_code_valid(self):
         """Test valid SQL code."""
         code = "CREATE TABLE users (id INT PRIMARY KEY, name VARCHAR(255))"
-        is_valid, error = CodeValidator.validate_sql(code)
-        assert is_valid
+        result = CodeValidator.validate_sql(code)
+        assert result["is_valid"]
 
     def test_validate_sql_code_invalid(self):
         """Test invalid SQL code."""
         code = "CREATE TABLE users (id INT PRIMARY KEY, name VARCHAR(255)"  # Missing closing paren
-        is_valid, error = CodeValidator.validate_sql(code)
-        assert not is_valid
+        result = CodeValidator.validate_sql(code)
+        assert not result["is_valid"]
 
 
 class TestCodeValidator:
@@ -298,8 +298,8 @@ class TestLoad:
 
         async def validate_code(i):
             code = f"def func{i}():\n    return {i}"
-            is_valid, _ = CodeValidator.validate_python(code)
-            return is_valid
+            result = CodeValidator.validate_python(code)
+            return result["is_valid"]
 
         # Run 50 concurrent validations
         tasks = [validate_code(i) for i in range(50)]
@@ -338,8 +338,8 @@ class TestStress:
             code_lines.append(f"def func{i}():\n    return {i}\n")
 
         large_code = "".join(code_lines)
-        is_valid, _ = CodeValidator.validate_python(large_code)
-        assert is_valid
+        result = CodeValidator.validate_python(large_code)
+        assert result["is_valid"]
 
     @pytest.mark.asyncio
     async def test_high_concurrency(self):

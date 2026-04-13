@@ -56,6 +56,10 @@ def classify_failure(
         logger.warning("diagnostic_agent failed, falling back: %s", e)
 
     # Fallback: original logic
+    fr = str(verification_result.get("failure_reason") or "").lower()
+    if fr == "language_mismatch":
+        return "syntax_error"
+
     issues = " ".join(verification_result.get("issues", []))
     error_msg = step.get("error_message", "")
     combined = (issues + " " + error_msg).lower()

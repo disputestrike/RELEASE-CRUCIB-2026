@@ -6,23 +6,37 @@ import React, { useMemo } from 'react';
 import { Check, Loader2, Circle } from 'lucide-react';
 import './WorkspaceActivityFeed.css';
 
+function humanizeAgentLabel(raw) {
+  const t = (raw || '').trim();
+  if (!t) return 'Step';
+  const noAgents = t.replace(/^agents\./i, '');
+  const spaced = noAgents.replace(/[._]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!spaced) return 'Step';
+  return spaced.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function stepLabel(s) {
-  return (s.agent_name || s.step_key || 'Step').trim();
+  const raw = (s.agent_name || s.step_key || 'Step').trim();
+  const deinternal = raw
+    .replace(/^agents\./i, '')
+    .replace(/\.agent$/i, '')
+    .replace(/_/g, ' ');
+  return humanizeAgentLabel(deinternal || 'Step');
 }
 
 function formatEvent(ev) {
   const t = ev.type || ev.event_type;
   const p = ev.payload || {};
-  const name = (p.agent_name || p.step_key || p.step || ev.step || '').trim();
+  const name = humanizeAgentLabel(p.agent_name || p.step_key || p.step || ev.step || '');
   switch (t) {
     case 'step_started':
-      return name ? `Working on: ${name}` : 'Started a new step';
+      return name && name !== 'Step' ? `Working on: ${name}` : 'Working on the next step';
     case 'step_completed':
-      return name ? `Finished: ${name}` : 'Step completed';
+      return name && name !== 'Step' ? `Done: ${name}` : 'Step completed';
     case 'step_failed':
-      return name ? `Issue: ${name}` : 'Step failed';
+      return name && name !== 'Step' ? `Blocked: ${name}` : 'Step failed';
     case 'step_retrying':
-      return name ? `Retrying: ${name}` : 'Retrying step';
+      return name && name !== 'Step' ? `Retrying: ${name}` : 'Retrying step';
     case 'job_started':
       return 'Build started';
     case 'job_completed':
@@ -53,10 +67,12 @@ export default function WorkspaceActivityFeed({
     () => [...steps].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)),
     [steps],
   );
-  const runningStep = useMemo(
-    () => sortedSteps.find((s) => s.status === 'running' || s.status === 'verifying'),
-    [sortedSteps],
-  );
+  /** Do not imply active work when the job row is already terminal (stale step rows can lag). */
+  const suppressRunningFocus = ['failed', 'cancelled', 'blocked', 'completed'].includes(job?.status);
+  const runningStep = useMemo(() => {
+    if (suppressRunningFocus) return undefined;
+    return sortedSteps.find((s) => s.status === 'running' || s.status === 'verifying');
+  }, [sortedSteps, suppressRunningFocus]);
   const completedCount = useMemo(() => sortedSteps.filter((s) => s.status === 'completed').length, [sortedSteps]);
   const totalSteps = sortedSteps.length;
 
@@ -125,35 +141,38 @@ export default function WorkspaceActivityFeed({
               <span className="uw-af-focus-icon" aria-hidden>
                 <Loader2 className="uw-af-spin" size={16} />
               </span>
-              <span className="uw-af-focus-text">
+                <span className="uw-af-focus-text">
                 <span className="uw-af-focus-title">{stepLabel(runningStep)}</span>
-                {(runningStep.narrative || runningStep.step_key) && (
-                  <span className="uw-af-focus-sub">{runningStep.narrative || runningStep.step_key}</span>
-                )}
+                {runningStep.narrative ? (
+                  <span className="uw-af-focus-sub">{runningStep.narrative}</span>
+                ) : null}
               </span>
             </div>
           </div>
         )}
 
         {sortedSteps.length > 0 && (
-          <ul className="uw-af-checklist">
-            {sortedSteps.map((s) => (
-              <li key={s.id} className={`uw-af-check st-${s.status}`}>
-                <span className="uw-af-check-ic" aria-hidden>
-                  {s.status === 'completed' ? (
-                    <Check size={14} strokeWidth={2.5} />
-                  ) : s.status === 'running' || s.status === 'verifying' ? (
-                    <Loader2 className="uw-af-spin" size={14} />
-                  ) : s.status === 'failed' || s.status === 'blocked' ? (
-                    <span className="uw-af-dot uw-af-dot--err" />
-                  ) : (
-                    <Circle size={11} strokeWidth={1.5} className="uw-af-pending-ring" />
-                  )}
-                </span>
-                <span className="uw-af-check-label">{stepLabel(s)}</span>
-              </li>
-            ))}
-          </ul>
+          <details className="uw-af-step-details">
+            <summary className="uw-af-step-summary">Technical step list ({sortedSteps.length})</summary>
+            <ul className="uw-af-checklist">
+              {sortedSteps.map((s) => (
+                <li key={s.id} className={`uw-af-check st-${s.status}`}>
+                  <span className="uw-af-check-ic" aria-hidden>
+                    {s.status === 'completed' ? (
+                      <Check size={14} strokeWidth={2.5} />
+                    ) : s.status === 'running' || s.status === 'verifying' ? (
+                      <Loader2 className="uw-af-spin" size={14} />
+                    ) : s.status === 'failed' || s.status === 'blocked' ? (
+                      <span className="uw-af-dot uw-af-dot--err" />
+                    ) : (
+                      <Circle size={11} strokeWidth={1.5} className="uw-af-pending-ring" />
+                    )}
+                  </span>
+                  <span className="uw-af-check-label">{stepLabel(s)}</span>
+                </li>
+              ))}
+            </ul>
+          </details>
         )}
 
         {openWorkspacePath && latestWritePaths.length > 0 && (

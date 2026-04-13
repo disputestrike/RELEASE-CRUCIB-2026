@@ -81,8 +81,8 @@
 }
 
 .uw-af-live--stream .uw-af-live-dot {
-  background: var(--state-info, #60a5fa);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--state-info) 35%, transparent);
+  background: var(--uw-accent-success, #10a37f);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--uw-accent-success) 28%, transparent);
 }
 
 .uw-af-live--polling .uw-af-live-dot {
@@ -123,7 +123,7 @@
 
 .uw-af-focus-icon {
   display: flex;
-  color: var(--state-info, #60a5fa);
+  color: var(--text-muted);
   flex-shrink: 0;
 }
 
@@ -201,7 +201,7 @@
 
 .uw-af-check.st-running .uw-af-check-ic,
 .uw-af-check.st-verifying .uw-af-check-ic {
-  color: var(--state-info, #60a5fa);
+  color: var(--uw-accent-success, #10a37f);
 }
 
 .uw-af-check.st-failed .uw-af-check-ic,
@@ -249,7 +249,7 @@
 }
 .uw-af-write-link {
   font: 11px/1.4 var(--font-mono, ui-monospace, monospace);
-  color: var(--state-info, #60a5fa);
+  color: var(--text-secondary);
   background: transparent;
   border: none;
   padding: 0;
@@ -283,4 +283,24 @@
   text-transform: uppercase;
   color: var(--text-muted);
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--uw-text) 7%, transparent);
+}
+
+.uw-af-step-details {
+  margin-top: 10px;
+}
+
+.uw-af-step-summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  list-style: none;
+}
+
+.uw-af-step-summary::-webkit-details-marker {
+  display: none;
+}
+
+.uw-af-step-details[open] .uw-af-checklist {
+  margin-top: 10px;
 }

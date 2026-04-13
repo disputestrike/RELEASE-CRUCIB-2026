@@ -156,6 +156,9 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
         "deploy": "deploy",
         "api": "verification",
         "test": "verification",
+        "milestone": "verification",
+        "verification_failed": "verification",
+        "step_exception": "verification",
         "generic": "generic",
     }
 
@@ -180,7 +183,9 @@ async def get_proof(job_id: str) -> Dict[str, Any]:
     # Quality score from real stored rows only (no UI fabrication)
     total_items = len(items)
     verified_items = sum(
-        1 for i in items if i.get("proof_type") in ("compile", "api", "test")
+        1
+        for i in items
+        if i.get("proof_type") in ("compile", "api", "test", "milestone")
     )
     if total_items == 0:
         quality_score = 0.0

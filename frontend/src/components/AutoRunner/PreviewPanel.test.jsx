@@ -1,8 +1,14 @@
 /**
  * PreviewPanel: remote iframe vs Sandpack. Sandpack is mocked so Jest does not load the full bundler.
+ * @jest-environment jsdom
  */
 import React from 'react';
+import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
+
+jest.mock('../SandpackErrorBoundary.css', () => ({}));
+jest.mock('./PreviewPanel.css', () => ({}));
+
 import PreviewPanel from './PreviewPanel';
 
 jest.mock('@codesandbox/sandpack-react', () => ({
@@ -59,6 +65,24 @@ describe('PreviewPanel', () => {
       <PreviewPanel previewUrl={null} status="building" sandpackFiles={null} sandpackDeps={null} filesReadyKey="t4" />,
     );
     expect(container.querySelector('.pp-preview-building')).toBeTruthy();
+  });
+
+  test('shows paused banner when status blocked and sandpack present', () => {
+    const sandpackFiles = { '/src/App.jsx': { code: 'export default function App(){return null}' } };
+    const sandpackDeps = { react: '^18.2.0', 'react-dom': '^18.2.0' };
+    render(
+      <PreviewPanel
+        previewUrl={null}
+        status="blocked"
+        sandpackFiles={sandpackFiles}
+        sandpackDeps={sandpackDeps}
+        filesReadyKey="t-blocked"
+        blockedDetail="Type error in App.jsx"
+      />,
+    );
+    expect(screen.getByRole('status')).toHaveTextContent(/Preview paused/i);
+    expect(screen.getByText(/Type error in App.jsx/i)).toBeInTheDocument();
+    expect(document.querySelector('.pp-preview-status')?.textContent).toMatch(/Paused/i);
   });
 
   test('shows fallback trust banner when sandpackIsFallback', () => {

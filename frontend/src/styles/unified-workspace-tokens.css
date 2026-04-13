@@ -59,28 +59,31 @@
 
 /* Light theme — match global app tokens (data-theme on documentElement) */
 [data-theme="light"] .uw-root {
-  --uw-bg-root: var(--theme-bg, #ffffff);
-  --uw-bg-surface: var(--theme-surface, #ffffff);
-  --uw-bg-elevated: var(--theme-surface2, #f8f9fb);
-  --uw-border-subtle: var(--theme-border, rgba(15, 23, 42, 0.07));
-  --uw-border-strong: var(--theme-border-vis, rgba(15, 23, 42, 0.1));
-  --uw-text: var(--theme-text, #1a1a1a);
-  --uw-text-muted: var(--theme-muted, #555555);
-  --uw-accent-success: #16a34a;
-  --uw-accent-success-dim: rgba(22, 163, 74, 0.12);
-  --uw-accent-error: #dc2626;
-  --uw-accent-error-dim: rgba(220, 38, 38, 0.1);
-  --uw-accent-warn: #ca8a04;
-  --uw-tab-active-underline: var(--theme-accent, #2563eb);
-  --uw-focus-ring-color: var(--theme-accent, #2563eb);
+  /* ChatGPT-like calm neutrals + minimal green accent */
+  --uw-bg-root: #ffffff;
+  --uw-bg-surface: #ffffff;
+  --uw-bg-elevated: #f7f7f8;
+  --uw-border-subtle: rgba(0, 0, 0, 0.06);
+  --uw-border-strong: #e5e5e7;
+  --uw-text: #1f1f1f;
+  --uw-text-muted: #9a9a9a;
+  --uw-chat-assistant-bg: #f7f7f8;
+  --uw-border-chat: rgba(0, 0, 0, 0.06);
+  --uw-accent-success: #10a37f;
+  --uw-accent-success-dim: rgba(16, 163, 127, 0.12);
+  --uw-accent-error: #c53b3b;
+  --uw-accent-error-dim: rgba(197, 59, 59, 0.1);
+  --uw-accent-warn: #b45309;
+  --uw-tab-active-underline: #10a37f;
+  --uw-focus-ring-color: #10a37f;
   --uw-focus-ring: 0 0 0 2px var(--uw-bg-root), 0 0 0 4px var(--uw-focus-ring-color);
 
   /* Bridge vars — base .uw-root used dark-tinted literals; re-map for readable light UI */
-  --text-strong: var(--theme-text, #1a1a1a);
-  --text-primary: var(--uw-text);
-  --text-secondary: var(--theme-muted, #57534e);
-  --text-muted: var(--uw-text-muted);
-  --accent: var(--theme-muted, #64748b);
+  --text-strong: #1f1f1f;
+  --text-primary: #1f1f1f;
+  --text-secondary: #6b6b6b;
+  --text-muted: #9a9a9a;
+  --accent: #6b6b6b;
   /* Slightly stronger hover / active panels than flat surface2 */
   --bg-3: color-mix(in srgb, var(--uw-bg-elevated) 88%, var(--uw-text) 12%);
 }
@@ -116,16 +119,16 @@
   border-color: var(--uw-border-subtle);
 }
 
-/* Build title + softer center stack */
+/* Build title — one soft surface, no heavy box */
 .uw-root .uw-build-identity {
   width: 100%;
   max-width: var(--uw-composer-max-width, min(920px, calc(100vw - 96px)));
   margin: 0 auto;
   padding: 12px 16px;
-  border-radius: 12px;
-  background: #ffffff;
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  border-radius: 10px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 [data-theme='dark'] .uw-root .uw-build-identity {
@@ -136,10 +139,10 @@
 
 .uw-build-identity-title {
   font-size: 15px;
-  font-weight: 650;
-  letter-spacing: -0.02em;
-  color: var(--text-strong);
-  line-height: 1.35;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+  line-height: 1.4;
 }
 
 .uw-build-identity-meta {
@@ -430,8 +433,12 @@
   position: relative;
   z-index: 4;
   border-top: none;
-  padding-top: 18px;
-  box-shadow: 0 -16px 36px color-mix(in srgb, #000 18%, transparent);
+  padding-top: 12px;
+  box-shadow: 0 -8px 24px color-mix(in srgb, #000 12%, transparent);
+}
+
+.uw-root .arp-center-pane-composer .uw-user-chat {
+  margin-bottom: 4px;
 }
 
 [data-theme='light'] .uw-root .arp-center-pane--composer-bottom .arp-center-pane-composer {

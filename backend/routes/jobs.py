@@ -12,6 +12,7 @@ migrations/006_complete_schema.sql).  Reads and writes go through
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -20,6 +21,9 @@ from pydantic import BaseModel
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
+
+# Safe checkpoint keys for GET (alphanumeric, underscore, hyphen; bounded length).
+_CHECKPOINT_KEY_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
 
 # ── Lazy-import helpers ───────────────────────────────────────────────────────
 
@@ -168,13 +172,49 @@ async def get_job(
     job_id: str,
     user: dict = Depends(_get_auth()),
 ):
-    """Get job status and details."""
+    """Get job status and details.
+
+    Includes ``latest_failure`` when a checkpoint exists (verification or step exception),
+    so the UI can narrate blockers even if proof rows are still loading.
+    """
     try:
         job = await _resolve_job(job_id, user)
-        return {"success": True, "job": job}
+        latest_failure = None
+        try:
+            rs = _get_runtime_state()
+            latest_failure = await rs.load_checkpoint(job_id, "latest_failure")
+        except Exception:
+            logger.debug("get_job: latest_failure checkpoint skipped", exc_info=True)
+        return {"success": True, "job": job, "latest_failure": latest_failure}
     except HTTPException:
         raise
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{job_id}/checkpoint/{checkpoint_key}")
+async def get_job_checkpoint(
+    job_id: str,
+    checkpoint_key: str,
+    user: dict = Depends(_get_auth()),
+):
+    """Load a single persisted checkpoint snapshot for a job (owner-scoped).
+
+    ``checkpoint_key`` is restricted to ``[a-zA-Z0-9_-]{1,64}`` to avoid path-style probes.
+    """
+    if not _CHECKPOINT_KEY_PATTERN.fullmatch(checkpoint_key or ""):
+        raise HTTPException(status_code=400, detail="Invalid checkpoint_key")
+    try:
+        await _resolve_job(job_id, user)
+        rs = _get_runtime_state()
+        pool = await _get_pool()
+        rs.set_pool(pool)
+        data = await rs.load_checkpoint(job_id, checkpoint_key)
+        return {"success": True, "checkpoint_key": checkpoint_key, "data": data}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("GET /api/jobs/%s/checkpoint/%s error", job_id, checkpoint_key)
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -42,6 +42,7 @@
   "agent_selection": {
     "mode": "deterministic_relevance_routing",
     "warn_if_selected_agents_exceed": 48,
+    "hard_max_selected_agents": 40,
     "spawn_rule": {
       "require_requirement_match": true,
       "require_dependency_reason": true,

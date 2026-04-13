@@ -8,6 +8,9 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
+# job_id -> last phase_label we emitted progress_narrative for (avoid duplicate SSE noise)
+_last_progress_phase: Dict[str, str] = {}
+
 
 def build_failure_guidance(
     step_key: str,
@@ -135,3 +138,99 @@ def build_steering_guidance(
         "summary": f"Saved your note ({len(msg)} characters) on this job.",
         "next_steps": ["Use workspace controls to continue when you are ready."],
     }
+
+
+def clear_progress_narrative_cache(job_id: str) -> None:
+    """Drop throttle state when a job ends so IDs can be reused safely in tests."""
+    _last_progress_phase.pop(job_id, None)
+
+
+def build_phase_progress_narrative(
+    steps: List[Dict[str, Any]],
+    *,
+    phase_label: str,
+    job_goal: str = "",
+) -> Dict[str, Any]:
+    """
+    Plain-language pulse for the middle pane while a build runs (grounded in step counts).
+    """
+    _ = job_goal  # reserved for future context-aware narration
+    total = len(steps or [])
+    completed = sum(1 for s in steps or [] if s.get("status") == "completed")
+    running = [
+        s
+        for s in (steps or [])
+        if s.get("status") in ("running", "verifying", "in_progress")
+    ]
+    failed = [s for s in (steps or []) if s.get("status") == "failed"]
+    blocked = [s for s in (steps or []) if s.get("status") == "blocked"]
+
+    def _human_step(sk: str) -> str:
+        s = (sk or "").strip()
+        if s.startswith("agents."):
+            tail = s.split(".", 1)[-1].replace("_", " ").strip()
+            return (tail[:1].upper() + tail[1:]) if tail else "Agent work"
+        if s.startswith("verification."):
+            return f"Verifying {s.split('.', 1)[-1].replace('_', ' ')}"
+        return s.replace("_", " ").replace(".", " — ")[:120] or "In progress"
+
+    cur = ""
+    if running:
+        cur = _human_step(str(running[0].get("step_key") or ""))
+    elif phase_label and phase_label not in ("running", ""):
+        if phase_label.startswith("parallel:"):
+            n = phase_label.replace("parallel:", "").strip() or "?"
+            cur = f"Running {n} parallel tracks"
+        else:
+            cur = phase_label
+
+    summary_parts = [f"Progress: {completed}/{max(total, 1)} steps completed."]
+    if cur:
+        summary_parts.append(f"Current focus: {cur}.")
+    headline = "Build in progress"
+    if failed or blocked:
+        headline = "Build needs attention"
+        summary_parts.append(
+            "Some steps failed or are blocked — see Timeline (detail) and Failure for raw errors."
+        )
+
+    next_steps = [
+        "Preview updates when the bundle verifies; Code shows files as they land.",
+    ]
+    if failed or blocked:
+        next_steps.insert(
+            0,
+            "Use the composer to steer, then Resume — completed work stays in the workspace.",
+        )
+
+    return {
+        "kind": "progress_narrative",
+        "headline": headline[:400],
+        "summary": " ".join(summary_parts)[:900],
+        "next_steps": next_steps[:6],
+        "phase_label": phase_label,
+        "completed": completed,
+        "total": total,
+    }
+
+
+async def maybe_emit_progress_narrative(
+    job_id: str,
+    phase_label: str,
+    steps: List[Dict[str, Any]],
+    *,
+    job_goal: str = "",
+) -> None:
+    """Emit at most one progress brain_guidance per distinct phase_label while the job runs."""
+    pl = (phase_label or "running").strip() or "running"
+    if _last_progress_phase.get(job_id) == pl:
+        return
+    _last_progress_phase[job_id] = pl
+
+    payload = build_phase_progress_narrative(steps, phase_label=pl, job_goal=job_goal)
+
+    from .event_bus import publish
+    from .runtime_state import append_job_event
+
+    await append_job_event(job_id, "brain_guidance", payload)
+    await publish(job_id, "brain_guidance", payload)

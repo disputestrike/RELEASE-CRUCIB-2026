@@ -13,6 +13,7 @@ from typing import Dict, List, Set
 from agent_dag import AGENT_DAG, get_execution_phases
 
 from .agent_audit_registry import agents_excluded_from_autorunner_selection
+from .brain_policy import agent_selection_hard_cap
 from .directory_contracts import (
     directory_profile_from_contract,
     stack_profile_from_contract,
@@ -119,10 +120,20 @@ AGENT_KEYWORDS = {
         "ML Training Agent",
         "ML Evaluation Agent",
     ],
-    "model": [
+    # Avoid bare "model" — false positives on "tenant model", "domain model", "data model".
+    "ml model": [
         "ML Model Definition Agent",
         "ML Training Agent",
         "ML Model Export Agent",
+    ],
+    "predictive model": [
+        "ML Model Definition Agent",
+        "ML Training Agent",
+        "ML Evaluation Agent",
+    ],
+    "trained model": [
+        "ML Model Definition Agent",
+        "ML Training Agent",
         "ML Model Monitoring Agent",
     ],
     "feature engineering": ["ML Data Pipeline Agent", "ML Preprocessing Agent"],
@@ -167,7 +178,10 @@ AGENT_KEYWORDS = {
     ],
     "defi": ["DeFi Integration Agent", "Smart Contract Agent", "Web3 Frontend Agent"],
     "nft": ["Smart Contract Agent", "Web3 Frontend Agent"],
-    "token": ["Smart Contract Agent", "Web3 Frontend Agent"],
+    # Avoid bare "token" — false positives on JWT/session/access tokens.
+    "erc-20": ["Smart Contract Agent", "Web3 Frontend Agent"],
+    "erc20": ["Smart Contract Agent", "Web3 Frontend Agent"],
+    "spl token": ["Blockchain Selector Agent", "Smart Contract Agent"],
     "wallet": ["Web3 Frontend Agent", "Blockchain Data Agent"],
     "dapp": [
         "Web3 Frontend Agent",
@@ -251,14 +265,12 @@ AGENT_KEYWORDS = {
     "celery": ["Queue Agent", "Message Queue Advanced Agent"],
     "cache": ["Caching Agent", "Database Optimization Agent"],
     "redis": ["Caching Agent", "Database Optimization Agent"],
-    "security": [
-        "Network Security Agent",
-        "Blockchain Security Agent",
-        "IoT Security Agent",
-        "Security Checker",
-    ],
-    "firewall": ["Network Security Agent"],
+    # Generic "security" is handled by rule:security_scan / rule:security_headers — do not
+    # pull blockchain/network agents from every "security features" SaaS prompt.
+    "network security": ["Network Security Agent", "Security Checker"],
+    "penetration test": ["Network Security Agent", "Security Scanning Agent"],
     "vpc": ["Network Security Agent"],
+    "firewall": ["Network Security Agent"],
     "disaster recovery": ["Disaster Recovery Agent"],
     "backup": ["Backup Agent", "Disaster Recovery Agent"],
     "deploy": ["Deployment Agent", "Deployment Tool Agent", "DevOps Agent"],
@@ -410,6 +422,83 @@ AGENT_KEYWORDS = {
 }
 
 
+# Single-keyword hits that appear in almost every SaaS spec; they still add agents inside
+# explain_agent_selection, but must not alone flip should_route_to_agent_selection — otherwise
+# every generic app expands into dozens of specialized DAG nodes.
+ROUTING_NOISE_KEYWORDS: frozenset[str] = frozenset(
+    {
+        "dashboard",
+        "analytics",
+        "report",
+        "visualization",
+        "search",
+        "auth",
+        "authentication",
+        "password",
+        "mobile",
+        "responsive",
+        "design",
+        "ui",
+        "ux",
+        "styling",
+        "css",
+        "production",
+        "deploy",
+        "test",
+        "testing",
+        "documentation",
+        "docs",
+        "email",
+        "notification",
+        "realtime",
+        "real-time",
+        "websocket",
+        "websockets",
+        "stripe",
+        "payment",
+        "billing",
+        "oauth",
+        "rbac",
+        "permission",
+        "invoice",
+        "api",
+        "graphql",
+        "openapi",
+        "swagger",
+        "content",
+        "seo",
+        "marketing",
+        "copy",
+        "workflow",
+        "scheduling",
+        "admin",
+        "portal",
+        "landing",
+        "dark mode",
+        "animation",
+        "brand",
+        "cache",
+        "metrics",
+        "logging",
+        "monitoring",
+        "tracing",
+        "apm",
+        "queue",
+        "docker",
+        "container",
+        "devops",
+        "ci/cd",
+        "kubernetes",
+        "k8s",
+        "postgres",
+        "database",
+        "redis",
+        "sqlite",
+        "graphql",
+    }
+)
+
+
 def _dependency_closure(initial: Set[str]) -> Set[str]:
     block = agents_excluded_from_autorunner_selection()
     selected = set(initial)
@@ -421,6 +510,29 @@ def _dependency_closure(initial: Set[str]) -> Set[str]:
                 selected.add(dep)
                 queue.append(dep)
     return selected
+
+
+def _apply_hard_agent_cap(
+    selected: Set[str], cap: int, matched_rules: List[str]
+) -> Set[str]:
+    """Trim specialized agents (never ALWAYS_INCLUDED) until count <= cap or stable."""
+    if len(selected) <= cap:
+        return selected
+    before = len(selected)
+    s = set(selected)
+    iterations = 0
+    while len(s) > cap and iterations < 400:
+        iterations += 1
+        removable = sorted(a for a in s if a not in ALWAYS_INCLUDED_AGENT_SET)
+        if not removable:
+            break
+        s.discard(removable[-1])
+        s = _dependency_closure(s)
+    if len(s) < before:
+        matched_rules.append(f"governor:hard_max_trimmed_{before}_to_{len(s)}_cap_{cap}")
+    if len(s) > cap:
+        matched_rules.append(f"governor:hard_cap_partial_core_only_{len(s)}")
+    return s
 
 
 def _keyword_match(keyword: str, text: str) -> bool:
@@ -873,7 +985,8 @@ def explain_agent_selection(
             ("Recommendation Engine Agent",),
         )
 
-    if any(word in goal_lower for word in ("file", "upload", "s3", "storage")):
+    # Avoid matching "file" inside unrelated words (e.g. "profile").
+    if any(word in goal_lower for word in ("upload", "s3", "storage", "blob storage")):
         _record_rule_hit(
             selected, matched_rules, "rule:file_storage", ("File Storage Agent",)
         )
@@ -963,6 +1076,10 @@ def explain_agent_selection(
             DEFAULT_SUPPORT_AGENTS,
         )
     selected = _dependency_closure(selected)
+    cap = agent_selection_hard_cap()
+    # Full-system contract explicitly opts into broad DAG — do not trim (still warn in planner).
+    if cap and not contract.get("requires_full_system_builder"):
+        selected = _apply_hard_agent_cap(selected, cap, matched_rules)
     selected_agents = sorted(selected)
     specialized_agents = sorted(
         agent for agent in selected_agents if agent not in ALWAYS_INCLUDED_AGENT_SET
@@ -989,12 +1106,11 @@ def should_route_to_agent_selection(
     goal: str, stack_contract: Dict | None = None
 ) -> bool:
     """
-    Route to selected-agent swarm only when the goal has KEYWORD matches
-    that indicate specialized agents are needed.
+    Route to selected-agent swarm when non-cosmetic rules fire, ignoring keyword:* hits
+    that are common in generic fullstack specs (ROUTING_NOISE_KEYWORDS).
 
-    We use matched_keywords + matched_rules (minus the always-applied default_support rule)
-    as the signal — NOT specialized_agent_count, because dependency closure can inflate
-    that number even for simple goals.
+    Phrase-based rules (rule:*) still signal real specialized intent (e.g. blockchain,
+    enterprise compliance, realtime collaboration).
     """
     contract = stack_contract or {}
     if contract.get("requires_full_system_builder"):
@@ -1009,21 +1125,29 @@ def should_route_to_agent_selection(
     ):
         return True
     explanation = explain_agent_selection(goal, contract)
-    # Only route if actual keywords or non-trivial rules fired.
-    # Design/content surface rules alone are not enough — they fire on nearly every app.
     COSMETIC_ONLY_RULES = {
         "rule:design_surface",
         "rule:content_surface",
         "rule:default_support",
         "rule:default_support_legacy",
     }
-    meaningful_rules = [
-        r
-        for r in (explanation.get("matched_rules") or [])
-        if r not in COSMETIC_ONLY_RULES
+    meaningful_rules: List[str] = []
+    for r in explanation.get("matched_rules") or []:
+        if r in COSMETIC_ONLY_RULES:
+            continue
+        if r.startswith("keyword:"):
+            kw = r.split(":", 1)[1]
+            if kw in ROUTING_NOISE_KEYWORDS:
+                continue
+        meaningful_rules.append(r)
+    # Keyword hits expand the agent set even when _record_rule_hit did not add a rule
+    # (e.g. agents were already covered by BASE_AGENTS + deps).
+    meaningful_keywords = [
+        k
+        for k in (explanation.get("matched_keywords") or [])
+        if k not in ROUTING_NOISE_KEYWORDS
     ]
-    has_keywords = bool(explanation.get("matched_keywords"))
-    return has_keywords or len(meaningful_rules) > 0
+    return bool(meaningful_keywords) or len(meaningful_rules) > 0
 
 
 def build_full_phases_from_dag(

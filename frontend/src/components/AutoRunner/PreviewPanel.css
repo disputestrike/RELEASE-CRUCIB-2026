@@ -70,6 +70,47 @@
   flex: 1;
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.pp-preview-blocked-banner {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--state-error, #ef4444) 35%, var(--border-1));
+  background: color-mix(in srgb, var(--state-error, #ef4444) 10%, var(--bg-1));
+}
+
+.pp-preview-blocked-full {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 0;
+  gap: 8px;
+  padding: 16px;
+  background:
+    radial-gradient(circle, var(--border-2) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.pp-preview-blocked-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.pp-preview-blocked-banner .pp-preview-blocked-hint {
+  margin: 6px 0 0;
+  max-width: none;
+  text-align: left;
+}
+
+.pp-preview-blocked-full .pp-preview-blocked-title {
+  margin-bottom: 4px;
 }
 
 .pp-preview-trust-banner {
@@ -90,7 +131,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   background:
     radial-gradient(circle, var(--border-2) 1px, transparent 1px);
   background-size: 20px 20px;
@@ -117,6 +159,16 @@
   background-size: 20px 20px;
 }
 
+.pp-preview-blocked-hint {
+  margin: 0 16px;
+  max-width: 420px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  text-align: center;
+  word-break: break-word;
+}
+
 .pp-preview-shimmer {
   width: 120px;
   height: 4px;
@@ -140,6 +192,14 @@
   font-size: 11px;
   color: var(--text-muted);
   font-family: 'JetBrains Mono', monospace;
+}
+
+.pp-preview-iframe {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border: none;
+  align-self: stretch;
 }
 
 .pp-sandpack-host {

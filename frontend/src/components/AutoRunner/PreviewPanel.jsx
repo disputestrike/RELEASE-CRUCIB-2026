@@ -16,25 +16,31 @@ export default function PreviewPanel({
   sandpackDeps = null,
   filesReadyKey = 'default',
   sandpackIsFallback = false,
+  /** Plain-language hint when preview cannot render (e.g. verify failure). */
+  blockedDetail = null,
 }) {
   const hasSandpack = sandpackFiles && Object.keys(sandpackFiles).length > 0;
   const useRemote = status === 'ready' && previewUrl;
 
   const statusColor = useRemote
     ? 'var(--state-success)'
-    : status === 'building'
-      ? 'var(--state-warning)'
-      : hasSandpack
-        ? 'var(--state-success)'
-        : 'var(--text-muted)';
+    : status === 'blocked'
+      ? 'var(--state-error, #f87171)'
+      : status === 'building'
+        ? 'var(--state-warning)'
+        : hasSandpack
+          ? 'var(--state-success)'
+          : 'var(--text-muted)';
 
   const statusLabel = useRemote
     ? 'Live'
-    : status === 'building'
-      ? 'Building'
-      : hasSandpack
-        ? 'Sandbox'
-        : 'Idle';
+    : status === 'blocked'
+      ? 'Paused'
+      : status === 'building'
+        ? 'Building'
+        : hasSandpack
+          ? 'Sandbox'
+          : 'Idle';
 
   return (
     <div className="preview-panel">
@@ -67,16 +73,43 @@ export default function PreviewPanel({
       </div>
 
       <div className="pp-preview-body">
+        {status === 'blocked' && hasSandpack && (
+          <div className="pp-preview-blocked-banner" role="status">
+            <span className="pp-preview-blocked-title">Preview paused — build needs a fix</span>
+            <p className="pp-preview-blocked-hint">
+              {typeof blockedDetail === 'string' && blockedDetail.trim()
+                ? blockedDetail
+                : 'Fix the failing step or add a steering note below, then Resume. Sandbox below may still reflect last synced files.'}
+            </p>
+          </div>
+        )}
+
         {!useRemote && status === 'idle' && !hasSandpack && (
           <div className="pp-preview-idle">
             <span className="pp-preview-idle-text">Preview will appear after build completes, or run an iterative build to load Sandpack.</span>
           </div>
         )}
 
+        {status === 'blocked' && !hasSandpack && (
+          <div className="pp-preview-blocked-full">
+            <span className="pp-preview-blocked-title">Preview paused</span>
+            <p className="pp-preview-blocked-hint">
+              {typeof blockedDetail === 'string' && blockedDetail
+                ? blockedDetail
+                : 'Fix the failing step or add a steering note below, then Resume. Files already in the workspace may still open in Code.'}
+            </p>
+          </div>
+        )}
+
         {status === 'building' && !hasSandpack && (
           <div className="pp-preview-building">
             <div className="pp-preview-shimmer" />
-            <span className="pp-preview-building-text">Building...</span>
+            <span className="pp-preview-building-text">Building…</span>
+            {blockedDetail ? (
+              <p className="pp-preview-blocked-hint" title={typeof blockedDetail === 'string' ? blockedDetail : undefined}>
+                {typeof blockedDetail === 'string' ? blockedDetail : ''}
+              </p>
+            ) : null}
           </div>
         )}
 
@@ -91,12 +124,7 @@ export default function PreviewPanel({
         )}
 
         {useRemote && (
-          <iframe
-            className="pp-preview-iframe"
-            src={previewUrl}
-            title="Live Preview"
-            style={{ width: '100%', height: '100%', border: 'none' }}
-          />
+          <iframe className="pp-preview-iframe" src={previewUrl} title="Live Preview" />
         )}
 
         {!useRemote && hasSandpack && sandpackDeps && sandpackIsFallback && (

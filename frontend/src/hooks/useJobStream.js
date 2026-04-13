@@ -33,7 +33,7 @@ function normalizeProofPayload(data, jobId) {
 }
 
 function handleStreamPayload(data, jobId, token, setters) {
-  const { setEvents, setSteps, setProof, setJob, fetchJobState } = setters;
+  const { setEvents, setSteps, setProof, setJob, setLatestFailure, fetchJobState, fetchCheckpoints } = setters;
   if (!data || !data.type || data.type === 'heartbeat') return;
 
   setEvents((prev) => {
@@ -59,12 +59,17 @@ function handleStreamPayload(data, jobId, token, setters) {
         .get(`${API_BASE}/jobs/${jobId}/proof`, { headers })
         .then((r) => setProof(normalizeProofPayload(r.data, jobId)))
         .catch(() =>
-          setProof({
-            ...EMPTY_PROOF,
-            job_id: jobId,
-            proofFetchFailed: true,
+          setProof((prev) => {
+            const had = prev && typeof prev.total_proof_items === 'number' && prev.total_proof_items > 0;
+            if (had) return { ...prev, proofFetchFailed: true };
+            return {
+              ...EMPTY_PROOF,
+              job_id: jobId,
+              proofFetchFailed: true,
+            };
           }),
         );
+      if (typeof fetchCheckpoints === 'function') fetchCheckpoints();
     }
   }
 
@@ -85,6 +90,7 @@ function handleStreamPayload(data, jobId, token, setters) {
       .then((r) => {
         const d = r.data;
         setJob(d?.job ?? d);
+        setLatestFailure(d?.latest_failure ?? null);
       })
       .catch(() => {});
   }
@@ -92,6 +98,9 @@ function handleStreamPayload(data, jobId, token, setters) {
 
 export function useJobStream(jobId, token) {
   const [job, setJob] = useState(null);
+  const [latestFailure, setLatestFailure] = useState(null);
+  const [milestoneBatch, setMilestoneBatch] = useState(null);
+  const [repairQueueLen, setRepairQueueLen] = useState(0);
   const [steps, setSteps] = useState([]);
   const [events, setEvents] = useState([]);
   const [proof, setProof] = useState(null);
@@ -99,6 +108,33 @@ export function useJobStream(jobId, token) {
   const [connectionMode, setConnectionMode] = useState('offline');
   const [error, setError] = useState(null);
   const pollRef = useRef(null);
+
+  const fetchCheckpoints = useCallback(async () => {
+    if (!jobId || !token) return;
+    const headers = { Authorization: `Bearer ${token}` };
+    try {
+      const [mb, rq] = await Promise.allSettled([
+        axios.get(`${API_BASE}/jobs/${jobId}/checkpoint/last_milestone_batch`, { headers, timeout: 12_000 }),
+        axios.get(`${API_BASE}/jobs/${jobId}/checkpoint/repair_queue`, { headers, timeout: 12_000 }),
+      ]);
+      if (mb.status === 'fulfilled') {
+        setMilestoneBatch(mb.value.data?.data ?? null);
+      } else {
+        setMilestoneBatch(null);
+      }
+      if (rq.status === 'fulfilled') {
+        const d = rq.value.data?.data;
+        const items = d?.items;
+        const n = typeof d?.count === 'number' ? d.count : Array.isArray(items) ? items.length : 0;
+        setRepairQueueLen(n);
+      } else {
+        setRepairQueueLen(0);
+      }
+    } catch {
+      setMilestoneBatch(null);
+      setRepairQueueLen(0);
+    }
+  }, [jobId, token]);
 
   const fetchJobState = useCallback(async () => {
     if (!jobId) return;
@@ -113,18 +149,24 @@ export function useJobStream(jobId, token) {
       if (jobRes.status === 'fulfilled') {
         const d = jobRes.value.data;
         setJob(d?.job ?? d);
+        setLatestFailure(d?.latest_failure ?? null);
       }
       if (stepsRes.status === 'fulfilled') setSteps(stepsRes.value.data?.steps || []);
       if (eventsRes.status === 'fulfilled') setEvents(eventsRes.value.data?.events || []);
       if (proofRes.status === 'fulfilled') {
         setProof(normalizeProofPayload(proofRes.value.data, jobId));
       } else {
-        setProof({
-          ...EMPTY_PROOF,
-          job_id: jobId,
-          proofFetchFailed: true,
+        setProof((prev) => {
+          const had = prev && typeof prev.total_proof_items === 'number' && prev.total_proof_items > 0;
+          if (had) return { ...prev, proofFetchFailed: true };
+          return {
+            ...EMPTY_PROOF,
+            job_id: jobId,
+            proofFetchFailed: true,
+          };
         });
       }
+      if (token) await fetchCheckpoints();
       const anySuccess = [jobRes, stepsRes, eventsRes, proofRes].some((result) => result.status === 'fulfilled');
       if (anySuccess && pollRef.current) {
         setConnectionMode('polling');
@@ -132,7 +174,7 @@ export function useJobStream(jobId, token) {
     } catch (e) {
       if (pollRef.current) setConnectionMode('offline');
     }
-  }, [jobId, token]);
+  }, [jobId, token, fetchCheckpoints]);
 
   useEffect(() => {
     if (!jobId) {
@@ -140,10 +182,14 @@ export function useJobStream(jobId, token) {
       setJob(null);
       setSteps([]);
       setEvents([]);
+      setMilestoneBatch(null);
+      setRepairQueueLen(0);
       setConnectionMode('offline');
       return undefined;
     }
     setProof(null);
+    setMilestoneBatch(null);
+    setRepairQueueLen(0);
     fetchJobState();
 
     const startPoll = () => {
@@ -155,7 +201,15 @@ export function useJobStream(jobId, token) {
 
     const ac = new AbortController();
     const url = getJobStreamUrl(jobId);
-    const setters = { setEvents, setSteps, setProof, setJob, fetchJobState };
+    const setters = {
+      setEvents,
+      setSteps,
+      setProof,
+      setJob,
+      setLatestFailure,
+      fetchJobState,
+      fetchCheckpoints,
+    };
 
     (async () => {
       try {
@@ -215,7 +269,19 @@ export function useJobStream(jobId, token) {
       }
       setConnectionMode('offline');
     };
-  }, [jobId, token, fetchJobState]);
+  }, [jobId, token, fetchJobState, fetchCheckpoints]);
 
-  return { job, steps, events, proof, isConnected, connectionMode, error, refresh: fetchJobState };
+  return {
+    job,
+    latestFailure,
+    milestoneBatch,
+    repairQueueLen,
+    steps,
+    events,
+    proof,
+    isConnected,
+    connectionMode,
+    error,
+    refresh: fetchJobState,
+  };
 }

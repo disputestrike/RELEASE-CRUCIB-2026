@@ -49,7 +49,7 @@ import { useTaskStore } from '../stores/useTaskStore';
 import '../styles/unified-workspace-tokens.css';
 import './AutoRunnerPage.css';
 
-const RIGHT_ORDER = ['proof', 'explorer', 'replay', 'failure', 'preview', 'timeline', 'code'];
+const RIGHT_ORDER = ['preview', 'proof', 'explorer', 'replay', 'failure', 'timeline', 'code'];
 
 function formatCoachReply(guidance) {
   if (!guidance || typeof guidance !== 'object') return '';
@@ -59,12 +59,6 @@ function formatCoachReply(guidance) {
   const steps = Array.isArray(guidance.next_steps) ? guidance.next_steps : [];
   if (steps.length) lines.push(steps.map((s, i) => `${i + 1}. ${s}`).join('\n'));
   return lines.join('\n\n').trim();
-}
-
-function shortWorkspaceId(id) {
-  if (!id || typeof id !== 'string') return '';
-  if (id.length <= 16) return id;
-  return `${id.slice(0, 8)}…${id.slice(-4)}`;
 }
 
 export default function UnifiedWorkspace() {
@@ -173,7 +167,7 @@ export default function UnifiedWorkspace() {
   const [errorRaw, setErrorRaw] = useState(null);
   /** User prompts sent from the composer — shown as bubbles above activity (input stays empty after send). */
   const [userChatMessages, setUserChatMessages] = useState([]);
-  const [activePane, setActivePane] = useState('proof');
+  const [activePane, setActivePane] = useState('preview');
   const [failedStep, setFailedStep] = useState(null);
   useEffect(() => {
     if (!API) return;
@@ -266,7 +260,10 @@ export default function UnifiedWorkspace() {
 
   /** URL wins so stream/poll start on first paint when opening ?jobId=… (state hydrates a tick later). */
   const effectiveJobId = jobIdFromUrl || jobId;
-  const { job, steps, events, proof, isConnected, connectionMode, refresh } = useJobStream(effectiveJobId, token);
+  const { job, latestFailure, milestoneBatch, repairQueueLen, steps, events, proof, isConnected, connectionMode, refresh } = useJobStream(
+    effectiveJobId,
+    token,
+  );
 
   const effectiveProjectId = job?.project_id || projectIdFromUrl || null;
 
@@ -363,13 +360,6 @@ export default function UnifiedWorkspace() {
   useEffect(() => {
     if (isCompleted && stage === 'running') setStage('completed');
   }, [isCompleted, stage]);
-
-  const previewStatus = isCompleted ? 'ready' : stage === 'running' || job?.status === 'running' ? 'building' : 'idle';
-  const previewUrl =
-    job?.preview_url ||
-    job?.published_url ||
-    job?.deploy_url ||
-    (isCompleted && effectiveJobId ? `/published/${encodeURIComponent(effectiveJobId)}/` : null);
 
   const handleShare = useCallback(() => {
     const url = window.location.href;
@@ -729,15 +719,16 @@ export default function UnifiedWorkspace() {
     if (!goal.trim() || authLoading || !token || !API) return;
     if (sendInFlightRef.current) return;
     const submitted = goal.trim();
-    const jidSteer = jobId || jobIdFromUrl;
-    const jidExisting = jobId || jobIdFromUrl;
+    const activeJobId = jobId || jobIdFromUrl;
 
-    const workerActive = steps.some((s) => s.status === 'running' || s.status === 'verifying');
     const failedOrBlocked = steps.some((s) => s.status === 'failed' || s.status === 'blocked');
-    /** True when this job has a hard failure we can address with steer+resume (even if job row lags). */
+    /** Steer+resume whenever the job is terminal/blocked or steps failed (do not require quiescent workers — UI can lag). */
     const steerMode =
-      Boolean(jidSteer) &&
-      (job?.status === 'failed' || (failedOrBlocked && !workerActive && job?.status !== 'queued'));
+      Boolean(activeJobId) &&
+      (job?.status === 'failed' ||
+        job?.status === 'cancelled' ||
+        job?.status === 'blocked' ||
+        (failedOrBlocked && job?.status !== 'queued'));
 
     const seeminglyBusy =
       stage === 'running' || job?.status === 'running' || job?.status === 'queued';
@@ -751,7 +742,7 @@ export default function UnifiedWorkspace() {
       try {
         const headers = { Authorization: `Bearer ${token}` };
         await axios.post(
-          `${API}/jobs/${encodeURIComponent(jidSteer)}/steer`,
+          `${API}/jobs/${encodeURIComponent(activeJobId)}/steer`,
           { message: submitted, resume: true },
           { headers },
         );
@@ -767,7 +758,7 @@ export default function UnifiedWorkspace() {
       return;
     }
 
-    if (stage === 'plan' && jidExisting) {
+    if (stage === 'plan' && activeJobId) {
       appendUserChat(submitted);
       setGoal('');
       clearBuildError();
@@ -780,7 +771,7 @@ export default function UnifiedWorkspace() {
       return;
     }
     if (seeminglyBusy && !steerMode) {
-      if (!jidSteer) {
+      if (!activeJobId) {
         setError('A run is already in progress. Wait for it to finish, or open another task from the sidebar.');
         setErrorRaw(null);
         return;
@@ -793,7 +784,7 @@ export default function UnifiedWorkspace() {
       try {
         const headers = { Authorization: `Bearer ${token}` };
         const res = await axios.post(
-          `${API}/jobs/${encodeURIComponent(jidSteer)}/steer`,
+          `${API}/jobs/${encodeURIComponent(activeJobId)}/steer`,
           { message: submitted, resume: false },
           { headers },
         );
@@ -810,7 +801,7 @@ export default function UnifiedWorkspace() {
               id: aid,
               body: coachText,
               role: 'assistant',
-              jobId: jidSteer,
+              jobId: activeJobId,
               pendingBind: false,
               ts: Date.now(),
             },
@@ -1057,6 +1048,36 @@ export default function UnifiedWorkspace() {
 
   const failureStep = failedStep || latestFailedStep;
 
+  const previewBlockedDetail = useMemo(() => {
+    const fromStep = failureStep?.error_message || failureStep?.step_key;
+    if (latestFailure && typeof latestFailure === 'object') {
+      const issues = Array.isArray(latestFailure.issues) ? latestFailure.issues : [];
+      const first = issues[0] ? String(issues[0]).trim().slice(0, 260) : '';
+      const err = latestFailure.error_message ? String(latestFailure.error_message).trim().slice(0, 260) : '';
+      const sk = latestFailure.step_key ? `${latestFailure.step_key}: ` : '';
+      const reason = latestFailure.failure_reason ? ` (${latestFailure.failure_reason})` : '';
+      const core = first || err;
+      if (core) return `${sk}${core}${reason}`.trim();
+    }
+    if (fromStep) return String(fromStep);
+    return 'Build stopped — open Failure or steer below, then Resume.';
+  }, [latestFailure, failureStep]);
+
+  const previewIsBlocked =
+    job?.status === 'failed' || job?.status === 'cancelled' || job?.status === 'blocked';
+  const previewStatus = previewIsBlocked
+    ? 'blocked'
+    : isCompleted
+      ? 'ready'
+      : stage === 'running' || job?.status === 'running'
+        ? 'building'
+        : 'idle';
+  const previewUrl =
+    job?.preview_url ||
+    job?.published_url ||
+    job?.deploy_url ||
+    (isCompleted && effectiveJobId ? `/published/${encodeURIComponent(effectiveJobId)}/` : null);
+
   const proofItemCount = useMemo(() => {
     if (!proof) return 0;
     if (typeof proof.total_proof_items === 'number') return proof.total_proof_items;
@@ -1104,22 +1125,8 @@ export default function UnifiedWorkspace() {
             {(effectiveJobId || effectiveProjectId) && (
               <div className="uw-build-identity" aria-label="Active build">
                 <div className="uw-build-identity-title">{buildDisplayTitle}</div>
-                <div className="uw-build-identity-meta">
-                  {effectiveJobId ? (
-                    <span className="uw-build-identity-chip" title={effectiveJobId}>
-                      Job {shortWorkspaceId(effectiveJobId)}
-                    </span>
-                  ) : null}
-                  {effectiveProjectId ? (
-                    <span className="uw-build-identity-chip" title={effectiveProjectId}>
-                      Project {shortWorkspaceId(effectiveProjectId)}
-                    </span>
-                  ) : null}
-                </div>
               </div>
             )}
-            <WorkspaceUserChat messages={userChatMessages} projectId={effectiveProjectId} />
-            <BrainGuidancePanel events={events} jobStatus={job?.status} />
             <WorkspaceActivityFeed
               stage={stage}
               plan={plan}
@@ -1132,6 +1139,15 @@ export default function UnifiedWorkspace() {
               fallbackGoal={goal}
               hideGoalEcho={userChatMessages.length > 0}
               openWorkspacePath={openWorkspacePath}
+            />
+            <BrainGuidancePanel
+              events={events}
+              jobStatus={job?.status}
+              failureStep={failureStep}
+              proof={proof}
+              latestFailure={latestFailure}
+              milestoneBatch={milestoneBatch}
+              repairQueueLen={repairQueueLen}
             />
 
             {stage === 'plan' && plan && (
@@ -1147,7 +1163,11 @@ export default function UnifiedWorkspace() {
               />
             )}
 
-            {(stage === 'running' || stage === 'completed' || job?.status === 'failed') && (
+            {(stage === 'running' ||
+              stage === 'completed' ||
+              job?.status === 'failed' ||
+              job?.status === 'cancelled' ||
+              job?.status === 'blocked') && (
               <div className="arp-execution-area">
                 {isCompleted && (
                   <BuildCompletionCard
@@ -1184,6 +1204,7 @@ export default function UnifiedWorkspace() {
           </div>
 
           <div className="arp-center-pane-composer">
+            <WorkspaceUserChat messages={userChatMessages} />
             <GoalComposer
               goal={goal}
               onGoalChange={setGoal}
@@ -1201,9 +1222,16 @@ export default function UnifiedWorkspace() {
               showContinuation={false}
               showQuickChips={false}
               showComposerHeader={false}
+              enterSends
+              composerInputRows={3}
+              inputPlaceholder={
+                job?.status === 'failed'
+                  ? 'What should change? Press Enter to send, Shift+Enter for a new line.'
+                  : 'Steer the build or ask a question — Enter to send, Shift+Enter for a new line.'
+              }
               composerSubtitle={
                 job?.status === 'failed'
-                  ? 'Build stopped — describe what to change, then Send. We save your note and resume the runner (workspace + completed steps stay).'
+                  ? 'Build paused — your message is saved on the job and the runner can resume with it (workspace stays).'
                   : null
               }
               composerVariant="workspace"
@@ -1302,6 +1330,7 @@ export default function UnifiedWorkspace() {
                     sandpackDeps={sandpackDeps}
                     filesReadyKey={filesReadyKey}
                     sandpackIsFallback={sandpackIsFallback}
+                    blockedDetail={previewBlockedDetail}
                   />
                 )}
                 {activePane === 'timeline' && (
@@ -1316,7 +1345,14 @@ export default function UnifiedWorkspace() {
                   />
                 )}
                 {activePane === 'proof' && (
-                  <ProofPanel proof={proof} jobId={effectiveJobId} onExport={() => {}} openWorkspacePath={openWorkspacePath} />
+                  <ProofPanel
+                    proof={proof}
+                    jobId={effectiveJobId}
+                    onExport={() => {}}
+                    openWorkspacePath={openWorkspacePath}
+                    milestoneBatch={milestoneBatch}
+                    repairQueueLen={repairQueueLen}
+                  />
                 )}
                 {activePane === 'explorer' && uxMode === 'pro' && (
                   <SystemExplorer

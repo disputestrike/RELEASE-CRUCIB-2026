@@ -34,6 +34,12 @@
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
+.goal-composer--workspace .gc-input {
+  min-height: 88px;
+  padding: 12px 14px 10px;
+  font-size: 14px;
+}
+
 [data-theme='dark'] .goal-composer--workspace .gc-composer-shell {
   background: #1c2128;
   border-color: rgba(255, 255, 255, 0.08);
