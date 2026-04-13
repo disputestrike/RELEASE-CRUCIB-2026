@@ -462,10 +462,14 @@ async def create_plan(body: PlanRequest, user: dict = Depends(_get_auth())):
         )
 
         runtime_state, dag_engine, planner_mod, _, _ = _get_orchestration()
-        from db_pg import get_pg_pool
+        try:
+            from db_pg import get_pg_pool
 
-        pool = await get_pg_pool()
-        runtime_state.set_pool(pool)
+            pool = await get_pg_pool()
+        except Exception:
+            pool = None
+        if pool:
+            runtime_state.set_pool(pool)
 
         effective_project_id = await _resolve_job_project_id_for_user(
             body.project_id, user
@@ -496,18 +500,22 @@ async def create_plan(body: PlanRequest, user: dict = Depends(_get_auth())):
         import uuid as _uuid
 
         plan_id = str(_uuid.uuid4())
-        async with pool.acquire() as conn:
-            await conn.execute(
-                """
+        if pool:
+            try:
+                async with pool.acquire() as conn:
+                    await conn.execute(
+                        """
                 INSERT INTO build_plans (id, job_id, project_id, goal, plan_json, status, created_at)
                 VALUES ($1,$2,$3,$4,$5,'draft',NOW())
             """,
-                plan_id,
-                job["id"],
-                effective_project_id,
-                body.goal,
-                _json.dumps(plan),
-            )
+                        plan_id,
+                        job["id"],
+                        effective_project_id,
+                        body.goal,
+                        _json.dumps(plan),
+                    )
+            except Exception as e:
+                logger.warning("Could not store build plan in DB: %s", e)
 
         # Persist plan steps as job_steps
         from orchestration.dag_engine import build_dag_from_plan
