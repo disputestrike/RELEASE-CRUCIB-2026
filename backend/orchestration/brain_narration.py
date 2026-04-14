@@ -15,20 +15,66 @@ _last_progress_phase: Dict[str, str] = {}
 
 # Map agent names to human-readable descriptions for user-facing narration
 AGENT_TO_DESCRIPTION = {
+    # Core planning
     "planner_agent": "Creating detailed build plan",
     "requirements_clarifier": "Understanding your requirements",
+    "clarification_agent": "Clarifying project scope",
+    "stack_selector_agent": "Selecting optimal technology stack",
     "stack_selector": "Selecting optimal technology stack",
+    
+    # Code generation
+    "frontend_agent": "Generating React components",
     "frontend_generation": "Generating React components",
+    "backend_agent": "Setting up backend services",
     "backend_generation": "Setting up backend services",
+    "builder_agent": "Building application structure",
+    
+    # Database & Infrastructure
     "database_agent": "Designing database schema",
+    "database_architect_agent": "Architecting database structure",
+    "deployment_agent": "Setting up deployment pipeline",
+    "infrastructure_agent": "Configuring infrastructure",
+    
+    # Design & UI
     "design_agent": "Applying design system",
+    "design_system_agent": "Building design system",
     "brand_agent": "Finalizing branding",
     "dark_mode_agent": "Adding dark mode support",
     "animation_agent": "Creating animations",
     "responsive_breakpoints_agent": "Optimizing for all devices",
     "typography_system_agent": "Setting up typography",
+    
+    # Quality & Testing
     "ux_auditor": "Auditing UX quality",
+    "preview_validator_agent": "Validating preview output",
+    "code_analysis_agent": "Analyzing code quality",
+    "code_repair_agent": "Fixing code issues",
+    "security_agent": "Implementing security measures",
+    
+    # Content & Documentation
+    "documentation_agent": "Generating documentation",
+    "legal_compliance": "Ensuring legal compliance",
+    "image_generator": "Generating images and assets",
+    
+    # Fallback
+    "default": "Processing step",
 }
+
+def get_agent_description(agent_key: str) -> str:
+    """Get human-readable description for an agent, with fallback."""
+    # Direct lookup
+    if agent_key in AGENT_TO_DESCRIPTION:
+        return AGENT_TO_DESCRIPTION[agent_key]
+    
+    # Try removing common suffixes
+    for suffix in ["_agent", "Agent"]:
+        clean_key = agent_key.replace(suffix, "")
+        if clean_key in AGENT_TO_DESCRIPTION:
+            return AGENT_TO_DESCRIPTION[clean_key]
+    
+    # Fallback: convert snake_case to title case
+    readable = agent_key.replace("_", " ").title()
+    return readable if readable else AGENT_TO_DESCRIPTION["default"]
 
 
 def build_execution_think_payload(
@@ -310,8 +356,8 @@ def build_task_progress_card(steps: List[Dict[str, Any]], current_idx: int = 0) 
     tasks = []
     for i, step in enumerate(steps):
         # Get human-readable description from agent name
-        agent_key = step.get("agent_key", "").replace("agents.", "").replace("_agent", "")
-        description = AGENT_TO_DESCRIPTION.get(agent_key, step.get("description", agent_key))
+        agent_key = step.get("agent_key", "").replace("agents.", "")
+        description = get_agent_description(agent_key)
         
         tasks.append({
             "index": i,
@@ -339,8 +385,8 @@ def build_action_chips(steps: List[Dict[str, Any]], current_idx: int = -1) -> Li
     # Show current + next 2-3 steps
     for i in range(max(0, current_idx), min(len(steps), current_idx + 4)):
         step = steps[i]
-        agent_key = step.get("agent_key", "").replace("agents.", "").replace("_agent", "")
-        description = AGENT_TO_DESCRIPTION.get(agent_key, step.get("description", agent_key))
+        agent_key = step.get("agent_key", "").replace("agents.", "")
+        description = get_agent_description(agent_key)
         
         chips.append({
             "action": description[:80],
@@ -356,8 +402,8 @@ def build_current_step_indicator(step: Dict[str, Any], elapsed_seconds: int = 0,
     Generate Manus-style current step indicator with blue dot.
     Shows: step name, elapsed time, position (1/11), and thinking status.
     """
-    agent_key = step.get("agent_key", "").replace("agents.", "").replace("_agent", "")
-    description = AGENT_TO_DESCRIPTION.get(agent_key, step.get("description", agent_key))
+    agent_key = step.get("agent_key", "").replace("agents.", "")
+    description = get_agent_description(agent_key)
     
     minutes, seconds = divmod(elapsed_seconds, 60)
     elapsed_str = f"{minutes}:{seconds:02d}" if minutes > 0 else f"0:{seconds:02d}"

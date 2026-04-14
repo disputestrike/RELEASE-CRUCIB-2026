@@ -250,6 +250,21 @@ class BrainLayer:
         agent_instances = self._get_agent_instances()
         outputs: List[Dict[str, Any]] = []
         total = len(selected_agent_configs)
+        
+        # Import narration for agent descriptions
+        from orchestration.brain_narration import AGENT_TO_DESCRIPTION, get_agent_description
+
+        # Build steps list for task progress card (convert agent configs to step format)
+        steps = []
+        for i, agent_config in enumerate(selected_agent_configs):
+            agent_name = agent_config.get("agent", "")
+            description = get_agent_description(agent_name)
+            steps.append({
+                "index": i,
+                "agent_key": agent_name,
+                "description": description,
+                "status": "pending",
+            })
 
         for index, agent_config in enumerate(selected_agent_configs, start=1):
             agent_name = agent_config.get("agent")
@@ -260,16 +275,25 @@ class BrainLayer:
             if not agent:
                 raise ValueError(f"Agent '{agent_name}' is not registered or cannot be instantiated")
 
+            # Update step status to running
+            if index - 1 < len(steps):
+                steps[index - 1]["status"] = "running"
+            
+            description = get_agent_description(agent_name)
+
             await self._dispatch_progress(
                 progress_callback,
                 {
                     "type": "status",
-                    "content": f"Starting {agent_name} ({index}/{total})...",
+                    "content": f"I'm working on: {description}",
                     "metadata": {
                         "agent": agent_name,
                         "step": index,
                         "total_steps": total,
                     },
+                    "steps": steps,
+                    "current_idx": index - 1,
+                    "elapsed_seconds": 0,
                 },
             )
 
@@ -277,16 +301,23 @@ class BrainLayer:
             result = await agent.run(context)
             outputs.append({"agent": agent_name, "result": result})
 
+            # Update step status to completed
+            if index - 1 < len(steps):
+                steps[index - 1]["status"] = "completed"
+
             await self._dispatch_progress(
                 progress_callback,
                 {
                     "type": "status",
-                    "content": f"{agent_name} completed successfully.",
+                    "content": f"Completed: {description}",
                     "metadata": {
                         "agent": agent_name,
                         "step": index,
                         "total_steps": total,
                     },
+                    "steps": steps,
+                    "current_idx": index - 1,
+                    "elapsed_seconds": 0,
                 },
             )
 
