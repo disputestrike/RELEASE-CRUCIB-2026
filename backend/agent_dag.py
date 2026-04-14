@@ -176,7 +176,7 @@ AGENT_DAG: Dict[str, Dict[str, Any]] = {
     },
     "WebSocket Agent": {
         "depends_on": ["Backend Generation"],
-        "system_prompt": "You are a WebSocket Agent. Suggest real-time subscription design and sample code. Plain text or code.",
+        "system_prompt": "You are a WebSocket Agent. Generate a complete Node.js WebSocket server handler in JAVASCRIPT ONLY. Output must start with: const WebSocket = require('ws'); const server = ... You MUST return valid JavaScript. Do NOT output Python code under any circumstances. Return ONLY JavaScript code, no prose.",
     },
     "i18n Agent": {
         "depends_on": ["Frontend Generation"],
@@ -192,7 +192,7 @@ AGENT_DAG: Dict[str, Dict[str, Any]] = {
     },
     "Search Agent": {
         "depends_on": ["Stack Selector"],
-        "system_prompt": "You are a Search Agent. Suggest full-text search (Algolia/Meilisearch/Elastic) integration. Plain text.",
+        "system_prompt": "You are a Search Agent. Generate VALID JSON configuration for full-text search integration (Algolia/Meilisearch/Elastic). Return ONLY valid JSON, no prose. Example format: {\"enabled\": true, \"provider\": \"meilisearch\", \"indexes\": [\"products\", \"users\"], \"config\": {\"fulltext\": true, \"fuzzy\": true}}",
     },
     "Analytics Agent": {
         "depends_on": ["Deployment Agent"],
@@ -410,7 +410,7 @@ AGENT_DAG: Dict[str, Dict[str, Any]] = {
     },
     "Table Agent": {
         "depends_on": ["Frontend Generation"],
-        "system_prompt": "You are a Table Agent. Suggest data tables, sorting, pagination. Plain text.",
+        "system_prompt": "You are a Table Agent. Generate VALID JSON configuration for a React data table component. Return ONLY valid JSON, no prose. Example: {\"columns\": [{\"key\": \"id\", \"label\": \"ID\", \"sortable\": true}, {\"key\": \"name\", \"label\": \"Name\"}], \"features\": [\"pagination\", \"sorting\", \"filtering\"], \"rowsPerPage\": 10}",
     },
     "Form Builder Agent": {
         "depends_on": ["Frontend Generation"],

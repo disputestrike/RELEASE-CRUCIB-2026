@@ -389,6 +389,60 @@ def run_agent_real_behavior(
         content = _extract_code_or_text(out_str, filepath=path)
         if not content and agent_name in ("PDF Export", "Excel Export"):
             content = out_str
+        
+        # VALIDATION GATE: REJECT EMPTY FILES
+        if not content or not content.strip():
+            logger.error("REJECTED: %s generated empty output for %s", agent_name, path)
+            # Mark in state so error recovery knows about this
+            try:
+                state = load_state(project_id)
+                failures = state.get("failures", {})
+                failures[agent_name] = f"Generated empty output (expected: {path})"
+                update_state(project_id, {"failures": failures})
+            except Exception as e:
+                logger.debug("Failed to log empty output for %s: %s", agent_name, e)
+            return  # DO NOT WRITE EMPTY FILE
+        
+        # VALIDATION GATE: JSON FILES MUST BE VALID JSON
+        ext = os.path.splitext(path)[1].lower()
+        if ext == ".json":
+            try:
+                json.loads(content)
+            except json.JSONDecodeError as e:
+                logger.error(
+                    "REJECTED: %s generated invalid JSON for %s (char %d: %s)",
+                    agent_name, path, e.pos, e.msg
+                )
+                try:
+                    state = load_state(project_id)
+                    failures = state.get("failures", {})
+                    failures[agent_name] = f"Invalid JSON in {path}: {e.msg} at char {e.pos}"
+                    update_state(project_id, {"failures": failures})
+                except:
+                    pass
+                return  # DO NOT WRITE INVALID JSON
+        
+        # VALIDATION GATE: JS/TS FILES MUST NOT HAVE PYTHON IMPORTS
+        elif ext in (".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"):
+            first_line = content.strip().split("\n")[0].strip()
+            if (
+                first_line.startswith("import ") and " from " not in first_line
+                or first_line.startswith("from ")
+            ):
+                logger.error(
+                    "REJECTED: %s generated Python import in JS file %s: %s",
+                    agent_name, path, first_line
+                )
+                try:
+                    state = load_state(project_id)
+                    failures = state.get("failures", {})
+                    failures[agent_name] = f"Python code in JS file {path}"
+                    update_state(project_id, {"failures": failures})
+                except:
+                    pass
+                return
+        
+        # NOW WRITE (content is validated)
         if content:
             try:
                 execute_tool(
