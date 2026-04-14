@@ -121,7 +121,7 @@ function ChatMessage({ msg }) {
   
   // Manus-style rendering for messages with task_cards, action_chips, or current_step
   if (!user && (msg.task_cards || msg.action_chips || msg.current_step)) {
-    console.log('✨ RENDERING MANUS-STYLE MESSAGE:', {
+    console.log('✨ RENDERING MANUS-STYLE MESSAGE (TIER 1):', {
       content: msg.content?.substring(0, 50),
       has_task_cards: !!msg.task_cards,
       has_action_chips: !!msg.action_chips,
@@ -194,6 +194,16 @@ function ChatMessage({ msg }) {
     );
   }
   
+  // Debug: Log force-enable condition check
+  if (!user && msg.type === 'status') {
+    console.log('🔍 FORCE-ENABLE CONDITION CHECK:', {
+      user: user,
+      type: msg.type,
+      role: msg.role,
+      willRender: msg.role === 'assistant',
+    });
+  }
+  
   // FORCE-ENABLE: If message type is "status" and role is "assistant", render as Manus style
   // This catches cases where fields might be present but not properly detected, or where
   // the backend sends status without the explicit Manus fields (we can still show UI)
@@ -201,12 +211,20 @@ function ChatMessage({ msg }) {
     console.log('🔥 FORCE-ENABLING MANUS RENDERING FOR STATUS MESSAGE:', {
       content: msg.content?.substring(0, 50),
       messageKeys: Object.keys(msg).sort(),
+      msgType: msg.type,
+      msgRole: msg.role,
     });
     
     // Extract or build Manus components from available data
     const task_cards = msg.task_cards || msg.tasks || null;
     const action_chips = msg.action_chips || msg.actions || [];
     const current_step = msg.current_step || msg.step || null;
+    
+    console.log('🔥 EXTRACTED FIELDS:', {
+      has_task_cards: !!task_cards,
+      has_action_chips: !!action_chips,
+      has_current_step: !!current_step,
+    });
     
     return (
       <div className="flex w-full max-w-[720px] mx-auto justify-start">
