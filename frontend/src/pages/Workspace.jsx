@@ -108,6 +108,20 @@ function ChatMessage({ msg }) {
   const showContent = expanded || !isLong ? content : content.slice(0, 300) + (content.length > 300 ? '...' : '');
   const user = msg.role === 'user';
   
+  // ULTRA-DEBUG: Log EVERYTHING about this message
+  console.log('🔴 CHATMESSAGE ULTRA-DEBUG:', {
+    hasMsg: !!msg,
+    msgKeys: msg ? Object.keys(msg).sort() : 'NO MSG',
+    msgRole: msg?.role,
+    msgType: msg?.type,
+    user,
+    hasContent: !!msg?.content,
+    willHitTier1: !!(msg && !user && (msg.task_cards || msg.action_chips || msg.current_step)),
+    willHitTier2: !!(msg && !user && msg.type === 'status'),
+    willHitTier3: !!(msg && !user && msg.type === 'status' && msg.role === 'assistant'),
+    willHitTier4: !!(msg && !user && msg.role === 'assistant' && msg.content),
+  });
+  
   // DIAGNOSTIC: Log all messages
   console.log('🔍 CHATMESSAGE RENDERING:', {
     msgType: msg.type,
