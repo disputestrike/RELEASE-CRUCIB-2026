@@ -299,6 +299,93 @@ function ChatMessage({ msg }) {
     );
   }
   
+  // FALLBACK: Render ANY assistant message with conversational Manus style if no other condition matched
+  // This is the safety net - ensures something renders even if conditions don't match
+  if (!user && msg.role === 'assistant' && msg.content) {
+    console.log('🆘 FALLBACK RENDERING ANY ASSISTANT MESSAGE:', {
+      type: msg.type,
+      contentLength: msg.content.length,
+      hasAnyManus: !!(msg.task_cards || msg.action_chips || msg.current_step),
+    });
+    
+    // Extract any available Manus fields
+    const task_cards = msg.task_cards || msg.tasks || null;
+    const action_chips = msg.action_chips || msg.actions || [];
+    const current_step = msg.current_step || msg.step || null;
+    
+    return (
+      <div className="flex w-full max-w-[720px] mx-auto justify-start">
+        <div className="max-w-[min(92%,36rem)] flex flex-col items-start">
+          <div className="text-[11px] font-semibold uppercase tracking-wide mb-1 w-full text-left" style={{ color: 'var(--theme-muted, #71717a)' }}>
+            CrucibAI
+          </div>
+          
+          {/* Conversational message text */}
+          <pre className="whitespace-pre-wrap font-sans text-[15px] leading-[1.6] m-0 text-left" style={{ color: 'var(--theme-text, #e4e4e7)' }}>
+            {showContent}
+          </pre>
+          
+          {/* Action chips - if available */}
+          {action_chips && action_chips.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {action_chips.map((chip, i) => {
+                const chipText = typeof chip === 'string' ? chip : chip.action || chip.name || 'Task';
+                const chipStatus = chip.status || 'pending';
+                const statusIcon = chipStatus === 'completed' ? '✓' : chipStatus === 'running' ? '⟳' : '◯';
+                const statusColor = chipStatus === 'completed' ? '#10b981' : chipStatus === 'running' ? '#3b82f6' : '#6b7280';
+                return (
+                  <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs" style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: statusColor }}>
+                    <span>{statusIcon}</span>
+                    <span>{chipText}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          
+          {/* Task progress card - if available */}
+          {task_cards && (
+            <div className="mt-3 w-full p-3 rounded-lg" style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <div className="text-xs font-semibold mb-2" style={{ color: 'var(--theme-muted, #a1a1aa)' }}>
+                Task progress {task_cards.current || 0} / {task_cards.total || 0}
+              </div>
+              {task_cards.tasks && task_cards.tasks.length > 0 && (
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {task_cards.tasks.map((task, i) => {
+                    const taskDesc = typeof task === 'string' ? task : task.description || task.name || 'Task';
+                    const taskStatus = task.status || 'pending';
+                    const icon = taskStatus === 'completed' ? '✓' : taskStatus === 'running' ? '⟳' : '◯';
+                    const color = taskStatus === 'completed' ? '#10b981' : taskStatus === 'running' ? '#3b82f6' : '#6b7280';
+                    const bg = taskStatus === 'running' ? 'rgba(59,130,246,0.1)' : 'transparent';
+                    return (
+                      <div key={i} className="flex items-center gap-2 text-xs px-2 py-1 rounded" style={{ color, backgroundColor: bg }}>
+                        <span>{icon}</span>
+                        <span className={taskStatus === 'completed' ? 'line-through' : ''}>{taskDesc}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Current step indicator - if available */}
+          {current_step && (
+            <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg" style={{ border: '2px solid #3b82f6', backgroundColor: 'rgba(59,130,246,0.05)' }}>
+              <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#3b82f6' }}></div>
+              <div className="flex-1 text-xs" style={{ color: 'var(--theme-text, #e4e4e7)' }}>
+                <div className="font-semibold">{current_step.name || 'Processing'}</div>
+                <div style={{ color: 'var(--theme-muted, #a1a1aa)' }}>
+                  {current_step.position || 'step'} {current_step.elapsed && `• ${current_step.elapsed}`}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+  
   // Default rendering for regular messages
   return (
 
