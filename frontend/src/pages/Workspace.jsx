@@ -13,7 +13,6 @@ import './Workspace.css';
 import VoiceWaveform from '../components/VoiceWaveform';
 import '../components/VoiceWaveform.css';
 import Logo from '../components/Logo';
-import ChatMessage from '../components/workspace/ChatMessage';
 import {
   ChevronDown,
   ChevronRight,
@@ -108,7 +107,79 @@ function ChatMessage({ msg }) {
   const isLong = content.length > 300 || (content.match(/\n/g) || []).length > 4;
   const showContent = expanded || !isLong ? content : content.slice(0, 300) + (content.length > 300 ? '...' : '');
   const user = msg.role === 'user';
+  
+  // Manus-style rendering for messages with task_cards, action_chips, or current_step
+  if (!user && (msg.task_cards || msg.action_chips || msg.current_step)) {
+    return (
+      <div className="flex w-full max-w-[720px] mx-auto justify-start">
+        <div className="max-w-[min(92%,36rem)] flex flex-col items-start">
+          <div className="text-[11px] font-semibold uppercase tracking-wide mb-1 w-full text-left" style={{ color: 'var(--theme-muted, #71717a)' }}>
+            CrucibAI
+          </div>
+          
+          {/* Conversational message text */}
+          <pre className="whitespace-pre-wrap font-sans text-[15px] leading-[1.6] m-0 text-left" style={{ color: 'var(--theme-text, #e4e4e7)' }}>
+            {showContent}
+          </pre>
+          
+          {/* Action chips */}
+          {msg.action_chips && msg.action_chips.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {msg.action_chips.map((chip, i) => {
+                const statusIcon = chip.status === 'completed' ? '✓' : chip.status === 'running' ? '⟳' : '◯';
+                const statusColor = chip.status === 'completed' ? '#10b981' : chip.status === 'running' ? '#3b82f6' : '#6b7280';
+                return (
+                  <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs" style={{ backgroundColor: 'rgba(255,255,255,0.05)', color: statusColor }}>
+                    <span>{statusIcon}</span>
+                    <span>{chip.action}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          
+          {/* Task progress card */}
+          {msg.task_cards && (
+            <div className="mt-3 w-full p-3 rounded-lg" style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <div className="text-xs font-semibold mb-2" style={{ color: 'var(--theme-muted, #a1a1aa)' }}>
+                Task progress {msg.task_cards.current} / {msg.task_cards.total}
+              </div>
+              <div className="space-y-1 max-h-32 overflow-y-auto">
+                {msg.task_cards.tasks && msg.task_cards.tasks.map((task, i) => {
+                  const icon = task.status === 'completed' ? '✓' : task.status === 'running' ? '⟳' : '◯';
+                  const color = task.status === 'completed' ? '#10b981' : task.status === 'running' ? '#3b82f6' : '#6b7280';
+                  const bg = task.status === 'running' ? 'rgba(59,130,246,0.1)' : 'transparent';
+                  return (
+                    <div key={i} className="flex items-center gap-2 text-xs px-2 py-1 rounded" style={{ color, backgroundColor: bg }}>
+                      <span>{icon}</span>
+                      <span className={task.status === 'completed' ? 'line-through' : ''}>{task.description}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          
+          {/* Current step indicator */}
+          {msg.current_step && (
+            <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg" style={{ border: '2px solid #3b82f6', backgroundColor: 'rgba(59,130,246,0.05)' }}>
+              <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#3b82f6' }}></div>
+              <div className="flex-1 text-xs" style={{ color: 'var(--theme-text, #e4e4e7)' }}>
+                <div className="font-semibold">{msg.current_step.name}</div>
+                <div style={{ color: 'var(--theme-muted, #a1a1aa)' }}>
+                  {msg.current_step.position} {msg.current_step.elapsed && `• ${msg.current_step.elapsed}`}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+  
+  // Default rendering for regular messages
   return (
+
     <div className={`flex w-full max-w-[720px] mx-auto ${user ? 'justify-end' : 'justify-start'}`}>
       <div className={`min-w-0 ${user ? 'max-w-[min(85%,30rem)] flex flex-col items-end' : 'max-w-[min(92%,36rem)] flex flex-col items-start'}`}>
         <div className={`text-[11px] font-semibold uppercase tracking-wide mb-1 w-full ${user ? 'text-right' : 'text-left'}`} style={{ color: 'var(--theme-muted, #71717a)' }}>
@@ -3317,64 +3388,10 @@ BUILD IT NOW â€” output every file completely:`;
               </div>
             )}
 
-            {/* Chat messages — use ChatMessage component for Manus-style rendering */}
-            {messages.map((msg, i) => {
-              // Use ChatMessage component for messages with task_cards, action_chips, or current_step (Manus-style)
-              if (msg.task_cards || msg.action_chips || msg.current_step) {
-                return <ChatMessage key={i} msg={msg} />;
-              }
-              
-              // Default rendering for regular messages
-              return (
-                <div
-                  key={i}
-                  className={`flex w-full max-w-[720px] mx-auto ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`min-w-0 ${msg.role === 'user' ? 'max-w-[min(85%,30rem)] flex flex-col items-end' : 'max-w-[min(92%,36rem)] flex flex-col items-start'}`}
-                  >
-                    <div
-                      className={`text-[11px] font-semibold uppercase tracking-wide mb-1 w-full ${msg.role === 'user' ? 'text-right' : 'text-left'}`}
-                      style={{ color: 'var(--theme-muted, #71717a)' }}
-                    >
-                      {msg.role === 'user' ? 'You' : 'CrucibAI'}
-                    </div>
-                    <div
-                      className={`text-[15px] leading-[1.6] w-full ${msg.role === 'user' ? 'text-right' : 'text-left'}`}
-                      style={{ color: msg.error ? 'var(--chat-error, #f87171)' : 'var(--theme-text, #e4e4e7)' }}
-                    >
-                      {msg.isBuilding ? (
-                        <div className={`flex items-center gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" style={{ color: 'var(--theme-accent)' }} />
-                          <span style={{ color: 'var(--theme-muted, #a1a1aa)' }}>{formatMsgContent(msg.content)}</span>
-                        </div>
-                      ) : (msg.role === 'assistant' && msg.error) ? (
-                        <ActionableError
-                          message={formatMsgContent(msg.content)}
-                          onRetry={() => { const lastUser = [...messages].reverse().find(m => m.role === 'user'); if (lastUser) { setInput(formatMsgContent(lastUser.content)); setTimeout(() => chatInputRef.current?.focus(), 0); } }}
-                          onViewLogs={() => setActivePanel('console')}
-                        />
-                      ) : (
-                        <pre className={`whitespace-pre-wrap font-sans text-[15px] leading-[1.6] m-0 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>{formatMsgContent(msg.content)}</pre>
-                      )}
-                      {msg.hasCode && (
-                        <div className={`workspace-code-actions mt-3 flex flex-wrap items-center gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                          <button type="button" onClick={() => setActivePanel('preview')} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition" style={{ color: 'var(--theme-muted, #a1a1aa)' }}>
-                            <Eye className="w-3 h-3" /> Preview
-                          </button>
-                          <button type="button" onClick={() => setActivePanel('code')} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition" style={{ color: 'var(--theme-muted, #a1a1aa)' }}>
-                            <FileCode className="w-3 h-3" /> Code
-                          </button>
-                          <button type="button" onClick={downloadCode} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition" style={{ color: 'var(--theme-muted, #a1a1aa)' }}>
-                            <Download className="w-3 h-3" /> Export
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {/* Chat messages — ChatMessage handles both Manus-style and regular rendering */}
+            {messages.map((msg, i) => (
+              <ChatMessage key={i} msg={msg} />
+            ))}
 
 
             {/* Next suggestions */}
