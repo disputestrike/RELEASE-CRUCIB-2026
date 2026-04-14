@@ -11494,6 +11494,22 @@ except Exception as _e:
     logger.warning("agents route module not loaded, falling back to inline: %s", _e)
     app.include_router(agents_router)
 
+try:
+    from routes.chat import router as chat_router
+
+    app.include_router(chat_router)
+    logger.info("chat router registered from routes.chat")
+except Exception as _e:
+    logger.warning("chat router not loaded: %s", _e)
+
+try:
+    from routes.chat_websocket import router as chat_ws_router
+
+    app.include_router(chat_ws_router)
+    logger.info("chat websocket router registered from routes.chat_websocket")
+except Exception as _e:
+    logger.warning("chat websocket router not loaded: %s", _e)
+
 app.include_router(tools_router)
 app.include_router(api_router)
 
