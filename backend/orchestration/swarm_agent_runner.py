@@ -33,39 +33,84 @@ def _extract_artifact_from_llm_output(
     ext = os.path.splitext(artifact_path)[1].lower()
     
     if ext == ".json":
-        # Try to find ```json...``` block
-        match = re.search(r'```(?:json)?\s*\n?(.*?)\n?```', llm_response, re.DOTALL)
-        if match:
-            candidate = match.group(1).strip()
-            try:
-                json.loads(candidate)  # Validate
-                return candidate
-            except json.JSONDecodeError:
-                pass
+        # Try to find ```json...``` or just ```...``` block (more flexible)
+        # Matches: ```json\n...\n``` or ```\n...\n``` with various whitespace
+        patterns = [
+            r'```(?:json)?\s*\n(.*?)\n```',  # Original
+            r'```\n(.*?)\n```',  # Just backticks
+            r'```json\s*(.*?)\s*```',  # json without enforced newlines
+            r'```\s*(.*?)\s*```',  # Generic backticks
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, llm_response, re.DOTALL)
+            if match:
+                candidate = match.group(1).strip()
+                if candidate:
+                    try:
+                        json.loads(candidate)  # Validate
+                        logger.info("JSON extracted from code fence: %d chars", len(candidate))
+                        return candidate
+                    except json.JSONDecodeError as e:
+                        logger.debug("JSON validation failed for extracted content: %s", e)
+                        continue
         
         # Try to parse entire response as JSON
         try:
-            json.loads(llm_response)
+            result = json.loads(llm_response)
+            logger.info("JSON parsed from full response: %d chars", len(llm_response))
             return llm_response.strip()
         except json.JSONDecodeError:
             pass
         
-        # Fallback: return minimal valid JSON
+        # Fallback: extract any {....} block from response
+        json_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', llm_response, re.DOTALL)
+        if json_match:
+            candidate = json_match.group(0).strip()
+            try:
+                json.loads(candidate)
+                logger.info("JSON extracted from curly braces: %d chars", len(candidate))
+                return candidate
+            except json.JSONDecodeError:
+                pass
+        
+        # Last resort: return minimal valid JSON
+        logger.warning("Unable to extract JSON from LLM output, using placeholder")
         return '{"_placeholder": "generated"}'
     
     elif ext in (".js", ".jsx", ".ts", ".tsx"):
         # Extract ```javascript...``` or ```js...``` or just ```...```
-        match = re.search(
-            r'```(?:javascript|jsx|js|typescript|tsx)?\s*\n?(.*?)\n?```',
-            llm_response,
-            re.DOTALL
-        )
-        if match:
-            return match.group(1).strip()
+        patterns = [
+            r'```(?:javascript|jsx|js|typescript|tsx)\s*\n(.*?)\n```',
+            r'```\n(.*?)\n```',
+            r'```(?:javascript|jsx|js|typescript|tsx)\s*(.*?)\s*```',
+            r'```\s*(.*?)\s*```',
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, llm_response, re.DOTALL)
+            if match:
+                code = match.group(1).strip()
+                if code:
+                    # Reject if it looks like Python
+                    first_line = code.split('\n')[0].lower()
+                    if first_line.startswith(('import ', 'from ')):
+                        # Python import detected
+                        logger.debug("Python syntax detected in JS file, skipping this block")
+                        continue
+                    logger.info("Code extracted from fence: %d chars", len(code))
+                    return code
+        
         # If no code fence, check if response looks like code
         cleaned = llm_response.strip()
-        if cleaned and not cleaned.startswith(("Here", "The", "This", "I've")):
-            return cleaned
+        if cleaned and not cleaned.startswith(("Here", "The", "This", "I've", "Based", "Sure")):
+            # Make sure it doesn't look like Python
+            first_line = cleaned.split('\n')[0].lower()
+            if not first_line.startswith(('import ', 'from ')):
+                logger.info("Code extracted from prose: %d chars", len(cleaned))
+                return cleaned
+        
+        logger.warning("Unable to extract JS code, using placeholder")
         return "// Auto-generated placeholder\n"
     
     elif ext == ".sql":
@@ -479,10 +524,23 @@ async def run_swarm_agent_step(
             artifact_rel_path = ARTIFACT_PATHS[agent_name]
             llm_output = result.get("output") or result.get("result") or ""
             
-            if llm_output.strip():
+            logger.info(
+                "artifact_materialization: agent=%s path=%s output_size=%d",
+                agent_name,
+                artifact_rel_path,
+                len(llm_output) if llm_output else 0
+            )
+            
+            if llm_output and llm_output.strip():
                 extracted = _extract_artifact_from_llm_output(
                     llm_output, artifact_rel_path
                 )
+                logger.info(
+                    "artifact_extraction: agent=%s extracted_size=%d",
+                    agent_name,
+                    len(extracted) if extracted else 0
+                )
+                
                 if extracted:
                     artifact_full = os.path.join(workspace_path, artifact_rel_path)
                     os.makedirs(os.path.dirname(artifact_full), exist_ok=True)
@@ -492,7 +550,7 @@ async def run_swarm_agent_step(
                         if artifact_rel_path not in changed_files:
                             changed_files.append(artifact_rel_path)
                         logger.info(
-                            "materialize_agent_artifact: %s -> %s (%d bytes)",
+                            "materialize_agent_artifact_SUCCESS: %s -> %s (%d bytes)",
                             agent_name,
                             artifact_rel_path,
                             len(extracted),
@@ -501,10 +559,22 @@ async def run_swarm_agent_step(
                         logger.warning(
                             "failed to write artifact %s: %s", artifact_rel_path, e
                         )
+                else:
+                    logger.warning(
+                        "artifact_extraction_returned_empty: agent=%s path=%s",
+                        agent_name,
+                        artifact_rel_path
+                    )
+            else:
+                logger.warning(
+                    "no_llm_output_for_artifact: agent=%s path=%s",
+                    agent_name,
+                    artifact_rel_path
+                )
     except ImportError:
         logger.debug("agent_real_behavior not available for artifact materialization")
     except Exception as e:
-        logger.warning("artifact materialization error: %s", e)
+        logger.exception("artifact materialization error: %s", e)
 
     artifact_path = f"outputs/{slugify_agent_name(agent_name)}.md"
     artifacts = []
