@@ -49,6 +49,7 @@ async def websocket_chat_endpoint(websocket: WebSocket, session_id: str):
             except json.JSONDecodeError:
                 await websocket.send_json({
                     "type": "error",
+                    "role": "system",
                     "content": "Invalid JSON format",
                     "timestamp": asyncio.get_event_loop().time(),
                 })
@@ -58,6 +59,7 @@ async def websocket_chat_endpoint(websocket: WebSocket, session_id: str):
             if not user_message:
                 await websocket.send_json({
                     "type": "error",
+                    "role": "system",
                     "content": "Empty message",
                 })
                 continue
@@ -75,6 +77,7 @@ async def websocket_chat_endpoint(websocket: WebSocket, session_id: str):
         try:
             await websocket.send_json({
                 "type": "error",
+                "role": "system",
                 "content": f"Server error: {str(e)}",
             })
         except Exception:
@@ -132,6 +135,7 @@ async def process_message_streaming(session_id: str, user_message: str, websocke
 
         await websocket.send_json({
             "type": "thinking",
+            "role": "assistant",
             "content": "I’m thinking through your request and choosing the smallest focused plan.",
             "metadata": {
                 "session_id": session_id,
