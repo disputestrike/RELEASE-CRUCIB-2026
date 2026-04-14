@@ -108,6 +108,17 @@ function ChatMessage({ msg }) {
   const showContent = expanded || !isLong ? content : content.slice(0, 300) + (content.length > 300 ? '...' : '');
   const user = msg.role === 'user';
   
+  // DIAGNOSTIC: Log all messages
+  console.log('🔍 CHATMESSAGE RENDERING:', {
+    msgType: msg.type,
+    msgRole: msg.role,
+    user,
+    hasManus: !!(msg.task_cards || msg.action_chips || msg.current_step),
+    task_cards_present: !!msg.task_cards,
+    action_chips_present: !!msg.action_chips,
+    current_step_present: !!msg.current_step,
+  });
+  
   // Manus-style rendering for messages with task_cards, action_chips, or current_step
   if (!user && (msg.task_cards || msg.action_chips || msg.current_step)) {
     console.log('✨ RENDERING MANUS-STYLE MESSAGE:', {
@@ -1317,6 +1328,17 @@ root.render(<${compName} />);` };
         try {
           const data = JSON.parse(event.data);
           
+          // COMPREHENSIVE DIAGNOSTIC LOGGING
+          console.log('📨 RAW WEBSOCKET MESSAGE:', {
+            type: data.type,
+            role: data.role,
+            hasContent: !!data.content,
+            hasTaskCards: !!data.task_cards,
+            hasActionChips: !!data.action_chips,
+            hasCurrentStep: !!data.current_step,
+            allKeys: Object.keys(data).sort(),
+          });
+          
           // MANUS-STYLE: Add conversational messages with task cards, action chips, and step indicator
           if (data.type && data.content && data.role) {
             const msg = {
@@ -1340,8 +1362,21 @@ root.render(<${compName} />);` };
                 task_cards_count: msg.task_cards?.tasks?.length || 0,
                 action_chips_count: msg.action_chips?.length || 0,
               });
+            } else {
+              console.log('📝 REGULAR MESSAGE (no Manus fields):', {
+                type: msg.type,
+                contentLength: msg.content?.length || 0,
+              });
             }
-            setMessages(prev => [...prev, msg]);
+            setMessages(prev => {
+              const updated = [...prev, msg];
+              console.log('📊 MESSAGES STATE UPDATED:', {
+                totalMessages: updated.length,
+                lastMessageType: updated[updated.length - 1].type,
+                lastMessageHasManus: !!(updated[updated.length - 1].task_cards || updated[updated.length - 1].action_chips),
+              });
+              return updated;
+            });
           }
           
           setProjectBuildProgress({
