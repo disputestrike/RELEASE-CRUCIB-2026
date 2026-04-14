@@ -2,6 +2,8 @@
 Structured coaching copy for job events and UI (brain "talks", not only logs).
 
 Template-first for latency and cost; optional LLM hook can be added later.
+
+NOW: Manus-style action chips, task progress cards, and conversational narration.
 """
 
 from __future__ import annotations
@@ -10,6 +12,23 @@ from typing import Any, Dict, List
 
 # job_id -> last phase_label we emitted progress_narrative for (avoid duplicate SSE noise)
 _last_progress_phase: Dict[str, str] = {}
+
+# Map agent names to human-readable descriptions for user-facing narration
+AGENT_TO_DESCRIPTION = {
+    "planner_agent": "Creating detailed build plan",
+    "requirements_clarifier": "Understanding your requirements",
+    "stack_selector": "Selecting optimal technology stack",
+    "frontend_generation": "Generating React components",
+    "backend_generation": "Setting up backend services",
+    "database_agent": "Designing database schema",
+    "design_agent": "Applying design system",
+    "brand_agent": "Finalizing branding",
+    "dark_mode_agent": "Adding dark mode support",
+    "animation_agent": "Creating animations",
+    "responsive_breakpoints_agent": "Optimizing for all devices",
+    "typography_system_agent": "Setting up typography",
+    "ux_auditor": "Auditing UX quality",
+}
 
 
 def build_execution_think_payload(
@@ -277,6 +296,78 @@ def build_phase_progress_narrative(
         "phase_label": phase_label,
         "completed": completed,
         "total": total,
+    }
+
+
+def build_task_progress_card(steps: List[Dict[str, Any]], current_idx: int = 0) -> Dict[str, Any]:
+    """
+    Generate Manus-style task progress card: "1/11" format with all tasks.
+    Each task is a human-readable description, not an agent name.
+    """
+    if not steps:
+        return {"kind": "task_progress", "total": 0, "current": 0, "tasks": []}
+    
+    tasks = []
+    for i, step in enumerate(steps):
+        # Get human-readable description from agent name
+        agent_key = step.get("agent_key", "").replace("agents.", "").replace("_agent", "")
+        description = AGENT_TO_DESCRIPTION.get(agent_key, step.get("description", agent_key))
+        
+        tasks.append({
+            "index": i,
+            "description": description[:100],
+            "status": step.get("status", "pending"),  # "pending", "running", "completed", "failed"
+        })
+    
+    return {
+        "kind": "task_progress",
+        "total": len(steps),
+        "current": current_idx + 1,
+        "tasks": tasks,
+    }
+
+
+def build_action_chips(steps: List[Dict[str, Any]], current_idx: int = -1) -> List[Dict[str, Any]]:
+    """
+    Generate Manus-style action chips for the current step and next few steps.
+    Shows what's running and what's queued.
+    """
+    if not steps or current_idx < 0:
+        return []
+    
+    chips = []
+    # Show current + next 2-3 steps
+    for i in range(max(0, current_idx), min(len(steps), current_idx + 4)):
+        step = steps[i]
+        agent_key = step.get("agent_key", "").replace("agents.", "").replace("_agent", "")
+        description = AGENT_TO_DESCRIPTION.get(agent_key, step.get("description", agent_key))
+        
+        chips.append({
+            "action": description[:80],
+            "status": step.get("status", "pending"),
+            "icon": "file" if "create" in description.lower() else "arrow",
+        })
+    
+    return chips
+
+
+def build_current_step_indicator(step: Dict[str, Any], elapsed_seconds: int = 0, current_idx: int = 0, total: int = 1) -> Dict[str, Any]:
+    """
+    Generate Manus-style current step indicator with blue dot.
+    Shows: step name, elapsed time, position (1/11), and thinking status.
+    """
+    agent_key = step.get("agent_key", "").replace("agents.", "").replace("_agent", "")
+    description = AGENT_TO_DESCRIPTION.get(agent_key, step.get("description", agent_key))
+    
+    minutes, seconds = divmod(elapsed_seconds, 60)
+    elapsed_str = f"{minutes}:{seconds:02d}" if minutes > 0 else f"0:{seconds:02d}"
+    
+    return {
+        "kind": "current_step",
+        "name": description[:80],
+        "elapsed": elapsed_str,
+        "position": f"{current_idx + 1}/{total}",
+        "status": step.get("status", "running"),  # "thinking", "running", "completed", "failed"
     }
 
 

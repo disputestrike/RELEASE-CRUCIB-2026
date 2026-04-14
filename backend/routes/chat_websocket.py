@@ -95,15 +95,43 @@ async def process_message_streaming(session_id: str, user_message: str, websocke
 
         brain = BrainLayer()
 
+        # Import narration functions for Manus-style updates
+        from orchestration.brain_narration import (
+            build_task_progress_card,
+            build_action_chips,
+            build_current_step_indicator
+        )
+
         async def send_progress(event: Dict[str, Any]):
-            await websocket.send_json({
+            """Send progress with Manus-style task cards, action chips, and step indicator"""
+            message = {
                 "type": event.get("type", "status"),
+                "role": "assistant",
                 "content": event.get("content", ""),
                 "metadata": event.get("metadata", {}),
-            })
+            }
+            
+            # Add Manus-style structured data if available
+            steps = event.get("steps", [])
+            current_idx = event.get("current_idx", -1)
+            
+            if steps and current_idx >= 0:
+                message["task_cards"] = build_task_progress_card(steps, current_idx)
+                message["action_chips"] = build_action_chips(steps, current_idx)
+                
+                if 0 <= current_idx < len(steps):
+                    elapsed = event.get("elapsed_seconds", 0)
+                    message["current_step"] = build_current_step_indicator(
+                        steps[current_idx],
+                        elapsed,
+                        current_idx,
+                        len(steps)
+                    )
+            
+            await websocket.send_json(message)
 
         await websocket.send_json({
-            "type": "status",
+            "type": "thinking",
             "content": "I’m thinking through your request and choosing the smallest focused plan.",
             "metadata": {
                 "session_id": session_id,
@@ -119,6 +147,7 @@ async def process_message_streaming(session_id: str, user_message: str, websocke
         if brain_result.get("status") == "clarification_required":
             await websocket.send_json({
                 "type": "clarification",
+                "role": "assistant",
                 "content": brain_result.get("assistant_response"),
                 "metadata": {
                     "reason": "needs_more_detail",
@@ -128,6 +157,7 @@ async def process_message_streaming(session_id: str, user_message: str, websocke
 
         await websocket.send_json({
             "type": "final_response",
+            "role": "assistant",
             "content": brain_result.get("assistant_response"),
             "metadata": {
                 "selected_agents": brain_result.get("selected_agents"),
@@ -141,6 +171,7 @@ async def process_message_streaming(session_id: str, user_message: str, websocke
         logger.error(f"Error processing message: {str(e)}")
         await websocket.send_json({
             "type": "error",
+            "role": "system",
             "content": f"Error: {str(e)}",
         })
 
