@@ -13,6 +13,7 @@ import './Workspace.css';
 import VoiceWaveform from '../components/VoiceWaveform';
 import '../components/VoiceWaveform.css';
 import Logo from '../components/Logo';
+import ChatMessage from '../components/workspace/ChatMessage';
 import {
   ChevronDown,
   ChevronRight,
@@ -1238,6 +1239,23 @@ root.render(<${compName} />);` };
         ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          
+          // MANUS-STYLE: Add conversational messages with task cards, action chips, and step indicator
+          if (data.type && data.content && data.role) {
+            const msg = {
+              id: `msg_${Date.now()}`,
+              role: data.role,
+              type: data.type,
+              content: data.content,
+              task_cards: data.task_cards,
+              action_chips: data.action_chips,
+              current_step: data.current_step,
+              metadata: data.metadata,
+              timestamp: new Date().toISOString(),
+            };
+            setMessages(prev => [...prev, msg]);
+          }
+          
           setProjectBuildProgress({
             phase: data.phase ?? 0,
             agent: data.agent ?? '',
@@ -3299,8 +3317,15 @@ BUILD IT NOW â€” output every file completely:`;
               </div>
             )}
 
-            {/* Chat messages — flat blocks: assistant left, user right (no bubbles) */}
-            {messages.map((msg, i) => (
+            {/* Chat messages — use ChatMessage component for Manus-style rendering */}
+            {messages.map((msg, i) => {
+              // Use ChatMessage component for messages with task_cards, action_chips, or current_step (Manus-style)
+              if (msg.task_cards || msg.action_chips || msg.current_step) {
+                return <ChatMessage key={i} msg={msg} />;
+              }
+              
+              // Default rendering for regular messages
+              return (
               <div
                 key={i}
                 className={`flex w-full max-w-[720px] mx-auto ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
@@ -3348,7 +3373,9 @@ BUILD IT NOW â€” output every file completely:`;
                   </div>
                 </div>
               </div>
-            ))}
+            );
+            })}
+
 
             {/* Next suggestions */}
             {nextSuggestions.length > 0 && !isBuilding && (
