@@ -85,7 +85,7 @@ export default function ChatMessageManus({ msg }) {
         )}
         
         {/* "Thinking" indicator - blue dot + text */}
-        {msg.thinking && (
+        {(msg.thinking || msg.type === 'thinking') && (
           <div className="flex items-center gap-2 mt-4" style={{ color: '#2563eb' }}>
             <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#2563eb' }}></div>
             <span className="text-xs font-medium">Thinking</span>
