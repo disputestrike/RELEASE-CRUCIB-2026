@@ -110,6 +110,12 @@ function ChatMessage({ msg }) {
   
   // Manus-style rendering for messages with task_cards, action_chips, or current_step
   if (!user && (msg.task_cards || msg.action_chips || msg.current_step)) {
+    console.log('✨ RENDERING MANUS-STYLE MESSAGE:', {
+      content: msg.content?.substring(0, 50),
+      has_task_cards: !!msg.task_cards,
+      has_action_chips: !!msg.action_chips,
+      has_current_step: !!msg.current_step,
+    });
     return (
       <div className="flex w-full max-w-[720px] mx-auto justify-start">
         <div className="max-w-[min(92%,36rem)] flex flex-col items-start">
@@ -1324,6 +1330,17 @@ root.render(<${compName} />);` };
               metadata: data.metadata,
               timestamp: new Date().toISOString(),
             };
+            // DEBUG: Log message to verify Manus fields
+            if (data.task_cards || data.action_chips || data.current_step) {
+              console.log('🎯 MANUS MESSAGE CAPTURED:', {
+                type: msg.type,
+                has_task_cards: !!msg.task_cards,
+                has_action_chips: !!msg.action_chips,
+                has_current_step: !!msg.current_step,
+                task_cards_count: msg.task_cards?.tasks?.length || 0,
+                action_chips_count: msg.action_chips?.length || 0,
+              });
+            }
             setMessages(prev => [...prev, msg]);
           }
           
