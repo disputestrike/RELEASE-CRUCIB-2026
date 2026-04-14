@@ -13,6 +13,7 @@ import './Workspace.css';
 import VoiceWaveform from '../components/VoiceWaveform';
 import '../components/VoiceWaveform.css';
 import Logo from '../components/Logo';
+import ChatMessageManus from '../components/ChatMessageManus';
 import {
   ChevronDown,
   ChevronRight,
@@ -3646,9 +3647,9 @@ BUILD IT NOW â€” output every file completely:`;
               </div>
             )}
 
-            {/* Chat messages — ChatMessage handles both Manus-style and regular rendering */}
+            {/* Chat messages — ChatMessageManus is EXACT Manus UI replica */}
             {messages.map((msg, i) => (
-              <ChatMessage key={i} msg={msg} />
+              <ChatMessageManus key={i} msg={msg} />
             ))}
 
 
