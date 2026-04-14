@@ -118,9 +118,14 @@ async def process_message_streaming(session_id: str, user_message: str, websocke
             steps = event.get("steps", [])
             current_idx = event.get("current_idx", -1)
             
+            # DEBUG: Log what we're about to send
+            logger.info(f"SEND_PROGRESS: type={message['type']}, has_steps={bool(steps)}, current_idx={current_idx}, steps_len={len(steps)}")
+            
             if steps and current_idx >= 0:
                 message["task_cards"] = build_task_progress_card(steps, current_idx)
                 message["action_chips"] = build_action_chips(steps, current_idx)
+                
+                logger.info(f"ADDING TASK_CARDS: total={message['task_cards'].get('total')}, current={message['task_cards'].get('current')}, tasks_count={len(message['task_cards'].get('tasks', []))}")
                 
                 if 0 <= current_idx < len(steps):
                     elapsed = event.get("elapsed_seconds", 0)
