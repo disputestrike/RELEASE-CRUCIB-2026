@@ -3326,54 +3326,54 @@ BUILD IT NOW â€” output every file completely:`;
               
               // Default rendering for regular messages
               return (
-              <div
-                key={i}
-                className={`flex w-full max-w-[720px] mx-auto ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
                 <div
-                  className={`min-w-0 ${msg.role === 'user' ? 'max-w-[min(85%,30rem)] flex flex-col items-end' : 'max-w-[min(92%,36rem)] flex flex-col items-start'}`}
+                  key={i}
+                  className={`flex w-full max-w-[720px] mx-auto ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`text-[11px] font-semibold uppercase tracking-wide mb-1 w-full ${msg.role === 'user' ? 'text-right' : 'text-left'}`}
-                    style={{ color: 'var(--theme-muted, #71717a)' }}
+                    className={`min-w-0 ${msg.role === 'user' ? 'max-w-[min(85%,30rem)] flex flex-col items-end' : 'max-w-[min(92%,36rem)] flex flex-col items-start'}`}
                   >
-                    {msg.role === 'user' ? 'You' : 'CrucibAI'}
-                  </div>
-                  <div
-                    className={`text-[15px] leading-[1.6] w-full ${msg.role === 'user' ? 'text-right' : 'text-left'}`}
-                    style={{ color: msg.error ? 'var(--chat-error, #f87171)' : 'var(--theme-text, #e4e4e7)' }}
-                  >
-                    {msg.isBuilding ? (
-                      <div className={`flex items-center gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" style={{ color: 'var(--theme-accent)' }} />
-                        <span style={{ color: 'var(--theme-muted, #a1a1aa)' }}>{formatMsgContent(msg.content)}</span>
-                      </div>
-                    ) : (msg.role === 'assistant' && msg.error) ? (
-                      <ActionableError
-                        message={formatMsgContent(msg.content)}
-                        onRetry={() => { const lastUser = [...messages].reverse().find(m => m.role === 'user'); if (lastUser) { setInput(formatMsgContent(lastUser.content)); setTimeout(() => chatInputRef.current?.focus(), 0); } }}
-                        onViewLogs={() => setActivePanel('console')}
-                      />
-                    ) : (
-                      <pre className={`whitespace-pre-wrap font-sans text-[15px] leading-[1.6] m-0 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>{formatMsgContent(msg.content)}</pre>
-                    )}
-                    {msg.hasCode && (
-                      <div className={`workspace-code-actions mt-3 flex flex-wrap items-center gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <button type="button" onClick={() => setActivePanel('preview')} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition" style={{ color: 'var(--theme-muted, #a1a1aa)' }}>
-                          <Eye className="w-3 h-3" /> Preview
-                        </button>
-                        <button type="button" onClick={() => setActivePanel('code')} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition" style={{ color: 'var(--theme-muted, #a1a1aa)' }}>
-                          <FileCode className="w-3 h-3" /> Code
-                        </button>
-                        <button type="button" onClick={downloadCode} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition" style={{ color: 'var(--theme-muted, #a1a1aa)' }}>
-                          <Download className="w-3 h-3" /> Export
-                        </button>
-                      </div>
-                    )}
+                    <div
+                      className={`text-[11px] font-semibold uppercase tracking-wide mb-1 w-full ${msg.role === 'user' ? 'text-right' : 'text-left'}`}
+                      style={{ color: 'var(--theme-muted, #71717a)' }}
+                    >
+                      {msg.role === 'user' ? 'You' : 'CrucibAI'}
+                    </div>
+                    <div
+                      className={`text-[15px] leading-[1.6] w-full ${msg.role === 'user' ? 'text-right' : 'text-left'}`}
+                      style={{ color: msg.error ? 'var(--chat-error, #f87171)' : 'var(--theme-text, #e4e4e7)' }}
+                    >
+                      {msg.isBuilding ? (
+                        <div className={`flex items-center gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" style={{ color: 'var(--theme-accent)' }} />
+                          <span style={{ color: 'var(--theme-muted, #a1a1aa)' }}>{formatMsgContent(msg.content)}</span>
+                        </div>
+                      ) : (msg.role === 'assistant' && msg.error) ? (
+                        <ActionableError
+                          message={formatMsgContent(msg.content)}
+                          onRetry={() => { const lastUser = [...messages].reverse().find(m => m.role === 'user'); if (lastUser) { setInput(formatMsgContent(lastUser.content)); setTimeout(() => chatInputRef.current?.focus(), 0); } }}
+                          onViewLogs={() => setActivePanel('console')}
+                        />
+                      ) : (
+                        <pre className={`whitespace-pre-wrap font-sans text-[15px] leading-[1.6] m-0 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>{formatMsgContent(msg.content)}</pre>
+                      )}
+                      {msg.hasCode && (
+                        <div className={`workspace-code-actions mt-3 flex flex-wrap items-center gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                          <button type="button" onClick={() => setActivePanel('preview')} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition" style={{ color: 'var(--theme-muted, #a1a1aa)' }}>
+                            <Eye className="w-3 h-3" /> Preview
+                          </button>
+                          <button type="button" onClick={() => setActivePanel('code')} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition" style={{ color: 'var(--theme-muted, #a1a1aa)' }}>
+                            <FileCode className="w-3 h-3" /> Code
+                          </button>
+                          <button type="button" onClick={downloadCode} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition" style={{ color: 'var(--theme-muted, #a1a1aa)' }}>
+                            <Download className="w-3 h-3" /> Export
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
+              );
             })}
 
 
