@@ -11,6 +11,9 @@ import { computeSandpackFilesWithMeta } from '../workspace/sandpackFromFiles';
 import { SandpackProvider, SandpackPreview } from '@codesandbox/sandpack-react';
 import axios from 'axios';
 import './ManusStyle.css';
+import ConsciousnessStream from '../components/ConsciousnessStream';
+import InterruptibleFlow from '../components/InterruptibleFlow';
+import EmotionalPeaks from '../components/EmotionalPeaks';
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const Ico = {
@@ -150,9 +153,9 @@ export default function WorkspaceManusV2() {
   // ── Derive stage from live job status ───────────────────────────────────────
   useEffect(() => {
     if (!job) return;
-    if (job.status === 'completed') setStage('completed');
+    if (job.status === 'completed') { setStage('completed'); if (activePane === 'consciousness') setActivePane('preview'); }
     else if (job.status === 'failed') setStage('failed');
-    else if (job.status === 'running') setStage('running');
+    else if (job.status === 'running') { setStage('running'); if (activePane === 'preview' || activePane === 'proof') setActivePane('consciousness'); }
     else if (job.status === 'pending') setStage('running');
   }, [job?.status]);
 
@@ -323,6 +326,14 @@ export default function WorkspaceManusV2() {
 
   return (
     <div className="manus-shell">
+
+      {/* ── Emotional peaks — premium toast celebrations ── */}
+      <EmotionalPeaks
+        job={job}
+        steps={steps}
+        proof={proof}
+        stage={stage}
+      />
 
       {/* ── Top bar ── */}
       <div className="manus-topbar">
@@ -620,7 +631,7 @@ export default function WorkspaceManusV2() {
         {/* ── Right pane ── */}
         <div className="manus-right">
           <div className="manus-right-tabs">
-            {['preview','code','proof','failure','timeline'].map(p => (
+            {['preview','consciousness','code','proof','failure','timeline'].map(p => (
               <button key={p} className={`manus-right-tab ${activePane===p?'active':''}`}
                 onClick={() => setActivePane(p)}>
                 {p.charAt(0).toUpperCase()+p.slice(1)}
@@ -853,6 +864,24 @@ export default function WorkspaceManusV2() {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* ── Consciousness Stream — real AI thought stream ── */}
+            {activePane === 'consciousness' && (
+              <div style={{flex:1, overflow:'hidden', display:'flex', flexDirection:'column'}}>
+                <ConsciousnessStream
+                  events={events}
+                  steps={steps}
+                  isRunning={isRunning}
+                  proof={proof}
+                />
+                <InterruptibleFlow
+                  jobId={activeJobId}
+                  steps={steps}
+                  isRunning={isRunning}
+                  token={token}
+                />
               </div>
             )}
 
