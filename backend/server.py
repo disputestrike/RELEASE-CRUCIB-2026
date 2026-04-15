@@ -5540,6 +5540,14 @@ async def _run_single_agent_with_retry(
     except ImportError:
         return {"output": "", "tokens_used": 0, "status": "skipped", "reason": "not available"}
 
+# Mount adapter layer (REST + WebSocket for frontend backendContract.ts)
+try:
+    from adapter.main import mount_on_main_app
+    mount_on_main_app(app)
+    logger.info("Adapter layer mounted — /api/build, /api/spawn, /ws/events active")
+except Exception as _adapter_err:
+    logger.warning("Adapter layer unavailable: %s", _adapter_err)
+
 # Register workflows router
 try:
     from routes.workflows import router as workflows_router

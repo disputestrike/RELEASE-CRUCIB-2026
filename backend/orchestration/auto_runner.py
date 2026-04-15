@@ -239,6 +239,14 @@ async def run_job_to_completion(
             pass
         # ── End hook ────────────────────────────────────────────────────────────
 
+        # ── Bridge job started to WebSocket ──────────────────────────────────────
+        try:
+            from adapter.services.event_bridge import on_job_started as _bridge_start
+            _bridge_start(job_id, job.get("goal", ""), len(steps))
+        except Exception:
+            pass
+        # ── End bridge ────────────────────────────────────────────────────────
+
         # Pre-execution THINK: user-facing brain line before any step runs (classify path + intent).
         job_for_think = await get_job(job_id)
         steps_for_think = await get_steps(job_id)
@@ -1027,6 +1035,14 @@ async def _execute_job_loop(
     except Exception as _hk:
         pass
     # ── End hook ──────────────────────────────────────────────────────────────
+
+    # ── Bridge job_completed to WebSocket clients via adapter event_bridge ──────
+    try:
+        from adapter.services.event_bridge import on_job_complete as _bridge_complete
+        _bridge_complete(job_id, float(quality_score or 0))
+    except Exception:
+        pass
+    # ── End bridge ────────────────────────────────────────────────────────────
 
     # ── Skill Memory: extract learnings from this build ────────────────────────
     try:
