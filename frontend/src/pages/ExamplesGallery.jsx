@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileCode, Loader2, GitFork } from 'lucide-react';
-import { useAuth, API } from '../App';
+import { useAuth } from '../App';
+import { API_BASE as API } from '../apiBase';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';
 import QualityScore from '../components/QualityScore';

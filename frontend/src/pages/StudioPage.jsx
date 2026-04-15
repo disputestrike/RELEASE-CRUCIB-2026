@@ -3,7 +3,8 @@ import {
   Bot, Plus, Trash2, CheckCircle, Edit2, X, Save, Mic,
   Globe, MessageSquare, User, Sparkles, ChevronDown
 } from 'lucide-react';
-import { useAuth, API } from '../App';
+import { useAuth } from '../App';
+import { API_BASE as API } from '../apiBase';
 import axios from 'axios';
 
 const T = {

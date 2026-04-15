@@ -3,7 +3,8 @@ import {
   Radio, Globe, Slack, Smartphone, Webhook, Plus, X, Check,
   Copy, ExternalLink, Settings, CheckCircle, AlertCircle, Clock, Zap
 } from 'lucide-react';
-import { useAuth, API } from '../App';
+import { useAuth } from '../App';
+import { API_BASE as API } from '../apiBase';
 import axios from 'axios';
 
 const T = {

@@ -3,7 +3,8 @@ import {
   MessageSquare, User, X, Search, Archive, StopCircle,
   Clock, CheckCircle, Circle, ChevronRight, Filter
 } from 'lucide-react';
-import { useAuth, API } from '../App';
+import { useAuth } from '../App';
+import { API_BASE as API } from '../apiBase';
 import axios from 'axios';
 
 const T = {

@@ -3,7 +3,8 @@ import {
   Users, Plus, X, Mail, Shield, Crown, Edit2, Trash2,
   Clock, CheckCircle, AlertCircle, ChevronDown
 } from 'lucide-react';
-import { useAuth, API } from '../App';
+import { useAuth } from '../App';
+import { API_BASE as API } from '../apiBase';
 import axios from 'axios';
 
 const T = {

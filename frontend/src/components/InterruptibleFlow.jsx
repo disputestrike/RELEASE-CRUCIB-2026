@@ -5,7 +5,7 @@
  */
 import React, { useState, useCallback } from 'react';
 import axios from 'axios';
-import { API } from '../App';
+import { API_BASE as API } from '../apiBase';
 
 const QUICK_ACTIONS = [
   { label: '⏭ Skip phase',     kind: 'skip_phase',       command: 'skip current phase and move to next' },

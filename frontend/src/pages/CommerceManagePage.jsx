@@ -3,7 +3,8 @@ import {
   ShoppingBag, Plus, X, DollarSign, Package, ShoppingCart,
   TrendingUp, ExternalLink, CreditCard, Repeat
 } from 'lucide-react';
-import { useAuth, API } from '../App';
+import { useAuth } from '../App';
+import { API_BASE as API } from '../apiBase';
 import axios from 'axios';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer

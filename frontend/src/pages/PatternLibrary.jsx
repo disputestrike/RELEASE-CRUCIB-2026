@@ -4,7 +4,8 @@ import {
   Library, Search, Lock, CreditCard, Code, Database,
   Globe, Shield, Zap, Copy, Check, TrendingUp
 } from 'lucide-react';
-import { useAuth, API } from '../App';
+import { useAuth } from '../App';
+import { API_BASE as API } from '../apiBase';
 import axios from 'axios';
 
 const PatternLibrary = () => {

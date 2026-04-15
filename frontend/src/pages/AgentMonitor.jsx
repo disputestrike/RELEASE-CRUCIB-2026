@@ -5,7 +5,8 @@ import {
   Bot, CheckCircle, Clock, AlertCircle, Play, Pause,
   Zap, ArrowLeft, ExternalLink, Download, RefreshCw, ChevronDown, ChevronRight, Database, Code, List, Eye, ShieldCheck, Star
 } from 'lucide-react';
-import { useAuth, API } from '../App';
+import { useAuth } from '../App';
+import { API_BASE as API } from '../apiBase';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';
 import { fetchAllWorkspaceFilePaths } from '../workspace/workspaceFileUtils';

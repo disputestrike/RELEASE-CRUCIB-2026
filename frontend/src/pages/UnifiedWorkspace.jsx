@@ -4,7 +4,8 @@
  */
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth, API } from '../App';
+import { useAuth } from '../App';
+import { API_BASE as API } from '../apiBase';
 import axios from 'axios';
 import { useJobStream } from '../hooks/useJobStream';
 import {

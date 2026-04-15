@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { API } from "../App";
+import { API_BASE as API } from '../apiBase';
 import { logApiError } from "../utils/apiError";
 
 export default function EcosystemIntegration() {

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import axios from "axios";
-import { API, useAuth } from "../App";
+import { useAuth } from '../App';
+import { API_BASE as API } from '../apiBase';
 import { logApiError } from "../utils/apiError";
 
 export default function IDEProfiler() {

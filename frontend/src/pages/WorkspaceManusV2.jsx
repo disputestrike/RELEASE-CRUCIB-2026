@@ -4,7 +4,8 @@
  */
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { useAuth, API } from '../App';
+import { useAuth } from '../App';
+import { API_BASE as API } from '../apiBase';
 import { useJobStream } from '../hooks/useJobStream';
 import { useTaskStore } from '../stores/useTaskStore';
 import { computeSandpackFilesWithMeta } from '../workspace/sandpackFromFiles';

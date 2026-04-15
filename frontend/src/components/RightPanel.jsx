@@ -5,7 +5,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { API } from '../App';
+import { API_BASE as API } from '../apiBase';
 import { SandpackProvider, SandpackPreview } from '@codesandbox/sandpack-react';
 import { computeSandpackFilesWithMeta } from '../workspace/sandpackFromFiles';
 

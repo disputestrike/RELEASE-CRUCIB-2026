@@ -11,7 +11,8 @@ import {
   ThumbsUp, ThumbsDown, Share2, RefreshCw,
 } from 'lucide-react';
 import Logo from '../components/Logo';
-import { useAuth, API } from '../App';
+import { useAuth } from '../App';
+import { API_BASE as API } from '../apiBase';
 import { useTaskStore } from '../stores/useTaskStore';
 import axios from 'axios';
 import VoiceWaveform from '../components/VoiceWaveform';

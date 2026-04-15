@@ -3,7 +3,8 @@ import {
   BookOpen, Plus, Trash2, X, Search, Upload, Link as LinkIcon,
   FileText, ChevronDown, ChevronRight, CheckCircle, Clock, AlertCircle
 } from 'lucide-react';
-import { useAuth, API } from '../App';
+import { useAuth } from '../App';
+import { API_BASE as API } from '../apiBase';
 import axios from 'axios';
 
 const T = {

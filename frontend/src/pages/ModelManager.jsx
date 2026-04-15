@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useAuth, API } from '../App';
+import { useAuth } from '../App';
+import { API_BASE as API } from '../apiBase';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';
 import { Cpu, Zap, CheckCircle, AlertCircle, RefreshCw, Info } from 'lucide-react';

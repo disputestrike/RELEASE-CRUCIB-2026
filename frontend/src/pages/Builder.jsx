@@ -8,7 +8,8 @@ import {
   Rocket, RefreshCw, Sparkles, Bot, Check, AlertCircle,
   Maximize2, Minimize2, ExternalLink, Copy, Settings
 } from 'lucide-react';
-import { useAuth, API } from '../App';
+import { useAuth } from '../App';
+import { API_BASE as API } from '../apiBase';
 import axios from 'axios';
 
 const Builder = () => {
