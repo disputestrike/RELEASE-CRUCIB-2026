@@ -1,6 +1,5 @@
 # Dependencies and build outputs (rebuilt in image)
 frontend/node_modules
-frontend/build
 backend/__pycache__
 **/__pycache__
 .git
