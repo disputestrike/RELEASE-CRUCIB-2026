@@ -4,7 +4,7 @@
  */
 import { useState } from "react";
 import axios from "axios";
-import { useAuth } from "../App";
+import { useAuth } from '../authContext';
 import { formatModelUsageLine, isDevStubModel } from "../utils/modelUsageLabel";
 import { FileText, Presentation, Table, Loader2, Download } from "lucide-react";
 

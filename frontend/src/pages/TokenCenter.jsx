@@ -5,7 +5,7 @@ import {
   Zap, TrendingUp, ArrowUpRight, Clock, Check, 
   CreditCard, History, PieChart, Link2, Copy
 } from 'lucide-react';
-import { useAuth } from '../App';
+import { useAuth } from '../authContext';
 import { API_BASE as API } from '../apiBase';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';

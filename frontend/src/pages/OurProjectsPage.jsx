@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ArrowRight, Check, Menu, X, Play, ArrowUpRight, FileCode, GitFork } from 'lucide-react';
-import { useAuth } from '../App';
+import { useAuth } from '../authContext';
 import { API_BASE as API } from '../apiBase';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';

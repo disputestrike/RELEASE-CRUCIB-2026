@@ -5,7 +5,7 @@ import {
   Building2, Check, Send, Shield, Lock, Server, Users, Activity,
   Key, FileText, Globe, Zap, AlertCircle, Clock, CheckCircle2,
 } from 'lucide-react';
-import { useAuth } from '../App';
+import { useAuth } from '../authContext';
 import { API_BASE as API } from '../apiBase';
 import PublicNav from '../components/PublicNav';
 import PublicFooter from '../components/PublicFooter';

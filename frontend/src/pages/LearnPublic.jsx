@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, Code, Zap, Shield, Palette, ArrowRight, ChevronDown } from 'lucide-react';
-import { useAuth } from '../App';
+import { useAuth } from '../authContext';
 import PublicNav from '../components/PublicNav';
 import PublicFooter from '../components/PublicFooter';
 

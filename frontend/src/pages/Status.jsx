@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../App';
+import { useAuth } from '../authContext';
 import { API_BASE as API } from '../apiBase';
 import PublicNav from '../components/PublicNav';
 import PublicFooter from '../components/PublicFooter';

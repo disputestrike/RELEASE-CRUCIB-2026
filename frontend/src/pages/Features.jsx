@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useAuth } from '../App';
+import { useAuth } from '../authContext';
 import PublicNav from '../components/PublicNav';
 import PublicFooter from '../components/PublicFooter';
 import { Code2, Zap, Bot, Shield, Download, Keyboard } from 'lucide-react';

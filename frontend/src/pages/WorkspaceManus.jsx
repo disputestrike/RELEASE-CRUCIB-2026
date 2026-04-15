@@ -6,7 +6,7 @@ import { SandpackProvider, SandpackPreview } from "@codesandbox/sandpack-react";
 import SandpackErrorBoundary from "../components/SandpackErrorBoundary";
 import "../components/SandpackErrorBoundary.css";
 import { Globe, Rocket, Download, Loader2 } from "lucide-react";
-import { useAuth } from '../App';
+import { useAuth } from '../authContext';
 import { API_BASE as API } from '../apiBase';
 import { useTaskStore } from "../stores/useTaskStore";
 import { computeSandpackFilesWithMeta, computeSandpackDeps } from "../workspace/sandpackFromFiles";

@@ -4,7 +4,7 @@ import {
   Library, Search, Lock, CreditCard, Code, Database,
   Globe, Shield, Zap, Copy, Check, TrendingUp
 } from 'lucide-react';
-import { useAuth } from '../App';
+import { useAuth } from '../authContext';
 import { API_BASE as API } from '../apiBase';
 import axios from 'axios';
 

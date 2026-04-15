@@ -3,7 +3,7 @@
  * Mode syncs from user.workspace_mode (backend). Toggle saves via API.
  */
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { useAuth } from '../App';
+import { useAuth } from '../authContext';
 
 const LayoutContext = createContext(null);
 

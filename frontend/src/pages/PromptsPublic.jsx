@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { BookOpen, Copy, Check, ArrowRight } from 'lucide-react';
-import { useAuth } from '../App';
+import { useAuth } from '../authContext';
 import { API_BASE as API } from '../apiBase';
 import PublicNav from '../components/PublicNav';
 import { withWorkspaceHandoffNonce } from '../utils/workspaceHandoff';

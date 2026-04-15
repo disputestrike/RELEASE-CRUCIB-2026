@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, createContext, useContext, Component, useCallback } from "react";
+import { AuthContext, useAuth as _useAuth } from "./authContext";
 
 // Theme system — respects user preference stored in localStorage
 const THEME_KEY = 'crucibai-theme';
@@ -116,9 +117,8 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
 console.log("API configured as:", API, "BACKEND_URL:", BACKEND_URL || "(same-origin / proxy to :8000 in dev)");
 
 // Auth Context
-const AuthContext = createContext(null);
-
-export const useAuth = () => useContext(AuthContext);
+// AuthContext and useAuth imported from ./authContext
+export const useAuth = _useAuth; // re-export for backward compat
 
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);

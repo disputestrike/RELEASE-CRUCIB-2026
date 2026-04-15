@@ -6,7 +6,7 @@ import {
   X, ChevronDown, Copy, Check, Play, Terminal, Maximize2,
   MessageSquare, FileText, Database, Zap, Bot
 } from 'lucide-react';
-import { useAuth } from '../App';
+import { useAuth } from '../authContext';
 import { API_BASE as API } from '../apiBase';
 import axios from 'axios';
 import Layout3Column from '../components/Layout3Column';
