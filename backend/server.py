@@ -3398,6 +3398,30 @@ def _assert_job_owner_match(owner_id: Optional[str], user: Optional[dict]) -> No
         raise HTTPException(status_code=403, detail="Not your job")
 
 
+def _project_workspace_path(project_id: str) -> Path:
+    """Return the workspace directory for a project. Safe against path traversal."""
+    safe_id = (project_id or "default").replace("/", "_").replace("\\", "_")
+    return WORKSPACE_ROOT / safe_id
+
+
+async def _resolve_job_project_id_for_user(
+    project_id: Optional[str], user: dict
+) -> str:
+    """Resolve a job project_id — falls back to user.id when none provided."""
+    pid = (project_id or "").strip()
+    if not pid:
+        return user["id"]
+    if pid == user.get("id"):
+        return pid
+    try:
+        from routes.projects import _user_can_access_project_workspace
+        if not await _user_can_access_project_workspace(user.get("id"), pid):
+            raise HTTPException(status_code=404, detail="Project not found")
+    except ImportError:
+        pass
+    return pid
+
+
 async def _get_task_for_user(task_id: str, user: dict) -> Optional[dict]:
     """Return a task only when it belongs to the authenticated user."""
     if not task_id:
