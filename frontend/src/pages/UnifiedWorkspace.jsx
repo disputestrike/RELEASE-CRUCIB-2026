@@ -33,6 +33,7 @@ import SystemStatusHUD from '../components/AutoRunner/SystemStatusHUD';
 import PreviewPanel from '../components/AutoRunner/PreviewPanel';
 import ResizableDivider from '../components/AutoRunner/ResizableDivider';
 import WorkspaceFileTree from '../components/AutoRunner/WorkspaceFileTree';
+import WorkspaceOrchestrationBoard from '../components/workspace-v4/WorkspaceOrchestrationBoard';
 import WorkspaceFileViewer from '../components/AutoRunner/WorkspaceFileViewer';
 import { DEFAULT_FILES } from '../components/workspace/constants';
 import { computeSandpackFilesWithMeta, computeSandpackDeps } from '../workspace/sandpackFromFiles';
@@ -54,6 +55,7 @@ import {
 } from '../workspace/workspaceLiveUi';
 import '../styles/unified-workspace-tokens.css';
 import './AutoRunnerPage.css';
+import '../components/workspace-v4/workspace-v4.css';
 
 const RIGHT_ORDER = ['preview', 'proof', 'explorer', 'replay', 'failure', 'timeline', 'code'];
 
@@ -567,6 +569,34 @@ export default function UnifiedWorkspace() {
     const id = setTimeout(() => setWorkspacePullKey((k) => k + 1), 600);
     return () => clearTimeout(id);
   }, [events]);
+
+  // Wire brain_guidance SSE events → live chat feed so the brain talks during builds
+  const lastBrainEventIdRef = useRef(null);
+  useEffect(() => {
+    if (!events.length) return;
+    const last = events[events.length - 1];
+    const t = last?.type || last?.event_type;
+    if (t !== 'brain_guidance') return;
+    // dedupe — only push if this is a new event
+    const evId = last?.id || last?.event_id || JSON.stringify(last).slice(0, 80);
+    if (lastBrainEventIdRef.current === evId) return;
+    lastBrainEventIdRef.current = evId;
+    // parse payload
+    const p = last?.payload && typeof last.payload === 'object'
+      ? last.payload
+      : (() => { try { return JSON.parse(last?.payload_json || '{}'); } catch { return {}; } })();
+    const headline = p?.headline || '';
+    const summary = p?.summary || '';
+    const body = [headline, summary].filter(Boolean).join(' — ');
+    if (!body.trim()) return;
+    const msgId = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `brain_${Date.now()}`;
+    setUserChatMessages((prev) => [
+      ...prev,
+      { id: msgId, body, role: 'assistant', jobId: effectiveJobId, pendingBind: false, ts: Date.now() },
+    ]);
+  }, [events, effectiveJobId]);
 
   const prevJobStatusRef = useRef(null);
   useEffect(() => {
@@ -1095,6 +1125,7 @@ export default function UnifiedWorkspace() {
     isCompleted,
   });
   const previewUrl =
+    job?.dev_server_url ||
     job?.preview_url ||
     job?.published_url ||
     job?.deploy_url ||
@@ -1175,19 +1206,38 @@ export default function UnifiedWorkspace() {
               repairQueueLen={repairQueueLen}
               steps={steps}
             />
-            <WorkspaceActivityFeed
-              stage={stage}
-              plan={plan}
-              job={job}
-              steps={steps}
-              events={events}
-              effectiveJobId={effectiveJobId}
-              loading={loading}
-              connectionMode={connectionMode}
-              fallbackGoal={goal}
-              hideGoalEcho={userChatMessages.length > 0}
-              openWorkspacePath={openWorkspacePath}
-            />
+            {(stage === 'running' || stage === 'completed' || stage === 'failed') && (
+              <div className="wsv4-orchestration-frame">
+                <WorkspaceOrchestrationBoard
+                  buildTitle={buildDisplayTitle}
+                  plan={plan}
+                  stage={stage}
+                  job={job}
+                  steps={steps}
+                  events={events}
+                  latestFailure={latestFailure}
+                  milestoneBatch={milestoneBatch}
+                  repairQueueLen={repairQueueLen}
+                  onOpenPane={(pane) => setActivePane(pane)}
+                  onOpenWorkspacePath={openWorkspacePath}
+                />
+              </div>
+            )}
+            {stage === 'input' && (
+              <WorkspaceActivityFeed
+                stage={stage}
+                plan={plan}
+                job={job}
+                steps={steps}
+                events={events}
+                effectiveJobId={effectiveJobId}
+                loading={loading}
+                connectionMode={connectionMode}
+                fallbackGoal={goal}
+                hideGoalEcho={userChatMessages.length > 0}
+                openWorkspacePath={openWorkspacePath}
+              />
+            )}
 
             {stage === 'plan' && plan && (
               <PlanApproval
@@ -1212,6 +1262,8 @@ export default function UnifiedWorkspace() {
                   <BuildCompletionCard
                     job={job}
                     proof={proof}
+                    apiBase={API}
+                    token={token}
                     onOpenPreview={() => {
                       setActivePane('preview');
                       setRightCollapsed(false);

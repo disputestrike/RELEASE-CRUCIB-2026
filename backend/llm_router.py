@@ -7,7 +7,7 @@ Routes requests to Cerebras, Haiku, or Sonnet based on:
 - Speed selector (lite, pro, max)
 - Credit availability
 
-Free tier:    Cerebras (default llama3.1-8b; override CEREBRAS_MODEL)
+Free tier:    Anthropic Haiku (claude-haiku-4-5-20251001); Cerebras fallback
 Paid lite:    Cerebras (same)
 Paid pro/max: Claude Haiku (paid quality)
 Critical/complex (paid pro+): Claude Sonnet (highest quality)
@@ -165,9 +165,9 @@ class LLMRouter:
     - Credit availability
 
     Routing tiers:
-      Free        → Cerebras llama-3.3-70b (fast, high-quality 70B model)
-      Builder     → lite: Cerebras; pro: Haiku
-      Pro/Scale   → lite: Cerebras; pro: Haiku; max: Sonnet
+      Free        → Anthropic Haiku (claude-haiku-4-5-20251001) → Cerebras fallback
+      Builder     → lite: Haiku; pro: Haiku
+      Pro/Scale   → lite: Haiku; pro: Sonnet; max: Sonnet
       Teams       → lite: Cerebras; pro: Haiku; max: Sonnet
       Critical    → always Sonnet for paid, Cerebras for free
     """
@@ -204,20 +204,20 @@ class LLMRouter:
 
         # TIER-BASED ROUTING
         if user_tier == "free":
-            # Free tier: Cerebras llama-3.3-70b (free, 70B quality) → Haiku fallback
-            chain = ["cerebras", "haiku"]
+            # Free tier: Haiku (Claude quality) → Cerebras fallback
+            chain = ["haiku", "cerebras"]
 
         elif user_tier == "builder":
             if speed_selector == "lite":
-                chain = ["cerebras", "haiku"]
+                chain = ["haiku", "cerebras"]
             else:  # pro
                 chain = ["haiku", "cerebras"]
 
         elif is_pro_plus:
             if speed_selector == "lite":
-                chain = ["cerebras", "haiku"]
-            elif speed_selector == "pro":
                 chain = ["haiku", "cerebras"]
+            elif speed_selector == "pro":
+                chain = ["sonnet", "haiku", "cerebras"]
             else:  # max — use Sonnet for best quality
                 chain = ["sonnet", "haiku", "cerebras"]
 

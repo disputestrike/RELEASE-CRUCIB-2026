@@ -9,6 +9,15 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from domain.step_state import (
+    STEP_STATUS_COMPLETED,
+    STEP_STATUS_FAILED,
+    STEP_STATUS_RUNNING,
+    TERMINAL_STEP_STATES,
+    assert_step_transition,
+    normalize_step_status,
+)
+
 logger = logging.getLogger(__name__)
 
 # ── State enums ──────────────────────────────────────────────────────────────
@@ -36,7 +45,6 @@ STEP_STATES = [
 ]
 
 TERMINAL_JOB_STATES = {"completed", "failed", "cancelled"}
-TERMINAL_STEP_STATES = {"completed", "failed", "skipped"}
 
 # ── DB helpers (uses asyncpg pool injected at startup) ───────────────────────
 
@@ -317,17 +325,21 @@ def _coerce_step_update_values(extra: Dict[str, Any]) -> Dict[str, Any]:
 async def update_step_state(
     step_id: str, status: str, extra: Optional[Dict] = None
 ) -> None:
-    updates = {"status": status, "updated_at": _now()}
+    normalized_status = normalize_step_status(status)
+    updates = {"status": normalized_status, "updated_at": _now()}
     if extra:
         updates.update(_coerce_step_update_values(extra))
-    if status == "running":
+    if normalized_status == STEP_STATUS_RUNNING:
         updates.setdefault("started_at", _now())
-    if status in TERMINAL_STEP_STATES:
+    if normalized_status in TERMINAL_STEP_STATES:
         updates.setdefault("completed_at", _now())
     _coerce_ts_updates(updates)
     set_clause = ", ".join(f"{k}=${i+2}" for i, k in enumerate(updates))
     vals = list(updates.values())
     async with _pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT status FROM job_steps WHERE id=$1", step_id)
+        current_status = row["status"] if row and row.get("status") is not None else None
+        assert_step_transition(current_status, normalized_status)
         await conn.execute(
             f"UPDATE job_steps SET {set_clause} WHERE id=$1", step_id, *vals
         )

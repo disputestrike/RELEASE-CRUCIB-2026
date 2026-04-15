@@ -2,7 +2,9 @@
  * PreviewPanel — live preview: remote iframe when URL ready, else Sandpack from editor files.
  * `sandpackIsFallback`: show trust banner when Sandpack boots from a heuristic entry (no App.jsx).
  */
-import React from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import axios from 'axios';
+import ErrorOverlay from '../ErrorOverlay';
 import { SandpackProvider, SandpackPreview } from '@codesandbox/sandpack-react';
 import { RefreshCw, ExternalLink } from 'lucide-react';
 import SandpackErrorBoundary from '../SandpackErrorBoundary';
@@ -18,9 +20,53 @@ export default function PreviewPanel({
   sandpackIsFallback = false,
   /** Plain-language hint when preview cannot render (e.g. verify failure). */
   blockedDetail = null,
+  jobId = null,
+  token = null,
+  apiBase = '',
 }) {
+  const iframeRef = useRef(null);
+  const [devServerUrl, setDevServerUrl] = useState(null);
+  const [devPreviewError, setDevPreviewError] = useState(null);
+  const [isBootingDevPreview, setIsBootingDevPreview] = useState(false);
+  const [retryTick, setRetryTick] = useState(0);
+
   const hasSandpack = sandpackFiles && Object.keys(sandpackFiles).length > 0;
-  const useRemote = status === 'ready' && previewUrl;
+  const remotePreviewUrl = useMemo(() => previewUrl || devServerUrl || null, [previewUrl, devServerUrl]);
+  const useRemote = Boolean(remotePreviewUrl);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (previewUrl || !jobId || !token || !apiBase) return undefined;
+    setIsBootingDevPreview(true);
+    setDevPreviewError(null);
+    axios.get(`${apiBase}/jobs/${jobId}/dev-preview`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => {
+        if (cancelled) return;
+        setDevServerUrl(res.data?.dev_server_url || null);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        const detail = err?.response?.data?.detail || err?.message || 'Unable to start live preview';
+        setDevPreviewError(String(detail));
+      })
+      .finally(() => { if (!cancelled) setIsBootingDevPreview(false); });
+    return () => { cancelled = true; };
+  }, [previewUrl, jobId, token, apiBase, retryTick]);
+
+  useEffect(() => {
+    if (!jobId || !token || !apiBase || !remotePreviewUrl) return undefined;
+    const wsBase = apiBase.replace(/^http/i, 'ws');
+    const ws = new WebSocket(`${wsBase}/ws/jobs/${jobId}/preview-watch?token=${encodeURIComponent(token)}`);
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data || '{}');
+        if (data?.type === 'files_changed' && Array.isArray(data.files) && data.files.length && iframeRef.current && remotePreviewUrl) {
+          iframeRef.current.src = `${remotePreviewUrl.replace(/\/$/, '')}/?t=${Date.now()}`;
+        }
+      } catch {}
+    };
+    return () => { try { ws.close(); } catch {} };
+  }, [jobId, token, apiBase, remotePreviewUrl]);
 
   const statusColor = useRemote
     ? 'var(--state-success)'
@@ -48,7 +94,7 @@ export default function PreviewPanel({
         <div className="pp-preview-title-row">
           <span className="pp-preview-dot" style={{ background: statusColor }} />
           <span className="pp-preview-title">Live Preview</span>
-          <span className="pp-preview-status">{statusLabel}</span>
+          <span className="pp-preview-status">{devServerUrl && !previewUrl ? 'Hot reload' : statusLabel}</span>
         </div>
         <div className="pp-preview-actions">
           {useRemote && (
@@ -57,14 +103,13 @@ export default function PreviewPanel({
                 type="button"
                 className="pp-preview-btn"
                 onClick={() => {
-                  const iframe = document.querySelector('.pp-preview-iframe');
-                  if (iframe) iframe.src = previewUrl;
+                  if (iframeRef.current && remotePreviewUrl) iframeRef.current.src = `${remotePreviewUrl.replace(/\/$/, '')}/?t=${Date.now()}`;
                 }}
                 title="Refresh preview"
               >
                 <RefreshCw size={12} />
               </button>
-              <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="pp-preview-btn" title="Open in new tab">
+              <a href={remotePreviewUrl} target="_blank" rel="noopener noreferrer" className="pp-preview-btn" title="Open in new tab">
                 <ExternalLink size={12} />
               </a>
             </>
@@ -73,6 +118,11 @@ export default function PreviewPanel({
       </div>
 
       <div className="pp-preview-body">
+        <ErrorOverlay
+          title={isBootingDevPreview ? 'Starting live preview' : 'Preview issue'}
+          message={isBootingDevPreview ? 'Booting a workspace dev server so preview updates without a manual refresh.' : devPreviewError}
+          onRetry={jobId && token && apiBase ? () => { setDevServerUrl(null); setDevPreviewError(null); setIsBootingDevPreview(false); setRetryTick((v) => v + 1); } : null}
+        />
         {status === 'blocked' && hasSandpack && (
           <div className="pp-preview-blocked-banner" role="status">
             <span className="pp-preview-blocked-title">Preview paused — we&apos;ll continue with you</span>
@@ -173,7 +223,7 @@ root.render(<App />);`,
         )}
 
         {useRemote && (
-          <iframe className="pp-preview-iframe" src={previewUrl} title="Live Preview" />
+          <iframe ref={iframeRef} className="pp-preview-iframe" src={remotePreviewUrl} title="Live Preview" />
         )}
 
         {!useRemote && hasSandpack && sandpackDeps && sandpackIsFallback && (

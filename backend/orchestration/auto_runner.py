@@ -596,6 +596,18 @@ async def _execute_job_loop(
                         "recorded_at": datetime.now(timezone.utc).isoformat(),
                     },
                 )
+                # Emit brain progress narration so the workspace chat updates live
+                try:
+                    current_steps = await get_steps(job_id)
+                    current_job = await get_job(job_id)
+                    await maybe_emit_progress_narrative(
+                        job_id,
+                        current_steps,
+                        phase_label=phase_label,
+                        job_goal=(current_job or {}).get("goal", ""),
+                    )
+                except Exception:
+                    logger.debug("auto_runner: progress narrative skipped", exc_info=True)
         except Exception:
             logger.debug("auto_runner: milestone checkpoint skipped", exc_info=True)
 

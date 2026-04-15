@@ -198,3 +198,6 @@ def create_trust_router(root_dir: Path) -> APIRouter:
         }
 
     return router
+
+
+router = create_trust_router(Path(__file__).resolve().parents[1])

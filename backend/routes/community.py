@@ -129,3 +129,6 @@ def create_community_router() -> APIRouter:
         }
 
     return router
+
+
+router = create_community_router()

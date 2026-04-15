@@ -16,6 +16,13 @@ import re
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from services.job_service import (
+    create_job_service,
+    get_job_checkpoint_service,
+    get_job_service,
+    list_jobs_service,
+    update_job_service,
+)
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -102,42 +109,17 @@ async def create_job(
 ):
     """Create a new job (plan + steps) for a project."""
     try:
-        rs = _get_runtime_state()
-        pool = await _get_pool()
-        rs.set_pool(pool)
-
         from orchestration import planner as planner_mod
         from orchestration.dag_engine import build_dag_from_plan
 
-        # Auto-assign project_id from user when not supplied
-        project_id = body.project_id or user.get("id", "default")
-
-        # Ensure FK prerequisites exist
-        await rs.ensure_job_fk_prerequisites(project_id, user.get("id"))
-
-        plan = await planner_mod.generate_plan(body.goal, project_state={})
-        job = await rs.create_job(
-            project_id=project_id,
-            mode=body.mode or "guided",
-            goal=body.goal,
-            user_id=user.get("id"),
+        return await create_job_service(
+            body=body,
+            user=user,
+            runtime_state_getter=_get_runtime_state,
+            pool_getter=_get_pool,
+            generate_plan=planner_mod.generate_plan,
+            build_dag_from_plan=build_dag_from_plan,
         )
-        step_defs = build_dag_from_plan(plan)
-        for idx, sd in enumerate(step_defs):
-            await rs.create_step(
-                job_id=job["id"],
-                step_key=sd["step_key"],
-                agent_name=sd["agent_name"],
-                phase=sd["phase"],
-                depends_on=sd["depends_on"],
-                order_index=idx,
-            )
-        return {
-            "success": True,
-            "job": job,
-            "plan": plan,
-            "websocket_url": f"/api/job/{job['id']}/progress",
-        }
     except HTTPException:
         raise
     except Exception as e:
@@ -153,13 +135,13 @@ async def list_jobs(
 ):
     """List recent jobs for the authenticated user."""
     try:
-        rs = _get_runtime_state()
-        pool = await _get_pool()
-        rs.set_pool(pool)
-        jobs = await rs.list_jobs_for_user(user["id"], limit=limit)
-        if status:
-            jobs = [j for j in jobs if j.get("status") == status]
-        return {"success": True, "jobs": jobs, "count": len(jobs)}
+        return await list_jobs_service(
+            user=user,
+            status=status,
+            limit=limit,
+            runtime_state_getter=_get_runtime_state,
+            pool_getter=_get_pool,
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -178,14 +160,12 @@ async def get_job(
     so the UI can narrate blockers even if proof rows are still loading.
     """
     try:
-        job = await _resolve_job(job_id, user)
-        latest_failure = None
-        try:
-            rs = _get_runtime_state()
-            latest_failure = await rs.load_checkpoint(job_id, "latest_failure")
-        except Exception:
-            logger.debug("get_job: latest_failure checkpoint skipped", exc_info=True)
-        return {"success": True, "job": job, "latest_failure": latest_failure}
+        return await get_job_service(
+            job_id=job_id,
+            user=user,
+            resolve_job=_resolve_job,
+            runtime_state_getter=_get_runtime_state,
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -205,12 +185,14 @@ async def get_job_checkpoint(
     if not _CHECKPOINT_KEY_PATTERN.fullmatch(checkpoint_key or ""):
         raise HTTPException(status_code=400, detail="Invalid checkpoint_key")
     try:
-        await _resolve_job(job_id, user)
-        rs = _get_runtime_state()
-        pool = await _get_pool()
-        rs.set_pool(pool)
-        data = await rs.load_checkpoint(job_id, checkpoint_key)
-        return {"success": True, "checkpoint_key": checkpoint_key, "data": data}
+        return await get_job_checkpoint_service(
+            job_id=job_id,
+            checkpoint_key=checkpoint_key,
+            user=user,
+            resolve_job=_resolve_job,
+            runtime_state_getter=_get_runtime_state,
+            pool_getter=_get_pool,
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -226,31 +208,18 @@ async def update_job(
 ):
     """Update job status and optionally broadcast progress."""
     try:
-        job = await _resolve_job(job_id, user)
-        rs = _get_runtime_state()
-        extra: Dict[str, Any] = {}
-        if update.progress is not None:
-            extra["quality_score"] = update.progress
-        if update.message:
-            extra["error_message"] = update.message
-        await rs.update_job_state(job_id, update.status, extra=extra or None)
-        # Broadcast so SSE listeners see the change
         try:
             from orchestration.event_bus import publish
-
-            await publish(
-                job_id,
-                "job_status_changed",
-                {
-                    "job_id": job_id,
-                    "status": update.status,
-                    "progress": update.progress,
-                },
-            )
         except Exception:
-            pass
-        updated = await rs.get_job(job_id)
-        return {"success": True, "job": updated}
+            publish = None
+        return await update_job_service(
+            job_id=job_id,
+            update=update,
+            user=user,
+            resolve_job=_resolve_job,
+            runtime_state_getter=_get_runtime_state,
+            publish=publish,
+        )
     except HTTPException:
         raise
     except Exception as e:

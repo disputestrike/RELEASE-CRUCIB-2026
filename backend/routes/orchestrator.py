@@ -10,6 +10,13 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from services.orchestration_service import (
+    estimate_orchestration_service,
+    generate_public_plan_service,
+    planner_project_state_service,
+    public_plan_summary_service,
+    update_last_build_state_service,
+)
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -108,116 +115,25 @@ except ImportError:
 
 
 def _orchestrator_planner_project_state(user: Optional[dict] = None) -> Dict[str, Any]:
-    """
-    Env vars the API process actually has. Fed into the Auto-Runner planner so checklist
-    items are accurate. Checklist items are always advisory (never hard-block runs — dev uses mocks).
-
-    When ``user`` is set, ``billing`` is included so plan/credits can tune advisory risk flags
-    (e.g. no "goal too long" nag for paid tiers or topped-up credit balances).
-    """
+    """Shared planner context used by orchestrator and job creation."""
     _user_credits, _, _, _ = _get_server_helpers()
-    ev: Dict[str, str] = {}
-    for _k in (
-        "STRIPE_SECRET_KEY",
-        "STRIPE_PUBLISHABLE_KEY",
-        "ANTHROPIC_API_KEY",
-        "CEREBRAS_API_KEY",
-        "LLAMA_API_KEY",
-        "OPENAI_API_KEY",
-        "SMTP_HOST",
-        "SMTP_USER",
-        "SMTP_PASSWORD",
-        "GOOGLE_CLIENT_ID",
-        "GOOGLE_CLIENT_SECRET",
-        "GITHUB_CLIENT_ID",
-        "GITHUB_CLIENT_SECRET",
-        "TAVILY_API_KEY",
-    ):
-        if os.environ.get(_k, "").strip():
-            ev[_k] = "configured"
-    out: Dict[str, Any] = {"env_vars": ev}
-    if user:
-        out["billing"] = {
-            "plan": (user.get("plan") or "free"),
-            "credits": _user_credits(user),
-        }
-    return out
+    return planner_project_state_service(user, user_credits=_user_credits)
 
 
 def _update_last_build_state(plan: Dict[str, Any]) -> None:
     _, LAST_BUILD_STATE, RECENT_AGENT_SELECTION_LOGS = _get_server_globals()
-    phase_count = int(plan.get("phase_count") or len(plan.get("phases", [])))
-    selected_agent_count = int(plan.get("selected_agent_count") or 0)
-    orchestration_mode = plan.get("orchestration_mode", "unknown")
-    selected_agents = plan.get("selected_agents", [])
-    LAST_BUILD_STATE.update(
-        {
-            "selected_agents": selected_agents,
-            "selected_agent_count": selected_agent_count,
-            "phase_count": phase_count,
-            "orchestration_mode": orchestration_mode,
-            "selection_explanation": plan.get("selection_explanation") or {},
-            "controller_summary": plan.get("controller_summary") or {},
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        }
+    return update_last_build_state_service(
+        plan,
+        last_build_state=LAST_BUILD_STATE,
+        recent_agent_selection_logs=RECENT_AGENT_SELECTION_LOGS,
+        logger=logger,
     )
-    log_lines = []
-    if orchestration_mode == "agent_swarm":
-        log_lines = [
-            f"Agent selection triggered for goal: {plan.get('goal', '')[:120]}",
-            f"Generated {phase_count} phases from DAG",
-            f"Executing swarm with {selected_agent_count} selected agents",
-        ]
-    else:
-        log_lines = [
-            f"Agent selection not triggered for goal: {plan.get('goal', '')[:120]}",
-            f"Falling back to {orchestration_mode}",
-        ]
-    for line in log_lines:
-        logger.info(line)
-        RECENT_AGENT_SELECTION_LOGS.append(line)
-    del RECENT_AGENT_SELECTION_LOGS[:-20]
 
 
 def _public_plan_summary(
     plan: Dict[str, Any], *, max_agents: int = 60
 ) -> Dict[str, Any]:
-    selected_agents = list(plan.get("selected_agents") or [])
-    phases = list(plan.get("phases") or [])
-    controller_summary = dict(plan.get("controller_summary") or {})
-    selection_explanation = dict(plan.get("selection_explanation") or {})
-    matched_keywords = list(selection_explanation.get("matched_keywords") or [])
-
-    return {
-        "goal": plan.get("goal", ""),
-        "summary": plan.get("summary", ""),
-        "orchestration_mode": plan.get("orchestration_mode", "unknown"),
-        "phase_count": int(plan.get("phase_count") or len(phases)),
-        "selected_agent_count": int(
-            plan.get("selected_agent_count") or len(selected_agents)
-        ),
-        "selected_agents": selected_agents[:max_agents],
-        "selected_agents_truncated": len(selected_agents) > max_agents,
-        "phase_sizes": [len(phase or []) for phase in phases],
-        "recommended_build_target": plan.get("recommended_build_target"),
-        "missing_inputs": list(plan.get("missing_inputs") or []),
-        "risk_flags": list(plan.get("risk_flags") or []),
-        "selection_explanation": {
-            **selection_explanation,
-            "matched_keywords": matched_keywords[:20],
-            "matched_keywords_truncated": len(matched_keywords) > 20,
-        },
-        "controller_summary": {
-            "execution_strategy": controller_summary.get("execution_strategy"),
-            "parallel_phase_count": controller_summary.get("parallel_phase_count"),
-            "recommended_focus": controller_summary.get("recommended_focus"),
-            "next_actions": list(controller_summary.get("next_actions") or [])[:8],
-            "replan_triggers": list(controller_summary.get("replan_triggers") or [])[
-                :8
-            ],
-            "memory_strategy": controller_summary.get("memory_strategy"),
-        },
-    }
+    return public_plan_summary_service(plan, max_agents=max_agents)
 
 
 # ── Build targets (execution modes — broad platform, honest per-run scope) ───
@@ -350,14 +266,13 @@ async def public_build_plan(
         raise HTTPException(status_code=400, detail="goal is required")
     try:
         _, _, planner_mod, _, _ = _get_orchestration()
-        plan = await planner_mod.generate_plan(
-            goal,
-            project_state=_orchestrator_planner_project_state(user),
+        plan = await generate_public_plan_service(
+            goal=goal,
+            user=user,
+            planner_mod=planner_mod,
+            planner_project_state=_orchestrator_planner_project_state(user),
+            update_last_build_state=_update_last_build_state,
         )
-        plan["phase_count"] = int(
-            plan.get("phase_count") or len(plan.get("phases", []))
-        )
-        _update_last_build_state(plan)
         return {"success": True, "plan": plan}
     except HTTPException:
         raise
@@ -382,14 +297,13 @@ async def public_build_plan_summary(
         raise HTTPException(status_code=400, detail="goal is required")
     try:
         _, _, planner_mod, _, _ = _get_orchestration()
-        plan = await planner_mod.generate_plan(
-            goal,
-            project_state=_orchestrator_planner_project_state(user),
+        plan = await generate_public_plan_service(
+            goal=goal,
+            user=user,
+            planner_mod=planner_mod,
+            planner_project_state=_orchestrator_planner_project_state(user),
+            update_last_build_state=_update_last_build_state,
         )
-        plan["phase_count"] = int(
-            plan.get("phase_count") or len(plan.get("phases", []))
-        )
-        _update_last_build_state(plan)
         return {"success": True, "plan": _public_plan_summary(plan)}
     except HTTPException:
         raise
@@ -414,20 +328,14 @@ async def estimate_cost(
         from orchestration.build_targets import normalize_build_target
 
         _, _, planner_mod, _, _ = _get_orchestration()
-        plan = await planner_mod.generate_plan(
-            body.goal, project_state=_orchestrator_planner_project_state(user)
+        return await estimate_orchestration_service(
+            goal=body.goal,
+            build_target=body.build_target,
+            user=user,
+            planner_mod=planner_mod,
+            normalize_build_target=normalize_build_target,
+            planner_project_state=_orchestrator_planner_project_state(user),
         )
-        requested_target = (body.build_target or "").strip()
-        bt = normalize_build_target(
-            requested_target or plan.get("recommended_build_target")
-        )
-        estimate = planner_mod.estimate_tokens(plan)
-        return {
-            "success": True,
-            "estimate": estimate,
-            "plan_summary": plan.get("summary", ""),
-            "build_target": bt,
-        }
     except Exception as e:
         return {
             "success": False,
@@ -883,6 +791,23 @@ async def run_auto(
             root = _project_workspace_path(pid).resolve()
             root.mkdir(parents=True, exist_ok=True)
             ws = str(root)
+
+        # Auto-provision Postgres if the plan needs a database (zero config for the user)
+        try:
+            from services.db_provision_service import provision_postgres_for_job, job_needs_database
+            import json as _dp_json
+            plan_for_db: dict = {}
+            if prow and prow.get("plan_json"):
+                try:
+                    plan_for_db = _dp_json.loads(prow["plan_json"])
+                except Exception:
+                    plan_for_db = {}
+            if job_needs_database(plan_for_db):
+                db_info = await provision_postgres_for_job(body.job_id)
+                await append_job_event(body.job_id, "db_provisioned", db_info)
+                logger.info("run-auto: DB provisioned for job %s source=%s", body.job_id, db_info.get("source"))
+        except Exception as _dp_e:
+            logger.warning("run-auto: DB provision skipped: %s", _dp_e)
 
         background_tasks.add_task(_background_auto_runner_job, body.job_id, ws)
 

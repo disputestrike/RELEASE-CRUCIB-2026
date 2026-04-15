@@ -35,6 +35,28 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, EmailStr, Field
+from services.auth_service import (
+    create_guest_user_service,
+    login_user_service,
+    register_user_service,
+    verify_mfa_login_service,
+)
+from services.trust_service import (
+    mfa_backup_code_use_service,
+    mfa_disable_service,
+    mfa_setup_service,
+    mfa_status_service,
+    mfa_verify_service,
+)
+from services.user_service import (
+    change_password_service,
+    delete_account_service,
+    get_me_service,
+    set_workspace_mode_service,
+    update_notification_prefs_service,
+    update_privacy_prefs_service,
+    update_profile_service,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -399,195 +421,68 @@ class UpdateProfileBody(BaseModel):
 @auth_router.post("/auth/register")
 @auth_router.post("/auth/signup")  # Alias for compatibility
 async def register(data: UserRegister, request: Request):
-    db = get_db()
-    audit_logger = get_audit_logger()
-    if db is None:
-        raise HTTPException(
-            status_code=503,
-            detail="Database not ready. Set DATABASE_URL in environment.",
-        )
-    if _is_disposable_email(data.email):
-        raise HTTPException(
-            status_code=400, detail="Disposable email addresses are not allowed."
-        )
-    existing = await db.users.find_one({"email": data.email})
-    if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    user_id = str(uuid.uuid4())
-    user = {
-        "id": user_id,
-        "email": data.email,
-        "password": hash_password(data.password),
-        "name": data.name,
-        "token_balance": 0,
-        "credit_balance": 200,
-        "plan": "free",
-        "role": "owner",
-        "mfa_enabled": False,
-        "mfa_secret": None,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    await db.users.insert_one(user)
-    await _apply_referral_on_signup(user_id, getattr(data, "ref", None))
-    if audit_logger:
-        await audit_logger.log(
-            user_id, "signup", ip_address=getattr(request.client, "host", None)
-        )
-    token = create_token(user_id)
-    return {
-        "token": token,
-        "user": {k: v for k, v in user.items() if k not in ("password", "_id")},
-    }
+    return await register_user_service(
+        data=data,
+        request=request,
+        db=get_db(),
+        audit_logger=get_audit_logger(),
+        is_disposable_email=_is_disposable_email,
+        hash_password=hash_password,
+        create_token=create_token,
+        apply_referral_on_signup=_apply_referral_on_signup,
+    )
 
 
 @auth_router.post("/auth/login")
 async def login(data: UserLogin, request: Request):
-    db = get_db()
-    audit_logger = get_audit_logger()
-    if db is None:
-        raise HTTPException(
-            status_code=503,
-            detail="Database not ready. Set DATABASE_URL in environment.",
-        )
-    user = await db.users.find_one({"email": data.email}, {"_id": 0})
-    if not user or not verify_password(data.password, user["password"]):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    if len(user["password"]) == 64 and all(
-        c in "0123456789abcdef" for c in user["password"].lower()
-    ):
-        await db.users.update_one(
-            {"id": user["id"]}, {"$set": {"password": hash_password(data.password)}}
-        )
-    ip = getattr(request.client, "host", None)
-    if user.get("mfa_enabled") and user.get("mfa_secret"):
-        if audit_logger:
-            await audit_logger.log(user["id"], "login_password_verified", ip_address=ip)
-        mfa_token = create_mfa_temp_token(user["id"])
-        return {
-            "status": "mfa_required",
-            "mfa_required": True,
-            "mfa_token": mfa_token,
-            "message": "Enter 6-digit code from your authenticator app",
-        }
-    token = create_token(user["id"])
-    if audit_logger:
-        await audit_logger.log(user["id"], "login", ip_address=ip)
-    return {"token": token, "user": {k: v for k, v in user.items() if k != "password"}}
+    return await login_user_service(
+        data=data,
+        request=request,
+        db=get_db(),
+        audit_logger=get_audit_logger(),
+        verify_password=verify_password,
+        hash_password=hash_password,
+        create_token=create_token,
+        create_mfa_temp_token=create_mfa_temp_token,
+    )
 
 
 @auth_router.post("/auth/guest")
 async def auth_guest(request: Request):
     """Create a guest user and return token so the app can be used without sign-up."""
-    db = get_db()
-    if db is None:
-        logger.warning(
-            "POST /auth/guest called but db not initialized (DATABASE_URL or startup failed)"
-        )
-        raise HTTPException(status_code=503, detail="Database not ready")
-    user_id = str(uuid.uuid4())
-    email = f"guest-{user_id[:8]}@crucibai.guest"
-    guest_credits = GUEST_TIER_CREDITS
-    user = {
-        "id": user_id,
-        "email": email,
-        "password": "",
-        "name": "Guest",
-        "token_balance": guest_credits * CREDITS_PER_TOKEN,
-        "credit_balance": guest_credits,
-        "plan": "free",
-        "auth_provider": "guest",
-        "workspace_mode": "simple",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    await db.users.insert_one(user)
-    await db.token_ledger.insert_one(
-        {
-            "id": str(uuid.uuid4()),
-            "user_id": user_id,
-            "tokens": guest_credits * CREDITS_PER_TOKEN,
-            "credits": guest_credits,
-            "type": "bonus",
-            "description": "Guest session",
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        }
+    return await create_guest_user_service(
+        request=request,
+        db=get_db(),
+        create_token=create_token,
+        guest_tier_credits=GUEST_TIER_CREDITS,
+        credits_per_token=CREDITS_PER_TOKEN,
     )
-    token = create_token(user["id"])
-    u = {k: v for k, v in user.items() if k not in ("password", "_id")}
-    return {"token": token, "user": u}
 
 
 @auth_router.post("/auth/verify-mfa")
 async def verify_mfa_login(body: MFAVerifyLogin, request: Request):
-    db = get_db()
-    audit_logger = get_audit_logger()
-    try:
-        payload = decode_mfa_temp_token(body.mfa_token)
-        user_id = payload["user_id"]
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid or expired session")
-    user = await db.users.find_one({"id": user_id})
-    if not user or not user.get("mfa_enabled") or not user.get("mfa_secret"):
-        raise HTTPException(status_code=400, detail="MFA not enabled")
-    code = (body.code or "").strip().replace(" ", "")
-    verified = False
-    if pyotp.TOTP(user["mfa_secret"]).verify(code, valid_window=1):
-        verified = True
-    if not verified:
-        code_hash = hashlib.sha256(code.encode()).hexdigest()
-        backup = await db.backup_codes.find_one(
-            {"user_id": user_id, "code_hash": code_hash, "used": False}
-        )
-        if backup:
-            await db.backup_codes.update_one(
-                {"_id": backup["_id"]},
-                {"$set": {"used": True, "used_at": datetime.now(timezone.utc)}},
-            )
-            verified = True
-    if not verified:
-        raise HTTPException(status_code=400, detail="Invalid code")
-    token = create_token(user_id)
-    if audit_logger:
-        await audit_logger.log(
-            user_id,
-            "login_mfa_verified",
-            ip_address=getattr(request.client, "host", None),
-        )
-    u = {k: v for k, v in user.items() if k not in ("password", "mfa_secret", "_id")}
-    return {"token": token, "user": u}
+    return await verify_mfa_login_service(
+        body=body,
+        request=request,
+        db=get_db(),
+        audit_logger=get_audit_logger(),
+        decode_mfa_temp_token=decode_mfa_temp_token,
+        create_token=create_token,
+        verify_totp=lambda secret, code: pyotp.TOTP(secret).verify(code, valid_window=1),
+    )
 
 
 @auth_router.get("/auth/me")
 async def get_me(user: dict = Depends(get_current_user)):
-    db = get_db()
-    await _ensure_credit_balance(user["id"])
-    u = await db.users.find_one({"id": user["id"]}, {"_id": 0})
-    if not u:
-        raise HTTPException(status_code=404, detail="User not found")
-    guest_credits_low = (u.get("credit_balance") or 0) < 100
-    if u.get("auth_provider") == "guest" and guest_credits_low:
-        await db.users.update_one(
-            {"id": u["id"]},
-            {
-                "$set": {
-                    "credit_balance": GUEST_TIER_CREDITS,
-                    "token_balance": GUEST_TIER_CREDITS * CREDITS_PER_TOKEN,
-                }
-            },
-        )
-        u["credit_balance"] = GUEST_TIER_CREDITS
-        u["token_balance"] = GUEST_TIER_CREDITS * CREDITS_PER_TOKEN
-    await db.users.update_one(
-        {"id": user["id"]},
-        {"$set": {"last_login": datetime.now(timezone.utc).isoformat()}},
+    return await get_me_service(
+        user=user,
+        db=get_db(),
+        ensure_credit_balance=_ensure_credit_balance,
+        user_credits=_user_credits,
+        admin_user_ids=ADMIN_USER_IDS,
+        guest_tier_credits=GUEST_TIER_CREDITS,
+        credits_per_token=CREDITS_PER_TOKEN,
     )
-    u["credit_balance"] = _user_credits(u)
-    if u["id"] in ADMIN_USER_IDS and not u.get("admin_role"):
-        u["admin_role"] = "owner"
-    u.pop("password", None)
-    u.pop("mfa_secret", None)
-    u.pop("deploy_tokens", None)
-    u.setdefault("workspace_mode", None)
-    return u
 
 
 @auth_router.post("/user/workspace-mode")
@@ -595,15 +490,7 @@ async def get_me(user: dict = Depends(get_current_user)):
 async def set_workspace_mode(
     body: WorkspaceModeBody, user: dict = Depends(get_current_user)
 ):
-    db = get_db()
-    if body.mode not in ("simple", "developer"):
-        raise HTTPException(
-            status_code=400, detail="mode must be 'simple' or 'developer'"
-        )
-    await db.users.update_one(
-        {"id": user["id"]}, {"$set": {"workspace_mode": body.mode}}
-    )
-    return {"status": "success", "workspace_mode": body.mode}
+    return await set_workspace_mode_service(body=body, user=user, db=get_db())
 
 
 # ---------------------------------------------------------------------------
@@ -613,137 +500,61 @@ async def set_workspace_mode(
 
 @auth_router.post("/mfa/setup")
 async def mfa_setup(request: Request, user: dict = Depends(get_current_user)):
-    db = get_db()
-    audit_logger = get_audit_logger()
-    u = await db.users.find_one({"id": user["id"]}, {"mfa_enabled": 1, "mfa_secret": 1})
-    if u and u.get("mfa_enabled"):
-        raise HTTPException(status_code=400, detail="MFA already enabled")
-    secret = pyotp.random_base32()
-    totp = pyotp.TOTP(secret)
-    uri = totp.provisioning_uri(
-        name=user.get("email") or user["id"], issuer_name="CrucibAI"
+    return await mfa_setup_service(
+        request=request,
+        user=user,
+        db=get_db(),
+        audit_logger=get_audit_logger(),
+        random_base32=pyotp.random_base32,
+        build_totp_uri=lambda secret, name: pyotp.TOTP(secret).provisioning_uri(name=name, issuer_name="CrucibAI"),
+        qr_png_bytes=lambda uri: (lambda qr: (qr.add_data(uri), qr.make(fit=True), (lambda buf: (qr.make_image(fill_color="black", back_color="white").save(buf, format="PNG"), buf.getvalue()))(__import__('io').BytesIO()))[-1])(qrcode.QRCode(version=1, box_size=10, border=5)),
     )
-    qr = qrcode.QRCode(version=1, box_size=10, border=5)
-    qr.add_data(uri)
-    qr.make(fit=True)
-    img = qr.make_image(fill_color="black", back_color="white")
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    qr_b64 = base64.b64encode(buf.getvalue()).decode()
-    await db.mfa_setup_temp.insert_one(
-        {
-            "user_id": user["id"],
-            "secret": secret,
-            "created_at": datetime.now(timezone.utc),
-            "verified": False,
-        }
-    )
-    if audit_logger:
-        await audit_logger.log(
-            user["id"],
-            "mfa_setup_started",
-            ip_address=getattr(request.client, "host", None),
-        )
-    return {
-        "status": "success",
-        "qr_code": f"data:image/png;base64,{qr_b64}",
-        "secret": secret,
-    }
 
 
 @auth_router.post("/mfa/verify")
 async def mfa_verify(
     body: MFAVerifyBody, request: Request, user: dict = Depends(get_current_user)
 ):
-    db = get_db()
-    audit_logger = get_audit_logger()
-    temp = await db.mfa_setup_temp.find_one({"user_id": user["id"], "verified": False})
-    if not temp:
-        raise HTTPException(status_code=400, detail="No MFA setup in progress")
-    code = (body.token or "").strip().replace(" ", "")
-    if not pyotp.TOTP(temp["secret"]).verify(code, valid_window=1):
-        raise HTTPException(status_code=400, detail="Invalid code. Try again.")
-    backup_codes = ["".join(random.choices("0123456789abcdef", k=8)) for _ in range(10)]
-    for bc in backup_codes:
-        await db.backup_codes.insert_one(
-            {
-                "user_id": user["id"],
-                "code_hash": hashlib.sha256(bc.encode()).hexdigest(),
-                "used": False,
-                "created_at": datetime.now(timezone.utc),
-            }
-        )
-    await db.users.update_one(
-        {"id": user["id"]},
-        {
-            "$set": {
-                "mfa_enabled": True,
-                "mfa_secret": temp["secret"],
-                "mfa_enabled_at": datetime.now(timezone.utc),
-            }
-        },
+    return await mfa_verify_service(
+        body=body,
+        request=request,
+        user=user,
+        db=get_db(),
+        audit_logger=get_audit_logger(),
+        verify_totp=lambda secret, code: pyotp.TOTP(secret).verify(code, valid_window=1),
     )
-    await db.mfa_setup_temp.delete_many({"user_id": user["id"]})
-    if audit_logger:
-        await audit_logger.log(
-            user["id"], "mfa_enabled", ip_address=getattr(request.client, "host", None)
-        )
-    return {"status": "success", "message": "MFA enabled", "backup_codes": backup_codes}
 
 
 @auth_router.post("/mfa/disable")
 async def mfa_disable(
     body: MFADisableBody, request: Request, user: dict = Depends(get_current_user)
 ):
-    db = get_db()
-    audit_logger = get_audit_logger()
-    u = await db.users.find_one({"id": user["id"]}, {"password": 1})
-    if not u or not verify_password(body.password, u["password"]):
-        raise HTTPException(status_code=401, detail="Invalid password")
-    await db.users.update_one(
-        {"id": user["id"]}, {"$set": {"mfa_enabled": False, "mfa_secret": None}}
+    return await mfa_disable_service(
+        body=body,
+        request=request,
+        user=user,
+        db=get_db(),
+        audit_logger=get_audit_logger(),
+        verify_password=verify_password,
     )
-    await db.backup_codes.delete_many({"user_id": user["id"]})
-    if audit_logger:
-        await audit_logger.log(
-            user["id"], "mfa_disabled", ip_address=getattr(request.client, "host", None)
-        )
-    return {"status": "success", "message": "MFA disabled"}
 
 
 @auth_router.get("/mfa/status")
 async def mfa_status(user: dict = Depends(get_current_user)):
-    db = get_db()
-    u = await db.users.find_one({"id": user["id"]}, {"mfa_enabled": 1})
-    return {
-        "mfa_enabled": u.get("mfa_enabled", False),
-        "status": "enabled" if u.get("mfa_enabled") else "disabled",
-    }
+    return await mfa_status_service(user=user, db=get_db())
 
 
 @auth_router.post("/mfa/backup-code/use")
 async def mfa_backup_code_use(
     body: BackupCodeBody, request: Request, user: dict = Depends(get_current_user)
 ):
-    db = get_db()
-    audit_logger = get_audit_logger()
-    code_hash = hashlib.sha256((body.code or "").strip().encode()).hexdigest()
-    backup = await db.backup_codes.find_one(
-        {"user_id": user["id"], "code_hash": code_hash, "used": False}
+    return await mfa_backup_code_use_service(
+        body=body,
+        request=request,
+        user=user,
+        db=get_db(),
+        audit_logger=get_audit_logger(),
     )
-    if not backup:
-        raise HTTPException(status_code=400, detail="Invalid backup code")
-    await db.backup_codes.update_one(
-        {"_id": backup["_id"]},
-        {"$set": {"used": True, "used_at": datetime.now(timezone.utc)}},
-    )
-    if audit_logger:
-        await audit_logger.log(
-            user["id"],
-            "backup_code_used",
-            ip_address=getattr(request.client, "host", None),
-        )
-    return {"status": "success", "message": "Backup code accepted"}
 
 
 # ---------------------------------------------------------------------------
@@ -815,27 +626,7 @@ async def delete_account(
     body: DeleteAccountBody, user: dict = Depends(get_current_user)
 ):
     """Permanently delete the current user's account and all associated data. Requires password confirmation."""
-    db = get_db()
-    u = await db.users.find_one({"id": user["id"]}, {"password": 1})
-    if not u or not verify_password(body.password, u["password"]):
-        raise HTTPException(status_code=401, detail="Invalid password")
-    uid = user["id"]
-    projects = await db.projects.find({"user_id": uid}, {"id": 1}).to_list(500)
-    for p in projects:
-        pid = p["id"]
-        await db.project_logs.delete_many({"project_id": pid})
-        await db.agent_status.delete_many({"project_id": pid})
-        await db.shares.delete_many({"project_id": pid})
-    await db.projects.delete_many({"user_id": uid})
-    await db.workspace_env.delete_many({"user_id": uid})
-    await db.chat_history.delete_many({"user_id": uid})
-    await db.token_ledger.delete_many({"user_id": uid})
-    await db.shares.delete_many({"user_id": uid})
-    await db.user_agents.delete_many({"user_id": uid})
-    await db.backup_codes.delete_many({"user_id": uid})
-    await db.mfa_setup_temp.delete_many({"user_id": uid})
-    await db.users.delete_one({"id": uid})
-    return Response(status_code=204)
+    return await delete_account_service(body=body, user=user, db=get_db(), verify_password=verify_password)
 
 
 @auth_router.post("/users/me/change-password")
@@ -843,52 +634,14 @@ async def change_password(
     body: ChangePasswordBody, user: dict = Depends(get_current_user)
 ):
     """Change the current user's password. Requires current password for verification."""
-    db = get_db()
-    audit_logger = get_audit_logger()
-    if db is None:
-        raise HTTPException(status_code=503, detail="Database not ready")
-    u = await db.users.find_one({"id": user["id"]}, {"password": 1})
-    if not u:
-        raise HTTPException(status_code=404, detail="User not found")
-    if not u.get("password"):
-        raise HTTPException(
-            status_code=400, detail="Cannot change password for social/guest accounts"
-        )
-    if not verify_password(body.current_password, u["password"]):
-        raise HTTPException(status_code=401, detail="Current password is incorrect")
-    pw = body.new_password
-    if not any(c.isupper() for c in pw):
-        raise HTTPException(
-            status_code=400,
-            detail="Password must contain at least one uppercase letter",
-        )
-    if not any(c.islower() for c in pw):
-        raise HTTPException(
-            status_code=400,
-            detail="Password must contain at least one lowercase letter",
-        )
-    if not any(c.isdigit() for c in pw):
-        raise HTTPException(
-            status_code=400, detail="Password must contain at least one number"
-        )
-    if not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in pw):
-        raise HTTPException(
-            status_code=400,
-            detail="Password must contain at least one special character",
-        )
-    hashed = hash_password(pw)
-    await db.users.update_one(
-        {"id": user["id"]},
-        {
-            "$set": {
-                "password": hashed,
-                "password_changed_at": datetime.now(timezone.utc).isoformat(),
-            }
-        },
+    return await change_password_service(
+        body=body,
+        user=user,
+        db=get_db(),
+        audit_logger=get_audit_logger(),
+        verify_password=verify_password,
+        hash_password=hash_password,
     )
-    if audit_logger:
-        await audit_logger.log(user["id"], "password_changed")
-    return {"status": "success", "message": "Password changed successfully"}
 
 
 @auth_router.patch("/users/me")
@@ -897,22 +650,7 @@ async def update_profile(
     body: UpdateProfileBody, user: dict = Depends(get_current_user)
 ):
     """Update user profile (name, email, bio, avatar_url)."""
-    db = get_db()
-    if db is None:
-        raise HTTPException(status_code=503, detail="Database not ready")
-    updates = {k: v for k, v in body.model_dump().items() if v is not None}
-    if not updates:
-        return {"status": "no_changes"}
-    if "email" in updates:
-        existing = await db.users.find_one({"email": updates["email"]})
-        if existing and existing["id"] != user["id"]:
-            raise HTTPException(status_code=400, detail="Email already in use")
-    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
-    await db.users.update_one({"id": user["id"]}, {"$set": updates})
-    u = await db.users.find_one({"id": user["id"]}, {"_id": 0})
-    u.pop("password", None)
-    u.pop("mfa_secret", None)
-    return {"status": "success", "user": u}
+    return await update_profile_service(body=body, user=user, db=get_db())
 
 
 @auth_router.patch("/users/me/notifications")
@@ -920,16 +658,7 @@ async def update_notification_prefs(
     body: NotificationPrefs, user: dict = Depends(get_current_user)
 ):
     """Save notification preferences for the current user."""
-    db = get_db()
-    if db is None:
-        raise HTTPException(status_code=503, detail="Database not ready")
-    updates = {
-        f"notifications.{k}": v for k, v in body.model_dump().items() if v is not None
-    }
-    if not updates:
-        return {"status": "no_changes"}
-    await db.users.update_one({"id": user["id"]}, {"$set": updates})
-    return {"status": "success", "message": "Notification preferences saved"}
+    return await update_notification_prefs_service(body=body, user=user, db=get_db())
 
 
 @auth_router.patch("/users/me/privacy")
@@ -937,14 +666,7 @@ async def update_privacy_prefs(
     body: PrivacyPrefs, user: dict = Depends(get_current_user)
 ):
     """Save privacy preferences for the current user."""
-    db = get_db()
-    if db is None:
-        raise HTTPException(status_code=503, detail="Database not ready")
-    updates = {f"privacy.{k}": v for k, v in body.model_dump().items() if v is not None}
-    if not updates:
-        return {"status": "no_changes"}
-    await db.users.update_one({"id": user["id"]}, {"$set": updates})
-    return {"status": "success", "message": "Privacy preferences saved"}
+    return await update_privacy_prefs_service(body=body, user=user, db=get_db())
 
 
 # ---------------------------------------------------------------------------

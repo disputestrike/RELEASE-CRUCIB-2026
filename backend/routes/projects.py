@@ -45,6 +45,12 @@ from services.llm_service import (
     get_workspace_api_keys,
 )
 
+from services.project_preview_service import (
+    get_preview_token_service,
+    serve_preview_service,
+    get_project_dependency_audit_service,
+)
+
 try:
     from utils.rbac import Permission, has_permission
 except ImportError:
@@ -2410,6 +2416,31 @@ async def get_settings_capabilities(user: dict = Depends(get_current_user)):
     }
 
 
+@projects_router.get("/projects/{project_id}/preview-token")
+async def get_project_preview_token(project_id: str, user: dict = Depends(get_current_user), request: Request = None):
+    api_base_url = str(request.base_url).rstrip('/') if request is not None else os.getenv("API_BASE_URL", "http://localhost:8000")
+    return await get_preview_token_service(
+        project_id=project_id,
+        user_id=user.get("id"),
+        user_can_access=_user_can_access_project_workspace,
+        create_preview_token=_create_preview_token,
+        api_base_url=api_base_url,
+    )
+
+
+@projects_router.get("/projects/{project_id}/preview")
+@projects_router.get("/projects/{project_id}/preview/{path:path}")
+async def serve_project_preview(project_id: str, path: str = "", preview_token: Optional[str] = Query(default=None)):
+    return await serve_preview_service(
+        project_id=project_id,
+        path=path,
+        preview_token=preview_token,
+        verify_preview_token=_verify_preview_token,
+        user_can_access=_user_can_access_project_workspace,
+        project_workspace_path=_project_workspace_path,
+    )
+
+
 @projects_router.get("/projects/{project_id}/workspace/files")
 async def list_workspace_files(
     project_id: str,
@@ -2900,7 +2931,14 @@ async def deploy_railway_package(
         require_permission(Permission.DEPLOY_PROJECT if Permission else None)
     ),
 ):
-    """Railway: validate deploy snapshot and return first-class CLI + dashboard flow (ZIP is same as Vercel path)."""
+    """
+    Railway deploy — two modes:
+    1. RAILWAY_TOKEN set → trigger real deploy via Railway API (one-click).
+    2. No token → return CLI instructions as before.
+    """
+    import os as _os
+    import httpx as _httpx
+
     deploy_files, project_name = await _get_project_deploy_files(project_id, user["id"])
     from validate_deployment import validate_deployment
 
@@ -2914,6 +2952,49 @@ async def deploy_railway_package(
                 "warnings": validation.warnings,
             },
         )
+
+    railway_token = _os.environ.get("RAILWAY_TOKEN", "")
+    railway_project_id = _os.environ.get("RAILWAY_PROJECT_ID", "")
+
+    # --- ONE-CLICK MODE: Railway API deploy ---
+    if railway_token and railway_project_id:
+        try:
+            # Trigger a Railway deployment via GraphQL API
+            trigger_gql = """
+            mutation triggerDeploy($projectId: String!) {
+              deploymentTrigger(input: { projectId: $projectId }) {
+                id
+                url
+                status
+              }
+            }
+            """
+            async with _httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(
+                    "https://backboard.railway.app/graphql/v2",
+                    headers={
+                        "Authorization": f"Bearer {railway_token}",
+                        "Content-Type": "application/json",
+                    },
+                    json={"query": trigger_gql, "variables": {"projectId": railway_project_id}},
+                )
+                data = resp.json()
+                deployment = (data.get("data") or {}).get("deploymentTrigger") or {}
+                deploy_url = deployment.get("url") or f"https://railway.app/project/{railway_project_id}"
+                return {
+                    "ok": True,
+                    "platform": "railway",
+                    "mode": "api",
+                    "project_name": project_name,
+                    "deploy_url": deploy_url,
+                    "deployment_id": deployment.get("id"),
+                    "status": deployment.get("status", "triggered"),
+                    "dashboard_url": f"https://railway.app/project/{railway_project_id}",
+                }
+        except Exception as _re:
+            logger.warning("Railway API deploy failed, falling back to CLI instructions: %s", _re)
+
+    # --- FALLBACK: CLI instructions ---
     steps = [
         "Download Deploy ZIP from this modal (server build snapshot).",
         "Unzip into an empty folder.",
@@ -2925,6 +3006,7 @@ async def deploy_railway_package(
     return {
         "ok": True,
         "platform": "railway",
+        "mode": "cli",
         "project_name": project_name,
         "steps": steps,
         "dashboard_url": "https://railway.app/new",
