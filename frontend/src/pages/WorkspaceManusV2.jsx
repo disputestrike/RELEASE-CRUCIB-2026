@@ -14,6 +14,8 @@ import './ManusStyle.css';
 import ConsciousnessStream from '../components/ConsciousnessStream';
 import InterruptibleFlow from '../components/InterruptibleFlow';
 import EmotionalPeaks from '../components/EmotionalPeaks';
+import CommandCenter from '../components/CommandCenter';
+import RightPanel from '../components/RightPanel';
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const Ico = {
@@ -235,8 +237,8 @@ export default function WorkspaceManusV2() {
   }, [events]);
 
   // ── Send goal ───────────────────────────────────────────────────────────────
-  const handleSend = useCallback(async () => {
-    const trimmed = goal.trim();
+  const handleSend = useCallback(async (overrideText) => {
+    const trimmed = (overrideText || goal).trim();
     if (!trimmed || loading) return;
 
     // Steer running job
@@ -595,58 +597,49 @@ export default function WorkspaceManusV2() {
             </div>
           </div>
 
-          {/* ── Compose bar ── */}
-          <div className="manus-composer">
-            {error && (
-              <div style={{color:'#ef4444',fontSize:12,marginBottom:8,padding:'6px 12px',
-                background:'#fef2f2',borderRadius:8,border:'1px solid #fecaca'}}>
-                {error}
-              </div>
-            )}
-            <div className="manus-compose-box">
-              <textarea
-                ref={textareaRef}
-                className="manus-compose-textarea"
-                placeholder={isRunning ? "Steer anytime — Enter sends on this same run." : "Describe what to build…"}
-                value={goal}
-                onChange={e => { setGoal(e.target.value); e.target.style.height='auto'; e.target.style.height=Math.min(e.target.scrollHeight,160)+'px'; }}
-                onKeyDown={handleKeyDown}
-                rows={1}
-              />
-              <div className="manus-compose-actions">
-                <div className="manus-compose-tools">
-                  <button className="manus-compose-tool-btn" title="Attach file"><Ico.Attach /></button>
-                  <button className="manus-compose-tool-btn" title="Screen share"><Ico.Screen /></button>
-                  <button className="manus-compose-tool-btn" title="Voice input"><Ico.Mic /></button>
-                </div>
-                <button className="manus-compose-send" onClick={handleSend}
-                  disabled={!goal.trim() || loading} title="Send (Enter)">
-                  {loading ? <div className="manus-thinking-dot" style={{width:8,height:8}} /> : <Ico.Send />}
-                </button>
-              </div>
-            </div>
-          </div>
+          {/* ── CommandCenter — voice + attachments + history + suggestions ── */}
+          <CommandCenter
+            onSubmit={({ text }) => { if (text) { setGoal(text); setTimeout(() => handleSend(text), 0); } }}
+            isRunning={isRunning}
+          />
         </div>
 
-        {/* ── Right pane ── */}
+        {/* ── Right pane — RightPanel handles all tabs ── */}
         <div className="manus-right">
-          <div className="manus-right-tabs">
-            {['preview','consciousness','code','proof','failure','timeline'].map(p => (
-              <button key={p} className={`manus-right-tab ${activePane===p?'active':''}`}
-                onClick={() => setActivePane(p)}>
-                {p.charAt(0).toUpperCase()+p.slice(1)}
-                {p === 'failure' && failedSteps.length > 0 && (
-                  <span style={{marginLeft:4,background:'#ef4444',color:'#fff',borderRadius:'10px',
-                    fontSize:10,padding:'1px 5px'}}>{failedSteps.length}</span>
-                )}
-              </button>
-            ))}
-          </div>
+          <div className="manus-right-content" style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column'}}>
 
-          <div className="manus-right-content">
+            {/* Consciousness + InterruptibleFlow when building */}
+            {activePane === 'consciousness' && (
+              <div style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column',height:'100%'}}>
+                <ConsciousnessStream
+                  events={events}
+                  steps={steps}
+                  isRunning={isRunning}
+                  proof={proof}
+                />
+                <InterruptibleFlow
+                  jobId={activeJobId}
+                  steps={steps}
+                  isRunning={isRunning}
+                  token={token}
+                />
+              </div>
+            )}
 
-            {/* ── Preview ── real iframe or Sandpack fallback */}
-            {activePane === 'preview' && (
+            {/* Main panels via RightPanel */}
+            {activePane !== 'consciousness' && (
+              <RightPanel
+                jobId={activeJobId}
+                token={token}
+                steps={steps}
+                isRunning={isRunning}
+                previewUrl={previewUrl}
+                sandpackFiles={sandpackFiles}
+              />
+            )}
+
+            {/* DEAD CODE — kept as fallback reference, hidden */}
+            {false && activePane === 'preview' && (
               <div style={{display:'flex',flexDirection:'column',flex:1,overflow:'hidden',position:'relative'}}>
                 <div className="manus-preview-bar">
                   <div className="manus-preview-nav-btns">
