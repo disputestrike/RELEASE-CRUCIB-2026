@@ -261,3 +261,53 @@ async def get_project_deploy_files(
         "file_count": len(files),
         "deploy_ready": bool(files.get("package.json") or files.get("server.py")),
     }
+
+
+@router.get("/jobs/{job_id}/workspace/download")
+async def download_job_workspace_zip(
+    job_id: str,
+    user: dict = Depends(_get_auth()),
+):
+    """
+    Download the complete job workspace as a ZIP file.
+    This is the proof/handoff bundle — everything the AI built.
+    """
+    import io
+    import zipfile
+    from fastapi.responses import StreamingResponse
+
+    workspace = await _assert_job_access(job_id, user)
+    if not workspace.exists():
+        raise HTTPException(status_code=404, detail="Workspace not found or empty")
+
+    # Build ZIP in memory
+    buf = io.BytesIO()
+    skip_dirs = {"node_modules", ".git", "__pycache__", ".pytest_cache"}
+    skip_exts = {".pyc", ".pyo"}
+    file_count = 0
+
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for root, dirs, files in os.walk(workspace):
+            dirs[:] = [d for d in dirs if d not in skip_dirs]
+            for fname in files:
+                if any(fname.endswith(ext) for ext in skip_exts):
+                    continue
+                full = Path(root) / fname
+                rel = str(full.relative_to(workspace)).replace("\\", "/")
+                try:
+                    zf.write(full, rel)
+                    file_count += 1
+                except Exception:
+                    pass
+
+    if file_count == 0:
+        raise HTTPException(status_code=404, detail="No files in workspace")
+
+    buf.seek(0)
+    filename = f"crucibai-build-{job_id[:8]}.zip"
+
+    return StreamingResponse(
+        buf,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

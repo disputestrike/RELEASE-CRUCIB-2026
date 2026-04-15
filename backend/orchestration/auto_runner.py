@@ -226,6 +226,19 @@ async def run_job_to_completion(
             {"kind": "execution_authority.json", **elite_job_metadata(job)},
         )
 
+        # ── Fire on_prompt_submit hook ─────────────────────────────────────────
+        try:
+            from orchestration.hook_engine import fire as fire_hook
+            hook_ctx = await fire_hook("on_prompt_submit", {
+                "job_id": job_id,
+                "user_id": job.get("user_id", ""),
+                "project_id": job.get("project_id", ""),
+                "goal": job.get("goal", ""),
+            })
+        except Exception as _hk:
+            pass
+        # ── End hook ────────────────────────────────────────────────────────────
+
         # Pre-execution THINK: user-facing brain line before any step runs (classify path + intent).
         job_for_think = await get_job(job_id)
         steps_for_think = await get_steps(job_id)
@@ -999,6 +1012,21 @@ async def _execute_job_loop(
             "enforcement_advisory": bool(egr.get("advisory_would_block")),
         },
     )
+
+    # ── Fire on_run_complete hook ──────────────────────────────────────────────
+    try:
+        from orchestration.hook_engine import fire as fire_hook
+        await fire_hook("on_run_complete", {
+            "job_id": job_id,
+            "user_id": job.get("user_id", ""),
+            "project_id": job.get("project_id", ""),
+            "goal": job.get("goal", ""),
+            "status": "completed",
+            "quality_score": quality_score,
+        })
+    except Exception as _hk:
+        pass
+    # ── End hook ──────────────────────────────────────────────────────────────
 
     # ── Skill Memory: extract learnings from this build ────────────────────────
     try:

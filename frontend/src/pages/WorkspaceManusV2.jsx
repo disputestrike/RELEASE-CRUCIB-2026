@@ -343,6 +343,16 @@ export default function WorkspaceManusV2() {
               {totalSteps > 0 && <span style={{color:'#999',fontSize:12}}>{completedSteps}/{totalSteps}</span>}
             </div>
           )}
+          {stage === 'completed' && activeJobId && (
+            <a
+              href={`${API}/jobs/${activeJobId}/workspace/download`}
+              download
+              className="manus-btn-ghost"
+              style={{color:'#666'}}
+              title="Download all generated files as ZIP">
+              📥 Download
+            </a>
+          )}
           {stage === 'completed' && !deployResult && (
             <button className="manus-btn-ghost" onClick={handleDeploy} disabled={deployLoading}
               style={{color:'#10b981',borderColor:'#10b981'}}>
@@ -727,8 +737,16 @@ export default function WorkspaceManusV2() {
                   <div style={{padding:'6px 10px',borderTop:'1px solid #333',background:'#1e1e1e',
                     display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                     <span style={{fontSize:11,color:'#666'}}>{wsFiles.length} files</span>
-                    <button onClick={reloadFiles} style={{background:'transparent',border:'none',
-                      color:'#666',fontSize:11,cursor:'pointer'}}>↻ Refresh</button>
+                    <div style={{display:'flex',gap:8}}>
+                      <button onClick={reloadFiles} style={{background:'transparent',border:'none',
+                        color:'#666',fontSize:11,cursor:'pointer'}}>↻ Refresh</button>
+                      {activeJobId && (
+                        <a href={`${API}/jobs/${activeJobId}/workspace/download`} download
+                          style={{color:'#10b981',fontSize:11,textDecoration:'none'}}>
+                          📥 Download ZIP
+                        </a>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
