@@ -14,7 +14,7 @@ export class SpawnEngine {
     const branches = Math.min(config.branches || 4, 16);
     const strategy = config.strategy || 'diverse_priors';
     const aggregation = config.aggregation || 'consensus';
-    const BASE = import.meta?.env?.VITE_BACKEND_URL || '';
+    const BASE = (typeof process !== 'undefined' && process.env?.REACT_APP_API_URL) || '';
 
     eventBus.emitLocal({ type: 'milestone.reached', jobId: this.jobId,
       timestamp: Date.now(), payload: { title: `Spawning ${branches} agents`, strategy } });

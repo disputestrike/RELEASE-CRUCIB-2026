@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Terminal, Send, X } from 'lucide-react';
 
-const BASE = import.meta?.env?.VITE_BACKEND_URL || '';
+const BASE = (typeof process !== 'undefined' && process.env?.REACT_APP_API_URL) || '';
 
 export default function TerminalAgent({ projectId, token }) {
   const [lines, setLines] = useState([{ type: 'system', text: 'Terminal ready. Type a command.' }]);

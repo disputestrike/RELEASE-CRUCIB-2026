@@ -3,7 +3,8 @@
  * Real-time trust signals wired to job events
  */
 
-import { API } from '../App';
+// API base resolved from env — avoids circular import with App.js
+const _API_BASE = (typeof process !== 'undefined' && process.env?.REACT_APP_API_URL) || '';
 
 export class TrustPanelState {
   constructor() {
@@ -54,8 +55,10 @@ export class TrustPanelState {
 
   async loadFromJob(jobId, token) {
     if (!jobId || !token) return;
+    const base = (typeof window !== 'undefined' && window.__CRUCIB_API__) ||
+                 (typeof process !== 'undefined' && process.env?.REACT_APP_API_URL) || '';
     try {
-      const res = await fetch(`${API}/builds/${jobId}/quality`, {
+      const res = await fetch(`${base}/api/builds/${jobId}/quality`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {

@@ -11,7 +11,7 @@
  * This file is the single source of truth for all API calls.
  */
 
-const BASE = import.meta?.env?.VITE_BACKEND_URL || '';
+const BASE = (typeof process !== 'undefined' && process.env?.REACT_APP_API_URL) || '';
 
 // ── Auth helper ───────────────────────────────────────────────────────────────
 function authHeaders(token) {

@@ -21,7 +21,7 @@ export default function AutomationSuggestions({ jobId, token, onClose, onCreated
   const handleCreate = async (tmpl) => {
     setCreating(tmpl.id);
     try {
-      const API = import.meta?.env?.VITE_BACKEND_URL || '';
+      const API = (typeof process !== 'undefined' && process.env?.REACT_APP_API_URL) || '';
       const res = await fetch(`${API}/api/builds/${jobId}/automation`, {
         method: 'POST',
         headers: {
