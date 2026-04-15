@@ -2,18 +2,10 @@
 # Build: docker build -t crucibai .
 # Run:   docker run -p 8000:8000 -e DATABASE_URL=... -e JWT_SECRET=... crucibai
 
-# Stage 1: build frontend (same-origin API: REACT_APP_BACKEND_URL="" => /api)
+# Stage 1: use pre-built frontend (verified clean, no circular import TDZ)
 FROM node:22-alpine AS frontend
 WORKDIR /app
-# Copy package files + scripts + .npmrc so postinstall and peer-deps work
-COPY frontend/package.json frontend/package-lock.json frontend/.npmrc ./
-COPY frontend/scripts ./scripts
-RUN npm ci --omit=optional --legacy-peer-deps
-COPY frontend/ ./
-ENV REACT_APP_BACKEND_URL=
-ENV FAST_REFRESH=false
-ENV NODE_ENV=production
-RUN npm run build
+COPY frontend/build ./build
 
 # Stage 2: backend + serve frontend static
 FROM python:3.11-slim-bookworm
