@@ -5294,6 +5294,7 @@ def _terminal_execution_allowed(user: dict) -> bool:
     return False
 
 
+
 async def _background_auto_runner_job(job_id: str, workspace_path: str):
     """Background task for auto-runner jobs. Resolves workspace from job project_id."""
     logger.info("_background_auto_runner_job: job_id=%s workspace=%s", job_id, workspace_path)
@@ -5392,3 +5393,150 @@ if _static_dir.exists():
     app.mount(
         "/", SpaStaticFiles(directory=str(_static_dir), html=True), name="frontend"
     )
+
+
+# ── Compatibility shims ───────────────────────────────────────────────────────
+# These names are imported from `server` by route/orchestration modules.
+# They delegate to canonical implementations elsewhere.
+
+# Constants
+ANTHROPIC_HAIKU_MODEL = "claude-haiku-4-5-20251001"
+CREDITS_PER_TOKEN = 1000
+
+# Project workspace helpers
+async def _user_can_access_project_workspace(
+    user_id: Optional[str], project_id: str
+) -> bool:
+    """Check whether user_id owns or can access project_id."""
+    if not project_id or not user_id:
+        return False
+    try:
+        _db = get_db()
+        project = await _db.projects.find_one(
+            {"id": project_id, "user_id": user_id}, {"id": 1}
+        )
+        if project:
+            return True
+    except Exception:
+        pass
+    try:
+        from db_pg import get_pg_pool
+        pool = await get_pg_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT 1 FROM jobs WHERE project_id = $1 AND user_id = $2 LIMIT 1",
+                project_id, user_id,
+            )
+        return row is not None
+    except Exception:
+        return False
+
+
+async def _resolve_project_workspace_path_for_user(
+    project_id: Optional[str], user: dict
+) -> "Path":
+    """Resolve a project workspace path, checking ownership."""
+    if not project_id:
+        raise HTTPException(status_code=400, detail="project_id required")
+    if not await _user_can_access_project_workspace(user.get("id"), project_id):
+        raise HTTPException(status_code=404, detail="Project not found")
+    root = _project_workspace_path(project_id).resolve()
+    workspace_root = WORKSPACE_ROOT.resolve()
+    try:
+        root.relative_to(workspace_root)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Path outside workspace")
+    return root
+
+
+def _speed_from_plan(plan: str) -> str:
+    """Map plan name to speed selector string."""
+    try:
+        from pricing_plans import _speed_from_plan as _impl
+        return _impl(plan)
+    except Exception:
+        return "lite"
+
+
+def _enrich_job_public_urls(job: dict, base_url: str = "") -> dict:
+    """Enrich a job dict with preview/published/deploy URLs."""
+    try:
+        from services.published_app_service import enrich_job_public_urls
+        return enrich_job_public_urls(job, base_url)
+    except Exception:
+        return job
+
+
+def build_provider_readiness() -> dict:
+    """Return provider readiness status."""
+    try:
+        from provider_readiness import build_provider_readiness as _impl
+        return _impl()
+    except Exception:
+        return {"ready": False, "providers": {}}
+
+
+def score_generated_code(code: str, agent_name: str = "") -> float:
+    """Score generated code quality."""
+    try:
+        from code_quality import score_generated_code as _impl
+        return _impl(code, agent_name)
+    except Exception:
+        return 0.5
+
+
+async def _run_single_agent_with_context(
+    project_id: str,
+    user_id: str,
+    agent_name: str,
+    project_prompt: str,
+    previous_outputs: dict,
+    effective: dict,
+    model_chain: list,
+    build_kind: Optional[str] = None,
+    user_tier: str = "free",
+    speed_selector: str = "lite",
+    available_credits: int = 0,
+    retry_error: Optional[str] = None,
+) -> dict:
+    """Delegate to routes.projects implementation."""
+    try:
+        from routes.projects import _run_single_agent_with_context as _impl
+        return await _impl(
+            project_id, user_id, agent_name, project_prompt,
+            previous_outputs, effective, model_chain,
+            build_kind=build_kind, user_tier=user_tier,
+            speed_selector=speed_selector, available_credits=available_credits,
+            retry_error=retry_error,
+        )
+    except ImportError:
+        return {"output": "", "tokens_used": 0, "status": "skipped", "reason": "not available"}
+
+
+async def _run_single_agent_with_retry(
+    project_id: str,
+    user_id: str,
+    agent_name: str,
+    project_prompt: str,
+    previous_outputs: dict,
+    effective: dict,
+    model_chain: list,
+    max_retries: int = 3,
+    build_kind: Optional[str] = None,
+    user_tier: str = "free",
+    speed_selector: str = "lite",
+    available_credits: int = 0,
+) -> dict:
+    """Delegate to routes.projects implementation."""
+    try:
+        from routes.projects import _run_single_agent_with_retry as _impl
+        return await _impl(
+            project_id, user_id, agent_name, project_prompt,
+            previous_outputs, effective, model_chain,
+            max_retries=max_retries, build_kind=build_kind,
+            user_tier=user_tier, speed_selector=speed_selector,
+            available_credits=available_credits,
+        )
+    except ImportError:
+        return {"output": "", "tokens_used": 0, "status": "skipped", "reason": "not available"}
+# ── End compatibility shims ───────────────────────────────────────────────────
