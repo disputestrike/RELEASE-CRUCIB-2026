@@ -658,6 +658,21 @@ async def generate_plan(
     Generate a structured build plan for the given goal.
     llm_call: optional async callable(prompt) -> str for AI-enhanced planning.
     """
+    # ── Load relevant skills from memory to improve this build ─────────────────
+    skill_context = ""
+    try:
+        user_id = (project_state or {}).get("user_id", "")
+        if user_id:
+            from db_pg import get_pg_pool
+            from services.skill_memory_service import load_relevant_skills
+            pool = await get_pg_pool()
+            skill_context = await load_relevant_skills(goal, user_id, pool=pool, limit=8)
+            if skill_context:
+                # Append to goal so agents see it
+                goal = f"{goal}\n\n{skill_context}"
+    except Exception as _sk_err:
+        pass  # skill loading is non-blocking
+    # ── End skill loading ───────────────────────────────────────────────────────
     stack_contract = parse_generation_contract(goal)
     stack_contract["goal"] = goal
     build_kind = _detect_build_kind(goal)

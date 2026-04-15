@@ -101,6 +101,40 @@ export default function WorkspaceManusV2() {
   const [expandedGroups, setExpandedGroups] = useState({});
   const [deployLoading, setDeployLoading] = useState(false);
   const [deployResult, setDeployResult] = useState(null);
+  const [workflows, setWorkflows] = useState({});
+  const [workflowsOpen, setWorkflowsOpen] = useState(false);
+  const [workflowLoading, setWorkflowLoading] = useState(null);
+
+  // Load workflows from backend
+  useEffect(() => {
+    axios.get(`${API}/workflows`, token ? { headers: { Authorization: `Bearer ${token}` } } : {})
+      .then(r => setWorkflows(r.data?.workflows || {}))
+      .catch(() => {});
+  }, [token]);
+
+  const handleWorkflow = useCallback(async (workflowKey) => {
+    setWorkflowLoading(workflowKey);
+    setWorkflowsOpen(false);
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      const res = await axios.post(`${API}/workflows/run`,
+        { workflow_key: workflowKey, project_id: job?.project_id || null },
+        { headers }
+      );
+      if (res.data.success) {
+        setActiveJobId(res.data.job_id);
+        setStage('running');
+        setSearchParams(p => { const n = new URLSearchParams(p); n.set('jobId', res.data.job_id); return n; }, { replace: true });
+      } else if (res.data.fallback) {
+        // Backend couldn't start it directly — set as goal and submit
+        setGoal(res.data.goal);
+      }
+    } catch (e) {
+      setError(e.response?.data?.detail || e.message);
+    } finally {
+      setWorkflowLoading(null);
+    }
+  }, [token, job?.project_id, setSearchParams]);
 
   const chatScrollRef = useRef(null);
   const textareaRef = useRef(null);
@@ -369,6 +403,42 @@ export default function WorkspaceManusV2() {
                 <span className="manus-task-label">{t.name || t.prompt?.slice(0, 60) || 'Task'}</span>
               </button>
             ))}
+          </div>
+
+          {/* ── Workflows ── */}
+          <div style={{borderTop:'1px solid #e5e5e0',padding:'8px'}}>
+            <button
+              className="manus-nav-item"
+              style={{width:'100%',fontWeight:600,justifyContent:'space-between'}}
+              onClick={() => setWorkflowsOpen(o => !o)}>
+              <span>⚡ Workflows</span>
+              <Ico.Chevron open={workflowsOpen} />
+            </button>
+            {workflowsOpen && (
+              <div style={{maxHeight:320,overflowY:'auto',marginTop:4}}>
+                {Object.entries(workflows).map(([category, wfList]) => (
+                  <div key={category}>
+                    <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',
+                      letterSpacing:'0.06em',color:'#aaa',padding:'6px 10px 2px'}}>{category}</div>
+                    {wfList.map(wf => (
+                      <button key={wf.key}
+                        className="manus-nav-item"
+                        style={{width:'100%',fontSize:12,padding:'5px 10px',opacity:workflowLoading?0.6:1}}
+                        disabled={!!workflowLoading}
+                        onClick={() => handleWorkflow(wf.key)}
+                        title={wf.description}>
+                        <span>{wf.icon}</span>
+                        <span style={{flex:1,textAlign:'left',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{wf.name}</span>
+                        {workflowLoading === wf.key && <div className="manus-thinking-dot" style={{width:6,height:6}} />}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+                {Object.keys(workflows).length === 0 && (
+                  <div style={{padding:'8px 12px',fontSize:12,color:'#aaa'}}>Loading workflows…</div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

@@ -5539,4 +5539,13 @@ async def _run_single_agent_with_retry(
         )
     except ImportError:
         return {"output": "", "tokens_used": 0, "status": "skipped", "reason": "not available"}
+
+# Register workflows router
+try:
+    from routes.workflows import router as workflows_router
+    app.include_router(workflows_router)
+    logger.info("workflows router registered")
+except Exception as _we:
+    logger.warning("workflows router unavailable: %s", _we)
+
 # ── End compatibility shims ───────────────────────────────────────────────────

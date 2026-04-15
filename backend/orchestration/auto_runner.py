@@ -999,6 +999,30 @@ async def _execute_job_loop(
             "enforcement_advisory": bool(egr.get("advisory_would_block")),
         },
     )
+
+    # ── Skill Memory: extract learnings from this build ────────────────────────
+    try:
+        skill_output = None
+        for s in steps:
+            if (s.get("agent_name") or "").lower() == "skill extractor" and s.get("status") == "completed":
+                # Get output from step
+                from orchestration.runtime_state import get_step_output
+                skill_output = await get_step_output(s["id"])
+                break
+        if skill_output and job.get("user_id"):
+            from services.skill_memory_service import save_skills_from_build
+            saved = await save_skills_from_build(
+                job_id=job_id,
+                user_id=job["user_id"],
+                skill_extractor_output=skill_output,
+                pool=db_pool,
+            )
+            if saved:
+                logger.info("auto_runner: saved %d skills from build %s", len(saved), job_id)
+    except Exception as _sm_err:
+        logger.debug("auto_runner: skill memory extraction skipped: %s", _sm_err)
+    # ── End Skill Memory ────────────────────────────────────────────────────────
+
     return {
         "success": True,
         "status": "completed",
