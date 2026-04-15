@@ -107,7 +107,10 @@ class SpawnEngine:
             for i in range(branches)
         ]
 
-        logger.info("spawn: %d branches, strategy=%s, task=%s", branches, strategy, task[:60])
+        # Task-driven agent selection — not fixed 8, based on task complexity
+        branches = self._adaptive_branch_count(task, config)
+
+        logger.info("spawn: %d branches (adaptive), strategy=%s, task=%s", branches, strategy, task[:60])
 
         # Run ALL in parallel — this is the speed advantage
         tasks = [
@@ -178,6 +181,38 @@ class SpawnEngine:
             "risks": risks or ["low"],
             "recommendation": "Safe to proceed" if not risks else "Review security implications",
         }
+
+    def _adaptive_branch_count(self, task: str, config: dict) -> int:
+        """
+        Determine branch count based on task type, not a fixed cap.
+        Simple = 2-4 branches. Complex = 4-8. Ambiguous/scenario = 8-32.
+        User-specified overrides all.
+        """
+        user_specified = config.get("branches")
+        if user_specified and user_specified > 0:
+            return min(int(user_specified), 64)  # Hard max 64 for cost control
+
+        task_lower = task.lower()
+        mode = config.get("mode", "variant")
+
+        # Scenario simulation needs more branches
+        if mode == "scenario" or any(w in task_lower for w in ["what if", "scenario", "simulate", "forecast"]):
+            return 16
+
+        # Population analysis
+        if mode == "population":
+            return 32
+
+        # Complex architecture / debugging
+        if any(w in task_lower for w in ["architecture", "debug", "diagnose", "failing", "broken", "production"]):
+            return 8
+
+        # Standard feature work
+        if any(w in task_lower for w in ["build", "create", "generate", "add", "implement"]):
+            return 4
+
+        # Simple / single concern
+        return 3
 
     def _aggregate(self, results: list, method: str) -> dict:
         """Aggregate branch results into consensus."""

@@ -22,6 +22,13 @@ import InterruptibleFlow from '../components/InterruptibleFlow';
 import EmotionalPeaks from '../components/EmotionalPeaks';
 import CommandCenter from '../components/CommandCenter';
 import RightPanel from '../components/RightPanel';
+import WorkspaceErrorState from '../components/WorkspaceErrorState';
+import WorkspaceOfflineState from '../components/WorkspaceOfflineState';
+import PreviewSkeleton from '../components/PreviewSkeleton';
+import AutomationSuggestions from '../components/AutomationSuggestions';
+import BuildTrustBar from '../components/BuildTrustBar';
+import SteerDiff from '../components/SteerDiff';
+import WorkspaceOnboarding from '../components/WorkspaceOnboarding';
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const Ico = {
@@ -109,6 +116,11 @@ export default function WorkspaceManusV2() {
   const [activePane, setActivePane] = useState('preview');
   const [activeFile, setActiveFile] = useState(null);
   const [taskCardOpen, setTaskCardOpen] = useState(true);
+  const [steerDiff, setSteerDiff] = useState(null);   // {before,after,message}
+  const [showAutomations, setShowAutomations] = useState(false);
+  const [trustSignals, setTrustSignals] = useState({ quality: 0, security: null, errors: 0, deployReady: false });
+  const [isOffline, setIsOffline] = useState(false);
+  const [lastEvent, setLastEvent] = useState(null);
   const [expandedGroups, setExpandedGroups] = useState({});
   const [deployLoading, setDeployLoading] = useState(false);
   const [deployResult, setDeployResult] = useState(null);
@@ -157,6 +169,43 @@ export default function WorkspaceManusV2() {
   const { files: wsFiles, fileContent, loadFileContent, reloadFiles } = useWorkspaceFiles(
     activeJobId, token
   );
+
+  // ── Trust signals from events ────────────────────────────────────────────────
+  useEffect(() => {
+    if (!events?.length) return;
+    const last = events[events.length - 1];
+    if (!last) return;
+    setLastEvent(last.type || '');
+    setIsOffline(false); // We're getting events = online
+    // Update trust signals
+    if (last.type === 'job.complete' || last.type === 'job_completed') {
+      const q = last.payload?.quality_score || last.payload?.qualityScore || 0;
+      const score = typeof q === 'number' && q <= 1 ? Math.round(q * 100) : Math.round(q);
+      setTrustSignals(prev => ({ ...prev, quality: score, deployReady: score >= 60 }));
+    }
+    if (last.type === 'issue.detected') {
+      setTrustSignals(prev => ({ ...prev, errors: prev.errors + 1 }));
+    }
+    if (last.type === 'issue.fixed') {
+      setTrustSignals(prev => ({ ...prev, errors: Math.max(0, prev.errors - 1) }));
+    }
+    if (last.type === 'steer.accepted') {
+      const p = last.payload || {};
+      setSteerDiff({
+        message: p.summary || p.message || 'Build updated',
+        before: p.beforePhase ? [p.beforePhase] : [],
+        after: p.afterPhase ? [p.afterPhase] : [],
+      });
+    }
+  }, [events]);
+
+  // ── Show automations after build completes ────────────────────────────────
+  useEffect(() => {
+    if (stage === 'completed' && activeJobId) {
+      const t = setTimeout(() => setShowAutomations(true), 2500);
+      return () => clearTimeout(t);
+    }
+  }, [stage, activeJobId]);
 
   // ── Derive stage from live job status ───────────────────────────────────────
   useEffect(() => {
@@ -483,11 +532,12 @@ export default function WorkspaceManusV2() {
 
               {/* Empty state */}
               {stage === 'input' && !job && (
-                <div style={{textAlign:'center',padding:'60px 0 20px',color:'#aaa'}}>
-                  <div style={{fontSize:32,marginBottom:12}}>✦</div>
-                  <div style={{fontSize:15,color:'#666',marginBottom:6}}>What do you want to build?</div>
-                  <div style={{fontSize:13}}>Describe it below and Crucible will build it.</div>
-                </div>
+                <WorkspaceOnboarding onStart={(prompt) => {
+                  if (prompt) {
+                    const input = document.querySelector('.manus-input');
+                    if (input) { input.value = prompt; input.focus(); }
+                  }
+                }} />
               )}
 
               {/* Agent response */}
@@ -519,10 +569,33 @@ export default function WorkspaceManusV2() {
                       </div>
                     )}
                     {stage === 'failed' && (
-                      <div className="manus-agent-text" style={{marginBottom:8,color:'#ef4444'}}>
-                        {failedSteps.length} step{failedSteps.length !== 1 ? 's' : ''} failed.
-                        {failedSteps[0]?.error_message && <span> {failedSteps[0].error_message.slice(0, 120)}</span>}
-                      </div>
+                      <WorkspaceErrorState
+                        error={error || failedSteps[0]?.error_message || 'Build failed'}
+                        stage={stage}
+                        onRetry={() => { setStage('input'); setError(null); }}
+                        onSteer={() => document.querySelector('.manus-input')?.focus()}
+                        onDebug={() => console.log('debug logs', events)}
+                      />
+                    )}
+
+                    {/* Steer diff — before/after plan when user steers */}
+                    {steerDiff && (
+                      <SteerDiff
+                        message={steerDiff.message}
+                        before={steerDiff.before}
+                        after={steerDiff.after}
+                        onDismiss={() => setSteerDiff(null)}
+                      />
+                    )}
+
+                    {/* Automation suggestions after build */}
+                    {showAutomations && stage === 'completed' && (
+                      <AutomationSuggestions
+                        jobId={activeJobId}
+                        token={token}
+                        onClose={() => setShowAutomations(false)}
+                        onCreated={(tmpl) => console.log('automation created:', tmpl.id)}
+                      />
                     )}
 
                     {/* Action chips — real from events */}
