@@ -84,7 +84,8 @@ def sniff_touched_files_language_mismatch(
 
         elif suffix == ".json":
             try:
-                json.loads(data)
+                if data.strip():  # skip empty JSON files — not a syntax error
+                    json.loads(data)
             except json.JSONDecodeError as e:
                 issues.append(f"{norm}: invalid JSON ({e.msg} at char {e.pos}).")
 

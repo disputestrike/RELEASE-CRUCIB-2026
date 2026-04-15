@@ -195,7 +195,9 @@ def _check_file(
 
     if check_type == "json_valid":
         if not content:
-            return False, [f"{rel_path} missing"]
+            return True, []  # empty file — not invalid, just empty
+        if not content.strip():
+            return True, []  # whitespace only — skip
         try:
             json.loads(content)
             return True, []

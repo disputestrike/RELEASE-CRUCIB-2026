@@ -570,7 +570,12 @@ export default function UnifiedWorkspace() {
     return () => clearTimeout(id);
   }, [events]);
 
-  // Wire brain_guidance SSE events → live chat feed so the brain talks during builds
+  // Auto-scroll center pane to bottom when messages or steps update
+  useEffect(() => {
+    const el = centerScrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [userChatMessages, steps, events]);
   const lastBrainEventIdRef = useRef(null);
   useEffect(() => {
     if (!events.length) return;
@@ -650,6 +655,7 @@ export default function UnifiedWorkspace() {
   );
 
   const sendInFlightRef = useRef(false);
+  const centerScrollRef = useRef(null);
 
   const handleApprove = async () => {
     const jid = jobId || jobIdFromUrl;
@@ -1187,7 +1193,7 @@ export default function UnifiedWorkspace() {
             </div>
           </div>
 
-          <div className="arp-center-pane-scroll">
+          <div className="arp-center-pane-scroll" ref={centerScrollRef}>
             {(effectiveJobId || effectiveProjectId) && (
               <div className="uw-build-identity" aria-label="Active build">
                 <div className="uw-build-identity-title">{buildDisplayTitle}</div>
