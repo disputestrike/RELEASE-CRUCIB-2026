@@ -5302,6 +5302,7 @@ try:
 except ImportError as exc:
     logger.warning("community router unavailable: %s", exc)
 # Route modules replace inline auth/projects/agents router definitions
+from router_loader import register_optional_router
 register_optional_router(
     app=app,
     logger=logger,
