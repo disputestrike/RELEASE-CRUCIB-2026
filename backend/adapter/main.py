@@ -27,7 +27,7 @@ app.add_middleware(
 )
 
 # ── Register all route modules ────────────────────────────────────────────────
-from adapter.routes import build, files, preview, deploy, automation, spawn, trust
+from adapter.routes import build, files, preview, deploy, automation, spawn, trust, worktrees
 
 app.include_router(build.router)
 app.include_router(files.router)
@@ -36,6 +36,7 @@ app.include_router(deploy.router)
 app.include_router(automation.router)
 app.include_router(spawn.router)
 app.include_router(trust.router)
+app.include_router(worktrees.router)
 
 
 # ── WebSocket endpoint ────────────────────────────────────────────────────────
