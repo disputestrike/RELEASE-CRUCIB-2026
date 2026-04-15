@@ -104,6 +104,7 @@ import WorkspaceMembersPage from "./pages/WorkspaceMembersPage";
 import SkillsPage from "./pages/SkillsPage";
 import SkillsMarketplace from "./pages/SkillsMarketplace";
 import UnifiedWorkspace from "./pages/UnifiedWorkspace";
+import WorkspaceManusV2 from "./pages/WorkspaceManusV2";
 import { LayoutProvider } from "./stores/useLayoutStore";
 import { TaskProvider } from "./stores/useTaskStore";
 
@@ -450,7 +451,8 @@ function App() {
           <Route path="/app" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route index element={<Dashboard />} />
             <Route path="builder" element={<Builder />} />
-            <Route path="workspace" element={<UnifiedWorkspace />} />
+            <Route path="workspace" element={<WorkspaceManusV2 />} />
+            <Route path="workspace-unified" element={<UnifiedWorkspace />} />
             <Route path="workspace-manus" element={<WorkspaceManus />} />
             <Route path="workspace-classic" element={<Workspace />} />
             <Route path="projects/new" element={<ProjectBuilder />} />
