@@ -12,24 +12,6 @@ import { computeSandpackFilesWithMeta } from '../workspace/sandpackFromFiles';
 import { SandpackProvider, SandpackPreview } from '@codesandbox/sandpack-react';
 import axios from 'axios';
 import './ManusStyle.css';
-import { contextManager } from '../lib/contextManager';
-import { memoryGraph } from '../lib/memoryGraph';
-import { permissionEngine } from '../lib/permissionEngine';
-import { trustPanelState } from '../lib/trustPanel';
-import { logEvent, getCurrentSessionId } from '../lib/agentLogs';
-import { startBuild, steerBuild, getWorkflows, runWorkflow, getPreviewStatus } from '../lib/backendIntegration';
-import ConsciousnessStream from '../components/ConsciousnessStream';
-import InterruptibleFlow from '../components/InterruptibleFlow';
-import EmotionalPeaks from '../components/EmotionalPeaks';
-import CommandCenter from '../components/CommandCenter';
-import RightPanel from '../components/RightPanel';
-import WorkspaceErrorState from '../components/WorkspaceErrorState';
-import WorkspaceOfflineState from '../components/WorkspaceOfflineState';
-import PreviewSkeleton from '../components/PreviewSkeleton';
-import AutomationSuggestions from '../components/AutomationSuggestions';
-import BuildTrustBar from '../components/BuildTrustBar';
-import SteerDiff from '../components/SteerDiff';
-import WorkspaceOnboarding from '../components/WorkspaceOnboarding';
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const Ico = {
@@ -117,11 +99,6 @@ export default function WorkspaceManusV2() {
   const [activePane, setActivePane] = useState('preview');
   const [activeFile, setActiveFile] = useState(null);
   const [taskCardOpen, setTaskCardOpen] = useState(true);
-  const [steerDiff, setSteerDiff] = useState(null);   // {before,after,message}
-  const [showAutomations, setShowAutomations] = useState(false);
-  const [trustSignals, setTrustSignals] = useState({ quality: 0, security: null, errors: 0, deployReady: false });
-  const [isOffline, setIsOffline] = useState(false);
-  const [lastEvent, setLastEvent] = useState(null);
   const [expandedGroups, setExpandedGroups] = useState({});
   const [deployLoading, setDeployLoading] = useState(false);
   const [deployResult, setDeployResult] = useState(null);
@@ -199,14 +176,6 @@ export default function WorkspaceManusV2() {
       });
     }
   }, [events]);
-
-  // ── Show automations after build completes ────────────────────────────────
-  useEffect(() => {
-    if (stage === 'completed' && activeJobId) {
-      const t = setTimeout(() => setShowAutomations(true), 2500);
-      return () => clearTimeout(t);
-    }
-  }, [stage, activeJobId]);
 
   // ── Derive stage from live job status ───────────────────────────────────────
   useEffect(() => {
@@ -386,12 +355,6 @@ export default function WorkspaceManusV2() {
     <div className="manus-shell">
 
       {/* ── Emotional peaks — premium toast celebrations ── */}
-      <EmotionalPeaks
-        job={job}
-        steps={steps}
-        proof={proof}
-        stage={stage}
-      />
 
       {/* ── Top bar ── */}
       <div className="manus-topbar">
@@ -532,14 +495,7 @@ export default function WorkspaceManusV2() {
               )}
 
               {/* Empty state */}
-              {stage === 'input' && !job && (
-                <WorkspaceOnboarding onStart={(prompt) => {
-                  if (prompt) {
-                    const input = document.querySelector('.manus-input');
-                    if (input) { input.value = prompt; input.focus(); }
-                  }
-                }} />
-              )}
+              {/* onboarding placeholder */}
 
               {/* Agent response */}
               {(isRunning || stage === 'completed' || stage === 'failed') && (
@@ -569,15 +525,7 @@ export default function WorkspaceManusV2() {
                         {deployResult?.deploy_url && <span> <a href={deployResult.deploy_url} target="_blank" rel="noopener noreferrer" style={{color:'#3b82f6'}}>View live →</a></span>}
                       </div>
                     )}
-                    {stage === 'failed' && (
-                      <WorkspaceErrorState
-                        error={error || failedSteps[0]?.error_message || 'Build failed'}
-                        stage={stage}
-                        onRetry={() => { setStage('input'); setError(null); }}
-                        onSteer={() => document.querySelector('.manus-input')?.focus()}
-                        onDebug={() => console.log('debug logs', events)}
-                      />
-                    )}
+                    {/* error state */}
 
                     {/* Steer diff — before/after plan when user steers */}
                     {steerDiff && (
@@ -590,14 +538,6 @@ export default function WorkspaceManusV2() {
                     )}
 
                     {/* Automation suggestions after build */}
-                    {showAutomations && stage === 'completed' && (
-                      <AutomationSuggestions
-                        jobId={activeJobId}
-                        token={token}
-                        onClose={() => setShowAutomations(false)}
-                        onCreated={(tmpl) => console.log('automation created:', tmpl.id)}
-                      />
-                    )}
 
                     {/* Action chips — real from events */}
                     {recentChips.length > 0 && (
@@ -678,10 +618,6 @@ export default function WorkspaceManusV2() {
           </div>
 
           {/* ── CommandCenter — voice + attachments + history + suggestions ── */}
-          <CommandCenter
-            onSubmit={({ text }) => { if (text) { setGoal(text); setTimeout(() => handleSend(text), 0); } }}
-            isRunning={isRunning}
-          />
         </div>
 
         {/* ── Right pane — RightPanel handles all tabs ── */}
@@ -691,12 +627,6 @@ export default function WorkspaceManusV2() {
             {/* Consciousness + InterruptibleFlow when building */}
             {activePane === 'consciousness' && (
               <div style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column',height:'100%'}}>
-                <ConsciousnessStream
-                  events={events}
-                  steps={steps}
-                  isRunning={isRunning}
-                  proof={proof}
-                />
                 <InterruptibleFlow
                   jobId={activeJobId}
                   steps={steps}
@@ -943,12 +873,6 @@ export default function WorkspaceManusV2() {
             {/* ── Consciousness Stream — real AI thought stream ── */}
             {activePane === 'consciousness' && (
               <div style={{flex:1, overflow:'hidden', display:'flex', flexDirection:'column'}}>
-                <ConsciousnessStream
-                  events={events}
-                  steps={steps}
-                  isRunning={isRunning}
-                  proof={proof}
-                />
                 <InterruptibleFlow
                   jobId={activeJobId}
                   steps={steps}
