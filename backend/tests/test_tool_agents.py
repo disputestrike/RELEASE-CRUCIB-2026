@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for Phase 3 tool agents: Browser, File, API, Database, Deployment.
 """
 

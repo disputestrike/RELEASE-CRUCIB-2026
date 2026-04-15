@@ -246,7 +246,7 @@ def ask_for_build_target(goal: str) -> dict:
         "inferred_target": None,
         "candidates": None,
         "reasoning": reasoning,
-        "question": reason ing,
+        "question": reasoning,
         "options": [
             {
                 "id": target_id,

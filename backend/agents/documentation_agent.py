@@ -1,4 +1,4 @@
-﻿"""
+"""
 DocumentationAgent: Generates comprehensive documentation for the project.
 """
 

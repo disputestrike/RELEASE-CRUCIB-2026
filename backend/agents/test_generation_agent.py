@@ -1,4 +1,4 @@
-﻿"""
+"""
 TestGenerationAgent: Generates unit, integration, and E2E tests.
 """
 

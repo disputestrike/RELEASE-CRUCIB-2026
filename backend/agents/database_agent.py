@@ -1,4 +1,4 @@
-﻿"""
+"""
 DatabaseAgent: Designs database schema, migrations, and ORM models.
 """
 

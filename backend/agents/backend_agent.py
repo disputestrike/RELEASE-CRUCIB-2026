@@ -1,4 +1,4 @@
-﻿"""
+"""
 BackendAgent: Generates complete backend API code with proper structure.
 """
 

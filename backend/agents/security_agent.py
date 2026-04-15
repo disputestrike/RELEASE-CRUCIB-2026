@@ -1,4 +1,4 @@
-﻿"""
+"""
 SecurityAgent: Security audit, vulnerability scanning, and fixes.
 """
 

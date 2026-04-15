@@ -1,4 +1,4 @@
-﻿"""
+"""
 PlannerAgent: Analyzes requirements and creates structured execution plan with task dependencies.
 """
 

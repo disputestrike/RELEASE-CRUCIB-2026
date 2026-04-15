@@ -1,4 +1,4 @@
-﻿"""
+"""
 FrontendAgent: Generates complete, validated frontend code.
 """
 

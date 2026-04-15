@@ -1,4 +1,4 @@
-﻿"""
+"""
 StackSelectorAgent: Selects optimal technology stack based on requirements.
 """
 

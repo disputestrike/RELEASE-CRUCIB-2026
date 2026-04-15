@@ -1,4 +1,4 @@
-﻿"""
+"""
 DesignAgent: Creates UI/UX specifications and design system.
 """
 
