@@ -133,22 +133,43 @@ export default function UnifiedWorkspace() {
     localStorage.setItem('crucibai_right_collapsed', rightCollapsed);
   }, [rightCollapsed]);
 
+  const [leftCollapsed, setLeftCollapsed] = useState(() => localStorage.getItem('crucibai_left_collapsed') === 'true');
+  useEffect(() => {
+    localStorage.setItem('crucibai_left_collapsed', leftCollapsed);
+  }, [leftCollapsed]);
+
+  const [leftWidth, setLeftWidth] = useState(() => parseInt(localStorage.getItem('crucibai_left_width') || '280', 10));
+  useEffect(() => {
+    localStorage.setItem('crucibai_left_width', String(leftWidth));
+  }, [leftWidth]);
+
   const [rightWidth, setRightWidth] = useState(() => parseInt(localStorage.getItem('crucibai_right_width') || '440', 10));
   useEffect(() => {
     localStorage.setItem('crucibai_right_width', String(rightWidth));
   }, [rightWidth]);
 
+  const handleLeftResize = useCallback((delta) => {
+    setLeftWidth((w) => {
+      const minLeft = 220;
+      const minCenter = 280;
+      const inner = typeof window !== 'undefined' ? window.innerWidth : 1440;
+      const rightReserve = rightCollapsed ? 32 : rightWidth + 10;
+      const maxLeft = Math.max(minLeft, inner - rightReserve - minCenter - 24);
+      return Math.min(maxLeft, Math.max(minLeft, w + delta));
+    });
+  }, [rightCollapsed, rightWidth]);
+  const handleResetLeftWidth = useCallback(() => setLeftWidth(280), []);
+
   const handleResize = useCallback((delta) => {
     setRightWidth((w) => {
       const minRight = 200;
       const minCenter = 280;
-      const div = 10;
       const inner = typeof window !== 'undefined' ? window.innerWidth : 1440;
-      const sidebarReserve = 300;
-      const maxRight = Math.max(minRight, inner - sidebarReserve - div - minCenter);
+      const leftReserve = leftCollapsed ? 72 : leftWidth + 10;
+      const maxRight = Math.max(minRight, inner - leftReserve - minCenter - 24);
       return Math.min(maxRight, Math.max(minRight, w + delta));
     });
-  }, []);
+  }, [leftCollapsed, leftWidth]);
   const handleResetWidth = useCallback(() => setRightWidth(440), []);
 
   const [editorColorMode, setEditorColorMode] = useState(() =>
@@ -1161,6 +1182,84 @@ export default function UnifiedWorkspace() {
     <WorkspaceNavProvider value={workspaceNavValue}>
     <div className={`uw-root arp-root arp-ux-${uxMode}`} data-testid="unified-workspace-root">
       <div className="arp-layout arp-layout--no-inner-rail">
+        <aside className={`arp-left-rail ${leftCollapsed ? 'collapsed' : ''}`} style={!leftCollapsed ? { width: `${leftWidth}px` } : undefined}>
+          <div className="arp-rail-toggle" onClick={() => setLeftCollapsed((v) => !v)}>
+            {leftCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+          </div>
+
+          <nav className="arp-nav">
+            {!leftCollapsed && <div className="arp-nav-section-label">Navigate</div>}
+            <button
+              type="button"
+              className={`arp-nav-item ${activePane === 'preview' ? 'active' : ''}`}
+              onClick={() => {
+                setActivePane('preview');
+                setRightCollapsed(false);
+              }}
+              title="Preview"
+            >
+              <Eye size={15} />
+              {!leftCollapsed && <span className="arp-nav-label">Preview</span>}
+            </button>
+            <button
+              type="button"
+              className={`arp-nav-item ${activePane === 'timeline' ? 'active' : ''}`}
+              onClick={() => {
+                setActivePane('timeline');
+                setRightCollapsed(false);
+              }}
+              title="Timeline"
+            >
+              <Rocket size={15} />
+              {!leftCollapsed && <span className="arp-nav-label">Timeline</span>}
+            </button>
+            <button
+              type="button"
+              className={`arp-nav-item ${activePane === 'proof' ? 'active' : ''}`}
+              onClick={() => {
+                setActivePane('proof');
+                setRightCollapsed(false);
+              }}
+              title="Proof"
+            >
+              <ShieldCheck size={15} />
+              {!leftCollapsed && <span className="arp-nav-label">Proof</span>}
+            </button>
+            <button
+              type="button"
+              className={`arp-nav-item ${activePane === 'code' ? 'active' : ''}`}
+              onClick={() => {
+                setActivePane('code');
+                setRightCollapsed(false);
+              }}
+              title="Code + Files"
+            >
+              <FileArchive size={15} />
+              {!leftCollapsed && <span className="arp-nav-label">Code</span>}
+            </button>
+
+            {!leftCollapsed && <div className="arp-nav-section-label arp-nav-section-label-system">Workspace Files</div>}
+            {!leftCollapsed && (
+              <div className="uw-left-tree-wrap">
+                <WorkspaceFileTree
+                  paths={wsPaths}
+                  selectedPath={activeWsPath}
+                  onSelectPath={(p) => {
+                    setActiveWsPath(p);
+                    setTreeRevealTick((t) => t + 1);
+                    setActivePane('code');
+                    setRightCollapsed(false);
+                  }}
+                  revealTick={treeRevealTick}
+                  loading={wsListLoading}
+                />
+              </div>
+            )}
+          </nav>
+        </aside>
+
+        {!leftCollapsed && <ResizableDivider onResize={handleLeftResize} onDoubleClick={handleResetLeftWidth} invertDelta />}
+
         <div className="arp-center-pane arp-center-pane--composer-bottom">
           <div className="arp-center-toolbar uw-center-headline">
             <div className="uw-center-headline-brand" aria-label="Crucible product version">
