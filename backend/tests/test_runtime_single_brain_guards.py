@@ -7,12 +7,15 @@ import pytest
 async def test_direct_tool_execution_is_forbidden_outside_runtime_scope():
     from tool_executor import execute_tool
 
-    with pytest.raises(PermissionError, match="runtime_engine context"):
-        execute_tool(
-            project_id="proj-guard-1",
-            tool_name="run",
-            params={"command": ["python", "--version"]},
-        )
+    result = execute_tool(
+        project_id="proj-guard-1",
+        tool_name="run",
+        params={"command": ["python", "--version"]},
+    )
+
+    assert result["success"] is False
+    assert result["policy"]["reason"] == "runtime_engine_required"
+    assert "runtime_engine" in result["error"]
 
 
 @pytest.mark.asyncio

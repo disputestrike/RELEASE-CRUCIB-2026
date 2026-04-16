@@ -123,8 +123,6 @@ os.environ["DISABLE_CSRF_FOR_TEST"] = "1"
 os.environ.setdefault("CRUCIBAI_TEST", "1")
 os.environ.setdefault("CRUCIBAI_LOG_DIR", str((_TEST_TEMP_ROOT / "logs").resolve()))
 
-pytest_plugins = ("pytest_asyncio",)
-
 
 def _apply_projection(row, projection):
     if not projection:

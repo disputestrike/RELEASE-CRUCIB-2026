@@ -35,13 +35,15 @@ async def test_permission_skill_tool_full_chain(monkeypatch):
 
     monkeypatch.setattr(pe, "evaluate_tool_call", _wrapped_eval)
 
-    # 0) Direct execution is blocked outside runtime engine.
-    with pytest.raises(PermissionError, match="runtime_engine context"):
-        execute_tool(
-            project_id="proj-integ-1",
-            tool_name="run",
-            params={"command": ["python", "--version"], "skill": "/commit"},
-        )
+    # 0) Direct execution is blocked outside runtime engine via structured denial.
+    direct = execute_tool(
+        project_id="proj-integ-1",
+        tool_name="run",
+        params={"command": ["python", "--version"], "skill": "/commit"},
+    )
+    assert direct["success"] is False
+    assert direct["policy"]["reason"] == "runtime_engine_required"
+    assert "runtime_engine" in direct["error"]
 
     # 1) Allowed call succeeds with policy metadata via runtime engine.
     allowed = runtime_engine.execute_tool_for_task(
