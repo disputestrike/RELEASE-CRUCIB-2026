@@ -247,6 +247,7 @@ _ALL_ROUTES: list[tuple[str, str]] = [
     ("routes.misc", "router"),
     ("routes.auth", "auth_router"),
     ("routes.runtime", "router"),
+    ("routes.projects", "projects_router"),
     ("routes.admin", "admin_router"),
     ("routes.automation", "router"),
     ("routes.community", "router"),
