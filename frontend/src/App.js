@@ -36,6 +36,7 @@ import ExportCenter from "./pages/ExportCenter";
 import PatternLibrary from "./pages/PatternLibrary";
 import Settings from "./pages/Settings";
 import CrucibAIWorkspace from "./pages/CrucibAIWorkspace";
+import UnifiedWorkspace from "./pages/UnifiedWorkspace";
 import Layout from "./components/Layout";
 import ShareView from "./pages/ShareView";
 import ExamplesGallery from "./pages/ExamplesGallery";
@@ -460,8 +461,9 @@ function App() {
             <Route index element={<RedirectAppIndexToWorkspace />} />
             <Route path="builder" element={<Navigate to="/app/workspace" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
-            <Route path="workspace" element={<CrucibAIWorkspace />} />
+            <Route path="workspace" element={<UnifiedWorkspace />} />
             <Route path="live" element={<MonitoringDashboard />} />
+            <Route path="workspace-engine" element={<CrucibAIWorkspace />} />
             <Route path="workspace-unified" element={<Navigate to="/app/workspace" replace />} />
             <Route path="workspace-manus" element={<Navigate to="/app/workspace" replace />} />
             <Route path="workspace-classic" element={<Navigate to="/app/workspace" replace />} />
