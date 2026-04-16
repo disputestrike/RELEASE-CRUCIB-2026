@@ -29,6 +29,7 @@ import LandingPage from "./pages/LandingPage";
 import OurProjectsPage from "./pages/OurProjectsPage";
 import AuthPage from "./pages/AuthPage";
 import ProjectBuilder from "./pages/ProjectBuilder";
+import Dashboard from "./pages/Dashboard";
 import AgentMonitor from "./pages/AgentMonitor";
 import TokenCenter from "./pages/TokenCenter";
 import ExportCenter from "./pages/ExportCenter";
@@ -458,7 +459,9 @@ function App() {
           <Route path="/app" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route index element={<RedirectAppIndexToWorkspace />} />
             <Route path="builder" element={<Navigate to="/app/workspace" replace />} />
+            <Route path="dashboard" element={<Dashboard />} />
             <Route path="workspace" element={<CrucibAIWorkspace />} />
+            <Route path="live" element={<MonitoringDashboard />} />
             <Route path="workspace-unified" element={<Navigate to="/app/workspace" replace />} />
             <Route path="workspace-manus" element={<Navigate to="/app/workspace" replace />} />
             <Route path="workspace-classic" element={<Navigate to="/app/workspace" replace />} />

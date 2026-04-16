@@ -8,7 +8,7 @@ import {
   LayoutGrid, BookOpen, HelpCircle, Coins,
   X, MoreHorizontal, ExternalLink, Pencil, Share2,
   Trash2, FolderInput, Star, Settings, Shield,
-  PanelLeftClose, PanelLeftOpen, History, Home,
+  PanelLeftClose, PanelLeftOpen, History, Home, BarChart3,
 } from 'lucide-react';
 import Logo from './Logo';
 import { useWorkspaceRail } from '../contexts/WorkspaceRailContext';
@@ -639,9 +639,17 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
         </div>
         <div className="sidebar-nav-group-label">Work</div>
         <div className="sidebar-nav-section">
+          <Link to="/app/dashboard" className={`sidebar-nav-item ${isActive('/app/dashboard') ? 'active' : ''}`}>
+            <BarChart3 size={18} className="sidebar-nav-icon" />
+            <span className="sidebar-nav-label">Dashboard</span>
+          </Link>
           <Link to="/app/workspace" className={`sidebar-nav-item ${isActive('/app/workspace') ? 'active' : ''}`}>
             <Home size={18} className="sidebar-nav-icon" />
-            <span className="sidebar-nav-label">Home</span>
+            <span className="sidebar-nav-label">Workspace</span>
+          </Link>
+          <Link to="/app/live" className={`sidebar-nav-item ${isActive('/app/live') || isActive('/app/monitoring') ? 'active' : ''}`}>
+            <Zap size={18} className="sidebar-nav-icon" />
+            <span className="sidebar-nav-label">Live View</span>
           </Link>
           <Link to="/app/agents" className={`sidebar-nav-item ${isActivePrefix('/app/agents') && !isActivePrefix('/app/agents/dashboard') ? 'active' : ''}`}>
             <FolderOpen size={18} className="sidebar-nav-icon" />
