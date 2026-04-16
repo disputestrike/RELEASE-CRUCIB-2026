@@ -243,19 +243,40 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-try:
-    from routes.misc import router as misc_router
+_ALL_ROUTES: list[tuple[str, str]] = [
+    ("routes.misc", "router"),
+    ("routes.auth", "auth_router"),
+    ("routes.runtime", "router"),
+    ("routes.admin", "admin_router"),
+    ("routes.automation", "router"),
+    ("routes.community", "router"),
+    ("routes.crucib_workspace_adapter", "router"),
+    ("routes.crucib_ws_events", "router"),
+    ("routes.deploy", "router"),
+    ("routes.ecosystem", "router"),
+    ("routes.git", "router"),
+    ("routes.git_sync", "router"),
+    ("routes.ide", "router"),
+    ("routes.mobile", "mobile_router"),
+    ("routes.monitoring", "router"),
+    ("routes.skills", "router"),
+    ("routes.sso", "router"),
+    ("routes.terminal", "router"),
+    ("routes.tokens", "router"),
+    ("routes.trust", "router"),
+    ("routes.vibecoding", "router"),
+    ("routes.workflows", "router"),
+    ("routes.workspace", "router"),
+    ("routes.worktrees", "router"),
+]
 
-    app.include_router(misc_router)
-except Exception as exc:
-    logger.exception("Failed to include routes.misc: %s", exc)
-
-for module_name, attr_name in (("routes.auth", "auth_router"), ("routes.runtime", "router")):
+for _module_name, _attr_name in _ALL_ROUTES:
     try:
-        module = __import__(module_name, fromlist=[attr_name])
-        app.include_router(getattr(module, attr_name))
-    except Exception as exc:
-        logger.warning("Skipping optional router %s: %s", module_name, exc)
+        _mod = __import__(_module_name, fromlist=[_attr_name])
+        app.include_router(getattr(_mod, _attr_name))
+        logger.debug("Registered router: %s", _module_name)
+    except Exception as _exc:
+        logger.warning("Skipping optional router %s: %s", _module_name, _exc)
 
 # The Dockerfile copies frontend/build → /app/static, so the React
 # JS/CSS chunks live at /app/static/static/js|css/*.  Mount that nested
