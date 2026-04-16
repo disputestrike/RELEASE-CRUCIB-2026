@@ -106,6 +106,14 @@ export default function WorkspaceManusV2() {
   const [workflowsOpen, setWorkflowsOpen] = useState(false);
   const [workflowLoading, setWorkflowLoading] = useState(null);
 
+  // ── Real data from backend ──────────────────────────────────────────────────
+  const { job, steps, events, proof, isConnected, connectionMode, refresh } = useJobStream(
+    activeJobId, token
+  );
+  const { files: wsFiles, fileContent, loadFileContent, reloadFiles } = useWorkspaceFiles(
+    activeJobId, token
+  );
+
   // Load workflows from backend
   useEffect(() => {
     axios.get(`${API}/workflows`, token ? { headers: { Authorization: `Bearer ${token}` } } : {})
@@ -139,14 +147,6 @@ export default function WorkspaceManusV2() {
 
   const chatScrollRef = useRef(null);
   const textareaRef = useRef(null);
-
-  // ── Real data from backend ──────────────────────────────────────────────────
-  const { job, steps, events, proof, isConnected, connectionMode, refresh } = useJobStream(
-    activeJobId, token
-  );
-  const { files: wsFiles, fileContent, loadFileContent, reloadFiles } = useWorkspaceFiles(
-    activeJobId, token
-  );
 
   // ── Trust signals from events ────────────────────────────────────────────────
   useEffect(() => {
