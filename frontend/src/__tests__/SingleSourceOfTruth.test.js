@@ -34,7 +34,9 @@ describe('Single Source of Truth', () => {
       expect(source).toMatch(/path="\/" element=.*LandingPage/);
       expect(source).toMatch(/path="\/pricing" element=.*Pricing/);
       expect(source).toMatch(/path="\/app".*Layout/);
+      expect(source).toMatch(/path="dashboard" element=.*Dashboard/);
       expect(source).toMatch(/path="workspace" element=.*CrucibAIWorkspace/);
+      expect(source).toMatch(/path="live" element=.*MonitoringDashboard/);
       expect(source).toMatch(/path="tokens" element=.*TokenCenter/);
     });
     it('authenticated redirects and aliases converge on /app/workspace', () => {
@@ -54,11 +56,13 @@ describe('Single Source of Truth', () => {
       expect(source).toMatch(/navigate\('\/app\/workspace'/);
       expect(source).toMatch(/href="\/app\/workspace"/);
     });
-    it('Sidebar routes core home and new-task actions into /app/workspace', () => {
+    it('Sidebar exposes dashboard, workspace, and live view destinations', () => {
       const sidebarPath = path.join(__dirname, '../components/Sidebar.jsx');
       const source = fs.readFileSync(sidebarPath, 'utf8');
+      expect(source).toMatch(/Link to="\/app\/dashboard"/);
       expect(source).toMatch(/navigate\('\/app\/workspace'/);
       expect(source).toMatch(/Link to="\/app\/workspace"/);
+      expect(source).toMatch(/Link to="\/app\/live"/);
       expect(source).toMatch(/href="\/app\/workspace"/);
       expect(source).toMatch(/\/app\/workspace\?chatTaskId=/);
     });

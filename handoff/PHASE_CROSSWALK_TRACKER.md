@@ -15,7 +15,7 @@ Status legend: Not Started | In Progress | Blocked | Complete
 | FR-005 | Right pane modes: Preview, Code, Files, Publish | 4 | FE Lead | QA Lead | Mode test suite | Not Started |
 | FR-006 | Advanced controls only in Dev capability envelope | 5 | FE Lead | QA Lead | Mode policy tests | In Progress |
 | FR-007 | Differentiated power features beyond Manus parity | 6 | FE+BE | QA Lead | Scenario demos | Not Started |
-| NFR-001 | Stream reliability and reconnect correctness | 2,7,8 | BE Lead | QA Lead | Reconnect tests | Not Started |
+| NFR-001 | Stream reliability and reconnect correctness | 2,7,8 | BE Lead | QA Lead | Reconnect tests | In Progress |
 | NFR-002 | Security and permission guardrails for risky actions | 7 | BE Lead | Security QA | Policy tests, audit logs | Not Started |
 | NFR-003 | Regression net for critical paths in CI | 8 | QA Lead | QA Lead | CI reports | In Progress |
 | NFR-004 | Legacy architecture retirement | 9 | FE Lead | QA Lead | Dead-path scan | Not Started |
@@ -106,3 +106,5 @@ Status legend: Not Started | In Progress | Blocked | Complete
 | 2026-04-16 | Phase 8 slice | `npx eslint src/lib/jobState.js src/lib/jobState.test.js src/hooks/useJobStream.js` and `npm run test -- --watchAll=false jobState.test.js SingleSourceOfTruth.test.js workspaceEntry.test.js modePolicy.test.js` | Pass | 4 suites, 29 tests passed after reconnect guardrail hardening |
 | 2026-04-16 | Phase 1 + Phase 3 slice | Restored distinct app-shell routes for `Dashboard` and `Live View` (`/app/dashboard`, `/app/live`) while keeping canonical workspace route | Pass | Users now have explicit Dashboard, Workspace, and Live View destinations in sidebar navigation |
 | 2026-04-16 | Phase 8 slice | `npx eslint src/App.js src/components/Sidebar.jsx` and `npm run test -- --watchAll=false SingleSourceOfTruth.test.js` | Pass | Route/nav changes validated; source-contract suite remains green (15 tests) |
+| 2026-04-16 | Phase 1 + Phase 3 + Phase 8 slice | Expanded source-contract coverage for `Dashboard`, `Workspace`, and `Live View` route/link split in `App.js` and `Sidebar.jsx` | Pass | Canonical tests now fail fast if `/app/dashboard` or `/app/live` mappings regress |
+| 2026-04-16 | Phase 8 slice | `npm run test -- --watchAll=false SingleSourceOfTruth.test.js` and `npx eslint src/__tests__/SingleSourceOfTruth.test.js` | Pass | 1 suite, 15 tests passed after route-contract hardening |
