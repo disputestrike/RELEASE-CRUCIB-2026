@@ -34,7 +34,6 @@ import TokenCenter from "./pages/TokenCenter";
 import ExportCenter from "./pages/ExportCenter";
 import PatternLibrary from "./pages/PatternLibrary";
 import Settings from "./pages/Settings";
-import Builder from "./pages/Builder";
 import CrucibAIWorkspace from "./pages/CrucibAIWorkspace";
 import Layout from "./components/Layout";
 import ShareView from "./pages/ShareView";
@@ -426,7 +425,7 @@ function App() {
           <Route path="/our-projects" element={<OurProjectsPage />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/onboarding" element={<OnboardingRoute><OnboardingPage /></OnboardingRoute>} />
-          <Route path="/builder" element={<Builder />} />
+          <Route path="/builder" element={<RedirectWorkspaceToApp />} />
           <Route path="/workspace" element={<RedirectWorkspaceToApp />} />
           <Route path="/share/:token" element={<ShareView />} />
           <Route path="/privacy" element={<Privacy />} />
