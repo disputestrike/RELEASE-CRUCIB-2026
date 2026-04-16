@@ -33,12 +33,12 @@ export default function OnboardingPage() {
       });
       localStorage.removeItem('crucibai_workspace_mode'); // clear fallback
       if (refreshUser) await refreshUser();
-      navigate('/app', { state: card.state || {} });
+      navigate('/app/workspace', { state: card.state || {} });
     } catch (err) {
       // Fallback: save locally and still go to dashboard so user isn't stuck
       localStorage.setItem('crucibai_workspace_mode', mode);
       if (refreshUser) await refreshUser();
-      navigate('/app', { state: card.state || {} });
+      navigate('/app/workspace', { state: card.state || {} });
     } finally {
       setLoading(null);
     }
@@ -70,7 +70,7 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen w-full bg-white flex flex-col items-center justify-center p-8">
-      <Logo variant="full" height={40} href="/app" className="logo-surface-light mb-8" showTagline={false} />
+      <Logo variant="full" height={40} href="/app/workspace" className="logo-surface-light mb-8" showTagline={false} />
       <h1 className="text-2xl font-semibold text-[#1A1A1A] mb-8">
         How do you want to use CrucibAI?
       </h1>

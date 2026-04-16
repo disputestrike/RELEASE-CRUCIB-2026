@@ -191,7 +191,7 @@ const LandingPage = () => {
             <Link to="/our-projects" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Our Project</Link>
           </div>
           <div className="hidden md:flex items-center gap-4 ml-auto shrink-0">
-            <button type="button" onClick={() => navigate('/app')} className="text-sm text-kimi-nav text-kimi-muted hover:text-kimi-text transition">
+            <button type="button" onClick={() => navigate('/app/workspace')} className="text-sm text-kimi-nav text-kimi-muted hover:text-kimi-text transition">
               Dashboard
             </button>
             {!user && (
@@ -228,7 +228,7 @@ const LandingPage = () => {
               {!user && (
                 <Link to="/auth" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Log in</Link>
               )}
-              <button type="button" onClick={() => { navigate('/app'); setMobileMenuOpen(false); }} className="text-lg text-left text-kimi-muted hover:text-kimi-text py-2">Dashboard</button>
+              <button type="button" onClick={() => { navigate('/app/workspace'); setMobileMenuOpen(false); }} className="text-lg text-left text-kimi-muted hover:text-kimi-text py-2">Dashboard</button>
               <button type="button" onClick={() => { navigate('/app/workspace'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-gray-900 rounded-lg font-medium mt-2">Get started</button>
             </div>
           </motion.div>

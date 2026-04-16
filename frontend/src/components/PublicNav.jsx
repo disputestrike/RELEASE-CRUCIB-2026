@@ -23,7 +23,7 @@ export default function PublicNav() {
           <Link to="/our-projects" className={linkClass}>Our Project</Link>
         </div>
         <div className="flex items-center gap-3 sm:gap-4 ml-auto shrink-0">
-          <Link to="/app" className={`${quietClass} hidden sm:inline`}>Dashboard</Link>
+          <Link to="/app/workspace" className={`${quietClass} hidden sm:inline`}>Dashboard</Link>
           {!user && (
             <Link to="/auth" className={`${quietClass} hidden sm:inline`}>Log in</Link>
           )}

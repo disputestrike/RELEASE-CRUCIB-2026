@@ -30,6 +30,8 @@ import ToolCarousel from '../components/ToolCarousel';
 import WorkspaceFusedRail from '../components/WorkspaceFusedRail';
 import { useWorkspaceRail } from '../contexts/WorkspaceRailContext';
 import { extractWorkspaceLaunchIntent } from '../utils/workspaceEntry';
+import { listJobToTaskEntry } from '../lib/jobState';
+import { getWorkspaceCapabilities } from '../lib/modePolicy';
 import './CrucibAIWorkspace.css';
 
 function useJobWorkspaceFiles(jobId, token) {
@@ -70,49 +72,22 @@ function useJobWorkspaceFiles(jobId, token) {
   return { files, fileContent, loadFileContent, reloadFiles: loadFiles };
 }
 
-function normalizeListJobStatus(status) {
-  const s = String(status || '').toLowerCase();
-  if (s === 'complete') return 'completed';
-  return s || 'pending';
-}
-
-function listJobToTaskEntry(j) {
-  const jid = j?.id || j?.job_id;
-  if (!jid) return null;
-  const goalText = (j.goal || j.payload?.goal || j.name || 'Build').trim();
-  const createdRaw = j.created_at || j.createdAt;
-  let createdAt = Date.now();
-  if (createdRaw) {
-    const parsed = Date.parse(String(createdRaw));
-    if (Number.isFinite(parsed)) createdAt = parsed;
-  }
-  return {
-    id: `task_job_${jid}`,
-    jobId: jid,
-    name: goalText.slice(0, 120),
-    prompt: goalText,
-    status: normalizeListJobStatus(j.status),
-    type: 'build',
-    createdAt,
-    linkedProjectId: j.project_id ?? j.payload?.project_id ?? null,
-  };
-}
-
 export default function CrucibAIWorkspace() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const { tasks, addTask, updateTask, setTasks } = useTaskStore();
 
   const jobIdFromUrl = searchParams.get('jobId');
+  const chatTaskIdFromUrl = searchParams.get('chatTaskId');
   const projectIdFromUrl = searchParams.get('projectId');
   const [goal, setGoal] = useState('');
   const [activeJobId, setActiveJobId] = useState(jobIdFromUrl || null);
   const [stage, setStage] = useState(jobIdFromUrl ? 'running' : 'input');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [activePane, setActivePane] = useState('stream');
+  const [activePane, setActivePane] = useState('preview');
   const [deployLoading, setDeployLoading] = useState(false);
   const [deployResult, setDeployResult] = useState(null);
   const [workflows, setWorkflows] = useState({});
@@ -141,6 +116,7 @@ export default function CrucibAIWorkspace() {
   const seenEventIdsRef = useRef(new Set());
   const buildInFlightRef = useRef(false);
   const processedLaunchRef = useRef(new Set());
+  const workspaceCaps = useMemo(() => getWorkspaceCapabilities(user), [user]);
 
   const { job, steps, events, proof, isConnected, connectionMode, refresh } = useJobStream(activeJobId, token);
   const { reloadFiles } = useJobWorkspaceFiles(activeJobId, token);
@@ -171,7 +147,8 @@ export default function CrucibAIWorkspace() {
   useEffect(() => {
     if (!token) return undefined;
     let cancelled = false;
-    (async () => {
+
+    const syncTasksFromBackend = async () => {
       try {
         const res = await axios.get(`${API}/jobs`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -200,11 +177,24 @@ export default function CrucibAIWorkspace() {
       } catch {
         /* ignore — guest or backend down */
       }
-    })();
+    };
+
+    void syncTasksFromBackend();
+    const intervalId = window.setInterval(() => {
+      void syncTasksFromBackend();
+    }, 20000);
+
     return () => {
       cancelled = true;
+      window.clearInterval(intervalId);
     };
   }, [token, setTasks]);
+
+  useEffect(() => {
+    if (!workspaceCaps.canUseLiveStream && activePane === 'stream') {
+      setActivePane('preview');
+    }
+  }, [workspaceCaps.canUseLiveStream, activePane]);
 
   /** Deep link from AgentMonitor: /app/workspace?projectId=… → pick latest job for that project. */
   useEffect(() => {
@@ -507,13 +497,15 @@ export default function CrucibAIWorkspace() {
       search: location.search,
     });
 
-    if (!intent.prompt || !intent.autoStart) return;
+    if (!intent.prompt || !intent.shouldSeedComposer) return;
     const key = intent.handoffKey || `fallback:${location.search}`;
     if (processedLaunchRef.current.has(key)) return;
     processedLaunchRef.current.add(key);
 
     setGoal(intent.prompt);
-    void handleSend(intent.prompt);
+    if (intent.autoStart) {
+      void handleSend(intent.prompt);
+    }
 
     if (intent.hasPromptInQuery) {
       setSearchParams(
@@ -527,6 +519,33 @@ export default function CrucibAIWorkspace() {
       );
     }
   }, [token, activeJobId, location.state, location.search, handleSend, setSearchParams]);
+
+  useEffect(() => {
+    if (activeJobId) return;
+    const chatTaskId = location.state?.chatTaskId || chatTaskIdFromUrl;
+    if (!chatTaskId) return;
+    const chatTask = tasks.find((task) => task.id === chatTaskId && (task.type === 'chat' || task.type === 'query'));
+    if (!chatTask) return;
+
+    const seededPrompt = String(chatTask.prompt || chatTask.name || '').trim();
+    if (!seededPrompt) return;
+
+    const key = `chat:${chatTaskId}`;
+    if (processedLaunchRef.current.has(key)) return;
+    processedLaunchRef.current.add(key);
+    setGoal(seededPrompt);
+
+    if (chatTaskIdFromUrl) {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('chatTaskId');
+          return next;
+        },
+        { replace: true },
+      );
+    }
+  }, [activeJobId, location.state, chatTaskIdFromUrl, tasks, setSearchParams]);
 
   const handleDeploy = useCallback(async () => {
     if (!activeJobId || !job?.project_id || deployLoading) return;
@@ -594,6 +613,7 @@ export default function CrucibAIWorkspace() {
   }, [activeJobId, token]);
 
   const handleSpawnProbe = useCallback(async () => {
+    if (!workspaceCaps.canRunParallelProbe) return;
     if (!activeJobId) return;
     const gate = await permissionEngine.check('workspace.parallel_probe', 0.52);
     if (gate.mode === 'block') {
@@ -644,9 +664,10 @@ export default function CrucibAIWorkspace() {
     } finally {
       setSpawnBusy(false);
     }
-  }, [activeJobId, token, goal, job?.goal, refresh, flatSandpackFiles, spawnBranches, spawnMode]);
+  }, [activeJobId, token, goal, job?.goal, refresh, flatSandpackFiles, spawnBranches, spawnMode, workspaceCaps.canRunParallelProbe]);
 
   const runScenarioSimulation = useCallback(async () => {
+    if (!workspaceCaps.canRunSimulation) return;
     if (!activeJobId || !token || !simulationScenario.trim()) return;
     setSimulationBusy(true);
     setSimulationRound(null);
@@ -714,7 +735,7 @@ export default function CrucibAIWorkspace() {
     } finally {
       setSimulationBusy(false);
     }
-  }, [activeJobId, token, simulationScenario, simulationPopulation, simulationRounds]);
+  }, [activeJobId, token, simulationScenario, simulationPopulation, simulationRounds, workspaceCaps.canRunSimulation]);
 
   const applySimulationRecommendation = useCallback(async () => {
     if (!activeJobId || !token || !simulationRecommendation?.recommended_action) return;
@@ -746,7 +767,7 @@ export default function CrucibAIWorkspace() {
   const carouselTools = useMemo(
     () => {
       const items = [];
-      if (activeJobId) {
+      if (activeJobId && workspaceCaps.canRunParallelProbe) {
         items.push({
           id: 'parallel_probe',
           name: 'workspace.parallel_probe',
@@ -799,10 +820,12 @@ export default function CrucibAIWorkspace() {
       handleSpawnProbe,
       handleDownloadWorkspaceZip,
       handleDeploy,
+      workspaceCaps.canRunParallelProbe,
     ],
   );
 
   const generateSkill = async () => {
+    if (!workspaceCaps.canGenerateSkills) return;
     if (!skillDesc.trim()) return;
     setSkillBusy(true);
     try {
@@ -861,12 +884,16 @@ export default function CrucibAIWorkspace() {
           </span>
         </div>
         <div className="c10-header-actions">
-          <button type="button" className="c10-btn" onClick={() => setShowSkill(true)}>
-            New skill
-          </button>
-          <button type="button" className="c10-btn" onClick={() => setShowDebug(true)}>
-            Debug logs
-          </button>
+          {workspaceCaps.canGenerateSkills && (
+            <button type="button" className="c10-btn" onClick={() => setShowSkill(true)}>
+              New skill
+            </button>
+          )}
+          {workspaceCaps.canViewDebugLogs && (
+            <button type="button" className="c10-btn" onClick={() => setShowDebug(true)}>
+              Debug logs
+            </button>
+          )}
           {deployResult?.deploy_url && (
             <a className="c10-btn c10-btn-primary" href={deployResult.deploy_url} target="_blank" rel="noopener noreferrer">
               Live
@@ -922,7 +949,7 @@ export default function CrucibAIWorkspace() {
                 )}
               </div>
 
-              <div className="c10-effort">
+              {workspaceCaps.canUseAdvancedControls && <div className="c10-effort">
                 <label htmlFor="c10-thinking">Thinking effort</label>
                 <select
                   id="c10-thinking"
@@ -965,14 +992,14 @@ export default function CrucibAIWorkspace() {
                     fontSize: 12,
                   }}
                 />
-              </div>
+              </div>}
 
               <InterruptibleFlow
                 jobId={activeJobId}
                 steps={steps}
                 isRunning={isRunning}
                 token={token}
-                onSimulateScenario={() => setShowSimulation(true)}
+                onSimulateScenario={workspaceCaps.canRunSimulation ? () => setShowSimulation(true) : undefined}
               />
               <CommandCenter
                 onSubmit={({ text }) => {
@@ -992,9 +1019,9 @@ export default function CrucibAIWorkspace() {
             <section className="c10-right">
               <div className="c10-pane-tabs">
                 {[
-                  { id: 'stream', label: 'Live stream' },
+                  workspaceCaps.canUseLiveStream ? { id: 'stream', label: 'Live stream' } : null,
                   { id: 'preview', label: 'Preview & code' },
-                ].map((t) => (
+                ].filter(Boolean).map((t) => (
                   <button
                     key={t.id}
                     type="button"
@@ -1006,7 +1033,7 @@ export default function CrucibAIWorkspace() {
                 ))}
               </div>
               <div className="c10-right-main">
-                {activePane === 'stream' && (
+                {workspaceCaps.canUseLiveStream && activePane === 'stream' && (
                   <div className="c10-right-stream-wrap">
                     <ConsciousnessStream events={events} steps={steps} isRunning={isRunning} proof={proof} />
                   </div>
@@ -1025,15 +1052,15 @@ export default function CrucibAIWorkspace() {
                   />
                 )}
               </div>
-              <JobTerminalStrip projectId={job?.project_id} token={token} />
+              {workspaceCaps.canUseTerminal && <JobTerminalStrip projectId={job?.project_id} token={token} />}
             </section>
           </Panel>
         </PanelGroup>
       </div>
 
-      {showDebug && <AgentDebugPanel onClose={() => setShowDebug(false)} />}
+      {workspaceCaps.canViewDebugLogs && showDebug && <AgentDebugPanel onClose={() => setShowDebug(false)} />}
 
-      {showSkill && (
+      {workspaceCaps.canGenerateSkills && showSkill && (
         <div className="c10-skill-backdrop" role="presentation" onClick={() => !skillBusy && setShowSkill(false)}>
           <div className="c10-skill-modal" role="dialog" onClick={(e) => e.stopPropagation()}>
             <h3>Generate skill from description</h3>

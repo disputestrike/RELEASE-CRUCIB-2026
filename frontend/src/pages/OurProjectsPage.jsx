@@ -114,7 +114,7 @@ const OurProjectsPage = () => {
             <Link to="/our-projects" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Our Project</Link>
           </div>
           <div className="hidden md:flex items-center gap-4 ml-auto shrink-0">
-            <button type="button" onClick={() => navigate('/app')} className="text-sm text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Dashboard</button>
+            <button type="button" onClick={() => navigate('/app/workspace')} className="text-sm text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Dashboard</button>
             {!user && (
               <Link to="/auth" className="text-sm text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Log in</Link>
             )}
@@ -148,7 +148,7 @@ const OurProjectsPage = () => {
               {!user && (
                 <Link to="/auth" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Log in</Link>
               )}
-              <button type="button" onClick={() => { navigate('/app'); setMobileMenuOpen(false); }} className="text-lg text-left text-kimi-muted hover:text-kimi-text py-2">Dashboard</button>
+              <button type="button" onClick={() => { navigate('/app/workspace'); setMobileMenuOpen(false); }} className="text-lg text-left text-kimi-muted hover:text-kimi-text py-2">Dashboard</button>
               <button type="button" onClick={() => { navigate('/app/workspace'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-gray-900 rounded-lg font-medium mt-2">Get started</button>
             </div>
           </motion.div>
@@ -463,7 +463,7 @@ const OurProjectsPage = () => {
                       <h3 className="font-semibold text-kimi-text">{label}</h3>
                     </div>
                     <button
-                      onClick={() => navigate('/app')}
+                      onClick={() => navigate('/app/workspace')}
                       className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-gray-50 text-kimi-text hover:bg-gray-100 transition text-sm"
                     >
                       <ArrowRight className="w-4 h-4" /> Open workspace

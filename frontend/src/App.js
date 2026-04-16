@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, createContext, useContext, Component, useCallback } from "react";
+import { useState, useEffect, useRef, Component, useCallback } from "react";
 import { AuthContext, useAuth as _useAuth } from "./authContext";
 
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
@@ -273,7 +273,7 @@ const AuthProvider = ({ children }) => {
   );
 };
 
-// Onboarding route — authenticated only; if workspace_mode set, redirect to /app
+// Onboarding route — authenticated only; if workspace_mode set, redirect to the canonical workspace
 const OnboardingRoute = ({ children }) => {
   const { user, loading } = useAuth();
   if (loading) {
@@ -286,8 +286,8 @@ const OnboardingRoute = ({ children }) => {
       </div>
     );
   }
-  if (!user) return <Navigate to="/app" replace />;
-  if (user.workspace_mode) return <Navigate to="/app" replace />;
+  if (!user) return <Navigate to="/app/workspace" replace />;
+  if (user.workspace_mode) return <Navigate to="/app/workspace" replace />;
   return children;
 };
 
@@ -340,7 +340,7 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
-// Admin route: require admin_role or redirect to app
+// Admin route: require admin_role or redirect to the canonical workspace
 const AdminRoute = ({ children }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
@@ -355,20 +355,25 @@ const AdminRoute = ({ children }) => {
     );
   }
   if (!user) return <Navigate to="/auth" state={{ from: location }} replace />;
-  if (!user.admin_role) return <Navigate to="/app" replace />;
+  if (!user.admin_role) return <Navigate to="/app/workspace" replace />;
   return children;
 };
 
 // Redirect /workspace → /app/workspace so the left sidebar (Layout) always shows; preserve query string.
 function RedirectWorkspaceToApp() {
-  const { search } = useLocation();
-  return <Navigate to={`/app/workspace${search}`} replace />;
+  const { search, state } = useLocation();
+  return <Navigate to={`/app/workspace${search}`} state={state} replace />;
+}
+
+function RedirectAppIndexToWorkspace() {
+  const { search, state } = useLocation();
+  return <Navigate to={`/app/workspace${search}`} state={state} replace />;
 }
 
 /** Deep links to /app/auto-runner land on the canonical workspace (same shell, query preserved). */
 function AutoRunnerRedirect() {
-  const { search } = useLocation();
-  return <Navigate to={`/app/workspace${search}`} replace />;
+  const { search, state } = useLocation();
+  return <Navigate to={`/app/workspace${search}`} state={state} replace />;
 }
 
 // On route change: scroll to top so new page starts at top. When URL has a hash, scroll to that section so "go to" links land in the right place.
@@ -451,7 +456,7 @@ function App() {
           <Route path="/changelog" element={<Changelog />} />
           <Route path="/status" element={<Status />} />
           <Route path="/app" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-            <Route index element={<Navigate to="/app/workspace" replace />} />
+            <Route index element={<RedirectAppIndexToWorkspace />} />
             <Route path="builder" element={<Navigate to="/app/workspace" replace />} />
             <Route path="workspace" element={<CrucibAIWorkspace />} />
             <Route path="workspace-unified" element={<Navigate to="/app/workspace" replace />} />

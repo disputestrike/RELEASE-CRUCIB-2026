@@ -2,7 +2,12 @@ export function extractWorkspaceLaunchIntent({ locationState, search }) {
   const state = locationState && typeof locationState === 'object' ? locationState : {};
   const params = new URLSearchParams(String(search || ''));
 
-  const statePrompt = typeof state.initialPrompt === 'string' ? state.initialPrompt.trim() : '';
+  const statePrompt =
+    typeof state.initialPrompt === 'string' && state.initialPrompt.trim()
+      ? state.initialPrompt.trim()
+      : typeof state.suggestedPrompt === 'string'
+        ? state.suggestedPrompt.trim()
+        : '';
   const queryPrompt = typeof params.get('prompt') === 'string' ? params.get('prompt').trim() : '';
 
   const prompt = statePrompt || queryPrompt;
@@ -24,5 +29,6 @@ export function extractWorkspaceLaunchIntent({ locationState, search }) {
     autoStart,
     handoffKey,
     hasPromptInQuery: Boolean(queryPrompt),
+    shouldSeedComposer: Boolean(prompt),
   };
 }

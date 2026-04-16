@@ -214,7 +214,7 @@ const AgentMonitor = () => {
       <div className="text-center py-20">
         <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
         <h2 className="text-xl font-semibold mb-2">Project not found</h2>
-        <Link to="/app" className="text-[#666666] hover:text-[#1A1A1A]">Back to dashboard</Link>
+        <Link to="/app/workspace" className="text-[#666666] hover:text-[#1A1A1A]">Back to dashboard</Link>
       </div>
     );
   }
@@ -352,7 +352,7 @@ const AgentMonitor = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Link to="/app" className="p-2 hover:bg-[#F3F1ED] rounded-lg transition">
+          <Link to="/app/workspace" className="p-2 hover:bg-[#F3F1ED] rounded-lg transition">
             <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>

@@ -34,7 +34,94 @@ describe('Single Source of Truth', () => {
       expect(source).toMatch(/path="\/" element=.*LandingPage/);
       expect(source).toMatch(/path="\/pricing" element=.*Pricing/);
       expect(source).toMatch(/path="\/app".*Layout/);
+      expect(source).toMatch(/path="workspace" element=.*CrucibAIWorkspace/);
       expect(source).toMatch(/path="tokens" element=.*TokenCenter/);
+    });
+    it('authenticated redirects and aliases converge on /app/workspace', () => {
+      const appPath = path.join(__dirname, '../App.js');
+      const source = fs.readFileSync(appPath, 'utf8');
+      expect(source).toMatch(/Navigate to="\/app\/workspace" replace/);
+      expect(source).toMatch(/return <Navigate to={`\/app\/workspace\$\{search\}`} state=\{state\} replace \/>/);
+      expect(source).toMatch(/function RedirectAppIndexToWorkspace\(\)/);
+      expect(source).toMatch(/Route index element=\{<RedirectAppIndexToWorkspace \/>\}/);
+    });
+  });
+
+  describe('§1.3 Canonical workspace entry points', () => {
+    it('OnboardingPage routes users into /app/workspace', () => {
+      const onboardingPath = path.join(__dirname, '../pages/OnboardingPage.jsx');
+      const source = fs.readFileSync(onboardingPath, 'utf8');
+      expect(source).toMatch(/navigate\('\/app\/workspace'/);
+      expect(source).toMatch(/href="\/app\/workspace"/);
+    });
+    it('Sidebar routes core home and new-task actions into /app/workspace', () => {
+      const sidebarPath = path.join(__dirname, '../components/Sidebar.jsx');
+      const source = fs.readFileSync(sidebarPath, 'utf8');
+      expect(source).toMatch(/navigate\('\/app\/workspace'/);
+      expect(source).toMatch(/Link to="\/app\/workspace"/);
+      expect(source).toMatch(/href="\/app\/workspace"/);
+      expect(source).toMatch(/\/app\/workspace\?chatTaskId=/);
+    });
+    it('Layout shell does not own a competing right panel or outlet context', () => {
+      const layoutPath = path.join(__dirname, '../components/Layout.jsx');
+      const source = fs.readFileSync(layoutPath, 'utf8');
+      expect(source).not.toMatch(/import RightPanel from/);
+      expect(source).not.toMatch(/setRightPanelVisible/);
+      expect(source).not.toMatch(/<Outlet context=/);
+      expect(source).toMatch(/rightPanel=\{null\}/);
+    });
+    it('public dashboard entry links target /app/workspace', () => {
+      const publicNavPath = path.join(__dirname, '../components/PublicNav.jsx');
+      const landingPath = path.join(__dirname, '../pages/LandingPage.jsx');
+      const projectsPath = path.join(__dirname, '../pages/OurProjectsPage.jsx');
+      const publicNav = fs.readFileSync(publicNavPath, 'utf8');
+      const landing = fs.readFileSync(landingPath, 'utf8');
+      const projects = fs.readFileSync(projectsPath, 'utf8');
+
+      expect(publicNav).toMatch(/to="\/app\/workspace"/);
+      expect(landing).toMatch(/navigate\('\/app\/workspace'\)/);
+      expect(projects).toMatch(/navigate\('\/app\/workspace'\)/);
+    });
+    it('pricing, learn, and payments CTAs route to /app/workspace', () => {
+      const pricingPath = path.join(__dirname, '../pages/Pricing.jsx');
+      const learnPath = path.join(__dirname, '../pages/LearnPublic.jsx');
+      const paymentsPath = path.join(__dirname, '../pages/PaymentsWizard.jsx');
+      const pricing = fs.readFileSync(pricingPath, 'utf8');
+      const learn = fs.readFileSync(learnPath, 'utf8');
+      const payments = fs.readFileSync(paymentsPath, 'utf8');
+
+      expect(pricing).toMatch(/navigate\('\/app\/workspace'\)/);
+      expect(learn).toMatch(/navigate\('\/app\/workspace'\)/);
+      expect(payments).toMatch(/navigate\('\/app\/workspace'\)/);
+    });
+    it('agent monitor, templates, examples, share, and builder pages use canonical workspace links', () => {
+      const agentMonitorPath = path.join(__dirname, '../pages/AgentMonitor.jsx');
+      const templatesPath = path.join(__dirname, '../pages/TemplatesGallery.jsx');
+      const examplesPath = path.join(__dirname, '../pages/ExamplesGallery.jsx');
+      const sharePath = path.join(__dirname, '../pages/ShareView.jsx');
+      const builderPath = path.join(__dirname, '../pages/Builder.jsx');
+      const agentMonitor = fs.readFileSync(agentMonitorPath, 'utf8');
+      const templates = fs.readFileSync(templatesPath, 'utf8');
+      const examples = fs.readFileSync(examplesPath, 'utf8');
+      const share = fs.readFileSync(sharePath, 'utf8');
+      const builder = fs.readFileSync(builderPath, 'utf8');
+
+      expect(agentMonitor).toMatch(/to="\/app\/workspace"/);
+      expect(templates).toMatch(/navigate\('\/app\/workspace'\)/);
+      expect(examples).toMatch(/navigate\('\/app\/workspace'\)/);
+      expect(share).toMatch(/to="\/app\/workspace"/);
+      expect(builder).toMatch(/navigate\('\/app\/workspace'\)/);
+    });
+    it('legacy workspace variants keep home/back links on /app/workspace', () => {
+      const workspaceClassicPath = path.join(__dirname, '../pages/Workspace.jsx');
+      const workspaceManusV2Path = path.join(__dirname, '../pages/WorkspaceManusV2.jsx');
+      const workspaceClassic = fs.readFileSync(workspaceClassicPath, 'utf8');
+      const workspaceManusV2 = fs.readFileSync(workspaceManusV2Path, 'utf8');
+
+      expect(workspaceClassic).toMatch(/navigate\('\/app\/workspace'\)/);
+      expect(workspaceClassic).toMatch(/href="\/app\/workspace"/);
+      expect(workspaceManusV2).toMatch(/navigate\('\/app\/workspace'\)/);
+      expect(workspaceManusV2).toMatch(/to="\/app\/workspace"/);
     });
   });
 

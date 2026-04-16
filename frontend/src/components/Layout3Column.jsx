@@ -45,7 +45,7 @@ export const Layout3Column = ({
         >
           {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
-        <Logo variant="full" height={28} href="/app" className="layout-mobile-title" showTagline={false} />
+        <Logo variant="full" height={28} href="/app/workspace" className="layout-mobile-title" showTagline={false} />
         <button
           className="layout-toggle-panel"
           onClick={() => setRightPanelOpen(!rightPanelOpen)}

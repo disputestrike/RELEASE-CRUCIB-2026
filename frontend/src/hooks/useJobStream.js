@@ -7,6 +7,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { API_BASE, getJobStreamUrl } from '../apiBase';
+import { buildStreamEventId } from '../lib/jobState';
 
 const EMPTY_PROOF = {
   bundle: {
@@ -37,7 +38,7 @@ function handleStreamPayload(data, jobId, token, setters) {
   if (!data || !data.type || data.type === 'heartbeat') return;
 
   setEvents((prev) => {
-    const id = data.id ?? `${data.type}-${data.step_id ?? ''}-${data.ts ?? ''}-${JSON.stringify(data.payload || {}).slice(0, 80)}`;
+    const id = buildStreamEventId(data);
     const exists = prev.some((e) => (e.id ?? '') === id);
     if (exists) return prev;
     return [...prev, { ...data, id }];

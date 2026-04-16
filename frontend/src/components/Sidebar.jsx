@@ -173,7 +173,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
   const openTask = (item) => {
     if (item.isProject) navigate(`/app/projects/${item.id}`);
     else if (item.type === 'chat' || item.type === 'query') {
-      navigate(`/app?chatTaskId=${encodeURIComponent(item.id)}`, { state: { chatTaskId: item.id } });
+      navigate(`/app/workspace?chatTaskId=${encodeURIComponent(item.id)}`, { state: { chatTaskId: item.id } });
     } else {
       const qs = new URLSearchParams({ taskId: item.id });
       if (item.linkedProjectId) qs.set('projectId', item.linkedProjectId);
@@ -185,7 +185,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
   const openInNewTab = (item) => {
     if (item.isProject) window.open(`${window.location.origin}/app/projects/${item.id}`, '_blank');
     else if (item.type === 'chat' || item.type === 'query') {
-      window.open(`${window.location.origin}/app?chatTaskId=${encodeURIComponent(item.id)}`, '_blank');
+      window.open(`${window.location.origin}/app/workspace?chatTaskId=${encodeURIComponent(item.id)}`, '_blank');
     } else {
       const qs = new URLSearchParams({ taskId: item.id });
       if (item.linkedProjectId) qs.set('projectId', item.linkedProjectId);
@@ -216,7 +216,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     removeTask(deleteConfirmTask.id);
     setDeleteConfirmTask(null);
     if (wasViewing || wasLastTask) {
-      navigate('/app', { replace: true, state: { newAgent: true } });
+      navigate('/app/workspace', { replace: true, state: { newAgent: true } });
     }
   };
 
@@ -227,7 +227,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     else if (item.type === 'chat' || item.type === 'query') {
       const qs = new URLSearchParams({ chatTaskId: item.id });
       if (item.linkedProjectId) qs.set('projectId', item.linkedProjectId);
-      url = `${origin}/app?${qs.toString()}`;
+      url = `${origin}/app/workspace?${qs.toString()}`;
     } else {
       const qs = new URLSearchParams({ taskId: item.id });
       if (item.linkedProjectId) qs.set('projectId', item.linkedProjectId);
@@ -505,14 +505,14 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
           </button>
           <button
             type="button"
-            onClick={() => navigate('/app', { state: { newAgent: Date.now() } })}
+            onClick={() => navigate('/app/workspace', { state: { newAgent: Date.now() } })}
             className="sidebar-collapsed-icon"
             title="New task"
             aria-label="New task"
           >
             <Plus size={20} />
           </button>
-          <Link to="/app" className="sidebar-collapsed-icon" title="Home" aria-label="Home">
+          <Link to="/app/workspace" className="sidebar-collapsed-icon" title="Home" aria-label="Home">
             <Home size={20} />
           </Link>
           <Link to="/app/agents" className="sidebar-collapsed-icon" title="Agents" aria-label="Agents">
@@ -558,7 +558,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
         <Logo
           variant="full"
           height={32}
-          href="/app"
+          href="/app/workspace"
           className="sidebar-logo"
           showTagline={false}
           showWordmark={!workspaceHeadlineLayout}
@@ -607,8 +607,8 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
           <div className="sidebar-create-row">
             <button
               type="button"
-              onClick={() => navigate('/app', { state: { newAgent: Date.now() } })}
-              className={`sidebar-nav-item sidebar-create-main ${isActive('/app') ? 'active' : ''}`}
+              onClick={() => navigate('/app/workspace', { state: { newAgent: Date.now() } })}
+              className={`sidebar-nav-item sidebar-create-main ${isActive('/app/workspace') ? 'active' : ''}`}
             >
               <Plus size={18} className="sidebar-nav-icon" />
               <span className="sidebar-nav-label">New</span>
@@ -628,10 +628,10 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
           </div>
           {createMenuOpen && (
             <div className="sidebar-create-popover" role="menu">
-              <button type="button" role="menuitem" className="sidebar-create-popover-item" onClick={() => { navigate('/app', { state: { newAgent: Date.now() } }); setCreateMenuOpen(false); }}>
+              <button type="button" role="menuitem" className="sidebar-create-popover-item" onClick={() => { navigate('/app/workspace', { state: { newAgent: Date.now() } }); setCreateMenuOpen(false); }}>
                 <Plus size={14} /> New task
               </button>
-              <button type="button" role="menuitem" className="sidebar-create-popover-item" onClick={() => { navigate('/app', { state: { newProject: true } }); setCreateMenuOpen(false); }}>
+              <button type="button" role="menuitem" className="sidebar-create-popover-item" onClick={() => { navigate('/app/workspace', { state: { newProject: true } }); setCreateMenuOpen(false); }}>
                 <FolderPlus size={14} /> New project
               </button>
             </div>
@@ -639,7 +639,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
         </div>
         <div className="sidebar-nav-group-label">Work</div>
         <div className="sidebar-nav-section">
-          <Link to="/app" className={`sidebar-nav-item ${isActive('/app') ? 'active' : ''}`}>
+          <Link to="/app/workspace" className={`sidebar-nav-item ${isActive('/app/workspace') ? 'active' : ''}`}>
             <Home size={18} className="sidebar-nav-icon" />
             <span className="sidebar-nav-label">Home</span>
           </Link>

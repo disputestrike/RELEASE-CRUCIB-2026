@@ -3261,10 +3261,10 @@ BUILD IT NOW â€” output every file completely:`;
 
       {/* â”€â”€ Header â”€â”€ */}
       <header className="h-12 flex items-center px-4 gap-3 shrink-0 border-b" style={{ background: 'var(--theme-surface, #18181B)', borderColor: 'var(--theme-border, rgba(255,255,255,0.08))' }}>
-        <button onClick={() => navigate('/app')} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #71717a)' }} title="Back">
+        <button onClick={() => navigate('/app/workspace')} className="p-1.5 rounded-lg transition hover:bg-white/10" style={{ color: 'var(--theme-muted, #71717a)' }} title="Back">
           <ArrowLeft className="w-4 h-4" />
         </button>
-        <Logo variant="mark" height={22} href="/app" className="shrink-0" />
+        <Logo variant="mark" height={22} href="/app/workspace" className="shrink-0" />
         <div className="h-4 w-px shrink-0" style={{ background: 'rgba(255,255,255,0.1)' }} />
         <span className="text-sm truncate max-w-xs" style={{ color: 'var(--theme-muted, #a1a1aa)' }}>
           {messages.find(m => m.role === 'user')?.content?.toString().slice(0, 55) || 'New project'}

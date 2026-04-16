@@ -359,7 +359,7 @@ export default function WorkspaceManusV2() {
       {/* ── Top bar ── */}
       <div className="manus-topbar">
         <div className="manus-topbar-left">
-          <button className="manus-compose-tool-btn" style={{marginRight:4,fontSize:16}} onClick={() => navigate('/app')}>☰</button>
+          <button className="manus-compose-tool-btn" style={{marginRight:4,fontSize:16}} onClick={() => navigate('/app/workspace')}>☰</button>
           <div className="manus-topbar-brand">Crucible</div>
           <div className="manus-model-badge">
             <span style={{width:7,height:7,borderRadius:'50%',background:isConnected?'#10b981':'#d1d5db',display:'inline-block'}} />
@@ -421,7 +421,7 @@ export default function WorkspaceManusV2() {
             </button>
           </div>
           <div className="manus-sidebar-nav">
-            <Link to="/app" className="manus-nav-item"><Ico.Home /> Home</Link>
+            <Link to="/app/workspace" className="manus-nav-item"><Ico.Home /> Home</Link>
             <Link to="/app/agents" className="manus-nav-item"><Ico.Agent /> Agents</Link>
             <button className="manus-nav-item"><Ico.Search /> Search</button>
             <Link to="/app/learn" className="manus-nav-item"><Ico.Library /> Library</Link>
