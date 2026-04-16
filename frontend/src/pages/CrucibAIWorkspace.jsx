@@ -851,7 +851,7 @@ export default function CrucibAIWorkspace() {
 
       <header className="c10-header">
         <div className="c10-header-left">
-          <button type="button" className="c10-btn" onClick={() => navigate('/app')} aria-label="Open dashboard" title="Home">
+          <button type="button" className="c10-btn" onClick={() => navigate('/app/workspace')} aria-label="Open workspace" title="Home">
             <Menu size={18} strokeWidth={2} aria-hidden />
           </button>
           <span className="c10-title">Workspace</span>
