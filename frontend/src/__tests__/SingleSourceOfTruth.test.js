@@ -36,7 +36,7 @@ describe('Single Source of Truth', () => {
       expect(source).toMatch(/path="\/app".*Layout/);
       expect(source).toMatch(/path="dashboard" element=.*DashboardVNext/);
       expect(source).toMatch(/path="\/app\/workspace" element=.*WorkspaceVNext/);
-      expect(source).toMatch(/path="\/app\/workspace-engine" element=.*CrucibAIWorkspace/);
+      expect(source).toMatch(/path="\/app\/workspace-engine" element=.*Navigate to="\/app\/workspace" replace/);
       expect(source).toMatch(/path="live" element=.*MonitoringDashboard/);
       expect(source).toMatch(/path="tokens" element=.*TokenCenter/);
     });

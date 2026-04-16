@@ -35,7 +35,6 @@ import TokenCenter from "./pages/TokenCenter";
 import ExportCenter from "./pages/ExportCenter";
 import PatternLibrary from "./pages/PatternLibrary";
 import Settings from "./pages/Settings";
-import CrucibAIWorkspace from "./pages/CrucibAIWorkspace";
 import WorkspaceVNext from "./pages/WorkspaceVNext";
 import Layout from "./components/Layout";
 import ShareView from "./pages/ShareView";
@@ -458,7 +457,7 @@ function App() {
           <Route path="/changelog" element={<Changelog />} />
           <Route path="/status" element={<Status />} />
           <Route path="/app/workspace" element={<ProtectedRoute><WorkspaceVNext /></ProtectedRoute>} />
-          <Route path="/app/workspace-engine" element={<ProtectedRoute><CrucibAIWorkspace /></ProtectedRoute>} />
+          <Route path="/app/workspace-engine" element={<Navigate to="/app/workspace" replace />} />
           <Route path="/app/workspace-unified" element={<Navigate to="/app/workspace" replace />} />
           <Route path="/app/workspace-manus" element={<Navigate to="/app/workspace" replace />} />
           <Route path="/app/workspace-classic" element={<Navigate to="/app/workspace" replace />} />
