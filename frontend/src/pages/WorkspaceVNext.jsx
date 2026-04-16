@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { MonitorSmartphone, Wrench } from 'lucide-react';
-import CrucibAIWorkspace from './CrucibAIWorkspace';
+import UnifiedWorkspace from './UnifiedWorkspace';
 import { useAuth } from '../authContext';
 import { getWorkspaceCapabilities } from '../lib/modePolicy';
 import './WorkspaceVNext.css';
@@ -82,7 +82,7 @@ export default function WorkspaceVNext() {
         </button>
       </div>
       {modeNotice ? <div className="workspace-vnext-notice">{modeNotice}</div> : null}
-      <CrucibAIWorkspace />
+      <UnifiedWorkspace />
     </div>
   );
 }

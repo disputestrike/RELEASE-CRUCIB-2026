@@ -8,8 +8,8 @@ jest.mock('../../authContext', () => ({
   useAuth: jest.fn(),
 }));
 
-jest.mock('../CrucibAIWorkspace', () => function MockCrucibAIWorkspace() {
-  return <div data-testid="mock-vnext-workspace">CrucibAIWorkspace</div>;
+jest.mock('../UnifiedWorkspace', () => function MockUnifiedWorkspace() {
+  return <div data-testid="mock-vnext-workspace">UnifiedWorkspace</div>;
 });
 
 function renderAt(path) {
