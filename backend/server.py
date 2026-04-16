@@ -230,6 +230,12 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(title="CrucibAI Platform", lifespan=lifespan)
 
+NO_CACHE_HEADERS = {
+    "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+    "Pragma": "no-cache",
+    "Expires": "0",
+}
+
 cors_origins = [
     origin.strip()
     for origin in os.environ.get("CORS_ORIGINS", os.environ.get("FRONTEND_URL", "")).split(",")
@@ -293,7 +299,7 @@ elif STATIC_DIR.exists():
 async def root() -> Response:
     index_path = STATIC_DIR / "index.html"
     if index_path.exists():
-        return FileResponse(index_path)
+        return FileResponse(index_path, headers=NO_CACHE_HEADERS)
     return JSONResponse({"message": "CrucibAI Platform API", "status": "healthy"})
 
 
@@ -307,11 +313,13 @@ async def spa_fallback(full_path: str) -> Response:
     # Try to serve a real file from the build root first
     candidate = STATIC_DIR / full_path
     if candidate.exists() and candidate.is_file():
+        if full_path in {"index.html", "asset-manifest.json", "manifest.json"}:
+            return FileResponse(candidate, headers=NO_CACHE_HEADERS)
         return FileResponse(candidate)
     # SPA fallback
     index_path = STATIC_DIR / "index.html"
     if index_path.exists():
-        return FileResponse(index_path)
+        return FileResponse(index_path, headers=NO_CACHE_HEADERS)
     return JSONResponse({"message": "CrucibAI Platform API", "status": "healthy"})
 
 
