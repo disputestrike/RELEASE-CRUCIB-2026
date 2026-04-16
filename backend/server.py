@@ -257,12 +257,36 @@ for module_name, attr_name in (("routes.auth", "auth_router"), ("routes.runtime"
     except Exception as exc:
         logger.warning("Skipping optional router %s: %s", module_name, exc)
 
-if STATIC_DIR.exists():
+# The Dockerfile copies frontend/build → /app/static, so the React
+# JS/CSS chunks live at /app/static/static/js|css/*.  Mount that nested
+# directory at /static so the browser can fetch them.
+_static_assets_dir = STATIC_DIR / "static"
+if _static_assets_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(_static_assets_dir)), name="static")
+elif STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
 @app.get("/")
 async def root() -> Response:
+    index_path = STATIC_DIR / "index.html"
+    if index_path.exists():
+        return FileResponse(index_path)
+    return JSONResponse({"message": "CrucibAI Platform API", "status": "healthy"})
+
+
+@app.get("/{full_path:path}", include_in_schema=False)
+async def spa_fallback(full_path: str) -> Response:
+    """Serve root-level static files (manifest.json, favicon.ico) or
+    fall back to index.html for client-side SPA routes."""
+    if full_path.startswith("api/"):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404)
+    # Try to serve a real file from the build root first
+    candidate = STATIC_DIR / full_path
+    if candidate.exists() and candidate.is_file():
+        return FileResponse(candidate)
+    # SPA fallback
     index_path = STATIC_DIR / "index.html"
     if index_path.exists():
         return FileResponse(index_path)
