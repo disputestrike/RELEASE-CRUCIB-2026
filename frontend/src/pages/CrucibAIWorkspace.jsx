@@ -27,7 +27,6 @@ import { permissionEngine } from '../lib/permissionEngine';
 import { runParallelSpawnProbe } from '../lib/spawnEngine';
 import TrustPanel from '../components/TrustPanel';
 import ToolCarousel from '../components/ToolCarousel';
-import ChatStream from '../components/ChatStream';
 import WorkspaceFusedRail from '../components/WorkspaceFusedRail';
 import { useWorkspaceRail } from '../contexts/WorkspaceRailContext';
 import { extractWorkspaceLaunchIntent } from '../utils/workspaceEntry';
@@ -848,21 +847,6 @@ export default function CrucibAIWorkspace() {
 
   return (
     <div className="c10-root" data-testid="crucib-workspace-root">
-      <ChatStream
-        events={events}
-        jobId={activeJobId}
-        isRunning={isRunning}
-        simulation={simulationRound}
-        simulationPersonas={simulationPersonas}
-        simulationRecommendation={simulationRecommendation}
-        onSimulationContinue={() => {
-          if (!simulationBusy) {
-            void runScenarioSimulation();
-          }
-        }}
-        onSimulationStop={() => setSimulationBusy(false)}
-        onApplyRecommendation={applySimulationRecommendation}
-      />
       <EmotionalPeaks job={job} steps={steps} proof={proof} stage={stage} />
 
       <header className="c10-header">
@@ -915,14 +899,6 @@ export default function CrucibAIWorkspace() {
                 )}
                 {(job?.goal || (isRunning && goal)) && (
                   <div className="c10-goal-banner">{job?.goal || goal}</div>
-                )}
-                {stage === 'input' && !job && (
-                  <div className="c10-empty-hero">
-                    <h2 className="c10-empty-title">What do you want to build?</h2>
-                    <p className="c10-empty-copy">
-                      Describe it below. CrucibAI plans, runs agents on the real orchestrator, and streams progress here.
-                    </p>
-                  </div>
                 )}
                 {(isRunning || stage === 'completed' || stage === 'failed') && (
                   <div className="c10-brain-block">
