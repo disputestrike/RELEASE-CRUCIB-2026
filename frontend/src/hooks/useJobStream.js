@@ -7,7 +7,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { API_BASE, getJobStreamUrl } from '../apiBase';
-import { buildStreamEventId } from '../lib/jobState';
+import { buildStreamEventId, normalizeJobEvents } from '../lib/jobState';
 
 const EMPTY_PROOF = {
   bundle: {
@@ -41,7 +41,8 @@ function handleStreamPayload(data, jobId, token, setters) {
     const id = buildStreamEventId(data);
     const exists = prev.some((e) => (e.id ?? '') === id);
     if (exists) return prev;
-    return [...prev, { ...data, id }];
+    const next = [...prev, { ...data, id }];
+    return next.length > 500 ? next.slice(-500) : next;
   });
 
   if (
@@ -153,7 +154,9 @@ export function useJobStream(jobId, token) {
         setLatestFailure(d?.latest_failure ?? null);
       }
       if (stepsRes.status === 'fulfilled') setSteps(stepsRes.value.data?.steps || []);
-      if (eventsRes.status === 'fulfilled') setEvents(eventsRes.value.data?.events || []);
+      if (eventsRes.status === 'fulfilled') {
+        setEvents(normalizeJobEvents(eventsRes.value.data?.events || []));
+      }
       if (proofRes.status === 'fulfilled') {
         setProof(normalizeProofPayload(proofRes.value.data, jobId));
       } else {

@@ -1,4 +1,4 @@
-import { buildStreamEventId, listJobToTaskEntry, normalizeListJobStatus } from './jobState';
+import { buildStreamEventId, listJobToTaskEntry, normalizeJobEvents, normalizeListJobStatus } from './jobState';
 
 describe('jobState', () => {
   test('normalizeListJobStatus coerces complete to completed', () => {
@@ -50,5 +50,30 @@ describe('jobState', () => {
     });
 
     expect(fallback).toBe('step_completed-step_1-123-{"summary":"done"}');
+  });
+
+  test('normalizeJobEvents adds deterministic ids and removes duplicates', () => {
+    const rows = [
+      { type: 'step_started', step_id: 'a', ts: 1, payload: { status: 'run' } },
+      { type: 'step_started', step_id: 'a', ts: 1, payload: { status: 'run' } },
+      { id: 'evt_custom', type: 'job_completed', payload: { ok: true } },
+    ];
+
+    const normalized = normalizeJobEvents(rows);
+    expect(normalized).toHaveLength(2);
+    expect(normalized[0].id).toBe('step_started-a-1-{"status":"run"}');
+    expect(normalized[1].id).toBe('evt_custom');
+  });
+
+  test('normalizeJobEvents keeps latest events within configured cap', () => {
+    const rows = [
+      { id: 'evt_1', type: 'a' },
+      { id: 'evt_2', type: 'b' },
+      { id: 'evt_3', type: 'c' },
+    ];
+
+    const normalized = normalizeJobEvents(rows, 2);
+    expect(normalized).toHaveLength(2);
+    expect(normalized.map((r) => r.id)).toEqual(['evt_2', 'evt_3']);
   });
 });

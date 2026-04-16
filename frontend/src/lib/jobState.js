@@ -32,3 +32,21 @@ export function buildStreamEventId(event) {
   if (event?.id) return event.id;
   return `${event?.type || 'event'}-${event?.step_id ?? ''}-${event?.ts ?? ''}-${JSON.stringify(event?.payload || {}).slice(0, 80)}`;
 }
+
+export function normalizeJobEvents(events, maxEvents = 500) {
+  const rows = Array.isArray(events) ? events : [];
+  const deduped = [];
+  const seen = new Set();
+
+  for (let i = 0; i < rows.length; i += 1) {
+    const event = rows[i];
+    const id = buildStreamEventId(event);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    deduped.push({ ...event, id });
+  }
+
+  const limit = Number.isFinite(maxEvents) ? Math.max(1, Math.floor(maxEvents)) : 500;
+  if (deduped.length <= limit) return deduped;
+  return deduped.slice(-limit);
+}
