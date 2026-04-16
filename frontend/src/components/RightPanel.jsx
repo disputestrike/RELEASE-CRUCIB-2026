@@ -7,7 +7,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { API_BASE as API } from '../apiBase';
 import { SandpackProvider, SandpackPreview } from '@codesandbox/sandpack-react';
-import { computeSandpackFilesWithMeta } from '../workspace/sandpackFromFiles';
 
 // Lazy-load Monaco to avoid bundle bloat
 let MonacoEditor = null;
@@ -118,11 +117,13 @@ export default function RightPanel({
       const res = await axios.get(`${API}/jobs/${jobId}/workspace/files`,
         { headers: { Authorization: `Bearer ${token}` } });
       setFiles(res.data?.files || []);
-    } catch {}
+    } catch {
+      setFiles([]);
+    }
   }, [jobId, token]);
 
   useEffect(() => { loadFiles(); }, [loadFiles]);
-  useEffect(() => { if (!isRunning && jobId) loadFiles(); }, [isRunning]);
+  useEffect(() => { if (!isRunning && jobId) loadFiles(); }, [isRunning, jobId, loadFiles]);
 
   // Load file content
   const selectFile = useCallback(async (path) => {
@@ -137,7 +138,7 @@ export default function RightPanel({
     }
   }, [jobId, token, fileContent]);
 
-  const tabs = ['preview', 'code', 'proof'];
+  const tabs = ['preview', 'code', 'files', 'publish', 'proof'];
 
   return (
     <div data-testid="right-panel-root" style={{ height:'100%', display:'flex', flexDirection:'column', background:'#fff' }}>
@@ -150,7 +151,15 @@ export default function RightPanel({
               cursor:'pointer', borderBottom: tab === t ? '2px solid #10b981' : '2px solid transparent',
               color: tab === t ? '#065f46' : '#6b7280', fontWeight: tab === t ? 500 : 400,
               marginBottom:-1, transition:'all 0.15s' }}>
-            {t === 'preview' ? '👁 Preview' : t === 'code' ? '📄 Code' : '✓ Proof'}
+            {t === 'preview'
+              ? '👁 Preview'
+              : t === 'code'
+                ? '📄 Code'
+                : t === 'files'
+                  ? '🗂 Files'
+                  : t === 'publish'
+                    ? '🚀 Publish'
+                    : '✓ Proof'}
           </button>
         ))}
         <div style={{ flex:1 }} />
@@ -337,6 +346,80 @@ export default function RightPanel({
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Files — dedicated workspace file browser mode */}
+        {tab === 'files' && (
+          <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+            <div style={{ padding:'10px 12px', borderBottom:'1px solid #e5e7eb',
+              display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <div style={{ fontSize:12, color:'#374151', fontWeight:600 }}>
+                Workspace files ({files.length})
+              </div>
+              <div style={{ display:'flex', gap:8 }}>
+                <button type="button" onClick={loadFiles} style={{
+                  border:'1px solid #d1d5db', background:'#fff', color:'#374151',
+                  borderRadius:6, fontSize:12, padding:'4px 8px', cursor:'pointer'
+                }}>
+                  Refresh
+                </button>
+                {jobId && (
+                  <a href={`${API}/jobs/${jobId}/workspace/download`} download style={{
+                    border:'1px solid #10b981', background:'#ecfdf5', color:'#065f46',
+                    borderRadius:6, fontSize:12, padding:'4px 8px', textDecoration:'none'
+                  }}>
+                    Download ZIP
+                  </a>
+                )}
+              </div>
+            </div>
+            <div style={{ flex:1, overflow:'hidden' }}>
+              <FileTree files={files} activeFile={activeFile} onSelect={selectFile} />
+            </div>
+          </div>
+        )}
+
+        {/* Publish — dedicated publish/readiness mode */}
+        {tab === 'publish' && (
+          <div style={{ flex:1, overflow:'auto', padding:16, display:'flex', flexDirection:'column', gap:12 }}>
+            <div style={{ fontSize:13, color:'#374151', fontWeight:600 }}>Publish readiness</div>
+            <div style={{ fontSize:12, color:'#6b7280', lineHeight:1.6 }}>
+              Use this mode to open the latest preview, export workspace artifacts, and hand off a deploy-ready bundle.
+            </div>
+
+            <div style={{ border:'1px solid #e5e7eb', borderRadius:10, padding:12, background:'#fafaf8' }}>
+              <div style={{ fontSize:11, color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>
+                Preview URL
+              </div>
+              <div style={{ fontSize:12, color:'#374151', wordBreak:'break-all' }}>
+                {previewUrl || 'No preview URL yet. Run a build to generate one.'}
+              </div>
+              {previewUrl && (
+                <div style={{ marginTop:10 }}>
+                  <button type="button" onClick={() => window.open(previewUrl, '_blank')} style={{
+                    border:'1px solid #10b981', background:'#10b981', color:'#fff',
+                    borderRadius:6, fontSize:12, padding:'6px 10px', cursor:'pointer'
+                  }}>
+                    Open Live Preview
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {jobId && (
+              <div style={{ border:'1px solid #e5e7eb', borderRadius:10, padding:12, background:'#fff' }}>
+                <div style={{ fontSize:11, color:'#9ca3af', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>
+                  Export Bundle
+                </div>
+                <a href={`${API}/jobs/${jobId}/workspace/download`} download style={{
+                  display:'inline-block', border:'1px solid #d1d5db', background:'#fff', color:'#374151',
+                  borderRadius:6, fontSize:12, padding:'6px 10px', textDecoration:'none'
+                }}>
+                  Download Workspace ZIP
+                </a>
+              </div>
+            )}
           </div>
         )}
 

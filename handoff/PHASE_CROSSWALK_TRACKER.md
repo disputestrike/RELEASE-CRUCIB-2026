@@ -12,7 +12,7 @@ Status legend: Not Started | In Progress | Blocked | Complete
 | FR-002 | Stable 3-pane architecture for Simple and Dev | 0,1,5 | FE Lead | QA Lead | Layout tests | In Progress |
 | FR-003 | Backend as source of truth for lifecycle state | 0,2 | BE Lead | QA Lead | Stream integration tests | In Progress |
 | FR-004 | Center pane single narrative workflow | 3 | FE Lead | QA Lead | E2E flow test | Not Started |
-| FR-005 | Right pane modes: Preview, Code, Files, Publish | 4 | FE Lead | QA Lead | Mode test suite | Not Started |
+| FR-005 | Right pane modes: Preview, Code, Files, Publish | 4 | FE Lead | QA Lead | Mode test suite | In Progress |
 | FR-006 | Advanced controls only in Dev capability envelope | 5 | FE Lead | QA Lead | Mode policy tests | In Progress |
 | FR-007 | Differentiated power features beyond Manus parity | 6 | FE+BE | QA Lead | Scenario demos | Not Started |
 | NFR-001 | Stream reliability and reconnect correctness | 2,7,8 | BE Lead | QA Lead | Reconnect tests | In Progress |
@@ -108,3 +108,5 @@ Status legend: Not Started | In Progress | Blocked | Complete
 | 2026-04-16 | Phase 8 slice | `npx eslint src/App.js src/components/Sidebar.jsx` and `npm run test -- --watchAll=false SingleSourceOfTruth.test.js` | Pass | Route/nav changes validated; source-contract suite remains green (15 tests) |
 | 2026-04-16 | Phase 1 + Phase 3 + Phase 8 slice | Expanded source-contract coverage for `Dashboard`, `Workspace`, and `Live View` route/link split in `App.js` and `Sidebar.jsx` | Pass | Canonical tests now fail fast if `/app/dashboard` or `/app/live` mappings regress |
 | 2026-04-16 | Phase 8 slice | `npm run test -- --watchAll=false SingleSourceOfTruth.test.js` and `npx eslint src/__tests__/SingleSourceOfTruth.test.js` | Pass | 1 suite, 15 tests passed after route-contract hardening |
+| 2026-04-16 | Phase 4 + Phase 8 slice | Added explicit `RightPanel` mode tabs for Preview, Code, Files, and Publish and expanded source-contract coverage for mode presence and backend file/export wiring | Pass | Right-pane behavior now exposes dedicated Files and Publish modes while preserving existing Preview/Code/Proof flows |
+| 2026-04-16 | Phase 8 slice | `npx eslint src/components/RightPanel.jsx src/__tests__/SingleSourceOfTruth.test.js` and `npm run test -- --watchAll=false SingleSourceOfTruth.test.js` | Pass | 1 suite, 16 tests passed with clean lint after right-pane mode hardening |

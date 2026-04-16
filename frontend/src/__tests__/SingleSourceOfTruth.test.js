@@ -127,6 +127,18 @@ describe('Single Source of Truth', () => {
       expect(workspaceManusV2).toMatch(/navigate\('\/app\/workspace'\)/);
       expect(workspaceManusV2).toMatch(/to="\/app\/workspace"/);
     });
+    it('RightPanel exposes preview, code, files, and publish modes', () => {
+      const rightPanelPath = path.join(__dirname, '../components/RightPanel.jsx');
+      const source = fs.readFileSync(rightPanelPath, 'utf8');
+
+      expect(source).toMatch(/const tabs = \['preview', 'code', 'files', 'publish', 'proof'\]/);
+      expect(source).toMatch(/tab === 'preview'/);
+      expect(source).toMatch(/tab === 'code'/);
+      expect(source).toMatch(/tab === 'files'/);
+      expect(source).toMatch(/tab === 'publish'/);
+      expect(source).toMatch(/\/jobs\/\$\{jobId\}\/workspace\/files/);
+      expect(source).toMatch(/\/jobs\/\$\{jobId\}\/workspace\/download/);
+    });
   });
 
   describe('§1.4 Pricing → TokenCenter wiring (source contract)', () => {
