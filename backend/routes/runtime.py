@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/runtime", tags=["runtime"])
 
 
 def _get_auth():
-    from server import get_current_user
+    from deps import get_current_user
 
     return get_current_user
 

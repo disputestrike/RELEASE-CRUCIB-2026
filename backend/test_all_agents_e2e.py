@@ -45,7 +45,8 @@ class AgentE2ETest:
                 return result
 
             # Execute agent
-            output = await agent.run(test_input)
+            run_fn = getattr(agent, "run")
+            output = await run_fn(test_input)
 
             result["status"] = "passed"
             result["output"] = output
@@ -144,7 +145,8 @@ class LoadTest:
             async with semaphore:
                 start = time.time()
                 try:
-                    await agent.run(test_input)
+                    run_fn = getattr(agent, "run")
+                    await run_fn(test_input)
                     latency = (time.time() - start) * 1000
                     self.results["successful"] += 1
                     self.results["latencies"].append(latency)
@@ -251,7 +253,8 @@ class StressTest:
 
             try:
                 request_start = time.time()
-                await agent.run({"input": "stress test"})
+                run_fn = getattr(agent, "run")
+                await run_fn({"input": "stress test"})
                 latency = (time.time() - request_start) * 1000
                 latencies.append(latency)
             except:

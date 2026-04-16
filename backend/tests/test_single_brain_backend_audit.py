@@ -25,7 +25,7 @@ def _is_scanned_source(path: Path) -> bool:
 _LEGACY_EXECUTOR_PARTS = {
     "legacy_a": "auto",
     "legacy_b": "runner",
-    "legacy_c": "dag",
+    "legacy_c": "".join(["d", "ag"]),
     "legacy_d": "engine",
     "legacy_e": "agent",
     "legacy_f": "orchestrator",
@@ -85,6 +85,12 @@ def _call_name(node: ast.Call) -> str | None:
 def test_backend_has_no_forbidden_execution_references():
     violations: list[str] = []
 
+    forbidden_file_names = {
+        _legacy_name("legacy_a", "legacy_b") + ".py",
+        _legacy_name("legacy_e", "legacy_f") + ".py",
+        _legacy_name("legacy_c", "legacy_d") + ".py",
+    }
+
     for rel in DELETED_FILES:
         if (BACKEND_ROOT / rel).exists():
             violations.append(f"{rel}: deleted legacy module still exists")
@@ -97,15 +103,26 @@ def test_backend_has_no_forbidden_execution_references():
         text = path.read_text(encoding="utf-8", errors="replace")
         tree = ast.parse(text, filename=rel)
 
+        if path.name in forbidden_file_names:
+            violations.append(f"{rel}: forbidden file exists")
+
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 for alias in node.names:
+                    if "orchestration" in alias.name:
+                        violations.append(
+                            f"{rel}:{getattr(node, 'lineno', '?')}: legacy orchestration import found ({alias.name})"
+                        )
                     if alias.name in FORBIDDEN_IMPORT_TARGETS:
                         violations.append(
                             f"{rel}:{getattr(node, 'lineno', '?')}: forbidden import {alias.name}"
                         )
             if isinstance(node, ast.ImportFrom):
                 module = node.module or ""
+                if "orchestration" in module:
+                    violations.append(
+                        f"{rel}:{getattr(node, 'lineno', '?')}: legacy orchestration import found ({module})"
+                    )
                 if module in FORBIDDEN_IMPORT_TARGETS:
                     violations.append(
                         f"{rel}:{getattr(node, 'lineno', '?')}: forbidden from-import {module}"

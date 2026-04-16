@@ -22,7 +22,7 @@ router = APIRouter(prefix="/api", tags=["workspace-ui"])
 
 
 def _get_auth():
-    from server import get_current_user
+    from deps import get_current_user
 
     return get_current_user
 

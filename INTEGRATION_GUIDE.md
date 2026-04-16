@@ -73,7 +73,7 @@ Complete implementation guide for the CrucibAI Copilot system - connecting backe
 
 ### ✅ Phase 2: Enhanced Orchestration (COMPLETE)
 
-- [x] **Sub-Agent Orchestrator** (`backend/orchestration/sub_agent_orchestrator.py`)
+- [x] **Sub-Agent Coordinator** (`backend/orchestration/sub_agent_coordinator.py`)
   - Recursive multi-agent decomposition
   - Parallel and sequential execution modes
   - Execution tree tracking

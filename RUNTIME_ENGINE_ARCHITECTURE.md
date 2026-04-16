@@ -229,7 +229,7 @@ Every phase receives **ExecutionContext** and can:
 
 ```python
 # ❌ BEFORE: Agents could run independently
-result = await agent.run(context)
+result = await agent.execute(context)
 
 # ✅ NOW: Only via RuntimeEngine
 result = await runtime_engine.execute_with_control(

@@ -1,6 +1,6 @@
 # Competitor Comparison Scorecard
 
-Generated: 2026-04-16T00:38:50.540398+00:00
+Generated: 2026-04-16T12:42:03.661980+00:00
 
 Winner: None
 

@@ -113,7 +113,18 @@ def execute_tool(
     runtime_task = current_task_id()
     runtime_skill = current_skill_hint()
 
-    require_runtime_authority("tool_executor", detail="execution")
+    try:
+        require_runtime_authority("tool_executor", detail="execution")
+    except PermissionError as exc:
+        return {
+            "success": False,
+            "error": str(exc),
+            "policy": {
+                "mode": "enforced",
+                "reason": "runtime_engine_required",
+            },
+            "skill": {"matched": False},
+        }
 
     effective_project_id = runtime_project or project_id
     workspace = _project_workspace(effective_project_id)

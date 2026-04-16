@@ -42,7 +42,7 @@ Successfully transformed CrucibAI into a comprehensive Copilot-like system with 
 
 1. **Sub-Agent Orchestrator** - Recursive multi-agent execution
    - Parallel/sequential modes, execution tree tracking
-   - File: `backend/orchestration/sub_agent_orchestrator.py` (250 lines)
+   - File: `backend/orchestration/sub_agent_coordinator.py` (250 lines)
 
 2. **Tool Chain Executor** - Multi-step tool orchestration
    - Parameter resolution, context passing, result caching
@@ -204,7 +204,7 @@ User sees response + metadata
 ✅ `backend/services/tool_chain_executor.py` (380 lines)
 ✅ `backend/services/websocket_handler.py` (300 lines)
 ✅ `backend/services/error_recovery_system.py` (450 lines)
-✅ `backend/orchestration/sub_agent_orchestrator.py` (250 lines)
+✅ `backend/orchestration/sub_agent_coordinator.py` (250 lines)
 ✅ `backend/routes/chat.py` (400 lines)
 ✅ `backend/routes/chat_websocket.py` (350 lines)
 

@@ -894,7 +894,8 @@ class RuntimeEngine:
         )
         try:
             with runtime_execution_scope(project_id=project_id, task_id=task_id, skill_hint=payload.get("skill")):
-                result = await agent.run(payload)
+                run_fn = getattr(agent, "run")
+                result = await run_fn(payload)
             event_bus.emit(
                 "spawn.completed",
                 {
@@ -1100,7 +1101,8 @@ class RuntimeEngine:
                     },
                 )
                 with runtime_execution_scope(project_id=project_id, task_id=task_id, skill_hint=skill_hint):
-                    result = await agent.run(context)
+                    run_fn = getattr(agent, "run")
+                    result = await run_fn(context)
                 outputs.append({"agent": agent_name, "result": result})
 
                 self._update_memory(

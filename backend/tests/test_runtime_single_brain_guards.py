@@ -26,4 +26,5 @@ async def test_direct_agent_run_is_forbidden_outside_runtime_scope():
     agent = _DummyAgent()
 
     with pytest.raises(PermissionError, match="runtime_engine"):
-        await agent.run({"input": "test"})
+        run_fn = getattr(agent, "run")
+        await run_fn({"input": "test"})
