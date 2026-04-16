@@ -124,8 +124,11 @@ export default function CrucibAIWorkspace() {
   const [skillBusy, setSkillBusy] = useState(false);
   const [showSimulation, setShowSimulation] = useState(false);
   const [simulationScenario, setSimulationScenario] = useState('');
+  const [simulationPopulation, setSimulationPopulation] = useState(32);
+  const [simulationRounds, setSimulationRounds] = useState(3);
   const [simulationBusy, setSimulationBusy] = useState(false);
   const [simulationRound, setSimulationRound] = useState(null);
+  const [simulationPersonas, setSimulationPersonas] = useState([]);
   const [simulationRecommendation, setSimulationRecommendation] = useState(null);
   const [spawnBusy, setSpawnBusy] = useState(false);
   const [spawnMode, setSpawnMode] = useState('swan');
@@ -614,6 +617,7 @@ export default function CrucibAIWorkspace() {
     if (!activeJobId || !token || !simulationScenario.trim()) return;
     setSimulationBusy(true);
     setSimulationRound(null);
+    setSimulationPersonas([]);
     setSimulationRecommendation(null);
     try {
       const response = await fetch(`${API}/spawn/simulate/stream`, {
@@ -625,8 +629,8 @@ export default function CrucibAIWorkspace() {
         body: JSON.stringify({
           jobId: activeJobId,
           scenario: simulationScenario.trim(),
-          population_size: 32,
-          rounds: 3,
+          population_size: Number.isFinite(Number(simulationPopulation)) ? Math.max(3, Math.min(256, Math.floor(Number(simulationPopulation)))) : 32,
+          rounds: Number.isFinite(Number(simulationRounds)) ? Math.max(1, Math.min(8, Math.floor(Number(simulationRounds)))) : 3,
           agent_roles: ['architect', 'backend', 'security', 'ux', 'devops'],
           priors: {
             cost_sensitive: 0.3,
@@ -667,6 +671,7 @@ export default function CrucibAIWorkspace() {
           }
           if (payload.type === 'simulation.completed') {
             setSimulationRecommendation(payload.recommendation || null);
+            setSimulationPersonas(Array.isArray(payload.personas) ? payload.personas : []);
           }
         }
       }
@@ -676,7 +681,7 @@ export default function CrucibAIWorkspace() {
     } finally {
       setSimulationBusy(false);
     }
-  }, [activeJobId, token, simulationScenario]);
+  }, [activeJobId, token, simulationScenario, simulationPopulation, simulationRounds]);
 
   const applySimulationRecommendation = useCallback(async () => {
     if (!activeJobId || !token || !simulationRecommendation?.recommended_action) return;
@@ -691,11 +696,19 @@ export default function CrucibAIWorkspace() {
       );
       setSimulationRecommendation(null);
       setSimulationRound(null);
+      setSimulationPersonas([]);
       refresh();
     } catch (e) {
       setError(e.response?.data?.detail || e.message || 'Could not apply recommendation');
     }
   }, [activeJobId, token, simulationRecommendation, refresh]);
+
+  const normalizedSimulationPopulation = Number.isFinite(Number(simulationPopulation))
+    ? Math.max(3, Math.min(256, Math.floor(Number(simulationPopulation))))
+    : 32;
+  const normalizedSimulationRounds = Number.isFinite(Number(simulationRounds))
+    ? Math.max(1, Math.min(8, Math.floor(Number(simulationRounds))))
+    : 3;
 
   const carouselTools = useMemo(
     () => {
@@ -806,6 +819,7 @@ export default function CrucibAIWorkspace() {
         jobId={activeJobId}
         isRunning={isRunning}
         simulation={simulationRound}
+        simulationPersonas={simulationPersonas}
         simulationRecommendation={simulationRecommendation}
         onSimulationContinue={() => {
           if (!simulationBusy) {
@@ -1034,6 +1048,30 @@ export default function CrucibAIWorkspace() {
               onChange={(e) => setSimulationScenario(e.target.value)}
               placeholder="What if we remove Stripe and use Lemon Squeezy?"
             />
+            <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
+              <label style={{ display: 'grid', gap: 4, fontSize: 12, color: 'var(--theme-muted)' }}>
+                Population
+                <input
+                  type="number"
+                  min={3}
+                  max={256}
+                  value={normalizedSimulationPopulation}
+                  onChange={(e) => setSimulationPopulation(e.target.value)}
+                  disabled={simulationBusy}
+                />
+              </label>
+              <label style={{ display: 'grid', gap: 4, fontSize: 12, color: 'var(--theme-muted)' }}>
+                Rounds
+                <input
+                  type="number"
+                  min={1}
+                  max={8}
+                  value={normalizedSimulationRounds}
+                  onChange={(e) => setSimulationRounds(e.target.value)}
+                  disabled={simulationBusy}
+                />
+              </label>
+            </div>
             <div style={{ marginTop: 8, fontSize: 11, color: 'var(--theme-muted)' }}>
               Clustered simulation runs with persona priors and streamed round updates.
             </div>

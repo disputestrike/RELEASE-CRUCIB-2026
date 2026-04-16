@@ -2,6 +2,7 @@ import React from 'react';
 
 export default function SimulationBlock({
   simulation,
+  personas = [],
   recommendation,
   onContinue,
   onStop,
@@ -10,6 +11,13 @@ export default function SimulationBlock({
   if (!simulation) return null;
   const clusters = Array.isArray(simulation.clusters) ? simulation.clusters : [];
   const shift = simulation.sentiment_shift || {};
+  const totalPopulation = Array.isArray(personas) ? personas.length : 0;
+  const dominantCluster = clusters.length
+    ? clusters.reduce((best, c) => ((c.size || 0) > (best.size || 0) ? c : best), clusters[0])
+    : null;
+  const consensusRatio = totalPopulation > 0 && dominantCluster
+    ? Math.min(1, Math.max(0, Number(dominantCluster.size || 0) / totalPopulation))
+    : 0;
 
   return (
     <div style={{ marginTop: 8, border: '1px solid #d1d5db', borderRadius: 10, background: '#fafafa' }}>
@@ -20,6 +28,23 @@ export default function SimulationBlock({
         <div style={{ marginBottom: 8 }}>
           Round {simulation.round} {simulation.consensus_emerging ? '• Consensus emerging' : '• Debate still open'}
         </div>
+        {totalPopulation > 0 && (
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 4 }}>
+              Persona population: {totalPopulation} • dominant support {Math.round(consensusRatio * 100)}%
+            </div>
+            <div style={{ height: 6, background: '#e5e7eb', borderRadius: 999, overflow: 'hidden' }}>
+              <div style={{ width: `${Math.round(consensusRatio * 100)}%`, height: '100%', background: '#10b981' }} />
+            </div>
+            <div style={{ marginTop: 6, color: '#6b7280', fontSize: 11 }}>
+              {personas.slice(0, 6).map((p, i) => (
+                <span key={`persona-${i}`} style={{ marginRight: 8 }}>
+                  {p.role}:{p.prior}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
         {clusters.map((c) => (
           <div key={c.id} style={{ marginBottom: 10, border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', padding: 10 }}>
             <div style={{ fontWeight: 600, color: '#1f2937' }}>

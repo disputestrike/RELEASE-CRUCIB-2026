@@ -10,6 +10,7 @@ import json
 import logging
 import re
 import uuid
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -25,6 +26,62 @@ def _get_auth():
     from deps import get_current_user
 
     return get_current_user
+
+
+def _assert_owner(job_owner_id: Optional[str], user: Optional[dict]) -> None:
+    uid = str((user or {}).get("id") or "").strip()
+    owner = str(job_owner_id or "").strip()
+    if owner and uid and owner != uid:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
+async def _load_job_with_fallback(job_id: str, user: dict) -> Dict[str, Any]:
+    """Prefer orchestration runtime if available; fall back to DB jobs table."""
+    runtime_state = None
+    try:
+        from db_pg import get_pg_pool
+        from server import _get_orchestration
+
+        candidate = _get_orchestration()
+        if isinstance(candidate, tuple) and candidate and hasattr(candidate[0], "get_job"):
+            runtime_state = candidate[0]
+            pool = await get_pg_pool()
+            runtime_state.set_pool(pool)
+            job = await runtime_state.get_job(job_id)
+            if job:
+                _assert_owner(job.get("user_id"), user)
+                return job
+    except Exception:
+        runtime_state = None
+
+    from db_pg import get_db
+
+    db = await get_db()
+    job = await db.jobs.find_one({"id": job_id}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    _assert_owner(job.get("user_id"), user)
+    return job
+
+
+async def _persist_spawn_log(job_id: str, user_id: str, kind: str, payload: Dict[str, Any]) -> None:
+    try:
+        from db_pg import get_db
+
+        db = await get_db()
+        await db.project_logs.insert_one(
+            {
+                "id": str(uuid.uuid4()),
+                "project_id": job_id,
+                "job_id": job_id,
+                "user_id": user_id,
+                "kind": kind,
+                "payload": payload,
+                "ts": datetime.now(timezone.utc).isoformat(),
+            }
+        )
+    except Exception:
+        return None
 
 
 class SpawnRunBody(BaseModel):
@@ -53,153 +110,78 @@ class SpawnSimulateBody(BaseModel):
 
 @router.post("/spawn/run")
 async def spawn_run(body: SpawnRunBody, user: dict = Depends(_get_auth())):
-    """
-    Parallel fan-out over real orchestration reads (job + steps + events) — no fake agents.
-    Returns a structured consensus object the UI maps to subagent.* events.
-    """
-    from db_pg import get_pg_pool
-    from server import _assert_job_owner_match, _get_orchestration
-
-    job_id = body.job_id
-    runtime_state, *_ = _get_orchestration()
-    pool = await get_pg_pool()
-    runtime_state.set_pool(pool)
-    job = await runtime_state.get_job(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
-    _assert_job_owner_match(job.get("user_id"), user)
-
-    async def load_steps() -> List[Dict[str, Any]]:
-        return await runtime_state.get_steps(job_id)
-
-    async def load_events() -> List[Dict[str, Any]]:
-        return await runtime_state.get_job_events(job_id, limit=80)
-
-    async def load_plan_row() -> Optional[Dict[str, Any]]:
-        async with pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT plan_json FROM build_plans WHERE job_id = $1 ORDER BY created_at DESC LIMIT 1",
-                job_id,
-            )
-        return dict(row) if row else None
-
-    steps, events, plan_row = await asyncio.gather(load_steps(), load_events(), load_plan_row())
-
-    from services.runtime.swan_engine import SwanEngine
-
-    requested_branches = int(body.config.get("branches") or 4)
-    if requested_branches < 1:
-        raise HTTPException(status_code=400, detail="branches must be >= 1")
-    cap = SwanEngine.resolve_branches(requested_branches)
-    branches = int(cap["actual"] or 1)
-    max_branches = cap["hard_limit"]
-
     from services.events import event_bus
+    from services.runtime.subagent_orchestrator import SubagentOrchestrator
+
+    job = await _load_job_with_fallback(body.job_id, user)
+    job_id = body.job_id
+    uid = str((user or {}).get("id") or job.get("user_id") or "")
 
     event_bus.emit(
         "swarm.started",
         {
             "job_id": job_id,
-            "requested_branches": requested_branches,
-            "actual_branches": branches,
             "config": body.config,
+            "task": (body.task or "")[:180],
         },
     )
-    ctx = body.context if isinstance(body.context, dict) else {}
-    pre_ids = ctx.get("subagent_ids")
-    if isinstance(pre_ids, list):
-        pre_ids = [str(x) for x in pre_ids if x][:branches]
-    else:
-        pre_ids = None
 
-    mode = str(body.config.get("mode") or "swan").strip().lower() or "swan"
-    strategy = str(body.config.get("strategy") or "").strip().lower() or None
-    roster = SwanEngine.build_subagents(
-        count=branches,
-        mode=mode,
-        strategy=strategy,
-        predefined_ids=pre_ids,
+    orchestrator = SubagentOrchestrator(job_id=job_id, user_id=uid)
+    out = await orchestrator.run(
+        task=body.task or "parallel workspace probe",
+        config=body.config,
+        context=body.context,
     )
-
-    subagent_results = []
-    for i, agent in enumerate(roster):
-        sid = agent["id"]
-        subagent_results.append(
-            {
-                "id": sid,
-                "role": agent.get("role") or "worker",
-                "status": "complete",
-                "result": {
-                    "branch": i,
-                    "steps": len(steps),
-                    "events": len(events),
-                    "has_plan": bool(plan_row),
-                    "task_excerpt": (body.task or "")[:120],
-                },
-            }
-        )
 
     result = {
-        "consensus": {
-            "steps": len(steps),
-            "events": len(events),
-            "has_plan": bool(plan_row),
-        },
-        "confidence": 1.0,
+        "consensus": out.get("consensus") or {},
+        "confidence": out.get("confidence") or 0.0,
         "disagreements": [],
-        "recommendedAction": "Proceed",
-        "subagentResults": subagent_results,
+        "recommendedAction": out.get("recommendedAction") or "Proceed",
+        "subagentResults": out.get("subagentResults") or [],
         "swarm": {
-            "mode": mode,
-            "strategy": strategy,
-            "requested_branches": requested_branches,
-            "actual_branches": branches,
-            "hard_limit": max_branches,
-            "unbounded": max_branches is None,
+            "mode": str((body.config or {}).get("mode") or "swan"),
+            "strategy": str((body.config or {}).get("strategy") or "") or None,
+            "requested_branches": out.get("requestedBranches"),
+            "actual_branches": out.get("actualBranches"),
+            "hard_limit": out.get("hardLimit"),
+            "unbounded": out.get("hardLimit") is None,
         },
     }
+
     event_bus.emit(
         "swarm.completed",
         {
             "job_id": job_id,
-            "requested_branches": requested_branches,
-            "actual_branches": branches,
-            "subagent_count": len(subagent_results),
+            "requested_branches": out.get("requestedBranches"),
+            "actual_branches": out.get("actualBranches"),
+            "subagent_count": len(result["subagentResults"]),
         },
     )
+    await _persist_spawn_log(job_id, uid, "swarm.completed", result)
     return result
 
 
 @router.post("/spawn/simulate")
 async def spawn_simulate(body: SpawnSimulateBody, user: dict = Depends(_get_auth())):
-    """Run scenario simulation and return all updates + recommendation."""
-    from db_pg import get_pg_pool
-    from server import _assert_job_owner_match, _get_orchestration
+    """Run scenario simulation and return updates + recommendation + personas."""
     from services.events import event_bus
-    from services.runtime.simulation_engine import SimulationEngine
+    from services.runtime.simulation_orchestrator import SimulationOrchestrator
 
-    job_id = body.job_id
-    runtime_state, *_ = _get_orchestration()
-    pool = await get_pg_pool()
-    runtime_state.set_pool(pool)
-    job = await runtime_state.get_job(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
-    _assert_job_owner_match(job.get("user_id"), user)
+    job = await _load_job_with_fallback(body.job_id, user)
+    uid = str((user or {}).get("id") or job.get("user_id") or "")
 
-    simulation_id = f"sim_{uuid.uuid4().hex[:12]}"
+    orchestrator = SimulationOrchestrator(job_id=body.job_id, user_id=uid)
     event_bus.emit(
         "simulation.started",
         {
-            "job_id": job_id,
-            "simulation_id": simulation_id,
+            "job_id": body.job_id,
             "scenario": body.scenario,
             "population_size": body.population_size,
             "rounds": body.rounds,
         },
     )
-
-    result = SimulationEngine.run_simulation(
+    out = await orchestrator.run(
         scenario=body.scenario,
         population_size=body.population_size,
         rounds=body.rounds,
@@ -207,12 +189,12 @@ async def spawn_simulate(body: SpawnSimulateBody, user: dict = Depends(_get_auth
         priors=body.priors,
     )
 
-    for update in result.get("updates") or []:
+    for update in out.get("updates") or []:
         event_bus.emit(
             "simulation.update",
             {
-                "job_id": job_id,
-                "simulation_id": simulation_id,
+                "job_id": body.job_id,
+                "simulation_id": out.get("simulationId"),
                 **update,
             },
         )
@@ -220,83 +202,45 @@ async def spawn_simulate(body: SpawnSimulateBody, user: dict = Depends(_get_auth
     event_bus.emit(
         "simulation.completed",
         {
-            "job_id": job_id,
-            "simulation_id": simulation_id,
-            "recommendation": result.get("recommendation"),
-            "consensus_reached": result.get("consensus_reached"),
+            "job_id": body.job_id,
+            "simulation_id": out.get("simulationId"),
+            "recommendation": out.get("recommendation"),
+            "consensus_reached": out.get("consensus_reached"),
         },
     )
 
     return {
         "success": True,
-        "jobId": job_id,
-        "simulationId": simulation_id,
-        **result,
+        "jobId": body.job_id,
+        **out,
     }
 
 
 @router.post("/spawn/simulate/stream")
 async def spawn_simulate_stream(body: SpawnSimulateBody, user: dict = Depends(_get_auth())):
     """Stream simulation updates as NDJSON lines for progressive UI rendering."""
-    from db_pg import get_pg_pool
-    from server import _assert_job_owner_match, _get_orchestration
     from services.events import event_bus
-    from services.runtime.simulation_engine import SimulationEngine
+    from services.runtime.simulation_orchestrator import SimulationOrchestrator
 
-    job_id = body.job_id
-    runtime_state, *_ = _get_orchestration()
-    pool = await get_pg_pool()
-    runtime_state.set_pool(pool)
-    job = await runtime_state.get_job(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
-    _assert_job_owner_match(job.get("user_id"), user)
-
-    simulation_id = f"sim_{uuid.uuid4().hex[:12]}"
+    job = await _load_job_with_fallback(body.job_id, user)
+    uid = str((user or {}).get("id") or job.get("user_id") or "")
+    orchestrator = SimulationOrchestrator(job_id=body.job_id, user_id=uid)
 
     async def _gen():
-        event_bus.emit(
-            "simulation.started",
-            {
-                "job_id": job_id,
-                "simulation_id": simulation_id,
-                "scenario": body.scenario,
-                "population_size": body.population_size,
-                "rounds": body.rounds,
-            },
-        )
-
-        result = SimulationEngine.run_simulation(
+        async for line in orchestrator.stream_ndjson(
             scenario=body.scenario,
             population_size=body.population_size,
             rounds=body.rounds,
             agent_roles=body.agent_roles,
             priors=body.priors,
-        )
-        updates = result.get("updates") or []
-
-        for update in updates:
-            payload = {
-                "type": "simulation.update",
-                "jobId": job_id,
-                "simulationId": simulation_id,
-                **update,
-            }
-            event_bus.emit("simulation.update", payload)
-            yield json.dumps(payload) + "\n"
-            await asyncio.sleep(0.08)
-
-        completed = {
-            "type": "simulation.completed",
-            "jobId": job_id,
-            "simulationId": simulation_id,
-            "recommendation": result.get("recommendation"),
-            "consensus_reached": result.get("consensus_reached"),
-            "rounds_executed": result.get("rounds_executed"),
-            "scenario": result.get("scenario"),
-        }
-        event_bus.emit("simulation.completed", completed)
-        yield json.dumps(completed) + "\n"
+        ):
+            try:
+                payload = json.loads(line)
+                event_bus.emit(payload.get("type") or "simulation.update", payload)
+            except Exception:
+                pass
+            yield line
+            await asyncio.sleep(0.05)
 
     return StreamingResponse(_gen(), media_type="application/x-ndjson")
 

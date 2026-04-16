@@ -21,6 +21,7 @@ export default function ChatStream({
   eventSource,
   onArtifactClick,
   simulation,
+  simulationPersonas = [],
   simulationRecommendation,
   onSimulationContinue,
   onSimulationStop,
@@ -110,6 +111,7 @@ export default function ChatStream({
       {(simulation || simulationRecommendation) && (
         <SimulationBlock
           simulation={simulation}
+          personas={simulationPersonas}
           recommendation={simulationRecommendation}
           onContinue={onSimulationContinue}
           onStop={onSimulationStop}
