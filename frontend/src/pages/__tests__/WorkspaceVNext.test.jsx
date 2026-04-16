@@ -8,8 +8,8 @@ jest.mock('../../authContext', () => ({
   useAuth: jest.fn(),
 }));
 
-jest.mock('../UnifiedWorkspace', () => function MockUnifiedWorkspace() {
-  return <div data-testid="mock-unified-workspace">UnifiedWorkspace</div>;
+jest.mock('../CrucibAIWorkspace', () => function MockCrucibAIWorkspace() {
+  return <div data-testid="mock-vnext-workspace">CrucibAIWorkspace</div>;
 });
 
 function renderAt(path) {
@@ -33,7 +33,7 @@ describe('WorkspaceVNext', () => {
 
     renderAt('/app/workspace?mode=developer');
 
-    expect(screen.getByTestId('mock-unified-workspace')).toBeInTheDocument();
+    expect(screen.getByTestId('mock-vnext-workspace')).toBeInTheDocument();
     await waitFor(() => {
       expect(localStorage.getItem('crucibai_workspace_mode')).toBe('simple');
       expect(localStorage.getItem('crucibai_ux_mode')).toBe('simple');
