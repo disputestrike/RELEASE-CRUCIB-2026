@@ -1,0 +1,11 @@
+{
+  "system": "claude",
+  "generated_at_utc": "2026-04-15T00:00:00+00:00",
+  "suite_name": "repeatability_prompts_v1",
+  "prompt_count": 50,
+  "average_score": 0.0,
+  "pass_rate": 0.0,
+  "latency_p50_sec": null,
+  "cost_per_prompt_usd": null,
+  "notes": "Replace with real benchmark output values"
+}

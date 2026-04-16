@@ -30,6 +30,8 @@ from llm_router import CEREBRAS_MODEL
 from llm_router import TaskComplexity, classifier
 from llm_router import get_cerebras_key as _get_cerebras_key
 from llm_router import router as llm_router
+from services.events import event_bus
+from services.skills import detect_skill
 
 logger = logging.getLogger(__name__)
 
@@ -188,6 +190,18 @@ async def get_authenticated_or_api_user(
 
 async def _auto_detect_skill(prompt: str, user_id: str) -> Optional[str]:
     """Auto-detect the best skill for a prompt. Transparent to the user."""
+    if os.environ.get("CRUCIB_ENABLE_SKILLS", "0").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    ):
+        try:
+            detected = detect_skill(prompt)
+            if detected:
+                return detected.name
+        except Exception as e:
+            logger.debug("skills registry detection failed; fallback to trigger map: %s", e)
+
     p = prompt.lower()
     for skill_name, triggers in SKILL_TRIGGERS.items():
         if any(t in p for t in triggers):
@@ -633,6 +647,10 @@ async def _call_llm_with_fallback(
     Routes based on task complexity, user tier, speed selector, and available credits.
     Returns ``(response_text, model_used)`` tuple.
     """
+    from services.runtime.execution_authority import require_runtime_authority
+
+    require_runtime_authority("llm_service", detail="model execution")
+
     task_complexity = classifier.classify(message, agent_name)
 
     model_chain = llm_router.get_model_chain(
@@ -641,6 +659,25 @@ async def _call_llm_with_fallback(
         speed_selector=speed_selector,
         available_credits=available_credits,
     )
+    try:
+        event_bus.emit(
+            "provider.chain.selected",
+            {
+                "task_complexity": str(task_complexity),
+                "chain": [
+                    {
+                        "name": name,
+                        "model": model_id,
+                        "provider": provider,
+                    }
+                    for (name, model_id, provider) in model_chain
+                ],
+                "agent_name": agent_name,
+                "session_id": session_id,
+            },
+        )
+    except Exception:
+        logger.debug("provider.chain.selected event emission failed")
 
     if not model_chain:
         raise ValueError(
@@ -654,6 +691,31 @@ async def _call_llm_with_fallback(
 
         try:
             logger.info(f"Trying {provider}/{model_name} for task: {task_complexity}")
+            try:
+                event_bus.emit(
+                    "provider.call.started",
+                    {
+                        "provider": provider,
+                        "model_name": model_name,
+                        "model_id": model_id,
+                        "task_complexity": str(task_complexity),
+                        "agent_name": agent_name,
+                        "session_id": session_id,
+                    },
+                )
+                event_bus.emit(
+                    "model_call",
+                    {
+                        "provider": provider,
+                        "model_name": model_name,
+                        "model_id": model_id,
+                        "task_complexity": str(task_complexity),
+                        "agent_name": agent_name,
+                        "session_id": session_id,
+                    },
+                )
+            except Exception:
+                logger.debug("provider.call.started event emission failed")
 
             if provider == "together" and llm_router.llama_available:
                 response = await _call_llama_direct(
@@ -663,6 +725,18 @@ async def _call_llm_with_fallback(
                     api_key=llm_router.llama_available
                     and os.environ.get("LLAMA_API_KEY"),
                 )
+                try:
+                    event_bus.emit(
+                        "provider.call.succeeded",
+                        {
+                            "provider": provider,
+                            "model_name": model_name,
+                            "model_id": model_id,
+                            "session_id": session_id,
+                        },
+                    )
+                except Exception:
+                    logger.debug("provider.call.succeeded event emission failed")
                 return (response, f"llama/{model_id}")
 
             elif provider == "cerebras" and llm_router.cerebras_available:
@@ -672,6 +746,18 @@ async def _call_llm_with_fallback(
                     model=model_id,
                     api_key=_get_cerebras_key() or os.environ.get("CEREBRAS_API_KEY"),
                 )
+                try:
+                    event_bus.emit(
+                        "provider.call.succeeded",
+                        {
+                            "provider": provider,
+                            "model_name": model_name,
+                            "model_id": model_id,
+                            "session_id": session_id,
+                        },
+                    )
+                except Exception:
+                    logger.debug("provider.call.succeeded event emission failed")
                 return (response, f"cerebras/{model_id}")
 
             elif provider == "anthropic" and llm_router.haiku_available:
@@ -681,11 +767,36 @@ async def _call_llm_with_fallback(
                     model=model_id,
                     api_key=os.environ.get("ANTHROPIC_API_KEY"),
                 )
+                try:
+                    event_bus.emit(
+                        "provider.call.succeeded",
+                        {
+                            "provider": provider,
+                            "model_name": model_name,
+                            "model_id": model_id,
+                            "session_id": session_id,
+                        },
+                    )
+                except Exception:
+                    logger.debug("provider.call.succeeded event emission failed")
                 return (response, f"haiku/{model_id}")
 
         except Exception as e:
             last_error = e
             err_str = str(e)
+            try:
+                event_bus.emit(
+                    "provider.call.failed",
+                    {
+                        "provider": provider,
+                        "model_name": model_name,
+                        "model_id": model_id,
+                        "error": err_str,
+                        "session_id": session_id,
+                    },
+                )
+            except Exception:
+                logger.debug("provider.call.failed event emission failed")
             if (
                 "RATE_LIMITED" in err_str
                 or "rate limit" in err_str.lower()

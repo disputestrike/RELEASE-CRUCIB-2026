@@ -34,15 +34,14 @@ def test_live_orchestration_board_is_mounted_in_workspace_surfaces():
     panels = (
         ROOT / "frontend/src/components/workspace/WorkspaceProPanels.jsx"
     ).read_text(encoding="utf-8")
-    manus = (ROOT / "frontend/src/pages/WorkspaceManus.jsx").read_text(encoding="utf-8")
-    workspace = (ROOT / "frontend/src/pages/Workspace.jsx").read_text(encoding="utf-8")
+    crucib = (ROOT / "frontend/src/pages/CrucibAIWorkspace.jsx").read_text(encoding="utf-8")
     kanban = (ROOT / "frontend/src/components/orchestration/KanbanBoard.jsx").read_text(
         encoding="utf-8"
     )
 
     assert "KanbanBoard" in panels
-    assert "currentJobId={currentJobId}" in manus
-    assert "<KanbanBoard jobId={currentJobId} />" in workspace
+    assert "useJobStream" in crucib
+    assert "data-testid=\"crucib-workspace-root\"" in crucib
     assert "Controller Brain" in kanban
     assert "Recommended focus" in kanban
     assert "Next actions" in kanban

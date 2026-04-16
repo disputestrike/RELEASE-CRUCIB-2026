@@ -110,7 +110,6 @@ async def create_job(
     """Create a new job (plan + steps) for a project."""
     try:
         from orchestration import planner as planner_mod
-        from orchestration.dag_engine import build_dag_from_plan
 
         return await create_job_service(
             body=body,
@@ -118,7 +117,6 @@ async def create_job(
             runtime_state_getter=_get_runtime_state,
             pool_getter=_get_pool,
             generate_plan=planner_mod.generate_plan,
-            build_dag_from_plan=build_dag_from_plan,
         )
     except HTTPException:
         raise

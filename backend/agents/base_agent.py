@@ -20,6 +20,7 @@ from agent_recursive_learning import (
 from anthropic import AsyncAnthropic
 from anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_model
 from llm_cerebras import invoke_cerebras, invoke_cerebras_stream
+from services.runtime.execution_authority import require_runtime_authority
 
 logger = logging.getLogger(__name__)
 
@@ -154,6 +155,8 @@ class BaseAgent(ABC):
         error = None
         status = ExecutionStatus.SUCCESS
         result = {}
+
+        require_runtime_authority("agent", detail="execution")
 
         try:
             # Validate input

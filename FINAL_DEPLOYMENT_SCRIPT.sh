@@ -17,11 +17,11 @@ echo "Status: READY TO EXECUTE ✅"
 
 # STEP 2: Manual Integration (not automated due to codebase size)
 echo ""
-echo "STEP 2: Integrate Fixes into auto_runner.py (15 min)"
+echo "STEP 2: Integrate Fixes into runtime_engine.py (15 min)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "See: backend/orchestration/auto_runner_integration.py"
+echo "See: backend/orchestration/RUNTIME_ENGINE_integration.py"
 echo "Integrate these modules:"
-echo "  - from backend.orchestration.auto_runner_fix import prepare_job_failure_state"
+echo "  - from backend.orchestration.RUNTIME_ENGINE_fix import prepare_job_failure_state"
 echo "  - from backend.orchestration.proof_generator import create_proof_directory_structure"
 echo ""
 echo "Status: GUIDE PROVIDED ✅"
@@ -96,4 +96,5 @@ echo "║                         TOTAL COMMITS TODAY: 18                       
 echo "║                    TOTAL LINES OF CODE: 2000+                             ║"
 echo "║                     SYSTEM: PRODUCTION READY ✅                           ║"
 echo "╚════════════════════════════════════════════════════════════════════════════╝"
+
 

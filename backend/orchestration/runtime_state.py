@@ -125,8 +125,8 @@ async def ensure_job_fk_prerequisites(
             pid,
             json.dumps(
                 {
-                    "scope": "auto_runner",
-                    "title": "Auto-Runner workspace",
+                    "scope": "runtime_engine",
+                    "title": "Runtime Engine workspace",
                     "status": "active",
                 }
             ),
@@ -155,6 +155,11 @@ async def ensure_job_fk_prerequisites(
 async def create_job(
     project_id: str, mode: str = "guided", goal: str = "", user_id: Optional[str] = None
 ) -> Dict[str, Any]:
+    if _pool is None:
+        raise RuntimeError(
+            "PostgreSQL pool is not initialized (runtime_state._pool is None). "
+            "Ensure DATABASE_URL is set and call runtime_state.set_pool(await get_pg_pool()) before creating jobs."
+        )
     await ensure_job_fk_prerequisites(project_id, user_id)
     job_id = str(uuid.uuid4())
     created = updated = _now()

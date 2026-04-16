@@ -62,40 +62,38 @@ class DiagnosticScanner:
             })
 
     def scan_status_bar(self):
-        """Check if status bar is actually wired up"""
-        workspace_file = self.root / "frontend" / "src" / "pages" / "Workspace.jsx"
-        
+        """Check canonical workspace shell is present and streams job state."""
+        workspace_file = self.root / "frontend" / "src" / "pages" / "CrucibAIWorkspace.jsx"
+
         if not workspace_file.exists():
             self.issues["critical"].append({
-                "category": "Status Bar",
-                "issue": "Workspace.jsx not found",
+                "category": "Workspace",
+                "issue": "CrucibAIWorkspace.jsx not found",
                 "file": str(workspace_file)
             })
             return
-        
+
         try:
-            with open(workspace_file, 'r') as f:
+            with open(workspace_file, 'r', encoding='utf-8') as f:
                 content = f.read()
-                
-            # Check for status bar component
-            if "StatusBar" not in content and "statusBar" not in content:
+
+            if "useJobStream" not in content:
                 self.issues["high"].append({
-                    "category": "Status Bar",
-                    "issue": "StatusBar component not imported or used in Workspace",
-                    "location": "Workspace.jsx"
+                    "category": "Workspace",
+                    "issue": "useJobStream not wired in CrucibAIWorkspace",
+                    "location": "CrucibAIWorkspace.jsx"
                 })
-            
-            # Check if it's actually connected to backend
-            if "buildStatus" not in content:
+
+            if "previewUrl" not in content and "preview_url" not in content:
                 self.issues["high"].append({
-                    "category": "Status Bar",
-                    "issue": "No buildStatus state tracking in Workspace",
-                    "location": "Workspace.jsx"
+                    "category": "Workspace",
+                    "issue": "No preview URL wiring detected in CrucibAIWorkspace",
+                    "location": "CrucibAIWorkspace.jsx"
                 })
         except Exception as e:
             self.issues["medium"].append({
-                "category": "Status Bar",
-                "issue": f"Could not read Workspace.jsx: {e}"
+                "category": "Workspace",
+                "issue": f"Could not read CrucibAIWorkspace.jsx: {e}"
             })
 
     def scan_prebuild_states(self):
@@ -254,7 +252,7 @@ class DiagnosticScanner:
         """Check if major UI components are properly wired"""
         component_checks = {
             "Layout.jsx": ["navbar", "sidebar", "footer"],
-            "Workspace.jsx": ["editor", "preview", "statusbar"],
+            "CrucibAIWorkspace.jsx": ["preview", "useJobStream", "RightPanel"],
             "Dashboard.jsx": ["projects", "recent", "templates"],
         }
         

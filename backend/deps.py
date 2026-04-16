@@ -80,7 +80,19 @@ async def get_current_user(
         payload = jwt.decode(
             credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM]
         )
-        user = await db.users.find_one({"id": payload["user_id"]}, {"_id": 0})
+        uid = payload["user_id"]
+        if db is None:
+            if os.environ.get("CRUCIBAI_DEV") == "1":
+                from services.dev_guest import get_user as _dev_get_user
+
+                user = _dev_get_user(uid)
+                if not user:
+                    raise HTTPException(status_code=401, detail="User not found")
+                if user.get("suspended"):
+                    raise HTTPException(status_code=403, detail="Account suspended")
+                return user
+            raise HTTPException(status_code=503, detail="Database not ready")
+        user = await db.users.find_one({"id": uid}, {"_id": 0})
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
         if user.get("suspended"):
@@ -108,7 +120,19 @@ async def get_current_user_sse(
     db = get_db()
     try:
         payload = jwt.decode(raw, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        user = await db.users.find_one({"id": payload["user_id"]}, {"_id": 0})
+        uid = payload["user_id"]
+        if db is None:
+            if os.environ.get("CRUCIBAI_DEV") == "1":
+                from services.dev_guest import get_user as _dev_get_user
+
+                user = _dev_get_user(uid)
+                if not user:
+                    raise HTTPException(status_code=401, detail="User not found")
+                if user.get("suspended"):
+                    raise HTTPException(status_code=403, detail="Account suspended")
+                return user
+            raise HTTPException(status_code=503, detail="Database not ready")
+        user = await db.users.find_one({"id": uid}, {"_id": 0})
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
         if user.get("suspended"):
@@ -131,9 +155,18 @@ async def get_optional_user(
             payload = jwt.decode(
                 credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM]
             )
-            user = await db.users.find_one({"id": payload["user_id"]}, {"_id": 0})
-            if user:
-                return user
+            uid = payload["user_id"]
+            if db is None:
+                if os.environ.get("CRUCIBAI_DEV") == "1":
+                    from services.dev_guest import get_user as _dev_get_user
+
+                    user = _dev_get_user(uid)
+                    if user:
+                        return user
+            else:
+                user = await db.users.find_one({"id": uid}, {"_id": 0})
+                if user:
+                    return user
         except Exception:
             pass
     return None
@@ -178,7 +211,16 @@ def get_current_admin(required_roles: tuple = ADMIN_ROLES):
             payload = jwt.decode(
                 credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM]
             )
-            user = await db.users.find_one({"id": payload["user_id"]}, {"_id": 0})
+            uid = payload["user_id"]
+            if db is None:
+                if os.environ.get("CRUCIBAI_DEV") == "1":
+                    from services.dev_guest import get_user as _dev_get_user
+
+                    user = _dev_get_user(uid)
+                else:
+                    user = None
+            else:
+                user = await db.users.find_one({"id": uid}, {"_id": 0})
             if not user:
                 raise HTTPException(status_code=401, detail="User not found")
             if user.get("suspended"):

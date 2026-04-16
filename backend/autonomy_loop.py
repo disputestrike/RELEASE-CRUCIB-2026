@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 from project_state import load_state, update_state
-from tool_executor import execute_tool
+from services.runtime.runtime_engine import runtime_engine
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +35,15 @@ def run_bounded_autonomy_loop(
     state = load_state(project_id)
     workspace = _project_workspace(project_id)
 
+    def _rt_exec(tool_name: str, params: Dict[str, Any]) -> Dict[str, Any]:
+        return runtime_engine.execute_tool_for_task(
+            project_id=project_id,
+            task_id="legacy-autonomy-loop",
+            tool_name=tool_name,
+            params=params,
+            skill_hint="commit",
+        )
+
     # 1) Re-run tests if Test Executor output looked like failure
     test_out = (results.get("Test Executor") or {}).get("output") or ""
     if test_out and (
@@ -44,8 +53,7 @@ def run_bounded_autonomy_loop(
     ):
         if (workspace / "tests").exists() or (workspace / "test").exists():
             try:
-                tr = execute_tool(
-                    project_id,
+                tr = _rt_exec(
                     "run",
                     {
                         "command": [
@@ -77,9 +85,7 @@ def run_bounded_autonomy_loop(
                 logger.warning("autonomy tests retry: %s", e)
         if (workspace / "package.json").exists() and not out["ran_tests"]:
             try:
-                tr = execute_tool(
-                    project_id, "run", {"command": ["npm", "test"], "timeout": 90}
-                )
+                tr = _rt_exec("run", {"command": ["npm", "test"], "timeout": 90})
                 report = (tr.get("output") or tr.get("error") or "")[:10000]
                 update_state(
                     project_id,
@@ -105,8 +111,7 @@ def run_bounded_autonomy_loop(
         or "severity" in sec_out.lower()
     ):
         try:
-            tr = execute_tool(
-                project_id,
+            tr = _rt_exec(
                 "run",
                 {
                     "command": [

@@ -19,6 +19,7 @@ from enum import Enum
 from typing import Any, Dict, Optional, Tuple
 
 from anthropic_models import ANTHROPIC_HAIKU_MODEL, ANTHROPIC_SONNET_MODEL
+from services.providers import choose_chain, selection_meta
 
 logger = logging.getLogger(__name__)
 
@@ -260,7 +261,15 @@ class LLMRouter:
         if not final_chain:
             logger.error("No LLM models available")
 
-        return final_chain
+        # Optional provider-registry ordering (feature-flagged, non-breaking by default)
+        chain_with_registry = choose_chain(
+            final_chain,
+            need_tools=task_complexity in (TaskComplexity.COMPLEX, TaskComplexity.CRITICAL),
+            need_vision=False,
+        )
+        meta = selection_meta()
+        logger.debug("Provider registry selection: mode=%s strategy=%s", meta.get("mode"), meta.get("strategy"))
+        return chain_with_registry
 
     def get_model_info(self, model_name: str) -> Dict[str, Any]:
         """Get cost and performance info for a model."""

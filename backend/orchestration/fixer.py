@@ -314,7 +314,7 @@ async def apply_fix(
         retry_plan["retry_number"],
     )
 
-    # For now: record the intent and let the auto_runner's LLM step handle regeneration
+    # For now: record the intent and let the runtime LLM step handle regeneration
     # In production this would call the specific agent to re-generate only the affected scope
     changes.append(f"Classified as {failure_type}, scope={scope}")
     changes.append(f"Retry plan: {'; '.join(retry_plan['retry_plan'])}")

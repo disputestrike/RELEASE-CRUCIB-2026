@@ -518,7 +518,6 @@ async def checkpoint_7_8_readiness():
                 handle_backend_route,
                 handle_planning_step,
             )
-            from backend.orchestration.auto_runner import run_job_to_completion
             from backend.orchestration.verifier import verify_step
             
             print("  ✓ All orchestrator components imported successfully")

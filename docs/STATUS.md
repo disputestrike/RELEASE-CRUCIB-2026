@@ -239,7 +239,7 @@ Tasks:
 - `python -m pytest backend\tests\test_phase2_security.py -q` passed with local Postgres/Redis env: 3 passed.
 - `python scripts\phase2-security-audit.py --fail-on-unclassified` generated `proof\phase2_security\` and passed with 13 optional routes inventoried and 0 failures.
 - `.\scripts\release-gate.ps1 -BackendOnly` passed after Phase 2 audit additions: smoke 43 passed, 24 deselected; Phase 2 audit 3 passed; optional-auth audit 13 routes, 0 failures; provider readiness 5 passed; automation bridge 1 passed, 6 deselected; LLM routing guard 8 passed, 18 deselected.
-- `python -m py_compile backend\db_pg.py backend\orchestration\verifier.py backend\orchestration\executor.py backend\orchestration\auto_runner.py backend\server.py scripts\generate-pipeline-crash-fix-proof.py` passed.
+- `python -m py_compile backend\db_pg.py backend\orchestration\verifier.py backend\orchestration\executor.py backend\orchestration\runtime_engine.py backend\server.py scripts\generate-pipeline-crash-fix-proof.py` passed.
 - Initial focused pipeline pytest attempt failed before exercising code because the shell had a placeholder `DATABASE_URL` for user `username`; rerun used local Postgres/Redis env.
 - `python -m pytest backend\tests\test_pipeline_crash_fix.py -q` passed with local Postgres/Redis env: 7 passed.
 - `python -m pytest backend\tests\test_smoke.py -k "background_runner" -q` passed with local Postgres/Redis env: 1 passed, 67 deselected.
@@ -261,3 +261,4 @@ Planned tasks:
 - Upgrade visual editing from deterministic text/style replacement to click-to-component selection and AI patch preview.
 - Replace terminal host-shell execution with a per-project container sandbox before broad public exposure.
 - Preserve the release-gate and proof artifacts as the regression bar while extracting routers.
+

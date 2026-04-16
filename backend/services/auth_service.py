@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable, Optional
@@ -91,6 +92,14 @@ async def create_guest_user_service(
     credits_per_token: int,
 ) -> dict:
     if db is None:
+        if os.environ.get("CRUCIBAI_DEV") == "1":
+            from services import dev_guest
+
+            return await dev_guest.create_guest_user(
+                create_token=create_token,
+                guest_tier_credits=guest_tier_credits,
+                credits_per_token=credits_per_token,
+            )
         raise HTTPException(status_code=503, detail="Database not ready")
     user_id = str(uuid.uuid4())
     email = f"guest-{user_id[:8]}@crucibai.guest"

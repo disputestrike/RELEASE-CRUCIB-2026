@@ -1,0 +1,90 @@
+{
+  "timestamp_utc": "2026-04-16T00:19:54.612582+00:00",
+  "overall_pass": true,
+  "number1_claim_allowed": true,
+  "gates": [
+    {
+      "category": "Internal Engineering Integrity",
+      "required": true,
+      "passed": true,
+      "checks": [
+        {
+          "name": "Focused runtime/simulation suite",
+          "passed": true,
+          "detail": "============================== 7 passed in 4.60s =============================="
+        },
+        {
+          "name": "Engineering completion audit doc",
+          "passed": true,
+          "detail": "exists=True path=C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIBAI2026\\crucib\\docs\\ENGINEERING_COMPLETION_AUDIT_2026-04-15.md"
+        },
+        {
+          "name": "Runtime routes module",
+          "passed": true,
+          "detail": "exists=True path=C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIBAI2026\\crucib\\backend\\routes\\runtime.py"
+        },
+        {
+          "name": "Worktrees routes module",
+          "passed": true,
+          "detail": "exists=True path=C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIBAI2026\\crucib\\backend\\routes\\worktrees.py"
+        }
+      ]
+    },
+    {
+      "category": "Reliability and Repeatability",
+      "required": true,
+      "passed": true,
+      "checks": [
+        {
+          "name": "Repeatability benchmark test",
+          "passed": true,
+          "detail": "============================= 2 passed in 11.66s =============================="
+        },
+        {
+          "name": "Repeatability benchmark doc",
+          "passed": true,
+          "detail": "exists=True path=C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIBAI2026\\crucib\\docs\\REPEATABILITY_BENCHMARK.md"
+        }
+      ]
+    },
+    {
+      "category": "Production Evidence",
+      "required": true,
+      "passed": true,
+      "checks": [
+        {
+          "name": "End-to-end proof report",
+          "passed": true,
+          "detail": "exists=True path=C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIBAI2026\\crucib\\proof\\END_TO_END_PROOF_REPORT.md"
+        },
+        {
+          "name": "Completion gate proof",
+          "passed": true,
+          "detail": "exists=True path=C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIBAI2026\\crucib\\proof\\COMPLETION_GATE_PROOF.md"
+        }
+      ]
+    },
+    {
+      "category": "Competitive Evidence",
+      "required": true,
+      "passed": true,
+      "checks": [
+        {
+          "name": "Competitor builder run",
+          "passed": true,
+          "detail": "comparisons=3 winner=crucibai"
+        },
+        {
+          "name": "Competitor comparison artifact has real data",
+          "passed": true,
+          "detail": "comparisons=3 winner='crucibai' generated='2026-04-16T00:18:40.565395+00:00'"
+        },
+        {
+          "name": "Competitor methodology",
+          "passed": true,
+          "detail": "exists=True path=C:\\Users\\benxp\\OneDrive\\Desktop\\CRUCIBAI2026\\crucib\\proof\\benchmarks\\competitor_methodology.md"
+        }
+      ]
+    }
+  ]
+}

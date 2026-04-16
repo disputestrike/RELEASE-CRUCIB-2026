@@ -55,69 +55,25 @@ async def run_workflow(
     if not goal:
         raise HTTPException(status_code=400, detail="Could not generate goal for workflow")
 
-    # Trigger plan + run via orchestrator
+    # Trigger execution via unified runtime engine.
     try:
-        from orchestration.runtime_state import create_job, create_step
-        from orchestration.planner import generate_plan, estimate_tokens
-        from orchestration.dag_engine import build_dag_from_plan
-        from orchestration.auto_runner import run_job
-        from db_pg import get_pg_pool
-        import json, uuid
+        import uuid
+        from services.runtime.runtime_engine import runtime_engine
 
-        pool = await get_pg_pool()
-
-        # Create job
-        from services.orchestration_service import create_job_service
-        job = await create_job_service(
-            project_id=body.project_id or user["id"],
-            mode="auto",
-            goal=goal,
-            user_id=user["id"],
-            pool=pool,
+        job_id = str(uuid.uuid4())
+        response = await runtime_engine.execute_with_control(
+            task_id=job_id,
+            user_id=user.get("id", "anonymous"),
+            request=goal,
+            conversation_id=f"workflow-{body.workflow_key}-{job_id}",
         )
-        job_id = job["id"]
-
-        # Generate plan
-        plan = await generate_plan(goal)
-        plan["workflow_key"] = body.workflow_key
-        plan["workflow_name"] = wf["name"]
-
-        # Prioritize workflow-specific agents
-        if wf.get("agents"):
-            plan["prioritized_agents"] = wf["agents"]
-
-        # Store plan
-        plan_id = str(uuid.uuid4())
-        async with pool.acquire() as conn:
-            await conn.execute(
-                "INSERT INTO build_plans (id, job_id, project_id, goal, plan_json, status, created_at) VALUES ($1,$2,$3,$4,$5,'draft',NOW())",
-                plan_id, job_id, body.project_id or user["id"], goal, json.dumps(plan),
-            )
-
-        # Create DAG steps
-        step_defs = build_dag_from_plan(plan)
-        for idx, sd in enumerate(step_defs):
-            await create_step(
-                job_id=job_id,
-                step_key=sd["step_key"],
-                agent_name=sd["agent_name"],
-                phase=sd["phase"],
-                depends_on=sd["depends_on"],
-                order_index=idx,
-                pool=pool,
-            )
-
-        # Start background execution
-        import asyncio
-        from orchestration.auto_runner import run_auto_runner
-        asyncio.create_task(run_auto_runner(job_id, "", pool))
 
         return {
             "success": True,
-            "job_id": job_id,
+            "job_id": response.get("task_id") or job_id,
             "workflow": wf["name"],
             "goal": goal[:200],
-            "stream_url": f"/api/jobs/{job_id}/stream",
+            "stream_url": f"/api/runtime/tasks/{response.get('task_id')}",
         }
 
     except Exception as e:

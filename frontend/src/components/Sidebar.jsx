@@ -11,16 +11,18 @@ import {
   PanelLeftClose, PanelLeftOpen, History, Home,
 } from 'lucide-react';
 import Logo from './Logo';
+import { useWorkspaceRail } from '../contexts/WorkspaceRailContext';
 import './Sidebar.css';
 
 /**
  * Sidebar — minimal primary nav (Manus-style density).
- * Create: New + menu (task / project). Work: Home, Agents. Library: Prompts / Learn / Patterns.
+ * Create: New + menu (task / project). Work: Home, Agents, Workspace. Library: Prompts / Learn / Patterns.
  * History: only when there is at least one task or project.
  * Runs, Marketplace, and other power routes: Settings → Engine room only (not duplicated here).
  */
 
 export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], sidebarOpen = true, onToggleSidebar }) => {
+  const { rail: workspaceRail } = useWorkspaceRail();
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -79,12 +81,9 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
   const isActive = (path) => location.pathname === path;
   const isActivePrefix = (path) => location.pathname.startsWith(path);
   /** Unified workspace: Manus-style headline — logo only in pane 1; wordmark lives in workspace center header. */
-  const workspaceHeadlineLayout =
-    /^\/app\/workspace(\/|$)/.test(location.pathname) || /^\/app\/workspace-manus(\/|$)/.test(location.pathname);
-  const currentTaskId =
-    location.pathname === '/app/workspace' || location.pathname === '/app/workspace-manus'
-      ? searchParams.get('taskId')
-      : null;
+  const workspaceHeadlineLayout = /^\/app\/workspace(\/|$)/.test(location.pathname);
+  const currentTaskId = location.pathname === '/app/workspace' ? searchParams.get('taskId') : null;
+  const jobIdFromUrl = location.pathname === '/app/workspace' ? searchParams.get('jobId') : null;
 
   const togglePin = React.useCallback((id) => {
     setPinnedIds((prev) => {
@@ -118,6 +117,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
       isProject: false,
       createdAt: t.createdAt ?? Date.now(),
       linkedProjectId: t.linkedProjectId || null,
+      jobId: t.jobId ?? null,
     }));
     return [...fromProjects, ...fromStore];
   }, [projects, storeTasks, propTasks]);
@@ -335,7 +335,15 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
 
   const renderHistoryRow = (item) => {
     const isLocalTask = !item.isProject && item.id.startsWith('task_');
-    const isSelected = isLocalTask ? currentTaskId === item.id : isActive(`/app/projects/${item.id}`);
+    const isWorkspaceTaskRow =
+      !item.isProject && (isLocalTask || item.type === 'build' || item.jobId);
+    const matchesJobUrl =
+      Boolean(jobIdFromUrl) &&
+      item.jobId != null &&
+      String(item.jobId) === String(jobIdFromUrl);
+    const isSelected = isWorkspaceTaskRow
+      ? currentTaskId === item.id || matchesJobUrl
+      : isActive(`/app/projects/${item.id}`);
     const isEditing = renameTaskId === item.id;
     const showMenu = menuTaskId === item.id;
     return (
@@ -534,6 +542,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
               <div className="sidebar-account-menu sidebar-account-menu--dropup" role="menu">
                 <Link to="/app/settings" role="menuitem" onClick={() => setAccountMenuOpen(false)}><Settings size={16} /> Settings</Link>
                 <Link to="/app/settings" state={{ openTab: 'engine' }} role="menuitem" onClick={() => setAccountMenuOpen(false)}><LayoutGrid size={16} /> Engine room</Link>
+                <Link to="/app/agents/dashboard" role="menuitem" onClick={() => setAccountMenuOpen(false)}><Shield size={16} /> Agent Audit</Link>
                 <Link to="/app/tokens" role="menuitem" onClick={() => setAccountMenuOpen(false)}><Coins size={16} /> Credits & Billing</Link>
                 <Link to="/pricing" role="menuitem" onClick={() => setAccountMenuOpen(false)}><Zap size={16} /> Upgrade plan</Link>
                 <div className="sidebar-account-menu-divider" />
@@ -672,6 +681,12 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
             </div>
           )}
         </div>
+        {workspaceRail && (
+          <>
+            <div className="sidebar-nav-group-label">Workspace</div>
+            <div className="sidebar-workspace-fuse sidebar-workspace-fuse--in-nav">{workspaceRail}</div>
+          </>
+        )}
       </nav>
 
       {/* History — only when there is at least one task or project */}
@@ -775,6 +790,13 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
               onClick={() => setAccountMenuOpen(false)}
             >
               <LayoutGrid size={16} /> Engine room
+            </Link>
+            <Link
+              to="/app/agents/dashboard"
+              role="menuitem"
+              onClick={() => setAccountMenuOpen(false)}
+            >
+              <Shield size={16} /> Agent Audit
             </Link>
             <Link
               to="/app/tokens"

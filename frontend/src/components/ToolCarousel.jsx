@@ -48,9 +48,14 @@ export default function ToolCarousel({ tools = [], onApprove, onDeny, onApproveA
         {tools.map(t => {
           const s = statuses[t.id || t.name];
           const tier = s?.trustTier || 'untrusted';
+          const isBlocked = s?.mode === 'block';
+          const reason = s?.reason || 'Permission status pending';
           return (
             <div key={t.id || t.name}
-              className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-zinc-50 border border-zinc-100">
+              title={reason}
+              className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border ${
+                isBlocked ? 'bg-red-50 border-red-100' : 'bg-zinc-50 border-zinc-100'
+              }`}>
               <span className={`w-2 h-2 rounded-full ${
                 tier === 'safe' ? 'bg-emerald-500' :
                 tier === 'verified' ? 'bg-blue-400' :
@@ -60,7 +65,7 @@ export default function ToolCarousel({ tools = [], onApprove, onDeny, onApproveA
               {t.description && (
                 <span className="text-[10px] text-zinc-500 truncate max-w-[200px]">{t.description}</span>
               )}
-              {s?.mode === 'block' ? (
+              {isBlocked ? (
                 <span className="text-[10px] text-red-500 flex items-center gap-1">
                   <AlertTriangle size={10} /> Blocked
                 </span>
@@ -73,13 +78,13 @@ export default function ToolCarousel({ tools = [], onApprove, onDeny, onApproveA
                   <button onClick={() => {
                     permissionEngine.record(t.name, 'allow', getRisk(t.name));
                     onApprove?.(t);
-                  }} className="p-1 rounded hover:bg-emerald-100 text-emerald-600">
+                  }} className="p-1 rounded hover:bg-emerald-100 text-emerald-600" disabled={isBlocked}>
                     <Check size={12} />
                   </button>
                   <button onClick={() => {
                     permissionEngine.record(t.name, 'deny', getRisk(t.name));
                     onDeny?.(t);
-                  }} className="p-1 rounded hover:bg-red-100 text-red-500">
+                  }} className="p-1 rounded hover:bg-red-100 text-red-500" disabled={isBlocked}>
                     <X size={12} />
                   </button>
                 </div>

@@ -31,7 +31,7 @@ describe('computeSandpackFiles (preview pipeline)', () => {
     expect(sp['/src/App.jsx']).toBeDefined();
   });
 
-  test('backend-only tree still allows preview when merged with DEFAULT_FILES (simulates UnifiedWorkspace merge)', () => {
+  test('backend-only tree still allows preview when merged with DEFAULT_FILES (simulates workspace file merge)', () => {
     const merged = {
       ...DEFAULT_FILES,
       '/backend/main.py': { code: 'def app():\n    pass\n' },

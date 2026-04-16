@@ -35,7 +35,7 @@ python scripts/audit_agent_dag.py --check
 |--------|---------|
 | `backend/orchestration/workspace_assembly.py` | On **successful** Auto-Runner completion, writes under `<project_workspace>/META/`: `run_manifest.json`, `artifact_manifest.json`, `seal.json`. Emits `workspace_sealed` job event. |
 
-**Hook** — `backend/orchestration/auto_runner.py` immediately before the job is marked `completed`.
+**Hook** — `backend/services/runtime/runtime_engine.py` immediately before the job is marked `completed`.
 
 **Semantics**
 
@@ -150,3 +150,4 @@ All items in the approved slice below are **implemented in this repo**. Broader 
 ---
 
 *Generated as part of the approved implementation batch. Extend this file as later phases land.*
+

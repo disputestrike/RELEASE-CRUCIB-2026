@@ -46,8 +46,7 @@ import ExportCenter from "./pages/ExportCenter";
 import PatternLibrary from "./pages/PatternLibrary";
 import Settings from "./pages/Settings";
 import Builder from "./pages/Builder";
-import Workspace from "./pages/Workspace";
-import WorkspaceManus from "./pages/WorkspaceManus";
+import CrucibAIWorkspace from "./pages/CrucibAIWorkspace";
 import Layout from "./components/Layout";
 import ShareView from "./pages/ShareView";
 import ExamplesGallery from "./pages/ExamplesGallery";
@@ -104,12 +103,13 @@ import CommerceManagePage from "./pages/CommerceManagePage";
 import WorkspaceMembersPage from "./pages/WorkspaceMembersPage";
 import SkillsPage from "./pages/SkillsPage";
 import SkillsMarketplace from "./pages/SkillsMarketplace";
-import UnifiedWorkspace from "./pages/UnifiedWorkspace";
-import WorkspaceManusV2 from "./pages/WorkspaceManusV2";
 import { LayoutProvider } from "./stores/useLayoutStore";
 import { TaskProvider } from "./stores/useTaskStore";
 
 import { API_BASE } from "./apiBase";
+import { memoryGraph } from "./lib/memoryGraph";
+import { permissionEngine } from "./lib/permissionEngine";
+import { contextManager } from "./lib/contextManager";
 
 // Same-origin /api when unset (CRA dev proxy to backend).
 export const API = API_BASE;
@@ -380,7 +380,7 @@ function RedirectWorkspaceToApp() {
   return <Navigate to={`/app/workspace${search}`} replace />;
 }
 
-/** Deep links to /app/auto-runner land on the unified workspace (same shell, query preserved). */
+/** Deep links to /app/auto-runner land on the canonical workspace (same shell, query preserved). */
 function AutoRunnerRedirect() {
   const { search } = useLocation();
   return <Navigate to={`/app/workspace${search}`} replace />;
@@ -409,11 +409,28 @@ function ScrollToPlace() {
   return null;
 }
 
+/** Load persisted memory + permission rules once (v10 engine layer). */
+function CrucibAiEngineInit() {
+  useEffect(() => {
+    memoryGraph.loadAll();
+    void permissionEngine.load();
+    if (typeof window !== "undefined") {
+      try {
+        window.__CRUCIB_CONTEXT_MANAGER__ = contextManager;
+      } catch {
+        /* ignore */
+      }
+    }
+  }, []);
+  return null;
+}
+
 function App() {
   return (
     <AppErrorBoundary>
       <AuthProvider>
         <BrowserRouter>
+        <CrucibAiEngineInit />
         <ScrollToPlace />
         <Routes>
           <Route path="/" element={<LandingPage />} />
@@ -451,10 +468,10 @@ function App() {
           <Route path="/app" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route index element={<Dashboard />} />
             <Route path="builder" element={<Builder />} />
-            <Route path="workspace" element={<WorkspaceManusV2 />} />
-            <Route path="workspace-unified" element={<UnifiedWorkspace />} />
-            <Route path="workspace-manus" element={<WorkspaceManus />} />
-            <Route path="workspace-classic" element={<Workspace />} />
+            <Route path="workspace" element={<CrucibAIWorkspace />} />
+            <Route path="workspace-unified" element={<Navigate to="/app/workspace" replace />} />
+            <Route path="workspace-manus" element={<Navigate to="/app/workspace" replace />} />
+            <Route path="workspace-classic" element={<Navigate to="/app/workspace" replace />} />
             <Route path="projects/new" element={<ProjectBuilder />} />
             <Route path="projects/:id" element={<AgentMonitor />} />
             <Route path="tokens" element={<TokenCenter />} />

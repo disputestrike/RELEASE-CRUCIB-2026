@@ -11,10 +11,11 @@ const QUICK_ACTIONS = [
   { label: '⏭ Skip phase',     kind: 'skip_phase',       command: 'skip current phase and move to next' },
   { label: '↻ Retry with fix', kind: 'retry_with_fix',   command: 'retry with automatic fixes applied' },
   { label: '⏸ Pause',          kind: 'pause_build',      command: 'pause the build' },
+  { label: '🧪 Simulate scenario', kind: 'open_simulation_modal', command: '' },
   { label: '+ Add feature',    kind: 'add_requirement',  command: '' },
 ];
 
-export default function InterruptibleFlow({ jobId, steps, isRunning, token }) {
+export default function InterruptibleFlow({ jobId, steps, isRunning, token, onSimulateScenario }) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null); // { accepted, summary, before, after }
@@ -61,6 +62,10 @@ export default function InterruptibleFlow({ jobId, steps, isRunning, token }) {
   }, [jobId, activeStep, activePhase, token]);
 
   const handleQuickAction = (action) => {
+    if (action.kind === 'open_simulation_modal') {
+      if (typeof onSimulateScenario === 'function') onSimulateScenario();
+      return;
+    }
     if (action.kind === 'add_requirement') {
       setAddFeatureMode(true);
       return;

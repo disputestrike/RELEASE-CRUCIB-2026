@@ -38,12 +38,12 @@ from pricing_plans import CREDITS_PER_TOKEN, _speed_from_plan
 from project_state import WORKSPACE_ROOT, load_state
 from pydantic import BaseModel, Field, model_validator
 from services.llm_service import (
-    _call_llm_with_fallback,
     _effective_api_keys,
     _get_model_chain,
     get_authenticated_or_api_user,
     get_workspace_api_keys,
 )
+from services.runtime.runtime_engine import runtime_engine
 
 from services.project_preview_service import (
     get_preview_token_service,
@@ -112,6 +112,28 @@ _BUILD_EVENTS_MAX = 500
 _critic_agent = CriticAgent()
 _truth_module = TruthModule()
 _agent_memory_instance = None
+
+
+async def _call_llm_with_fallback(**kwargs):
+    session_id = kwargs.get("session_id") or str(uuid.uuid4())
+    project_id = kwargs.get("project_id") or f"projects-{session_id}"
+    return await runtime_engine.call_model_for_request(
+        session_id=session_id,
+        project_id=project_id,
+        description=kwargs.get("agent_name") or "projects route llm request",
+        message=kwargs.get("message", ""),
+        system_message=kwargs.get("system_message", ""),
+        model_chain=kwargs.get("model_chain", []),
+        user_id=kwargs.get("user_id"),
+        user_tier=kwargs.get("user_tier", "free"),
+        speed_selector=kwargs.get("speed_selector", "lite"),
+        available_credits=kwargs.get("available_credits", 0),
+        agent_name=kwargs.get("agent_name", ""),
+        api_keys=kwargs.get("api_keys"),
+        content_blocks=kwargs.get("content_blocks"),
+        idempotency_key=kwargs.get("idempotency_key"),
+        skill_hint=kwargs.get("skill_hint"),
+    )
 
 
 async def _init_agent_learning():
@@ -2269,7 +2291,9 @@ async def _user_can_access_project_workspace(
 
 async def _resolve_workspace_project_for_job(job_id: str, user: dict) -> str:
     """Orchestrator job → workspace root via project_id; same access rules as project workspace."""
-    runtime_state, _, _, _, _ = _get_orchestration()
+    import server as server_module
+
+    runtime_state, _, _ = server_module._get_orchestration()
     from db_pg import get_pg_pool
 
     pool = await get_pg_pool()
@@ -2279,7 +2303,7 @@ async def _resolve_workspace_project_for_job(job_id: str, user: dict) -> str:
     oj = await orch_rs.get_job(job_id)
     if not oj:
         raise HTTPException(status_code=404, detail="Job not found")
-    _assert_job_owner_match(oj.get("user_id"), user)
+    server_module._assert_job_owner_match(oj.get("user_id"), user)
     uid = user.get("id")
     pid = oj.get("project_id")
     if not pid:

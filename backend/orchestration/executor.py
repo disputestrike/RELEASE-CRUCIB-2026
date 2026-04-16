@@ -770,37 +770,21 @@ async def handle_planning_step(
         )
         if _safe_write(workspace_path, plan_path, body):
             written.append(plan_path)
-        # Crew-style multi-agent sketches (stubs) — first deep planning step only
         if step.get("step_key") == "planning.requirements":
-            if os.environ.get("CRUCIBAI_DISABLE_CREW", "").strip().lower() not in (
-                "1",
-                "true",
-                "yes",
-            ):
-                try:
-                    from .agent_orchestrator import run_crew_for_goal
-                    from .elite_prompt_loader import load_elite_autonomous_prompt
-                    from .execution_authority import (
-                        attach_elite_context_to_job,
-                        elite_context_for_model,
-                    )
+            from .elite_prompt_loader import load_elite_autonomous_prompt
+            from .execution_authority import (
+                attach_elite_context_to_job,
+                elite_context_for_model,
+            )
 
-                    attach_elite_context_to_job(job, workspace_path or "")
-                    elite_sp = load_elite_autonomous_prompt()
-                    model_block = elite_context_for_model(job)
-                    if model_block:
-                        elite_sp = (elite_sp or "") + model_block
-                    combined = (elite_sp or "").strip()
-                    if combined:
-                        job["elite_system_prompt"] = combined
-                    crew_pack = await run_crew_for_goal(
-                        job.get("goal") or "",
-                        workspace_path,
-                        system_prompt=combined or None,
-                    )
-                    written.extend(crew_pack.get("written") or [])
-                except Exception as exc:
-                    logger.warning("executor: crew orchestrator skipped: %s", exc)
+            attach_elite_context_to_job(job, workspace_path or "")
+            elite_sp = load_elite_autonomous_prompt()
+            model_block = elite_context_for_model(job)
+            if model_block:
+                elite_sp = (elite_sp or "") + model_block
+            combined = (elite_sp or "").strip()
+            if combined:
+                job["elite_system_prompt"] = combined
     return {
         "output": f"Planning step '{step['step_key']}' analyzed goal: {job.get('goal', '')[:100]}",
         "artifacts": [],

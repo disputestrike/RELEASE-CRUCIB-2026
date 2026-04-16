@@ -39,6 +39,8 @@ def get_job_workspace_file_raw_service(*, job_id: str, user: dict, path: str, re
         raise RuntimeError("resolve_project_for_job must already be awaited by caller")
     root = project_workspace_path(project_id).resolve()
     full = workspace_file_disk_path(root, path)
+    if not full.exists() or not full.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
     guessed = guess_media_type(full.name)
     media = guessed or "application/octet-stream"
     return FileResponse(path=str(full), media_type=media, filename=full.name)

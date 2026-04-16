@@ -28,7 +28,7 @@ function run(cwd, cmd, args, label) {
 
 run(backend, 'python', ['-m', 'pytest', 'tests/test_job_workspace.py', '-v', '--tb=line'], 'backend pytest tests/test_job_workspace.py');
 
-run(frontend, 'npx', ['eslint', 'src/pages/UnifiedWorkspace.jsx', 'src/workspace/workspaceFileUtils.js', 'src/workspace/WorkspaceNavContext.jsx', 'src/components/AutoRunner/WorkspaceFileTree.jsx', 'src/components/AutoRunner/WorkspaceFileViewer.jsx', 'src/components/AutoRunner/ProofPanel.jsx', 'src/components/AutoRunner/FailureDrawer.jsx', 'src/components/AutoRunner/SystemExplorer.jsx', 'src/components/AutoRunner/WorkspaceActivityFeed.jsx', '--max-warnings', '0'], 'frontend eslint (workspace slice)');
+run(frontend, 'npx', ['eslint', 'src/pages/CrucibAIWorkspace.jsx', 'src/workspace10/normalizeSseEvent.js', 'src/workspace10/agentLogs.js', 'src/workspace/workspaceFileUtils.js', 'src/components/AutoRunner/WorkspaceFileTree.jsx', 'src/components/AutoRunner/WorkspaceFileViewer.jsx', 'src/components/AutoRunner/ProofPanel.jsx', 'src/components/AutoRunner/FailureDrawer.jsx', 'src/components/AutoRunner/SystemExplorer.jsx', 'src/components/AutoRunner/WorkspaceActivityFeed.jsx', '--max-warnings', '0'], 'frontend eslint (workspace slice)');
 
 run(frontend, 'npx', ['craco', 'test', '--watchAll=false', '--testPathPattern=workspaceFileUtils'], 'frontend jest workspaceFileUtils');
 

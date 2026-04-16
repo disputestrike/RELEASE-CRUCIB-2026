@@ -6,7 +6,7 @@ Generated: 2026-04-08T18:42:09.715837+00:00
 |---|---|---|---|
 | onboarding_three_outcomes | PASS | frontend\src\pages\OnboardingPage.jsx | - |
 | dashboard_golden_path | PASS | frontend\src\pages\Dashboard.jsx | - |
-| workspace_preview_remote_fallback | PASS | frontend\src\pages\UnifiedWorkspace.jsx | - |
+| workspace_preview_remote_fallback | PASS | frontend\src\pages\CrucibAIWorkspace.jsx | - |
 | polling_is_not_misreported_as_reconnecting | PASS | frontend\src\components\AutoRunner\ExecutionTimeline.jsx | - |
 | engine_room_beta_gating | PASS | frontend\src\components\Sidebar.jsx | - |
 | public_status_full_systems | PASS | frontend\src\pages\Status.jsx | - |

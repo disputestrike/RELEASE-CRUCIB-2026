@@ -7,6 +7,8 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Test results tracking
 TESTS_PASSED=0
 TESTS_FAILED=0
@@ -84,8 +86,8 @@ test_plan() {
 test_frontend_build() {
     echo -e "${YELLOW}Test 4: Frontend Build Status${NC}"
     
-    if [ -d "/home/claude/CrucibAI/frontend/build" ]; then
-        size=$(du -sh /home/claude/CrucibAI/frontend/build 2>/dev/null | cut -f1)
+    if [ -d "$REPO_ROOT/frontend/build" ]; then
+        size=$(du -sh "$REPO_ROOT/frontend/build" 2>/dev/null | cut -f1)
         echo -e "${GREEN}✅ PASSED${NC}: Frontend build exists"
         echo "   Size: $size"
         ((TESTS_PASSED++))
@@ -100,7 +102,7 @@ test_frontend_build() {
 test_backend_changes() {
     echo -e "${YELLOW}Test 5: Backend Preflight Fix Applied${NC}"
     
-    if grep -q "Preflight issues detected but continuing" /home/claude/CrucibAI/backend/server.py; then
+    if grep -q "Preflight issues detected but continuing" "$REPO_ROOT/backend/server.py"; then
         echo -e "${GREEN}✅ PASSED${NC}: Preflight fix (Issue 1) is in code"
         ((TESTS_PASSED++))
     else
@@ -114,11 +116,11 @@ test_backend_changes() {
 test_frontend_input_fix() {
     echo -e "${YELLOW}Test 6: Frontend Chat Input Fix Applied${NC}"
     
-    if grep -q "Always show GoalComposer" /home/claude/CrucibAI/frontend/src/pages/UnifiedWorkspace.jsx; then
-        echo -e "${GREEN}✅ PASSED${NC}: Chat input fix (Issue 2) is in code"
+    if grep -q "orchestrator/plan" "$REPO_ROOT/frontend/src/pages/CrucibAIWorkspace.jsx"; then
+        echo -e "${GREEN}✅ PASSED${NC}: Workspace goal/plan wiring present (canonical CrucibAIWorkspace)"
         ((TESTS_PASSED++))
     else
-        echo -e "${RED}❌ FAILED${NC}: Chat input fix not found in code"
+        echo -e "${RED}❌ FAILED${NC}: CrucibAIWorkspace orchestrator/plan wiring not found"
         ((TESTS_FAILED++))
     fi
     echo ""
@@ -128,7 +130,7 @@ test_frontend_input_fix() {
 test_warning_close_button() {
     echo -e "${YELLOW}Test 7: Warning Close Button Fix Applied${NC}"
     
-    if grep -q "rst-close-btn" /home/claude/CrucibAI/frontend/src/components/AutoRunner/RunnerScopeTrack.jsx; then
+    if grep -q "rst-close-btn" "$REPO_ROOT/frontend/src/components/AutoRunner/RunnerScopeTrack.jsx"; then
         echo -e "${GREEN}✅ PASSED${NC}: Warning close button (Issue 3) is in code"
         ((TESTS_PASSED++))
     else
@@ -161,7 +163,7 @@ test_git_commit() {
 test_git_push() {
     echo -e "${YELLOW}Test 9: Fixes Pushed to GitHub${NC}"
     
-    cd /home/claude/CrucibAI
+    cd "$REPO_ROOT"
     if git rev-parse origin/main > /dev/null 2>&1; then
         local_commit=$(git rev-parse main)
         remote_commit=$(git rev-parse origin/main)

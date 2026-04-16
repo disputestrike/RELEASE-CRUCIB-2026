@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
 from typing import Any, Callable, Optional
 
@@ -8,6 +9,22 @@ from fastapi.responses import Response
 
 
 async def get_me_service(*, user: dict, db: Any, ensure_credit_balance, user_credits, admin_user_ids, guest_tier_credits: int, credits_per_token: int) -> dict:
+    if db is None:
+        if os.environ.get("CRUCIBAI_DEV") == "1":
+            from services.dev_guest import get_user as _dev_get_user
+
+            u = _dev_get_user(user["id"])
+            if not u:
+                raise HTTPException(status_code=404, detail="User not found")
+            u = dict(u)
+            u["credit_balance"] = user_credits(u)
+            if u["id"] in admin_user_ids and not u.get("admin_role"):
+                u["admin_role"] = "owner"
+            for key in ("password", "mfa_secret", "deploy_tokens"):
+                u.pop(key, None)
+            u.setdefault("workspace_mode", None)
+            return u
+        raise HTTPException(status_code=503, detail="Database not ready")
     await ensure_credit_balance(user["id"])
     u = await db.users.find_one({"id": user["id"]}, {"_id": 0})
     if not u:
@@ -30,6 +47,14 @@ async def get_me_service(*, user: dict, db: Any, ensure_credit_balance, user_cre
 async def set_workspace_mode_service(*, body: Any, user: dict, db: Any) -> dict:
     if body.mode not in ("simple", "developer"):
         raise HTTPException(status_code=400, detail="mode must be 'simple' or 'developer'")
+    if db is None:
+        if os.environ.get("CRUCIBAI_DEV") == "1":
+            from services.dev_guest import update_user as _dev_update_user
+
+            if not _dev_update_user(user["id"], {"workspace_mode": body.mode}):
+                raise HTTPException(status_code=404, detail="User not found")
+            return {"status": "success", "workspace_mode": body.mode}
+        raise HTTPException(status_code=503, detail="Database not ready")
     await db.users.update_one({"id": user["id"]}, {"$set": {"workspace_mode": body.mode}})
     return {"status": "success", "workspace_mode": body.mode}
 

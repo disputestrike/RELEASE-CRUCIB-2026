@@ -17,10 +17,11 @@ Engineering crosswalk: directive intent → code location → status.
 
 ## Files touched (this delivery)
 
-- Backend: `orchestration/brain_policy.json`, `brain_policy.py`, `agent_selection_logic.py`, `auto_runner.py`, `executor.py`, `tests/test_brain_policy.py`
-- Frontend: `pages/UnifiedWorkspace.jsx`, `components/AutoRunner/WorkspaceUserChat.jsx`, `WorkspaceUserChat.css`, `WorkspaceActivityFeed.jsx`, `ProofPanel.jsx`, `GoalComposer.css`, `styles/unified-workspace-tokens.css`
+- Backend: `orchestration/brain_policy.json`, `brain_policy.py`, `agent_selection_logic.py`, `runtime_engine.py`, `executor.py`, `tests/test_brain_policy.py`
+- Frontend: `pages/CrucibAIWorkspace.jsx`, `components/AutoRunner/WorkspaceUserChat.jsx`, `WorkspaceUserChat.css`, `WorkspaceActivityFeed.jsx`, `ProofPanel.jsx`, `GoalComposer.css`
 - Docs: this matrix
 
 ## Honest scope note
 
 **Symbol-level contract registry enforcement** and **compile-every-touched-file every phase** (static-analysis-heavy) are still roadmap items beyond this repo state.
+

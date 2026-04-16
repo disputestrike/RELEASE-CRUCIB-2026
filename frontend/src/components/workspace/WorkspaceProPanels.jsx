@@ -8,7 +8,7 @@ import { KanbanBoard } from '../orchestration';
 import { normalizeWorkspacePath } from './pathUtils';
 
 /**
- * Pro-only workbench panels extracted from Workspace.jsx (A-01 modularization).
+ * Pro-only workbench panels (legacy modularization; optional import surface).
  */
 export default function WorkspaceProPanels({
   activePanel,

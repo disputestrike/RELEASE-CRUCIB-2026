@@ -2,6 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import { Brain, Sparkles, AlertTriangle, CheckCircle, Zap, Loader2 } from 'lucide-react';
 import SubagentProgress from './SubagentProgress';
 import InlineDiff from './InlineDiff';
+import SimulationBlock from './SimulationBlock';
+import { contextManager } from '../lib/contextManager';
 
 const ICONS = {
   thinking:    <Brain size={13} className="text-zinc-500" />,
@@ -11,22 +13,74 @@ const ICONS = {
   breakthrough:<Zap size={13} className="text-purple-600" />,
 };
 
-export default function ChatStream({ thoughts = [], jobId, isRunning, eventSource, onArtifactClick }) {
+export default function ChatStream({
+  thoughts = [],
+  events = [],
+  jobId,
+  isRunning,
+  eventSource,
+  onArtifactClick,
+  simulation,
+  simulationRecommendation,
+  onSimulationContinue,
+  onSimulationStop,
+  onApplyRecommendation,
+}) {
   const bottomRef = useRef(null);
+  const processedCountRef = useRef(0);
+
+  const feed = thoughts.length ? thoughts : (events || []).map((e) => ({
+    id: e.id,
+    timestamp: e.ts || Date.now(),
+    type:
+      e.type === 'step_failed' || e.type === 'job_failed'
+        ? 'problem'
+        : e.type === 'step_completed' || e.type === 'job_completed'
+          ? 'solution'
+          : e.type === 'brain_guidance'
+            ? 'thinking'
+            : 'discovery',
+    message:
+      (e.payload && (e.payload.summary || e.payload.message || e.payload.title))
+      || e.type,
+    detail:
+      e.type === 'simulation.update'
+        ? `Round ${e.round || e.payload?.round || '?'} update`
+        : '',
+  }));
+
+  useEffect(() => {
+    const start = processedCountRef.current;
+    if (feed.length < start) {
+      // Reset safety when feed is replaced.
+      processedCountRef.current = 0;
+    }
+    for (let i = processedCountRef.current; i < feed.length; i++) {
+      const t = feed[i];
+      const message = (t?.message || '').trim();
+      if (!message) continue;
+      contextManager.addTurn('assistant', message, {
+        source: 'chat_stream',
+        thoughtType: t?.type || 'thinking',
+      });
+    }
+    processedCountRef.current = feed.length;
+  }, [feed]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [thoughts]);
+  }, [feed, simulation, simulationRecommendation]);
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
-      {thoughts.length === 0 && (
+      {feed.length === 0 && (
         <div className="text-center text-zinc-400 text-sm py-16">
           <Brain size={32} className="mx-auto mb-3 opacity-30" />
           <p>Describe what you want to build.</p>
           <p className="text-xs mt-1">The system will think out loud here.</p>
         </div>
       )}
-      {thoughts.map((t, i) => (
+      {feed.map((t, i) => (
         <div key={t.id || i}
           className={`flex gap-2 p-2.5 rounded-lg border text-sm
             ${t.type === 'breakthrough' ? 'bg-purple-50 border-purple-200' :
@@ -53,6 +107,15 @@ export default function ChatStream({ thoughts = [], jobId, isRunning, eventSourc
           </div>
         </div>
       ))}
+      {(simulation || simulationRecommendation) && (
+        <SimulationBlock
+          simulation={simulation}
+          recommendation={simulationRecommendation}
+          onContinue={onSimulationContinue}
+          onStop={onSimulationStop}
+          onApplyRecommendation={onApplyRecommendation}
+        />
+      )}
       {isRunning && (
         <div className="flex items-center gap-2 text-zinc-400 text-xs">
           <Loader2 size={12} className="animate-spin" />

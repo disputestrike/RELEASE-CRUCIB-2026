@@ -123,7 +123,7 @@ from services.job_event_service import (
     get_job_proof_service,
     get_job_steps_service,
 )
-from services.job_service import create_job_service
+from services.job_service import create_job_service, get_job_checkpoint_service
 from services.build_phase_service import build_plan_service, get_project_phases_service
 from services.project_deploy_service import (
     deploy_railway_package_service,
@@ -157,12 +157,7 @@ from services.project_preview_service import (
     serve_preview_service,
     get_project_dependency_audit_service,
 )
-from services.workspace_file_service import (
-    get_job_workspace_file_content_service,
-    get_job_workspace_file_raw_service,
-    list_job_workspace_files_service,
-    visual_edit_job_workspace_file_service,
-)
+from services.workspace_file_service import visual_edit_job_workspace_file_service
 from services.agent_execution_service import (
     repair_generated_agent_output_service,
     run_single_agent_with_context_service,
@@ -1755,6 +1750,8 @@ def _tokens_to_credits(tokens: int) -> int:
 
 async def _ensure_credit_balance(user_id: str) -> None:
     """Set credit_balance from token_balance if missing (migration)."""
+    if db is None:
+        return
     doc = await db.users.find_one(
         {"id": user_id}, {"credit_balance": 1, "token_balance": 1}
     )
@@ -1952,7 +1949,19 @@ async def get_current_user(
         payload = jwt.decode(
             credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM]
         )
-        user = await db.users.find_one({"id": payload["user_id"]}, {"_id": 0})
+        uid = payload["user_id"]
+        if db is None:
+            if os.environ.get("CRUCIBAI_DEV") == "1":
+                from services.dev_guest import get_user as _dev_get_user
+
+                user = _dev_get_user(uid)
+                if not user:
+                    raise HTTPException(status_code=401, detail="User not found")
+                if user.get("suspended"):
+                    raise HTTPException(status_code=403, detail="Account suspended")
+                return user
+            raise HTTPException(status_code=503, detail="Database not ready")
+        user = await db.users.find_one({"id": uid}, {"_id": 0})
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
         if user.get("suspended"):
@@ -1981,7 +1990,19 @@ async def get_current_user_sse(
         raise HTTPException(status_code=401, detail="Not authenticated")
     try:
         payload = jwt.decode(raw, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        user = await db.users.find_one({"id": payload["user_id"]}, {"_id": 0})
+        uid = payload["user_id"]
+        if db is None:
+            if os.environ.get("CRUCIBAI_DEV") == "1":
+                from services.dev_guest import get_user as _dev_get_user
+
+                user = _dev_get_user(uid)
+                if not user:
+                    raise HTTPException(status_code=401, detail="User not found")
+                if user.get("suspended"):
+                    raise HTTPException(status_code=403, detail="Account suspended")
+                return user
+            raise HTTPException(status_code=503, detail="Database not ready")
+        user = await db.users.find_one({"id": uid}, {"_id": 0})
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
         if user.get("suspended"):
@@ -2676,135 +2697,24 @@ async def _call_llm_with_fallback(
     content_blocks: Optional[List[Dict[str, Any]]] = None,
     idempotency_key: Optional[str] = None,
 ) -> tuple[str, str]:
-    """
-    Intelligent LLM router with Llama + Cerebras primary, Haiku fallback.
+    from services.runtime.runtime_engine import runtime_engine
 
-    Routes based on:
-    - Task complexity (simple vs complex)
-    - User tier (free, starter, builder, pro, teams)
-    - Speed selector (lite, pro, max)
-    - Available credits
-    """
-
-    # Classify task complexity
-    task_complexity = classifier.classify(message, agent_name)
-
-    # Get intelligent model chain
-    model_chain = router.get_model_chain(
-        task_complexity=task_complexity,
+    return await runtime_engine.call_model_for_request(
+        session_id=session_id,
+        project_id=f"server-{session_id}",
+        description=agent_name or "server llm request",
+        message=message,
+        system_message=system_message,
+        model_chain=model_chain,
+        user_id=user_id,
         user_tier=user_tier,
         speed_selector=speed_selector,
         available_credits=available_credits,
+        agent_name=agent_name,
+        api_keys=api_keys,
+        content_blocks=content_blocks,
+        idempotency_key=idempotency_key,
     )
-
-    if not model_chain:
-        raise ValueError(
-            "No LLM models available. Configure LLAMA_API_KEY, CEREBRAS_API_KEY, or ANTHROPIC_API_KEY."
-        )
-
-    last_error = None
-
-    # Try each model in the chain
-    for model_info in model_chain:
-        model_name, model_id, provider = model_info
-
-        try:
-            logger.info(f"Trying {provider}/{model_name} for task: {task_complexity}")
-
-            if provider == "together" and router.llama_available:
-                # Llama 70B via Together AI
-                response = await _call_llama_direct(
-                    message,
-                    system_message,
-                    model=model_id,
-                    api_key=router.llama_available and os.environ.get("LLAMA_API_KEY"),
-                )
-
-                # Record usage
-                if user_id and db:
-                    await tracker.record_usage(
-                        db,
-                        user_id,
-                        "llama",
-                        len(message.split()) * 1.3,  # Estimate tokens
-                        user_tier,
-                        agent_name,
-                        session_id,
-                        idempotency_key=idempotency_key,
-                    )
-
-                return (response, f"llama/{model_id}")
-
-            elif provider == "cerebras" and router.cerebras_available:
-                # Cerebras Llama 2 70B
-                response = await _call_cerebras_direct(
-                    message,
-                    system_message,
-                    model=model_id,
-                    api_key=_get_cerebras_key() or os.environ.get("CEREBRAS_API_KEY"),
-                )
-
-                # Record usage
-                if user_id and db:
-                    await tracker.record_usage(
-                        db,
-                        user_id,
-                        "cerebras",
-                        len(message.split()) * 1.3,  # Estimate tokens
-                        user_tier,
-                        agent_name,
-                        session_id,
-                        idempotency_key=idempotency_key,
-                    )
-
-                return (response, f"cerebras/{model_id}")
-
-            elif provider == "anthropic" and router.haiku_available:
-                # Anthropic Claude Haiku (fallback)
-                response = await _call_anthropic_direct(
-                    message,
-                    system_message,
-                    model=model_id,
-                    api_key=os.environ.get("ANTHROPIC_API_KEY"),
-                )
-
-                # Record usage
-                if user_id and db:
-                    await tracker.record_usage(
-                        db,
-                        user_id,
-                        "haiku",
-                        len(message.split()) * 1.3,  # Estimate tokens
-                        user_tier,
-                        agent_name,
-                        session_id,
-                        idempotency_key=idempotency_key,
-                    )
-
-                return (response, f"haiku/{model_id}")
-
-        except Exception as e:
-            last_error = e
-            err_str = str(e)
-            # If rate limited, skip this provider and try next immediately
-            if (
-                "RATE_LIMITED" in err_str
-                or "rate limit" in err_str.lower()
-                or "429" in err_str
-            ):
-                logger.warning(
-                    f"LLM {provider}/{model_name} rate limited — falling back to next model"
-                )
-            else:
-                logger.warning(
-                    f"LLM {provider}/{model_name} failed: {e}, trying next fallback"
-                )
-            continue
-
-    # All models failed
-    error_msg = f"All LLM models failed. Last error: {last_error}"
-    logger.error(error_msg)
-    raise last_error or Exception(error_msg)
 
 
 # ==================== AI CHAT ROUTES ====================
@@ -3404,6 +3314,13 @@ def _project_workspace_path(project_id: str) -> Path:
     return WORKSPACE_ROOT / safe_id
 
 
+async def _resolve_workspace_project_for_job(job_id: str, user: dict) -> str:
+    """Orchestrator job → workspace project_id (implementation in routes.projects)."""
+    from routes.projects import _resolve_workspace_project_for_job as _impl
+
+    return await _impl(job_id, user)
+
+
 async def _resolve_job_project_id_for_user(
     project_id: Optional[str], user: dict
 ) -> str:
@@ -3437,36 +3354,91 @@ async def _get_task_for_user(task_id: str, user: dict) -> Optional[dict]:
 
 @api_router.get("/jobs/{job_id}")
 async def get_job(job_id: str, user: dict = Depends(get_current_user)):
-    """Queue async job (flat JSON) or Auto-Runner job from Postgres (`{ success, job }`)."""
+    """Queue async job (flat JSON) or runtime job from Postgres (`{ success, job }`)."""
     try:
+        from db_pg import get_pg_pool
+        from orchestration.publish_urls import published_app_url
+        from orchestration import runtime_state as orch_rs
         from integrations.queue import get_job_status
 
-        qj = await get_job_status(job_id)
-        if qj:
-            payload = qj.get("payload") or {}
-            _assert_job_owner_match(payload.get("user_id"), user)
-            return qj
-        runtime_state, _, _, _, _ = _get_orchestration()
-        from db_pg import get_pg_pool
-
         pool = await get_pg_pool()
-        runtime_state.set_pool(pool)
-        from orchestration import runtime_state as orch_rs
+        orch_rs.set_pool(pool)
 
         oj = await orch_rs.get_job(job_id)
-        if not oj:
-            raise HTTPException(status_code=404, detail="Job not found")
-        _assert_job_owner_match(oj.get("user_id"), user)
-        from orchestration.publish_urls import published_app_url
-        return {
-            "success": True,
-            "job": published_enrich_job_public_urls(
+        if oj:
+            _assert_job_owner_match(oj.get("user_id"), user)
+            enriched = published_enrich_job_public_urls(
                 oj,
                 _project_workspace_path,
                 WORKSPACE_ROOT,
                 published_app_url,
-            ),
-        }
+            )
+            if isinstance(enriched, dict) and not enriched.get("preview_url"):
+                fallback_url = published_app_url(job_id) or f"/published/{job_id}/"
+                enriched["preview_url"] = fallback_url
+                enriched.setdefault("published_url", fallback_url)
+                enriched.setdefault("deploy_url", fallback_url)
+            return {
+                "success": True,
+                "job": enriched,
+            }
+
+        qj = await get_job_status(job_id)
+        if qj:
+            payload = qj.get("payload") or qj.get("job") or {}
+            _assert_job_owner_match((payload or {}).get("user_id"), user)
+            if isinstance(payload, dict):
+                enriched = published_enrich_job_public_urls(
+                    payload,
+                    _project_workspace_path,
+                    WORKSPACE_ROOT,
+                    published_app_url,
+                )
+                if isinstance(enriched, dict) and not enriched.get("preview_url"):
+                    fallback_url = published_app_url(job_id) or f"/published/{job_id}/"
+                    enriched["preview_url"] = fallback_url
+                    enriched.setdefault("published_url", fallback_url)
+                    enriched.setdefault("deploy_url", fallback_url)
+                qj["job"] = enriched
+            return qj
+
+        raise HTTPException(status_code=404, detail="Job not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/jobs/{job_id}/checkpoint/{checkpoint_key}")
+async def get_job_checkpoint(
+    job_id: str,
+    checkpoint_key: str,
+    user: dict = Depends(get_current_user),
+):
+    """Load one persisted checkpoint snapshot for an authenticated job owner."""
+    if not re.fullmatch(r"[a-zA-Z0-9_-]{1,64}", checkpoint_key or ""):
+        raise HTTPException(status_code=400, detail="Invalid checkpoint_key")
+    try:
+        from db_pg import get_pg_pool
+        from orchestration import runtime_state as _rs
+
+        async def _resolve_job(_job_id: str, _user: dict) -> dict:
+            pool = await get_pg_pool()
+            _rs.set_pool(pool)
+            job = await _rs.get_job(_job_id)
+            if not job:
+                raise HTTPException(status_code=404, detail="Job not found")
+            _assert_job_owner_match(job.get("user_id"), _user)
+            return job
+
+        return await get_job_checkpoint_service(
+            job_id=job_id,
+            checkpoint_key=checkpoint_key,
+            user=user,
+            resolve_job=_resolve_job,
+            runtime_state_getter=lambda: _get_orchestration()[0],
+            pool_getter=get_pg_pool,
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -3616,33 +3588,46 @@ async def use_browser_tool(
     body: ToolBrowserRequest, user: dict = Depends(get_current_user)
 ):
     """Execute browser action (SSRF-safe; requires auth)."""
-    from tools.browser_agent import BrowserAgent
+    from services.runtime.runtime_engine import runtime_engine
 
-    agent = BrowserAgent(llm_client=None, config={})
+    task_id = f"tool-browser-{uuid.uuid4().hex[:12]}"
     ctx = body.model_dump(exclude_none=True)
-    return await agent.run(ctx)
+    return runtime_engine.execute_tool_for_task(
+        project_id=user.get("id") or "default",
+        task_id=task_id,
+        tool_name="browser",
+        params=ctx,
+    )
 
 
 @tools_router.post("/tools/file")
 async def use_file_tool(body: ToolFileRequest, user: dict = Depends(get_current_user)):
     """Execute file operation (scoped to user workspace; requires auth)."""
-    from tools.file_agent import FileAgent
+    from services.runtime.runtime_engine import runtime_engine
 
-    user_workspace = WORKSPACE_ROOT / (user.get("id") or "default")
-    user_workspace.mkdir(parents=True, exist_ok=True)
-    agent = FileAgent(llm_client=None, config={"workspace": str(user_workspace)})
+    task_id = f"tool-file-{uuid.uuid4().hex[:12]}"
     ctx = body.model_dump(exclude_none=True)
-    return await agent.run(ctx)
+    return runtime_engine.execute_tool_for_task(
+        project_id=user.get("id") or "default",
+        task_id=task_id,
+        tool_name="file",
+        params=ctx,
+    )
 
 
 @tools_router.post("/tools/api")
 async def use_api_tool(body: ToolApiRequest, user: dict = Depends(get_current_user)):
     """Make HTTP request (SSRF-safe; requires auth)."""
-    from tools.api_agent import APIAgent
+    from services.runtime.runtime_engine import runtime_engine
 
-    agent = APIAgent(llm_client=None, config={})
+    task_id = f"tool-api-{uuid.uuid4().hex[:12]}"
     ctx = body.model_dump(exclude_none=True)
-    return await agent.run(ctx)
+    return runtime_engine.execute_tool_for_task(
+        project_id=user.get("id") or "default",
+        task_id=task_id,
+        tool_name="api",
+        params=ctx,
+    )
 
 
 @tools_router.post("/tools/database")
@@ -3650,11 +3635,16 @@ async def use_database_tool(
     body: ToolDatabaseRequest, user: dict = Depends(get_current_user)
 ):
     """Execute SQL query (read-only when connection is client-provided; requires auth)."""
-    from tools.database_operations_agent import DatabaseOperationsAgent
+    from services.runtime.runtime_engine import runtime_engine
 
-    agent = DatabaseOperationsAgent(llm_client=None, config={})
+    task_id = f"tool-db-{uuid.uuid4().hex[:12]}"
     ctx = body.model_dump(exclude_none=True)
-    return await agent.run(ctx)
+    return runtime_engine.execute_tool_for_task(
+        project_id=user.get("id") or "default",
+        task_id=task_id,
+        tool_name="db",
+        params=ctx,
+    )
 
 
 @tools_router.post("/tools/deploy")
@@ -3662,13 +3652,20 @@ async def use_deployment_tool(
     body: ToolDeployRequest, user: dict = Depends(get_current_user)
 ):
     """Deploy application (project_path must be under workspace; requires auth)."""
-    from tools.deployment_operations_agent import DeploymentOperationsAgent
+    from services.runtime.runtime_engine import runtime_engine
 
-    agent = DeploymentOperationsAgent(
-        llm_client=None, config={"workspace_root": str(WORKSPACE_ROOT)}
-    )
+    task_id = f"tool-deploy-{uuid.uuid4().hex[:12]}"
     ctx = body.model_dump(exclude_none=True)
-    return await agent.run(ctx)
+    deploy_request = (
+        f"Deploy request from tools endpoint. Operation context: {ctx}. "
+        "Execute through runtime engine controlled path only."
+    )
+    return await runtime_engine.execute_with_control(
+        task_id=task_id,
+        user_id=user.get("id") or "anonymous",
+        request=deploy_request,
+        conversation_id=f"tool-deploy-{task_id}",
+    )
 
 
 import json as _json
@@ -3678,14 +3675,12 @@ _sys.path.insert(0, os.path.dirname(__file__))
 
 
 def _get_orchestration():
-    from orchestration import auto_runner as ar_mod
-    from orchestration import dag_engine
     from orchestration import planner as planner_mod
     from orchestration import runtime_state
 
     from proof import proof_service as ps_mod
 
-    return runtime_state, dag_engine, planner_mod, ar_mod, ps_mod
+    return runtime_state, planner_mod, ps_mod
 
 
 class CreateJobRequest(BaseModel):
@@ -3714,8 +3709,7 @@ async def create_job_route(
             user=user,
             runtime_state_getter=lambda: _get_orchestration()[0],
             pool_getter=(lambda: __import__("db_pg", fromlist=["get_pg_pool"]).get_pg_pool()),
-            generate_plan=lambda goal, project_state=None: _get_orchestration()[2].generate_plan(goal, project_state=project_state),
-            build_dag_from_plan=__import__("orchestration.dag_engine", fromlist=["build_dag_from_plan"]).build_dag_from_plan,
+            generate_plan=lambda goal, project_state=None: _get_orchestration()[1].generate_plan(goal, project_state=project_state),
             resolve_project_id=_resolve_job_project_id_for_user,
             update_last_build_state=_update_last_build_state,
             planner_project_state=_orchestrator_planner_project_state(user),
@@ -3799,7 +3793,7 @@ async def get_job_proof(job_id: str, user: dict = Depends(get_current_user)):
             runtime_state_getter=lambda: _get_orchestration()[0],
             pool_getter=get_pg_pool,
             assert_owner=_assert_job_owner_match,
-            proof_service_getter=lambda: _get_orchestration()[4],
+            proof_service_getter=lambda: _get_orchestration()[2],
         )
     except HTTPException:
         raise
@@ -3810,67 +3804,6 @@ async def get_job_proof(job_id: str, user: dict = Depends(get_current_user)):
             f"Proof endpoint error for job {job_id}: {e}\n{traceback.format_exc()}"
         )
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@api_router.get("/jobs/{job_id}/workspace/files")
-async def list_job_workspace_files(
-    job_id: str,
-    offset: int = Query(0, ge=0),
-    limit: int = Query(500, ge=1, le=1000),
-    user: dict = Depends(get_current_user),
-):
-    """List files under the job's project workspace (paginated)."""
-    project_id = await _resolve_workspace_project_for_job(job_id, user)
-    return list_job_workspace_files_service(
-        job_id=job_id,
-        user=user,
-        offset=offset,
-        limit=limit,
-        resolve_project_for_job=lambda _job_id, _user: project_id,
-        project_workspace_path=_project_workspace_path,
-        list_all_rel_paths=_list_all_workspace_rel_paths,
-        paginated_payload=_paginated_workspace_files_payload,
-    )
-
-
-
-@api_router.get("/jobs/{job_id}/workspace/file")
-async def get_job_workspace_file_content(
-    job_id: str,
-    path: str = Query(..., description="Relative file path in workspace"),
-    user: dict = Depends(get_current_user),
-):
-    """Read one file from the job's project workspace."""
-    project_id = await _resolve_workspace_project_for_job(job_id, user)
-    return get_job_workspace_file_content_service(
-        job_id=job_id,
-        user=user,
-        path=path,
-        resolve_project_for_job=lambda _job_id, _user: project_id,
-        project_workspace_path=_project_workspace_path,
-        workspace_file_disk_path=_workspace_file_disk_path,
-    )
-
-
-
-@api_router.get("/jobs/{job_id}/workspace/file/raw")
-async def get_job_workspace_file_raw(
-    job_id: str,
-    path: str = Query(..., description="Relative file path in workspace"),
-    user: dict = Depends(get_current_user),
-):
-    """Stream file bytes from the job's project workspace."""
-    project_id = await _resolve_workspace_project_for_job(job_id, user)
-    return get_job_workspace_file_raw_service(
-        job_id=job_id,
-        user=user,
-        path=path,
-        resolve_project_for_job=lambda _job_id, _user: project_id,
-        project_workspace_path=_project_workspace_path,
-        workspace_file_disk_path=_workspace_file_disk_path,
-        guess_media_type=lambda name: mimetypes.guess_type(name)[0],
-    )
-
 
 
 @api_router.post("/jobs/{job_id}/visual-edit")
@@ -3913,7 +3846,7 @@ async def get_job_trust_report(job_id: str, user: dict = Depends(get_current_use
             user=user,
             runtime_state_getter=lambda: _get_orchestration()[0],
             pool_getter=get_pg_pool,
-            proof_service_getter=lambda: _get_orchestration()[4],
+            proof_service_getter=lambda: _get_orchestration()[2],
             assert_owner=_assert_job_owner_match,
             roadmap_wiring_status=roadmap_wiring_status,
         )
@@ -5249,7 +5182,7 @@ async def build_route_alias(request: Request):
     if not goal:
         raise HTTPException(status_code=400, detail="goal is required")
     try:
-        _, _, planner_mod, _, _ = _get_orchestration()
+        _, planner_mod, _ = _get_orchestration()
         plan = await planner_mod.generate_plan(goal)
         plan["phase_count"] = int(plan.get("phase_count") or len(plan.get("phases", [])))
         _update_last_build_state(plan)
@@ -5295,9 +5228,11 @@ def _terminal_execution_allowed(user: dict) -> bool:
 
 
 
-async def _background_auto_runner_job(job_id: str, workspace_path: str):
-    """Background task for auto-runner jobs. Resolves workspace from job project_id."""
-    logger.info("_background_auto_runner_job: job_id=%s workspace=%s", job_id, workspace_path)
+async def _background_runtime_job(job_id: str, workspace_path: str):
+    """Background task for runtime-controlled jobs. Resolves workspace from job project_id."""
+    from routes.orchestrator import _background_runtime_job as _runtime_job_impl
+
+    await _runtime_job_impl(job_id, workspace_path)
 
 
 # Include routers after all route declarations. Mount the frontend SPA last so it cannot shadow /api routes.
@@ -5376,6 +5311,14 @@ for _module_path, _attr_name, _success, _failure in [
     ("routes.orchestrator", "router", "orchestrator router registered", "orchestrator router not loaded: %s"),
     ("routes.misc", "router", "misc router registered", "misc router not loaded: %s"),
     ("routes.ai", "router", "ai router registered", "ai router not loaded: %s"),
+    (
+        "routes.crucib_workspace_adapter",
+        "router",
+        "workspace-ui adapter registered",
+        "workspace-ui adapter not loaded: %s",
+    ),
+    ("routes.runtime", "router", "runtime router registered", "runtime router not loaded: %s"),
+    ("routes.worktrees", "router", "worktrees router registered", "worktrees router not loaded: %s"),
 ]:
     register_optional_router(
         app=app,
@@ -5385,6 +5328,14 @@ for _module_path, _attr_name, _success, _failure in [
         success_message=_success,
         failure_message=_failure,
     )
+
+try:
+    from routes.crucib_ws_events import router as crucib_ws_events_router
+
+    app.include_router(crucib_ws_events_router)
+    logger.info("workspace /ws/events websocket registered")
+except ImportError as exc:
+    logger.warning("workspace /ws/events not loaded: %s", exc)
 
 app.include_router(tools_router)
 app.include_router(api_router)
@@ -5411,7 +5362,11 @@ async def _user_can_access_project_workspace(
     if not project_id or not user_id:
         return False
     try:
-        _db = get_db()
+        _db = db
+        if _db is None:
+            from db_pg import get_db as _get_db
+
+            _db = await _get_db()
         project = await _db.projects.find_one(
             {"id": project_id, "user_id": user_id}, {"id": 1}
         )
@@ -5423,6 +5378,13 @@ async def _user_can_access_project_workspace(
         from db_pg import get_pg_pool
         pool = await get_pg_pool()
         async with pool.acquire() as conn:
+            project_row = await conn.fetchrow(
+                "SELECT 1 FROM projects WHERE id = $1 AND user_id = $2 LIMIT 1",
+                project_id,
+                user_id,
+            )
+            if project_row is not None:
+                return True
             row = await conn.fetchrow(
                 "SELECT 1 FROM jobs WHERE project_id = $1 AND user_id = $2 LIMIT 1",
                 project_id, user_id,
@@ -5467,11 +5429,11 @@ def _enrich_job_public_urls(job: dict, base_url: str = "") -> dict:
         return job
 
 
-def build_provider_readiness() -> dict:
+def build_provider_readiness(**kwargs) -> dict:
     """Return provider readiness status."""
     try:
         from provider_readiness import build_provider_readiness as _impl
-        return _impl()
+        return _impl(**kwargs)
     except Exception:
         return {"ready": False, "providers": {}}
 

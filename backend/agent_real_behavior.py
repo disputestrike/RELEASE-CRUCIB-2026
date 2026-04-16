@@ -10,9 +10,21 @@ import re
 from typing import Any, Dict, List, Optional
 
 from project_state import load_state, update_state
-from tool_executor import execute_tool
+from services.runtime.runtime_engine import runtime_engine
 
 logger = logging.getLogger(__name__)
+
+
+def _runtime_exec_tool(project_id: str, tool_name: str, params: Dict[str, Any]) -> Dict[str, Any]:
+    p = dict(params or {})
+    task_id = str(p.get("task_id") or "legacy-agent-real-behavior")
+    return runtime_engine.execute_tool_for_task(
+        project_id=project_id,
+        task_id=task_id,
+        tool_name=tool_name,
+        params=p,
+        skill_hint="commit",
+    )
 
 # --- Behavior types ---
 # state: write LLM output (or parsed) to state[state_key]
@@ -375,7 +387,7 @@ def run_agent_real_behavior(
         elif agent_name == "Dependency Audit Agent":
             cmd = ["npm", "audit"]
         if cmd:
-            tr = execute_tool(project_id, "run", {"command": cmd, "timeout": 90})
+            tr = _runtime_exec_tool(project_id, "run", {"command": cmd, "timeout": 90})
             report = (tr.get("output") or tr.get("error") or "")[:15000]
             try:
                 update_state(project_id, {state_key: report})
@@ -445,7 +457,7 @@ def run_agent_real_behavior(
         # NOW WRITE (content is validated)
         if content:
             try:
-                execute_tool(
+                _runtime_exec_tool(
                     project_id,
                     "file",
                     {"action": "write", "path": path, "content": content},

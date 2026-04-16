@@ -29,7 +29,7 @@
 | Item | Location |
 |------|----------|
 | Writer | `backend/orchestration/continuation_blueprint.py` — `write_continuation_blueprint()` → `proof/CONTINUATION_BLUEPRINT.md` |
-| Triggers | `backend/orchestration/auto_runner.py` — `_write_blueprint` on failure paths (e.g. blocked steps, max retries, incomplete DAG) |
+| Triggers | `backend/orchestration/runtime_engine.py` — `_write_blueprint` on failure paths (e.g. blocked steps, max retries, incomplete DAG) |
 
 ### Example structure (emitted in job workspace)
 
@@ -56,3 +56,4 @@
 | `test_continuation_blueprint_writes_under_workspace` | Blueprint file created with step keys |
 
 **Command:** `python -m pytest tests/test_execution_authority_wiring.py -q` (from `backend/`).
+

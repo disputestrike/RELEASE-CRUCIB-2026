@@ -14,6 +14,7 @@ import './Layout.css';
 import Sidebar from './Sidebar';
 import RightPanel from './RightPanel';
 import OnboardingTour from './OnboardingTour';
+import { WorkspaceRailProvider } from '../contexts/WorkspaceRailContext';
 
 /**
  * Layout — Redesigned wrapper
@@ -37,7 +38,7 @@ const Layout = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Right panel: HIDDEN on workspace (workspace has its own Sandpack panel)
-  const isWorkspaceView = ['/app/workspace', '/app/workspace-manus', '/app/builder', '/app/auto-runner'].some(p => location.pathname.startsWith(p))
+  const isWorkspaceView = ['/app/workspace', '/app/builder', '/app/auto-runner'].some(p => location.pathname.startsWith(p))
     || location.pathname.match(/\/app\/projects\/[^/]+$/);
   const [rightPanelVisible, setRightPanelVisible] = useState(false);
 
@@ -202,6 +203,7 @@ const Layout = () => {
   );
 
   return (
+    <WorkspaceRailProvider>
     <div className="app-viewport">
       {/* Mobile Header */}
       <header className="layout-mobile-header-bar">
@@ -248,6 +250,7 @@ const Layout = () => {
       {/* Onboarding Tour for first-time users */}
       <OnboardingTour />
     </div>
+    </WorkspaceRailProvider>
   );
 };
 

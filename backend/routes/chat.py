@@ -15,12 +15,12 @@ logger = logging.getLogger(__name__)
 
 from services.brain_layer import BrainLayer
 from services.conversation_manager import ContextManager
+from services.events import event_bus
+from services.runtime.runtime_engine import runtime_engine
 from services.semantic_router import SemanticRouter
 
 # These would be imported from actual implementations
 # from services.websocket_handler import WebSocketManager
-# from orchestration.agent_orchestrator import run_orchestration_v2
-
 context_manager = ContextManager()
 semantic_router = SemanticRouter()
 
@@ -58,16 +58,31 @@ async def send_chat_message(request: Dict[str, Any]) -> Dict[str, Any]:
     if not session_id or not message:
         raise HTTPException(status_code=400, detail="Missing session_id or message")
 
+    project_id = (request.get("project_id") or f"chat-{session_id}").strip()
+
     try:
         # Get or create session
         session = context_manager.get_session(session_id)
         if not session:
             session = context_manager.create_session(session_id)
 
-        # Use the brain layer to interpret the request, choose a focused path,
-        # and execute the selected plan in a controlled, human-friendly way.
-        brain = BrainLayer()
-        brain_result = await brain.execute_request(session, message)
+        runtime_out = await runtime_engine.start_task(
+            session=session,
+            session_id=session_id,
+            project_id=project_id,
+            user_message=message,
+        )
+        task = runtime_out.get("task") or {}
+        brain_result = runtime_out.get("brain_result") or {}
+        task_id = task.get("task_id")
+
+        session.set_current_task(
+            task_description=message,
+            task_metadata={
+                "task_id": task_id,
+                "project_id": project_id,
+            },
+        )
 
         assistant_response = brain_result["assistant_response"]
         suggestions = brain_result.get("suggestions", [])
@@ -81,11 +96,16 @@ async def send_chat_message(request: Dict[str, Any]) -> Dict[str, Any]:
                 "intent_confidence": brain_result.get("intent_confidence"),
                 "selected_agents": selected_agents,
                 "status": brain_result.get("status"),
+                "task_id": task_id,
+                "project_id": project_id,
             },
         )
 
         return {
             "session_id": session_id,
+            "project_id": project_id,
+            "task_id": task_id,
+            "task_status": task.get("status"),
             "assistant_response": assistant_response,
             "agents_used": selected_agents,
             "intent": brain_result.get("intent"),
@@ -98,6 +118,14 @@ async def send_chat_message(request: Dict[str, Any]) -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Chat endpoint error: {str(e)}")
+        event_bus.emit(
+            "chat.request.failed",
+            {
+                "session_id": session_id,
+                "project_id": project_id,
+                "error": str(e),
+            },
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 

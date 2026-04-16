@@ -50,14 +50,16 @@ class SteerRequest(BaseModel):
 async def _run_build_background(job_id: str, goal: str, user_id: str):
     """Background task: plan + execute build."""
     try:
-        from db_pg import get_pg_pool
-        from orchestration import auto_runner
+        from services.runtime.runtime_engine import runtime_engine
         from adapter.services.event_bridge import on_job_started, on_job_error
 
-        pool = await get_pg_pool()
         on_job_started(job_id, goal)
-
-        await auto_runner.run_job_to_completion(job_id, "", pool)
+        await runtime_engine.execute_with_control(
+            task_id=job_id,
+            user_id=user_id or "anonymous",
+            request=goal,
+            conversation_id=f"build-{job_id}",
+        )
 
     except Exception as e:
         logger.exception("build background failed: %s", e)
@@ -77,7 +79,6 @@ async def start_build(
     """Start a build. Returns jobId immediately, runs in background."""
     from orchestration import planner as planner_mod
     from orchestration import runtime_state
-    from orchestration.dag_engine import build_dag_from_plan
     import json
 
     goal = req.prompt.strip()
@@ -121,20 +122,7 @@ async def start_build(
         except Exception as e:
             logger.warning("plan store failed: %s", e)
 
-    from orchestration.dag_engine import build_dag_from_plan
-    step_defs = build_dag_from_plan(plan)
-    for idx, sd in enumerate(step_defs):
-        try:
-            await runtime_state.create_step(
-                job_id=job_id,
-                step_key=sd["step_key"],
-                agent_name=sd["agent_name"],
-                phase=sd["phase"],
-                depends_on=sd["depends_on"],
-                order_index=idx,
-            )
-        except Exception:
-            pass
+    step_defs = []
 
     # Start build in background
     background_tasks.add_task(_run_build_background, job_id, goal, user.get("id", ""))
@@ -144,7 +132,7 @@ async def start_build(
         "status": "queued",
         "planId": plan_id,
         "goal": goal[:200],
-        "estimatedSteps": len(step_defs),
+        "estimatedSteps": max(1, len(step_defs)),
         "createdAt": job.get("created_at", ""),
         "streamUrl": f"/api/jobs/{job_id}/stream",
         "wsUrl": f"/ws/events?jobId={job_id}",

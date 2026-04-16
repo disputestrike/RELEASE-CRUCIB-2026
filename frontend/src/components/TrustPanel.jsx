@@ -8,14 +8,17 @@ export default function TrustPanel({ jobId, token }) {
   const [state, setState] = useState({
     quality: 0, security: null, errors: 0, deployReady: false,
   });
-  const [memStats, setMemStats] = useState({ total: 0 });
+  const [memStats, setMemStats] = useState({ total: 0, highRelevance: 0 });
   const [permStats, setPermStats] = useState({ safe: 0, total: 0 });
 
   useEffect(() => {
     const unsub = trustPanelState.subscribe(s => setState({ ...s }));
     if (jobId && token) trustPanelState.loadFromJob(jobId, token);
     const interval = setInterval(() => {
-      setMemStats(memoryGraph.getStats());
+      const graphStats = memoryGraph.getStats();
+      const highRelevance = ['user', 'project', 'session', 'pattern', 'synthesis']
+        .reduce((sum, scope) => sum + (graphStats?.[scope]?.highRelevance || 0), 0);
+      setMemStats({ ...graphStats, highRelevance });
       setPermStats(permissionEngine.getStats());
     }, 3000);
     return () => { unsub(); clearInterval(interval); };
@@ -63,14 +66,14 @@ export default function TrustPanel({ jobId, token }) {
       <div className="flex items-center gap-1">
         <Brain size={11} className="text-purple-500" />
         <span className="text-zinc-500">Memory:</span>
-        <span className="font-medium text-purple-600">{memStats.total}</span>
+        <span className="font-medium text-purple-600">{memStats.highRelevance}/{memStats.total}</span>
       </div>
       <div className="w-px h-3 bg-zinc-300" />
       {/* Permissions */}
       <div className="flex items-center gap-1">
         <Shield size={11} className="text-blue-500" />
         <span className="text-zinc-500">Trusted:</span>
-        <span className="font-medium text-blue-600">{permStats.safe}</span>
+        <span className="font-medium text-blue-600">{permStats.safe}/{permStats.total}</span>
       </div>
       {state.deployReady && (
         <>

@@ -331,7 +331,15 @@ def pytest_sessionstart(session):
         await ensure_all_tables()
         await close_pg_pool()
 
-    asyncio.run(_migrate_once())
+    try:
+        asyncio.run(_migrate_once())
+    except Exception as exc:
+        logger.warning(
+            "pytest_sessionstart: migrations skipped (%s). "
+            "Ensure DATABASE_URL matches docker-compose Postgres on 127.0.0.1:5434.",
+            exc,
+        )
+        os.environ["CRUCIBAI_TEST_DB_UNAVAILABLE"] = "1"
 
 
 BASE_URL = os.environ.get(

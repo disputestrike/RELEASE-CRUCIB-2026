@@ -27,18 +27,40 @@ from fastapi.responses import Response
 from pricing_plans import CREDITS_PER_TOKEN
 from pydantic import BaseModel
 from services.llm_service import (
-    _call_llm_with_fallback,
     _effective_api_keys,
     _get_model_chain,
     get_authenticated_or_api_user,
     get_workspace_api_keys,
 )
+from services.runtime.runtime_engine import runtime_engine
 
 logger = logging.getLogger(__name__)
 
 agents_router = APIRouter(prefix="/api", tags=["agents"])
 
 MIN_CREDITS_FOR_LLM = 5
+
+
+async def _call_llm_with_fallback(**kwargs):
+    session_id = kwargs.get("session_id") or str(uuid.uuid4())
+    project_id = kwargs.get("project_id") or f"agents-{session_id}"
+    return await runtime_engine.call_model_for_request(
+        session_id=session_id,
+        project_id=project_id,
+        description=kwargs.get("agent_name") or "agents route llm request",
+        message=kwargs.get("message", ""),
+        system_message=kwargs.get("system_message", ""),
+        model_chain=kwargs.get("model_chain", []),
+        user_id=kwargs.get("user_id"),
+        user_tier=kwargs.get("user_tier", "free"),
+        speed_selector=kwargs.get("speed_selector", "lite"),
+        available_credits=kwargs.get("available_credits", 0),
+        agent_name=kwargs.get("agent_name", ""),
+        api_keys=kwargs.get("api_keys"),
+        content_blocks=kwargs.get("content_blocks"),
+        idempotency_key=kwargs.get("idempotency_key"),
+        skill_hint=kwargs.get("skill_hint"),
+    )
 
 
 # ---------------------------------------------------------------------------

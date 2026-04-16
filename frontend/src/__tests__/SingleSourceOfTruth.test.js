@@ -22,7 +22,7 @@ describe('Single Source of Truth', () => {
       const componentsDir = path.join(__dirname, '../components');
       const files = [
         'LandingPage.jsx', 'AuthPage.jsx', 'Pricing.jsx', 'TemplatesPublic.jsx', 'LearnPublic.jsx',
-        'TokenCenter.jsx', 'Features.jsx', 'Enterprise.jsx', 'Dashboard.jsx', 'Workspace.jsx',
+        'TokenCenter.jsx', 'Features.jsx', 'Enterprise.jsx', 'Dashboard.jsx', 'CrucibAIWorkspace.jsx',
       ];
       const missing = files.filter((f) => !fs.existsSync(path.join(pagesDir, f)));
       expect(missing).toEqual([]);

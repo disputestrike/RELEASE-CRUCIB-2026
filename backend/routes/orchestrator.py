@@ -69,14 +69,12 @@ _sys.path.insert(0, os.path.dirname(__file__))
 
 # Lazy-load orchestration modules to avoid circular imports
 def _get_orchestration():
-    from orchestration import auto_runner as ar_mod
-    from orchestration import dag_engine
     from orchestration import planner as planner_mod
     from orchestration import runtime_state
 
     from proof import proof_service as ps_mod
 
-    return runtime_state, dag_engine, planner_mod, ar_mod, ps_mod
+    return runtime_state, planner_mod, ps_mod
 
 
 class PlanRequest(BaseModel):
@@ -265,7 +263,7 @@ async def public_build_plan(
     if not goal:
         raise HTTPException(status_code=400, detail="goal is required")
     try:
-        _, _, planner_mod, _, _ = _get_orchestration()
+        _, planner_mod, _ = _get_orchestration()
         plan = await generate_public_plan_service(
             goal=goal,
             user=user,
@@ -296,7 +294,7 @@ async def public_build_plan_summary(
     if not goal:
         raise HTTPException(status_code=400, detail="goal is required")
     try:
-        _, _, planner_mod, _, _ = _get_orchestration()
+        _, planner_mod, _ = _get_orchestration()
         plan = await generate_public_plan_service(
             goal=goal,
             user=user,
@@ -327,7 +325,7 @@ async def estimate_cost(
     try:
         from orchestration.build_targets import normalize_build_target
 
-        _, _, planner_mod, _, _ = _get_orchestration()
+        _, planner_mod, _ = _get_orchestration()
         return await estimate_orchestration_service(
             goal=body.goal,
             build_target=body.build_target,
@@ -368,16 +366,24 @@ async def create_plan(body: PlanRequest, user: dict = Depends(_get_auth())):
             build_target_meta,
             normalize_build_target,
         )
+        from services.runtime.execution_authority import build_runtime_native_step_defs
 
-        runtime_state, dag_engine, planner_mod, _, _ = _get_orchestration()
+        runtime_state, planner_mod, _ = _get_orchestration()
         try:
             from db_pg import get_pg_pool
 
             pool = await get_pg_pool()
-        except Exception:
-            pool = None
-        if pool:
-            runtime_state.set_pool(pool)
+        except Exception as e:
+            logger.exception("orchestrator/plan: PostgreSQL unavailable")
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "PostgreSQL is required for builds but is not available. "
+                    "Set DATABASE_URL and ensure the database is running. "
+                    f"Underlying error: {e}"
+                ),
+            ) from e
+        runtime_state.set_pool(pool)
 
         effective_project_id = await _resolve_job_project_id_for_user(
             body.project_id, user
@@ -408,27 +414,24 @@ async def create_plan(body: PlanRequest, user: dict = Depends(_get_auth())):
         import uuid as _uuid
 
         plan_id = str(_uuid.uuid4())
-        if pool:
-            try:
-                async with pool.acquire() as conn:
-                    await conn.execute(
-                        """
+        try:
+            async with pool.acquire() as conn:
+                await conn.execute(
+                    """
                 INSERT INTO build_plans (id, job_id, project_id, goal, plan_json, status, created_at)
                 VALUES ($1,$2,$3,$4,$5,'draft',NOW())
             """,
-                        plan_id,
-                        job["id"],
-                        effective_project_id,
-                        body.goal,
-                        _json.dumps(plan),
-                    )
-            except Exception as e:
-                logger.warning("Could not store build plan in DB: %s", e)
+                    plan_id,
+                    job["id"],
+                    effective_project_id,
+                    body.goal,
+                    _json.dumps(plan),
+                )
+        except Exception as e:
+            logger.warning("Could not store build plan in DB: %s", e)
 
-        # Persist plan steps as job_steps
-        from orchestration.dag_engine import build_dag_from_plan
-
-        step_defs = build_dag_from_plan(plan)
+        # Persist runtime-native steps as ordered execution intent, not a DAG.
+        step_defs = build_runtime_native_step_defs(plan)
         for idx, sd in enumerate(step_defs):
             await runtime_state.create_step(
                 job_id=job["id"],
@@ -493,86 +496,52 @@ async def orchestrator_runtime_health():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-async def _background_auto_runner_job(job_id: str, workspace_path: str) -> None:
-    """Runs after HTTP response so the client can open SSE; do not use ensure_future here."""
+async def _background_runtime_job(job_id: str, workspace_path: str) -> None:
+    """Runs a job through the unified runtime engine after HTTP response."""
     try:
-        from db_pg import get_pg_pool
-        from orchestration import auto_runner as _orch_ar
+        from services.runtime.runtime_engine import runtime_engine
         from orchestration import runtime_state as _orch_rs
 
-        pool = await get_pg_pool()
-        if pool is None:
-            logger.error("auto_runner: no database pool for job %s", job_id)
+        job = await _orch_rs.get_job(job_id)
+        if not job:
+            logger.error("runtime_engine: job not found %s", job_id)
             return
-        _orch_rs.set_pool(pool)
-        ws = (workspace_path or "").strip()
-        if ws:
-            try:
-                from orchestration.elite_prompt_loader import (
-                    elite_prompt_fingerprint,
-                    load_elite_autonomous_prompt,
-                    write_elite_directive_to_workspace,
-                )
 
-                _elite = load_elite_autonomous_prompt()
-                if _elite and write_elite_directive_to_workspace(ws, _elite):
-                    await _orch_rs.append_job_event(
-                        job_id,
-                        "elite_builder_prompt",
-                        {
-                            "kind": "elite_builder_prompt.json",
-                            "sha16": elite_prompt_fingerprint(_elite),
-                            "path": "proof/ELITE_EXECUTION_DIRECTIVE.md",
-                        },
-                    )
-            except Exception:
-                logger.exception("auto_runner: elite directive for job %s", job_id)
-        await _orch_ar.prepare_failed_job_for_rerun(job_id)
-        result = await _orch_ar.run_job_to_completion(
-            job_id, workspace_path=workspace_path or "", db_pool=pool
+        goal = (job.get("goal") or "").strip()
+        user_id = str(job.get("user_id") or "system")
+
+        result = await runtime_engine.execute_with_control(
+            task_id=job_id,
+            user_id=user_id,
+            request=goal,
+            conversation_id=f"orchestrator-{job_id}",
+        )
+
+        await _orch_rs.update_job_state(
+            job_id,
+            "completed",
+            {
+                "current_phase": "runtime_engine_completed",
+            },
         )
         await _orch_rs.append_job_event(
             job_id,
             "background_runner_completed",
             {
-                "success": bool((result or {}).get("success")),
-                "status": (result or {}).get("status"),
-                "reason": (result or {}).get("reason"),
-                "details": str((result or {}).get("details") or "")[:1000],
+                "success": True,
+                "status": "runtime_engine_completed",
+                "reason": "runtime_engine_routed",
+                "details": str((result or {}).get("assistant_response") or "")[:1000],
             },
         )
-        if result and not result.get("success"):
-            job = await _orch_rs.get_job(job_id)
-            if job and job.get("status") not in {
-                "failed",
-                "completed",
-                "cancelled",
-                "canceled",
-            }:
-                reason = result.get("reason") or "auto_runner_failed"
-                details = str(result.get("details") or result.get("error") or reason)[
-                    :1000
-                ]
-                await _orch_rs.update_job_state(
-                    job_id,
-                    "failed",
-                    {
-                        "current_phase": reason,
-                        "failure_reason": reason,
-                        "failure_details": details,
-                    },
-                )
     except Exception as e:
-        logger.exception("auto_runner: background job %s raised", job_id)
+        logger.exception("runtime_engine: background job %s raised", job_id)
         try:
             import traceback
 
-            from db_pg import get_pg_pool as _gp
             from orchestration import runtime_state as _ors
             from orchestration.event_bus import publish as _pub
 
-            pool = await _gp()
-            _ors.set_pool(pool)
             reason = "background_runner_exception"
             msg = str(e)[:500]
             payload = {
@@ -599,67 +568,22 @@ async def _background_auto_runner_job(job_id: str, workspace_path: str) -> None:
             )
         except Exception:
             logger.exception(
-                "auto_runner: could not persist background exception for job %s", job_id
+                "runtime_engine: could not persist background exception for job %s", job_id
             )
 
 
-async def _background_resume_auto_job(job_id: str, workspace_path: str) -> None:
+async def _background_resume_runtime_job(job_id: str, workspace_path: str) -> None:
     try:
-        from db_pg import get_pg_pool
-        from orchestration import auto_runner as _orch_ar
-        from orchestration import runtime_state as _orch_rs
-
-        pool = await get_pg_pool()
-        if pool is None:
-            logger.error("resume_job: no database pool for job %s", job_id)
-            return
-        _orch_rs.set_pool(pool)
-        result = await _orch_ar.resume_job(
-            job_id, workspace_path=workspace_path or "", db_pool=pool
-        )
-        await _orch_rs.append_job_event(
-            job_id,
-            "background_runner_completed",
-            {
-                "resume": True,
-                "success": bool((result or {}).get("success")),
-                "status": (result or {}).get("status"),
-                "reason": (result or {}).get("reason"),
-                "details": str((result or {}).get("details") or "")[:1000],
-            },
-        )
-        if result and not result.get("success"):
-            job = await _orch_rs.get_job(job_id)
-            if job and job.get("status") not in {
-                "failed",
-                "completed",
-                "cancelled",
-                "canceled",
-            }:
-                reason = result.get("reason") or "auto_runner_failed"
-                details = str(result.get("details") or result.get("error") or reason)[
-                    :1000
-                ]
-                await _orch_rs.update_job_state(
-                    job_id,
-                    "failed",
-                    {
-                        "current_phase": reason,
-                        "failure_reason": reason,
-                        "failure_details": details,
-                    },
-                )
+        # Resume now uses the same unified runtime path as initial run.
+        await _background_runtime_job(job_id, workspace_path)
     except Exception as e:
         logger.exception("resume_job: background job %s raised", job_id)
         try:
             import traceback
 
-            from db_pg import get_pg_pool as _gp
             from orchestration import runtime_state as _ors
             from orchestration.event_bus import publish as _pub
 
-            pool = await _gp()
-            _ors.set_pool(pool)
             reason = "background_runner_exception"
             msg = str(e)[:500]
             payload = {
@@ -698,7 +622,7 @@ async def run_auto(
     user: dict = Depends(_get_auth()),
 ):
     """
-    Start auto-runner for an existing job.
+    Start runtime-controlled execution for an existing job.
     Returns immediately with job_id; client streams progress via /api/jobs/{id}/stream.
     """
     (
@@ -712,7 +636,7 @@ async def run_auto(
         from orchestration.runtime_health import collect_runtime_health_sync
         from orchestration.runtime_state import append_job_event
 
-        runtime_state, _, _, _, _ = _get_orchestration()
+        runtime_state, _, _ = _get_orchestration()
         from db_pg import get_pg_pool
 
         pool = await get_pg_pool()
@@ -809,7 +733,7 @@ async def run_auto(
         except Exception as _dp_e:
             logger.warning("run-auto: DB provision skipped: %s", _dp_e)
 
-        background_tasks.add_task(_background_auto_runner_job, body.job_id, ws)
+        background_tasks.add_task(_background_runtime_job, body.job_id, ws)
 
         return {
             "success": True,
@@ -829,11 +753,11 @@ async def list_orchestrator_build_jobs(
     user: dict = Depends(_get_optional_user()),
     limit: int = 30,
 ):
-    """List recent Auto-Runner jobs for the signed-in (or guest) user."""
+    """List recent runtime-controlled jobs for the signed-in (or guest) user."""
     if not user or not user.get("id"):
         return {"success": True, "jobs": []}
     try:
-        runtime_state, _, _, _, _ = _get_orchestration()
+        runtime_state, _, _ = _get_orchestration()
         from db_pg import get_pg_pool
 
         pool = await get_pg_pool()

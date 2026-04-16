@@ -2,7 +2,7 @@
 brain_repair.py — The actual repair brain. Reads a diagnosis and applies
 a real fix before retry so each attempt is different from the last.
 
-This is wired into the auto_runner retry loop. When a step fails, this
+This is wired into the runtime retry loop. When a step fails, this
 module determines WHAT to change before trying again — not just logs it.
 """
 

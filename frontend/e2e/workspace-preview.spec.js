@@ -1,22 +1,20 @@
 /**
- * Unified workspace + Preview (Sandpack) smoke.
+ * CrucibAI workspace + Preview (Sandpack) smoke.
  *
  * Prerequisites:
  * - Backend + Postgres running (e.g. http://localhost:8000 — same as CRA proxy target)
- * - Optional: frontend at PLAYWRIGHT_BASE_URL (default http://localhost:3000); playwright.config
- *   can start `npm start` when reuseExistingServer allows.
+ * - Optional: frontend at PLAYWRIGHT_BASE_URL (default http://localhost:3000)
  *
- * Run (dedicated project):
+ * Run:
  *   npx playwright test --project=workspace-preview
- * Next execution target (plan payload):
- *   E2E_BUILD_TARGET=next_app_router npx playwright test --project=workspace-preview
- *
- * The second test creates a real job via /api/orchestrator/plan and writes `src/App.jsx` under
- * `backend/workspace/<project_id>/`, syncs from the UI, then asserts the Sandpack host + Sandbox label.
  */
 const { test, expect } = require('@playwright/test');
 const fs = require('fs');
 const path = require('path');
+const {
+  waitForCrucibWorkspace,
+  openCodeWorkspacePane,
+} = require('./helpers/workspaceE2E.cjs');
 
 function e2eBuildTarget() {
   return (process.env.E2E_BUILD_TARGET || 'vite_react').trim() || 'vite_react';
@@ -25,14 +23,12 @@ function e2eBuildTarget() {
 function apiBase() {
   let b = process.env.PLAYWRIGHT_API_URL || process.env.REACT_APP_BACKEND_URL || 'http://127.0.0.1:8000';
   b = String(b).replace(/\/$/, '');
-  // CRA often uses REACT_APP_BACKEND_URL=http://localhost:3000 for same-origin /api proxy — that returns HTML to fetch(), not JSON.
   if (/:3000\b/.test(b)) {
     b = 'http://127.0.0.1:8000';
   }
   return b;
 }
 
-/** Playwright's default `request` uses frontend baseURL (:3000). Use a context rooted on the API for JSON routes. */
 async function apiRequestContext(playwright) {
   return playwright.request.newContext({
     baseURL: apiBase(),
@@ -40,28 +36,12 @@ async function apiRequestContext(playwright) {
   });
 }
 
-/** UnifiedWorkspace mounts `uw-root` (no legacy `.arp-topbar` wrapper). */
-async function waitForUnifiedWorkspace(page) {
-  await page.waitForSelector('[data-testid="unified-workspace-root"]', { timeout: 90000 });
+async function openPreviewInRightPanel(page) {
+  await waitForCrucibWorkspace(page);
+  await page.getByRole('button', { name: 'Preview & code' }).click({ timeout: 15000 });
+  await page.getByRole('button', { name: '👁 Preview' }).click({ timeout: 15000 });
 }
 
-/** Right-rail icon (distinct from `.arp-pane-tab` text "Preview"). */
-async function openPreviewFromToolbar(page) {
-  await waitForUnifiedWorkspace(page);
-  await page.locator('.arp-right-toolbar button[title="Preview"]').click({ timeout: 30000 });
-}
-
-/** Dev mode exposes the Code pane tab; then open Code and assert API-driven tree + viewer shell. */
-async function openCodeWorkspacePane(page) {
-  await waitForUnifiedWorkspace(page);
-  await page.getByRole('button', { name: 'Dev' }).click({ timeout: 15000 }).catch(() => {});
-  await page.locator('.arp-pane-tabs').getByRole('button', { name: 'Code', exact: true }).click({ timeout: 15000 });
-  await page.waitForSelector('.code-pane-main', { timeout: 20000 });
-}
-
-/**
- * Mirror backend _project_workspace_path sanitization (see server.py).
- */
 function seedJobWorkspace(projectId, jsxInner) {
   const safe = String(projectId).replace(/\//g, '_').replace(/\\/g, '_');
   const root = path.join(__dirname, '..', '..', 'backend', 'workspace', safe);
@@ -74,11 +54,11 @@ function seedJobWorkspace(projectId, jsxInner) {
   return root;
 }
 
-test.describe('Unified workspace preview', () => {
+test.describe('CrucibAI workspace preview', () => {
   test.describe.configure({ mode: 'serial' });
   test.setTimeout(180000);
 
-  test('loads /app/workspace, opens Preview tab, shows preview shell', async ({ page, playwright }) => {
+  test('loads /app/workspace, opens Code in right panel', async ({ page, playwright }) => {
     const apiReq = await apiRequestContext(playwright);
     try {
       const health = await apiReq.get('/api/health').catch(() => null);
@@ -101,12 +81,8 @@ test.describe('Unified workspace preview', () => {
 
       await page.goto('/app/workspace', { waitUntil: 'domcontentloaded' });
       await openCodeWorkspacePane(page);
-      await expect(page.locator('.wft-wrap')).toBeVisible({ timeout: 20000 });
-
-      await openPreviewFromToolbar(page);
-      await expect(page.locator('.preview-panel')).toBeVisible({ timeout: 20000 });
-      await expect(page.locator('.preview-panel .pp-preview-body')).toBeVisible({ timeout: 20000 });
-      await expect(page.locator('.pp-sandpack-host')).toBeVisible({ timeout: 90000 });
+      await expect(page.locator('[data-testid="right-panel-root"]')).toBeVisible({ timeout: 20000 });
+      await expect(page.getByText(/Files \(\d+\)/)).toBeVisible({ timeout: 20000 });
     } finally {
       await apiReq.dispose();
     }
@@ -131,7 +107,17 @@ test.describe('Unified workspace preview', () => {
         },
       });
       if (!planRes.ok()) {
-        throw new Error(`plan failed: ${planRes.status()} ${await planRes.text()}`);
+        const errText = await planRes.text();
+        if (
+          planRes.status() >= 500 &&
+          /Database|pool|NoneType|acquire|not ready/i.test(errText)
+        ) {
+          test.skip(
+            true,
+            `Orchestrator / plan needs PostgreSQL (docker compose up -d postgres). ${planRes.status()} ${errText.slice(0, 240)}`,
+          );
+        }
+        throw new Error(`plan failed: ${planRes.status()} ${errText}`);
       }
       const planJson = await planRes.json();
       const jobId = planJson.job_id;
@@ -158,7 +144,7 @@ test.describe('Unified workspace preview', () => {
         if (filesRaw.trimStart().toLowerCase().startsWith('<!')) {
           test.skip(
             true,
-            'API returned HTML (SPA fallback) — restart uvicorn with latest server.py so /api/jobs/.../workspace/files is registered and /api/* is not index.html.',
+            'API returned HTML (SPA fallback) — restart uvicorn with latest server.py so /api/jobs/.../workspace/files is registered.',
           );
         }
         const filesJson = JSON.parse(filesRaw);
@@ -172,11 +158,12 @@ test.describe('Unified workspace preview', () => {
         }, token);
 
         await page.goto(`/app/workspace?jobId=${encodeURIComponent(jobId)}`, { waitUntil: 'domcontentloaded' });
-        await waitForUnifiedWorkspace(page);
+        await waitForCrucibWorkspace(page);
 
-        const syncBtn = page
-          .locator('[data-testid="unified-workspace-root"]')
-          .locator('button[title="Reload files from server"]');
+        await page.getByRole('button', { name: 'Preview & code' }).click({ timeout: 15000 });
+        await page.getByRole('button', { name: '📄 Code' }).click({ timeout: 15000 });
+
+        const syncBtn = page.locator('[data-testid="workspace-files-refresh"]');
         await syncBtn.waitFor({ state: 'visible', timeout: 60000 });
 
         const filesPromise = page
@@ -185,11 +172,9 @@ test.describe('Unified workspace preview', () => {
         await syncBtn.click();
         await filesPromise;
 
-        await openPreviewFromToolbar(page);
+        await openPreviewInRightPanel(page);
 
-        await expect(page.locator('.pp-sandpack-host')).toBeVisible({ timeout: 90000 });
-        // Sandpack may host the runtime iframe inside shadow / nested roots; assert shell + mode like test 1.
-        await expect(page.locator('.preview-panel')).toContainText('Sandbox', { timeout: 30000 });
+        await expect(page.locator('.sp-wrapper, iframe[title="Live Preview"]').first()).toBeVisible({ timeout: 90000 });
       } finally {
         try {
           fs.rmSync(seededRoot, { recursive: true, force: true });

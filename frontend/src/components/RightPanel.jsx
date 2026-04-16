@@ -87,7 +87,17 @@ function FileTree({ files, activeFile, onSelect }) {
   );
 }
 
-export default function RightPanel({ jobId, token, steps, isRunning, previewUrl, sandpackFiles }) {
+export default function RightPanel({
+  jobId,
+  token,
+  steps,
+  isRunning,
+  previewUrl,
+  sandpackFiles,
+  simulationRecommendation,
+  onApplySimulationRecommendation,
+  onRejectSimulationRecommendation,
+}) {
   const [tab, setTab] = useState('preview');
   const [files, setFiles] = useState([]);
   const [activeFile, setActiveFile] = useState(null);
@@ -130,7 +140,7 @@ export default function RightPanel({ jobId, token, steps, isRunning, previewUrl,
   const tabs = ['preview', 'code', 'proof'];
 
   return (
-    <div style={{ height:'100%', display:'flex', flexDirection:'column', background:'#fff' }}>
+    <div data-testid="right-panel-root" style={{ height:'100%', display:'flex', flexDirection:'column', background:'#fff' }}>
       {/* Tab bar */}
       <div style={{ display:'flex', alignItems:'center', borderBottom:'1px solid #e5e7eb',
         background:'#f9fafb', flexShrink:0 }}>
@@ -167,6 +177,39 @@ export default function RightPanel({ jobId, token, steps, isRunning, previewUrl,
         {/* Preview */}
         {tab === 'preview' && (
           <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+            {simulationRecommendation && (
+              <div style={{ margin:'10px 12px 0', padding:'10px 12px', borderRadius:10, border:'1px solid #a7f3d0', background:'#ecfdf5' }}>
+                <div style={{ fontSize:12, color:'#065f46', fontWeight:700, marginBottom:4 }}>
+                  Simulation Result
+                </div>
+                <div style={{ fontSize:12, color:'#064e3b' }}>
+                  Recommended: {simulationRecommendation.recommended_action} (confidence {Math.round((simulationRecommendation.confidence || 0) * 100)}%)
+                </div>
+                {Array.isArray(simulationRecommendation.tradeoffs) && simulationRecommendation.tradeoffs.length > 0 && (
+                  <div style={{ fontSize:11, color:'#047857', marginTop:6 }}>
+                    {simulationRecommendation.tradeoffs.slice(0, 3).map((t, i) => (
+                      <div key={`sim-tradeoff-${i}`}>• {t}</div>
+                    ))}
+                  </div>
+                )}
+                <div style={{ marginTop:8, display:'flex', gap:8 }}>
+                  <button
+                    type="button"
+                    onClick={onApplySimulationRecommendation}
+                    style={{ border:'1px solid #059669', background:'#059669', color:'#fff', borderRadius:6, fontSize:12, padding:'4px 10px', cursor:'pointer' }}
+                  >
+                    Apply Recommendation
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onRejectSimulationRecommendation}
+                    style={{ border:'1px solid #d1d5db', background:'#fff', color:'#374151', borderRadius:6, fontSize:12, padding:'4px 10px', cursor:'pointer' }}
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+            )}
             {/* URL bar */}
             <div style={{ padding:'6px 12px', background:'#f3f4f6', borderBottom:'1px solid #e5e7eb',
               display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
@@ -242,7 +285,7 @@ export default function RightPanel({ jobId, token, steps, isRunning, previewUrl,
                 borderBottom:'1px solid #f3f4f6', flexShrink:0,
                 display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 <span>Files ({files.length})</span>
-                <button onClick={loadFiles} style={{ background:'none', border:'none',
+                <button type="button" data-testid="workspace-files-refresh" onClick={loadFiles} style={{ background:'none', border:'none',
                   color:'#9ca3af', cursor:'pointer', fontSize:12 }}>↻</button>
               </div>
               <div style={{ flex:1, overflow:'auto' }}>

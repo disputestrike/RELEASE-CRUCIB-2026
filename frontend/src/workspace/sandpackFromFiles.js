@@ -1,5 +1,5 @@
 /**
- * Editor `files` map → Sandpack files + deps (aligned with Workspace.jsx).
+ * Editor `files` map → Sandpack files + deps (used by CrucibAIWorkspace / RightPanel preview).
  */
 
 function buildSandpackFilesMap(files) {

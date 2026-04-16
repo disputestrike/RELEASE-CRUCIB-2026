@@ -1,5 +1,5 @@
 """
-Live PostgreSQL RLS tests for Auto-Runner multitenant migration DDL.
+Live PostgreSQL RLS tests for runtime multitenant migration DDL.
 
 Uses DATABASE_URL (same DB as backend tests). Creates an isolated schema and role, then drops them.
 Runs on asyncpg (no psycopg2 required for Python 3.13+).

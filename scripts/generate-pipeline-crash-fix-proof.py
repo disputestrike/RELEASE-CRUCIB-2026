@@ -100,14 +100,14 @@ async def _run_checks() -> Dict[str, Any]:
 
     server_text = (REPO_ROOT / "backend" / "server.py").read_text(encoding="utf-8")
     executor_text = (REPO_ROOT / "backend" / "orchestration" / "executor.py").read_text(encoding="utf-8")
-    auto_runner_text = (REPO_ROOT / "backend" / "orchestration" / "auto_runner.py").read_text(encoding="utf-8")
+    runtime_engine_text = (REPO_ROOT / "backend" / "services" / "runtime" / "runtime_engine.py").read_text(encoding="utf-8")
     migration_text = (REPO_ROOT / "backend" / "migrations" / "006_complete_schema.sql").read_text(encoding="utf-8")
     runner_stable = all(
         [
             "background_runner_exception" in server_text,
             "background_crash" not in server_text,
             "verification_attempt_failed" in executor_text,
-            "step_retry_exhausted" in auto_runner_text,
+            "execute_with_control" in runtime_engine_text,
             "failure_reason TEXT" in migration_text,
             "failure_details TEXT" in migration_text,
         ]

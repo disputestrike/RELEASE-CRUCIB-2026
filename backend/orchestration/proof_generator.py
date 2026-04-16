@@ -105,12 +105,12 @@ def ensure_proof_files_exist(job_id: str, workspace_path: str) -> bool:
 # INTEGRATION INSTRUCTIONS
 # =======================
 #
-# In backend/orchestration/auto_runner.py, add to the beginning of job execution:
+# In the legacy pipeline, add this at the beginning of job execution:
 #
 # ```python
 # from backend.orchestration.proof_generator import create_proof_directory_structure
 #
-# async def run_job_to_completion(job_id, workspace_path, db_pool, total_retries):
+# async def run_runtime_job(job_id, workspace_path, db_pool):
 #     # Create proof directory at job start
 #     if not create_proof_directory_structure(job_id, workspace_path):
 #         logger.warning(f"Failed to create proof files for job {job_id}")

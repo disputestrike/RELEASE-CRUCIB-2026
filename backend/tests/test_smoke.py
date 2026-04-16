@@ -108,8 +108,8 @@ async def _create_failed_smoke_job_step(auth_headers):
     return job["id"], step["id"]
 
 
-async def _create_smoke_auto_job(auth_headers):
-    """Create a user-owned Auto-Runner job for execution-boundary smoke tests."""
+async def _create_smoke_runtime_job(auth_headers):
+    """Create a user-owned runtime job for execution-boundary smoke tests."""
     from orchestration import runtime_state
 
     pool = await _get_pg_pool_or_skip()
@@ -1215,7 +1215,7 @@ async def test_smoke_run_auto_ignores_client_workspace_path(
     app_client, auth_headers, monkeypatch
 ):
     """POST /api/orchestrator/run-auto resolves workspace from job project_id, not request path."""
-    import server
+    from routes import orchestrator as orchestrator_routes
 
     captured = {}
 
@@ -1223,8 +1223,8 @@ async def test_smoke_run_auto_ignores_client_workspace_path(
         captured["job_id"] = job_id
         captured["workspace_path"] = workspace_path
 
-    monkeypatch.setattr(server, "_background_auto_runner_job", fake_background)
-    job_id, project_id = await _create_smoke_auto_job(auth_headers)
+    monkeypatch.setattr(orchestrator_routes, "_background_runtime_job", fake_background)
+    job_id, project_id = await _create_smoke_runtime_job(auth_headers)
     malicious = "C:\\Windows\\System32"
     r = await app_client.post(
         "/api/orchestrator/run-auto",
@@ -1246,20 +1246,19 @@ async def test_smoke_background_runner_exception_has_precise_reason(
     import json
 
     import server
-    from orchestration import auto_runner, runtime_state
+    from services.runtime.runtime_engine import runtime_engine
+    from orchestration import runtime_state
 
     pool = await _get_pg_pool_or_skip()
     runtime_state.set_pool(pool)
-    job_id, _project_id = await _create_smoke_auto_job(auth_headers)
+    job_id, _project_id = await _create_smoke_runtime_job(auth_headers)
 
-    async def fake_run_job_to_completion(job_id, workspace_path="", db_pool=None):
+    async def fake_execute_with_control(*args, **kwargs):
         raise RuntimeError("late-stage verifier boom")
 
-    monkeypatch.setattr(
-        auto_runner, "run_job_to_completion", fake_run_job_to_completion
-    )
+    monkeypatch.setattr(runtime_engine, "execute_with_control", fake_execute_with_control)
 
-    await server._background_auto_runner_job(job_id, str(tmp_path))
+    await server._background_runtime_job(job_id, str(tmp_path))
 
     job = await runtime_state.get_job(job_id)
     assert job["status"] == "failed"
@@ -1275,7 +1274,7 @@ async def test_smoke_background_runner_exception_has_precise_reason(
 
 async def test_smoke_job_state_routes_require_auth(app_client, auth_headers):
     """Stateful job/proof endpoints require an authenticated owner."""
-    job_id, _project_id = await _create_smoke_auto_job(auth_headers)
+    job_id, _project_id = await _create_smoke_runtime_job(auth_headers)
     endpoints = [
         ("GET", f"/api/jobs/{job_id}", None),
         ("GET", "/api/jobs", None),
@@ -1299,7 +1298,7 @@ async def test_smoke_job_state_routes_require_auth(app_client, auth_headers):
 async def test_smoke_job_state_routes_reject_unowned_job(app_client, auth_headers):
     """Stateful job/proof endpoints reject another user's job."""
     other_headers = await _register_smoke_headers(app_client)
-    job_id, _project_id = await _create_smoke_auto_job(other_headers)
+    job_id, _project_id = await _create_smoke_runtime_job(other_headers)
     endpoints = [
         f"/api/jobs/{job_id}",
         f"/api/jobs/{job_id}/steps",
@@ -1324,7 +1323,7 @@ async def test_smoke_job_state_routes_reject_unowned_job(app_client, auth_header
 
 async def test_smoke_job_proof_includes_build_contract(app_client, auth_headers):
     """GET /api/jobs/{job_id}/proof includes the stable build contract envelope."""
-    job_id, _project_id = await _create_smoke_auto_job(auth_headers)
+    job_id, _project_id = await _create_smoke_runtime_job(auth_headers)
     r = await app_client.get(
         f"/api/jobs/{job_id}/proof", headers=auth_headers, timeout=10
     )
@@ -1342,7 +1341,7 @@ async def test_smoke_job_checkpoint_get_roundtrip(app_client, auth_headers):
     """GET /api/jobs/{job_id}/checkpoint/{key} returns persisted snapshot for the owner."""
     from orchestration import runtime_state
 
-    job_id, _project_id = await _create_smoke_auto_job(auth_headers)
+    job_id, _project_id = await _create_smoke_runtime_job(auth_headers)
     pool = await _get_pg_pool_or_skip()
     runtime_state.set_pool(pool)
     await runtime_state.save_checkpoint(
@@ -1364,7 +1363,7 @@ async def test_smoke_job_checkpoint_get_roundtrip(app_client, auth_headers):
 
 async def test_smoke_job_checkpoint_rejects_invalid_key(app_client, auth_headers):
     """Checkpoint keys are restricted to [a-zA-Z0-9_-]{1,64}."""
-    job_id, _project_id = await _create_smoke_auto_job(auth_headers)
+    job_id, _project_id = await _create_smoke_runtime_job(auth_headers)
     r = await app_client.get(
         f"/api/jobs/{job_id}/checkpoint/not!allowed",
         headers=auth_headers,

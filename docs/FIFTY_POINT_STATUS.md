@@ -24,7 +24,7 @@ Local/CI verification: backend **511** tests pass; golden eval **100%**; fronten
 | 17 | Credits | Idempotent deduction; replay safety | done | **`record_usage(idempotency_key=...)`**, **`Idempotency-Key`** on chat; tests |
 | 18 | Credits | Observable balance drift alerts | done | **`CRUCIBAI_CREDIT_BALANCE_LOG`** |
 | 19 | Orchestration | DAG correctness; cycle detection | done | **`test_agent_dag_golden.py`** |
-| 20 | Orchestration | Heartbeat / stale job recovery | done | `runtime_state`, `auto_runner` |
+| 20 | Orchestration | Heartbeat / stale job recovery | done | `runtime_state`, `RUNTIME_ENGINE` |
 | 21 | Orchestration | Fixer loop bounded; no infinite retry | done | **`MAX_RETRIES`**, **`test_fixer_bounded_golden.py`** |
 | 22 | Proof | Proof bundle integrity and replay | done | **`proof_service.py`** |
 | 23 | Proof | Tamper-evident hashes in exports | done | **`bundle_sha256`**, **`test_proof_bundle_integrity.py`** |
@@ -67,3 +67,4 @@ Local/CI verification: backend **511** tests pass; golden eval **100%**; fronten
 
 1. **GitHub:** Repo admin runs [`scripts/enable_branch_protection.ps1`](../scripts/enable_branch_protection.ps1) (or UI) so **`verify-all-passed`** is required on `main`.
 2. **Optional legacy bundle:** If you import the historical `work` branch, add `handoff/bundle_parts_001_003.txt` per [`handoff/README_BUNDLE_IMPORT.md`](../handoff/README_BUNDLE_IMPORT.md).
+

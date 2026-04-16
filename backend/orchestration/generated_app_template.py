@@ -543,7 +543,7 @@ export default function PreviewContract() {
         ("src/preview/PreviewContract.jsx", preview_contract),
         ("src/App.jsx", app),
         ("src/main.jsx", main_jsx),
-        # Sandpack in Workspace.jsx expects /src/index.js; Vite uses main.jsx from index.html
+        # Sandpack preview expects /src/index.js; Vite uses main.jsx from index.html
         ("src/index.js", main_jsx),
         ("src/styles/global.css", global_css),
         ("docs/CRUCIB_BUILD_TARGET.md", _crucib_build_target_doc(job, target)),

@@ -45,8 +45,8 @@ def main() -> int:
         },
         {
             "id": "workspace_preview_remote_fallback",
-            "file": ROOT / "frontend/src/pages/UnifiedWorkspace.jsx",
-            "markers": ["job?.preview_url", "job?.published_url", "job?.deploy_url", "/published/${encodeURIComponent(effectiveJobId)}/"],
+            "file": ROOT / "frontend/src/pages/CrucibAIWorkspace.jsx",
+            "markers": ["job?.preview_url", "job?.published_url", "job?.deploy_url", "/published/${encodeURIComponent(activeJobId)}/"],
             "requirement": "Workspace preview falls back to the published app URL when jobs do not persist preview_url explicitly.",
         },
         {

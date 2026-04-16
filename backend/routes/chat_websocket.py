@@ -10,8 +10,8 @@ import json
 import logging
 from typing import Dict, Any
 
-from services.brain_layer import BrainLayer
 from services.conversation_manager import ContextManager
+from services.runtime.runtime_engine import runtime_engine
 
 logger = logging.getLogger(__name__)
 
@@ -96,8 +96,6 @@ async def process_message_streaming(session_id: str, user_message: str, websocke
         if not session:
             session = context_manager.create_session(session_id)
 
-        brain = BrainLayer()
-
         # Import narration functions for Manus-style updates
         from orchestration.brain_narration import (
             build_task_progress_card,
@@ -147,11 +145,15 @@ async def process_message_streaming(session_id: str, user_message: str, websocke
             },
         })
 
-        brain_result = await brain.execute_request(
-            session,
-            user_message,
+        runtime_out = await runtime_engine.start_task(
+            session=session,
+            session_id=session_id,
+            project_id=f"ws-{session_id}",
+            user_message=user_message,
             progress_callback=send_progress,
         )
+        brain_result = runtime_out.get("brain_result") or {}
+        task = runtime_out.get("task") or {}
 
         if brain_result.get("status") == "clarification_required":
             await websocket.send_json({
@@ -173,6 +175,8 @@ async def process_message_streaming(session_id: str, user_message: str, websocke
                 "intent": brain_result.get("intent"),
                 "status": brain_result.get("status"),
                 "execution": brain_result.get("execution"),
+                "task_id": task.get("task_id"),
+                "task_status": task.get("status"),
             },
         })
 

@@ -13,7 +13,7 @@ const SUGGESTIONS = [
   'Create an admin dashboard with analytics',
 ];
 
-export default function CommandCenter({ onSubmit, isRunning = false, placeholder }) {
+export default function CommandCenter({ onSubmit, isRunning = false, placeholder, toolCarousel }) {
   const [input, setInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [attachments, setAttachments] = useState([]);
@@ -109,6 +109,8 @@ export default function CommandCenter({ onSubmit, isRunning = false, placeholder
 
   return (
     <div style={{ borderTop:'1px solid #e5e7eb', background:'#fff', padding:'12px 16px 16px' }}>
+
+      {toolCarousel}
 
       {/* Suggestions chips — show when focused and empty */}
       {showSuggestions && !input && !isRunning && (

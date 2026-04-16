@@ -7,13 +7,14 @@ Raw server paths are never accepted from clients.
 
 import io
 import logging
+import mimetypes
 import os
 import zipfile
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +81,21 @@ async def _assert_job_access(job_id: str, user: dict) -> Path:
         return _project_workspace_path(project_id)
     except (ImportError, AttributeError):
         return _project_workspace_path(job_id)
+
+
+def _collect_job_workspace_files(workspace: Path) -> List[Dict[str, Any]]:
+    files: List[Dict[str, Any]] = []
+    if not workspace.exists():
+        return files
+    skip = {"node_modules", ".git", "__pycache__", "dist", "build"}
+    for root, dirs, filenames in os.walk(workspace):
+        dirs[:] = [d for d in dirs if d not in skip]
+        for name in filenames:
+            full = Path(root) / name
+            rel = str(full.relative_to(workspace)).replace("\\", "/")
+            files.append({"path": rel, "size": full.stat().st_size})
+    files.sort(key=lambda x: x["path"])
+    return files
 
 
 # ── Project workspace file routes ─────────────────────────────────────────────
@@ -158,23 +174,28 @@ async def get_project_workspace_file(
 @router.get("/jobs/{job_id}/workspace/files")
 async def list_job_workspace_files(
     job_id: str,
+    offset: int = Query(0, ge=0),
+    limit: int = Query(500, ge=1, le=1000),
     user: dict = Depends(_get_auth()),
 ):
-    """List all files in a job's workspace."""
+    """List files in a job's workspace (paginated; same shape as orchestration job workspace tests)."""
     workspace = await _assert_job_access(job_id, user)
-    if not workspace.exists():
-        return {"files": [], "job_id": job_id}
-
-    files = []
-    skip = {"node_modules", ".git", "__pycache__", "dist", "build"}
-    for root, dirs, filenames in os.walk(workspace):
-        dirs[:] = [d for d in dirs if d not in skip]
-        for name in filenames:
-            full = Path(root) / name
-            rel = str(full.relative_to(workspace)).replace("\\", "/")
-            files.append({"path": rel, "size": full.stat().st_size})
-
-    return {"files": files, "job_id": job_id, "count": len(files)}
+    all_files = _collect_job_workspace_files(workspace) if workspace.exists() else []
+    total = len(all_files)
+    off = max(0, int(offset))
+    lim = max(1, min(int(limit), 1000))
+    page = all_files[off : off + lim]
+    has_more = off + lim < total
+    return {
+        "files": page,
+        "job_id": job_id,
+        "count": total,
+        "total_count": total,
+        "offset": off,
+        "limit": lim,
+        "has_more": has_more,
+        "next_offset": off + lim if has_more else None,
+    }
 
 
 @router.get("/jobs/{job_id}/workspace/file")
@@ -200,6 +221,21 @@ async def get_job_workspace_file(
         }
     except OSError as e:
         raise HTTPException(status_code=500, detail=f"Cannot read file: {e}")
+
+
+@router.get("/jobs/{job_id}/workspace/file/raw")
+async def get_job_workspace_file_raw(
+    job_id: str,
+    path: str = Query(..., description="Relative file path within workspace"),
+    user: dict = Depends(_get_auth()),
+):
+    """Stream raw bytes for a file in the job workspace (images, binaries)."""
+    workspace = await _assert_job_access(job_id, user)
+    full_path = _safe_resolve(workspace, path)
+    if not full_path.exists() or not full_path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+    media = mimetypes.guess_type(full_path.name)[0] or "application/octet-stream"
+    return FileResponse(path=str(full_path), media_type=media, filename=full_path.name)
 
 
 # ── Deploy / export routes ─────────────────────────────────────────────────────

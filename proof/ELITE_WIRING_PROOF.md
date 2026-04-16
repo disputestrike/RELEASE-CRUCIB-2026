@@ -9,7 +9,7 @@ This document ties the **elite execution directive** to concrete code paths (not
 | Load order | `backend/orchestration/execution_authority.py` — `resolve_elite_execution_text()` reads `proof/ELITE_EXECUTION_DIRECTIVE.md` first, else `load_elite_autonomous_prompt()`; disabled when `CRUCIBAI_ELITE_SYSTEM_PROMPT` ∈ `{0,false,no,off}` |
 | Job mutation | `attach_elite_context_to_job()` stores `_elite_execution_context` (active, source, sha16, excerpt) |
 | Model fragment | `elite_context_for_model(job)` → block with `sha16=`, rules, excerpt |
-| Run start event | `backend/orchestration/auto_runner.py` — after `job_started`, `append_job_event(..., "execution_authority", {"kind": "execution_authority.json", **elite_job_metadata(job)})` |
+| Run start event | `backend/orchestration/runtime_engine.py` — after `job_started`, `append_job_event(..., "execution_authority", {"kind": "execution_authority.json", **elite_job_metadata(job)})` |
 
 ## 2. Every step: executor
 
@@ -23,7 +23,7 @@ This document ties the **elite execution directive** to concrete code paths (not
 | Item | Location |
 |------|----------|
 | Combined system prompt | `handle_planning_step` for `planning.requirements`: `attach_elite_context_to_job`, `load_elite_autonomous_prompt()` + `elite_context_for_model(job)` → `job["elite_system_prompt"]`, passed to `run_crew_for_goal(..., system_prompt=combined)` |
-| Crew kickoff | `backend/orchestration/agent_orchestrator.py` — `run_crew_for_goal` sets both `system_prompt` and `elite_system_prompt` on kickoff inputs |
+| Crew kickoff | `backend/orchestration/runtime_engine.py` — `run_crew_for_goal` sets both `system_prompt` and `elite_system_prompt` on kickoff inputs |
 | `Agent.execute` | Same file — reads `context["elite_system_prompt"]` or `context["system_prompt"]`, includes first 900 chars in returned `content` as **Execution authority digest** (proves payload reached the agent entrypoint) |
 
 ## 4. What is not wired here
@@ -38,4 +38,5 @@ The **Auto-Runner `Agent` class is still a stub** (no HTTP call to an LLM). Wiri
 | Env-off → empty model block | `test_attach_elite_inactive_injects_empty_model_block` |
 | Crew → digest contains directive marker | `test_run_crew_system_prompt_reaches_agent_execute_digest` |
 
-**Command:** `python -m pytest tests/test_execution_authority_wiring.py tests/test_agent_orchestrator.py -q` (run from `backend/`).
+**Command:** `python -m pytest tests/test_execution_authority_wiring.py tests/test_runtime_engine.py -q` (run from `backend/`).
+

@@ -20,7 +20,7 @@ import '../components/VoiceWaveform.css';
 import './Dashboard.css';
 import { withWorkspaceHandoffNonce } from '../utils/workspaceHandoff';
 
-/** Backup when `location.state` is dropped (refresh / edge navigation); consumed in UnifiedWorkspace. */
+/** Backup when `location.state` is dropped (refresh / edge navigation); consumed in workspace deep links. */
 function stashWorkspaceAutostartGoal(text) {
   const raw = (text || '').trim();
   if (!raw) return;

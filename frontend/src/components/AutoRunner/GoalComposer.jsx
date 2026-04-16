@@ -121,7 +121,7 @@ export default function GoalComposer({
   showCostEstimator = true,
   /** Show “Detected” tags from goal text heuristics. */
   showSmartTags = true,
-  /** `workspace` — lighter shell when embedded under UnifiedWorkspace. */
+  /** `workspace` — lighter shell when embedded in the canonical workspace layout. */
   composerVariant: _composerVariant = 'default',
   /** Raw API / server message for expandable “Technical details” (friendly string in `error`). */
   errorRaw = null,

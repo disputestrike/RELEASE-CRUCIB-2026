@@ -1,5 +1,5 @@
 /**
- * Shared helpers for UnifiedWorkspace Playwright specs (API-rooted fetch + disk seeding).
+ * Shared helpers for CrucibAI workspace Playwright specs (API-rooted fetch + disk seeding).
  */
 const fs = require('fs');
 const path = require('path');
@@ -24,15 +24,16 @@ async function apiRequestContext(playwright) {
   });
 }
 
-async function waitForUnifiedWorkspace(page) {
-  await page.waitForSelector('[data-testid="unified-workspace-root"]', { timeout: 90000 });
+async function waitForCrucibWorkspace(page) {
+  await page.waitForSelector('[data-testid="crucib-workspace-root"]', { timeout: 90000 });
 }
 
 async function openCodeWorkspacePane(page) {
-  await waitForUnifiedWorkspace(page);
-  await page.getByRole('button', { name: 'Dev' }).click({ timeout: 15000 }).catch(() => {});
-  await page.locator('.arp-pane-tabs').getByRole('button', { name: 'Code', exact: true }).click({ timeout: 15000 });
-  await page.waitForSelector('.code-pane-main', { timeout: 20000 });
+  await waitForCrucibWorkspace(page);
+  await page.getByRole('button', { name: 'Preview & code' }).click({ timeout: 15000 });
+  await page.getByRole('button', { name: '👁 Preview' }).click({ timeout: 5000 }).catch(() => {});
+  await page.getByRole('button', { name: '📄 Code' }).click({ timeout: 15000 });
+  await page.waitForSelector('[data-testid="right-panel-root"]', { timeout: 20000 });
 }
 
 function workspaceProjectRoot(projectId) {
@@ -206,7 +207,7 @@ module.exports = {
   e2eBuildTarget,
   apiBase,
   apiRequestContext,
-  waitForUnifiedWorkspace,
+  waitForCrucibWorkspace,
   openCodeWorkspacePane,
   workspaceProjectRoot,
   seedWorkspaceTextFiles,

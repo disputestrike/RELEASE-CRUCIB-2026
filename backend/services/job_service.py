@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Awaitable, Callable, Dict, Optional
 
 from fastapi import HTTPException
+from services.runtime.execution_authority import build_runtime_native_step_defs
 
 
 async def create_job_service(
@@ -12,7 +13,6 @@ async def create_job_service(
     runtime_state_getter: Callable[[], Any],
     pool_getter: Callable[[], Awaitable[Any]],
     generate_plan: Callable[..., Awaitable[Any]],
-    build_dag_from_plan: Callable[[Any], list[dict]],
     resolve_project_id: Optional[Callable[[str, dict], Awaitable[str]]] = None,
     update_last_build_state: Optional[Callable[[Any], None]] = None,
     planner_project_state: Optional[dict] = None,
@@ -58,7 +58,7 @@ async def create_job_service(
             "created_at": _dt.now(_tz.utc).isoformat(),
         }
 
-    step_defs = build_dag_from_plan(plan)
+    step_defs = build_runtime_native_step_defs(plan)
     if pool:
         for idx, sd in enumerate(step_defs):
             await rs.create_step(

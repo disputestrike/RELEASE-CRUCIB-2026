@@ -16,6 +16,17 @@ import pytest_asyncio
 pytestmark = pytest.mark.asyncio
 
 
+def _workspace_file_paths(files):
+    """API may return string paths or {path, size} objects."""
+    out = []
+    for f in files or []:
+        if isinstance(f, str):
+            out.append(f.replace("\\", "/"))
+        elif isinstance(f, dict) and f.get("path"):
+            out.append(str(f["path"]).replace("\\", "/"))
+    return out
+
+
 @pytest_asyncio.fixture
 async def mock_job_with_project(app_client, auth_headers):
     """Registered user, PG job row, and one file on disk under WORKSPACE_ROOT/{project_id}."""
@@ -72,7 +83,7 @@ async def test_get_job_workspace_files(app_client, auth_headers, mock_job_with_p
     assert resp.status_code == 200
     body = resp.json()
     assert "files" in body
-    assert "src/App.jsx" in body["files"]
+    assert "src/App.jsx" in _workspace_file_paths(body["files"])
 
 
 async def test_get_job_workspace_files_ignores_project_id_query_param(
@@ -90,7 +101,7 @@ async def test_get_job_workspace_files_ignores_project_id_query_param(
     assert resp.status_code == 200
     body = resp.json()
     assert "files" in body
-    assert "src/App.jsx" in body["files"]
+    assert "src/App.jsx" in _workspace_file_paths(body["files"])
 
 
 async def test_get_job_workspace_file_ignores_project_id_query_param(
@@ -129,7 +140,7 @@ async def test_get_job_workspace_files_pagination_metadata(
     assert resp.status_code == 200
     body = resp.json()
     assert "files" in body
-    assert "src/App.jsx" in body["files"]
+    assert "src/App.jsx" in _workspace_file_paths(body["files"])
     assert body.get("total_count") >= 1
     assert body.get("offset") == 0
     assert body.get("limit") == 10

@@ -4,7 +4,6 @@ import tempfile
 from pathlib import Path
 
 import pytest
-from orchestration.auto_runner import _step_failure_context
 from orchestration.executor import (
     _ensure_backend_elite_hardening,
     _main_py_sketch,
@@ -145,26 +144,6 @@ def test_executor_failure_payload_includes_precise_metadata():
     assert payload["stage"] == "elite_builder"
     assert payload["failed_checks"] == ["delivery_classification"]
     assert payload["duration_ms"] == 12
-
-
-def test_auto_runner_failure_context_preserves_verification_reason():
-    ctx = _step_failure_context(
-        {"step_key": "verification.preview"},
-        {
-            "success": False,
-            "error": "verification.preview | browser_preview_failed",
-            "verification": {
-                "failure_reason": "browser_preview_failed",
-                "stage": "preview_boot",
-                "issues": ["Preview boot failed: port closed"],
-                "score": 0,
-            },
-        },
-    )
-
-    assert ctx["failure_reason"] == "browser_preview_failed"
-    assert ctx["stage"] == "preview_boot"
-    assert ctx["issues"] == ["Preview boot failed: port closed"]
 
 
 @pytest.mark.asyncio

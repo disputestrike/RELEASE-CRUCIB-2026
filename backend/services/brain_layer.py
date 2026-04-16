@@ -1,29 +1,25 @@
-"""
-Brain Layer: unified request interpretation, plan-first routing, and calm response assembly.
-This layer chooses a focused execution path, limits agent usage, and returns human-style outputs.
-"""
+"""Brain planner layer: intent assessment and agent-step planning only."""
 
-import asyncio
-import inspect
+from __future__ import annotations
+
 import logging
 from typing import Any, Callable, Dict, List, Optional
 
-import agents
 from agents.registry import AgentRegistry
 from services.conversation_manager import ConversationSession, ContextEnricher
+from services.events import event_bus
 from services.semantic_router import SemanticRouter
 
 logger = logging.getLogger(__name__)
 
 
 class BrainLayer:
-    """Top-level brain layer that abstracts swarm behavior into a single operator."""
+    """Planner-only brain layer. Execution authority belongs to runtime_engine."""
 
     def __init__(self, router: Optional[SemanticRouter] = None):
         self.router = router or SemanticRouter()
 
     def assess_request(self, session: ConversationSession, user_message: str) -> Dict[str, Any]:
-        """Interpret user intent and return a calm plan-first response."""
         routing = self.router.route(
             user_message,
             {
@@ -34,41 +30,87 @@ class BrainLayer:
 
         selected_agents = self._select_agents(routing)
 
-        if routing["intent_confidence"] < 0.45:
+        if routing.get("intent_confidence", 0.0) < 0.45:
             clarifying_questions = ContextEnricher.extract_clarifying_questions(
-                {"user_prompt": user_message}, session
+                {"user_prompt": user_message},
+                session,
             )
             if clarifying_questions:
                 return {
                     "assistant_response": clarifying_questions[0],
                     "suggestions": clarifying_questions,
-                    "intent": routing["intent"],
-                    "intent_confidence": routing["intent_confidence"],
+                    "intent": routing.get("intent"),
+                    "intent_confidence": routing.get("intent_confidence"),
                     "routing": routing,
-                    "selected_agents": [a["agent"] for a in selected_agents],
-                "selected_agent_configs": selected_agents,
+                    "selected_agents": [a.get("agent") for a in selected_agents],
+                    "selected_agent_configs": selected_agents,
+                    "status": "clarification_required",
+                }
+
+        return {
+            "assistant_response": self._summarize_plan(user_message, routing, selected_agents, session),
             "suggestions": self._suggest_followups(routing),
-            "intent": routing["intent"],
-            "intent_confidence": routing["intent_confidence"],
+            "intent": routing.get("intent"),
+            "intent_confidence": routing.get("intent_confidence"),
             "routing": routing,
-            "selected_agents": [a["agent"] for a in selected_agents],
+            "selected_agents": [a.get("agent") for a in selected_agents],
             "selected_agent_configs": selected_agents,
             "status": "ready",
         }
 
+    def decide(self, session: ConversationSession, user_message: str) -> Dict[str, Any]:
+        """Planner decision API consumed by runtime_engine."""
+        return self.assess_request(session, user_message)
+
+    async def execute_request(
+        self,
+        session: ConversationSession,
+        user_message: str,
+        progress_callback: Optional[Callable[[Dict[str, Any]], Any]] = None,
+        execution_meta: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Backward-compatible adapter that routes execution through runtime_engine."""
+        from services.runtime.runtime_engine import runtime_engine
+
+        meta = execution_meta or {}
+        project_id = (meta.get("project_id") or f"brain-{getattr(session, 'session_id', 'session')}").strip()
+        task_id = (meta.get("task_id") or "").strip() or None
+
+        if task_id:
+            return await runtime_engine.run_task_loop(
+                session=session,
+                project_id=project_id,
+                task_id=task_id,
+                user_message=user_message,
+                progress_callback=progress_callback,
+                planner=self,
+            )
+
+        out = await runtime_engine.start_task(
+            session=session,
+            session_id=getattr(session, "session_id", "session"),
+            project_id=project_id,
+            user_message=user_message,
+            progress_callback=progress_callback,
+        )
+        return out.get("brain_result") or {
+            "status": "execution_failed",
+            "execution": {"error": "runtime_engine returned no result"},
+        }
+
     def _select_agents(self, routing: Dict[str, Any], max_agents: int = 2) -> List[Dict[str, Any]]:
-        agents = routing.get("primary_agents", []) + routing.get("secondary_agents", [])
-        agents = sorted(agents, key=lambda x: x.get("confidence", 0), reverse=True)
+        candidates = routing.get("primary_agents", []) + routing.get("secondary_agents", [])
+        candidates = sorted(candidates, key=lambda x: x.get("confidence", 0), reverse=True)
 
         selected: List[Dict[str, Any]] = []
-        for agent in agents:
+        for agent in candidates:
             if len(selected) >= max_agents:
                 break
             if agent.get("confidence", 0) >= 0.35:
                 selected.append(agent)
 
-        if not selected and agents:
-            selected.append(agents[0])
+        if not selected and candidates:
+            selected.append(candidates[0])
 
         return selected
 
@@ -80,28 +122,26 @@ class BrainLayer:
         session: ConversationSession,
     ) -> str:
         intent = routing.get("intent", "general")
-        confidence = routing.get("intent_confidence", 0.0)
+        confidence = float(routing.get("intent_confidence", 0.0) or 0.0)
         agent_actions = [self._human_action(agent) for agent in selected_agents]
         agent_description = ", then ".join(agent_actions) if agent_actions else "handle it carefully"
 
-        summary = (
+        if confidence < 0.6:
+            return (
+                f"I’m building a safe plan for this request. "
+                f"It looks like a {intent.replace('_', ' ')} task, but I’m not fully certain yet. "
+                f"I’ll proceed carefully and may request clarification."
+            )
+
+        return (
             f"I understand this as a {intent.replace('_', ' ')} task. "
             f"I’m taking a focused approach so you get one calm, useful result. "
             f"First I will {agent_description}. "
             f"If I need any more detail, I’ll ask for it before making changes."
         )
 
-        if confidence < 0.6:
-            summary = (
-                f"I’m building a safe plan for this request. "
-                f"It looks like a {intent.replace('_', ' ')} task, but I’m not fully certain yet. "
-                f"I’ll proceed carefully and may request clarification."
-            )
-
-        return summary
-
     def _human_action(self, agent_config: Dict[str, Any]) -> str:
-        agent_name = agent_config.get("agent", "agent")
+        agent_name = str(agent_config.get("agent", "agent"))
         if "CodeAnalysis" in agent_name:
             return "review the code for quality and fixes"
         if "Backend" in agent_name:
@@ -120,100 +160,45 @@ class BrainLayer:
 
     def _suggest_followups(self, routing: Dict[str, Any]) -> List[str]:
         intent = routing.get("intent", "general")
-        suggestions = []
 
         if intent == "code_analysis":
-            suggestions = [
+            return [
                 "Review test coverage next",
                 "Refactor the code for clarity",
                 "Identify any hidden bugs",
             ]
-        elif intent == "testing":
-            suggestions = [
+        if intent == "testing":
+            return [
                 "Run focused regression tests",
                 "Check failing test output",
                 "Verify the build passes",
             ]
-        elif intent == "generation":
-            suggestions = [
+        if intent == "generation":
+            return [
                 "Refine the UX after generation",
                 "Add error handling and validation",
                 "Review the generated API contract",
             ]
-        elif intent == "deployment":
-            suggestions = [
+        if intent == "deployment":
+            return [
                 "Verify the deployment logs",
                 "Confirm the live URL works",
                 "Run a smoke test",
             ]
-        else:
-            suggestions = [
-                "Test the result",
-                "Ask for a more detailed goal",
-                "Review the generated output",
-            ]
-
-        return suggestions[:3]
-
-    async def execute_request(
-        self,
-        session: ConversationSession,
-        user_message: str,
-        progress_callback: Optional[Callable[[Dict[str, Any]], Any]] = None,
-    ) -> Dict[str, Any]:
-        """Assess the request and execute the selected plan if ready."""
-        brain_result = self.assess_request(session, user_message)
-
-        if brain_result.get("status") != "ready":
-            return brain_result
-
-        if not brain_result.get("selected_agent_configs"):
-            brain_result["assistant_response"] = (
-                brain_result["assistant_response"]
-                + " I have a focused plan, but no execution path was selected."
-            )
-            brain_result["status"] = "ready_no_execution"
-            return brain_result
-
-        try:
-            execution_output = await self._run_selected_agents(
-                session,
-                user_message,
-                brain_result["selected_agent_configs"],
-                progress_callback=progress_callback,
-            )
-            brain_result["execution"] = execution_output
-            brain_result["assistant_response"] = self._summarize_execution(
-                brain_result, execution_output
-            )
-            brain_result["status"] = "executed"
-        except Exception as e:
-            logger.error(f"Execution failed: {e}")
-            brain_result["assistant_response"] = (
-                brain_result["assistant_response"]
-                + " I encountered an issue while executing the plan. The plan is preserved and we can continue from here."
-            )
-            brain_result["status"] = "execution_failed"
-            brain_result["execution"] = {"error": str(e)}
-
-        return brain_result
+        return [
+            "Test the result",
+            "Ask for a more detailed goal",
+            "Review the generated output",
+        ]
 
     def _get_agent_instances(self) -> Dict[str, Any]:
-        """Build a registry of available agent instances."""
-        try:
-            import agents as agents_pkg  # Ensure the package imports agent definitions
-
-            _ = agents_pkg.__all__
-        except Exception:
-            pass
-
         registry = AgentRegistry.get_all_agents()
         instances: Dict[str, Any] = {}
         for name, cls in registry.items():
             try:
                 instances[name] = cls()
-            except Exception as e:
-                logger.warning(f"Could not instantiate agent {name}: {e}")
+            except Exception as exc:
+                logger.warning("Could not instantiate agent %s: %s", name, exc)
         return instances
 
     def _build_agent_context(
@@ -221,111 +206,16 @@ class BrainLayer:
         agent_config: Dict[str, Any],
         user_message: str,
         session: ConversationSession,
+        execution_meta: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         context = {
             "user_prompt": user_message,
             "session_context": session.get_context_enrichment(),
         }
+        if execution_meta:
+            context.update(execution_meta)
         context.update(agent_config.get("params", {}))
         return context
-
-    async def _dispatch_progress(
-        self,
-        callback: Callable[[Dict[str, Any]], Any],
-        payload: Dict[str, Any],
-    ) -> None:
-        if not callback:
-            return
-        result = callback(payload)
-        if inspect.isawaitable(result):
-            await result
-
-    async def _run_selected_agents(
-        self,
-        session: ConversationSession,
-        user_message: str,
-        selected_agent_configs: List[Dict[str, Any]],
-        progress_callback: Optional[Callable[[Dict[str, Any]], Any]] = None,
-    ) -> Dict[str, Any]:
-        agent_instances = self._get_agent_instances()
-        outputs: List[Dict[str, Any]] = []
-        total = len(selected_agent_configs)
-        
-        # Import narration for agent descriptions
-        from orchestration.brain_narration import AGENT_TO_DESCRIPTION, get_agent_description
-
-        # Build steps list for task progress card (convert agent configs to step format)
-        steps = []
-        for i, agent_config in enumerate(selected_agent_configs):
-            agent_name = agent_config.get("agent", "")
-            description = get_agent_description(agent_name)
-            steps.append({
-                "index": i,
-                "agent_key": agent_name,
-                "description": description,
-                "status": "pending",
-            })
-
-        for index, agent_config in enumerate(selected_agent_configs, start=1):
-            agent_name = agent_config.get("agent")
-            if not agent_name:
-                raise ValueError("Selected agent config is missing an agent name")
-
-            agent = agent_instances.get(agent_name)
-            if not agent:
-                raise ValueError(f"Agent '{agent_name}' is not registered or cannot be instantiated")
-
-            # Update step status to running
-            if index - 1 < len(steps):
-                steps[index - 1]["status"] = "running"
-            
-            description = get_agent_description(agent_name)
-
-            await self._dispatch_progress(
-                progress_callback,
-                {
-                    "type": "status",
-                    "content": f"I'm working on: {description}",
-                    "metadata": {
-                        "agent": agent_name,
-                        "step": index,
-                        "total_steps": total,
-                    },
-                    "steps": steps,
-                    "current_idx": index - 1,
-                    "elapsed_seconds": 0,
-                },
-            )
-
-            context = self._build_agent_context(agent_config, user_message, session)
-            result = await agent.run(context)
-            outputs.append({"agent": agent_name, "result": result})
-
-            # Update step status to completed
-            if index - 1 < len(steps):
-                steps[index - 1]["status"] = "completed"
-
-            await self._dispatch_progress(
-                progress_callback,
-                {
-                    "type": "status",
-                    "content": f"Completed: {description}",
-                    "metadata": {
-                        "agent": agent_name,
-                        "step": index,
-                        "total_steps": total,
-                    },
-                    "steps": steps,
-                    "current_idx": index - 1,
-                    "elapsed_seconds": 0,
-                },
-            )
-
-        return {
-            "agent_outputs": outputs,
-            "completed_tasks": len(outputs),
-            "total_tasks": total,
-        }
 
     def _summarize_execution(
         self,
@@ -338,21 +228,17 @@ class BrainLayer:
             result = output.get("result")
             if isinstance(result, dict):
                 if "files" in result:
-                    summaries.append(
-                        f"{agent_name} generated {len(result['files'])} files."
-                    )
+                    summaries.append(f"{agent_name} generated {len(result['files'])} files.")
                 elif "structure" in result:
-                    summaries.append(
-                        f"{agent_name} produced a structured result with keys {list(result.keys())}."
-                    )
+                    summaries.append(f"{agent_name} produced structured output.")
                 else:
-                    summaries.append(f"{agent_name} produced a result with keys {list(result.keys())}.")
+                    summaries.append(f"{agent_name} produced keys {list(result.keys())}.")
             else:
-                summaries.append(f"{agent_name} returned a result of type {type(result).__name__}.")
+                summaries.append(f"{agent_name} returned type {type(result).__name__}.")
 
         if not summaries:
             return (
-                brain_result["assistant_response"]
+                brain_result.get("assistant_response", "")
                 + " I completed the focused plan, but there was no structured output detected."
             )
 

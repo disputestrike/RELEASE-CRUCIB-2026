@@ -46,14 +46,35 @@ def _get_db():
 
 def _get_llm_helpers():
     from server import (
-        _call_llm_with_fallback,
         _effective_api_keys,
         _get_model_chain,
         get_workspace_api_keys,
     )
+    from services.runtime.runtime_engine import runtime_engine
+
+    async def _runtime_call_llm_with_fallback(**kwargs):
+        session_id = kwargs.get("session_id") or str(uuid.uuid4())
+        project_id = kwargs.get("project_id") or f"misc-{session_id}"
+        return await runtime_engine.call_model_for_request(
+            session_id=session_id,
+            project_id=project_id,
+            description=kwargs.get("agent_name") or "misc route llm request",
+            message=kwargs.get("message", ""),
+            system_message=kwargs.get("system_message", ""),
+            model_chain=kwargs.get("model_chain", []),
+            user_id=kwargs.get("user_id"),
+            user_tier=kwargs.get("user_tier", "free"),
+            speed_selector=kwargs.get("speed_selector", "lite"),
+            available_credits=kwargs.get("available_credits", 0),
+            agent_name=kwargs.get("agent_name", ""),
+            api_keys=kwargs.get("api_keys"),
+            content_blocks=kwargs.get("content_blocks"),
+            idempotency_key=kwargs.get("idempotency_key"),
+            skill_hint=kwargs.get("skill_hint"),
+        )
 
     return (
-        _call_llm_with_fallback,
+        _runtime_call_llm_with_fallback,
         _get_model_chain,
         get_workspace_api_keys,
         _effective_api_keys,

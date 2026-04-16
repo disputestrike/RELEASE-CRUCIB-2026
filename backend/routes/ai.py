@@ -14,10 +14,33 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from services.runtime.runtime_engine import runtime_engine
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["ai"])
+
+
+async def _runtime_call_llm(**kwargs):
+    session_id = kwargs.get("session_id") or str(uuid.uuid4())
+    project_id = kwargs.get("project_id") or f"ai-{session_id}"
+    return await runtime_engine.call_model_for_request(
+        session_id=session_id,
+        project_id=project_id,
+        description=kwargs.get("agent_name") or "ai route llm request",
+        message=kwargs.get("message", ""),
+        system_message=kwargs.get("system_message", ""),
+        model_chain=kwargs.get("model_chain", []),
+        user_id=kwargs.get("user_id"),
+        user_tier=kwargs.get("user_tier", "free"),
+        speed_selector=kwargs.get("speed_selector", "lite"),
+        available_credits=kwargs.get("available_credits", 0),
+        agent_name=kwargs.get("agent_name", ""),
+        api_keys=kwargs.get("api_keys"),
+        content_blocks=kwargs.get("content_blocks"),
+        idempotency_key=kwargs.get("idempotency_key"),
+        skill_hint=kwargs.get("skill_hint"),
+    )
 
 
 # ── Lazy-import helpers ───────────────────────────────────────────────────────
@@ -95,7 +118,6 @@ async def ai_chat(
         MIN_CREDITS_FOR_LLM,
         REAL_AGENT_NO_LLM_KEYS_DETAIL,
         _build_chat_system_prompt_for_request,
-        _call_llm_with_fallback,
         _effective_api_keys,
         _ensure_credit_balance,
         _extract_pdf_text_from_b64,
@@ -226,7 +248,7 @@ async def ai_chat(
             )
             if haiku_key:
                 model_chain = [("haiku", HAIKU_MODEL, "anthropic")]
-        response, model_used = await _call_llm_with_fallback(
+        response, model_used = await _runtime_call_llm(
             message=combined_text,
             system_message=system_message,
             session_id=session_id,
@@ -306,7 +328,6 @@ async def ai_chat_stream(
     from server import (
         MIN_CREDITS_FOR_LLM,
         REAL_AGENT_NO_LLM_KEYS_DETAIL,
-        _call_llm_with_fallback,
         _effective_api_keys,
         _get_model_chain,
         _merge_prior_turns_into_message,
@@ -342,7 +363,7 @@ async def ai_chat_stream(
             model_chain = _get_model_chain(
                 data.model or "auto", combined, effective_keys=effective_stream
             )
-            response, model_used = await _call_llm_with_fallback(
+            response, model_used = await _runtime_call_llm(
                 message=combined,
                 system_message=data.system_message,
                 session_id=data.session_id or str(uuid.uuid4()),
@@ -377,7 +398,6 @@ async def iterative_build(
 
     from server import (
         MIN_CREDITS_FOR_LLM,
-        _call_llm_with_fallback,
         _effective_api_keys,
         _get_model_chain,
         _stub_detect_build_kind,
@@ -412,7 +432,7 @@ async def iterative_build(
             model_chain = _get_model_chain(
                 "auto", data.message or "", effective_keys=effective
             )
-            response, model_used = await _call_llm_with_fallback(
+            response, model_used = await _runtime_call_llm(
                 message=data.message or "",
                 system_message="You are a full-stack code generator. Generate complete, runnable code.",
                 session_id=data.session_id or str(uuid.uuid4()),
@@ -505,7 +525,6 @@ async def validate_and_fix(
 ):
     """Validate code with LLM; if issues found, run auto-fix and return fixed code."""
     from server import (
-        _call_llm_with_fallback,
         _effective_api_keys,
         _get_model_chain,
         get_workspace_api_keys,
@@ -518,7 +537,7 @@ async def validate_and_fix(
             "auto", data.code[:500], effective_keys=effective
         )
         validate_prompt = f"Review this {data.language or 'javascript'} code. List any syntax errors, runtime errors, or obvious bugs. Reply with a short list (or 'No issues found').\n\n```\n{data.code[:8000]}\n```"
-        validation_result, _ = await _call_llm_with_fallback(
+        validation_result, _ = await _runtime_call_llm(
             message=validate_prompt,
             system_message="You are a code reviewer. Reply only with a concise list of issues or 'No issues found'.",
             session_id=str(uuid.uuid4()),
@@ -536,7 +555,7 @@ async def validate_and_fix(
                 "message": "No issues found.",
             }
         fix_prompt = f"Fix the following code. Issues reported: {validation_result[:1000]}\n\nReturn ONLY the complete fixed code, no markdown fences or explanation.\n\n```\n{data.code[:8000]}\n```"
-        fixed, model_used = await _call_llm_with_fallback(
+        fixed, model_used = await _runtime_call_llm(
             message=fix_prompt,
             system_message="You output only valid code. No markdown, no commentary.",
             session_id=str(uuid.uuid4()),

@@ -21,7 +21,7 @@
     {
       "id": "workspace_preview_remote_fallback",
       "requirement": "Workspace preview falls back to the published app URL when jobs do not persist preview_url explicitly.",
-      "file": "frontend\\src\\pages\\UnifiedWorkspace.jsx",
+      "file": "frontend\\src\\pages\\CrucibAIWorkspace.jsx",
       "passed": true,
       "missing": []
     },
