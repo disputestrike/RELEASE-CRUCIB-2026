@@ -361,7 +361,7 @@ const AdminRoute = ({ children }) => {
   return children;
 };
 
-// Redirect /workspace → /app/workspace so the left sidebar (Layout) always shows; preserve query string.
+// Redirect /workspace → /app/workspace; preserve query string.
 function RedirectWorkspaceToApp() {
   const { search, state } = useLocation();
   return <Navigate to={`/app/workspace${search}`} state={state} replace />;
@@ -457,16 +457,16 @@ function App() {
           <Route path="/blog/:slug" element={<Blog />} />
           <Route path="/changelog" element={<Changelog />} />
           <Route path="/status" element={<Status />} />
+          <Route path="/app/workspace" element={<ProtectedRoute><UnifiedWorkspace /></ProtectedRoute>} />
+          <Route path="/app/workspace-engine" element={<ProtectedRoute><CrucibAIWorkspace /></ProtectedRoute>} />
+          <Route path="/app/workspace-unified" element={<Navigate to="/app/workspace" replace />} />
+          <Route path="/app/workspace-manus" element={<Navigate to="/app/workspace" replace />} />
+          <Route path="/app/workspace-classic" element={<Navigate to="/app/workspace" replace />} />
           <Route path="/app" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route index element={<RedirectAppIndexToWorkspace />} />
             <Route path="builder" element={<Navigate to="/app/workspace" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
-            <Route path="workspace" element={<UnifiedWorkspace />} />
             <Route path="live" element={<MonitoringDashboard />} />
-            <Route path="workspace-engine" element={<CrucibAIWorkspace />} />
-            <Route path="workspace-unified" element={<Navigate to="/app/workspace" replace />} />
-            <Route path="workspace-manus" element={<Navigate to="/app/workspace" replace />} />
-            <Route path="workspace-classic" element={<Navigate to="/app/workspace" replace />} />
             <Route path="projects/new" element={<ProjectBuilder />} />
             <Route path="projects/:id" element={<AgentMonitor />} />
             <Route path="tokens" element={<TokenCenter />} />
