@@ -3,6 +3,7 @@
 const js = require("@eslint/js");
 const react = require("eslint-plugin-react");
 const reactHooks = require("eslint-plugin-react-hooks");
+const importPlugin = require("eslint-plugin-import");
 const globals = require("globals");
 
 /** ESLint 9 flat config — CRA/craco (webpack ESLint plugin disabled). */
@@ -12,7 +13,7 @@ module.exports = [
   react.configs.flat.recommended,
   {
     files: ["src/**/*.{js,jsx}"],
-    plugins: { "react-hooks": reactHooks },
+    plugins: { "react-hooks": reactHooks, import: importPlugin },
     rules: {
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "warn",
@@ -34,6 +35,17 @@ module.exports = [
     settings: { react: { version: "detect" } },
     linterOptions: {
       reportUnusedDisableDirectives: "off",
+    },
+  },
+  {
+    files: [
+      "src/App.js",
+      "src/index.js",
+      "src/pages/CrucibAIWorkspace.jsx",
+      "src/workspace10/**/*.{js,jsx}",
+    ],
+    rules: {
+      "import/no-cycle": ["error", { maxDepth: 1 }],
     },
   },
   {

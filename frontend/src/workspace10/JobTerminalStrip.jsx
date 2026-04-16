@@ -3,7 +3,7 @@
  */
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { API } from '../App';
+import { API_BASE as API } from '../apiBase';
 
 export default function JobTerminalStrip({ projectId, token }) {
   const [sessionId, setSessionId] = useState(null);

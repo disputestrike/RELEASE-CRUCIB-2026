@@ -3,11 +3,12 @@
  * Wires PDF-style event backbone + IndexedDB logs to real SSE, orchestrator, jobs, terminal, trust.
  */
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { Menu } from 'lucide-react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
-import { useAuth, API } from '../App';
+import { useAuth } from '../authContext';
+import { API_BASE as API } from '../apiBase';
 import { useTaskStore } from '../stores/useTaskStore';
 import { useJobStream } from '../hooks/useJobStream';
 import { computeSandpackFilesWithMeta } from '../workspace/sandpackFromFiles';
@@ -29,6 +30,7 @@ import ToolCarousel from '../components/ToolCarousel';
 import ChatStream from '../components/ChatStream';
 import WorkspaceFusedRail from '../components/WorkspaceFusedRail';
 import { useWorkspaceRail } from '../contexts/WorkspaceRailContext';
+import { extractWorkspaceLaunchIntent } from '../utils/workspaceEntry';
 import './CrucibAIWorkspace.css';
 
 function useJobWorkspaceFiles(jobId, token) {
@@ -99,6 +101,7 @@ function listJobToTaskEntry(j) {
 
 export default function CrucibAIWorkspace() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { token } = useAuth();
   const { tasks, addTask, updateTask, setTasks } = useTaskStore();
@@ -138,6 +141,7 @@ export default function CrucibAIWorkspace() {
   const [insightTick, setInsightTick] = useState(0);
   const seenEventIdsRef = useRef(new Set());
   const buildInFlightRef = useRef(false);
+  const processedLaunchRef = useRef(new Set());
 
   const { job, steps, events, proof, isConnected, connectionMode, refresh } = useJobStream(activeJobId, token);
   const { reloadFiles } = useJobWorkspaceFiles(activeJobId, token);
@@ -494,6 +498,36 @@ export default function CrucibAIWorkspace() {
     },
     [goal, loading, stage, job?.status, activeJobId, token, executePlanAndRun, thinkingEffort],
   );
+
+  useEffect(() => {
+    if (!token) return;
+    if (activeJobId) return;
+
+    const intent = extractWorkspaceLaunchIntent({
+      locationState: location.state,
+      search: location.search,
+    });
+
+    if (!intent.prompt || !intent.autoStart) return;
+    const key = intent.handoffKey || `fallback:${location.search}`;
+    if (processedLaunchRef.current.has(key)) return;
+    processedLaunchRef.current.add(key);
+
+    setGoal(intent.prompt);
+    void handleSend(intent.prompt);
+
+    if (intent.hasPromptInQuery) {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('prompt');
+          next.delete('autoStart');
+          return next;
+        },
+        { replace: true },
+      );
+    }
+  }, [token, activeJobId, location.state, location.search, handleSend, setSearchParams]);
 
   const handleDeploy = useCallback(async () => {
     if (!activeJobId || !job?.project_id || deployLoading) return;

@@ -1,16 +1,6 @@
 import { useState, useEffect, useRef, createContext, useContext, Component, useCallback } from "react";
 import { AuthContext, useAuth as _useAuth } from "./authContext";
 
-// Theme system — respects user preference stored in localStorage
-const THEME_KEY = 'crucibai-theme';
-const getInitialTheme = () => localStorage.getItem(THEME_KEY) || 'light';
-const applyTheme = (theme) => {
-  document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem(THEME_KEY, theme);
-};
-// Apply immediately on load (before React renders)
-applyTheme(getInitialTheme());
-
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import axios from "axios";
 
