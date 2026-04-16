@@ -32,6 +32,7 @@ import WorkspaceStatusDock from '../components/AutoRunner/WorkspaceStatusDock';
 import BrainGuidancePanel from '../components/AutoRunner/BrainGuidancePanel';
 import SystemStatusHUD from '../components/AutoRunner/SystemStatusHUD';
 import PreviewPanel from '../components/AutoRunner/PreviewPanel';
+import WorkspaceLeftRail from '../components/AutoRunner/WorkspaceLeftRail';
 import ResizableDivider from '../components/AutoRunner/ResizableDivider';
 import WorkspaceFileTree from '../components/AutoRunner/WorkspaceFileTree';
 import WorkspaceOrchestrationBoard from '../components/workspace-v4/WorkspaceOrchestrationBoard';
@@ -1182,81 +1183,26 @@ export default function UnifiedWorkspace() {
     <WorkspaceNavProvider value={workspaceNavValue}>
     <div className={`uw-root arp-root arp-ux-${uxMode}`} data-testid="unified-workspace-root">
       <div className="arp-layout arp-layout--no-inner-rail">
-        <aside className={`arp-left-rail ${leftCollapsed ? 'collapsed' : ''}`} style={!leftCollapsed ? { width: `${leftWidth}px` } : undefined}>
-          <div className="arp-rail-toggle" onClick={() => setLeftCollapsed((v) => !v)}>
-            {leftCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-          </div>
-
-          <nav className="arp-nav">
-            {!leftCollapsed && <div className="arp-nav-section-label">Navigate</div>}
-            <button
-              type="button"
-              className={`arp-nav-item ${activePane === 'preview' ? 'active' : ''}`}
-              onClick={() => {
-                setActivePane('preview');
-                setRightCollapsed(false);
-              }}
-              title="Preview"
-            >
-              <Eye size={15} />
-              {!leftCollapsed && <span className="arp-nav-label">Preview</span>}
-            </button>
-            <button
-              type="button"
-              className={`arp-nav-item ${activePane === 'timeline' ? 'active' : ''}`}
-              onClick={() => {
-                setActivePane('timeline');
-                setRightCollapsed(false);
-              }}
-              title="Timeline"
-            >
-              <Rocket size={15} />
-              {!leftCollapsed && <span className="arp-nav-label">Timeline</span>}
-            </button>
-            <button
-              type="button"
-              className={`arp-nav-item ${activePane === 'proof' ? 'active' : ''}`}
-              onClick={() => {
-                setActivePane('proof');
-                setRightCollapsed(false);
-              }}
-              title="Proof"
-            >
-              <ShieldCheck size={15} />
-              {!leftCollapsed && <span className="arp-nav-label">Proof</span>}
-            </button>
-            <button
-              type="button"
-              className={`arp-nav-item ${activePane === 'code' ? 'active' : ''}`}
-              onClick={() => {
-                setActivePane('code');
-                setRightCollapsed(false);
-              }}
-              title="Code + Files"
-            >
-              <FileArchive size={15} />
-              {!leftCollapsed && <span className="arp-nav-label">Code</span>}
-            </button>
-
-            {!leftCollapsed && <div className="arp-nav-section-label arp-nav-section-label-system">Workspace Files</div>}
-            {!leftCollapsed && (
-              <div className="uw-left-tree-wrap">
-                <WorkspaceFileTree
-                  paths={wsPaths}
-                  selectedPath={activeWsPath}
-                  onSelectPath={(p) => {
-                    setActiveWsPath(p);
-                    setTreeRevealTick((t) => t + 1);
-                    setActivePane('code');
-                    setRightCollapsed(false);
-                  }}
-                  revealTick={treeRevealTick}
-                  loading={wsListLoading}
-                />
-              </div>
-            )}
-          </nav>
-        </aside>
+        <WorkspaceLeftRail
+          leftCollapsed={leftCollapsed}
+          leftWidth={leftWidth}
+          activePane={activePane}
+          wsPaths={wsPaths}
+          activeWsPath={activeWsPath}
+          treeRevealTick={treeRevealTick}
+          wsListLoading={wsListLoading}
+          onToggleCollapsed={() => setLeftCollapsed((v) => !v)}
+          onSelectPane={(pane) => {
+            setActivePane(pane);
+            setRightCollapsed(false);
+          }}
+          onSelectWorkspacePath={(p) => {
+            setActiveWsPath(p);
+            setTreeRevealTick((t) => t + 1);
+            setActivePane('code');
+            setRightCollapsed(false);
+          }}
+        />
 
         {!leftCollapsed && <ResizableDivider onResize={handleLeftResize} onDoubleClick={handleResetLeftWidth} invertDelta />}
 
