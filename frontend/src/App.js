@@ -337,9 +337,6 @@ const ProtectedRoute = ({ children }) => {
       </div>
     );
   }
-  if (!user.workspace_mode) {
-    return <Navigate to="/onboarding" replace />;
-  }
   return children;
 };
 
