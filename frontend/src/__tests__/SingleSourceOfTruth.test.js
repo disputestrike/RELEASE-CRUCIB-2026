@@ -22,7 +22,7 @@ describe('Single Source of Truth', () => {
       const componentsDir = path.join(__dirname, '../components');
       const files = [
         'LandingPage.jsx', 'AuthPage.jsx', 'Pricing.jsx', 'TemplatesPublic.jsx', 'LearnPublic.jsx',
-        'TokenCenter.jsx', 'Features.jsx', 'Enterprise.jsx', 'Dashboard.jsx', 'UnifiedWorkspace.jsx', 'CrucibAIWorkspace.jsx',
+        'TokenCenter.jsx', 'Features.jsx', 'Enterprise.jsx', 'Dashboard.jsx', 'DashboardVNext.jsx', 'UnifiedWorkspace.jsx', 'WorkspaceVNext.jsx', 'CrucibAIWorkspace.jsx',
       ];
       const missing = files.filter((f) => !fs.existsSync(path.join(pagesDir, f)));
       expect(missing).toEqual([]);
@@ -34,8 +34,8 @@ describe('Single Source of Truth', () => {
       expect(source).toMatch(/path="\/" element=.*LandingPage/);
       expect(source).toMatch(/path="\/pricing" element=.*Pricing/);
       expect(source).toMatch(/path="\/app".*Layout/);
-      expect(source).toMatch(/path="dashboard" element=.*Dashboard/);
-      expect(source).toMatch(/path="\/app\/workspace" element=.*UnifiedWorkspace/);
+      expect(source).toMatch(/path="dashboard" element=.*DashboardVNext/);
+      expect(source).toMatch(/path="\/app\/workspace" element=.*WorkspaceVNext/);
       expect(source).toMatch(/path="\/app\/workspace-engine" element=.*CrucibAIWorkspace/);
       expect(source).toMatch(/path="live" element=.*MonitoringDashboard/);
       expect(source).toMatch(/path="tokens" element=.*TokenCenter/);

@@ -1,0 +1,71 @@
+.workspace-vnext-root {
+  position: relative;
+}
+
+.workspace-vnext-toolbar {
+  position: fixed;
+  top: 10px;
+  right: 12px;
+  z-index: 1200;
+  display: inline-flex;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(10, 16, 24, 0.88);
+  backdrop-filter: blur(8px);
+}
+
+.workspace-vnext-mode {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  background: rgba(21, 28, 38, 0.85);
+  color: #e5e7eb;
+  padding: 6px 10px;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.workspace-vnext-mode.active {
+  border-color: rgba(16, 185, 129, 0.7);
+  background: rgba(16, 185, 129, 0.22);
+}
+
+.workspace-vnext-mode:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.workspace-vnext-notice {
+  position: fixed;
+  top: 56px;
+  right: 14px;
+  z-index: 1200;
+  max-width: 360px;
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  border-radius: 10px;
+  background: rgba(120, 53, 15, 0.85);
+  color: #fef3c7;
+  font-size: 12px;
+  padding: 8px 10px;
+}
+
+@media (max-width: 900px) {
+  .workspace-vnext-toolbar {
+    top: auto;
+    right: auto;
+    left: 10px;
+    bottom: 10px;
+  }
+
+  .workspace-vnext-notice {
+    top: auto;
+    right: auto;
+    left: 10px;
+    bottom: 58px;
+    max-width: calc(100vw - 20px);
+  }
+}

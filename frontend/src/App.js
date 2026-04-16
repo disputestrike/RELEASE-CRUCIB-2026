@@ -29,14 +29,14 @@ import LandingPage from "./pages/LandingPage";
 import OurProjectsPage from "./pages/OurProjectsPage";
 import AuthPage from "./pages/AuthPage";
 import ProjectBuilder from "./pages/ProjectBuilder";
-import Dashboard from "./pages/Dashboard";
+import DashboardVNext from "./pages/DashboardVNext";
 import AgentMonitor from "./pages/AgentMonitor";
 import TokenCenter from "./pages/TokenCenter";
 import ExportCenter from "./pages/ExportCenter";
 import PatternLibrary from "./pages/PatternLibrary";
 import Settings from "./pages/Settings";
 import CrucibAIWorkspace from "./pages/CrucibAIWorkspace";
-import UnifiedWorkspace from "./pages/UnifiedWorkspace";
+import WorkspaceVNext from "./pages/WorkspaceVNext";
 import Layout from "./components/Layout";
 import ShareView from "./pages/ShareView";
 import ExamplesGallery from "./pages/ExamplesGallery";
@@ -457,7 +457,7 @@ function App() {
           <Route path="/blog/:slug" element={<Blog />} />
           <Route path="/changelog" element={<Changelog />} />
           <Route path="/status" element={<Status />} />
-          <Route path="/app/workspace" element={<ProtectedRoute><UnifiedWorkspace /></ProtectedRoute>} />
+          <Route path="/app/workspace" element={<ProtectedRoute><WorkspaceVNext /></ProtectedRoute>} />
           <Route path="/app/workspace-engine" element={<ProtectedRoute><CrucibAIWorkspace /></ProtectedRoute>} />
           <Route path="/app/workspace-unified" element={<Navigate to="/app/workspace" replace />} />
           <Route path="/app/workspace-manus" element={<Navigate to="/app/workspace" replace />} />
@@ -465,7 +465,7 @@ function App() {
           <Route path="/app" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route index element={<RedirectAppIndexToWorkspace />} />
             <Route path="builder" element={<Navigate to="/app/workspace" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="dashboard" element={<DashboardVNext />} />
             <Route path="live" element={<MonitoringDashboard />} />
             <Route path="projects/new" element={<ProjectBuilder />} />
             <Route path="projects/:id" element={<AgentMonitor />} />
