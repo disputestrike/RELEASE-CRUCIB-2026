@@ -8,6 +8,9 @@ import { useAuth } from '../authContext';
 import { API_BASE as API } from '../apiBase';
 import { useJobStream } from '../hooks/useJobStream';
 import { useTaskStore } from '../stores/useTaskStore';
+import InterruptibleFlow from '../components/InterruptibleFlow';
+import RightPanel from '../components/RightPanel';
+import SteerDiff from '../components/SteerDiff';
 import { computeSandpackFilesWithMeta } from '../workspace/sandpackFromFiles';
 import { SandpackProvider, SandpackPreview } from '@codesandbox/sandpack-react';
 import axios from 'axios';
@@ -105,6 +108,10 @@ export default function WorkspaceManusV2() {
   const [workflows, setWorkflows] = useState({});
   const [workflowsOpen, setWorkflowsOpen] = useState(false);
   const [workflowLoading, setWorkflowLoading] = useState(null);
+  const [, setLastEvent] = useState('');
+  const [, setIsOffline] = useState(false);
+  const [, setTrustSignals] = useState({ quality: 0, errors: 0, deployReady: false });
+  const [steerDiff, setSteerDiff] = useState(null);
 
   // ── Real data from backend ──────────────────────────────────────────────────
   const { job, steps, events, proof, isConnected, connectionMode, refresh } = useJobStream(
@@ -654,7 +661,10 @@ export default function WorkspaceManusV2() {
                 <div className="manus-preview-bar">
                   <div className="manus-preview-nav-btns">
                     <button className="manus-preview-nav-btn" title="Refresh"
-                      onClick={() => { const f = document.querySelector('.manus-preview-frame'); if(f) f.src=f.src; }}>
+                      onClick={() => {
+                        const frame = document.querySelector('.manus-preview-frame');
+                        frame?.contentWindow?.location?.reload();
+                      }}>
                       <Ico.Refresh />
                     </button>
                   </div>
