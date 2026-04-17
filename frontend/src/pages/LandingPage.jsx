@@ -1,9 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, ArrowRight, LayoutDashboard, Menu, ShieldCheck, Sparkles, Workflow, X, Paperclip, Image, FileText, Mic, MicOff } from 'lucide-react';
-import { useAuth } from '../authContext';
-import { API_BASE as API } from '../apiBase';
+import { Loader2, ArrowRight, Menu, X, Paperclip, Image, FileText, Mic, MicOff } from 'lucide-react';
+import { useAuth, API } from '../App';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';
 import Logo from '../components/Logo';
@@ -13,24 +12,6 @@ import { withWorkspaceHandoffNonce } from '../utils/workspaceHandoff';
 
 const PENDING_PROMPT_KEY = 'crucibai_pending_prompt';
 const MAX_PROMPT_IN_URL = 1500;
-
-const FRONTEND_SYSTEM_CARDS = [
-  {
-    icon: LayoutDashboard,
-    title: 'Clear dashboard shell',
-    description: 'Projects, jobs, workflows, and trust signals stay readable instead of competing for attention.',
-  },
-  {
-    icon: Workflow,
-    title: 'Execution stays visible',
-    description: 'The center canvas remains focused on the work while the side rails handle navigation and context.',
-  },
-  {
-    icon: ShieldCheck,
-    title: 'Trust in the interface',
-    description: 'Status, proof, and connected systems stay close to the build instead of hidden in separate pages.',
-  },
-];
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -66,7 +47,7 @@ const LandingPage = () => {
         if (state?.initialAttachedFiles?.length) {
           sessionStorage.setItem(PENDING_PROMPT_KEY + '_hasFiles', '1');
         }
-      } catch (_) { void 0; }
+      } catch (_) {}
       navigate(`/auth?redirect=${encodeURIComponent('/app/workspace')}`);
       return;
     }
@@ -184,7 +165,7 @@ const LandingPage = () => {
           const res = await axios.post(`${API}/voice/transcribe`, formData, { headers, timeout: 30000 });
           const text = res.data?.text?.trim();
           if (text) hasInput = (hasInput ? hasInput + ' ' : '') + text;
-        } catch (_) { void 0; }
+        } catch (_) {}
       }
       if (filesToSend) filesToSend = filesToSend.filter(f => !f.type?.startsWith?.('audio/'));
     }
@@ -209,7 +190,7 @@ const LandingPage = () => {
             <Link to="/our-projects" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Our Project</Link>
           </div>
           <div className="hidden md:flex items-center gap-4 ml-auto shrink-0">
-            <button type="button" onClick={() => navigate('/app/dashboard')} className="text-sm text-kimi-nav text-kimi-muted hover:text-kimi-text transition">
+            <button type="button" onClick={() => navigate('/app')} className="text-sm text-kimi-nav text-kimi-muted hover:text-kimi-text transition">
               Dashboard
             </button>
             {!user && (
@@ -246,7 +227,7 @@ const LandingPage = () => {
               {!user && (
                 <Link to="/auth" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Log in</Link>
               )}
-              <button type="button" onClick={() => { navigate('/app/dashboard'); setMobileMenuOpen(false); }} className="text-lg text-left text-kimi-muted hover:text-kimi-text py-2">Dashboard</button>
+              <button type="button" onClick={() => { navigate('/app'); setMobileMenuOpen(false); }} className="text-lg text-left text-kimi-muted hover:text-kimi-text py-2">Dashboard</button>
               <button type="button" onClick={() => { navigate('/app/workspace'); setMobileMenuOpen(false); }} className="w-full py-3 bg-white text-gray-900 rounded-lg font-medium mt-2">Get started</button>
             </div>
           </motion.div>
@@ -258,19 +239,9 @@ const LandingPage = () => {
       {/* Hero — softer typography, smaller input, suggestion chips (Manus-style) */}
       <section className="flex-1 min-h-0 overflow-y-auto pt-32 pb-16 px-6">
         <div className="max-w-[780px] mx-auto">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex justify-center mb-4">
-            <div className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/80 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#666]">
-              <Sparkles className="w-4 h-4" />
-              New landing and dashboard direction
-            </div>
-          </motion.div>
-          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-[2.8rem] font-semibold tracking-tight text-[#1a1a1a] mb-4 text-center leading-[1.02]">
-            Build, monitor, and ship from one calm workspace.
+          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-[2.5rem] font-semibold tracking-tight text-[#1a1a1a] mb-6 text-center">
+            What can I do for you?
           </motion.h1>
-          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="max-w-3xl mx-auto text-center text-[1.05rem] leading-8 text-[#5f5f5f] mb-8">
-            CrucibAI is moving toward the operating style in your reference: compact navigation, a focused task canvas,
-            and a contextual right rail for analytics, settings, and proof.
-          </motion.p>
           <div className="landing-input-wrap rounded-2xl overflow-hidden bg-white border border-[#d1d5db] shadow-[0_1px_3px_rgba(0,0,0,0.05)] focus-within:border-[#a3a3a3] focus-within:shadow-[0_0_0_3px_rgba(0,0,0,0.06)] transition-all max-w-[720px] mx-auto">
             {messages.length > 0 && (
               <div className="max-h-48 overflow-y-auto p-4 space-y-3">
@@ -302,7 +273,7 @@ const LandingPage = () => {
                     <textarea
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
-                      placeholder="Describe the landing page, dashboard, or full product flow you want CrucibAI to build..."
+                      placeholder="Describe what you want to build..."
                       className="flex-1 bg-transparent text-gray-900 placeholder-gray-400 outline-none resize-none min-h-[40px] max-h-[160px] text-[0.95rem] leading-relaxed py-1.5 pl-2"
                       disabled={isBuilding}
                       rows={2}
@@ -343,91 +314,17 @@ const LandingPage = () => {
             </form>
           </div>
           <SuggestionChips onSelect={(prompt) => setInput(prompt)} disabled={isBuilding} />
-
-          <div className="mt-10 rounded-[28px] border border-black/8 bg-white/80 shadow-[0_18px_60px_rgba(17,24,39,0.06)] overflow-hidden">
-            <div className="grid lg:grid-cols-[84px_minmax(0,1fr)_240px]">
-              <div className="bg-[#efede7] border-r border-black/6 p-4 flex flex-col gap-3 text-sm text-[#555]">
-                <div className="font-semibold text-[#111]">cb</div>
-                <div className="rounded-xl bg-white/80 px-3 py-2">New task</div>
-                <div className="rounded-xl px-3 py-2">Agents</div>
-                <div className="rounded-xl px-3 py-2">Search</div>
-                <div className="rounded-xl px-3 py-2">Library</div>
-              </div>
-              <div className="p-5 border-r border-black/6">
-                <div className="flex items-center justify-between gap-3 mb-4">
-                  <div>
-                    <div className="text-xs uppercase tracking-[0.16em] text-[#777] mb-1">Center canvas</div>
-                    <div className="text-2xl font-semibold tracking-[-0.04em] text-[#171717]">Workspace narrative</div>
-                  </div>
-                  <div className="flex gap-2 text-xs text-[#666]">
-                    <span className="rounded-full border border-black/8 bg-white px-3 py-1.5">Code</span>
-                    <span className="rounded-full border border-black/8 bg-white px-3 py-1.5">Preview</span>
-                    <span className="rounded-full border border-black/8 bg-white px-3 py-1.5">Data</span>
-                  </div>
-                </div>
-                <div className="space-y-3 text-sm">
-                  <div className="rounded-2xl border border-black/6 bg-white p-4 text-[#222]">
-                    Read the current app, understand the architecture, and rebuild the new landing page plus dashboard to feel like one product system.
-                  </div>
-                  <div className="rounded-2xl border border-black/6 bg-[#f4f2ec] p-4 text-[#444]">
-                    Keep the build flow in the center, while status and tooling move to the rails where they are easier to scan.
-                  </div>
-                </div>
-              </div>
-              <div className="bg-[#fbfbf9] p-5">
-                <div className="text-xs uppercase tracking-[0.16em] text-[#777] mb-1">Right rail</div>
-                <div className="text-xl font-semibold tracking-[-0.04em] text-[#171717] mb-4">Context tools</div>
-                <div className="space-y-3 text-sm text-[#444]">
-                  <div className="rounded-2xl border border-black/6 bg-white p-4">
-                    Settings, notifications, analytics, file storage, and database views all stay in-context.
-                  </div>
-                  <div className="rounded-2xl border border-black/6 bg-white p-4">
-                    This is the UI direction the new frontend is now moving toward.
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 
       {/* CTA — single line, last thing visible on first screen */}
       <section className="mt-auto shrink-0 py-10 px-6 border-t border-gray-200">
         <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-xl md:text-2xl font-semibold text-[#111827] mb-2">One frontend language from homepage to execution.</h2>
-          <p className="text-sm text-gray-500">Landing page, dashboard, and workspace are being aligned into one clearer operating system.</p>
+          <h2 className="text-xl md:text-2xl font-semibold text-[#111827] mb-2">Your idea is inevitable.</h2>
+          <p className="text-sm text-gray-500">Plan, build, and ship — web, mobile, and automation in one workspace.</p>
         </div>
       </section>
       </div>
-
-      <section className="py-20 px-6 border-t border-gray-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.6)_0%,rgba(249,248,246,0.95)_100%)]">
-        <div className="max-w-6xl mx-auto">
-          <div className="max-w-2xl mb-10">
-            <div className="text-xs uppercase tracking-[0.18em] text-[#666] mb-3">Frontend system</div>
-            <h2 className="text-[2.4rem] leading-[1.02] tracking-[-0.05em] text-[#171717] mb-4">
-              The new direction is less scattered and more operational.
-            </h2>
-            <p className="text-[#5f5f5f] leading-8">
-              The goal is a frontend that feels coherent across the public landing page and the signed-in product surfaces,
-              while still working against the real backend contracts already in this repo.
-            </p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-5">
-            {FRONTEND_SYSTEM_CARDS.map((card) => {
-              const Icon = card.icon;
-              return (
-                <article key={card.title} className="rounded-[28px] border border-black/8 bg-white/85 p-6 shadow-[0_16px_50px_rgba(17,24,39,0.05)]">
-                  <div className="w-12 h-12 rounded-2xl bg-[#f2f1ec] inline-flex items-center justify-center mb-5">
-                    <Icon className="w-5 h-5 text-[#111]" />
-                  </div>
-                  <h3 className="text-2xl tracking-[-0.04em] text-[#181818] mb-3">{card.title}</h3>
-                  <p className="text-[#616161] leading-7">{card.description}</p>
-                </article>
-              );
-            })}
-          </div>
-        </div>
-      </section>
 
       {/* Footer — below the fold; only visible when user scrolls */}
       <footer className="py-12 px-6 border-t border-gray-200 bg-kimi-bg">

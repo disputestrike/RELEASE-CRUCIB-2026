@@ -4,8 +4,7 @@
  */
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../authContext';
-import { API_BASE as API } from '../apiBase';
+import { useAuth, API } from '../App';
 import axios from 'axios';
 import { useJobStream } from '../hooks/useJobStream';
 import {
@@ -28,14 +27,10 @@ import BuildReplay from '../components/AutoRunner/BuildReplay';
 import BuildCompletionCard from '../components/AutoRunner/BuildCompletionCard';
 import WorkspaceActivityFeed from '../components/AutoRunner/WorkspaceActivityFeed';
 import WorkspaceUserChat from '../components/AutoRunner/WorkspaceUserChat';
-import WorkspaceStatusDock from '../components/AutoRunner/WorkspaceStatusDock';
-import BrainGuidancePanel from '../components/AutoRunner/BrainGuidancePanel';
 import SystemStatusHUD from '../components/AutoRunner/SystemStatusHUD';
 import PreviewPanel from '../components/AutoRunner/PreviewPanel';
-import WorkspaceLeftRail from '../components/AutoRunner/WorkspaceLeftRail';
 import ResizableDivider from '../components/AutoRunner/ResizableDivider';
 import WorkspaceFileTree from '../components/AutoRunner/WorkspaceFileTree';
-import WorkspaceOrchestrationBoard from '../components/workspace-v4/WorkspaceOrchestrationBoard';
 import WorkspaceFileViewer from '../components/AutoRunner/WorkspaceFileViewer';
 import { DEFAULT_FILES } from '../components/workspace/constants';
 import { computeSandpackFilesWithMeta, computeSandpackDeps } from '../workspace/sandpackFromFiles';
@@ -50,25 +45,15 @@ import { WorkspaceNavProvider } from '../workspace/WorkspaceNavContext';
 import { detailToString, formatWorkspaceBuildError } from '../workspace/workspaceErrorUtils';
 import { API_BASE } from '../apiBase';
 import { useTaskStore } from '../stores/useTaskStore';
-import {
-  deriveRightRailSubtitle,
-  isWorkspaceLiveBuildPhase,
-  selectWorkspacePreviewStatus,
-} from '../workspace/workspaceLiveUi';
 import '../styles/unified-workspace-tokens.css';
 import './AutoRunnerPage.css';
-import '../components/workspace-v4/workspace-v4.css';
 
-const RIGHT_ORDER = ['preview', 'proof', 'explorer', 'replay', 'failure', 'timeline', 'code'];
+const RIGHT_ORDER = ['proof', 'explorer', 'replay', 'failure', 'preview', 'timeline', 'code'];
 
-function formatCoachReply(guidance) {
-  if (!guidance || typeof guidance !== 'object') return '';
-  const lines = [];
-  if (guidance.headline) lines.push(String(guidance.headline));
-  if (guidance.summary && guidance.summary !== guidance.headline) lines.push(String(guidance.summary));
-  const steps = Array.isArray(guidance.next_steps) ? guidance.next_steps : [];
-  if (steps.length) lines.push(steps.map((s, i) => `${i + 1}. ${s}`).join('\n'));
-  return lines.join('\n\n').trim();
+function shortWorkspaceId(id) {
+  if (!id || typeof id !== 'string') return '';
+  if (id.length <= 16) return id;
+  return `${id.slice(0, 8)}…${id.slice(-4)}`;
 }
 
 export default function UnifiedWorkspace() {
@@ -79,16 +64,9 @@ export default function UnifiedWorkspace() {
   const taskIdFromUrl = searchParams.get('taskId');
   const jobIdFromUrl = searchParams.get('jobId');
   const { token, user, loading: authLoading, ensureGuest } = useAuth();
-  const { updateTask, tasks } = useTaskStore();
+  const { updateTask } = useTaskStore();
   const sessionBootstrapRef = useRef(false);
   const processedLocationHandoffRef = useRef(new Set());
-  /** Same-tick handoff goal when router state + session can race with the autostart effect. */
-  const handoffQueuedAutostartRef = useRef(null);
-  const taskPromptHydratedForIdRef = useRef(null);
-  /** Prevents double plan/run when URL params change during dashboard handoff autostart. */
-  const workspaceAutostartDoneRef = useRef(false);
-  /** Open Preview once per job when a run is in motion (does not fight tab changes on re-render). */
-  const autoPreviewOnceForJobRef = useRef(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -134,43 +112,22 @@ export default function UnifiedWorkspace() {
     localStorage.setItem('crucibai_right_collapsed', rightCollapsed);
   }, [rightCollapsed]);
 
-  const [leftCollapsed, setLeftCollapsed] = useState(() => localStorage.getItem('crucibai_left_collapsed') === 'true');
-  useEffect(() => {
-    localStorage.setItem('crucibai_left_collapsed', leftCollapsed);
-  }, [leftCollapsed]);
-
-  const [leftWidth, setLeftWidth] = useState(() => parseInt(localStorage.getItem('crucibai_left_width') || '280', 10));
-  useEffect(() => {
-    localStorage.setItem('crucibai_left_width', String(leftWidth));
-  }, [leftWidth]);
-
   const [rightWidth, setRightWidth] = useState(() => parseInt(localStorage.getItem('crucibai_right_width') || '440', 10));
   useEffect(() => {
     localStorage.setItem('crucibai_right_width', String(rightWidth));
   }, [rightWidth]);
 
-  const handleLeftResize = useCallback((delta) => {
-    setLeftWidth((w) => {
-      const minLeft = 220;
-      const minCenter = 280;
-      const inner = typeof window !== 'undefined' ? window.innerWidth : 1440;
-      const rightReserve = rightCollapsed ? 32 : rightWidth + 10;
-      const maxLeft = Math.max(minLeft, inner - rightReserve - minCenter - 24);
-      return Math.min(maxLeft, Math.max(minLeft, w + delta));
-    });
-  }, [rightCollapsed, rightWidth]);
-  const handleResetLeftWidth = useCallback(() => setLeftWidth(280), []);
-
   const handleResize = useCallback((delta) => {
     setRightWidth((w) => {
       const minRight = 200;
       const minCenter = 280;
+      const div = 10;
       const inner = typeof window !== 'undefined' ? window.innerWidth : 1440;
-      const leftReserve = leftCollapsed ? 72 : leftWidth + 10;
-      const maxRight = Math.max(minRight, inner - leftReserve - minCenter - 24);
+      const sidebarReserve = 300;
+      const maxRight = Math.max(minRight, inner - sidebarReserve - div - minCenter);
       return Math.min(maxRight, Math.max(minRight, w + delta));
     });
-  }, [leftCollapsed, leftWidth]);
+  }, []);
   const handleResetWidth = useCallback(() => setRightWidth(440), []);
 
   const [editorColorMode, setEditorColorMode] = useState(() =>
@@ -200,7 +157,7 @@ export default function UnifiedWorkspace() {
   const [errorRaw, setErrorRaw] = useState(null);
   /** User prompts sent from the composer — shown as bubbles above activity (input stays empty after send). */
   const [userChatMessages, setUserChatMessages] = useState([]);
-  const [activePane, setActivePane] = useState('preview');
+  const [activePane, setActivePane] = useState('proof');
   const [failedStep, setFailedStep] = useState(null);
   useEffect(() => {
     if (!API) return;
@@ -293,10 +250,7 @@ export default function UnifiedWorkspace() {
 
   /** URL wins so stream/poll start on first paint when opening ?jobId=… (state hydrates a tick later). */
   const effectiveJobId = jobIdFromUrl || jobId;
-  const { job, latestFailure, milestoneBatch, repairQueueLen, steps, events, proof, isConnected, connectionMode, refresh } = useJobStream(
-    effectiveJobId,
-    token,
-  );
+  const { job, steps, events, proof, isConnected, connectionMode, refresh } = useJobStream(effectiveJobId, token);
 
   const effectiveProjectId = job?.project_id || projectIdFromUrl || null;
 
@@ -393,6 +347,13 @@ export default function UnifiedWorkspace() {
   useEffect(() => {
     if (isCompleted && stage === 'running') setStage('completed');
   }, [isCompleted, stage]);
+
+  const previewStatus = isCompleted ? 'ready' : stage === 'running' || job?.status === 'running' ? 'building' : 'idle';
+  const previewUrl =
+    job?.preview_url ||
+    job?.published_url ||
+    job?.deploy_url ||
+    (isCompleted && effectiveJobId ? `/published/${encodeURIComponent(effectiveJobId)}/` : null);
 
   const handleShare = useCallback(() => {
     const url = window.location.href;
@@ -593,39 +554,6 @@ export default function UnifiedWorkspace() {
     return () => clearTimeout(id);
   }, [events]);
 
-  // Auto-scroll center pane to bottom when messages or steps update
-  useEffect(() => {
-    const el = centerScrollRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
-  }, [userChatMessages, steps, events]);
-  const lastBrainEventIdRef = useRef(null);
-  useEffect(() => {
-    if (!events.length) return;
-    const last = events[events.length - 1];
-    const t = last?.type || last?.event_type;
-    if (t !== 'brain_guidance') return;
-    // dedupe — only push if this is a new event
-    const evId = last?.id || last?.event_id || JSON.stringify(last).slice(0, 80);
-    if (lastBrainEventIdRef.current === evId) return;
-    lastBrainEventIdRef.current = evId;
-    // parse payload
-    const p = last?.payload && typeof last.payload === 'object'
-      ? last.payload
-      : (() => { try { return JSON.parse(last?.payload_json || '{}'); } catch { return {}; } })();
-    const headline = p?.headline || '';
-    const summary = p?.summary || '';
-    const body = [headline, summary].filter(Boolean).join(' — ');
-    if (!body.trim()) return;
-    const msgId = typeof crypto !== 'undefined' && crypto.randomUUID
-      ? crypto.randomUUID()
-      : `brain_${Date.now()}`;
-    setUserChatMessages((prev) => [
-      ...prev,
-      { id: msgId, body, role: 'assistant', jobId: effectiveJobId, pendingBind: false, ts: Date.now() },
-    ]);
-  }, [events, effectiveJobId]);
-
   const prevJobStatusRef = useRef(null);
   useEffect(() => {
     prevJobStatusRef.current = null;
@@ -647,10 +575,9 @@ export default function UnifiedWorkspace() {
     if (!effectiveJobId || !token || !API) return;
     setZipBusy(true);
     try {
-      const res = await fetch(
-        `${API}/jobs/${encodeURIComponent(effectiveJobId)}/export/full.zip?profile=handoff`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      const res = await fetch(`${API}/jobs/${encodeURIComponent(effectiveJobId)}/export/full.zip`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!res.ok) {
         const errText = await res.text().catch(() => '');
         throw new Error(errText || res.statusText || `HTTP ${res.status}`);
@@ -659,7 +586,7 @@ export default function UnifiedWorkspace() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `crucibai-job-${effectiveJobId}-handoff.zip`;
+      a.download = `crucibai-job-${effectiveJobId}-full.zip`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
@@ -678,7 +605,6 @@ export default function UnifiedWorkspace() {
   );
 
   const sendInFlightRef = useRef(false);
-  const centerScrollRef = useRef(null);
 
   const handleApprove = async () => {
     const jid = jobId || jobIdFromUrl;
@@ -718,8 +644,7 @@ export default function UnifiedWorkspace() {
   const runNewPlanAndAuto = useCallback(
     async (goalText) => {
       const trimmed = (goalText || '').trim();
-      // Do not gate on authLoading here: handoff/autostart can race a one-frame loading flip while token is valid.
-      if (!trimmed || !token || !API) return;
+      if (!trimmed || authLoading || !token) return;
       if (sendInFlightRef.current) return;
       sendInFlightRef.current = true;
       setLoading(true);
@@ -775,7 +700,7 @@ export default function UnifiedWorkspace() {
         sendInFlightRef.current = false;
       }
     },
-    [API, token, buildTargets, projectIdFromUrl, setSearchParams, clearBuildError, applyBuildError],
+    [API, token, authLoading, buildTargets, projectIdFromUrl, setSearchParams, clearBuildError, applyBuildError],
   );
 
   /**
@@ -783,70 +708,15 @@ export default function UnifiedWorkspace() {
    * If already in plan review (e.g. run-auto failed), Send only approves / starts run.
    */
   const handleSend = async () => {
-    if (!goal.trim() || authLoading || !token || !API) return;
+    if (!goal.trim() || authLoading || !token) return;
     if (sendInFlightRef.current) return;
     const submitted = goal.trim();
-    const activeJobId = jobId || jobIdFromUrl;
+    appendUserChat(submitted);
+    setGoal('');
+    clearBuildError();
 
-    const failedOrBlocked = steps.some((s) => s.status === 'failed' || s.status === 'blocked');
-    /** Steer+resume whenever the job is terminal/blocked or steps failed (do not require quiescent workers — UI can lag). */
-    const steerMode =
-      Boolean(activeJobId) &&
-      (job?.status === 'failed' ||
-        job?.status === 'cancelled' ||
-        job?.status === 'blocked' ||
-        (failedOrBlocked && job?.status !== 'queued'));
-
-    const seeminglyBusy = isWorkspaceLiveBuildPhase({ jobStatus: job?.status, stage });
-
-    if (steerMode) {
-      appendUserChat(submitted);
-      setGoal('');
-      clearBuildError();
-      sendInFlightRef.current = true;
-      setLoading(true);
-      try {
-        const headers = { Authorization: `Bearer ${token}` };
-        const res = await axios.post(
-          `${API}/jobs/${encodeURIComponent(activeJobId)}/steer`,
-          { message: submitted, resume: true },
-          { headers },
-        );
-        clearBuildError();
-        const coachText = formatCoachReply(res.data?.guidance);
-        if (coachText) {
-          const aid =
-            typeof crypto !== 'undefined' && crypto.randomUUID
-              ? crypto.randomUUID()
-              : `uw_coach_${Date.now()}`;
-          setUserChatMessages((prev) => [
-            ...prev,
-            {
-              id: aid,
-              body: coachText,
-              role: 'assistant',
-              jobId: activeJobId,
-              pendingBind: false,
-              ts: Date.now(),
-            },
-          ]);
-        }
-        setStage('running');
-        refresh();
-      } catch (e) {
-        setGoal(submitted);
-        applyBuildError(detailToString(e.response?.data?.detail) || e.message || 'Steer / resume failed.');
-      } finally {
-        setLoading(false);
-        sendInFlightRef.current = false;
-      }
-      return;
-    }
-
-    if (stage === 'plan' && activeJobId) {
-      appendUserChat(submitted);
-      setGoal('');
-      clearBuildError();
+    const jidExisting = jobId || jobIdFromUrl;
+    if (stage === 'plan' && jidExisting) {
       sendInFlightRef.current = true;
       try {
         await handleApprove();
@@ -855,57 +725,12 @@ export default function UnifiedWorkspace() {
       }
       return;
     }
-    if (seeminglyBusy && !steerMode) {
-      if (!activeJobId) {
-        setError('A run is already in progress. Wait for it to finish, or open another task from the sidebar.');
-        setErrorRaw(null);
-        return;
-      }
-      appendUserChat(submitted);
-      setGoal('');
-      clearBuildError();
-      sendInFlightRef.current = true;
-      setLoading(true);
-      try {
-        const headers = { Authorization: `Bearer ${token}` };
-        const res = await axios.post(
-          `${API}/jobs/${encodeURIComponent(activeJobId)}/steer`,
-          { message: submitted, resume: false },
-          { headers },
-        );
-        clearBuildError();
-        const coachText = formatCoachReply(res.data?.guidance);
-        if (coachText) {
-          const aid =
-            typeof crypto !== 'undefined' && crypto.randomUUID
-              ? crypto.randomUUID()
-              : `uw_coach_${Date.now()}`;
-          setUserChatMessages((prev) => [
-            ...prev,
-            {
-              id: aid,
-              body: coachText,
-              role: 'assistant',
-              jobId: activeJobId,
-              pendingBind: false,
-              ts: Date.now(),
-            },
-          ]);
-        }
-        refresh();
-      } catch (e) {
-        setGoal(submitted);
-        applyBuildError(detailToString(e.response?.data?.detail) || e.message || 'Could not send message.');
-      } finally {
-        setLoading(false);
-        sendInFlightRef.current = false;
-      }
+    if (stage === 'running' || job?.status === 'running' || job?.status === 'queued') {
+      setError('A run is already in progress. Wait for it to finish, or open another task from the sidebar.');
+      setErrorRaw(null);
       return;
     }
 
-    appendUserChat(submitted);
-    setGoal('');
-    clearBuildError();
     await runNewPlanAndAuto(submitted);
   };
 
@@ -922,105 +747,35 @@ export default function UnifiedWorkspace() {
     if (processedLocationHandoffRef.current.has(key)) return;
     processedLocationHandoffRef.current.add(key);
 
+    setGoal(raw);
     if (st.autoStart) {
-      workspaceAutostartDoneRef.current = false;
       try {
         sessionStorage.setItem('crucibai_autostart_goal', raw);
       } catch (_) {
         /* private mode / quota */
       }
     }
-    setGoal(raw);
     navigate(
       { pathname: location.pathname, search: location.search || '' },
       { replace: true, state: {} },
     );
   }, [location.key, location.state, location.pathname, location.search, navigate]);
 
-  /** After guest/session token + API base are ready, start build from dashboard handoff (one shot). */
-  const locSearch = location.search;
+  /** After guest/session token is ready, start build from dashboard handoff (one shot). */
   useEffect(() => {
-    if (workspaceAutostartDoneRef.current) return;
-    if (authLoading || !token || !API) return;
-    if (sendInFlightRef.current) return;
-
-    const urlParams = new URLSearchParams(locSearch);
-    const autoStartUrl = urlParams.get('autoStart') === '1';
-
+    if (authLoading || !token) return;
     let goalText = '';
     try {
-      const fromHandoff = (handoffQueuedAutostartRef.current || '').trim();
-      if (fromHandoff) {
-        goalText = fromHandoff;
-        handoffQueuedAutostartRef.current = null;
-        try {
-          sessionStorage.removeItem('crucibai_autostart_goal');
-        } catch (_) { void 0; }
-      } else {
-        goalText = (sessionStorage.getItem('crucibai_autostart_goal') || '').trim();
-        if (goalText) {
-          try {
-            sessionStorage.removeItem('crucibai_autostart_goal');
-          } catch (_) { void 0; }
-        }
-      }
+      goalText = (sessionStorage.getItem('crucibai_autostart_goal') || '').trim();
+      if (goalText) sessionStorage.removeItem('crucibai_autostart_goal');
     } catch (_) {
       return;
     }
-    if (!goalText && autoStartUrl) {
-      const pq = (urlParams.get('prompt') || '').trim();
-      if (pq) goalText = pq;
-    }
-    if (!goalText && autoStartUrl && taskIdFromUrl) {
-      const t = tasks.find((x) => x.id === taskIdFromUrl);
-      const p = t?.prompt != null ? String(t.prompt).trim() : '';
-      if (p && t?.type === 'build') goalText = p;
-    }
     if (!goalText) return;
-
-    workspaceAutostartDoneRef.current = true;
-
-    if (autoStartUrl || urlParams.get('prompt')) {
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          next.delete('autoStart');
-          next.delete('prompt');
-          return next;
-        },
-        { replace: true },
-      );
-    }
-
-    void (async () => {
-      if (sendInFlightRef.current) return;
-      try {
-        appendUserChat(goalText);
-        setGoal('');
-        await runNewPlanAndAuto(goalText);
-      } catch (_) {
-        /* runNewPlanAndAuto surfaces errors via applyBuildError */
-      }
-    })();
-  }, [token, authLoading, API, runNewPlanAndAuto, appendUserChat, locSearch, taskIdFromUrl, tasks, setSearchParams]);
-
-  /** Sidebar reopen: `?taskId=` with no `jobId` — show stored build prompt in the composer (no auto-run). */
-  useEffect(() => {
-    if (!taskIdFromUrl) {
-      taskPromptHydratedForIdRef.current = null;
-      return;
-    }
-    if (jobIdFromUrl) return;
-    if (taskPromptHydratedForIdRef.current === taskIdFromUrl) return;
-    const task = tasks.find((t) => t.id === taskIdFromUrl);
-    if (!task?.prompt?.trim() || task.type !== 'build' || task.status !== 'pending') return;
-    try {
-      if ((sessionStorage.getItem('crucibai_autostart_goal') || '').trim()) return;
-    } catch (_) { void 0; }
-    if (goal.trim() || userChatMessages.length > 0) return;
-    taskPromptHydratedForIdRef.current = taskIdFromUrl;
-    setGoal(String(task.prompt).trim());
-  }, [taskIdFromUrl, jobIdFromUrl, tasks, goal, userChatMessages.length]);
+    appendUserChat(goalText);
+    setGoal('');
+    void runNewPlanAndAuto(goalText);
+  }, [token, authLoading, runNewPlanAndAuto, appendUserChat]);
 
   const handleCancel = async () => {
     const jid = jobId || jobIdFromUrl;
@@ -1049,12 +804,8 @@ export default function UnifiedWorkspace() {
     if (!jid || !step) return;
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      await axios.post(`${API}/jobs/${encodeURIComponent(jid)}/retry-step/${encodeURIComponent(step.id)}`, {}, { headers });
+      await axios.post(`${API}/jobs/${jid}/retry-step/${step.id}`, {}, { headers });
       setFailedStep(null);
-      if (job?.status === 'failed') {
-        await axios.post(`${API}/jobs/${encodeURIComponent(jid)}/resume`, {}, { headers });
-        setStage('running');
-      }
       refresh();
     } catch (_) {
       /* ignore */
@@ -1133,79 +884,16 @@ export default function UnifiedWorkspace() {
 
   const failureStep = failedStep || latestFailedStep;
 
-  const previewBlockedDetail = useMemo(() => {
-    const fromStep = failureStep?.error_message || failureStep?.step_key;
-    if (latestFailure && typeof latestFailure === 'object') {
-      const issues = Array.isArray(latestFailure.issues) ? latestFailure.issues : [];
-      const first = issues[0] ? String(issues[0]).trim().slice(0, 260) : '';
-      const err = latestFailure.error_message ? String(latestFailure.error_message).trim().slice(0, 260) : '';
-      const sk = latestFailure.step_key ? `${latestFailure.step_key}: ` : '';
-      const reason = latestFailure.failure_reason ? ` (${latestFailure.failure_reason})` : '';
-      const core = first || err;
-      if (core) return `${sk}${core}${reason}`.trim();
-    }
-    if (fromStep) return String(fromStep);
-    return 'Build stopped — open Failure or steer below, then Resume.';
-  }, [latestFailure, failureStep]);
-
-  const previewStatus = selectWorkspacePreviewStatus({
-    jobStatus: job?.status,
-    stage,
-    isCompleted,
-  });
-  const previewUrl =
-    job?.dev_server_url ||
-    job?.preview_url ||
-    job?.published_url ||
-    job?.deploy_url ||
-    (isCompleted && effectiveJobId ? `/published/${encodeURIComponent(effectiveJobId)}/` : null);
-
   const proofItemCount = useMemo(() => {
     if (!proof) return 0;
     if (typeof proof.total_proof_items === 'number') return proof.total_proof_items;
     return Object.values(proof.bundle || {}).reduce((s, arr) => s + (arr?.length || 0), 0);
   }, [proof]);
 
-  const rightRailSubtitle = useMemo(() => deriveRightRailSubtitle(events, steps), [events, steps]);
-
-  useEffect(() => {
-    if (!effectiveJobId || isCompleted) return;
-    const js = job?.status;
-    if (js === 'failed' || js === 'cancelled' || js === 'blocked') return;
-    if (!isWorkspaceLiveBuildPhase({ jobStatus: js, stage })) return;
-    if (autoPreviewOnceForJobRef.current === effectiveJobId) return;
-    autoPreviewOnceForJobRef.current = effectiveJobId;
-    setActivePane('preview');
-    setRightCollapsed(false);
-  }, [effectiveJobId, isCompleted, job?.status, stage]);
-
   return (
     <WorkspaceNavProvider value={workspaceNavValue}>
     <div className={`uw-root arp-root arp-ux-${uxMode}`} data-testid="unified-workspace-root">
       <div className="arp-layout arp-layout--no-inner-rail">
-        <WorkspaceLeftRail
-          leftCollapsed={leftCollapsed}
-          leftWidth={leftWidth}
-          activePane={activePane}
-          wsPaths={wsPaths}
-          activeWsPath={activeWsPath}
-          treeRevealTick={treeRevealTick}
-          wsListLoading={wsListLoading}
-          onToggleCollapsed={() => setLeftCollapsed((v) => !v)}
-          onSelectPane={(pane) => {
-            setActivePane(pane);
-            setRightCollapsed(false);
-          }}
-          onSelectWorkspacePath={(p) => {
-            setActiveWsPath(p);
-            setTreeRevealTick((t) => t + 1);
-            setActivePane('code');
-            setRightCollapsed(false);
-          }}
-        />
-
-        {!leftCollapsed && <ResizableDivider onResize={handleLeftResize} onDoubleClick={handleResetLeftWidth} invertDelta />}
-
         <div className="arp-center-pane arp-center-pane--composer-bottom">
           <div className="arp-center-toolbar uw-center-headline">
             <div className="uw-center-headline-brand" aria-label="Crucible product version">
@@ -1239,57 +927,38 @@ export default function UnifiedWorkspace() {
             </div>
           </div>
 
-          <div className="arp-center-pane-scroll" ref={centerScrollRef}>
+          <div className="arp-center-pane-scroll">
             {(effectiveJobId || effectiveProjectId) && (
               <div className="uw-build-identity" aria-label="Active build">
                 <div className="uw-build-identity-title">{buildDisplayTitle}</div>
+                <div className="uw-build-identity-meta">
+                  {effectiveJobId ? (
+                    <span className="uw-build-identity-chip" title={effectiveJobId}>
+                      Job {shortWorkspaceId(effectiveJobId)}
+                    </span>
+                  ) : null}
+                  {effectiveProjectId ? (
+                    <span className="uw-build-identity-chip" title={effectiveProjectId}>
+                      Project {shortWorkspaceId(effectiveProjectId)}
+                    </span>
+                  ) : null}
+                </div>
               </div>
             )}
-            <BrainGuidancePanel
-              jobId={effectiveJobId}
-              workspaceStage={stage}
-              jobHydrating={Boolean(effectiveJobId && !job && loading)}
-              events={events}
-              jobStatus={job?.status}
-              failureStep={failureStep}
-              proof={proof}
-              latestFailure={latestFailure}
-              milestoneBatch={milestoneBatch}
-              repairQueueLen={repairQueueLen}
+            <WorkspaceUserChat messages={userChatMessages} projectId={effectiveProjectId} />
+            <WorkspaceActivityFeed
+              stage={stage}
+              plan={plan}
+              job={job}
               steps={steps}
+              events={events}
+              effectiveJobId={effectiveJobId}
+              loading={loading}
+              connectionMode={connectionMode}
+              fallbackGoal={goal}
+              hideGoalEcho={userChatMessages.length > 0}
+              openWorkspacePath={openWorkspacePath}
             />
-            {(stage === 'running' || stage === 'completed' || stage === 'failed') && (
-              <div className="wsv4-orchestration-frame">
-                <WorkspaceOrchestrationBoard
-                  buildTitle={buildDisplayTitle}
-                  plan={plan}
-                  stage={stage}
-                  job={job}
-                  steps={steps}
-                  events={events}
-                  latestFailure={latestFailure}
-                  milestoneBatch={milestoneBatch}
-                  repairQueueLen={repairQueueLen}
-                  onOpenPane={(pane) => setActivePane(pane)}
-                  onOpenWorkspacePath={openWorkspacePath}
-                />
-              </div>
-            )}
-            {stage === 'input' && (
-              <WorkspaceActivityFeed
-                stage={stage}
-                plan={plan}
-                job={job}
-                steps={steps}
-                events={events}
-                effectiveJobId={effectiveJobId}
-                loading={loading}
-                connectionMode={connectionMode}
-                fallbackGoal={goal}
-                hideGoalEcho={userChatMessages.length > 0}
-                openWorkspacePath={openWorkspacePath}
-              />
-            )}
 
             {stage === 'plan' && plan && (
               <PlanApproval
@@ -1304,18 +973,12 @@ export default function UnifiedWorkspace() {
               />
             )}
 
-            {(stage === 'running' ||
-              stage === 'completed' ||
-              job?.status === 'failed' ||
-              job?.status === 'cancelled' ||
-              job?.status === 'blocked') && (
+            {(stage === 'running' || stage === 'completed') && (
               <div className="arp-execution-area">
                 {isCompleted && (
                   <BuildCompletionCard
                     job={job}
                     proof={proof}
-                    apiBase={API}
-                    token={token}
                     onOpenPreview={() => {
                       setActivePane('preview');
                       setRightCollapsed(false);
@@ -1347,34 +1010,13 @@ export default function UnifiedWorkspace() {
           </div>
 
           <div className="arp-center-pane-composer">
-            {error ? (
-              <div className="uw-workspace-error-banner">
-                <div className="uw-workspace-error-friendly">{error}</div>
-                {errorRaw ? (
-                  <details className="uw-workspace-error-details">
-                    <summary className="uw-workspace-error-details-summary">Technical details</summary>
-                    <pre className="uw-workspace-error-details-pre">{errorRaw}</pre>
-                  </details>
-                ) : null}
-              </div>
-            ) : null}
-            <WorkspaceStatusDock
-              jobId={effectiveJobId}
-              job={job}
-              steps={steps}
-              stage={stage}
-              events={events}
-              connectionMode={connectionMode}
-              loading={loading}
-            />
-            <WorkspaceUserChat messages={userChatMessages} />
             <GoalComposer
               goal={goal}
               onGoalChange={setGoal}
               onSubmit={handleSend}
               loading={loading}
-              error={null}
-              errorRaw={null}
+              error={error}
+              errorRaw={errorRaw}
               token={token}
               onEstimateReady={setEstimate}
               authLoading={authLoading}
@@ -1384,21 +1026,8 @@ export default function UnifiedWorkspace() {
               showExecutionTargets={false}
               showContinuation={false}
               showQuickChips={false}
-              showCostEstimator={false}
-              showSmartTags={false}
               showComposerHeader={false}
-              enterSends
-              composerInputRows={3}
               composerSubtitle={null}
-              inputPlaceholder={
-                job?.status === 'failed' || job?.status === 'cancelled'
-                  ? 'Tell us the fix — Enter sends; we continue this same run.'
-                  : job?.status === 'blocked'
-                    ? 'What should we do next? Enter sends and moves us forward.'
-                    : isWorkspaceLiveBuildPhase({ jobStatus: job?.status, stage })
-                      ? 'Steer anytime — Enter sends on this same run.'
-                      : 'Goal or follow-up — Enter to send, Shift+Enter for a new line.'
-              }
               composerVariant="workspace"
             />
           </div>
@@ -1485,11 +1114,6 @@ export default function UnifiedWorkspace() {
                   </button>
                 ))}
               </div>
-              {rightRailSubtitle ? (
-                <div className="arp-right-context-line" title={rightRailSubtitle}>
-                  {rightRailSubtitle}
-                </div>
-              ) : null}
 
               <div className="arp-pane-content">
                 {activePane === 'preview' && (
@@ -1500,7 +1124,6 @@ export default function UnifiedWorkspace() {
                     sandpackDeps={sandpackDeps}
                     filesReadyKey={filesReadyKey}
                     sandpackIsFallback={sandpackIsFallback}
-                    blockedDetail={previewBlockedDetail}
                   />
                 )}
                 {activePane === 'timeline' && (
@@ -1515,14 +1138,7 @@ export default function UnifiedWorkspace() {
                   />
                 )}
                 {activePane === 'proof' && (
-                  <ProofPanel
-                    proof={proof}
-                    jobId={effectiveJobId}
-                    onExport={() => {}}
-                    openWorkspacePath={openWorkspacePath}
-                    milestoneBatch={milestoneBatch}
-                    repairQueueLen={repairQueueLen}
-                  />
+                  <ProofPanel proof={proof} jobId={effectiveJobId} onExport={() => {}} openWorkspacePath={openWorkspacePath} />
                 )}
                 {activePane === 'explorer' && uxMode === 'pro' && (
                   <SystemExplorer
@@ -1557,7 +1173,7 @@ export default function UnifiedWorkspace() {
                           className="arp-topbar-btn"
                           style={{ fontSize: 11 }}
                           disabled={zipBusy}
-                          title="Handoff ZIP (omits outputs/). Append ?profile=full to the export URL for the complete tree."
+                          title="Download sealed workspace ZIP"
                           onClick={handleDownloadWorkspaceZip}
                         >
                           <FileArchive size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />
