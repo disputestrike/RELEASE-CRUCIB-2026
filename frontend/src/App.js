@@ -456,7 +456,6 @@ function App() {
           <Route path="/blog/:slug" element={<Blog />} />
           <Route path="/changelog" element={<Changelog />} />
           <Route path="/status" element={<Status />} />
-          <Route path="/app/workspace" element={<ProtectedRoute><UnifiedWorkspace /></ProtectedRoute>} />
           <Route path="/app/workspace-engine" element={<Navigate to="/app/workspace" replace />} />
           <Route path="/app/workspace-unified" element={<Navigate to="/app/workspace" replace />} />
           <Route path="/app/workspace-manus" element={<Navigate to="/app/workspace" replace />} />
@@ -464,6 +463,7 @@ function App() {
           <Route path="/app" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route index element={<RedirectAppIndexToWorkspace />} />
             <Route path="builder" element={<Navigate to="/app/workspace" replace />} />
+            <Route path="workspace" element={<UnifiedWorkspace />} />
             <Route path="dashboard" element={<DashboardVNext />} />
             <Route path="live" element={<MonitoringDashboard />} />
             <Route path="projects/new" element={<ProjectBuilder />} />
