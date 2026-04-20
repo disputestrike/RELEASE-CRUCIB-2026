@@ -27,8 +27,15 @@ class EventBus:
         with self._lock:
             self._subscribers[event_type].append(callback)
 
+    @staticmethod
+    def canonical_type(event_type: str) -> str:
+        """Normalize event names to canonical dotted form."""
+        return (event_type or "").strip().replace("_", ".")
+
     def emit(self, event_type: str, payload: Optional[Dict[str, Any]] = None) -> EventRecord:
-        rec = EventRecord(event_type=event_type, payload=payload or {}, ts=time.time())
+        body = dict(payload or {})
+        body.setdefault("canonical_type", self.canonical_type(event_type))
+        rec = EventRecord(event_type=event_type, payload=body, ts=time.time())
         with self._lock:
             self._recent.append(rec)
             if len(self._recent) > self._max_recent:

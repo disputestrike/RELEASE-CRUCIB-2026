@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional
 
 from services.events import event_bus
 from services.runtime.task_store import delete_task, list_tasks, load_task, save_task
+from services.runtime.task_state_unifier import mirror_task_event, mirror_task_snapshot
 
 
 TERMINAL_STATUSES = {"completed", "failed", "killed"}
@@ -44,6 +45,8 @@ class TaskManager:
         }
         with self._lock:
             save_task(project_id, task_id, task)
+            mirror_task_snapshot(project_id, task_id, task)
+            mirror_task_event(project_id, task_id, "task_created", task)
         event_bus.emit("task.started", task)
         event_bus.emit("task_start", task)
         return task
@@ -66,6 +69,8 @@ class TaskManager:
                 task["metadata"] = merged
             task["updated_at"] = time.time()
             save_task(project_id, task_id, task)
+            mirror_task_snapshot(project_id, task_id, task)
+            mirror_task_event(project_id, task_id, "task_updated", task)
         event_bus.emit("task.updated", task)
         event_bus.emit("task_update", task)
         if task.get("status") in TERMINAL_STATUSES:
@@ -98,6 +103,7 @@ class TaskManager:
         with self._lock:
             ok = delete_task(project_id, task_id)
         if ok:
+            mirror_task_event(project_id, task_id, "task_deleted", {"project_id": project_id, "task_id": task_id})
             event_bus.emit("task.deleted", {"project_id": project_id, "task_id": task_id})
         return ok
 
