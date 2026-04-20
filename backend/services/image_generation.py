@@ -100,12 +100,22 @@ async def _generate_stability(prompt: str, model: str) -> Optional[str]:
         return None
 
 
-# Provider chain — tried in order, first success wins
-_PROVIDERS = [
-    ("together",   "black-forest-labs/FLUX.1-schnell", _generate_together),
-    ("openai",     "dall-e-3",                         _generate_openai),
-    ("stability",  "stable-diffusion-xl",              _generate_stability),
+# Provider chain — tried in order, first success wins.
+# Keep function names here so callables are resolved at runtime.
+_PROVIDER_SPECS = [
+    ("together",   "black-forest-labs/FLUX.1-schnell", "_generate_together"),
+    ("openai",     "dall-e-3",                         "_generate_openai"),
+    ("stability",  "stable-diffusion-xl",              "_generate_stability"),
 ]
+
+
+def _providers() -> List[tuple[str, str, Any]]:
+    providers: List[tuple[str, str, Any]] = []
+    for provider_name, model_name, fn_name in _PROVIDER_SPECS:
+        fn = globals().get(fn_name)
+        if fn is not None:
+            providers.append((provider_name, model_name, fn))
+    return providers
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -145,10 +155,10 @@ class ImageGenerationService:
         used_model = ""
 
         # Try providers in order (or skip to preferred)
-        ordered = _PROVIDERS
+        ordered = _providers()
         if preferred_provider:
-            ordered = [p for p in _PROVIDERS if p[0] == preferred_provider] + \
-                      [p for p in _PROVIDERS if p[0] != preferred_provider]
+            ordered = [p for p in ordered if p[0] == preferred_provider] + \
+                      [p for p in ordered if p[0] != preferred_provider]
 
         for provider_name, model_name, fn in ordered:
             url = await fn(prompt, model_name)
