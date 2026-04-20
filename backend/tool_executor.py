@@ -20,6 +20,12 @@ from urllib.parse import urlparse
 
 from project_state import WORKSPACE_ROOT
 from services.events import event_bus
+from services.hooks import (
+    HOOK_TOOL_ERROR,
+    HOOK_TOOL_POST,
+    HOOK_TOOL_PRE,
+    fire as fire_hook,
+)
 from services.policy import permission_engine
 from services.session_journal import append_entry
 from services.runtime.execution_authority import require_runtime_authority
@@ -162,6 +168,15 @@ def execute_tool(
             "has_params": bool(params),
         },
     )
+    fire_hook(
+        HOOK_TOOL_PRE,
+        {
+            "project_id": effective_project_id,
+            "task_id": task_id,
+            "tool": tool_name,
+            "has_params": bool(params),
+        },
+    )
 
     def _finalize(result: Dict[str, Any]) -> Dict[str, Any]:
         event_type = "tool.finish" if bool(result.get("success")) else "tool.fail"
@@ -183,6 +198,18 @@ def execute_tool(
                 "tool": tool_name,
                 "success": bool(result.get("success")),
                 "error": result.get("error"),
+            },
+        )
+        fire_hook(
+            HOOK_TOOL_POST if bool(result.get("success")) else HOOK_TOOL_ERROR,
+            {
+                "project_id": effective_project_id,
+                "task_id": task_id,
+                "tool": tool_name,
+                "success": bool(result.get("success")),
+                "error": result.get("error"),
+                "policy": result.get("policy"),
+                "skill": result.get("skill"),
             },
         )
         try:
