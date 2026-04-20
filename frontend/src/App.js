@@ -36,6 +36,9 @@ import ExportCenter from "./pages/ExportCenter";
 import PatternLibrary from "./pages/PatternLibrary";
 import Settings from "./pages/Settings";
 import WorkspaceVNext from "./pages/WorkspaceVNext";
+const WorkspaceV3Shell = process.env.REACT_APP_WORKSPACE_V3 === 'true'
+  ? require('./pages/WorkspaceV3Shell').default
+  : null;
 import Layout from "./components/Layout";
 import ShareView from "./pages/ShareView";
 import ExamplesGallery from "./pages/ExamplesGallery";
@@ -470,7 +473,8 @@ function App() {
           <Route path="/app" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route index element={<RedirectAppIndexToWorkspace />} />
             <Route path="builder" element={<Navigate to="/app/workspace" replace />} />
-            <Route path="workspace" element={<WorkspaceVNext />} />
+            <Route path="workspace" element={WorkspaceV3Shell ? <WorkspaceV3Shell /> : <WorkspaceVNext />} />
+            <Route path="workspace-v3" element={WorkspaceV3Shell ? <WorkspaceV3Shell /> : <WorkspaceVNext />} />
             <Route path="dashboard" element={<DashboardVNext />} />
             <Route path="live" element={<MonitoringDashboard />} />
             <Route path="projects/new" element={<ProjectBuilder />} />

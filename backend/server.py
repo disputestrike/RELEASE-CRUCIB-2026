@@ -459,6 +459,9 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("routes.workflows", "router", False),
     ("routes.workspace", "router", False),
     ("routes.worktrees", "router", False),
+    # Phase-1 capability build-out  (engineering/master-list-closeout)
+    ("routes.artifacts", "router", False),
+    ("routes.approvals", "router", False),
 ]
 
 ROUTE_REGISTRATION_REPORT: List[Dict[str, Any]] = []
