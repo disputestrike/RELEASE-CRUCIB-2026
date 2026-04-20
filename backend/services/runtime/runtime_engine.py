@@ -55,6 +55,8 @@ from services.runtime.execution_authority import (
 )
 from services.runtime.execution_context import runtime_execution_scope
 from services.runtime.task_manager import task_manager
+from services.runtime.context_manager import runtime_context_manager
+from services.runtime.spawn_engine import spawn_engine
 from tool_executor import execute_tool
 from services.skills.skill_registry import resolve_skill, list_skills, get_skill
 from services.runtime.memory_graph import add_node as memory_add_node
@@ -686,16 +688,20 @@ class RuntimeEngine:
                 "step_id": step_id,
                 "phase": ExecutionPhase.UPDATE_CONTEXT.value
             })
-            
-# Update context cost from authoritative cost_tracker.
-            totals = cost_tracker.get(task_id)
-            context.cost_used = float(totals.get("credits") or 0.0)
+
+            snapshot = runtime_context_manager.update_from_step(
+                context=context,
+                task_id=task_id,
+                step_id=step_id,
+                result=result,
+            )
 
             event_bus.emit("phase_end", {
                 "task_id": task_id,
                 "step_id": step_id,
                 "phase": ExecutionPhase.UPDATE_CONTEXT.value,
                 "cost_used": context.cost_used,
+                "snapshot_step_id": snapshot.get("step_id"),
             })
             
         except Exception as e:
@@ -720,19 +726,13 @@ class RuntimeEngine:
                 },
             )
 
+            spawn_result = await spawn_engine.maybe_spawn(
+                runtime_engine=self,
+                task_id=task_id,
+                context=context,
+                decision=decision,
+            )
             target_agent = str(decision.get("spawn_agent") or "").strip()
-            if target_agent:
-                await self.spawn_agent(
-                    project_id=f"runtime-{context.user_id}",
-                    task_id=task_id,
-                    parent_message=str(decision.get("spawn_message") or "spawn"),
-                    agent_name=target_agent,
-                    context={
-                        "skill": decision.get("skill") or decision.get("action") or "default",
-                        **(decision.get("spawn_context") or {}),
-                    },
-                    depth=context.depth + 1,
-                )
 
             event_bus.emit(
                 "phase_end",
@@ -740,8 +740,9 @@ class RuntimeEngine:
                     "task_id": task_id,
                     "step_id": step_id,
                     "phase": ExecutionPhase.SPAWN_SUBAGENT.value,
-                    "spawn_requested": True,
+                    "spawn_requested": bool(spawn_result),
                     "spawn_agent": target_agent or None,
+                    "spawn_result": spawn_result,
                 },
             )
         except Exception as e:
