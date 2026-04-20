@@ -237,7 +237,23 @@ def execute_tool(
             "_tool_requires_approval": tool_contract.requires_approval,
             "_tool_side_effect_class": tool_contract.side_effect_class,
         }
-        decision = permission_engine.evaluate_tool_call(tool_name, policy_params)
+        _workspace_surface = (
+            (params or {}).get("workspace_surface")
+            or (params or {}).get("surface")
+            or None
+        )
+        _policy_skill_name = (
+            (skill_meta or {}).get("name")
+            or skill_hint
+            or None
+        )
+        decision = permission_engine.evaluate_tool_call(
+            tool_name,
+            policy_params,
+            surface=_workspace_surface,
+            skill_name=_policy_skill_name,
+            project_id=effective_project_id,
+        )
         if not decision.allowed:
             if decision.mode == "ask":
                 return _err(
