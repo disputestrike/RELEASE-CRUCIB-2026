@@ -60,6 +60,7 @@ from services.runtime.spawn_engine import spawn_engine
 from tool_executor import execute_tool
 from services.skills.skill_registry import resolve_skill, list_skills, get_skill
 from services.runtime.memory_graph import add_node as memory_add_node
+from services.runtime.memory_graph import add_edge as memory_add_edge
 from services.runtime.virtual_fs import task_workspace
 from services.runtime.cost_tracker import cost_tracker
 from services.policy.permission_engine import evaluate_tool_call
@@ -685,9 +686,10 @@ class RuntimeEngine:
                 "step_id": step_id,
                 "phase": ExecutionPhase.UPDATE_MEMORY.value
             })
-            
+
             # Persist step result to memory graph.
             project_id = context.project_id or f"runtime-{context.user_id}"
+            previous_node_id = context.memory.get("last_memory_node")
             node_id = memory_add_node(
                 project_id,
                 task_id=task_id,
@@ -696,21 +698,32 @@ class RuntimeEngine:
                     "step_id": step_id,
                     "output": result.get("output"),
                     "skill": (result.get("metadata") or {}).get("skill"),
+                    "provider": (result.get("metadata") or {}).get("provider"),
                     "duration_ms": result.get("duration_ms"),
                     "success": result.get("success"),
                 },
                 tags=["step", task_id],
             )
+            if previous_node_id:
+                memory_add_edge(
+                    project_id,
+                    from_id=previous_node_id,
+                    to_id=node_id,
+                    relation="next_step",
+                )
             # Also update fast in-memory cache.
             context.memory["last_result"] = result.get("output")
             context.memory["last_step_id"] = step_id
             context.memory["last_memory_node"] = node_id
+            context.memory["last_skill"] = (result.get("metadata") or {}).get("skill")
+            context.memory["last_provider"] = (result.get("metadata") or {}).get("provider")
 
             event_bus.emit("phase_end", {
                 "task_id": task_id,
                 "step_id": step_id,
                 "phase": ExecutionPhase.UPDATE_MEMORY.value,
                 "node_id": node_id,
+                "linked_from": previous_node_id,
             })
             
         except Exception as e:

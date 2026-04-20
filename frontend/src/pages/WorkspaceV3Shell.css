@@ -303,3 +303,18 @@
 
 /* Migration empty */
 .v3-migration-summary { color: #888; font-size: 12px; margin-bottom: 12px; }
+
+/* Trust panel */
+.v3-trust-panel { display: flex; flex-direction: column; gap: 8px; }
+.v3-trust-list { list-style: none; margin: 0; padding: 0; border: 1px solid #24262e; border-radius: 6px; overflow: hidden; }
+.v3-trust-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  border-bottom: 1px solid #1e1f24;
+  font-size: 11px;
+}
+.v3-trust-item:last-child { border-bottom: none; }
+.v3-trust-item span { color: #7f8594; }
+.v3-trust-item strong { color: #d8deea; font-weight: 600; max-width: 130px; text-align: right; word-break: break-word; }

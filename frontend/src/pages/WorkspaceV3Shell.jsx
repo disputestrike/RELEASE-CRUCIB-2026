@@ -49,7 +49,7 @@ const EXECUTION_MODES = [
   { value: 'short_pass',  label: 'Short Pass' },
 ];
 
-const RAIL_SECTIONS = ['Artifacts', 'Plan', 'Screenshots', 'Runs', 'Sources'];
+const RAIL_SECTIONS = ['Artifacts', 'Plan', 'Screenshots', 'Runs', 'Sources', 'Trust'];
 
 // ─── ThreadHeader ─────────────────────────────────────────────────────────────
 
@@ -140,7 +140,7 @@ function WorkspaceTabs({ activeTab, setActiveTab, surface }) {
 
 // ─── RightRail ───────────────────────────────────────────────────────────────
 
-function RightRail({ artifacts, runs, screenshots, plan, sources, threadId }) {
+function RightRail({ artifacts, runs, screenshots, plan, sources, threadId, trust }) {
   const [activeSection, setActiveSection] = useState('Artifacts');
 
   return (
@@ -176,8 +176,49 @@ function RightRail({ artifacts, runs, screenshots, plan, sources, threadId }) {
         {activeSection === 'Sources' && (
           <SourcesList sources={sources} />
         )}
+        {activeSection === 'Trust' && (
+          <TrustPanel trust={trust} />
+        )}
       </div>
     </aside>
+  );
+}
+
+function TrustPanel({ trust }) {
+  if (!trust) return <p className="v3-rail-empty">No trust signals yet.</p>;
+
+  return (
+    <div className="v3-trust-panel">
+      <p className="v3-plan-title">Execution Trust</p>
+      <ul className="v3-trust-list">
+        <li className="v3-trust-item"><span>Mode</span><strong>{trust.mode || 'unknown'}</strong></li>
+        <li className="v3-trust-item"><span>Status</span><strong>{trust.status || 'unknown'}</strong></li>
+        <li className="v3-trust-item"><span>Run ID</span><strong>{trust.runId || 'n/a'}</strong></li>
+        <li className="v3-trust-item"><span>Provider</span><strong>{trust.provider || 'pending'}</strong></li>
+      </ul>
+
+      <p className="v3-plan-title">Phases</p>
+      {Array.isArray(trust.phases) && trust.phases.length > 0 ? (
+        <ul className="v3-sources-list">
+          {trust.phases.map((p, idx) => (
+            <li key={`${p}-${idx}`} className="v3-source-item">{p}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="v3-rail-hint">No phase list available.</p>
+      )}
+
+      <p className="v3-plan-title">Selected Agents</p>
+      {Array.isArray(trust.agents) && trust.agents.length > 0 ? (
+        <ul className="v3-sources-list">
+          {trust.agents.map((a, idx) => (
+            <li key={`${a}-${idx}`} className="v3-source-item">{a}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="v3-rail-hint">Agent selection not emitted yet.</p>
+      )}
+    </div>
   );
 }
 
@@ -360,6 +401,7 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
   const [plan, setPlan] = useState(null);
   const [migrationPlan, setMigrationPlan] = useState(null);
   const [resumeState, setResumeState] = useState(null);
+  const [trust, setTrust] = useState(null);
   const [threadId] = useState(() => `thread-${Date.now()}`);
 
   const userId = user?.id || 'anon';
@@ -381,6 +423,18 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
       });
       const data = await res.json();
       setRuns((prev) => [data, ...prev]);
+      setTrust({
+        mode: data.mode,
+        status: data.status,
+        runId: data.run_id,
+        phases: data.engine_context?.phases || [],
+        agents: data.result?.brain_result?.selected_agents || [],
+        provider: data.result?.brain_result?.runtime_context?.last_provider?.alias || 'pending',
+      });
+      setPlan({
+        title: `Execution Plan (${data.mode || 'build'})`,
+        steps: (data.engine_context?.phases || []).map((phase) => ({ description: phase, status: 'pending' })),
+      });
       setActiveTab('logs');
       setLogs([{ level: 'info', time: new Date().toLocaleTimeString(), message: `Run ${data.run_id} started (${data.mode})` }]);
     } catch (err) {
@@ -550,6 +604,7 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
           plan={plan}
           sources={[]}
           threadId={threadId}
+          trust={trust}
         />
       </div>
     </div>

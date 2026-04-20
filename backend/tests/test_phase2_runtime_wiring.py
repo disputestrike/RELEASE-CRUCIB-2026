@@ -25,12 +25,14 @@ def test_runtime_context_manager_persists_and_loads_snapshot():
         context=context,
         task_id="task-phase2-1",
         step_id="task-phase2-1-step-1",
-        result={"output": {"ok": True}},
+        result={"output": {"ok": True}, "metadata": {"skill": "build", "provider": {"alias": "haiku"}}},
     )
 
     assert snapshot["task_id"] == "task-phase2-1"
     assert snapshot["step_id"] == "task-phase2-1-step-1"
     assert snapshot["memory"]["last_step_id"] == "task-phase2-1-step-1"
+    assert snapshot["last_skill"] == "build"
+    assert snapshot["last_provider"]["alias"] == "haiku"
 
     loaded = runtime_context_manager.load_latest(
         project_id="runtime-test-user",
@@ -196,6 +198,38 @@ async def test_spawn_agent_blocked_when_parent_task_killed():
     )
     assert out["success"] is False
     assert out["error"] == "parent_task_cancelled"
+
+
+@pytest.mark.asyncio
+async def test_phase_update_memory_links_previous_node(monkeypatch):
+    engine = RuntimeEngine()
+    context = ExecutionContext(task_id="phase8-task", user_id="phase8-user")
+    context.project_id = "phase8-proj"
+    context.memory["last_memory_node"] = "n_prev"
+
+    captured = {"edges": []}
+
+    def fake_add_node(project_id, **kwargs):
+        return "n_new"
+
+    def fake_add_edge(project_id, *, from_id, to_id, relation="caused_by"):
+        captured["edges"].append({"from": from_id, "to": to_id, "relation": relation})
+
+    monkeypatch.setattr("services.runtime.runtime_engine.memory_add_node", fake_add_node)
+    monkeypatch.setattr("services.runtime.runtime_engine.memory_add_edge", fake_add_edge)
+
+    await engine._phase_update_memory(
+        task_id="phase8-task",
+        context=context,
+        result={"success": True, "output": {"ok": True}, "metadata": {"skill": "inspect"}},
+        step_id="phase8-task-step-2",
+    )
+
+    assert context.memory["last_memory_node"] == "n_new"
+    assert len(captured["edges"]) == 1
+    assert captured["edges"][0]["from"] == "n_prev"
+    assert captured["edges"][0]["to"] == "n_new"
+    assert captured["edges"][0]["relation"] == "next_step"
 
 
 @pytest.mark.asyncio

@@ -30,6 +30,8 @@ class RuntimeContextManager:
 
         context.memory["last_result"] = result.get("output")
         context.memory["last_step_id"] = step_id
+        context.memory["last_skill"] = (result.get("metadata") or {}).get("skill")
+        context.memory["last_provider"] = (result.get("metadata") or {}).get("provider")
 
         totals = cost_tracker.get(task_id)
         context.cost_used = float(totals.get("credits") or 0.0)
@@ -44,6 +46,9 @@ class RuntimeContextManager:
             "cancelled": bool(getattr(context, "cancelled", False)),
             "pause_requested": bool(getattr(context, "pause_requested", False)),
             "memory": dict(context.memory or {}),
+            "last_skill": context.memory.get("last_skill"),
+            "last_provider": context.memory.get("last_provider"),
+            "last_memory_node": context.memory.get("last_memory_node"),
             "executed_steps": len(getattr(context, "executed_steps", []) or []),
         }
 
