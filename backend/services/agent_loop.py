@@ -70,6 +70,24 @@ MODE_PHASE_MAP: Dict[ExecutionMode, list[str]] = {
 }
 
 
+def _build_goal_request(goal: str, engine_context: Dict[str, Any]) -> str:
+    """Attach execution-mode context to the natural-language goal.
+
+    RuntimeEngine currently accepts a request string as the single planning
+    payload, so we embed structured hints in a stable marker block.
+    """
+    import json
+
+    hints = {
+        "mode": engine_context.get("mode"),
+        "phases": engine_context.get("phases"),
+        "dry_run": engine_context.get("dry_run"),
+        "thread_id": engine_context.get("thread_id"),
+        "project_id": engine_context.get("project_id"),
+    }
+    return f"{goal}\n\n[RUNTIME_HINTS]{json.dumps(hints, ensure_ascii=True)}[/RUNTIME_HINTS]"
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # AgentLoop façade
 # ─────────────────────────────────────────────────────────────────────────────
@@ -149,11 +167,15 @@ class AgentLoop:
         }
 
         try:
+            request = _build_goal_request(goal, engine_context)
             result = await self._get_engine().execute_with_control(
                 task_id=run_id,
-                goal=goal,
-                context=engine_context,
-                on_event=on_event,
+                user_id=user_id,
+                request=request,
+                conversation_id=thread_id,
+                progress_callback=(
+                    (lambda payload: on_event("progress", payload)) if on_event else None
+                ),
             )
             return {
                 "run_id": run_id,
@@ -161,6 +183,7 @@ class AgentLoop:
                 "mode": mode.value,
                 "status": "completed",
                 "result": result,
+                "engine_context": engine_context,
             }
         except Exception as exc:
             logger.exception("[AgentLoop] run %s failed: %s", run_id, exc)
@@ -180,7 +203,10 @@ class AgentLoop:
             engine = self._get_engine()
             if hasattr(engine, "cancel"):
                 await engine.cancel(run_id)
-            return True
+                return True
+            if hasattr(engine, "cancel_task_controlled"):
+                return bool(await engine.cancel_task_controlled(run_id))
+            return False
         except Exception as exc:
             logger.warning("[AgentLoop] cancel %s failed: %s", run_id, exc)
             return False
@@ -191,7 +217,10 @@ class AgentLoop:
             engine = self._get_engine()
             if hasattr(engine, "pause"):
                 await engine.pause(run_id)
-            return True
+                return True
+            if hasattr(engine, "pause_task_controlled"):
+                return bool(await engine.pause_task_controlled(run_id))
+            return False
         except Exception as exc:
             logger.warning("[AgentLoop] pause %s failed: %s", run_id, exc)
             return False
@@ -202,6 +231,9 @@ class AgentLoop:
             engine = self._get_engine()
             if hasattr(engine, "resume"):
                 return await engine.resume(run_id, on_event=on_event)
+            if hasattr(engine, "resume_task_controlled"):
+                resumed = bool(await engine.resume_task_controlled(run_id))
+                return {"run_id": run_id, "status": "resumed" if resumed else "not_found"}
             return {"run_id": run_id, "status": "resumed"}
         except Exception as exc:
             logger.warning("[AgentLoop] resume %s failed: %s", run_id, exc)
