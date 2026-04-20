@@ -195,6 +195,9 @@ function TrustPanel({ trust }) {
         <li className="v3-trust-item"><span>Status</span><strong>{trust.status || 'unknown'}</strong></li>
         <li className="v3-trust-item"><span>Run ID</span><strong>{trust.runId || 'n/a'}</strong></li>
         <li className="v3-trust-item"><span>Provider</span><strong>{trust.provider || 'pending'}</strong></li>
+        <li className="v3-trust-item"><span>Skill</span><strong>{trust.skill || 'pending'}</strong></li>
+        <li className="v3-trust-item"><span>Permission</span><strong>{trust.permission || 'pending'}</strong></li>
+        <li className="v3-trust-item"><span>Last Spawn</span><strong>{trust.lastSpawn || 'none'}</strong></li>
       </ul>
 
       <p className="v3-plan-title">Phases</p>
@@ -403,8 +406,79 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
   const [resumeState, setResumeState] = useState(null);
   const [trust, setTrust] = useState(null);
   const [threadId] = useState(() => `thread-${Date.now()}`);
+  const trustPollRef = useRef(null);
 
   const userId = user?.id || 'anon';
+
+  const mergeTrustFromEvents = useCallback((events) => {
+    if (!Array.isArray(events) || events.length === 0) return;
+
+    let latestProvider = null;
+    let latestSpawn = null;
+    let latestSkill = null;
+    let latestPermission = null;
+
+    for (const e of events) {
+      if (!e || !e.type) continue;
+      const payload = e.payload || {};
+
+      if (e.type === 'provider.chain.selected.runtime') {
+        const provider = payload.provider || {};
+        latestProvider = provider.alias || provider.model || provider.type || null;
+      }
+
+      if (e.type === 'phase_end' && payload.phase === 'check_permission') {
+        latestPermission = payload.reason || null;
+      }
+
+      if (e.type === 'phase_end' && payload.phase === 'spawn_subagent' && payload.spawn_agent) {
+        latestSpawn = payload.spawn_agent;
+      }
+
+      if (e.type === 'phase_end' && payload.phase === 'resolve_skill') {
+        latestSkill = payload.skill || null;
+      }
+    }
+
+    setTrust((prev) => ({
+      ...(prev || {}),
+      provider: latestProvider || (prev && prev.provider) || 'pending',
+      skill: latestSkill || (prev && prev.skill) || 'pending',
+      permission: latestPermission || (prev && prev.permission) || 'pending',
+      lastSpawn: latestSpawn || (prev && prev.lastSpawn) || 'none',
+    }));
+  }, []);
+
+  useEffect(() => {
+    if (!trust) {
+      if (trustPollRef.current) {
+        clearInterval(trustPollRef.current);
+        trustPollRef.current = null;
+      }
+      return undefined;
+    }
+
+    const poll = async () => {
+      try {
+        const res = await fetch('/api/runtime/events/recent?limit=80', { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        mergeTrustFromEvents(data.events || []);
+      } catch {
+        // Ignore transient telemetry poll errors
+      }
+    };
+
+    poll();
+    trustPollRef.current = setInterval(poll, 3500);
+
+    return () => {
+      if (trustPollRef.current) {
+        clearInterval(trustPollRef.current);
+        trustPollRef.current = null;
+      }
+    };
+  }, [trust, mergeTrustFromEvents]);
 
   // ── Action handlers ─────────────────────────────────────────────────────
 
@@ -430,6 +504,9 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
         phases: data.engine_context?.phases || [],
         agents: data.result?.brain_result?.selected_agents || [],
         provider: data.result?.brain_result?.runtime_context?.last_provider?.alias || 'pending',
+        skill: 'pending',
+        permission: 'pending',
+        lastSpawn: 'none',
       });
       setPlan({
         title: `Execution Plan (${data.mode || 'build'})`,
