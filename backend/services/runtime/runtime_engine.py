@@ -502,6 +502,26 @@ class RuntimeEngine:
             if skill in known:
                 permitted = True
                 reason = f"known_skill:{skill}"
+
+                # Phase 2: enforce policy at skill->tool boundary.
+                skill_def = get_skill(skill)
+                if skill_def is not None:
+                    project_id = context.project_id or f"runtime-{context.user_id}"
+                    for tool_name in sorted(skill_def.allowed_tools):
+                        decision = evaluate_tool_call(
+                            tool_name,
+                            {},
+                            surface=skill_def.surface,
+                            skill_name=skill_def.name,
+                            project_id=project_id,
+                        )
+                        if not decision.allowed:
+                            permitted = False
+                            if decision.ask:
+                                reason = f"approval_required:{tool_name}:{decision.reason}"
+                            else:
+                                reason = f"policy_blocked:{tool_name}:{decision.reason}"
+                            break
             else:
                 import os as _os
                 if _os.environ.get("CRUCIB_ENABLE_TOOL_POLICY", "0").strip().lower() in ("1", "true", "yes"):

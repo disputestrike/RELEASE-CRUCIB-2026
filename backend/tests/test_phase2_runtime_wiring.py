@@ -134,3 +134,47 @@ async def test_runtime_engine_spawn_phase_uses_spawn_engine(monkeypatch):
     )
 
     assert called["count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_phase_check_permission_allows_known_skill_when_policy_allows(monkeypatch):
+    engine = RuntimeEngine()
+    context = ExecutionContext(task_id="phase2-task", user_id="phase2-user")
+    context.project_id = "runtime-phase2"
+
+    class _Allow:
+        allowed = True
+        ask = False
+        reason = "allowed"
+
+    monkeypatch.setattr("services.runtime.runtime_engine.evaluate_tool_call", lambda *args, **kwargs: _Allow())
+
+    out = await engine._phase_check_permission(
+        task_id="phase2-task",
+        context=context,
+        skill="build",
+        step_id="phase2-task-step-1",
+    )
+    assert out is True
+
+
+@pytest.mark.asyncio
+async def test_phase_check_permission_blocks_when_policy_denies(monkeypatch):
+    engine = RuntimeEngine()
+    context = ExecutionContext(task_id="phase2-task", user_id="phase2-user")
+    context.project_id = "runtime-phase2"
+
+    class _Deny:
+        allowed = False
+        ask = False
+        reason = "project override denied"
+
+    monkeypatch.setattr("services.runtime.runtime_engine.evaluate_tool_call", lambda *args, **kwargs: _Deny())
+
+    out = await engine._phase_check_permission(
+        task_id="phase2-task",
+        context=context,
+        skill="build",
+        step_id="phase2-task-step-1",
+    )
+    assert out is False
