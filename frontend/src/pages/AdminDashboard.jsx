@@ -13,15 +13,16 @@ const AdminDashboard = () => {
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
         const res = await axios.get(`${API}/admin/dashboard`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers,
         });
         setData(res.data);
       } catch (e) {
         setError(e.response?.data?.detail || e.message);
       }
     };
-    if (token) fetchDashboard();
+    fetchDashboard();
   }, [token]);
 
   if (error) {

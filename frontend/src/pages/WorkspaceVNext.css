@@ -16,6 +16,11 @@
   backdrop-filter: blur(8px);
 }
 
+.workspace-vnext-toolbar--surface {
+  top: 56px;
+  padding: 4px;
+}
+
 .workspace-vnext-mode {
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 999px;
@@ -34,6 +39,11 @@
   background: rgba(16, 185, 129, 0.22);
 }
 
+.workspace-vnext-surface {
+  font-size: 11px;
+  padding: 5px 8px;
+}
+
 .workspace-vnext-mode:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -41,7 +51,7 @@
 
 .workspace-vnext-notice {
   position: fixed;
-  top: 56px;
+  top: 100px;
   right: 14px;
   z-index: 1200;
   max-width: 360px;
@@ -53,6 +63,68 @@
   padding: 8px 10px;
 }
 
+.workspace-vnext-telemetry {
+  position: fixed;
+  top: 102px;
+  right: 14px;
+  z-index: 1198;
+  width: 220px;
+  border: 1px solid rgba(59, 130, 246, 0.45);
+  border-radius: 10px;
+  background: rgba(5, 12, 20, 0.9);
+  color: #dbeafe;
+  padding: 10px;
+}
+
+.workspace-vnext-telemetry-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-bottom: 8px;
+}
+
+.workspace-vnext-telemetry-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 8px;
+  font-size: 11px;
+}
+
+.workspace-vnext-telemetry-grid strong {
+  color: #ffffff;
+}
+
+.workspace-vnext-telemetry {
+  position: fixed;
+  top: 102px;
+  right: 14px;
+  z-index: 1198;
+  width: 220px;
+  border: 1px solid rgba(59, 130, 246, 0.45);
+  border-radius: 10px;
+  background: rgba(5, 12, 20, 0.9);
+  color: #dbeafe;
+  padding: 10px;
+}
+
+.workspace-vnext-telemetry-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-bottom: 8px;
+}
+
+.workspace-vnext-telemetry-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 8px;
+  font-size: 11px;
+}
+
+.workspace-vnext-telemetry-grid strong {
+  color: #ffffff;
+}
+
 @media (max-width: 900px) {
   .workspace-vnext-toolbar {
     top: auto;
@@ -61,11 +133,31 @@
     bottom: 10px;
   }
 
+  .workspace-vnext-toolbar--surface {
+    bottom: 58px;
+  }
+
   .workspace-vnext-notice {
     top: auto;
     right: auto;
     left: 10px;
-    bottom: 58px;
+    bottom: 106px;
     max-width: calc(100vw - 20px);
+  }
+
+  .workspace-vnext-telemetry {
+    top: auto;
+    right: auto;
+    left: 10px;
+    bottom: 154px;
+    width: min(280px, calc(100vw - 20px));
+  }
+
+  .workspace-vnext-telemetry {
+    top: auto;
+    right: auto;
+    left: 10px;
+    bottom: 154px;
+    width: min(280px, calc(100vw - 20px));
   }
 }

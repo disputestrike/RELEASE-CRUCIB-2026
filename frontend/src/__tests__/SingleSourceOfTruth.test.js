@@ -35,8 +35,8 @@ describe('Single Source of Truth', () => {
       expect(source).toMatch(/path="\/pricing" element=.*Pricing/);
       expect(source).toMatch(/path="\/app".*Layout/);
       expect(source).toMatch(/path="dashboard" element=.*DashboardVNext/);
-      expect(source).toMatch(/path="\/app\/workspace" element=.*WorkspaceVNext/);
-      expect(source).toMatch(/path="\/app\/workspace-engine" element=.*Navigate to="\/app\/workspace" replace/);
+      expect(source).toMatch(/path="workspace" element=.*WorkspaceVNext|path="\/app\/workspace" element=.*WorkspaceVNext/);
+      expect(source).toMatch(/path="\/app\/workspace-engine" element=.*RedirectWorkspaceAliasToCanonical/);
       expect(source).toMatch(/path="live" element=.*MonitoringDashboard/);
       expect(source).toMatch(/path="tokens" element=.*TokenCenter/);
     });
@@ -46,7 +46,18 @@ describe('Single Source of Truth', () => {
       expect(source).toMatch(/Navigate to="\/app\/workspace" replace/);
       expect(source).toMatch(/return <Navigate to={`\/app\/workspace\$\{search\}`} state=\{state\} replace \/>/);
       expect(source).toMatch(/function RedirectAppIndexToWorkspace\(\)/);
+      expect(source).toMatch(/function RedirectWorkspaceAliasToCanonical\(\)/);
       expect(source).toMatch(/Route index element=\{<RedirectAppIndexToWorkspace \/>\}/);
+    });
+
+    it('workspace aliases preserve surface query modes and state', () => {
+      const appPath = path.join(__dirname, '../App.js');
+      const source = fs.readFileSync(appPath, 'utf8');
+      expect(source).toMatch(/function RedirectWorkspaceAliasToCanonical\(\)/);
+      expect(source).toMatch(/return <Navigate to={`\/app\/workspace\$\{search\}`} state=\{state\} replace \/>/);
+      expect(source).toMatch(/path="\/app\/workspace-unified" element=\{<RedirectWorkspaceAliasToCanonical \/>\}/);
+      expect(source).toMatch(/path="\/app\/workspace-manus" element=\{<RedirectWorkspaceAliasToCanonical \/>\}/);
+      expect(source).toMatch(/path="\/app\/workspace-classic" element=\{<RedirectWorkspaceAliasToCanonical \/>\}/);
     });
   });
 

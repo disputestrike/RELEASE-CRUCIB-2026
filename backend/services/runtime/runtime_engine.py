@@ -55,7 +55,11 @@ from services.runtime.execution_authority import (
 from services.runtime.execution_context import runtime_execution_scope
 from services.runtime.task_manager import task_manager
 from tool_executor import execute_tool
-from services.skills.skill_registry import resolve_skill
+from services.skills.skill_registry import resolve_skill, list_skills, get_skill
+from services.runtime.memory_graph import add_node as memory_add_node
+from services.runtime.virtual_fs import task_workspace
+from services.runtime.cost_tracker import cost_tracker
+from services.policy.permission_engine import evaluate_tool_call
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +101,13 @@ class ExecutionContext:
     executed_steps: List[Dict[str, Any]] = field(default_factory=list)
     memory: Dict[str, Any] = field(default_factory=dict)
     cost_used: float = 0.0
-    
+
+    # Identifiers used by sub-systems
+    project_id: Optional[str] = None
+
+    # Cost enforcement
+    cost_limit: float = 50.0
+
     # Derived
     cancelled: bool = False
     pause_requested: bool = False
@@ -338,11 +348,18 @@ class RuntimeEngine:
                 # PHASE 8: UPDATE CONTEXT
                 await self._phase_update_context(task_id, context, execution_result, step_id)
                 
-                # PHASE 9: SPAWN SUBAGENT (if needed)
-                # TODO: Implement when decision includes spawn
-                
-                # Task done after first execution
-                break
+                # PHASE 9: SPAWN SUBAGENT (if requested by decision)
+                if bool(decision.get("spawn")):
+                    await self._phase_spawn_subagent(
+                        task_id=task_id,
+                        context=context,
+                        decision=decision,
+                        step_id=step_id,
+                    )
+
+                # Continue only when the decision explicitly requests another step.
+                if not bool(decision.get("continue")):
+                    break
                     
             except Exception as e:
                 logger.error(f"Step {step_id} failed: {e}", exc_info=True)
@@ -399,7 +416,9 @@ class RuntimeEngine:
             decision = {
                 "action": "default",
                 "skill": "default",
-                "confidence": 1.0
+                "confidence": 1.0,
+                "continue": False,
+                "spawn": False,
             }
             
             event_bus.emit("phase_end", {
@@ -475,19 +494,31 @@ class RuntimeEngine:
                 "phase": ExecutionPhase.CHECK_PERMISSION.value
             })
             
-            # For now, allow all
-            permitted = True
-            
+            # Resolve skill and enforce known-skill policy.
+            known = {s.name for s in list_skills()} | {"default"}
+            if skill in known:
+                permitted = True
+                reason = f"known_skill:{skill}"
+            else:
+                import os as _os
+                if _os.environ.get("CRUCIB_ENABLE_TOOL_POLICY", "0").strip().lower() in ("1", "true", "yes"):
+                    permitted = False
+                    reason = f"unknown_skill_blocked_by_policy:{skill}"
+                else:
+                    permitted = True
+                    reason = f"unknown_skill_policy_disabled:{skill}"
+
             duration_ms = (time.time() - start_time) * 1000
-            
+
             event_bus.emit("phase_end", {
                 "task_id": task_id,
                 "step_id": step_id,
                 "phase": ExecutionPhase.CHECK_PERMISSION.value,
                 "duration_ms": duration_ms,
-                "permitted": permitted
+                "permitted": permitted,
+                "reason": reason,
             })
-            
+
             return permitted
             
         except Exception as e:
@@ -568,8 +599,10 @@ class RuntimeEngine:
                 "success": True,
                 "output": output,
                 "duration_ms": duration_ms,
-                "metadata": {"skill": skill, "provider": provider}
+                "metadata": {"skill": skill, "provider": provider},
             }
+            # Record execution cost in the global cost tracker.
+            cost_tracker.record(task_id, credits=duration_ms / 1000.0)
             
             event_bus.emit("phase_end", {
                 "task_id": task_id,
@@ -607,13 +640,31 @@ class RuntimeEngine:
                 "phase": ExecutionPhase.UPDATE_MEMORY.value
             })
             
-            # Update memory (if available)
+            # Persist step result to memory graph.
+            project_id = context.project_id or f"runtime-{context.user_id}"
+            node_id = memory_add_node(
+                project_id,
+                task_id=task_id,
+                node_type="step_result",
+                payload={
+                    "step_id": step_id,
+                    "output": result.get("output"),
+                    "skill": (result.get("metadata") or {}).get("skill"),
+                    "duration_ms": result.get("duration_ms"),
+                    "success": result.get("success"),
+                },
+                tags=["step", task_id],
+            )
+            # Also update fast in-memory cache.
             context.memory["last_result"] = result.get("output")
-            
+            context.memory["last_step_id"] = step_id
+            context.memory["last_memory_node"] = node_id
+
             event_bus.emit("phase_end", {
                 "task_id": task_id,
                 "step_id": step_id,
-                "phase": ExecutionPhase.UPDATE_MEMORY.value
+                "phase": ExecutionPhase.UPDATE_MEMORY.value,
+                "node_id": node_id,
             })
             
         except Exception as e:
@@ -635,17 +686,65 @@ class RuntimeEngine:
                 "phase": ExecutionPhase.UPDATE_CONTEXT.value
             })
             
-            # Update context
-            context.cost_used += result.get("duration_ms", 0) / 1000.0
-            
+# Update context cost from authoritative cost_tracker.
+            totals = cost_tracker.get(task_id)
+            context.cost_used = float(totals.get("credits") or 0.0)
+
             event_bus.emit("phase_end", {
                 "task_id": task_id,
                 "step_id": step_id,
-                "phase": ExecutionPhase.UPDATE_CONTEXT.value
+                "phase": ExecutionPhase.UPDATE_CONTEXT.value,
+                "cost_used": context.cost_used,
             })
             
         except Exception as e:
             logger.warning(f"Failed to update context: {e}")
+
+    async def _phase_spawn_subagent(
+        self,
+        task_id: str,
+        context: ExecutionContext,
+        decision: Dict[str, Any],
+        step_id: str,
+    ) -> None:
+        """Phase 9: Spawn sub-agent branch when decision requests it."""
+
+        try:
+            event_bus.emit(
+                "phase_start",
+                {
+                    "task_id": task_id,
+                    "step_id": step_id,
+                    "phase": ExecutionPhase.SPAWN_SUBAGENT.value,
+                },
+            )
+
+            target_agent = str(decision.get("spawn_agent") or "").strip()
+            if target_agent:
+                await self.spawn_agent(
+                    project_id=f"runtime-{context.user_id}",
+                    task_id=task_id,
+                    parent_message=str(decision.get("spawn_message") or "spawn"),
+                    agent_name=target_agent,
+                    context={
+                        "skill": decision.get("skill") or decision.get("action") or "default",
+                        **(decision.get("spawn_context") or {}),
+                    },
+                    depth=context.depth + 1,
+                )
+
+            event_bus.emit(
+                "phase_end",
+                {
+                    "task_id": task_id,
+                    "step_id": step_id,
+                    "phase": ExecutionPhase.SPAWN_SUBAGENT.value,
+                    "spawn_requested": True,
+                    "spawn_agent": target_agent or None,
+                },
+            )
+        except Exception as e:
+            logger.warning(f"SPAWN_SUBAGENT phase failed: {e}")
 
     def get_task_status(self, project_id: str, task_id: str) -> Optional[Dict[str, Any]]:
         """Get task status. Uses task_manager for compatibility."""
@@ -775,6 +874,10 @@ class RuntimeEngine:
                     content_blocks=content_blocks,
                     idempotency_key=idempotency_key,
                 )
+            # Record approximate token cost from response length.
+            _text = result[0] if isinstance(result, tuple) else str(result)
+            _tokens = len(_text) // 4
+            cost_tracker.record(task_id, tokens=_tokens, credits=round(_tokens * 0.000002, 6))
             event_bus.emit("tool_end", {**event_payload, "authority": authority})
             return result
         except Exception as exc:
@@ -860,7 +963,10 @@ class RuntimeEngine:
         context: Dict[str, Any],
         depth: int = 1,
         max_depth: int = 3,
+        max_cost: Optional[float] = None,
     ) -> Dict[str, Any]:
+        if not cost_tracker.check_limit(task_id, limit=max_cost):
+            return {"success": False, "error": "subagent_cost_limit_exceeded", "task_id": task_id}
         if depth > max_depth:
             return {"success": False, "error": "subagent_max_depth_exceeded", "depth": depth}
 
@@ -1105,6 +1211,41 @@ class RuntimeEngine:
                     result = await run_fn(context)
                 outputs.append({"agent": agent_name, "result": result})
 
+                # Post-step cancellation: honour a kill that arrived during execution.
+                current_post = task_manager.get_task(project_id, task_id)
+                if current_post and current_post.get("status") == "killed":
+                    raise asyncio.CancelledError("task marked killed after step")
+
+                # Spawn: agent may return {"spawn_request": {"agent": ..., "context": ...}}
+                spawn_req = result if isinstance(result, dict) else {}
+                if spawn_req.get("spawn_request"):
+                    sr = spawn_req["spawn_request"]
+                    spawn_agent_name = str(sr.get("agent") or "").strip()
+                    if spawn_agent_name:
+                        spawn_out = await self.spawn_agent(
+                            project_id=project_id,
+                            task_id=task_id,
+                            parent_message=user_message,
+                            agent_name=spawn_agent_name,
+                            context={
+                                "skill": skill_hint,
+                                **(sr.get("context") or {}),
+                            },
+                            depth=1,
+                        )
+                        outputs.append(
+                            {
+                                "agent": f"spawn:{spawn_agent_name}",
+                                "result": spawn_out,
+                                "spawned": True,
+                            }
+                        )
+                        task_manager.update_task(
+                            project_id,
+                            task_id,
+                            metadata={"spawned_agent": spawn_agent_name},
+                        )
+
                 self._update_memory(
                     session=session,
                     task_id=task_id,
@@ -1144,10 +1285,12 @@ class RuntimeEngine:
                     if asyncio.iscoroutine(maybe):
                         await maybe
 
+            spawned_count = sum(1 for o in outputs if o.get("spawned"))
             assessment["execution"] = {
                 "agent_outputs": outputs,
                 "completed_tasks": len(outputs),
                 "total_tasks": len(selected_agent_configs),
+                "spawned_tasks": spawned_count,
             }
             assessment["assistant_response"] = brain._summarize_execution(assessment, assessment["execution"])
             assessment["status"] = "executed"

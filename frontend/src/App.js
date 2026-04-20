@@ -35,7 +35,7 @@ import TokenCenter from "./pages/TokenCenter";
 import ExportCenter from "./pages/ExportCenter";
 import PatternLibrary from "./pages/PatternLibrary";
 import Settings from "./pages/Settings";
-import UnifiedWorkspace from "./pages/UnifiedWorkspace";
+import WorkspaceVNext from "./pages/WorkspaceVNext";
 import Layout from "./components/Layout";
 import ShareView from "./pages/ShareView";
 import ExamplesGallery from "./pages/ExamplesGallery";
@@ -371,6 +371,11 @@ function RedirectAppIndexToWorkspace() {
   return <Navigate to={`/app/workspace${search}`} state={state} replace />;
 }
 
+function RedirectWorkspaceAliasToCanonical() {
+  const { search, state } = useLocation();
+  return <Navigate to={`/app/workspace${search}`} state={state} replace />;
+}
+
 /** Deep links to /app/auto-runner land on the canonical workspace (same shell, query preserved). */
 function AutoRunnerRedirect() {
   const { search, state } = useLocation();
@@ -456,14 +461,14 @@ function App() {
           <Route path="/blog/:slug" element={<Blog />} />
           <Route path="/changelog" element={<Changelog />} />
           <Route path="/status" element={<Status />} />
-          <Route path="/app/workspace-engine" element={<Navigate to="/app/workspace" replace />} />
-          <Route path="/app/workspace-unified" element={<Navigate to="/app/workspace" replace />} />
-          <Route path="/app/workspace-manus" element={<Navigate to="/app/workspace" replace />} />
-          <Route path="/app/workspace-classic" element={<Navigate to="/app/workspace" replace />} />
+          <Route path="/app/workspace-engine" element={<RedirectWorkspaceAliasToCanonical />} />
+          <Route path="/app/workspace-unified" element={<RedirectWorkspaceAliasToCanonical />} />
+          <Route path="/app/workspace-manus" element={<RedirectWorkspaceAliasToCanonical />} />
+          <Route path="/app/workspace-classic" element={<RedirectWorkspaceAliasToCanonical />} />
           <Route path="/app" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route index element={<RedirectAppIndexToWorkspace />} />
             <Route path="builder" element={<Navigate to="/app/workspace" replace />} />
-            <Route path="workspace" element={<UnifiedWorkspace />} />
+            <Route path="workspace" element={<WorkspaceVNext />} />
             <Route path="dashboard" element={<DashboardVNext />} />
             <Route path="live" element={<MonitoringDashboard />} />
             <Route path="projects/new" element={<ProjectBuilder />} />

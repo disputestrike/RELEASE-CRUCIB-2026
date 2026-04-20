@@ -55,6 +55,7 @@ import {
   isWorkspaceLiveBuildPhase,
   selectWorkspacePreviewStatus,
 } from '../workspace/workspaceLiveUi';
+import { paneForWorkspaceSurface } from '../workspace/workspaceSurfaceMode';
 import '../styles/unified-workspace-tokens.css';
 import './AutoRunnerPage.css';
 import '../components/workspace-v4/workspace-v4.css';
@@ -71,7 +72,7 @@ function formatCoachReply(guidance) {
   return lines.join('\n\n').trim();
 }
 
-export default function UnifiedWorkspace() {
+export default function UnifiedWorkspace({ workspaceSurface = 'build' }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -1133,6 +1134,14 @@ export default function UnifiedWorkspace() {
 
   const failureStep = failedStep || latestFailedStep;
 
+  useEffect(() => {
+    const pane = paneForWorkspaceSurface(workspaceSurface, uxMode, Boolean(failureStep || latestFailure));
+    setActivePane((current) => (current === pane ? current : pane));
+    if (workspaceSurface === 'inspect' || workspaceSurface === 'repair' || workspaceSurface === 'what-if') {
+      setRightCollapsed(false);
+    }
+  }, [workspaceSurface, uxMode, failureStep, latestFailure]);
+
   const previewBlockedDetail = useMemo(() => {
     const fromStep = failureStep?.error_message || failureStep?.step_key;
     if (latestFailure && typeof latestFailure === 'object') {
@@ -1169,6 +1178,7 @@ export default function UnifiedWorkspace() {
   const rightRailSubtitle = useMemo(() => deriveRightRailSubtitle(events, steps), [events, steps]);
 
   useEffect(() => {
+    if (workspaceSurface !== 'build' && workspaceSurface !== 'deploy') return;
     if (!effectiveJobId || isCompleted) return;
     const js = job?.status;
     if (js === 'failed' || js === 'cancelled' || js === 'blocked') return;
@@ -1177,7 +1187,7 @@ export default function UnifiedWorkspace() {
     autoPreviewOnceForJobRef.current = effectiveJobId;
     setActivePane('preview');
     setRightCollapsed(false);
-  }, [effectiveJobId, isCompleted, job?.status, stage]);
+  }, [effectiveJobId, isCompleted, job?.status, stage, workspaceSurface]);
 
   return (
     <WorkspaceNavProvider value={workspaceNavValue}>

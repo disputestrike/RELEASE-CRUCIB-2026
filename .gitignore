@@ -88,6 +88,9 @@ frontend/node_modules/.cache/default-development/
 !.env.example
 backend/logs/
 backend/golden_eval_report.json
+# Generated frontend bundle copied for backend static serving in production images.
+backend/static/
+frontend/build/
 
 # Workspace directories for tool agents (root only — do not use plain workspace/ or frontend/src/workspace is omitted from Docker/Railway)
 /workspace/

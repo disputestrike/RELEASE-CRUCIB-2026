@@ -4,5 +4,13 @@
  */
 import { createContext, useContext } from 'react';
 
-export const AuthContext = createContext(null);
-export const useAuth = () => useContext(AuthContext);
+const defaultAuthContext = {
+  user: null,
+  token: null,
+  login: () => {},
+  logout: () => {},
+  loading: false,
+};
+
+export const AuthContext = createContext(defaultAuthContext);
+export const useAuth = () => useContext(AuthContext) || defaultAuthContext;

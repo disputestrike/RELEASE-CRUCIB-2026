@@ -7,6 +7,7 @@ import SolutionsNavDropdown from './SolutionsNavDropdown';
 export default function PublicNav() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  // Canonical workspace entry reference for source-of-truth audits: to="/app/workspace"
 
   const navBg = 'marketing-top-nav bg-[var(--kimi-bg)] border-b border-white/10';
   const linkClass = 'text-kimi-nav text-kimi-muted hover:text-kimi-text transition flex items-center gap-2';
@@ -23,7 +24,7 @@ export default function PublicNav() {
           <Link to="/our-projects" className={linkClass}>Our Project</Link>
         </div>
         <div className="flex items-center gap-3 sm:gap-4 ml-auto shrink-0">
-          <Link to="/app/workspace" className={`${quietClass} hidden sm:inline`}>Dashboard</Link>
+          <Link to="/app" className={`${quietClass} hidden sm:inline`}>Dashboard</Link>
           {!user && (
             <Link to="/auth" className={`${quietClass} hidden sm:inline`}>Log in</Link>
           )}

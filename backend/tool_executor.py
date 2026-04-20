@@ -21,6 +21,7 @@ from urllib.parse import urlparse
 from project_state import WORKSPACE_ROOT
 from services.events import event_bus
 from services.policy import permission_engine
+from services.session_journal import append_entry
 from services.runtime.execution_authority import require_runtime_authority
 from services.runtime.execution_context import (
     current_project_id,
@@ -29,6 +30,7 @@ from services.runtime.execution_context import (
 )
 from services.skills.skill_registry import SkillDef, resolve_skill
 from services.skills.skill_executor import skill_allows_tool
+from services.tools import get_tool_contract
 
 logger = logging.getLogger(__name__)
 
@@ -129,6 +131,17 @@ def execute_tool(
     effective_project_id = runtime_project or project_id
     workspace = _project_workspace(effective_project_id)
     tool_name = (tool_name or "").strip().lower()
+    tool_contract = get_tool_contract(tool_name)
+    if tool_contract is None:
+        return {
+            "success": False,
+            "error": f"Unknown tool: {tool_name}",
+            "tool": {"name": tool_name, "known": False},
+            "policy": {"mode": "deny", "reason": "unknown_tool_contract"},
+            "skill": {"matched": False},
+        }
+    tool_name = tool_contract.name
+    tool_meta = tool_contract.to_dict()
     task_id = (params.get("task_id") or params.get("runtime_task_id") or runtime_task or "").strip() or None
 
     event_bus.emit(
@@ -172,14 +185,29 @@ def execute_tool(
                 "error": result.get("error"),
             },
         )
+        try:
+            append_entry(
+                effective_project_id,
+                task_id=task_id,
+                entry_type="tool_execution",
+                payload={
+                    "tool": tool_name,
+                    "success": bool(result.get("success")),
+                    "error": result.get("error"),
+                    "policy": result.get("policy"),
+                    "skill": result.get("skill"),
+                },
+            )
+        except Exception as exc:
+            logger.warning("session journal append failed: %s", exc)
         return result
 
     def _ok(payload: Dict[str, Any]) -> Dict[str, Any]:
-        out = {"success": True, **payload}
+        out = {"success": True, "tool": tool_meta, **payload}
         return _finalize(out)
 
     def _err(error: str, extra: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        out: Dict[str, Any] = {"success": False, "error": error}
+        out: Dict[str, Any] = {"success": False, "error": error, "tool": tool_meta}
         if extra:
             out.update(extra)
         return _finalize(out)
@@ -203,7 +231,13 @@ def execute_tool(
 
     # Central policy gate. Non-breaking when policy is disabled.
     try:
-        decision = permission_engine.evaluate_tool_call(tool_name, params or {})
+        policy_params = {
+            **(params or {}),
+            "_tool_risk_level": tool_contract.risk_level,
+            "_tool_requires_approval": tool_contract.requires_approval,
+            "_tool_side_effect_class": tool_contract.side_effect_class,
+        }
+        decision = permission_engine.evaluate_tool_call(tool_name, policy_params)
         if not decision.allowed:
             if decision.mode == "ask":
                 return _err(
@@ -230,12 +264,14 @@ def execute_tool(
         policy_meta = {
             "mode": decision.mode,
             "reason": decision.reason,
+            "tool_risk_level": tool_contract.risk_level,
         }
     except Exception as e:
         logger.warning("permission engine error; allowing by fallback: %s", e)
         policy_meta = {
             "mode": "fallback",
             "reason": "permission engine error",
+            "tool_risk_level": tool_contract.risk_level,
         }
 
     if tool_name == "file":
