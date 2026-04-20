@@ -29,11 +29,19 @@ export default function WorkspaceVNext() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [modeNotice, setModeNotice] = useState('');
   const [runtimeTelemetry, setRuntimeTelemetry] = useState(null);
+  const [surface, setSurfaceState] = useState(() => readRequestedSurface(searchParams));
+  const [whatIfScenario, setWhatIfScenario] = useState('What if we replace Stripe with LemonSqueezy in the billing flow?');
+  const [whatIfLoading, setWhatIfLoading] = useState(false);
+  const [whatIfResult, setWhatIfResult] = useState(null);
+  const [whatIfError, setWhatIfError] = useState('');
 
   const caps = useMemo(() => getWorkspaceCapabilities(user), [user]);
   const requestedMode = readRequestedMode(searchParams);
-  const surface = readRequestedSurface(searchParams);
   const canUseDeveloper = Boolean(caps.canUseAdvancedControls);
+  const projectId = useMemo(() => {
+    const userId = String(user?.id || '').trim();
+    return userId ? `runtime-${userId}` : '';
+  }, [user]);
 
   const effectiveMode = useMemo(() => {
     if (requestedMode === 'developer' && canUseDeveloper) return 'developer';
@@ -69,8 +77,7 @@ export default function WorkspaceVNext() {
       };
     }
 
-    const projectId = `runtime-${userId}`;
-    const endpoint = `/api/debug/runtime-state/${encodeURIComponent(projectId)}?limit=100`;
+    const endpoint = '/api/runtime/inspect?limit=100';
 
     const load = async () => {
       try {
@@ -92,7 +99,20 @@ export default function WorkspaceVNext() {
       cancelled = true;
       clearInterval(t);
     };
-  }, [effectiveMode, user]);
+  }, [effectiveMode, projectId, user]);
+
+  const inspectDigest = useMemo(() => {
+    const inspect = runtimeTelemetry?.inspect;
+    if (!inspect) return null;
+    const timeline = Array.isArray(inspect.timeline) ? inspect.timeline.slice(0, 8) : [];
+    const failures = Array.isArray(inspect.failures) ? inspect.failures.slice(0, 3) : [];
+    return {
+      timeline,
+      failures,
+      taskStatusSummary: inspect.task_status_summary || {},
+      phaseSummary: inspect.phase_summary || {},
+    };
+  }, [runtimeTelemetry]);
 
   const setMode = (mode) => {
     if (mode === 'developer' && !canUseDeveloper) {
@@ -105,9 +125,50 @@ export default function WorkspaceVNext() {
   };
 
   const setSurface = (nextSurface) => {
+    setSurfaceState(nextSurface);
     const next = new URLSearchParams(searchParams);
     next.set('surface', nextSurface);
     setSearchParams(next, { replace: true });
+  };
+
+  const runWhatIf = async () => {
+    const scenario = String(whatIfScenario || '').trim();
+    if (!scenario || !projectId || typeof fetch !== 'function') {
+      setWhatIfError('Scenario and runtime project are required.');
+      return;
+    }
+
+    setWhatIfLoading(true);
+    setWhatIfError('');
+    try {
+      const res = await fetch('/api/runtime/what-if', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scenario,
+          population_size: 48,
+          rounds: 4,
+          priors: {
+            cost_sensitive: 0.3,
+            security_first: 0.35,
+            speed_first: 0.35,
+          },
+        }),
+      });
+      if (!res.ok) {
+        setWhatIfResult(null);
+        setWhatIfError('What-if simulation failed.');
+        return;
+      }
+      const payload = await res.json();
+      setWhatIfResult(payload);
+    } catch {
+      setWhatIfResult(null);
+      setWhatIfError('What-if simulation failed.');
+    } finally {
+      setWhatIfLoading(false);
+    }
   };
 
   return (
@@ -161,6 +222,64 @@ export default function WorkspaceVNext() {
             <span>Recent events</span>
             <strong>{Array.isArray(runtimeTelemetry.recent_events) ? runtimeTelemetry.recent_events.length : 0}</strong>
           </div>
+        </aside>
+      ) : null}
+      {surface === 'inspect' && inspectDigest ? (
+        <aside className="workspace-vnext-inspect" aria-label="Inspect timeline">
+          <div className="workspace-vnext-inspect-title">Inspect timeline</div>
+          <div className="workspace-vnext-inspect-row">
+            <span>Task states</span>
+            <strong>
+              {Object.entries(inspectDigest.taskStatusSummary)
+                .map(([k, v]) => `${k}:${v}`)
+                .join(' | ') || 'none'}
+            </strong>
+          </div>
+          <div className="workspace-vnext-inspect-list" role="list">
+            {inspectDigest.timeline.map((item, idx) => (
+              <div key={`${item.type || 'evt'}-${idx}`} role="listitem" className="workspace-vnext-inspect-item">
+                <span>{item.type || 'event'}</span>
+                <strong>{item.phase || item.agent || item.status || 'runtime'}</strong>
+              </div>
+            ))}
+          </div>
+          {inspectDigest.failures.length ? (
+            <div className="workspace-vnext-inspect-failures">
+              <div className="workspace-vnext-inspect-subtitle">Recent failures</div>
+              {inspectDigest.failures.map((f, idx) => (
+                <p key={`${f.type || 'failure'}-${idx}`}>{f.error || f.type}</p>
+              ))}
+            </div>
+          ) : null}
+        </aside>
+      ) : null}
+      {surface === 'what-if' ? (
+        <aside className="workspace-vnext-whatif" aria-label="What-if simulation">
+          <div className="workspace-vnext-inspect-title">What-if simulation</div>
+          <label htmlFor="workspace-vnext-scenario">Scenario</label>
+          <textarea
+            id="workspace-vnext-scenario"
+            value={whatIfScenario}
+            onChange={(e) => setWhatIfScenario(e.target.value)}
+            rows={4}
+          />
+          <button type="button" onClick={runWhatIf} disabled={whatIfLoading}>
+            {whatIfLoading ? 'Running...' : 'Run simulation'}
+          </button>
+          {whatIfError ? <p className="workspace-vnext-whatif-error">{whatIfError}</p> : null}
+          {whatIfResult ? (
+            <div className="workspace-vnext-whatif-result">
+              <p>
+                <strong>Recommendation:</strong> {whatIfResult?.recommendation?.recommended_action || 'Collect more evidence'}
+              </p>
+              <p>
+                <strong>Confidence:</strong> {whatIfResult?.recommendation?.confidence ?? 'n/a'}
+              </p>
+              <p>
+                <strong>Rounds:</strong> {whatIfResult?.rounds_executed ?? 0}
+              </p>
+            </div>
+          ) : null}
         </aside>
       ) : null}
       {modeNotice ? <div className="workspace-vnext-notice">{modeNotice}</div> : null}

@@ -1,0 +1,33 @@
+{
+  "artifacts": [
+    {
+      "bytes": 1131,
+      "path": "BENCHMARK_REPORT.md",
+      "sha256": "755c3f097961a84106042a28f71f739f3a3d5533b65a30cecb649431c35d3edc"
+    },
+    {
+      "bytes": 862,
+      "path": "runs/001_full_app_build-01-full_app_admin_dashboard.json",
+      "sha256": "8ffd686dd47bde53cef37f2b7a2bdd6d8d422fb8ed7b90d11cb500677448b238"
+    },
+    {
+      "bytes": 2492,
+      "path": "summary.json",
+      "sha256": "e14e07f3e4138f59a214a479f1a47379f274bd41f76a2d6b0456239a97507ca7"
+    }
+  ],
+  "generated_at": "2026-04-20T18:48:11.820052+00:00",
+  "manifest_id": "product-dominance-1776710891",
+  "meta": {
+    "benchmark_version": "2026-04-20.product_dominance.v1",
+    "mode": "simulated",
+    "suite_version": "2026-04-20.product_dominance_suite.v1",
+    "summary_sha256": "cc665f8723353e0646b405d29fa6d717030bed9c2e742fa682bb0aae4b101daa"
+  },
+  "payload_sha256": "c717980ddafefe69037f3500e54bcaa230ae87c67afc1fc583c19c0839513903",
+  "project_id": "benchmark-benchmark-runner",
+  "run_id": "signed_smoke",
+  "signature": "8426356558ea976f5cf463e340701a691c0502aac30c146d77a812e51889064f",
+  "signature_algorithm": "hmac-sha256",
+  "signed_at": "2026-04-20T18:48:11.869043+00:00"
+}

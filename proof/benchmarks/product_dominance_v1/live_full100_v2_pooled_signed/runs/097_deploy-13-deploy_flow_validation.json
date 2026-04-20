@@ -1,0 +1,83 @@
+{
+  "build_depth": {
+    "has_backend": false,
+    "has_runnable": true,
+    "has_ui": true
+  },
+  "case_id": "deploy_flow_validation",
+  "category": "deploy",
+  "deploy_gate": {
+    "has_deploy": true,
+    "has_fatal": false,
+    "has_validation": true
+  },
+  "deploy_status": "success",
+  "dimensions": {
+    "accuracy": 100.0,
+    "reliability": 100.0,
+    "speed": 100.0,
+    "success": 100.0,
+    "ux": 100.0
+  },
+  "failures": 0,
+  "index": 97,
+  "iteration": 13,
+  "mode": "live_runtime",
+  "prompt": "Deploy this app and verify it works. Include deployment readiness checks, runtime validation, and final status.",
+  "provider_meta": {
+    "avg_latency_ms": 815.0,
+    "execution_mode": "pooled",
+    "failover_event_count": 0,
+    "failover_triggered": false,
+    "keys_exercised_count": 1,
+    "llm_calls": 1,
+    "pool_size": 5,
+    "provider": "cerebras"
+  },
+  "repair_gate": {
+    "has_diagnosis": false,
+    "has_fix": false,
+    "has_verify": true
+  },
+  "result_text": "I've completed the focused execution. WorkspaceExplorerAgent produced structured output. DesignAgent produced keys ['design_system', 'layouts', 'components', 'mockup_description', '_tokens_used', '_model_used', '_agent']. Build brief addressed: Deploy this app and verify it works. Include deployment readiness checks, runtime validation, and final status. [benchmark_mode] benchmark_mode=true must_complete=true Assume sensible defaults. Do not ask clarification questions. Execute en.... Build status: frontend UI implemented. If you want, I can continue refining the output in the same conversation.",
+  "retries": 0,
+  "run_id": "deploy-13-deploy_flow_validation",
+  "score": 100.0,
+  "steps_taken": 4,
+  "success": true,
+  "task_id": "tsk_e506cccd0661",
+  "task_status": "completed",
+  "time_seconds": 3.45,
+  "timeline": [
+    "task.started",
+    "task_start",
+    "task_start",
+    "brain.assessed",
+    "brain.execution.started",
+    "step_start",
+    "agent_start",
+    "brain.agent.started",
+    "provider.chain.selected.runtime",
+    "task.updated",
+    "task_update",
+    "brain.agent.completed",
+    "agent_end",
+    "step_end",
+    "step_start",
+    "agent_start",
+    "brain.agent.started",
+    "provider.chain.selected.runtime",
+    "task.updated",
+    "task_update",
+    "brain.agent.completed",
+    "agent_end",
+    "step_end",
+    "brain.execution.completed",
+    "task.updated",
+    "task_update",
+    "task_end",
+    "task_end"
+  ],
+  "timestamp": "2026-04-20T19:22:03.936104+00:00",
+  "title": "Deploy and Verify"
+}

@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CrucibAI Public Proof</title>
+    <style>
+        :root {
+            --bg: #f4f1e8;
+            --ink: #0f172a;
+            --muted: #475569;
+            --panel: #fffdf7;
+            --line: #d6d3c7;
+            --accent: #0f766e;
+            --accent-soft: #d1fae5;
+            --shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', 'Trebuchet MS', system-ui, sans-serif;
+            color: var(--ink);
+            background: radial-gradient(circle at 20% -10%, #fff8db 0, transparent 45%), var(--bg);
+        }
+        .wrap { max-width: 1120px; margin: 0 auto; padding: 28px 18px 44px; }
+        .hero {
+            background: linear-gradient(125deg, #083344 0%, #115e59 60%, #134e4a 100%);
+            color: #f8fafc;
+            border-radius: 18px;
+            padding: 26px;
+            box-shadow: var(--shadow);
+        }
+        .hero h1 { margin: 0 0 8px; font-size: 2rem; letter-spacing: 0.2px; }
+        .hero p { margin: 0; color: #ccfbf1; }
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.14);
+            border: 1px solid rgba(255, 255, 255, 0.24);
+            border-radius: 12px;
+            padding: 12px;
+        }
+        .card .k { font-size: 0.78rem; color: #ccfbf1; text-transform: uppercase; letter-spacing: 0.08em; }
+        .card .v { font-size: 1.35rem; margin-top: 5px; font-weight: 700; }
+        .panel {
+            margin-top: 16px;
+            background: var(--panel);
+            border-radius: 14px;
+            border: 1px solid var(--line);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+        .panel h2 {
+            margin: 0;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--line);
+            font-size: 1.04rem;
+            background: #fffcf2;
+        }
+        .panel .body { padding: 14px 16px; }
+        .quick {
+            background: #062b2a;
+            color: #e2e8f0;
+            border-radius: 10px;
+            padding: 10px;
+            font-family: Consolas, 'Courier New', monospace;
+            font-size: 0.84rem;
+            overflow-x: auto;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+        th, td { padding: 8px; border-bottom: 1px solid var(--line); text-align: left; }
+        th { background: #f8f5eb; }
+        tr:hover td { background: var(--accent-soft); }
+        .foot { color: var(--muted); font-size: 0.84rem; margin-top: 14px; }
+        a { color: var(--accent); }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <section class="hero">
+            <h1>CrucibAI Public Proof Bundle</h1>
+            <p>Signed benchmark evidence with reproducible verification instructions and complete run catalog.</p>
+            <div class="cards">
+                <div class="card"><div class="k">Canonical Run</div><div class="v">live_full100_v2_pooled_signed</div></div>
+                <div class="card"><div class="k">Total Runs</div><div class="v">100</div></div>
+                <div class="card"><div class="k">Avg Score</div><div class="v">97.29</div></div>
+                <div class="card"><div class="k">Success Rate</div><div class="v">100.00%</div></div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2>Primary Artifacts</h2>
+            <div class="body">
+                <ul>
+                    <li><a href="live_full100_v2_pooled_signed/summary.json">Canonical summary.json</a></li>
+                    <li><a href="live_full100_v2_pooled_signed/BENCHMARK_REPORT.md">Canonical BENCHMARK_REPORT.md</a></li>
+                    <li><a href="live_full100_v2_pooled_signed/proof_manifest.json">Canonical proof_manifest.json</a></li>
+                    <li><a href="PUBLIC_PROOF_INDEX.md">PUBLIC_PROOF_INDEX.md</a></li>
+                    <li><a href="PUBLIC_PROOF_INDEX.json">PUBLIC_PROOF_INDEX.json</a></li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2>Verification Quickstart</h2>
+            <div class="body">
+                <div class="quick">$env:CRUCIB_PROOF_HMAC_SECRET = 'local-proof-test-secret'</div>
+                <div style="height:8px"></div>
+                <div class="quick">python -c "import json, pathlib; from backend.services.proof_manifest import verify_manifest; p=pathlib.Path('proof/benchmarks/product_dominance_v1/live_full100_v2_pooled_signed/proof_manifest.json'); m=json.loads(p.read_text(encoding='utf-8')); print(verify_manifest(m, secret='local-proof-test-secret'))"</div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2>Run Catalog</h2>
+            <div class="body">
+                <table>
+                    <thead>
+                        <tr><th>Run</th><th>Mode</th><th>Runs</th><th>Avg Score</th><th>Success Rate</th><th>Avg Time</th><th>Provider</th><th>Signed</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>live_full100_v2_pooled_signed</td><td>live</td><td>100</td><td>97.29</td><td>100.00%</td><td>3.43</td><td>pooled</td><td>yes</td></tr>
+            <tr><td>live_full100_v1_pooled_signed</td><td>live</td><td>100</td><td>90.52</td><td>83.00%</td><td>2.99</td><td>pooled</td><td>yes</td></tr>
+            <tr><td>signed_smoke</td><td>simulated</td><td>1</td><td>96.20</td><td>100.00%</td><td>98.00</td><td>single_key</td><td>yes</td></tr>
+            <tr><td>live_full30_v3_pooled</td><td>live</td><td>30</td><td>93.97</td><td>100.00%</td><td>6.73</td><td>pooled</td><td>yes</td></tr>
+            <tr><td>live_full30_v2</td><td>live</td><td>30</td><td>87.89</td><td>100.00%</td><td>6.37</td><td>-</td><td>no</td></tr>
+            <tr><td>live_full30_v1</td><td>live</td><td>30</td><td>84.83</td><td>100.00%</td><td>3.68</td><td>-</td><td>no</td></tr>
+            <tr><td>live_first10_v6b</td><td>live</td><td>10</td><td>85.00</td><td>100.00%</td><td>3.17</td><td>-</td><td>no</td></tr>
+            <tr><td>live_first10_v6</td><td>live</td><td>10</td><td>85.00</td><td>100.00%</td><td>3.17</td><td>-</td><td>no</td></tr>
+            <tr><td>live_first10_v5</td><td>live</td><td>10</td><td>69.00</td><td>100.00%</td><td>3.17</td><td>-</td><td>no</td></tr>
+            <tr><td>live_first10_v4</td><td>live</td><td>10</td><td>26.70</td><td>0.00%</td><td>1.58</td><td>-</td><td>no</td></tr>
+            <tr><td>live_first10_v3</td><td>live</td><td>10</td><td>36.10</td><td>0.00%</td><td>0.03</td><td>-</td><td>no</td></tr>
+            <tr><td>live_first10_v2</td><td>live</td><td>10</td><td>67.13</td><td>70.00%</td><td>0.08</td><td>-</td><td>no</td></tr>
+            <tr><td>live_first10</td><td>live</td><td>10</td><td>78.00</td><td>100.00%</td><td>0.03</td><td>-</td><td>no</td></tr>
+            <tr><td>live_probe_1</td><td>live</td><td>1</td><td>78.00</td><td>100.00%</td><td>0.04</td><td>-</td><td>no</td></tr>
+            <tr><td>smoke_first10</td><td>simulated</td><td>10</td><td>97.10</td><td>100.00%</td><td>78.10</td><td>-</td><td>no</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <p class="foot">Generated 2026-04-20T19:24:14.233386+00:00</p>
+    </div>
+</body>
+</html>

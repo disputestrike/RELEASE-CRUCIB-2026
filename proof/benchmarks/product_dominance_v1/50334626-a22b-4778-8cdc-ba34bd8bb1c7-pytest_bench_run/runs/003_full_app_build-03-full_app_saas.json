@@ -1,0 +1,30 @@
+{
+  "case_id": "full_app_saas",
+  "category": "full_app_build",
+  "deploy_status": "simulated",
+  "dimensions": {
+    "accuracy": 100.0,
+    "reliability": 100.0,
+    "speed": 100.0,
+    "success": 100.0,
+    "ux": 80.0
+  },
+  "failures": 0,
+  "index": 3,
+  "iteration": 3,
+  "mode": "simulated",
+  "prompt": "Build a SaaS app with authentication, dashboard, and Stripe billing. Include backend API, runnable preview, and deploy-ready output.",
+  "result_text": "Simulated run for SaaS App Build. authentication dashboard stripe api deploy",
+  "retries": 0,
+  "run_id": "full_app_build-03-full_app_saas",
+  "score": 98.0,
+  "steps_taken": 8,
+  "success": true,
+  "time_seconds": 71.0,
+  "timeline": [
+    "simulation.started",
+    "simulation.completed"
+  ],
+  "timestamp": "2026-04-20T17:16:19.239792+00:00",
+  "title": "SaaS App Build"
+}

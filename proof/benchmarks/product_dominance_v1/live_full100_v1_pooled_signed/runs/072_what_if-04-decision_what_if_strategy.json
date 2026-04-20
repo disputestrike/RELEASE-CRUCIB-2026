@@ -1,0 +1,90 @@
+{
+  "case_id": "decision_what_if_strategy",
+  "category": "what_if",
+  "deploy_status": "n/a",
+  "dimensions": {
+    "accuracy": 33.33,
+    "reliability": 100.0,
+    "speed": 100.0,
+    "success": 100.0,
+    "ux": 65.0
+  },
+  "failures": 0,
+  "index": 72,
+  "iteration": 4,
+  "mode": "live_what_if",
+  "prompt": "Compare two approaches for building this app and recommend the best one with confidence and tradeoffs.",
+  "result_text": "Keep current architecture; migration risk is currently too high (confidence=0.88)",
+  "retries": 0,
+  "run_id": "what_if-04-decision_what_if_strategy",
+  "score": 83.17,
+  "simulation": {
+    "consensus_reached": true,
+    "population_size": 48,
+    "recommendation": {
+      "cluster_id": "cluster_a",
+      "confidence": 0.88,
+      "recommended_action": "Keep current architecture; migration risk is currently too high",
+      "tradeoffs": [
+        "existing integrations remain stable",
+        "lower operational disruption",
+        "easier compliance continuity"
+      ]
+    },
+    "rounds_executed": 1,
+    "scenario": "Compare two approaches for building this app and recommend the best one with confidence and tradeoffs.",
+    "updates": [
+      {
+        "clusters": [
+          {
+            "confidence": 0.88,
+            "id": "cluster_a",
+            "key_arguments": [
+              "existing integrations remain stable",
+              "lower operational disruption",
+              "easier compliance continuity"
+            ],
+            "position": "Keep current architecture; migration risk is currently too high",
+            "size": 34
+          },
+          {
+            "confidence": 0.56,
+            "id": "cluster_b",
+            "key_arguments": [
+              "cost or DX upside",
+              "faster long-term iteration",
+              "manageable migration with staged fallback"
+            ],
+            "position": "Adopt the proposed change with guarded rollout",
+            "size": 9
+          },
+          {
+            "confidence": 0.4,
+            "id": "cluster_neutral",
+            "key_arguments": [
+              "insufficient benchmark data",
+              "need controlled canary evidence"
+            ],
+            "position": "Delay decision and gather additional runtime evidence",
+            "size": 5
+          }
+        ],
+        "consensus_emerging": true,
+        "round": 1,
+        "sentiment_shift": {
+          "pro_change": -0.31,
+          "pro_current": 0.21
+        }
+      }
+    ]
+  },
+  "steps_taken": 1,
+  "success": true,
+  "time_seconds": 0.0,
+  "timeline": [
+    "what_if.started",
+    "what_if.completed"
+  ],
+  "timestamp": "2026-04-20T18:56:23.469587+00:00",
+  "title": "What-if Strategy Comparison"
+}

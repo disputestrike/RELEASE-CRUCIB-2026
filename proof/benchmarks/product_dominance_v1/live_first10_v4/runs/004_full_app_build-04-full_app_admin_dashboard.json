@@ -1,0 +1,60 @@
+{
+  "build_depth": {
+    "has_backend": false,
+    "has_runnable": false,
+    "has_ui": true
+  },
+  "case_id": "full_app_admin_dashboard",
+  "category": "full_app_build",
+  "deploy_gate": {
+    "has_deploy": false,
+    "has_fatal": false,
+    "has_validation": false
+  },
+  "deploy_status": "n/a",
+  "dimensions": {
+    "accuracy": 0.0,
+    "reliability": 16.0,
+    "speed": 100.0,
+    "success": 0.0,
+    "ux": 93.0
+  },
+  "failures": 2,
+  "index": 4,
+  "iteration": 4,
+  "mode": "live_runtime",
+  "prompt": "Build an admin dashboard with CRUD operations, filters, analytics charts, and backend endpoints.",
+  "result_text": "I\u2019m building a safe plan for this request. It looks like a execution task, but I\u2019m not fully certain yet. I\u2019ll proceed carefully and may request clarification.",
+  "retries": 4,
+  "run_id": "full_app_build-04-full_app_admin_dashboard",
+  "score": 26.7,
+  "steps_taken": 0,
+  "success": false,
+  "task_id": "tsk_0216134e89ff",
+  "task_status": "failed",
+  "time_seconds": 1.56,
+  "timeline": [
+    "task.started",
+    "task_start",
+    "task_start",
+    "brain.assessed",
+    "brain.execution.started",
+    "step_start",
+    "agent_start",
+    "brain.agent.started",
+    "provider.chain.selected.runtime",
+    "brain.agent.retry_scheduled",
+    "brain.agent.retry_scheduled",
+    "brain.agent.retry_scheduled",
+    "brain.agent.retry_scheduled",
+    "brain.agent.repair.started",
+    "brain.agent.repair.failed",
+    "brain.execution.failed",
+    "task.updated",
+    "task_update",
+    "task_end",
+    "task_end"
+  ],
+  "timestamp": "2026-04-20T17:21:46.309193+00:00",
+  "title": "Admin Dashboard Build"
+}

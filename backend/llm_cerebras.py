@@ -248,19 +248,74 @@ async def invoke_cerebras_stream(
     temperature: float = 0.7,
 ) -> AsyncGenerator[str, None]:
     """
-    Convenience function to stream Cerebras response.
+    Stream Cerebras response with automatic key failover across the pool.
+
+    On 429 / rate-limit / quota errors the function automatically rotates to
+    the next available key in the pool and retries (up to pool_size attempts).
+    Slot indices and latency are recorded to pool_tracker; key values are never
+    logged or stored.
 
     Yields:
         Text chunks
     """
+    import time as _time
 
-    client = CerebrasClient()
     try:
-        async for chunk in client.chat_completion_stream(
-            messages=messages,
-            max_tokens=max_tokens,
-            temperature=temperature,
-        ):
-            yield chunk
-    finally:
-        await client.close()
+        from cerebras_roundrobin import (
+            CEREBRAS_KEYS as _KEYS,
+            get_next_cerebras_key_with_index,
+            pool_tracker,
+        )
+        pool_size = max(1, len(_KEYS))
+    except Exception:
+        pool_size = 1
+        get_next_cerebras_key_with_index = None  # type: ignore[assignment]
+        pool_tracker = None  # type: ignore[assignment]
+
+    last_error: Optional[Exception] = None
+
+    for attempt in range(pool_size):
+        if get_next_cerebras_key_with_index is not None:
+            key, key_index = get_next_cerebras_key_with_index()
+        else:
+            key = os.environ.get("CEREBRAS_API_KEY")
+            key_index = 0
+
+        t0 = _time.monotonic()
+        client = CerebrasClient(api_key=key)
+        try:
+            async for chunk in client.chat_completion_stream(
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=temperature,
+            ):
+                yield chunk
+            latency_ms = (_time.monotonic() - t0) * 1000
+            if pool_tracker is not None:
+                pool_tracker.record_call(key_index, latency_ms)
+            await client.close()
+            return  # success — stop generator
+        except Exception as exc:
+            await client.close()
+            last_error = exc
+            err_str = str(exc)
+            is_rate_limit = (
+                "429" in err_str
+                or "quota" in err_str.lower()
+                or "token_quota" in err_str.lower()
+                or ("rate" in err_str.lower() and "limit" in err_str.lower())
+            )
+            if is_rate_limit and attempt + 1 < pool_size:
+                next_slot = (key_index + 1) % pool_size
+                if pool_tracker is not None:
+                    pool_tracker.record_failover(key_index, next_slot, err_str[:120])
+                logger.warning(
+                    "Cerebras slot %d rate-limited, failing over to slot %d "
+                    "(attempt %d/%d)",
+                    key_index, next_slot, attempt + 1, pool_size,
+                )
+                continue
+            raise
+
+    if last_error:
+        raise last_error

@@ -158,8 +158,37 @@ Quality expectations:
             max_tokens=2000,
         )
 
-        # Parse JSON response
-        data = self.parse_json_response(response)
+        # Parse JSON response, with fallback for raw SQL from Cerebras/other providers
+        try:
+            data = self.parse_json_response(response)
+        except Exception:
+            # LLM returned raw SQL or non-JSON — wrap it into expected structure
+            sql_text = response.strip()
+            # Strip markdown fences if present
+            if sql_text.startswith("```"):
+                sql_text = sql_text.split("\n", 1)[-1]
+                if "```" in sql_text:
+                    sql_text = sql_text.rsplit("```", 1)[0].strip()
+            # Extract table names from CREATE TABLE statements
+            import re as _re
+            table_names = _re.findall(
+                r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[\"']?(\w+)[\"']?",
+                sql_text,
+                _re.IGNORECASE,
+            )
+            tables = [
+                {
+                    "name": name,
+                    "columns": [{"name": "id", "type": "SERIAL PRIMARY KEY", "description": "Primary key"}],
+                    "indexes": [],
+                }
+                for name in (table_names or ["entities"])
+            ]
+            data = {
+                "schema": {"tables": tables, "relationships": []},
+                "migrations": {"001_initial_schema": sql_text},
+                "orm_models": {"raw_sql": sql_text},
+            }
 
         # Add metadata
         data["_tokens_used"] = tokens

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import WorkspaceVNext from '../WorkspaceVNext';
 import { useAuth } from '../../authContext';
@@ -124,9 +124,78 @@ describe('WorkspaceVNext', () => {
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalled();
+      expect(global.fetch).toHaveBeenCalledWith('/api/runtime/inspect?limit=100', expect.any(Object));
       expect(screen.getByLabelText(/runtime telemetry/i)).toBeInTheDocument();
       expect(screen.getByText('Tasks')).toBeInTheDocument();
       expect(screen.getAllByText('2').length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it('renders inspect timeline panel when inspect telemetry is present', async () => {
+    useAuth.mockReturnValue({ user: { id: 'user-inspect-1', workspace_mode: 'developer', internal_team: true } });
+    global.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        task_count: 1,
+        memory_graph: { node_count: 1, edge_count: 0 },
+        cost_ledger: {},
+        recent_events: [],
+        inspect: {
+          task_status_summary: { running: 1 },
+          timeline: [{ type: 'step_start', phase: 'execute', agent: 'BackendAgent' }],
+          failures: [],
+          phase_summary: { execute: { count: 1, avg_ms: 23, total_ms: 23 } },
+        },
+      }),
+    });
+
+    renderAt('/app/workspace?mode=developer');
+
+    fireEvent.click(screen.getByRole('tab', { name: /inspect/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/inspect timeline/i)).toBeInTheDocument();
+      expect(screen.getByText(/step_start/i)).toBeInTheDocument();
+    });
+  });
+
+  it('runs what-if simulation from workspace panel', async () => {
+    useAuth.mockReturnValue({ user: { id: 'user-whatif-1', workspace_mode: 'developer', internal_team: true } });
+    global.fetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          task_count: 1,
+          memory_graph: { node_count: 1, edge_count: 0 },
+          cost_ledger: {},
+          recent_events: [],
+          inspect: {},
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          recommendation: { recommended_action: 'Adopt change with guardrails', confidence: 0.77 },
+          rounds_executed: 3,
+        }),
+      });
+
+    renderAt('/app/workspace?mode=developer');
+
+    fireEvent.click(screen.getByRole('tab', { name: /what-if/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/what-if simulation/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /run simulation/i }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/runtime/what-if',
+        expect.objectContaining({ method: 'POST' }),
+      );
+      expect(screen.getByText(/adopt change with guardrails/i)).toBeInTheDocument();
     });
   });
 });

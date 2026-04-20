@@ -142,6 +142,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
 
+      - name: Architecture guardrails
+        working-directory: backend
+        run: |
+          python scripts/verify_architecture_guardrails.py
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
@@ -167,6 +172,18 @@ jobs:
           GOOGLE_CLIENT_SECRET: test-google-client-secret
         run: |
           python -m pytest tests/ -v --cov=. --cov-report=xml --cov-report=html --ignore=tests/run_production_validation.py
+
+      - name: Regenerate public proof index + landing
+        env:
+          CRUCIB_PROOF_HMAC_SECRET: local-proof-test-secret
+        run: |
+          python scripts/generate-public-proof-index.py
+
+      - name: Verify signed proof manifests
+        env:
+          CRUCIB_PROOF_HMAC_SECRET: local-proof-test-secret
+        run: |
+          python scripts/verify-public-proof-bundle.py
 
       - name: Run JavaScript unit tests
         working-directory: frontend

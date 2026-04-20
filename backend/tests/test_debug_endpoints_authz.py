@@ -56,3 +56,29 @@ async def test_debug_runtime_state_endpoint_payload(app_client, auth_headers, mo
     assert payload["task_count"] >= 1
     assert tid in payload["cost_ledger"]
     assert payload["memory_graph"]["node_count"] >= 1
+    assert "inspect" in payload
+    assert "timeline" in payload["inspect"]
+    assert "phase_summary" in payload["inspect"]
+
+
+async def test_debug_runtime_what_if_endpoint(app_client, auth_headers, monkeypatch):
+    monkeypatch.setattr(server, "_is_admin_user", lambda _user: True)
+
+    project_id = "test-project-what-if"
+    body = {
+        "scenario": "What if we migrate the billing provider and keep canary rollback?",
+        "population_size": 12,
+        "rounds": 2,
+    }
+
+    response = await app_client.post(
+        f"/api/debug/runtime-state/{project_id}/what-if",
+        headers=auth_headers,
+        json=body,
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["success"] is True
+    assert payload["project_id"] == project_id
+    assert "recommendation" in payload
+    assert "updates" in payload

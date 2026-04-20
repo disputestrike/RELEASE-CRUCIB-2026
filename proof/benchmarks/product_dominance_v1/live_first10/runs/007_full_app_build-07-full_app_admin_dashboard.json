@@ -1,0 +1,38 @@
+{
+  "case_id": "full_app_admin_dashboard",
+  "category": "full_app_build",
+  "deploy_status": "n/a",
+  "dimensions": {
+    "accuracy": 0.0,
+    "reliability": 100.0,
+    "speed": 100.0,
+    "success": 100.0,
+    "ux": 80.0
+  },
+  "failures": 0,
+  "index": 7,
+  "iteration": 7,
+  "mode": "live_runtime",
+  "prompt": "Build an admin dashboard with CRUD operations, filters, analytics charts, and backend endpoints.",
+  "result_text": "What's the main objective you're working on?",
+  "retries": 0,
+  "run_id": "full_app_build-07-full_app_admin_dashboard",
+  "score": 78.0,
+  "steps_taken": 0,
+  "success": true,
+  "task_id": "tsk_9a4c7ec83fda",
+  "task_status": "completed",
+  "time_seconds": 0.03,
+  "timeline": [
+    "task.started",
+    "task_start",
+    "task_start",
+    "brain.assessed",
+    "task.updated",
+    "task_update",
+    "task_end",
+    "task_end"
+  ],
+  "timestamp": "2026-04-20T17:03:56.469988+00:00",
+  "title": "Admin Dashboard Build"
+}

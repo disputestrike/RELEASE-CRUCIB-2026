@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, ArrowRight, Menu, X, Paperclip, Image, FileText, Mic, MicOff } from 'lucide-react';
+import { Loader2, ArrowRight, Menu, X, Paperclip, Image, FileText, Mic, MicOff, ShieldCheck } from 'lucide-react';
 import { useAuth, API } from '../App';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';
@@ -187,6 +187,7 @@ const LandingPage = () => {
           <div className="hidden md:flex flex-1 items-center justify-center gap-8 min-w-0">
             <SolutionsNavDropdown />
             <Link to="/pricing" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Pricing</Link>
+            <Link to="/proof" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Proof</Link>
             <Link to="/our-projects" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Our Project</Link>
           </div>
           <div className="hidden md:flex items-center gap-4 ml-auto shrink-0">
@@ -223,6 +224,7 @@ const LandingPage = () => {
                 ))}
               </div>
               <Link to="/pricing" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Pricing</Link>
+              <Link to="/proof" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Proof</Link>
               <Link to="/our-projects" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Our Project</Link>
               {!user && (
                 <Link to="/auth" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Log in</Link>
@@ -314,6 +316,30 @@ const LandingPage = () => {
             </form>
           </div>
           <SuggestionChips onSelect={(prompt) => setInput(prompt)} disabled={isBuilding} />
+
+          <div className="max-w-[720px] mx-auto mt-5 rounded-xl border border-gray-200 bg-white px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-gray-900">Single flow: prompt -> build -> verify.</p>
+              <p className="text-xs text-gray-500">Start in chat workspace, then open signed public proof on one page.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => navigate('/app/workspace')}
+                className="px-3 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-black transition"
+              >
+                Open chat
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/proof')}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm hover:bg-gray-100 transition"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                View proof
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 

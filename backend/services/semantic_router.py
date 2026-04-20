@@ -24,17 +24,17 @@ class IntentClassifier:
         },
         "testing": {
             "keywords": ["test", "debug", "failing", "error", "broken", "unit test", "pytest", "coverage"],
-            "agents": ["TerminalAgent"],
+            "agents": ["CodeAnalysisAgent"],
             "confidence_boost": ["pytest", "failing", "test_", "unittest"],
         },
         "execution": {
             "keywords": ["run", "execute", "build", "compile", "deploy", "start", "launch"],
-            "agents": ["TerminalAgent"],
+            "agents": ["DesignAgent", "DatabaseAgent"],
             "confidence_boost": ["npm", "python", "make", "docker"],
         },
         "generation": {
             "keywords": ["generate", "create", "write", "implement", "build"],
-            "agents": ["BackendAgent", "FrontendAgent"],
+            "agents": ["DesignAgent", "DatabaseAgent"],
             "confidence_boost": ["function", "component", "class", "api"],
         },
         "exploration": {
@@ -54,7 +54,7 @@ class IntentClassifier:
         },
         "version_control": {
             "keywords": ["git", "commit", "push", "pull", "branch", "merge", "github"],
-            "agents": ["TerminalAgent"],
+            "agents": ["WorkspaceExplorerAgent"],
             "confidence_boost": ["git", "commit", "github"],
         },
     }
@@ -110,7 +110,7 @@ class SemanticRouter:
             else:
                 primary_agents.append(
                     {
-                        "agent": "PlannerAgent",
+                        "agent": "WorkspaceExplorerAgent",
                         "confidence": 0.5,
                         "params": {"user_prompt": user_request},
                         "reasoning": "Generic fallback - no specific intent detected",
@@ -147,16 +147,16 @@ class SemanticRouter:
                 score += 0.3
             if "search" in request_lower:
                 score += 0.2
-        elif agent_name == "TerminalAgent":
-            if any(kw in request_lower for kw in ["run", "test", "build", "execute", "git"]):
+        elif agent_name == "DesignAgent":
+            if any(kw in request_lower for kw in ["build", "ui", "dashboard", "frontend", "component"]):
                 score += 0.3
-            if "pytest" in request_lower or "test" in request_lower:
+            if "flow" in request_lower or "page" in request_lower:
                 score += 0.2
-        elif agent_name == "BackendAgent":
-            if any(kw in request_lower for kw in ["backend", "api", "server", "database"]):
+        elif agent_name == "DatabaseAgent":
+            if any(kw in request_lower for kw in ["backend", "api", "server", "database", "crud"]):
                 score += 0.3
-        elif agent_name == "FrontendAgent":
-            if any(kw in request_lower for kw in ["frontend", "ui", "component", "react"]):
+        elif agent_name == "DeploymentAgent":
+            if any(kw in request_lower for kw in ["deploy", "production", "release", "docker"]):
                 score += 0.3
 
         params = self._extract_params(agent_name, user_request, context)
@@ -191,13 +191,12 @@ class SemanticRouter:
                 params["action"] = "locate_pattern"
             elif "structure" in lowered:
                 params["action"] = "project_map"
-        elif agent_name == "TerminalAgent":
-            if "test" in lowered:
-                params["action"] = "run_test"
-            elif "build" in lowered:
-                params["action"] = "build"
-            elif "git" in lowered:
-                params["action"] = "git_command"
+        elif agent_name == "DesignAgent":
+            params["action"] = "design_and_build"
+        elif agent_name == "DatabaseAgent":
+            params["action"] = "backend_data_flow"
+        elif agent_name == "DeploymentAgent":
+            params["action"] = "deploy_readiness"
 
         return params
 

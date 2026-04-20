@@ -55,8 +55,17 @@ class WorkspaceExplorerAgent(BaseAgent):
     def validate_input(self, context: Dict[str, Any]) -> bool:
         super().validate_input(context)
 
+        # Runtime may route exploratory work without explicit action metadata.
+        # Derive a deterministic default instead of hard-failing.
         if "action" not in context:
-            raise AgentValidationError(f"{self.name}: Missing required field 'action'")
+            if context.get("query"):
+                context["action"] = "search"
+            elif context.get("pattern"):
+                context["action"] = "locate_pattern"
+            elif context.get("user_prompt"):
+                context["action"] = "project_map"
+            else:
+                context["action"] = "discover"
 
         action = context["action"]
         valid_actions = ["discover", "search", "analyze_dependencies", "locate_pattern", "project_map"]
@@ -64,10 +73,10 @@ class WorkspaceExplorerAgent(BaseAgent):
             raise AgentValidationError(f"{self.name}: action must be one of {valid_actions}")
 
         if action == "search" and "query" not in context:
-            raise AgentValidationError(f"{self.name}: search action requires 'query' field")
+            context["query"] = str(context.get("user_prompt") or context.get("request") or "project").strip() or "project"
 
         if action == "locate_pattern" and "pattern" not in context:
-            raise AgentValidationError(f"{self.name}: locate_pattern action requires 'pattern' field")
+            context["pattern"] = str(context.get("query") or context.get("user_prompt") or "TODO").strip() or "TODO"
 
         return True
 

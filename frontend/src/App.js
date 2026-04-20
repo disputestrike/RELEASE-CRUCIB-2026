@@ -67,6 +67,7 @@ import Changelog from "./pages/Changelog";
 import Status from "./pages/Status";
 import PromptsPublic from "./pages/PromptsPublic";
 import Benchmarks from "./pages/Benchmarks";
+import PublicProofPage from "./pages/PublicProofPage";
 import Blog from "./pages/Blog";
 import GenerateContent from "./pages/GenerateContent";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -457,6 +458,7 @@ function App() {
           <Route path="/shortcuts" element={<ShortcutsPublic />} />
           <Route path="/prompts" element={<PromptsPublic />} />
           <Route path="/benchmarks" element={<Benchmarks />} />
+          <Route path="/proof" element={<PublicProofPage />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/:slug" element={<Blog />} />
           <Route path="/changelog" element={<Changelog />} />

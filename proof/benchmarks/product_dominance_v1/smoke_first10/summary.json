@@ -1,0 +1,347 @@
+{
+  "aggregate": {
+    "average_retries": 0.5,
+    "average_score": 97.1,
+    "average_time_seconds": 78.1,
+    "category_summary": {
+      "full_app_build": {
+        "average_score": 97.1,
+        "runs": 10,
+        "success_rate": 1.0,
+        "target_score": "85-90"
+      }
+    },
+    "success_rate": 1.0,
+    "total_runs": 10
+  },
+  "benchmark_version": "2026-04-20.product_dominance.v1",
+  "counts_by_category": {
+    "continuation": 5,
+    "deploy": 5,
+    "full_app_build": 10,
+    "repair": 5,
+    "what_if": 5
+  },
+  "formula": "Score = (0.4*Success)+(0.2*Accuracy)+(0.15*Speed)+(0.15*Reliability)+(0.1*UX)",
+  "generated_at": "2026-04-20T17:03:07.717021+00:00",
+  "mode": "simulated",
+  "results": [
+    {
+      "case_id": "full_app_admin_dashboard",
+      "category": "full_app_build",
+      "deploy_status": "simulated",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 88.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 80.0
+      },
+      "failures": 0,
+      "index": 1,
+      "iteration": 1,
+      "mode": "simulated",
+      "prompt": "Build an admin dashboard with CRUD operations, filters, analytics charts, and backend endpoints.",
+      "result_text": "Simulated run for Admin Dashboard Build. crud filters analytics charts backend",
+      "retries": 1,
+      "run_id": "full_app_build-01-full_app_admin_dashboard",
+      "score": 96.2,
+      "steps_taken": 8,
+      "success": true,
+      "time_seconds": 82.0,
+      "timeline": [
+        "simulation.started",
+        "simulation.completed"
+      ],
+      "timestamp": "2026-04-20T17:03:07.708258+00:00",
+      "title": "Admin Dashboard Build"
+    },
+    {
+      "case_id": "full_app_landing_backend",
+      "category": "full_app_build",
+      "deploy_status": "simulated",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 88.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 80.0
+      },
+      "failures": 0,
+      "index": 2,
+      "iteration": 2,
+      "mode": "simulated",
+      "prompt": "Build a landing page with form capture and backend email integration with validation and confirmation flow.",
+      "result_text": "Simulated run for Landing and Backend Integration. landing form backend email validation",
+      "retries": 1,
+      "run_id": "full_app_build-02-full_app_landing_backend",
+      "score": 96.2,
+      "steps_taken": 8,
+      "success": true,
+      "time_seconds": 101.0,
+      "timeline": [
+        "simulation.started",
+        "simulation.completed"
+      ],
+      "timestamp": "2026-04-20T17:03:07.709337+00:00",
+      "title": "Landing and Backend Integration"
+    },
+    {
+      "case_id": "full_app_saas",
+      "category": "full_app_build",
+      "deploy_status": "simulated",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 100.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 80.0
+      },
+      "failures": 0,
+      "index": 3,
+      "iteration": 3,
+      "mode": "simulated",
+      "prompt": "Build a SaaS app with authentication, dashboard, and Stripe billing. Include backend API, runnable preview, and deploy-ready output.",
+      "result_text": "Simulated run for SaaS App Build. authentication dashboard stripe api deploy",
+      "retries": 0,
+      "run_id": "full_app_build-03-full_app_saas",
+      "score": 98.0,
+      "steps_taken": 8,
+      "success": true,
+      "time_seconds": 85.0,
+      "timeline": [
+        "simulation.started",
+        "simulation.completed"
+      ],
+      "timestamp": "2026-04-20T17:03:07.710200+00:00",
+      "title": "SaaS App Build"
+    },
+    {
+      "case_id": "full_app_admin_dashboard",
+      "category": "full_app_build",
+      "deploy_status": "simulated",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 88.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 80.0
+      },
+      "failures": 0,
+      "index": 4,
+      "iteration": 4,
+      "mode": "simulated",
+      "prompt": "Build an admin dashboard with CRUD operations, filters, analytics charts, and backend endpoints.",
+      "result_text": "Simulated run for Admin Dashboard Build. crud filters analytics charts backend",
+      "retries": 1,
+      "run_id": "full_app_build-04-full_app_admin_dashboard",
+      "score": 96.2,
+      "steps_taken": 8,
+      "success": true,
+      "time_seconds": 61.0,
+      "timeline": [
+        "simulation.started",
+        "simulation.completed"
+      ],
+      "timestamp": "2026-04-20T17:03:07.711332+00:00",
+      "title": "Admin Dashboard Build"
+    },
+    {
+      "case_id": "full_app_landing_backend",
+      "category": "full_app_build",
+      "deploy_status": "simulated",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 100.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 80.0
+      },
+      "failures": 0,
+      "index": 5,
+      "iteration": 5,
+      "mode": "simulated",
+      "prompt": "Build a landing page with form capture and backend email integration with validation and confirmation flow.",
+      "result_text": "Simulated run for Landing and Backend Integration. landing form backend email validation",
+      "retries": 0,
+      "run_id": "full_app_build-05-full_app_landing_backend",
+      "score": 98.0,
+      "steps_taken": 8,
+      "success": true,
+      "time_seconds": 46.0,
+      "timeline": [
+        "simulation.started",
+        "simulation.completed"
+      ],
+      "timestamp": "2026-04-20T17:03:07.712079+00:00",
+      "title": "Landing and Backend Integration"
+    },
+    {
+      "case_id": "full_app_saas",
+      "category": "full_app_build",
+      "deploy_status": "simulated",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 100.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 80.0
+      },
+      "failures": 0,
+      "index": 6,
+      "iteration": 6,
+      "mode": "simulated",
+      "prompt": "Build a SaaS app with authentication, dashboard, and Stripe billing. Include backend API, runnable preview, and deploy-ready output.",
+      "result_text": "Simulated run for SaaS App Build. authentication dashboard stripe api deploy",
+      "retries": 0,
+      "run_id": "full_app_build-06-full_app_saas",
+      "score": 98.0,
+      "steps_taken": 8,
+      "success": true,
+      "time_seconds": 109.0,
+      "timeline": [
+        "simulation.started",
+        "simulation.completed"
+      ],
+      "timestamp": "2026-04-20T17:03:07.712827+00:00",
+      "title": "SaaS App Build"
+    },
+    {
+      "case_id": "full_app_admin_dashboard",
+      "category": "full_app_build",
+      "deploy_status": "simulated",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 100.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 80.0
+      },
+      "failures": 0,
+      "index": 7,
+      "iteration": 7,
+      "mode": "simulated",
+      "prompt": "Build an admin dashboard with CRUD operations, filters, analytics charts, and backend endpoints.",
+      "result_text": "Simulated run for Admin Dashboard Build. crud filters analytics charts backend",
+      "retries": 0,
+      "run_id": "full_app_build-07-full_app_admin_dashboard",
+      "score": 98.0,
+      "steps_taken": 8,
+      "success": true,
+      "time_seconds": 62.0,
+      "timeline": [
+        "simulation.started",
+        "simulation.completed"
+      ],
+      "timestamp": "2026-04-20T17:03:07.713591+00:00",
+      "title": "Admin Dashboard Build"
+    },
+    {
+      "case_id": "full_app_landing_backend",
+      "category": "full_app_build",
+      "deploy_status": "simulated",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 88.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 80.0
+      },
+      "failures": 0,
+      "index": 8,
+      "iteration": 8,
+      "mode": "simulated",
+      "prompt": "Build a landing page with form capture and backend email integration with validation and confirmation flow.",
+      "result_text": "Simulated run for Landing and Backend Integration. landing form backend email validation",
+      "retries": 1,
+      "run_id": "full_app_build-08-full_app_landing_backend",
+      "score": 96.2,
+      "steps_taken": 8,
+      "success": true,
+      "time_seconds": 75.0,
+      "timeline": [
+        "simulation.started",
+        "simulation.completed"
+      ],
+      "timestamp": "2026-04-20T17:03:07.714352+00:00",
+      "title": "Landing and Backend Integration"
+    },
+    {
+      "case_id": "full_app_saas",
+      "category": "full_app_build",
+      "deploy_status": "simulated",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 88.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 80.0
+      },
+      "failures": 0,
+      "index": 9,
+      "iteration": 9,
+      "mode": "simulated",
+      "prompt": "Build a SaaS app with authentication, dashboard, and Stripe billing. Include backend API, runnable preview, and deploy-ready output.",
+      "result_text": "Simulated run for SaaS App Build. authentication dashboard stripe api deploy",
+      "retries": 1,
+      "run_id": "full_app_build-09-full_app_saas",
+      "score": 96.2,
+      "steps_taken": 8,
+      "success": true,
+      "time_seconds": 81.0,
+      "timeline": [
+        "simulation.started",
+        "simulation.completed"
+      ],
+      "timestamp": "2026-04-20T17:03:07.715045+00:00",
+      "title": "SaaS App Build"
+    },
+    {
+      "case_id": "full_app_admin_dashboard",
+      "category": "full_app_build",
+      "deploy_status": "simulated",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 100.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 80.0
+      },
+      "failures": 0,
+      "index": 10,
+      "iteration": 10,
+      "mode": "simulated",
+      "prompt": "Build an admin dashboard with CRUD operations, filters, analytics charts, and backend endpoints.",
+      "result_text": "Simulated run for Admin Dashboard Build. crud filters analytics charts backend",
+      "retries": 0,
+      "run_id": "full_app_build-10-full_app_admin_dashboard",
+      "score": 98.0,
+      "steps_taken": 8,
+      "success": true,
+      "time_seconds": 79.0,
+      "timeline": [
+        "simulation.started",
+        "simulation.completed"
+      ],
+      "timestamp": "2026-04-20T17:03:07.716156+00:00",
+      "title": "Admin Dashboard Build"
+    }
+  ],
+  "suite_version": "2026-04-20.product_dominance_suite.v1",
+  "summary_sha256": "24f9e0207b41ed31d2c390ef4df64264bef28239853fe0a4444124026e897822",
+  "targets": {
+    "continuation": "90+",
+    "deploy": "85+",
+    "full_app_build": "85-90",
+    "repair": "80-85",
+    "what_if": "85+"
+  },
+  "user_id": "benchmark-runner",
+  "weights": {
+    "accuracy": 0.2,
+    "reliability": 0.15,
+    "speed": 0.15,
+    "success": 0.4,
+    "ux": 0.1
+  }
+}

@@ -1,0 +1,216 @@
+{
+  "case_id": "decision_what_if_strategy",
+  "category": "what_if",
+  "deploy_status": "n/a",
+  "dimensions": {
+    "accuracy": 33.33,
+    "reliability": 100.0,
+    "speed": 100.0,
+    "success": 100.0,
+    "ux": 73.0
+  },
+  "failures": 0,
+  "index": 81,
+  "iteration": 13,
+  "mode": "live_what_if",
+  "prompt": "Compare two approaches for building this app and recommend the best one with confidence and tradeoffs.",
+  "result_text": "Adopt the proposed change with guarded rollout (confidence=0.77)",
+  "retries": 0,
+  "run_id": "what_if-13-decision_what_if_strategy",
+  "score": 83.97,
+  "simulation": {
+    "consensus_reached": false,
+    "population_size": 48,
+    "recommendation": {
+      "cluster_id": "cluster_b",
+      "confidence": 0.77,
+      "recommended_action": "Adopt the proposed change with guarded rollout",
+      "tradeoffs": [
+        "cost or DX upside",
+        "faster long-term iteration",
+        "manageable migration with staged fallback"
+      ]
+    },
+    "rounds_executed": 4,
+    "scenario": "Compare two approaches for building this app and recommend the best one with confidence and tradeoffs.",
+    "updates": [
+      {
+        "clusters": [
+          {
+            "confidence": 0.76,
+            "id": "cluster_a",
+            "key_arguments": [
+              "existing integrations remain stable",
+              "lower operational disruption",
+              "easier compliance continuity"
+            ],
+            "position": "Keep current architecture; migration risk is currently too high",
+            "size": 25
+          },
+          {
+            "confidence": 0.66,
+            "id": "cluster_b",
+            "key_arguments": [
+              "cost or DX upside",
+              "faster long-term iteration",
+              "manageable migration with staged fallback"
+            ],
+            "position": "Adopt the proposed change with guarded rollout",
+            "size": 17
+          },
+          {
+            "confidence": 0.41,
+            "id": "cluster_neutral",
+            "key_arguments": [
+              "insufficient benchmark data",
+              "need controlled canary evidence"
+            ],
+            "position": "Delay decision and gather additional runtime evidence",
+            "size": 6
+          }
+        ],
+        "consensus_emerging": false,
+        "round": 1,
+        "sentiment_shift": {
+          "pro_change": -0.15,
+          "pro_current": 0.02
+        }
+      },
+      {
+        "clusters": [
+          {
+            "confidence": 0.62,
+            "id": "cluster_a",
+            "key_arguments": [
+              "existing integrations remain stable",
+              "lower operational disruption",
+              "easier compliance continuity"
+            ],
+            "position": "Keep current architecture; migration risk is currently too high",
+            "size": 14
+          },
+          {
+            "confidence": 0.81,
+            "id": "cluster_b",
+            "key_arguments": [
+              "cost or DX upside",
+              "faster long-term iteration",
+              "manageable migration with staged fallback"
+            ],
+            "position": "Adopt the proposed change with guarded rollout",
+            "size": 29
+          },
+          {
+            "confidence": 0.4,
+            "id": "cluster_neutral",
+            "key_arguments": [
+              "insufficient benchmark data",
+              "need controlled canary evidence"
+            ],
+            "position": "Delay decision and gather additional runtime evidence",
+            "size": 5
+          }
+        ],
+        "consensus_emerging": false,
+        "round": 2,
+        "sentiment_shift": {
+          "pro_change": 0.1,
+          "pro_current": -0.21
+        }
+      },
+      {
+        "clusters": [
+          {
+            "confidence": 0.77,
+            "id": "cluster_a",
+            "key_arguments": [
+              "existing integrations remain stable",
+              "lower operational disruption",
+              "easier compliance continuity"
+            ],
+            "position": "Keep current architecture; migration risk is currently too high",
+            "size": 26
+          },
+          {
+            "confidence": 0.66,
+            "id": "cluster_b",
+            "key_arguments": [
+              "cost or DX upside",
+              "faster long-term iteration",
+              "manageable migration with staged fallback"
+            ],
+            "position": "Adopt the proposed change with guarded rollout",
+            "size": 17
+          },
+          {
+            "confidence": 0.4,
+            "id": "cluster_neutral",
+            "key_arguments": [
+              "insufficient benchmark data",
+              "need controlled canary evidence"
+            ],
+            "position": "Delay decision and gather additional runtime evidence",
+            "size": 5
+          }
+        ],
+        "consensus_emerging": false,
+        "round": 3,
+        "sentiment_shift": {
+          "pro_change": -0.15,
+          "pro_current": 0.04
+        }
+      },
+      {
+        "clusters": [
+          {
+            "confidence": 0.68,
+            "id": "cluster_a",
+            "key_arguments": [
+              "existing integrations remain stable",
+              "lower operational disruption",
+              "easier compliance continuity"
+            ],
+            "position": "Keep current architecture; migration risk is currently too high",
+            "size": 18
+          },
+          {
+            "confidence": 0.77,
+            "id": "cluster_b",
+            "key_arguments": [
+              "cost or DX upside",
+              "faster long-term iteration",
+              "manageable migration with staged fallback"
+            ],
+            "position": "Adopt the proposed change with guarded rollout",
+            "size": 26
+          },
+          {
+            "confidence": 0.39,
+            "id": "cluster_neutral",
+            "key_arguments": [
+              "insufficient benchmark data",
+              "need controlled canary evidence"
+            ],
+            "position": "Delay decision and gather additional runtime evidence",
+            "size": 4
+          }
+        ],
+        "consensus_emerging": false,
+        "round": 4,
+        "sentiment_shift": {
+          "pro_change": 0.04,
+          "pro_current": -0.12
+        }
+      }
+    ]
+  },
+  "steps_taken": 4,
+  "success": true,
+  "time_seconds": 0.0,
+  "timeline": [
+    "what_if.started",
+    "what_if.completed"
+  ],
+  "timestamp": "2026-04-20T18:56:23.491668+00:00",
+  "title": "What-if Strategy Comparison"
+}

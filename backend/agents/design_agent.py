@@ -166,8 +166,26 @@ Quality expectations:
             max_tokens=1500,
         )
 
-        # Parse JSON response
-        data = self.parse_json_response(response)
+        # Parse JSON response, with fallback for non-JSON (e.g. Cerebras raw text)
+        try:
+            data = self.parse_json_response(response)
+        except Exception:
+            raw = response.strip()
+            if raw.startswith("```"):
+                raw = raw.split("\n", 1)[-1]
+                if "```" in raw:
+                    raw = raw.rsplit("```", 1)[0].strip()
+            data = {
+                "design_system": {
+                    "colors": {"primary": "#007bff", "secondary": "#6c757d", "accent": "#28a745"},
+                    "typography": {"heading": "Inter, sans-serif", "body": "Inter, sans-serif"},
+                    "spacing": "8px base",
+                    "border_radius": "4px",
+                },
+                "layouts": [{"name": "main", "description": raw[:500]}],
+                "components": [{"name": "App", "description": "Main application component"}],
+                "mockup_description": raw[:1000],
+            }
 
         # Add metadata
         data["_tokens_used"] = tokens

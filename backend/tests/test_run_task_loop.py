@@ -203,3 +203,173 @@ async def test_run_task_loop_no_spawn_request(monkeypatch):
     assert out["status"] == "executed"
     assert out["execution"]["spawned_tasks"] == 0
     assert all(not o.get("spawned") for o in out["execution"]["agent_outputs"])
+
+
+@pytest.mark.asyncio
+async def test_run_task_loop_retries_and_recovers(monkeypatch):
+    from services.conversation_manager import ContextManager
+    from services.events import event_bus
+    from services.runtime.runtime_engine import RuntimeEngine
+    from services.runtime.task_manager import task_manager
+
+    monkeypatch.setattr(event_bus, "emit", lambda *a, **kw: None)
+
+    calls = {"n": 0}
+
+    class _FlakyAgent:
+        async def run(self, context):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise RuntimeError("network timeout")
+            return {"text": "recovered"}
+
+    agent_configs = [{"agent": "FlakyAgent", "params": {}}]
+    brain = _make_brain(
+        monkeypatch,
+        {"FlakyAgent": _FlakyAgent()},
+        agent_configs,
+    )
+
+    engine = RuntimeEngine()
+    monkeypatch.setattr(engine, "_brain_factory", lambda: brain)
+    monkeypatch.setattr(engine, "_select_provider_chain", lambda *_: [])
+
+    project_id = "proj-rtl-retry-1"
+    task = task_manager.create_task(project_id=project_id, description="retry run")
+    session = ContextManager().create_session("sess-rtl-retry-1")
+
+    out = await engine.run_task_loop(
+        session=session,
+        project_id=project_id,
+        task_id=task["task_id"],
+        user_message="retry please",
+        planner=brain,
+    )
+
+    assert out["status"] == "executed"
+    assert calls["n"] >= 2
+    assert any(o.get("runtime_meta") for o in out["execution"]["agent_outputs"])
+
+
+@pytest.mark.asyncio
+async def test_run_task_loop_repair_path_recovers(monkeypatch):
+    from services.conversation_manager import ContextManager
+    from services.events import event_bus
+    from services.runtime.runtime_engine import RuntimeEngine
+    from services.runtime.task_manager import task_manager
+
+    emitted: list[tuple[str, dict]] = []
+    monkeypatch.setattr(event_bus, "emit", lambda t, p=None: emitted.append((t, p or {})))
+    monkeypatch.setenv("CRUCIB_AGENT_MAX_RETRIES", "1")
+
+    state = {"repaired": False, "attempts": 0}
+
+    class _AlwaysFailUntilRepairAgent:
+        async def run(self, context):
+            state["attempts"] += 1
+            if not state["repaired"]:
+                raise RuntimeError("network timeout")
+            return {"text": "recovered after repair"}
+
+    class _RepairAgent:
+        async def run(self, context):
+            assert context.get("repair") is True
+            assert context.get("failed_agent") == "FlakyAgent"
+            state["repaired"] = True
+            return {"action": "patched"}
+
+    agent_configs = [{"agent": "FlakyAgent", "params": {}}]
+    brain = _make_brain(
+        monkeypatch,
+        {
+            "FlakyAgent": _AlwaysFailUntilRepairAgent(),
+            "CodeAnalysisAgent": _RepairAgent(),
+        },
+        agent_configs,
+    )
+
+    engine = RuntimeEngine()
+    monkeypatch.setattr(engine, "_brain_factory", lambda: brain)
+    monkeypatch.setattr(engine, "_select_provider_chain", lambda *_: [])
+
+    project_id = "proj-rtl-repair-success-1"
+    task = task_manager.create_task(project_id=project_id, description="repair success run")
+    session = ContextManager().create_session("sess-rtl-repair-success-1")
+
+    out = await engine.run_task_loop(
+        session=session,
+        project_id=project_id,
+        task_id=task["task_id"],
+        user_message="recover with repair",
+        planner=brain,
+    )
+
+    assert out["status"] == "executed"
+    assert state["attempts"] >= 2
+    assert any(o.get("runtime_meta") for o in out["execution"]["agent_outputs"])
+
+    retry_events = [payload for name, payload in emitted if name == "brain.agent.retry_scheduled"]
+    assert retry_events
+    assert retry_events[0].get("failure_kind") == "timeout"
+    assert retry_events[0].get("attempt") == 1
+    assert "max_retries" in retry_events[0]
+    assert "delay_s" in retry_events[0]
+
+    assert any(name == "brain.agent.repair.started" for name, _ in emitted)
+    assert any(name == "brain.agent.repair.completed" for name, _ in emitted)
+
+
+@pytest.mark.asyncio
+async def test_run_task_loop_repair_path_fails_with_contract(monkeypatch):
+    from services.conversation_manager import ContextManager
+    from services.events import event_bus
+    from services.runtime.runtime_engine import RuntimeEngine
+    from services.runtime.task_manager import task_manager
+
+    emitted: list[tuple[str, dict]] = []
+    monkeypatch.setattr(event_bus, "emit", lambda t, p=None: emitted.append((t, p or {})))
+    monkeypatch.setenv("CRUCIB_AGENT_MAX_RETRIES", "1")
+
+    class _FailingAgent:
+        async def run(self, context):
+            raise RuntimeError("network timeout")
+
+    class _BrokenRepairAgent:
+        async def run(self, context):
+            raise RuntimeError("repair planning failed")
+
+    agent_configs = [{"agent": "FlakyAgent", "params": {}}]
+    brain = _make_brain(
+        monkeypatch,
+        {
+            "FlakyAgent": _FailingAgent(),
+            "CodeAnalysisAgent": _BrokenRepairAgent(),
+        },
+        agent_configs,
+    )
+
+    engine = RuntimeEngine()
+    monkeypatch.setattr(engine, "_brain_factory", lambda: brain)
+    monkeypatch.setattr(engine, "_select_provider_chain", lambda *_: [])
+
+    project_id = "proj-rtl-repair-fail-1"
+    task = task_manager.create_task(project_id=project_id, description="repair fail run")
+    session = ContextManager().create_session("sess-rtl-repair-fail-1")
+
+    out = await engine.run_task_loop(
+        session=session,
+        project_id=project_id,
+        task_id=task["task_id"],
+        user_message="repair should fail",
+        planner=brain,
+    )
+
+    assert out["status"] == "execution_failed"
+    error = str((out.get("execution") or {}).get("error") or "")
+    assert "agent_failed:FlakyAgent:timeout" in error
+
+    assert any(name == "brain.agent.repair.started" for name, _ in emitted)
+    assert any(name == "brain.agent.repair.failed" for name, _ in emitted)
+    fail_event = next(payload for name, payload in emitted if name == "brain.agent.repair.failed")
+    assert fail_event.get("failure_kind") == "timeout"
+    assert fail_event.get("failed_agent") == "FlakyAgent"

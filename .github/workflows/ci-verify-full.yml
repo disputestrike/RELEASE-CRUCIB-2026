@@ -74,6 +74,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
 
+      - name: Architecture guardrails
+        working-directory: backend
+        run: |
+          python scripts/verify_architecture_guardrails.py
+
       - name: Pytest (all backend tests)
         working-directory: backend
         run: |
@@ -106,6 +111,18 @@ jobs:
           ../deploy/healthcheck.sh "http://127.0.0.1:${PORT}"
           kill "$UV_PID" || true
           wait "$UV_PID" 2>/dev/null || true
+
+      - name: Regenerate public proof index + landing
+        env:
+          CRUCIB_PROOF_HMAC_SECRET: local-proof-test-secret
+        run: |
+          python scripts/generate-public-proof-index.py
+
+      - name: Verify signed proof manifests
+        env:
+          CRUCIB_PROOF_HMAC_SECRET: local-proof-test-secret
+        run: |
+          python scripts/verify-public-proof-bundle.py
 
   verify-frontend:
     runs-on: ubuntu-latest

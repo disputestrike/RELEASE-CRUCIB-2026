@@ -1,0 +1,3227 @@
+{
+  "aggregate": {
+    "average_retries": 4.9,
+    "average_score": 87.89,
+    "average_time_seconds": 6.37,
+    "category_summary": {
+      "continuation": {
+        "average_score": 86.02,
+        "runs": 5,
+        "success_rate": 1.0,
+        "target_score": "90+"
+      },
+      "deploy": {
+        "average_score": 88.66,
+        "runs": 5,
+        "success_rate": 1.0,
+        "target_score": "85+"
+      },
+      "full_app_build": {
+        "average_score": 89.83,
+        "runs": 10,
+        "success_rate": 1.0,
+        "target_score": "85-90"
+      },
+      "repair": {
+        "average_score": 89.02,
+        "runs": 5,
+        "success_rate": 1.0,
+        "target_score": "80-85"
+      },
+      "what_if": {
+        "average_score": 83.97,
+        "runs": 5,
+        "success_rate": 1.0,
+        "target_score": "85+"
+      }
+    },
+    "success_rate": 1.0,
+    "total_runs": 30
+  },
+  "benchmark_version": "2026-04-20.product_dominance.v1",
+  "counts_by_category": {
+    "continuation": 5,
+    "deploy": 5,
+    "full_app_build": 10,
+    "repair": 5,
+    "what_if": 5
+  },
+  "formula": "Score = (0.4*Success)+(0.2*Accuracy)+(0.15*Speed)+(0.15*Reliability)+(0.1*UX)",
+  "generated_at": "2026-04-20T18:08:42.606055+00:00",
+  "mode": "live",
+  "results": [
+    {
+      "build_depth": {
+        "has_backend": true,
+        "has_runnable": true,
+        "has_ui": true
+      },
+      "case_id": "full_app_admin_dashboard",
+      "category": "full_app_build",
+      "deploy_gate": {
+        "has_deploy": false,
+        "has_fatal": false,
+        "has_validation": false
+      },
+      "deploy_status": "n/a",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 34.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 100.0
+      },
+      "failures": 1,
+      "index": 1,
+      "iteration": 1,
+      "mode": "live_runtime",
+      "prompt": "Build an admin dashboard with CRUD operations, filters, analytics charts, and backend endpoints.",
+      "result_text": "I've completed the focused execution. DesignAgent produced keys ['design_system', 'layouts', 'components', 'mockup_description', '_tokens_used', '_model_used', '_agent']. runtime:DatabaseAgent produced keys ['event', 'agent', 'strategy']. DatabaseAgent produced keys ['diagnosed_failure', 'fallback', 'frontend', 'backend', 'runnable', 'next_action']. Build brief addressed: Build an admin dashboard with CRUD operations, filters, analytics charts, and backend endpoints. [benchmark_mode] benchmark_mode=true must_complete=true Assume sensible defaults. Do not ask clarification questions. Execute end-to-end until .... Build status: frontend UI implemented, backend API/data flow implemented, runnable end-to-end flow prepared. If you want, I can continue refining the output in the same conversation.",
+      "retries": 4,
+      "run_id": "full_app_build-01-full_app_admin_dashboard",
+      "score": 90.1,
+      "steps_taken": 4,
+      "success": true,
+      "task_id": "tsk_4d482de84731",
+      "task_status": "completed",
+      "time_seconds": 8.64,
+      "timeline": [
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end"
+      ],
+      "timestamp": "2026-04-20T18:05:40.156293+00:00",
+      "title": "Admin Dashboard Build"
+    },
+    {
+      "build_depth": {
+        "has_backend": true,
+        "has_runnable": true,
+        "has_ui": true
+      },
+      "case_id": "full_app_landing_backend",
+      "category": "full_app_build",
+      "deploy_gate": {
+        "has_deploy": false,
+        "has_fatal": false,
+        "has_validation": true
+      },
+      "deploy_status": "n/a",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 34.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 100.0
+      },
+      "failures": 1,
+      "index": 2,
+      "iteration": 2,
+      "mode": "live_runtime",
+      "prompt": "Build a landing page with form capture and backend email integration with validation and confirmation flow.",
+      "result_text": "I've completed the focused execution. DesignAgent produced keys ['design_system', 'layouts', 'components', 'mockup_description', 'layout', 'components_layout', 'routes', 'backend_integration', '_tokens_used', '_model_used', '_agent']. runtime:DatabaseAgent produced keys ['event', 'agent', 'strategy']. DatabaseAgent produced keys ['diagnosed_failure', 'fallback', 'frontend', 'backend', 'runnable', 'next_action']. Build brief addressed: Build a landing page with form capture and backend email integration with validation and confirmation flow. [benchmark_mode] benchmark_mode=true must_complete=true Assume sensible defaults. Do not ask clarification questions. Execute end-to.... Build status: frontend UI implemented, backend API/data flow implemented, runnable end-to-end flow prepared. If you want, I can continue refining the output in the same conversation.",
+      "retries": 4,
+      "run_id": "full_app_build-02-full_app_landing_backend",
+      "score": 90.1,
+      "steps_taken": 4,
+      "success": true,
+      "task_id": "tsk_d29cf78ce043",
+      "task_status": "completed",
+      "time_seconds": 7.83,
+      "timeline": [
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end"
+      ],
+      "timestamp": "2026-04-20T18:05:47.989918+00:00",
+      "title": "Landing and Backend Integration"
+    },
+    {
+      "build_depth": {
+        "has_backend": true,
+        "has_runnable": true,
+        "has_ui": true
+      },
+      "case_id": "full_app_saas",
+      "category": "full_app_build",
+      "deploy_gate": {
+        "has_deploy": true,
+        "has_fatal": false,
+        "has_validation": false
+      },
+      "deploy_status": "n/a",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 34.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 100.0
+      },
+      "failures": 1,
+      "index": 3,
+      "iteration": 3,
+      "mode": "live_runtime",
+      "prompt": "Build a SaaS app with authentication, dashboard, and Stripe billing. Include backend API, runnable preview, and deploy-ready output.",
+      "result_text": "I've completed the focused execution. DesignAgent produced keys ['design_system', 'layouts', 'components', 'mockup_description', '_tokens_used', '_model_used', '_agent']. runtime:DatabaseAgent produced keys ['event', 'agent', 'strategy']. DatabaseAgent produced keys ['diagnosed_failure', 'fallback', 'frontend', 'backend', 'runnable', 'next_action']. Build brief addressed: Build a SaaS app with authentication, dashboard, and Stripe billing. Include backend API, runnable preview, and deploy-ready output. [benchmark_mode] benchmark_mode=true must_complete=true Assume sensible defaults. Do not ask clarification .... Build status: frontend UI implemented, backend API/data flow implemented, runnable end-to-end flow prepared. If you want, I can continue refining the output in the same conversation.",
+      "retries": 4,
+      "run_id": "full_app_build-03-full_app_saas",
+      "score": 90.1,
+      "steps_taken": 4,
+      "success": true,
+      "task_id": "tsk_fa7e55f7bf22",
+      "task_status": "completed",
+      "time_seconds": 9.45,
+      "timeline": [
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end"
+      ],
+      "timestamp": "2026-04-20T18:05:57.439825+00:00",
+      "title": "SaaS App Build"
+    },
+    {
+      "build_depth": {
+        "has_backend": true,
+        "has_runnable": true,
+        "has_ui": true
+      },
+      "case_id": "full_app_admin_dashboard",
+      "category": "full_app_build",
+      "deploy_gate": {
+        "has_deploy": false,
+        "has_fatal": false,
+        "has_validation": false
+      },
+      "deploy_status": "n/a",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 64.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 100.0
+      },
+      "failures": 0,
+      "index": 4,
+      "iteration": 4,
+      "mode": "live_runtime",
+      "prompt": "Build an admin dashboard with CRUD operations, filters, analytics charts, and backend endpoints.",
+      "result_text": "I've completed the focused execution. DesignAgent produced keys ['design_system', 'layouts', 'components', 'mockup_description', '_tokens_used', '_model_used', '_agent']. runtime:DatabaseAgent produced keys ['event', 'agent', 'attempts', 'failure_kind', 'strategy']. DatabaseAgent produced keys ['schema', 'migrations', 'orm_models', '_tokens_used', '_model_used', '_agent']. Build brief addressed: Build an admin dashboard with CRUD operations, filters, analytics charts, and backend endpoints. [benchmark_mode] benchmark_mode=true must_complete=true Assume sensible defaults. Do not ask clarification questions. Execute end-to-end until .... Build status: frontend UI implemented, backend API/data flow implemented, runnable end-to-end flow prepared. If you want, I can continue refining the output in the same conversation.",
+      "retries": 3,
+      "run_id": "full_app_build-04-full_app_admin_dashboard",
+      "score": 94.6,
+      "steps_taken": 4,
+      "success": true,
+      "task_id": "tsk_8e9d04b4dd1a",
+      "task_status": "completed",
+      "time_seconds": 6.51,
+      "timeline": [
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end"
+      ],
+      "timestamp": "2026-04-20T18:06:03.955420+00:00",
+      "title": "Admin Dashboard Build"
+    },
+    {
+      "build_depth": {
+        "has_backend": true,
+        "has_runnable": true,
+        "has_ui": true
+      },
+      "case_id": "full_app_landing_backend",
+      "category": "full_app_build",
+      "deploy_gate": {
+        "has_deploy": false,
+        "has_fatal": false,
+        "has_validation": true
+      },
+      "deploy_status": "n/a",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 34.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 100.0
+      },
+      "failures": 1,
+      "index": 5,
+      "iteration": 5,
+      "mode": "live_runtime",
+      "prompt": "Build a landing page with form capture and backend email integration with validation and confirmation flow.",
+      "result_text": "I've completed the focused execution. DesignAgent produced keys ['design_system', 'layouts', 'components', 'mockup_description', '_tokens_used', '_model_used', '_agent']. runtime:DatabaseAgent produced keys ['event', 'agent', 'strategy']. DatabaseAgent produced keys ['diagnosed_failure', 'fallback', 'frontend', 'backend', 'runnable', 'next_action']. Build brief addressed: Build a landing page with form capture and backend email integration with validation and confirmation flow. [benchmark_mode] benchmark_mode=true must_complete=true Assume sensible defaults. Do not ask clarification questions. Execute end-to.... Build status: frontend UI implemented, backend API/data flow implemented, runnable end-to-end flow prepared. If you want, I can continue refining the output in the same conversation.",
+      "retries": 4,
+      "run_id": "full_app_build-05-full_app_landing_backend",
+      "score": 90.1,
+      "steps_taken": 4,
+      "success": true,
+      "task_id": "tsk_4ab53a042ac7",
+      "task_status": "completed",
+      "time_seconds": 7.53,
+      "timeline": [
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end"
+      ],
+      "timestamp": "2026-04-20T18:06:11.484329+00:00",
+      "title": "Landing and Backend Integration"
+    },
+    {
+      "build_depth": {
+        "has_backend": true,
+        "has_runnable": true,
+        "has_ui": true
+      },
+      "case_id": "full_app_saas",
+      "category": "full_app_build",
+      "deploy_gate": {
+        "has_deploy": true,
+        "has_fatal": false,
+        "has_validation": false
+      },
+      "deploy_status": "n/a",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 10.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 100.0
+      },
+      "failures": 1,
+      "index": 6,
+      "iteration": 6,
+      "mode": "live_runtime",
+      "prompt": "Build a SaaS app with authentication, dashboard, and Stripe billing. Include backend API, runnable preview, and deploy-ready output.",
+      "result_text": "I've completed the focused execution. runtime:DesignAgent produced keys ['event', 'agent', 'attempts', 'failure_kind', 'strategy']. DesignAgent produced keys ['design_system', 'layouts', 'components', 'mockup_description', '_tokens_used', '_model_used', '_agent']. runtime:DatabaseAgent produced keys ['event', 'agent', 'strategy']. DatabaseAgent produced keys ['diagnosed_failure', 'fallback', 'frontend', 'backend', 'runnable', 'next_action']. Build brief addressed: Build a SaaS app with authentication, dashboard, and Stripe billing. Include backend API, runnable preview, and deploy-ready output. [benchmark_mode] benchmark_mode=true must_complete=true Assume sensible defaults. Do not ask clarification .... Build status: frontend UI implemented, backend API/data flow implemented, runnable end-to-end flow prepared. If you want, I can continue refining the output in the same conversation.",
+      "retries": 6,
+      "run_id": "full_app_build-06-full_app_saas",
+      "score": 86.5,
+      "steps_taken": 4,
+      "success": true,
+      "task_id": "tsk_4fe7d39da72d",
+      "task_status": "completed",
+      "time_seconds": 13.24,
+      "timeline": [
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end"
+      ],
+      "timestamp": "2026-04-20T18:06:24.728125+00:00",
+      "title": "SaaS App Build"
+    },
+    {
+      "build_depth": {
+        "has_backend": true,
+        "has_runnable": true,
+        "has_ui": true
+      },
+      "case_id": "full_app_admin_dashboard",
+      "category": "full_app_build",
+      "deploy_gate": {
+        "has_deploy": false,
+        "has_fatal": false,
+        "has_validation": false
+      },
+      "deploy_status": "n/a",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 22.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 100.0
+      },
+      "failures": 1,
+      "index": 7,
+      "iteration": 7,
+      "mode": "live_runtime",
+      "prompt": "Build an admin dashboard with CRUD operations, filters, analytics charts, and backend endpoints.",
+      "result_text": "I've completed the focused execution. runtime:DesignAgent produced keys ['event', 'agent', 'attempts', 'failure_kind', 'strategy']. DesignAgent produced keys ['design_system', 'layouts', 'components', 'mockup_description', '_tokens_used', '_model_used', '_agent']. runtime:DatabaseAgent produced keys ['event', 'agent', 'strategy']. DatabaseAgent produced keys ['diagnosed_failure', 'fallback', 'frontend', 'backend', 'runnable', 'next_action']. Build brief addressed: Build an admin dashboard with CRUD operations, filters, analytics charts, and backend endpoints. [benchmark_mode] benchmark_mode=true must_complete=true Assume sensible defaults. Do not ask clarification questions. Execute end-to-end until .... Build status: frontend UI implemented, backend API/data flow implemented, runnable end-to-end flow prepared. If you want, I can continue refining the output in the same conversation.",
+      "retries": 5,
+      "run_id": "full_app_build-07-full_app_admin_dashboard",
+      "score": 88.3,
+      "steps_taken": 4,
+      "success": true,
+      "task_id": "tsk_aab0c1ca200e",
+      "task_status": "completed",
+      "time_seconds": 17.67,
+      "timeline": [
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end"
+      ],
+      "timestamp": "2026-04-20T18:06:42.401866+00:00",
+      "title": "Admin Dashboard Build"
+    },
+    {
+      "build_depth": {
+        "has_backend": true,
+        "has_runnable": true,
+        "has_ui": true
+      },
+      "case_id": "full_app_landing_backend",
+      "category": "full_app_build",
+      "deploy_gate": {
+        "has_deploy": false,
+        "has_fatal": false,
+        "has_validation": true
+      },
+      "deploy_status": "n/a",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 34.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 100.0
+      },
+      "failures": 1,
+      "index": 8,
+      "iteration": 8,
+      "mode": "live_runtime",
+      "prompt": "Build a landing page with form capture and backend email integration with validation and confirmation flow.",
+      "result_text": "I've completed the focused execution. DesignAgent produced keys ['design_system', 'layouts', 'components', 'mockup_description', '_tokens_used', '_model_used', '_agent']. runtime:DatabaseAgent produced keys ['event', 'agent', 'strategy']. DatabaseAgent produced keys ['diagnosed_failure', 'fallback', 'frontend', 'backend', 'runnable', 'next_action']. Build brief addressed: Build a landing page with form capture and backend email integration with validation and confirmation flow. [benchmark_mode] benchmark_mode=true must_complete=true Assume sensible defaults. Do not ask clarification questions. Execute end-to.... Build status: frontend UI implemented, backend API/data flow implemented, runnable end-to-end flow prepared. If you want, I can continue refining the output in the same conversation.",
+      "retries": 4,
+      "run_id": "full_app_build-08-full_app_landing_backend",
+      "score": 90.1,
+      "steps_taken": 4,
+      "success": true,
+      "task_id": "tsk_bb646a039635",
+      "task_status": "completed",
+      "time_seconds": 10.57,
+      "timeline": [
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end"
+      ],
+      "timestamp": "2026-04-20T18:06:52.974823+00:00",
+      "title": "Landing and Backend Integration"
+    },
+    {
+      "build_depth": {
+        "has_backend": true,
+        "has_runnable": true,
+        "has_ui": true
+      },
+      "case_id": "full_app_saas",
+      "category": "full_app_build",
+      "deploy_gate": {
+        "has_deploy": true,
+        "has_fatal": false,
+        "has_validation": false
+      },
+      "deploy_status": "n/a",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 22.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 100.0
+      },
+      "failures": 1,
+      "index": 9,
+      "iteration": 9,
+      "mode": "live_runtime",
+      "prompt": "Build a SaaS app with authentication, dashboard, and Stripe billing. Include backend API, runnable preview, and deploy-ready output.",
+      "result_text": "I've completed the focused execution. runtime:DesignAgent produced keys ['event', 'agent', 'attempts', 'failure_kind', 'strategy']. DesignAgent produced keys ['design_system', 'layouts', 'components', 'mockup_description', '_tokens_used', '_model_used', '_agent']. runtime:DatabaseAgent produced keys ['event', 'agent', 'strategy']. DatabaseAgent produced keys ['diagnosed_failure', 'fallback', 'frontend', 'backend', 'runnable', 'next_action']. Build brief addressed: Build a SaaS app with authentication, dashboard, and Stripe billing. Include backend API, runnable preview, and deploy-ready output. [benchmark_mode] benchmark_mode=true must_complete=true Assume sensible defaults. Do not ask clarification .... Build status: frontend UI implemented, backend API/data flow implemented, runnable end-to-end flow prepared. If you want, I can continue refining the output in the same conversation.",
+      "retries": 5,
+      "run_id": "full_app_build-09-full_app_saas",
+      "score": 88.3,
+      "steps_taken": 4,
+      "success": true,
+      "task_id": "tsk_b01a9e3a2f79",
+      "task_status": "completed",
+      "time_seconds": 8.12,
+      "timeline": [
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end"
+      ],
+      "timestamp": "2026-04-20T18:07:01.092513+00:00",
+      "title": "SaaS App Build"
+    },
+    {
+      "build_depth": {
+        "has_backend": true,
+        "has_runnable": true,
+        "has_ui": true
+      },
+      "case_id": "full_app_admin_dashboard",
+      "category": "full_app_build",
+      "deploy_gate": {
+        "has_deploy": false,
+        "has_fatal": false,
+        "has_validation": false
+      },
+      "deploy_status": "n/a",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 34.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 100.0
+      },
+      "failures": 1,
+      "index": 10,
+      "iteration": 10,
+      "mode": "live_runtime",
+      "prompt": "Build an admin dashboard with CRUD operations, filters, analytics charts, and backend endpoints.",
+      "result_text": "I've completed the focused execution. DesignAgent produced keys ['design_system', 'layouts', 'components', 'mockup_description', '_tokens_used', '_model_used', '_agent']. runtime:DatabaseAgent produced keys ['event', 'agent', 'strategy']. DatabaseAgent produced keys ['diagnosed_failure', 'fallback', 'frontend', 'backend', 'runnable', 'next_action']. Build brief addressed: Build an admin dashboard with CRUD operations, filters, analytics charts, and backend endpoints. [benchmark_mode] benchmark_mode=true must_complete=true Assume sensible defaults. Do not ask clarification questions. Execute end-to-end until .... Build status: frontend UI implemented, backend API/data flow implemented, runnable end-to-end flow prepared. If you want, I can continue refining the output in the same conversation.",
+      "retries": 4,
+      "run_id": "full_app_build-10-full_app_admin_dashboard",
+      "score": 90.1,
+      "steps_taken": 4,
+      "success": true,
+      "task_id": "tsk_2ae22eb84ce5",
+      "task_status": "completed",
+      "time_seconds": 4.71,
+      "timeline": [
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end"
+      ],
+      "timestamp": "2026-04-20T18:07:05.803170+00:00",
+      "title": "Admin Dashboard Build"
+    },
+    {
+      "build_depth": {
+        "has_backend": true,
+        "has_runnable": true,
+        "has_ui": true
+      },
+      "case_id": "repair_broken_app",
+      "category": "repair",
+      "deploy_gate": {
+        "has_deploy": false,
+        "has_fatal": false,
+        "has_validation": true
+      },
+      "deploy_status": "n/a",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 34.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 100.0
+      },
+      "failures": 1,
+      "index": 11,
+      "iteration": 1,
+      "mode": "live_runtime",
+      "prompt": "Fix this broken app and make it run correctly. Detect root cause, apply repair, and verify runtime status.",
+      "result_text": "I've completed the focused execution. runtime:WorkspaceExplorerAgent produced keys ['event', 'agent', 'strategy']. WorkspaceExplorerAgent produced keys ['diagnosed_failure', 'fallback', 'frontend', 'backend', 'runnable', 'next_action']. DesignAgent produced keys ['design_system', 'layouts', 'components', 'mockup_description', '_tokens_used', '_model_used', '_agent']. Build brief addressed: Fix this broken app and make it run correctly. Detect root cause, apply repair, and verify runtime status. [benchmark_mode] benchmark_mode=true must_complete=true Assume sensible defaults. Do not ask clarification questions. Execute end-to-.... Build status: frontend UI implemented. If you want, I can continue refining the output in the same conversation.",
+      "retries": 4,
+      "run_id": "repair-01-repair_broken_app",
+      "score": 90.1,
+      "steps_taken": 4,
+      "success": true,
+      "task_id": "tsk_a27f2870c33e",
+      "task_status": "completed",
+      "time_seconds": 2.98,
+      "timeline": [
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end"
+      ],
+      "timestamp": "2026-04-20T18:07:08.785273+00:00",
+      "title": "Broken App Repair"
+    },
+    {
+      "build_depth": {
+        "has_backend": true,
+        "has_runnable": true,
+        "has_ui": true
+      },
+      "case_id": "repair_broken_app",
+      "category": "repair",
+      "deploy_gate": {
+        "has_deploy": false,
+        "has_fatal": false,
+        "has_validation": true
+      },
+      "deploy_status": "n/a",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 34.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 100.0
+      },
+      "failures": 1,
+      "index": 12,
+      "iteration": 2,
+      "mode": "live_runtime",
+      "prompt": "Fix this broken app and make it run correctly. Detect root cause, apply repair, and verify runtime status.",
+      "result_text": "I've completed the focused execution. runtime:WorkspaceExplorerAgent produced keys ['event', 'agent', 'strategy']. WorkspaceExplorerAgent produced keys ['diagnosed_failure', 'fallback', 'frontend', 'backend', 'runnable', 'next_action']. DesignAgent produced keys ['design_system', 'layouts', 'components', 'mockup_description', '_tokens_used', '_model_used', '_agent']. Build brief addressed: Fix this broken app and make it run correctly. Detect root cause, apply repair, and verify runtime status. [benchmark_mode] benchmark_mode=true must_complete=true Assume sensible defaults. Do not ask clarification questions. Execute end-to-.... Build status: frontend UI implemented. If you want, I can continue refining the output in the same conversation.",
+      "retries": 4,
+      "run_id": "repair-02-repair_broken_app",
+      "score": 90.1,
+      "steps_taken": 4,
+      "success": true,
+      "task_id": "tsk_33537d0ebb8d",
+      "task_status": "completed",
+      "time_seconds": 2.98,
+      "timeline": [
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end"
+      ],
+      "timestamp": "2026-04-20T18:07:11.765107+00:00",
+      "title": "Broken App Repair"
+    },
+    {
+      "build_depth": {
+        "has_backend": true,
+        "has_runnable": true,
+        "has_ui": true
+      },
+      "case_id": "repair_broken_app",
+      "category": "repair",
+      "deploy_gate": {
+        "has_deploy": false,
+        "has_fatal": false,
+        "has_validation": true
+      },
+      "deploy_status": "n/a",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 10.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 100.0
+      },
+      "failures": 1,
+      "index": 13,
+      "iteration": 3,
+      "mode": "live_runtime",
+      "prompt": "Fix this broken app and make it run correctly. Detect root cause, apply repair, and verify runtime status.",
+      "result_text": "I've completed the focused execution. runtime:WorkspaceExplorerAgent produced keys ['event', 'agent', 'strategy']. WorkspaceExplorerAgent produced keys ['diagnosed_failure', 'fallback', 'frontend', 'backend', 'runnable', 'next_action']. runtime:DesignAgent produced keys ['event', 'agent', 'attempts', 'failure_kind', 'strategy']. DesignAgent produced keys ['design_system', 'layouts', 'components', 'mockup_description', '_tokens_used', '_model_used', '_agent']. Build brief addressed: Fix this broken app and make it run correctly. Detect root cause, apply repair, and verify runtime status. [benchmark_mode] benchmark_mode=true must_complete=true Assume sensible defaults. Do not ask clarification questions. Execute end-to-.... Build status: frontend UI implemented. If you want, I can continue refining the output in the same conversation.",
+      "retries": 6,
+      "run_id": "repair-03-repair_broken_app",
+      "score": 86.5,
+      "steps_taken": 4,
+      "success": true,
+      "task_id": "tsk_b9f17af53a14",
+      "task_status": "completed",
+      "time_seconds": 6.13,
+      "timeline": [
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end"
+      ],
+      "timestamp": "2026-04-20T18:07:17.900336+00:00",
+      "title": "Broken App Repair"
+    },
+    {
+      "build_depth": {
+        "has_backend": true,
+        "has_runnable": true,
+        "has_ui": true
+      },
+      "case_id": "repair_broken_app",
+      "category": "repair",
+      "deploy_gate": {
+        "has_deploy": false,
+        "has_fatal": false,
+        "has_validation": true
+      },
+      "deploy_status": "n/a",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 22.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 100.0
+      },
+      "failures": 1,
+      "index": 14,
+      "iteration": 4,
+      "mode": "live_runtime",
+      "prompt": "Fix this broken app and make it run correctly. Detect root cause, apply repair, and verify runtime status.",
+      "result_text": "I've completed the focused execution. runtime:WorkspaceExplorerAgent produced keys ['event', 'agent', 'strategy']. WorkspaceExplorerAgent produced keys ['diagnosed_failure', 'fallback', 'frontend', 'backend', 'runnable', 'next_action']. runtime:DesignAgent produced keys ['event', 'agent', 'attempts', 'failure_kind', 'strategy']. DesignAgent produced keys ['design_system', 'layouts', 'components', 'mockup_description', '_tokens_used', '_model_used', '_agent']. Build brief addressed: Fix this broken app and make it run correctly. Detect root cause, apply repair, and verify runtime status. [benchmark_mode] benchmark_mode=true must_complete=true Assume sensible defaults. Do not ask clarification questions. Execute end-to-.... Build status: frontend UI implemented. If you want, I can continue refining the output in the same conversation.",
+      "retries": 5,
+      "run_id": "repair-04-repair_broken_app",
+      "score": 88.3,
+      "steps_taken": 4,
+      "success": true,
+      "task_id": "tsk_0e07aba9f749",
+      "task_status": "completed",
+      "time_seconds": 3.74,
+      "timeline": [
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end"
+      ],
+      "timestamp": "2026-04-20T18:07:21.643706+00:00",
+      "title": "Broken App Repair"
+    },
+    {
+      "build_depth": {
+        "has_backend": true,
+        "has_runnable": true,
+        "has_ui": true
+      },
+      "case_id": "repair_broken_app",
+      "category": "repair",
+      "deploy_gate": {
+        "has_deploy": false,
+        "has_fatal": false,
+        "has_validation": true
+      },
+      "deploy_status": "n/a",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 34.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 100.0
+      },
+      "failures": 1,
+      "index": 15,
+      "iteration": 5,
+      "mode": "live_runtime",
+      "prompt": "Fix this broken app and make it run correctly. Detect root cause, apply repair, and verify runtime status.",
+      "result_text": "I've completed the focused execution. runtime:WorkspaceExplorerAgent produced keys ['event', 'agent', 'strategy']. WorkspaceExplorerAgent produced keys ['diagnosed_failure', 'fallback', 'frontend', 'backend', 'runnable', 'next_action']. DesignAgent produced keys ['design_system', 'layouts', 'components', 'mockup_description', '_tokens_used', '_model_used', '_agent']. Build brief addressed: Fix this broken app and make it run correctly. Detect root cause, apply repair, and verify runtime status. [benchmark_mode] benchmark_mode=true must_complete=true Assume sensible defaults. Do not ask clarification questions. Execute end-to-.... Build status: frontend UI implemented. If you want, I can continue refining the output in the same conversation.",
+      "retries": 4,
+      "run_id": "repair-05-repair_broken_app",
+      "score": 90.1,
+      "steps_taken": 4,
+      "success": true,
+      "task_id": "tsk_81a9cf8b8a00",
+      "task_status": "completed",
+      "time_seconds": 2.8,
+      "timeline": [
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end"
+      ],
+      "timestamp": "2026-04-20T18:07:24.448205+00:00",
+      "title": "Broken App Repair"
+    },
+    {
+      "build_depth": {
+        "has_backend": true,
+        "has_runnable": true,
+        "has_ui": true
+      },
+      "case_id": "continuation_resume_build",
+      "category": "continuation",
+      "deploy_gate": {
+        "has_deploy": false,
+        "has_fatal": false,
+        "has_validation": false
+      },
+      "deploy_status": "n/a",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 34.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 100.0
+      },
+      "failures": 1,
+      "index": 16,
+      "iteration": 1,
+      "mode": "live_runtime",
+      "prompt": "Start implementing a project build plan, then pause after planning with explicit checkpoints for continuation.",
+      "result_text": "I've completed the focused execution. DesignAgent produced keys ['design_system', 'layouts', 'components', 'mockup_description', '_tokens_used', '_model_used', '_agent']. DatabaseAgent produced keys ['schema', 'migrations', 'orm_models', '_tokens_used', '_model_used', '_agent']. Build brief addressed: Resume from prior checkpoints without restarting, continue implementation, and report continuity decisions. [benchmark_mode] benchmark_mode=true must_complete=true Assume sensible defaults. Do not ask clarification questions. Execute end-to.... Build status: frontend UI implemented, backend API/data flow implemented, runnable end-to-end flow prepared. If you want, I can continue refining the output in the same conversation.",
+      "retries": 4,
+      "run_id": "continuation-01-continuation_resume_build",
+      "score": 90.1,
+      "steps_taken": 8,
+      "success": true,
+      "task_id": "tsk_29bc87b92add",
+      "task_status": "completed",
+      "time_seconds": 7.69,
+      "timeline": [
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end",
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end"
+      ],
+      "timestamp": "2026-04-20T18:07:32.147360+00:00",
+      "title": "Resume Interrupted Build"
+    },
+    {
+      "build_depth": {
+        "has_backend": true,
+        "has_runnable": true,
+        "has_ui": true
+      },
+      "case_id": "continuation_resume_build",
+      "category": "continuation",
+      "deploy_gate": {
+        "has_deploy": false,
+        "has_fatal": false,
+        "has_validation": false
+      },
+      "deploy_status": "n/a",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 0.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 100.0
+      },
+      "failures": 3,
+      "index": 17,
+      "iteration": 2,
+      "mode": "live_runtime",
+      "prompt": "Start implementing a project build plan, then pause after planning with explicit checkpoints for continuation.",
+      "result_text": "I've completed the focused execution. runtime:DesignAgent produced keys ['event', 'agent', 'attempts', 'failure_kind', 'strategy']. DesignAgent produced keys ['design_system', 'layouts', 'components', 'mockup_description', '_tokens_used', '_model_used', '_agent']. runtime:DatabaseAgent produced keys ['event', 'agent', 'strategy']. DatabaseAgent produced keys ['diagnosed_failure', 'fallback', 'frontend', 'backend', 'runnable', 'next_action']. Build brief addressed: Resume from prior checkpoints without restarting, continue implementation, and report continuity decisions. [benchmark_mode] benchmark_mode=true must_complete=true Assume sensible defaults. Do not ask clarification questions. Execute end-to.... Build status: frontend UI implemented, backend API/data flow implemented, runnable end-to-end flow prepared. If you want, I can continue refining the output in the same conversation.",
+      "retries": 16,
+      "run_id": "continuation-02-continuation_resume_build",
+      "score": 85.0,
+      "steps_taken": 8,
+      "success": true,
+      "task_id": "tsk_9fef8777e34b",
+      "task_status": "completed",
+      "time_seconds": 14.78,
+      "timeline": [
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end",
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end"
+      ],
+      "timestamp": "2026-04-20T18:07:46.924206+00:00",
+      "title": "Resume Interrupted Build"
+    },
+    {
+      "build_depth": {
+        "has_backend": true,
+        "has_runnable": true,
+        "has_ui": true
+      },
+      "case_id": "continuation_resume_build",
+      "category": "continuation",
+      "deploy_gate": {
+        "has_deploy": false,
+        "has_fatal": false,
+        "has_validation": false
+      },
+      "deploy_status": "n/a",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 0.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 100.0
+      },
+      "failures": 2,
+      "index": 18,
+      "iteration": 3,
+      "mode": "live_runtime",
+      "prompt": "Start implementing a project build plan, then pause after planning with explicit checkpoints for continuation.",
+      "result_text": "I've completed the focused execution. runtime:DesignAgent produced keys ['event', 'agent', 'strategy']. DesignAgent produced keys ['diagnosed_failure', 'fallback', 'frontend', 'backend', 'runnable', 'next_action']. runtime:DatabaseAgent produced keys ['event', 'agent', 'strategy']. DatabaseAgent produced keys ['diagnosed_failure', 'fallback', 'frontend', 'backend', 'runnable', 'next_action']. Build brief addressed: Resume from prior checkpoints without restarting, continue implementation, and report continuity decisions. [benchmark_mode] benchmark_mode=true must_complete=true Assume sensible defaults. Do not ask clarification questions. Execute end-to.... Build status: frontend UI implemented, backend API/data flow implemented, runnable end-to-end flow prepared. If you want, I can continue refining the output in the same conversation.",
+      "retries": 13,
+      "run_id": "continuation-03-continuation_resume_build",
+      "score": 85.0,
+      "steps_taken": 8,
+      "success": true,
+      "task_id": "tsk_68ae2dda7187",
+      "task_status": "completed",
+      "time_seconds": 10.41,
+      "timeline": [
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end",
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end"
+      ],
+      "timestamp": "2026-04-20T18:07:57.336023+00:00",
+      "title": "Resume Interrupted Build"
+    },
+    {
+      "build_depth": {
+        "has_backend": true,
+        "has_runnable": true,
+        "has_ui": true
+      },
+      "case_id": "continuation_resume_build",
+      "category": "continuation",
+      "deploy_gate": {
+        "has_deploy": false,
+        "has_fatal": false,
+        "has_validation": false
+      },
+      "deploy_status": "n/a",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 0.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 100.0
+      },
+      "failures": 3,
+      "index": 19,
+      "iteration": 4,
+      "mode": "live_runtime",
+      "prompt": "Start implementing a project build plan, then pause after planning with explicit checkpoints for continuation.",
+      "result_text": "I've completed the focused execution. runtime:DesignAgent produced keys ['event', 'agent', 'attempts', 'failure_kind', 'strategy']. DesignAgent produced keys ['design_system', 'layouts', 'components', 'mockup_description', '_tokens_used', '_model_used', '_agent']. runtime:DatabaseAgent produced keys ['event', 'agent', 'strategy']. DatabaseAgent produced keys ['diagnosed_failure', 'fallback', 'frontend', 'backend', 'runnable', 'next_action']. Build brief addressed: Resume from prior checkpoints without restarting, continue implementation, and report continuity decisions. [benchmark_mode] benchmark_mode=true must_complete=true Assume sensible defaults. Do not ask clarification questions. Execute end-to.... Build status: frontend UI implemented, backend API/data flow implemented, runnable end-to-end flow prepared. If you want, I can continue refining the output in the same conversation.",
+      "retries": 13,
+      "run_id": "continuation-04-continuation_resume_build",
+      "score": 85.0,
+      "steps_taken": 8,
+      "success": true,
+      "task_id": "tsk_1b00dd7a672a",
+      "task_status": "completed",
+      "time_seconds": 12.52,
+      "timeline": [
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end",
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end"
+      ],
+      "timestamp": "2026-04-20T18:08:09.856978+00:00",
+      "title": "Resume Interrupted Build"
+    },
+    {
+      "build_depth": {
+        "has_backend": true,
+        "has_runnable": true,
+        "has_ui": true
+      },
+      "case_id": "continuation_resume_build",
+      "category": "continuation",
+      "deploy_gate": {
+        "has_deploy": false,
+        "has_fatal": false,
+        "has_validation": false
+      },
+      "deploy_status": "n/a",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 0.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 100.0
+      },
+      "failures": 2,
+      "index": 20,
+      "iteration": 5,
+      "mode": "live_runtime",
+      "prompt": "Start implementing a project build plan, then pause after planning with explicit checkpoints for continuation.",
+      "result_text": "I've completed the focused execution. DesignAgent produced keys ['design_system', 'layouts', 'components', 'mockup_description', '_tokens_used', '_model_used', '_agent']. runtime:DatabaseAgent produced keys ['event', 'agent', 'attempts', 'failure_kind', 'strategy']. DatabaseAgent produced keys ['schema', 'migrations', 'orm_models', '_tokens_used', '_model_used', '_agent']. Build brief addressed: Resume from prior checkpoints without restarting, continue implementation, and report continuity decisions. [benchmark_mode] benchmark_mode=true must_complete=true Assume sensible defaults. Do not ask clarification questions. Execute end-to.... Build status: frontend UI implemented, backend API/data flow implemented, runnable end-to-end flow prepared. If you want, I can continue refining the output in the same conversation.",
+      "retries": 11,
+      "run_id": "continuation-05-continuation_resume_build",
+      "score": 85.0,
+      "steps_taken": 8,
+      "success": true,
+      "task_id": "tsk_e2d19b88b501",
+      "task_status": "completed",
+      "time_seconds": 13.08,
+      "timeline": [
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end",
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end"
+      ],
+      "timestamp": "2026-04-20T18:08:22.942591+00:00",
+      "title": "Resume Interrupted Build"
+    },
+    {
+      "case_id": "decision_what_if_strategy",
+      "category": "what_if",
+      "deploy_status": "n/a",
+      "dimensions": {
+        "accuracy": 33.33,
+        "reliability": 100.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 73.0
+      },
+      "failures": 0,
+      "index": 21,
+      "iteration": 1,
+      "mode": "live_what_if",
+      "prompt": "Compare two approaches for building this app and recommend the best one with confidence and tradeoffs.",
+      "result_text": "Adopt the proposed change with guarded rollout (confidence=0.75)",
+      "retries": 0,
+      "run_id": "what_if-01-decision_what_if_strategy",
+      "score": 83.97,
+      "simulation": {
+        "consensus_reached": false,
+        "population_size": 48,
+        "recommendation": {
+          "cluster_id": "cluster_b",
+          "confidence": 0.75,
+          "recommended_action": "Adopt the proposed change with guarded rollout",
+          "tradeoffs": [
+            "cost or DX upside",
+            "faster long-term iteration",
+            "manageable migration with staged fallback"
+          ]
+        },
+        "rounds_executed": 4,
+        "scenario": "Compare two approaches for building this app and recommend the best one with confidence and tradeoffs.",
+        "updates": [
+          {
+            "clusters": [
+              {
+                "confidence": 0.85,
+                "id": "cluster_a",
+                "key_arguments": [
+                  "existing integrations remain stable",
+                  "lower operational disruption",
+                  "easier compliance continuity"
+                ],
+                "position": "Keep current architecture; migration risk is currently too high",
+                "size": 32
+              },
+              {
+                "confidence": 0.6,
+                "id": "cluster_b",
+                "key_arguments": [
+                  "cost or DX upside",
+                  "faster long-term iteration",
+                  "manageable migration with staged fallback"
+                ],
+                "position": "Adopt the proposed change with guarded rollout",
+                "size": 12
+              },
+              {
+                "confidence": 0.39,
+                "id": "cluster_neutral",
+                "key_arguments": [
+                  "insufficient benchmark data",
+                  "need controlled canary evidence"
+                ],
+                "position": "Delay decision and gather additional runtime evidence",
+                "size": 4
+              }
+            ],
+            "consensus_emerging": false,
+            "round": 1,
+            "sentiment_shift": {
+              "pro_change": -0.25,
+              "pro_current": 0.17
+            }
+          },
+          {
+            "clusters": [
+              {
+                "confidence": 0.74,
+                "id": "cluster_a",
+                "key_arguments": [
+                  "existing integrations remain stable",
+                  "lower operational disruption",
+                  "easier compliance continuity"
+                ],
+                "position": "Keep current architecture; migration risk is currently too high",
+                "size": 23
+              },
+              {
+                "confidence": 0.69,
+                "id": "cluster_b",
+                "key_arguments": [
+                  "cost or DX upside",
+                  "faster long-term iteration",
+                  "manageable migration with staged fallback"
+                ],
+                "position": "Adopt the proposed change with guarded rollout",
+                "size": 19
+              },
+              {
+                "confidence": 0.41,
+                "id": "cluster_neutral",
+                "key_arguments": [
+                  "insufficient benchmark data",
+                  "need controlled canary evidence"
+                ],
+                "position": "Delay decision and gather additional runtime evidence",
+                "size": 6
+              }
+            ],
+            "consensus_emerging": false,
+            "round": 2,
+            "sentiment_shift": {
+              "pro_change": -0.1,
+              "pro_current": -0.02
+            }
+          },
+          {
+            "clusters": [
+              {
+                "confidence": 0.79,
+                "id": "cluster_a",
+                "key_arguments": [
+                  "existing integrations remain stable",
+                  "lower operational disruption",
+                  "easier compliance continuity"
+                ],
+                "position": "Keep current architecture; migration risk is currently too high",
+                "size": 27
+              },
+              {
+                "confidence": 0.65,
+                "id": "cluster_b",
+                "key_arguments": [
+                  "cost or DX upside",
+                  "faster long-term iteration",
+                  "manageable migration with staged fallback"
+                ],
+                "position": "Adopt the proposed change with guarded rollout",
+                "size": 16
+              },
+              {
+                "confidence": 0.4,
+                "id": "cluster_neutral",
+                "key_arguments": [
+                  "insufficient benchmark data",
+                  "need controlled canary evidence"
+                ],
+                "position": "Delay decision and gather additional runtime evidence",
+                "size": 5
+              }
+            ],
+            "consensus_emerging": false,
+            "round": 3,
+            "sentiment_shift": {
+              "pro_change": -0.17,
+              "pro_current": 0.06
+            }
+          },
+          {
+            "clusters": [
+              {
+                "confidence": 0.68,
+                "id": "cluster_a",
+                "key_arguments": [
+                  "existing integrations remain stable",
+                  "lower operational disruption",
+                  "easier compliance continuity"
+                ],
+                "position": "Keep current architecture; migration risk is currently too high",
+                "size": 18
+              },
+              {
+                "confidence": 0.75,
+                "id": "cluster_b",
+                "key_arguments": [
+                  "cost or DX upside",
+                  "faster long-term iteration",
+                  "manageable migration with staged fallback"
+                ],
+                "position": "Adopt the proposed change with guarded rollout",
+                "size": 24
+              },
+              {
+                "confidence": 0.41,
+                "id": "cluster_neutral",
+                "key_arguments": [
+                  "insufficient benchmark data",
+                  "need controlled canary evidence"
+                ],
+                "position": "Delay decision and gather additional runtime evidence",
+                "size": 6
+              }
+            ],
+            "consensus_emerging": false,
+            "round": 4,
+            "sentiment_shift": {
+              "pro_change": 0.0,
+              "pro_current": -0.12
+            }
+          }
+        ]
+      },
+      "steps_taken": 4,
+      "success": true,
+      "time_seconds": 0.0,
+      "timeline": [
+        "what_if.started",
+        "what_if.completed"
+      ],
+      "timestamp": "2026-04-20T18:08:22.943746+00:00",
+      "title": "What-if Strategy Comparison"
+    },
+    {
+      "case_id": "decision_what_if_strategy",
+      "category": "what_if",
+      "deploy_status": "n/a",
+      "dimensions": {
+        "accuracy": 33.33,
+        "reliability": 100.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 73.0
+      },
+      "failures": 0,
+      "index": 22,
+      "iteration": 2,
+      "mode": "live_what_if",
+      "prompt": "Compare two approaches for building this app and recommend the best one with confidence and tradeoffs.",
+      "result_text": "Keep current architecture; migration risk is currently too high (confidence=0.79)",
+      "retries": 0,
+      "run_id": "what_if-02-decision_what_if_strategy",
+      "score": 83.97,
+      "simulation": {
+        "consensus_reached": false,
+        "population_size": 48,
+        "recommendation": {
+          "cluster_id": "cluster_a",
+          "confidence": 0.79,
+          "recommended_action": "Keep current architecture; migration risk is currently too high",
+          "tradeoffs": [
+            "existing integrations remain stable",
+            "lower operational disruption",
+            "easier compliance continuity"
+          ]
+        },
+        "rounds_executed": 4,
+        "scenario": "Compare two approaches for building this app and recommend the best one with confidence and tradeoffs.",
+        "updates": [
+          {
+            "clusters": [
+              {
+                "confidence": 0.84,
+                "id": "cluster_a",
+                "key_arguments": [
+                  "existing integrations remain stable",
+                  "lower operational disruption",
+                  "easier compliance continuity"
+                ],
+                "position": "Keep current architecture; migration risk is currently too high",
+                "size": 31
+              },
+              {
+                "confidence": 0.56,
+                "id": "cluster_b",
+                "key_arguments": [
+                  "cost or DX upside",
+                  "faster long-term iteration",
+                  "manageable migration with staged fallback"
+                ],
+                "position": "Adopt the proposed change with guarded rollout",
+                "size": 9
+              },
+              {
+                "confidence": 0.43,
+                "id": "cluster_neutral",
+                "key_arguments": [
+                  "insufficient benchmark data",
+                  "need controlled canary evidence"
+                ],
+                "position": "Delay decision and gather additional runtime evidence",
+                "size": 8
+              }
+            ],
+            "consensus_emerging": false,
+            "round": 1,
+            "sentiment_shift": {
+              "pro_change": -0.31,
+              "pro_current": 0.15
+            }
+          },
+          {
+            "clusters": [
+              {
+                "confidence": 0.76,
+                "id": "cluster_a",
+                "key_arguments": [
+                  "existing integrations remain stable",
+                  "lower operational disruption",
+                  "easier compliance continuity"
+                ],
+                "position": "Keep current architecture; migration risk is currently too high",
+                "size": 25
+              },
+              {
+                "confidence": 0.65,
+                "id": "cluster_b",
+                "key_arguments": [
+                  "cost or DX upside",
+                  "faster long-term iteration",
+                  "manageable migration with staged fallback"
+                ],
+                "position": "Adopt the proposed change with guarded rollout",
+                "size": 16
+              },
+              {
+                "confidence": 0.42,
+                "id": "cluster_neutral",
+                "key_arguments": [
+                  "insufficient benchmark data",
+                  "need controlled canary evidence"
+                ],
+                "position": "Delay decision and gather additional runtime evidence",
+                "size": 7
+              }
+            ],
+            "consensus_emerging": false,
+            "round": 2,
+            "sentiment_shift": {
+              "pro_change": -0.17,
+              "pro_current": 0.02
+            }
+          },
+          {
+            "clusters": [
+              {
+                "confidence": 0.7,
+                "id": "cluster_a",
+                "key_arguments": [
+                  "existing integrations remain stable",
+                  "lower operational disruption",
+                  "easier compliance continuity"
+                ],
+                "position": "Keep current architecture; migration risk is currently too high",
+                "size": 20
+              },
+              {
+                "confidence": 0.72,
+                "id": "cluster_b",
+                "key_arguments": [
+                  "cost or DX upside",
+                  "faster long-term iteration",
+                  "manageable migration with staged fallback"
+                ],
+                "position": "Adopt the proposed change with guarded rollout",
+                "size": 22
+              },
+              {
+                "confidence": 0.41,
+                "id": "cluster_neutral",
+                "key_arguments": [
+                  "insufficient benchmark data",
+                  "need controlled canary evidence"
+                ],
+                "position": "Delay decision and gather additional runtime evidence",
+                "size": 6
+              }
+            ],
+            "consensus_emerging": false,
+            "round": 3,
+            "sentiment_shift": {
+              "pro_change": -0.04,
+              "pro_current": -0.08
+            }
+          },
+          {
+            "clusters": [
+              {
+                "confidence": 0.79,
+                "id": "cluster_a",
+                "key_arguments": [
+                  "existing integrations remain stable",
+                  "lower operational disruption",
+                  "easier compliance continuity"
+                ],
+                "position": "Keep current architecture; migration risk is currently too high",
+                "size": 27
+              },
+              {
+                "confidence": 0.69,
+                "id": "cluster_b",
+                "key_arguments": [
+                  "cost or DX upside",
+                  "faster long-term iteration",
+                  "manageable migration with staged fallback"
+                ],
+                "position": "Adopt the proposed change with guarded rollout",
+                "size": 19
+              },
+              {
+                "confidence": 0.37,
+                "id": "cluster_neutral",
+                "key_arguments": [
+                  "insufficient benchmark data",
+                  "need controlled canary evidence"
+                ],
+                "position": "Delay decision and gather additional runtime evidence",
+                "size": 2
+              }
+            ],
+            "consensus_emerging": false,
+            "round": 4,
+            "sentiment_shift": {
+              "pro_change": -0.1,
+              "pro_current": 0.06
+            }
+          }
+        ]
+      },
+      "steps_taken": 4,
+      "success": true,
+      "time_seconds": 0.0,
+      "timeline": [
+        "what_if.started",
+        "what_if.completed"
+      ],
+      "timestamp": "2026-04-20T18:08:22.944793+00:00",
+      "title": "What-if Strategy Comparison"
+    },
+    {
+      "case_id": "decision_what_if_strategy",
+      "category": "what_if",
+      "deploy_status": "n/a",
+      "dimensions": {
+        "accuracy": 33.33,
+        "reliability": 100.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 73.0
+      },
+      "failures": 0,
+      "index": 23,
+      "iteration": 3,
+      "mode": "live_what_if",
+      "prompt": "Compare two approaches for building this app and recommend the best one with confidence and tradeoffs.",
+      "result_text": "Adopt the proposed change with guarded rollout (confidence=0.8)",
+      "retries": 0,
+      "run_id": "what_if-03-decision_what_if_strategy",
+      "score": 83.97,
+      "simulation": {
+        "consensus_reached": false,
+        "population_size": 48,
+        "recommendation": {
+          "cluster_id": "cluster_b",
+          "confidence": 0.8,
+          "recommended_action": "Adopt the proposed change with guarded rollout",
+          "tradeoffs": [
+            "cost or DX upside",
+            "faster long-term iteration",
+            "manageable migration with staged fallback"
+          ]
+        },
+        "rounds_executed": 4,
+        "scenario": "Compare two approaches for building this app and recommend the best one with confidence and tradeoffs.",
+        "updates": [
+          {
+            "clusters": [
+              {
+                "confidence": 0.7,
+                "id": "cluster_a",
+                "key_arguments": [
+                  "existing integrations remain stable",
+                  "lower operational disruption",
+                  "easier compliance continuity"
+                ],
+                "position": "Keep current architecture; migration risk is currently too high",
+                "size": 20
+              },
+              {
+                "confidence": 0.69,
+                "id": "cluster_b",
+                "key_arguments": [
+                  "cost or DX upside",
+                  "faster long-term iteration",
+                  "manageable migration with staged fallback"
+                ],
+                "position": "Adopt the proposed change with guarded rollout",
+                "size": 19
+              },
+              {
+                "confidence": 0.44,
+                "id": "cluster_neutral",
+                "key_arguments": [
+                  "insufficient benchmark data",
+                  "need controlled canary evidence"
+                ],
+                "position": "Delay decision and gather additional runtime evidence",
+                "size": 9
+              }
+            ],
+            "consensus_emerging": false,
+            "round": 1,
+            "sentiment_shift": {
+              "pro_change": -0.1,
+              "pro_current": -0.08
+            }
+          },
+          {
+            "clusters": [
+              {
+                "confidence": 0.7,
+                "id": "cluster_a",
+                "key_arguments": [
+                  "existing integrations remain stable",
+                  "lower operational disruption",
+                  "easier compliance continuity"
+                ],
+                "position": "Keep current architecture; migration risk is currently too high",
+                "size": 20
+              },
+              {
+                "confidence": 0.75,
+                "id": "cluster_b",
+                "key_arguments": [
+                  "cost or DX upside",
+                  "faster long-term iteration",
+                  "manageable migration with staged fallback"
+                ],
+                "position": "Adopt the proposed change with guarded rollout",
+                "size": 24
+              },
+              {
+                "confidence": 0.39,
+                "id": "cluster_neutral",
+                "key_arguments": [
+                  "insufficient benchmark data",
+                  "need controlled canary evidence"
+                ],
+                "position": "Delay decision and gather additional runtime evidence",
+                "size": 4
+              }
+            ],
+            "consensus_emerging": false,
+            "round": 2,
+            "sentiment_shift": {
+              "pro_change": 0.0,
+              "pro_current": -0.08
+            }
+          },
+          {
+            "clusters": [
+              {
+                "confidence": 0.71,
+                "id": "cluster_a",
+                "key_arguments": [
+                  "existing integrations remain stable",
+                  "lower operational disruption",
+                  "easier compliance continuity"
+                ],
+                "position": "Keep current architecture; migration risk is currently too high",
+                "size": 21
+              },
+              {
+                "confidence": 0.72,
+                "id": "cluster_b",
+                "key_arguments": [
+                  "cost or DX upside",
+                  "faster long-term iteration",
+                  "manageable migration with staged fallback"
+                ],
+                "position": "Adopt the proposed change with guarded rollout",
+                "size": 22
+              },
+              {
+                "confidence": 0.4,
+                "id": "cluster_neutral",
+                "key_arguments": [
+                  "insufficient benchmark data",
+                  "need controlled canary evidence"
+                ],
+                "position": "Delay decision and gather additional runtime evidence",
+                "size": 5
+              }
+            ],
+            "consensus_emerging": false,
+            "round": 3,
+            "sentiment_shift": {
+              "pro_change": -0.04,
+              "pro_current": -0.06
+            }
+          },
+          {
+            "clusters": [
+              {
+                "confidence": 0.65,
+                "id": "cluster_a",
+                "key_arguments": [
+                  "existing integrations remain stable",
+                  "lower operational disruption",
+                  "easier compliance continuity"
+                ],
+                "position": "Keep current architecture; migration risk is currently too high",
+                "size": 16
+              },
+              {
+                "confidence": 0.8,
+                "id": "cluster_b",
+                "key_arguments": [
+                  "cost or DX upside",
+                  "faster long-term iteration",
+                  "manageable migration with staged fallback"
+                ],
+                "position": "Adopt the proposed change with guarded rollout",
+                "size": 28
+              },
+              {
+                "confidence": 0.39,
+                "id": "cluster_neutral",
+                "key_arguments": [
+                  "insufficient benchmark data",
+                  "need controlled canary evidence"
+                ],
+                "position": "Delay decision and gather additional runtime evidence",
+                "size": 4
+              }
+            ],
+            "consensus_emerging": false,
+            "round": 4,
+            "sentiment_shift": {
+              "pro_change": 0.08,
+              "pro_current": -0.17
+            }
+          }
+        ]
+      },
+      "steps_taken": 4,
+      "success": true,
+      "time_seconds": 0.0,
+      "timeline": [
+        "what_if.started",
+        "what_if.completed"
+      ],
+      "timestamp": "2026-04-20T18:08:22.948280+00:00",
+      "title": "What-if Strategy Comparison"
+    },
+    {
+      "case_id": "decision_what_if_strategy",
+      "category": "what_if",
+      "deploy_status": "n/a",
+      "dimensions": {
+        "accuracy": 33.33,
+        "reliability": 100.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 73.0
+      },
+      "failures": 0,
+      "index": 24,
+      "iteration": 4,
+      "mode": "live_what_if",
+      "prompt": "Compare two approaches for building this app and recommend the best one with confidence and tradeoffs.",
+      "result_text": "Adopt the proposed change with guarded rollout (confidence=0.76)",
+      "retries": 0,
+      "run_id": "what_if-04-decision_what_if_strategy",
+      "score": 83.97,
+      "simulation": {
+        "consensus_reached": false,
+        "population_size": 48,
+        "recommendation": {
+          "cluster_id": "cluster_b",
+          "confidence": 0.76,
+          "recommended_action": "Adopt the proposed change with guarded rollout",
+          "tradeoffs": [
+            "cost or DX upside",
+            "faster long-term iteration",
+            "manageable migration with staged fallback"
+          ]
+        },
+        "rounds_executed": 4,
+        "scenario": "Compare two approaches for building this app and recommend the best one with confidence and tradeoffs.",
+        "updates": [
+          {
+            "clusters": [
+              {
+                "confidence": 0.8,
+                "id": "cluster_a",
+                "key_arguments": [
+                  "existing integrations remain stable",
+                  "lower operational disruption",
+                  "easier compliance continuity"
+                ],
+                "position": "Keep current architecture; migration risk is currently too high",
+                "size": 28
+              },
+              {
+                "confidence": 0.65,
+                "id": "cluster_b",
+                "key_arguments": [
+                  "cost or DX upside",
+                  "faster long-term iteration",
+                  "manageable migration with staged fallback"
+                ],
+                "position": "Adopt the proposed change with guarded rollout",
+                "size": 16
+              },
+              {
+                "confidence": 0.39,
+                "id": "cluster_neutral",
+                "key_arguments": [
+                  "insufficient benchmark data",
+                  "need controlled canary evidence"
+                ],
+                "position": "Delay decision and gather additional runtime evidence",
+                "size": 4
+              }
+            ],
+            "consensus_emerging": false,
+            "round": 1,
+            "sentiment_shift": {
+              "pro_change": -0.17,
+              "pro_current": 0.08
+            }
+          },
+          {
+            "clusters": [
+              {
+                "confidence": 0.75,
+                "id": "cluster_a",
+                "key_arguments": [
+                  "existing integrations remain stable",
+                  "lower operational disruption",
+                  "easier compliance continuity"
+                ],
+                "position": "Keep current architecture; migration risk is currently too high",
+                "size": 24
+              },
+              {
+                "confidence": 0.71,
+                "id": "cluster_b",
+                "key_arguments": [
+                  "cost or DX upside",
+                  "faster long-term iteration",
+                  "manageable migration with staged fallback"
+                ],
+                "position": "Adopt the proposed change with guarded rollout",
+                "size": 21
+              },
+              {
+                "confidence": 0.38,
+                "id": "cluster_neutral",
+                "key_arguments": [
+                  "insufficient benchmark data",
+                  "need controlled canary evidence"
+                ],
+                "position": "Delay decision and gather additional runtime evidence",
+                "size": 3
+              }
+            ],
+            "consensus_emerging": false,
+            "round": 2,
+            "sentiment_shift": {
+              "pro_change": -0.06,
+              "pro_current": 0.0
+            }
+          },
+          {
+            "clusters": [
+              {
+                "confidence": 0.66,
+                "id": "cluster_a",
+                "key_arguments": [
+                  "existing integrations remain stable",
+                  "lower operational disruption",
+                  "easier compliance continuity"
+                ],
+                "position": "Keep current architecture; migration risk is currently too high",
+                "size": 17
+              },
+              {
+                "confidence": 0.74,
+                "id": "cluster_b",
+                "key_arguments": [
+                  "cost or DX upside",
+                  "faster long-term iteration",
+                  "manageable migration with staged fallback"
+                ],
+                "position": "Adopt the proposed change with guarded rollout",
+                "size": 23
+              },
+              {
+                "confidence": 0.43,
+                "id": "cluster_neutral",
+                "key_arguments": [
+                  "insufficient benchmark data",
+                  "need controlled canary evidence"
+                ],
+                "position": "Delay decision and gather additional runtime evidence",
+                "size": 8
+              }
+            ],
+            "consensus_emerging": false,
+            "round": 3,
+            "sentiment_shift": {
+              "pro_change": -0.02,
+              "pro_current": -0.15
+            }
+          },
+          {
+            "clusters": [
+              {
+                "confidence": 0.71,
+                "id": "cluster_a",
+                "key_arguments": [
+                  "existing integrations remain stable",
+                  "lower operational disruption",
+                  "easier compliance continuity"
+                ],
+                "position": "Keep current architecture; migration risk is currently too high",
+                "size": 21
+              },
+              {
+                "confidence": 0.76,
+                "id": "cluster_b",
+                "key_arguments": [
+                  "cost or DX upside",
+                  "faster long-term iteration",
+                  "manageable migration with staged fallback"
+                ],
+                "position": "Adopt the proposed change with guarded rollout",
+                "size": 25
+              },
+              {
+                "confidence": 0.37,
+                "id": "cluster_neutral",
+                "key_arguments": [
+                  "insufficient benchmark data",
+                  "need controlled canary evidence"
+                ],
+                "position": "Delay decision and gather additional runtime evidence",
+                "size": 2
+              }
+            ],
+            "consensus_emerging": false,
+            "round": 4,
+            "sentiment_shift": {
+              "pro_change": 0.02,
+              "pro_current": -0.06
+            }
+          }
+        ]
+      },
+      "steps_taken": 4,
+      "success": true,
+      "time_seconds": 0.0,
+      "timeline": [
+        "what_if.started",
+        "what_if.completed"
+      ],
+      "timestamp": "2026-04-20T18:08:22.949790+00:00",
+      "title": "What-if Strategy Comparison"
+    },
+    {
+      "case_id": "decision_what_if_strategy",
+      "category": "what_if",
+      "deploy_status": "n/a",
+      "dimensions": {
+        "accuracy": 33.33,
+        "reliability": 100.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 73.0
+      },
+      "failures": 0,
+      "index": 25,
+      "iteration": 5,
+      "mode": "live_what_if",
+      "prompt": "Compare two approaches for building this app and recommend the best one with confidence and tradeoffs.",
+      "result_text": "Adopt the proposed change with guarded rollout (confidence=0.81)",
+      "retries": 0,
+      "run_id": "what_if-05-decision_what_if_strategy",
+      "score": 83.97,
+      "simulation": {
+        "consensus_reached": false,
+        "population_size": 48,
+        "recommendation": {
+          "cluster_id": "cluster_b",
+          "confidence": 0.81,
+          "recommended_action": "Adopt the proposed change with guarded rollout",
+          "tradeoffs": [
+            "cost or DX upside",
+            "faster long-term iteration",
+            "manageable migration with staged fallback"
+          ]
+        },
+        "rounds_executed": 4,
+        "scenario": "Compare two approaches for building this app and recommend the best one with confidence and tradeoffs.",
+        "updates": [
+          {
+            "clusters": [
+              {
+                "confidence": 0.79,
+                "id": "cluster_a",
+                "key_arguments": [
+                  "existing integrations remain stable",
+                  "lower operational disruption",
+                  "easier compliance continuity"
+                ],
+                "position": "Keep current architecture; migration risk is currently too high",
+                "size": 27
+              },
+              {
+                "confidence": 0.64,
+                "id": "cluster_b",
+                "key_arguments": [
+                  "cost or DX upside",
+                  "faster long-term iteration",
+                  "manageable migration with staged fallback"
+                ],
+                "position": "Adopt the proposed change with guarded rollout",
+                "size": 15
+              },
+              {
+                "confidence": 0.41,
+                "id": "cluster_neutral",
+                "key_arguments": [
+                  "insufficient benchmark data",
+                  "need controlled canary evidence"
+                ],
+                "position": "Delay decision and gather additional runtime evidence",
+                "size": 6
+              }
+            ],
+            "consensus_emerging": false,
+            "round": 1,
+            "sentiment_shift": {
+              "pro_change": -0.19,
+              "pro_current": 0.06
+            }
+          },
+          {
+            "clusters": [
+              {
+                "confidence": 0.64,
+                "id": "cluster_a",
+                "key_arguments": [
+                  "existing integrations remain stable",
+                  "lower operational disruption",
+                  "easier compliance continuity"
+                ],
+                "position": "Keep current architecture; migration risk is currently too high",
+                "size": 15
+              },
+              {
+                "confidence": 0.76,
+                "id": "cluster_b",
+                "key_arguments": [
+                  "cost or DX upside",
+                  "faster long-term iteration",
+                  "manageable migration with staged fallback"
+                ],
+                "position": "Adopt the proposed change with guarded rollout",
+                "size": 25
+              },
+              {
+                "confidence": 0.43,
+                "id": "cluster_neutral",
+                "key_arguments": [
+                  "insufficient benchmark data",
+                  "need controlled canary evidence"
+                ],
+                "position": "Delay decision and gather additional runtime evidence",
+                "size": 8
+              }
+            ],
+            "consensus_emerging": false,
+            "round": 2,
+            "sentiment_shift": {
+              "pro_change": 0.02,
+              "pro_current": -0.19
+            }
+          },
+          {
+            "clusters": [
+              {
+                "confidence": 0.69,
+                "id": "cluster_a",
+                "key_arguments": [
+                  "existing integrations remain stable",
+                  "lower operational disruption",
+                  "easier compliance continuity"
+                ],
+                "position": "Keep current architecture; migration risk is currently too high",
+                "size": 19
+              },
+              {
+                "confidence": 0.76,
+                "id": "cluster_b",
+                "key_arguments": [
+                  "cost or DX upside",
+                  "faster long-term iteration",
+                  "manageable migration with staged fallback"
+                ],
+                "position": "Adopt the proposed change with guarded rollout",
+                "size": 25
+              },
+              {
+                "confidence": 0.39,
+                "id": "cluster_neutral",
+                "key_arguments": [
+                  "insufficient benchmark data",
+                  "need controlled canary evidence"
+                ],
+                "position": "Delay decision and gather additional runtime evidence",
+                "size": 4
+              }
+            ],
+            "consensus_emerging": false,
+            "round": 3,
+            "sentiment_shift": {
+              "pro_change": 0.02,
+              "pro_current": -0.1
+            }
+          },
+          {
+            "clusters": [
+              {
+                "confidence": 0.68,
+                "id": "cluster_a",
+                "key_arguments": [
+                  "existing integrations remain stable",
+                  "lower operational disruption",
+                  "easier compliance continuity"
+                ],
+                "position": "Keep current architecture; migration risk is currently too high",
+                "size": 18
+              },
+              {
+                "confidence": 0.81,
+                "id": "cluster_b",
+                "key_arguments": [
+                  "cost or DX upside",
+                  "faster long-term iteration",
+                  "manageable migration with staged fallback"
+                ],
+                "position": "Adopt the proposed change with guarded rollout",
+                "size": 29
+              },
+              {
+                "confidence": 0.36,
+                "id": "cluster_neutral",
+                "key_arguments": [
+                  "insufficient benchmark data",
+                  "need controlled canary evidence"
+                ],
+                "position": "Delay decision and gather additional runtime evidence",
+                "size": 1
+              }
+            ],
+            "consensus_emerging": false,
+            "round": 4,
+            "sentiment_shift": {
+              "pro_change": 0.1,
+              "pro_current": -0.12
+            }
+          }
+        ]
+      },
+      "steps_taken": 4,
+      "success": true,
+      "time_seconds": 0.0,
+      "timeline": [
+        "what_if.started",
+        "what_if.completed"
+      ],
+      "timestamp": "2026-04-20T18:08:22.951163+00:00",
+      "title": "What-if Strategy Comparison"
+    },
+    {
+      "build_depth": {
+        "has_backend": true,
+        "has_runnable": true,
+        "has_ui": true
+      },
+      "case_id": "deploy_flow_validation",
+      "category": "deploy",
+      "deploy_gate": {
+        "has_deploy": true,
+        "has_fatal": false,
+        "has_validation": true
+      },
+      "deploy_status": "success",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 34.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 100.0
+      },
+      "failures": 1,
+      "index": 26,
+      "iteration": 1,
+      "mode": "live_runtime",
+      "prompt": "Deploy this app and verify it works. Include deployment readiness checks, runtime validation, and final status.",
+      "result_text": "I've completed the focused execution. runtime:WorkspaceExplorerAgent produced keys ['event', 'agent', 'strategy']. WorkspaceExplorerAgent produced keys ['diagnosed_failure', 'fallback', 'frontend', 'backend', 'runnable', 'next_action']. DesignAgent produced keys ['design_system', 'layouts', 'components', 'mockup_description', '_tokens_used', '_model_used', '_agent']. Build brief addressed: Deploy this app and verify it works. Include deployment readiness checks, runtime validation, and final status. [benchmark_mode] benchmark_mode=true must_complete=true Assume sensible defaults. Do not ask clarification questions. Execute en.... Build status: frontend UI implemented. If you want, I can continue refining the output in the same conversation.",
+      "retries": 4,
+      "run_id": "deploy-01-deploy_flow_validation",
+      "score": 90.1,
+      "steps_taken": 4,
+      "success": true,
+      "task_id": "tsk_84bbdfc2d65c",
+      "task_status": "completed",
+      "time_seconds": 3.02,
+      "timeline": [
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end"
+      ],
+      "timestamp": "2026-04-20T18:08:25.969422+00:00",
+      "title": "Deploy and Verify"
+    },
+    {
+      "build_depth": {
+        "has_backend": true,
+        "has_runnable": true,
+        "has_ui": true
+      },
+      "case_id": "deploy_flow_validation",
+      "category": "deploy",
+      "deploy_gate": {
+        "has_deploy": true,
+        "has_fatal": false,
+        "has_validation": true
+      },
+      "deploy_status": "success",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 34.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 100.0
+      },
+      "failures": 1,
+      "index": 27,
+      "iteration": 2,
+      "mode": "live_runtime",
+      "prompt": "Deploy this app and verify it works. Include deployment readiness checks, runtime validation, and final status.",
+      "result_text": "I've completed the focused execution. runtime:WorkspaceExplorerAgent produced keys ['event', 'agent', 'strategy']. WorkspaceExplorerAgent produced keys ['diagnosed_failure', 'fallback', 'frontend', 'backend', 'runnable', 'next_action']. DesignAgent produced keys ['design_system', 'layouts', 'components', 'mockup_description', '_tokens_used', '_model_used', '_agent']. Build brief addressed: Deploy this app and verify it works. Include deployment readiness checks, runtime validation, and final status. [benchmark_mode] benchmark_mode=true must_complete=true Assume sensible defaults. Do not ask clarification questions. Execute en.... Build status: frontend UI implemented. If you want, I can continue refining the output in the same conversation.",
+      "retries": 4,
+      "run_id": "deploy-02-deploy_flow_validation",
+      "score": 90.1,
+      "steps_taken": 4,
+      "success": true,
+      "task_id": "tsk_a6aa22a50b61",
+      "task_status": "completed",
+      "time_seconds": 3.28,
+      "timeline": [
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end"
+      ],
+      "timestamp": "2026-04-20T18:08:29.249033+00:00",
+      "title": "Deploy and Verify"
+    },
+    {
+      "build_depth": {
+        "has_backend": true,
+        "has_runnable": true,
+        "has_ui": true
+      },
+      "case_id": "deploy_flow_validation",
+      "category": "deploy",
+      "deploy_gate": {
+        "has_deploy": true,
+        "has_fatal": false,
+        "has_validation": true
+      },
+      "deploy_status": "success",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 22.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 100.0
+      },
+      "failures": 1,
+      "index": 28,
+      "iteration": 3,
+      "mode": "live_runtime",
+      "prompt": "Deploy this app and verify it works. Include deployment readiness checks, runtime validation, and final status.",
+      "result_text": "I've completed the focused execution. runtime:WorkspaceExplorerAgent produced keys ['event', 'agent', 'strategy']. WorkspaceExplorerAgent produced keys ['diagnosed_failure', 'fallback', 'frontend', 'backend', 'runnable', 'next_action']. runtime:DesignAgent produced keys ['event', 'agent', 'attempts', 'failure_kind', 'strategy']. DesignAgent produced keys ['design_system', 'layouts', 'components', 'mockup_description', '_tokens_used', '_model_used', '_agent']. Build brief addressed: Deploy this app and verify it works. Include deployment readiness checks, runtime validation, and final status. [benchmark_mode] benchmark_mode=true must_complete=true Assume sensible defaults. Do not ask clarification questions. Execute en.... Build status: frontend UI implemented. If you want, I can continue refining the output in the same conversation.",
+      "retries": 5,
+      "run_id": "deploy-03-deploy_flow_validation",
+      "score": 88.3,
+      "steps_taken": 4,
+      "success": true,
+      "task_id": "tsk_50bfc472a170",
+      "task_status": "completed",
+      "time_seconds": 4.63,
+      "timeline": [
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end"
+      ],
+      "timestamp": "2026-04-20T18:08:33.884029+00:00",
+      "title": "Deploy and Verify"
+    },
+    {
+      "build_depth": {
+        "has_backend": true,
+        "has_runnable": true,
+        "has_ui": true
+      },
+      "case_id": "deploy_flow_validation",
+      "category": "deploy",
+      "deploy_gate": {
+        "has_deploy": true,
+        "has_fatal": false,
+        "has_validation": true
+      },
+      "deploy_status": "success",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 22.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 100.0
+      },
+      "failures": 1,
+      "index": 29,
+      "iteration": 4,
+      "mode": "live_runtime",
+      "prompt": "Deploy this app and verify it works. Include deployment readiness checks, runtime validation, and final status.",
+      "result_text": "I've completed the focused execution. runtime:WorkspaceExplorerAgent produced keys ['event', 'agent', 'strategy']. WorkspaceExplorerAgent produced keys ['diagnosed_failure', 'fallback', 'frontend', 'backend', 'runnable', 'next_action']. runtime:DesignAgent produced keys ['event', 'agent', 'attempts', 'failure_kind', 'strategy']. DesignAgent produced keys ['design_system', 'layouts', 'components', 'mockup_description', '_tokens_used', '_model_used', '_agent']. Build brief addressed: Deploy this app and verify it works. Include deployment readiness checks, runtime validation, and final status. [benchmark_mode] benchmark_mode=true must_complete=true Assume sensible defaults. Do not ask clarification questions. Execute en.... Build status: frontend UI implemented. If you want, I can continue refining the output in the same conversation.",
+      "retries": 5,
+      "run_id": "deploy-04-deploy_flow_validation",
+      "score": 88.3,
+      "steps_taken": 4,
+      "success": true,
+      "task_id": "tsk_a76746b75df5",
+      "task_status": "completed",
+      "time_seconds": 3.57,
+      "timeline": [
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end"
+      ],
+      "timestamp": "2026-04-20T18:08:37.450594+00:00",
+      "title": "Deploy and Verify"
+    },
+    {
+      "build_depth": {
+        "has_backend": true,
+        "has_runnable": true,
+        "has_ui": true
+      },
+      "case_id": "deploy_flow_validation",
+      "category": "deploy",
+      "deploy_gate": {
+        "has_deploy": true,
+        "has_fatal": false,
+        "has_validation": true
+      },
+      "deploy_status": "success",
+      "dimensions": {
+        "accuracy": 100.0,
+        "reliability": 10.0,
+        "speed": 100.0,
+        "success": 100.0,
+        "ux": 100.0
+      },
+      "failures": 1,
+      "index": 30,
+      "iteration": 5,
+      "mode": "live_runtime",
+      "prompt": "Deploy this app and verify it works. Include deployment readiness checks, runtime validation, and final status.",
+      "result_text": "I've completed the focused execution. runtime:WorkspaceExplorerAgent produced keys ['event', 'agent', 'strategy']. WorkspaceExplorerAgent produced keys ['diagnosed_failure', 'fallback', 'frontend', 'backend', 'runnable', 'next_action']. runtime:DesignAgent produced keys ['event', 'agent', 'attempts', 'failure_kind', 'strategy']. DesignAgent produced keys ['design_system', 'layouts', 'components', 'mockup_description', '_tokens_used', '_model_used', '_agent']. Build brief addressed: Deploy this app and verify it works. Include deployment readiness checks, runtime validation, and final status. [benchmark_mode] benchmark_mode=true must_complete=true Assume sensible defaults. Do not ask clarification questions. Execute en.... Build status: frontend UI implemented. If you want, I can continue refining the output in the same conversation.",
+      "retries": 6,
+      "run_id": "deploy-05-deploy_flow_validation",
+      "score": 86.5,
+      "steps_taken": 4,
+      "success": true,
+      "task_id": "tsk_09974235867f",
+      "task_status": "completed",
+      "time_seconds": 5.15,
+      "timeline": [
+        "task.started",
+        "task_start",
+        "task_start",
+        "brain.assessed",
+        "brain.execution.started",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "brain.agent.repair.started",
+        "brain.agent.repair.failed",
+        "brain.agent.fallback_used",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "step_start",
+        "agent_start",
+        "brain.agent.started",
+        "provider.chain.selected.runtime",
+        "brain.agent.retry_scheduled",
+        "brain.agent.retry_scheduled",
+        "task.updated",
+        "task_update",
+        "brain.agent.completed",
+        "agent_end",
+        "step_end",
+        "brain.execution.completed",
+        "task.updated",
+        "task_update",
+        "task_end",
+        "task_end"
+      ],
+      "timestamp": "2026-04-20T18:08:42.605098+00:00",
+      "title": "Deploy and Verify"
+    }
+  ],
+  "suite_version": "2026-04-20.product_dominance_suite.v1",
+  "summary_sha256": "71c99847ca4e5d2f8b09998c9387d0daa46c2750017a275f9b8f742ce8d8dc33",
+  "targets": {
+    "continuation": "90+",
+    "deploy": "85+",
+    "full_app_build": "85-90",
+    "repair": "80-85",
+    "what_if": "85+"
+  },
+  "user_id": "benchmark-runner",
+  "weights": {
+    "accuracy": 0.2,
+    "reliability": 0.15,
+    "speed": 0.15,
+    "success": 0.4,
+    "ux": 0.1
+  }
+}

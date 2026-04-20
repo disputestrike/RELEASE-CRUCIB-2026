@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import json
+from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -340,6 +341,23 @@ class GenerateContentRequest(BaseModel):
     format: Optional[str] = None
 
 
+class RuntimeWhatIfBody(BaseModel):
+    model_config = _model_config()
+    scenario: str = Field(..., min_length=3, max_length=4000)
+    population_size: int = Field(default=24, ge=3, le=256)
+    rounds: int = Field(default=3, ge=1, le=8)
+    agent_roles: List[str] = Field(default_factory=list)
+    priors: Dict[str, float] = Field(default_factory=dict)
+
+
+class RuntimeBenchmarkRunBody(BaseModel):
+    model_config = _model_config()
+    suite_path: Optional[str] = None
+    max_runs: int = Field(default=10, ge=1, le=100)
+    execute_live: bool = False
+    output_subdir: Optional[str] = None
+
+
 db = None
 audit_logger = None
 
@@ -600,6 +618,264 @@ async def debug_session_journal(
     }
 
 
+def _build_runtime_state_payload(
+    *,
+    project_id: str,
+    tasks: List[Dict[str, Any]],
+    graph: Dict[str, Any],
+    recent_events: List[Dict[str, Any]],
+    safe_limit: int,
+) -> Dict[str, Any]:
+    task_ids = [str(t.get("task_id") or "") for t in tasks if t.get("task_id")]
+    cost_snapshot = {
+        tid: cost_tracker.get(tid)
+        for tid in task_ids
+    }
+
+    def _event_type(evt: Dict[str, Any]) -> str:
+        if not isinstance(evt, dict):
+            return ""
+        return str(
+            evt.get("type")
+            or evt.get("event")
+            or evt.get("event_type")
+            or evt.get("name")
+            or ""
+        )
+
+    def _event_payload(evt: Dict[str, Any]) -> Dict[str, Any]:
+        p = evt.get("payload")
+        return p if isinstance(p, dict) else evt
+
+    task_set = set(task_ids)
+    timeline: List[Dict[str, Any]] = []
+    phase_metrics: Dict[str, Dict[str, float]] = {}
+    failure_events: List[Dict[str, Any]] = []
+    scoped_events: List[Dict[str, Any]] = []
+
+    for evt in recent_events:
+        if not isinstance(evt, dict):
+            continue
+        etype = _event_type(evt)
+        payload = _event_payload(evt)
+        evt_task_id = str(payload.get("task_id") or evt.get("task_id") or "")
+        if task_set and evt_task_id and evt_task_id not in task_set:
+            continue
+
+        scoped_events.append(evt)
+
+        phase = str(payload.get("phase") or "")
+        duration = payload.get("duration_ms")
+        if phase and isinstance(duration, (int, float)):
+            stat = phase_metrics.setdefault(phase, {"count": 0.0, "total_ms": 0.0})
+            stat["count"] += 1
+            stat["total_ms"] += float(duration)
+
+        if "step" in etype or etype.startswith("phase_") or "execution" in etype:
+            timeline.append(
+                {
+                    "type": etype,
+                    "task_id": evt_task_id,
+                    "phase": phase or None,
+                    "step_id": payload.get("step_id"),
+                    "step": payload.get("step") or payload.get("step_number"),
+                    "agent": payload.get("agent"),
+                    "status": payload.get("status"),
+                    "timestamp": evt.get("timestamp") or payload.get("timestamp"),
+                }
+            )
+
+        if "failed" in etype or "error" in etype:
+            failure_events.append(
+                {
+                    "type": etype,
+                    "task_id": evt_task_id,
+                    "agent": payload.get("agent") or payload.get("failed_agent"),
+                    "phase": phase or None,
+                    "error": str(payload.get("error") or payload.get("detail") or "")[:320],
+                    "timestamp": evt.get("timestamp") or payload.get("timestamp"),
+                }
+            )
+
+    phase_summary = {
+        name: {
+            "count": int(meta["count"]),
+            "avg_ms": round((meta["total_ms"] / meta["count"]) if meta["count"] else 0.0, 2),
+            "total_ms": round(meta["total_ms"], 2),
+        }
+        for name, meta in phase_metrics.items()
+    }
+
+    task_status_summary: Dict[str, int] = {}
+    for task in tasks:
+        status = str(task.get("status") or "unknown")
+        task_status_summary[status] = task_status_summary.get(status, 0) + 1
+
+    return {
+        "project_id": project_id,
+        "task_count": len(tasks),
+        "tasks": tasks,
+        "cost_ledger": cost_snapshot,
+        "memory_graph": {
+            "node_count": len((graph.get("nodes") or {})),
+            "edge_count": len((graph.get("edges") or [])),
+            "nodes": graph.get("nodes") or {},
+            "edges": graph.get("edges") or [],
+        },
+        "recent_events": scoped_events[:safe_limit],
+        "inspect": {
+            "task_status_summary": task_status_summary,
+            "timeline": timeline[:safe_limit],
+            "phase_summary": phase_summary,
+            "failures": failure_events[: min(50, safe_limit)],
+            "last_failure": failure_events[0] if failure_events else None,
+        },
+        "limit": safe_limit,
+    }
+
+
+@app.get("/api/runtime/inspect", include_in_schema=False)
+async def runtime_inspect(
+    limit: int = 100,
+    user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    user_id = str((user or {}).get("id") or "").strip()
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    project_id = f"runtime-{user_id}"
+    safe_limit = max(1, min(limit, 1000))
+    tasks = task_manager.list_project_tasks(project_id, limit=safe_limit)
+    graph = get_memory_graph(project_id)
+    recent_events = read_persisted_events(limit=safe_limit)
+    return _build_runtime_state_payload(
+        project_id=project_id,
+        tasks=tasks,
+        graph=graph,
+        recent_events=recent_events,
+        safe_limit=safe_limit,
+    )
+
+
+@app.post("/api/runtime/what-if", include_in_schema=False)
+async def runtime_what_if(
+    body: RuntimeWhatIfBody,
+    user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    user_id = str((user or {}).get("id") or "").strip()
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    project_id = f"runtime-{user_id}"
+    from services.runtime.simulation_engine import SimulationEngine
+
+    result = SimulationEngine.run_simulation(
+        scenario=body.scenario,
+        population_size=body.population_size,
+        rounds=body.rounds,
+        agent_roles=body.agent_roles,
+        priors=body.priors,
+        seed=abs(hash(f"{project_id}:{body.scenario[:80]}")) % 100000,
+    )
+
+    return {
+        "success": True,
+        "project_id": project_id,
+        "runtime_mode": "production",
+        **result,
+    }
+
+
+def _safe_rel_name(name: str) -> str:
+    cleaned = "".join(ch for ch in str(name or "") if ch.isalnum() or ch in ("-", "_"))
+    return (cleaned or "run")[:64]
+
+
+def _resolve_suite_path(raw: Optional[str]) -> Path:
+    default_path = WORKSPACE_ROOT / "benchmarks" / "product_dominance_suite_v1.json"
+    if not raw:
+        return default_path
+
+    candidate = Path(raw)
+    if not candidate.is_absolute():
+        candidate = (WORKSPACE_ROOT / candidate).resolve()
+    else:
+        candidate = candidate.resolve()
+
+    workspace = WORKSPACE_ROOT.resolve()
+    if workspace not in candidate.parents and candidate != workspace:
+        raise HTTPException(status_code=400, detail="suite_path must be within workspace")
+    return candidate
+
+
+@app.post("/api/runtime/benchmark/run", include_in_schema=False)
+async def runtime_benchmark_run(
+    body: RuntimeBenchmarkRunBody,
+    user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    user_id = str((user or {}).get("id") or "").strip()
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    suite_path = _resolve_suite_path(body.suite_path)
+    if not suite_path.exists():
+        raise HTTPException(status_code=404, detail=f"suite not found: {suite_path}")
+
+    run_tag = _safe_rel_name(body.output_subdir or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ"))
+    out_dir = WORKSPACE_ROOT / "proof" / "benchmarks" / "product_dominance_v1" / f"{_safe_rel_name(user_id)}-{run_tag}"
+
+    from benchmarks.product_dominance_scorecard import run_benchmark
+
+    summary = await run_benchmark(
+        suite_path=suite_path,
+        output_dir=out_dir,
+        user_id=user_id,
+        execute_live=bool(body.execute_live),
+        max_runs=int(body.max_runs),
+    )
+
+    return {
+        "success": True,
+        "mode": summary.get("mode"),
+        "output_dir": str(out_dir),
+        "aggregate": summary.get("aggregate") or {},
+        "summary_sha256": summary.get("summary_sha256"),
+        "total_runs": (summary.get("aggregate") or {}).get("total_runs"),
+    }
+
+
+@app.get("/api/runtime/benchmark/latest", include_in_schema=False)
+async def runtime_benchmark_latest(user: dict = Depends(get_current_user)) -> dict[str, Any]:
+    user_id = str((user or {}).get("id") or "").strip()
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    root = WORKSPACE_ROOT / "proof" / "benchmarks" / "product_dominance_v1"
+    prefix = f"{_safe_rel_name(user_id)}-"
+    if not root.exists():
+        return {"success": True, "latest": None}
+
+    candidates = [
+        path for path in root.iterdir()
+        if path.is_dir() and path.name.startswith(prefix) and (path / "summary.json").exists()
+    ]
+    if not candidates:
+        return {"success": True, "latest": None}
+
+    latest = max(candidates, key=lambda p: p.stat().st_mtime)
+    payload = json.loads((latest / "summary.json").read_text(encoding="utf-8"))
+    return {
+        "success": True,
+        "output_dir": str(latest),
+        "latest": {
+            "generated_at": payload.get("generated_at"),
+            "mode": payload.get("mode"),
+            "aggregate": payload.get("aggregate") or {},
+            "summary_sha256": payload.get("summary_sha256"),
+        },
+    }
+
+
 @app.get("/api/debug/runtime-state/{project_id}", include_in_schema=False)
 async def debug_runtime_state(
     project_id: str,
@@ -613,26 +889,40 @@ async def debug_runtime_state(
     tasks = task_manager.list_project_tasks(project_id, limit=safe_limit)
     graph = get_memory_graph(project_id)
     recent_events = read_persisted_events(limit=safe_limit)
+    return _build_runtime_state_payload(
+        project_id=project_id,
+        tasks=tasks,
+        graph=graph,
+        recent_events=recent_events,
+        safe_limit=safe_limit,
+    )
 
-    task_ids = [str(t.get("task_id") or "") for t in tasks if t.get("task_id")]
-    cost_snapshot = {
-        tid: cost_tracker.get(tid)
-        for tid in task_ids
-    }
+
+@app.post("/api/debug/runtime-state/{project_id}/what-if", include_in_schema=False)
+async def debug_runtime_what_if(
+    project_id: str,
+    body: RuntimeWhatIfBody,
+    user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    if not _is_admin_user(user):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    from services.runtime.simulation_engine import SimulationEngine
+
+    result = SimulationEngine.run_simulation(
+        scenario=body.scenario,
+        population_size=body.population_size,
+        rounds=body.rounds,
+        agent_roles=body.agent_roles,
+        priors=body.priors,
+        seed=abs(hash(project_id)) % 100000,
+    )
 
     return {
+        "success": True,
         "project_id": project_id,
-        "task_count": len(tasks),
-        "tasks": tasks,
-        "cost_ledger": cost_snapshot,
-        "memory_graph": {
-            "node_count": len((graph.get("nodes") or {})),
-            "edge_count": len((graph.get("edges") or [])),
-            "nodes": graph.get("nodes") or {},
-            "edges": graph.get("edges") or [],
-        },
-        "recent_events": recent_events,
-        "limit": safe_limit,
+        "runtime_mode": "debug_admin",
+        **result,
     }
 
 

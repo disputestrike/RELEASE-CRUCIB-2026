@@ -1,0 +1,78 @@
+{
+  "version": "2026-04-20.product_dominance_suite.v1",
+  "execution_protocol": {
+    "counts_by_category": {
+      "full_app_build": 10,
+      "repair": 5,
+      "continuation": 5,
+      "what_if": 5,
+      "deploy": 5
+    }
+  },
+  "cases": [
+    {
+      "id": "full_app_saas",
+      "category": "full_app_build",
+      "title": "SaaS App Build",
+      "scenario_type": "runtime",
+      "prompt": "Build a SaaS app with authentication, dashboard, and Stripe billing. Include backend API, runnable preview, and deploy-ready output.",
+      "required_terms": ["authentication", "dashboard", "stripe", "api", "deploy"],
+      "target_seconds": 900
+    },
+    {
+      "id": "full_app_admin_dashboard",
+      "category": "full_app_build",
+      "title": "Admin Dashboard Build",
+      "scenario_type": "runtime",
+      "prompt": "Build an admin dashboard with CRUD operations, filters, analytics charts, and backend endpoints.",
+      "required_terms": ["crud", "filters", "analytics", "charts", "backend"],
+      "target_seconds": 900
+    },
+    {
+      "id": "full_app_landing_backend",
+      "category": "full_app_build",
+      "title": "Landing and Backend Integration",
+      "scenario_type": "runtime",
+      "prompt": "Build a landing page with form capture and backend email integration with validation and confirmation flow.",
+      "required_terms": ["landing", "form", "backend", "email", "validation"],
+      "target_seconds": 780
+    },
+    {
+      "id": "repair_broken_app",
+      "category": "repair",
+      "title": "Broken App Repair",
+      "scenario_type": "runtime",
+      "prompt": "Fix this broken app and make it run correctly. Detect root cause, apply repair, and verify runtime status.",
+      "required_terms": ["root cause", "repair", "run", "verify"],
+      "target_seconds": 600
+    },
+    {
+      "id": "continuation_resume_build",
+      "category": "continuation",
+      "title": "Resume Interrupted Build",
+      "scenario_type": "continuation",
+      "prompt": "Start implementing a project build plan, then pause after planning with explicit checkpoints for continuation.",
+      "resume_prompt": "Resume from prior checkpoints without restarting, continue implementation, and report continuity decisions.",
+      "required_terms": ["resume", "checkpoint", "continue", "without restarting"],
+      "target_seconds": 540
+    },
+    {
+      "id": "decision_what_if_strategy",
+      "category": "what_if",
+      "title": "What-if Strategy Comparison",
+      "scenario_type": "what_if",
+      "prompt": "Compare two approaches for building this app and recommend the best one with confidence and tradeoffs.",
+      "required_terms": ["recommend", "confidence", "tradeoff"],
+      "target_seconds": 240
+    },
+    {
+      "id": "deploy_flow_validation",
+      "category": "deploy",
+      "title": "Deploy and Verify",
+      "scenario_type": "runtime",
+      "prompt": "Deploy this app and verify it works. Include deployment readiness checks, runtime validation, and final status.",
+      "required_terms": ["deploy", "readiness", "validation", "status"],
+      "target_seconds": 720
+    }
+  ]
+}

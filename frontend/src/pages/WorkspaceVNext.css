@@ -94,6 +94,111 @@
   color: #ffffff;
 }
 
+.workspace-vnext-inspect,
+.workspace-vnext-whatif {
+  position: fixed;
+  top: 330px;
+  right: 14px;
+  z-index: 1197;
+  width: 320px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 10px;
+  background: rgba(7, 12, 20, 0.93);
+  color: #e2e8f0;
+  padding: 10px;
+}
+
+.workspace-vnext-inspect-title {
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.workspace-vnext-inspect-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+
+.workspace-vnext-inspect-list {
+  display: grid;
+  gap: 4px;
+  max-height: 180px;
+  overflow: auto;
+  margin-bottom: 8px;
+}
+
+.workspace-vnext-inspect-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  font-size: 11px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 8px;
+  padding: 5px 7px;
+}
+
+.workspace-vnext-inspect-subtitle {
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.workspace-vnext-inspect-failures p {
+  margin: 0 0 6px;
+  font-size: 11px;
+  color: #fecaca;
+}
+
+.workspace-vnext-whatif label {
+  display: block;
+  font-size: 11px;
+  margin-bottom: 6px;
+}
+
+.workspace-vnext-whatif textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.82);
+  color: #e2e8f0;
+  padding: 8px;
+  font-size: 12px;
+}
+
+.workspace-vnext-whatif button {
+  margin-top: 8px;
+  border: 1px solid rgba(16, 185, 129, 0.6);
+  border-radius: 999px;
+  background: rgba(6, 78, 59, 0.8);
+  color: #d1fae5;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.workspace-vnext-whatif button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.workspace-vnext-whatif-error {
+  color: #fecaca;
+  font-size: 11px;
+}
+
+.workspace-vnext-whatif-result {
+  margin-top: 8px;
+  font-size: 11px;
+}
+
+.workspace-vnext-whatif-result p {
+  margin: 0 0 6px;
+}
+
 .workspace-vnext-telemetry {
   position: fixed;
   top: 102px;
@@ -151,6 +256,17 @@
     left: 10px;
     bottom: 154px;
     width: min(280px, calc(100vw - 20px));
+  }
+
+  .workspace-vnext-inspect,
+  .workspace-vnext-whatif {
+    top: auto;
+    right: auto;
+    left: 10px;
+    bottom: 244px;
+    width: min(320px, calc(100vw - 20px));
+    max-height: 220px;
+    overflow: auto;
   }
 
   .workspace-vnext-telemetry {
