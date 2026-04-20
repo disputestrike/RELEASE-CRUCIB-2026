@@ -21,6 +21,9 @@ class SpawnEngine:
         context: Any,
         decision: Dict[str, Any],
     ) -> Optional[Dict[str, Any]]:
+        if bool(getattr(context, "cancelled", False)):
+            return None
+
         if not bool((decision or {}).get("spawn")):
             return None
 

@@ -565,12 +565,35 @@ class RuntimeEngine:
                 "step_id": step_id,
                 "phase": ExecutionPhase.SELECT_PROVIDER.value
             })
-            
-            # Select provider (placeholder)
+
+            # Phase 6: central provider control via llm_router chain selection.
+            skill_def = get_skill(skill)
+            complexity = classifier.classify(skill or "", skill)
+            credits_left = max(0, int((context.cost_limit or 0) - (context.cost_used or 0)))
+            chain = llm_router.get_model_chain(
+                task_complexity=complexity,
+                user_tier="free",
+                speed_selector="lite",
+                available_credits=credits_left,
+            )
+            first = chain[0] if chain else ("none", "none", "none")
             provider = {
-                "type": "default",
-                "model": "claude-haiku-4-5-20251001"
+                "type": first[2],
+                "model": first[1],
+                "alias": first[0],
+                "chain": [
+                    {"alias": alias, "model": model, "provider": prov}
+                    for (alias, model, prov) in chain
+                ],
+                "surface": skill_def.surface if skill_def else None,
             }
+
+            event_bus.emit("provider.chain.selected.runtime", {
+                "task_id": task_id,
+                "step_id": step_id,
+                "skill": skill,
+                "provider": provider,
+            })
             
             duration_ms = (time.time() - start_time) * 1000
             
@@ -987,6 +1010,20 @@ class RuntimeEngine:
         max_depth: int = 3,
         max_cost: Optional[float] = None,
     ) -> Dict[str, Any]:
+        parent_task = task_manager.get_task(project_id, task_id)
+        if parent_task and parent_task.get("status") == "killed":
+            return {
+                "success": False,
+                "error": "parent_task_cancelled",
+                "task_id": task_id,
+            }
+        if parent_task and parent_task.get("status") == "paused":
+            return {
+                "success": False,
+                "error": "parent_task_paused",
+                "task_id": task_id,
+            }
+
         if not cost_tracker.check_limit(task_id, limit=max_cost):
             return {"success": False, "error": "subagent_cost_limit_exceeded", "task_id": task_id}
         if depth > max_depth:

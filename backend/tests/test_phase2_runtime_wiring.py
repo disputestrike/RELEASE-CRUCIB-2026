@@ -55,6 +55,20 @@ async def test_spawn_engine_returns_none_when_spawn_not_requested():
 
 
 @pytest.mark.asyncio
+async def test_spawn_engine_returns_none_when_context_cancelled():
+    engine = RuntimeEngine()
+    context = SimpleNamespace(project_id="p1", user_id="u1", depth=0, cancelled=True)
+
+    out = await spawn_engine.maybe_spawn(
+        runtime_engine=engine,
+        task_id="t1",
+        context=context,
+        decision={"spawn": True, "spawn_agent": "WorkerAgent"},
+    )
+    assert out is None
+
+
+@pytest.mark.asyncio
 async def test_spawn_engine_delegates_to_runtime_spawn(monkeypatch):
     engine = RuntimeEngine()
     context = SimpleNamespace(project_id="p1", user_id="u1", depth=2)
@@ -134,6 +148,54 @@ async def test_runtime_engine_spawn_phase_uses_spawn_engine(monkeypatch):
     )
 
     assert called["count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_phase_select_provider_returns_chain(monkeypatch):
+    engine = RuntimeEngine()
+    context = ExecutionContext(task_id="phase2-task", user_id="phase2-user")
+
+    monkeypatch.setattr(
+        "services.runtime.runtime_engine.classifier.classify",
+        lambda *_args, **_kwargs: "simple",
+    )
+    monkeypatch.setattr(
+        "services.runtime.runtime_engine.llm_router.get_model_chain",
+        lambda **_kwargs: [("haiku", "claude-haiku-4-5-20251001", "anthropic")],
+    )
+
+    out = await engine._phase_select_provider(
+        task_id="phase2-task",
+        context=context,
+        skill="build",
+        step_id="phase2-task-step-1",
+    )
+    assert out is not None
+    assert out["alias"] == "haiku"
+    assert out["type"] == "anthropic"
+    assert isinstance(out["chain"], list)
+
+
+@pytest.mark.asyncio
+async def test_spawn_agent_blocked_when_parent_task_killed():
+    engine = RuntimeEngine()
+    from services.runtime.task_manager import task_manager
+
+    project_id = "phase2-parent-killed"
+    task = task_manager.create_task(project_id=project_id, description="parent task")
+    task_id = task["task_id"]
+    task_manager.kill_task(project_id, task_id, reason="test")
+
+    out = await engine.spawn_agent(
+        project_id=project_id,
+        task_id=task_id,
+        parent_message="spawn",
+        agent_name="WorkerAgent",
+        context={},
+        depth=1,
+    )
+    assert out["success"] is False
+    assert out["error"] == "parent_task_cancelled"
 
 
 @pytest.mark.asyncio
