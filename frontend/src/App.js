@@ -98,6 +98,12 @@ import CommerceManagePage from "./pages/CommerceManagePage";
 import WorkspaceMembersPage from "./pages/WorkspaceMembersPage";
 import SkillsPage from "./pages/SkillsPage";
 import SkillsMarketplace from "./pages/SkillsMarketplace";
+// Wave 3 + Wave 5 pages wired into the canonical router (CF22).
+import BenchmarksPublic from "./pages/BenchmarksPublic";
+import ChangelogLive from "./pages/ChangelogLive";
+import Marketplace from "./pages/Marketplace";
+import TemplateGallery from "./pages/TemplateGallery";
+import DeveloperPortal from "./pages/DeveloperPortal";
 import { LayoutProvider } from "./stores/useLayoutStore";
 import { TaskProvider } from "./stores/useTaskStore";
 
@@ -463,10 +469,12 @@ function App() {
           <Route path="/shortcuts" element={<ShortcutsPublic />} />
           <Route path="/prompts" element={<PromptsPublic />} />
           <Route path="/benchmarks" element={<Benchmarks />} />
+          <Route path="/benchmarks/public" element={<BenchmarksPublic />} />
           <Route path="/proof" element={<PublicProofPage />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/:slug" element={<Blog />} />
           <Route path="/changelog" element={<Changelog />} />
+          <Route path="/changelog/live" element={<ChangelogLive />} />
           <Route path="/status" element={<Status />} />
           <Route path="/app/workspace-engine" element={<RedirectWorkspaceAliasToCanonical />} />
           <Route path="/app/workspace-unified" element={<RedirectWorkspaceAliasToCanonical />} />
@@ -516,6 +524,9 @@ function App() {
             <Route path="members" element={<WorkspaceMembersPage />} />
             <Route path="skills" element={<SkillsPage />} />
             <Route path="skills/marketplace" element={<SkillsMarketplace />} />
+            <Route path="marketplace" element={<Marketplace />} />
+            <Route path="templates-gallery" element={<TemplateGallery />} />
+            <Route path="developer" element={<DeveloperPortal />} />
             <Route path="auto-runner" element={<AutoRunnerRedirect />} />
           </Route>
         </Routes>
