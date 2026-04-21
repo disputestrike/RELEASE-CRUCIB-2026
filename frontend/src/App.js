@@ -41,6 +41,12 @@ const USE_LEGACY_WORKSPACE = process.env.REACT_APP_WORKSPACE_LEGACY === 'true';
 const WorkspaceV3Shell = USE_LEGACY_WORKSPACE
   ? null
   : require('./pages/WorkspaceV3Shell').default;
+// CF24 — 3-pane workspace is now the default. Opt back into V3 shell with REACT_APP_WORKSPACE_V3=1.
+const USE_V3_SHELL = process.env.REACT_APP_WORKSPACE_V3 === '1';
+const ThreePaneWorkspace = require('./pages/ThreePaneWorkspace').default;
+const CanonicalWorkspace = USE_LEGACY_WORKSPACE
+  ? WorkspaceVNext
+  : (USE_V3_SHELL && WorkspaceV3Shell ? WorkspaceV3Shell : ThreePaneWorkspace);
 import Layout from "./components/Layout";
 import ShareView from "./pages/ShareView";
 import ExamplesGallery from "./pages/ExamplesGallery";
@@ -483,8 +489,9 @@ function App() {
           <Route path="/app" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route index element={<RedirectAppIndexToWorkspace />} />
             <Route path="builder" element={<Navigate to="/app/workspace" replace />} />
-            <Route path="workspace" element={WorkspaceV3Shell ? <WorkspaceV3Shell /> : <WorkspaceVNext />} />
+            <Route path="workspace" element={<CanonicalWorkspace />} />
             <Route path="workspace-v3" element={WorkspaceV3Shell ? <WorkspaceV3Shell /> : <WorkspaceVNext />} />
+            <Route path="workspace-legacy" element={<WorkspaceVNext />} />
             <Route path="dashboard" element={<DashboardVNext />} />
             <Route path="live" element={<MonitoringDashboard />} />
             <Route path="projects/new" element={<ProjectBuilder />} />
