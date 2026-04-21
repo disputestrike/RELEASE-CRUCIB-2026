@@ -114,6 +114,10 @@ def _ensure_test_env():
         os.environ["FRONTEND_URL"] = "http://localhost:3000"
     os.environ["CRUCIBAI_DEV"] = "1"
     os.environ["CRUCIBAI_TEST"] = "1"
+    # When CRUCIB_TEST_SQLITE=1, signal that Postgres is unavailable so the
+    # app_client fixture falls back to the in-process _FakeDb document store.
+    if os.environ.get("CRUCIB_TEST_SQLITE", "").strip() == "1":
+        os.environ["CRUCIBAI_TEST_DB_UNAVAILABLE"] = "1"
 
 
 _ensure_test_env()
@@ -261,6 +265,12 @@ class _FakeDb:
 
 def pytest_sessionstart(session):
     """Bring up local docker deps when not in GitHub Actions; CI uses service containers + DATABASE_URL."""
+    # CRUCIB_TEST_SQLITE=1: skip all Postgres/Docker setup; use in-process _FakeDb.
+    if os.environ.get("CRUCIB_TEST_SQLITE", "").strip() == "1":
+        import sys
+        from pathlib import Path as _Path
+        sys.path.insert(0, str(_Path(__file__).parent.parent))
+        return
     skip_compose = os.environ.get("GITHUB_ACTIONS", "").lower() == "true"
     compose = _REPO_ROOT / "docker-compose.yml"
     db_ready = False
@@ -528,3 +538,13 @@ def mock_metrics():
     metrics.active_agents = MagicMock()
     metrics.errors_total = MagicMock()
     return metrics
+
+
+def pytest_collection_modifyitems(config, items):
+    """Skip @pytest.mark.postgres_only tests when CRUCIB_TEST_SQLITE=1."""
+    if os.environ.get("CRUCIB_TEST_SQLITE", "").strip() != "1":
+        return
+    skip_pg = pytest.mark.skip(reason="postgres_only — skipped under CRUCIB_TEST_SQLITE=1")
+    for item in items:
+        if item.get_closest_marker("postgres_only"):
+            item.add_marker(skip_pg)

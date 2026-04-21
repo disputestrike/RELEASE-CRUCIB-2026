@@ -228,8 +228,23 @@ const OurProjectsPage = () => {
               <p className="text-sm text-kimi-muted">If a phase falls below quality threshold, we flag it and retry automatically. Self-healing builds, visible to you the entire time.</p>
             </div>
           </div>
-          <div className="rounded-xl border border-gray-200 bg-gray-50 p-8 flex items-center justify-center min-h-[280px]">
-            <p className="text-kimi-muted text-center text-sm">AgentMonitor — real-time agent status, phase progress, token usage, and quality score. <br /><span className="text-xs">Screenshot placeholder — add image when ready.</span></p>
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-8 flex flex-col items-center justify-center min-h-[280px] gap-4">
+            <div className="text-center">
+              <p className="font-semibold text-kimi-text text-base mb-1">AgentMonitor</p>
+              <p className="text-kimi-muted text-sm max-w-xs">Real-time agent status, phase progress, token usage, and quality score — visible from the Workspace panel during every build.</p>
+            </div>
+            <div className="grid grid-cols-3 gap-3 w-full max-w-xs">
+              {[
+                { label: 'Agents Active', value: '4 / 4' },
+                { label: 'Phase', value: '3 of 8' },
+                { label: 'Quality', value: '94%' },
+              ].map(({ label, value }) => (
+                <div key={label} className="rounded-lg bg-white border border-gray-200 p-3 text-center">
+                  <p className="text-xs text-kimi-muted mb-0.5">{label}</p>
+                  <p className="font-semibold text-kimi-text text-sm">{value}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
