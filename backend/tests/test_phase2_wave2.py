@@ -250,3 +250,211 @@ def test_cf17_legacy_pages_manifest_exists_and_consistent():
     assert "WorkspaceV3Shell" in js
     for deleted in ("AdminPanel.tsx", "Builder.jsx", "UnifiedWorkspace.jsx"):
         assert deleted in js, f"missing deleted page: {deleted}"
+
+
+# ─── CF18: unified preview-loop route ─────────────────────────────────────────
+
+def test_cf18_preview_loop_capabilities_reports_services():
+    """GET /api/runs/preview-loop/capabilities returns a status + per-service flags."""
+    app = _app_for("routes.preview_loop")
+    client = TestClient(app)
+    r = client.get("/api/runs/preview-loop/capabilities")
+    assert r.status_code == 200, r.text
+    data = r.json()
+    # Must always echo the three expected subservice keys so the UI can render
+    # conditional state.
+    for key in ("preview_session", "operator_runner", "ui_feedback_mapper"):
+        assert key in data, f"missing capability key: {key}"
+    assert data.get("status") in {"ready", "degraded"}
+
+
+def test_cf18_preview_loop_handles_missing_services_cleanly(monkeypatch):
+    """POST /api/runs/{id}/preview-loop returns 503 when subservices can't import."""
+    app = _app_for("routes.preview_loop")
+    client = TestClient(app)
+
+    # Force import-time failure inside the endpoint by stubbing the module.
+    import importlib
+    import sys as _sys
+    # Remove any cached subservice modules so the import in the route raises.
+    for modname in ("services.preview_session",
+                    "services.operator_runner",
+                    "services.ui_feedback_mapper"):
+        _sys.modules.pop(modname, None)
+
+    # Install a sentinel module that raises on import attribute access.
+    class _BlowUp:
+        def __getattr__(self, item):  # pragma: no cover — defensive
+            raise RuntimeError("blocked-for-test")
+
+    _sys.modules["services.preview_session"] = _BlowUp()
+    _sys.modules["services.operator_runner"] = _BlowUp()
+    _sys.modules["services.ui_feedback_mapper"] = _BlowUp()
+    try:
+        r = client.post(
+            "/api/runs/t-cf18/preview-loop",
+            json={"url": "http://example.com", "dry_run": True},
+        )
+        # The route either 503s (import raised) or returns a degraded envelope
+        # because every subservice fell back. Both satisfy "no crash".
+        assert r.status_code in (200, 503), r.text
+        if r.status_code == 200:
+            data = r.json()
+            assert data.get("status") in {"pass", "regression", "degraded"}
+            assert data.get("thread_id") == "t-cf18"
+            assert "run_id" in data
+    finally:
+        for modname in ("services.preview_session",
+                        "services.operator_runner",
+                        "services.ui_feedback_mapper"):
+            _sys.modules.pop(modname, None)
+
+
+def test_cf18_preview_loop_last_returns_empty_for_unknown_thread():
+    app = _app_for("routes.preview_loop")
+    client = TestClient(app)
+    r = client.get("/api/runs/does-not-exist/preview-loop/last")
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert data.get("status") == "empty"
+    assert data.get("thread_id") == "does-not-exist"
+
+
+def test_cf18_preview_loop_end_to_end_with_mocked_services(monkeypatch):
+    """Compose preview+operator+feedback via mocked services and assert envelope shape."""
+    import types
+    import sys as _sys
+
+    # Mock preview_session_service
+    async def _fake_open(url, thread_id):
+        return types.SimpleNamespace(session_id=f"sess-{thread_id}", url=url)
+    preview_stub = types.ModuleType("services.preview_session")
+    preview_stub.preview_session_service = types.SimpleNamespace(open=_fake_open)
+    _sys.modules["services.preview_session"] = preview_stub
+
+    # Mock operator_runner
+    async def _fake_screenshot(url):
+        return "AAA" * 10  # fake b64
+    async def _fake_run_flow(steps, dry_run, thread_id):
+        return [{"action": s.get("action"), "status": "dry-run"} for s in steps]
+    operator_stub = types.ModuleType("services.operator_runner")
+    operator_stub.operator_runner = types.SimpleNamespace(
+        screenshot=_fake_screenshot, run_flow=_fake_run_flow,
+    )
+    _sys.modules["services.operator_runner"] = operator_stub
+
+    # Mock ui_feedback_mapper
+    async def _fake_diff(before_url, after_url, threshold):
+        return types.SimpleNamespace(verdict="pass", diff_ratio=0.01, notes=None)
+    feedback_stub = types.ModuleType("services.ui_feedback_mapper")
+    feedback_stub.ui_feedback_mapper = types.SimpleNamespace(diff=_fake_diff)
+    _sys.modules["services.ui_feedback_mapper"] = feedback_stub
+
+    try:
+        app = _app_for("routes.preview_loop")
+        client = TestClient(app)
+        r = client.post(
+            "/api/runs/t-e2e/preview-loop",
+            json={
+                "url": "http://example.com",
+                "dry_run": True,
+                "take_before_shot": True,
+                "take_after_shot": True,
+                "operator_steps": [
+                    {"action": "navigate", "url": "http://example.com"},
+                    {"action": "screenshot", "url": "http://example.com"},
+                ],
+            },
+        )
+        assert r.status_code == 200, r.text
+        data = r.json()
+        assert data["thread_id"] == "t-e2e"
+        assert data["status"] in {"pass", "regression", "degraded"}
+        assert data["preview"]["session_id"] == "sess-t-e2e"
+        assert isinstance(data["operator"], list) and len(data["operator"]) == 2
+        assert data["feedback"]["verdict"] == "pass"
+        assert data["artifacts"]["before_shot_b64_len"] > 0
+        assert data["artifacts"]["after_shot_b64_len"] > 0
+
+        # Now GET /preview-loop/last should hit the cache
+        r2 = client.get("/api/runs/t-e2e/preview-loop/last")
+        assert r2.status_code == 200
+        assert r2.json()["run_id"] == data["run_id"]
+    finally:
+        for modname in ("services.preview_session",
+                        "services.operator_runner",
+                        "services.ui_feedback_mapper"):
+            _sys.modules.pop(modname, None)
+
+
+# ─── CF19: brain.decide wired into _phase_decide ─────────────────────────────
+
+def test_cf19_phase_decide_calls_brain_layer():
+    """_phase_decide must call brain.decide(session, request) instead of hardcoding default."""
+    import asyncio
+    from services.runtime import runtime_engine as re_mod
+
+    captured: dict = {}
+
+    class _FakeBrain:
+        def decide(self, session, user_message):
+            captured["session"] = session
+            captured["message"] = user_message
+            return {
+                "action": "build",
+                "skill": "code_editor",
+                "confidence": 0.87,
+                "continue": True,
+                "spawn": False,
+            }
+
+    engine = re_mod.RuntimeEngine()
+    # Inject our fake brain factory
+    engine._brain_factory = lambda: _FakeBrain()
+
+    # Build an ExecutionContext stub
+    ExecutionContext = re_mod.ExecutionContext
+    ctx = ExecutionContext(task_id="t-cf19", user_id="u-cf19",
+                           conversation_id="s-cf19")
+
+    decision = asyncio.get_event_loop().run_until_complete(
+        engine._phase_decide(
+            task_id="t-cf19",
+            context=ctx,
+            request="build me a todo app",
+            step_id="step-1",
+        )
+    )
+
+    assert captured.get("message") == "build me a todo app", captured
+    assert decision is not None
+    assert decision["action"] == "build"
+    assert decision["skill"] == "code_editor"
+    assert decision["confidence"] == 0.87
+    assert decision["continue"] is True
+    assert "raw" in decision
+
+
+def test_cf19_phase_decide_falls_back_when_brain_raises():
+    """If brain.decide raises, _phase_decide should still return a safe default."""
+    import asyncio
+    from services.runtime import runtime_engine as re_mod
+
+    class _BrokenBrain:
+        def decide(self, session, user_message):
+            raise RuntimeError("planner offline")
+
+    engine = re_mod.RuntimeEngine()
+    engine._brain_factory = lambda: _BrokenBrain()
+    ExecutionContext = re_mod.ExecutionContext
+    ctx = ExecutionContext(task_id="t-cf19b", user_id="u",
+                           conversation_id="s")
+
+    decision = asyncio.get_event_loop().run_until_complete(
+        engine._phase_decide(task_id="t-cf19b", context=ctx,
+                             request="anything", step_id="s1")
+    )
+    assert decision is not None
+    # Fallback shape must be intact
+    assert decision.get("action") == "default"
+    assert decision.get("skill") == "default"
