@@ -37,21 +37,18 @@ import ExportCenter from "./pages/ExportCenter";
 import PatternLibrary from "./pages/PatternLibrary";
 import Settings from "./pages/Settings";
 import WorkspaceVNext from "./pages/WorkspaceVNext";
-// CF31 — UnifiedWorkspace is the canonical wired workspace (Auto Runner + Brain +
-//         SystemStatusHUD + Activity Feed + Preview + Code) — gold-standard v28 parity.
-//         ThreePaneWorkspace was a placeholder that left /app/workspace unwired; it
-//         stays in-tree but is no longer routed.
-// Flags retained for rollback: REACT_APP_WORKSPACE_V3=1 uses WorkspaceV3Shell,
-// REACT_APP_WORKSPACE_LEGACY=true falls back to WorkspaceVNext.
+// CF33 — ThreePaneWorkspace is THE approved shell. DO NOT swap it for
+//         UnifiedWorkspace or any other "new" workspace. The right-pane panels
+//         (system consciousness, live feed, developer, code, preview) are
+//         fused INTO ThreePaneWorkspace, not into a replacement page.
+//         Flags retained only for rollback.
 const USE_LEGACY_WORKSPACE = process.env.REACT_APP_WORKSPACE_LEGACY === 'true';
-const WorkspaceV3Shell = USE_LEGACY_WORKSPACE
-  ? null
-  : require('./pages/WorkspaceV3Shell').default;
+const WorkspaceV3Shell = require('./pages/WorkspaceV3Shell').default;
 const USE_V3_SHELL = process.env.REACT_APP_WORKSPACE_V3 === '1';
-const UnifiedWorkspace = require('./pages/UnifiedWorkspace').default;
+const ThreePaneWorkspace = require('./pages/ThreePaneWorkspace').default;
 const CanonicalWorkspace = USE_LEGACY_WORKSPACE
   ? WorkspaceVNext
-  : (USE_V3_SHELL && WorkspaceV3Shell ? WorkspaceV3Shell : UnifiedWorkspace);
+  : (USE_V3_SHELL ? WorkspaceV3Shell : ThreePaneWorkspace);
 import Layout from "./components/Layout";
 import ShareView from "./pages/ShareView";
 import ExamplesGallery from "./pages/ExamplesGallery";

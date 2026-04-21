@@ -39,16 +39,9 @@ class AgentRunBody(BaseModel):
     rows: list[Dict[str, Any]] = Field(default_factory=list)
 
 
-@router.post("/ai/chat")
-async def ai_chat_compat(data: AIChatBody, user: dict = Depends(_get_auth())):
-    model = (data.model or "auto").strip()
-    return {
-        "response": f"Compat reply: {data.message[:200]}",
-        "model_used": f"compat/{model}",
-        "tokens_used": max(1, len((data.message or "").split())),
-        "session_id": data.session_id or "compat-session",
-        "user_id": user.get("id"),
-    }
+# CF33 — Removed compat /ai/chat stub that was masking the real
+# routes/ai.py implementation and returning "Compat reply: ..." to users.
+# The real endpoint lives at routes/ai.py line ~86 and talks to LLM providers.
 
 
 @router.post("/ai/validate-and-fix")

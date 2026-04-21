@@ -1,38 +1,44 @@
 /**
- * ThreePaneWorkspace.jsx — CF24
- * Strict 3-pane layout: LEFT nav | MIDDLE chat | RIGHT everything
- * Dev/Non-dev mode toggle gates which right-pane tabs are visible.
+ * ThreePaneWorkspace.jsx — CF33
+ * APPROVED SHELL — DO NOT REPLACE. Features fuse INTO this file.
+ *
+ * LEFT: nav (from Layout/Sidebar)
+ * MIDDLE: chat thread + composer + live activity feed
+ * RIGHT: tabs — Preview, Plan, Code, Proof, Logs, Capability, Trust
+ *   Each tab renders the real Manus-style panel (SystemStatusHUD in header,
+ *   WorkspaceActivityFeed above composer, PreviewPanel / WorkspaceFileTree /
+ *   BrainGuidancePanel / ProofPanel / FailureDrawer on the right).
+ *
+ * Backend contract (live):
+ *   POST /api/orchestrator/plan     -> { job_id, plan, ... }
+ *   POST /api/orchestrator/run-auto -> kicks off agents
+ *   GET  /api/jobs/{id}/stream      -> SSE live step + event stream (via useJobStream)
+ *   POST /api/ai/chat               -> real LLM chat (fallback for non-build msgs)
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  Home, FolderKanban, Bot, Wrench, Store, BarChart3,
-  History, Code2, Settings as SettingsIcon,
-  ChevronLeft, ChevronRight, Play, Square,
-  DollarSign, Stethoscope,
+  Play, Square, Send,
 } from 'lucide-react';
 import VoiceRecorder from '../components/voice/VoiceRecorder';
 import CompactButton from '../components/CompactButton';
 import axios from 'axios';
 import { API_BASE as API } from '../apiBase';
 import { useAuth } from '../authContext';
+import { useJobStream } from '../hooks/useJobStream';
+import SystemStatusHUD from '../components/AutoRunner/SystemStatusHUD';
+import WorkspaceActivityFeed from '../components/AutoRunner/WorkspaceActivityFeed';
+import PreviewPanel from '../components/AutoRunner/PreviewPanel';
+import WorkspaceFileTree from '../components/AutoRunner/WorkspaceFileTree';
+import WorkspaceFileViewer from '../components/AutoRunner/WorkspaceFileViewer';
+import BrainGuidancePanel from '../components/AutoRunner/BrainGuidancePanel';
+import ProofPanel from '../components/AutoRunner/ProofPanel';
+import FailureDrawer from '../components/AutoRunner/FailureDrawer';
+import ExecutionTimeline from '../components/AutoRunner/ExecutionTimeline';
 import '../styles/three_pane.css';
 
-const NAV = [
-  { to: '/app/workspace',       label: 'Workspace', icon: Home },
-  { to: '/app/dashboard',       label: 'Projects',  icon: FolderKanban },
-  { to: '/app/agents',          label: 'Agents',    icon: Bot },
-  { to: '/app/skills',          label: 'Skills',    icon: Wrench },
-  { to: '/app/marketplace',     label: 'Marketplace', icon: Store },
-  { to: '/app/benchmarks',      label: 'Benchmarks', icon: BarChart3 },
-  { to: '/app/changelog',       label: 'Changelog', icon: History },
-  { to: '/app/developer',       label: 'Developer', icon: Code2, devOnly: true },
-  { to: '/app/cost',            label: 'Cost',      icon: DollarSign, devOnly: true },
-  { to: '/app/doctor',          label: 'Doctor',    icon: Stethoscope, devOnly: true },
-  { to: '/app/settings',        label: 'Settings',  icon: SettingsIcon },
-];
-
 const EXECUTION_MODES = [
+  { value: 'auto',         label: 'Auto' },
   { value: 'build',        label: 'Build' },
   { value: 'analyze_only', label: 'Analyze' },
   { value: 'plan_first',   label: 'Plan' },
@@ -40,23 +46,25 @@ const EXECUTION_MODES = [
   { value: 'repair',       label: 'Repair' },
 ];
 
-const DEV_TABS    = ['Artifacts', 'Plan', 'Preview', 'Logs', 'Code', 'Runs', 'Capability', 'Trust'];
-const SIMPLE_TABS = ['Preview', 'Plan', 'Screenshots', 'Runs'];
+const DEV_TABS    = ['Preview', 'Plan', 'Code', 'Proof', 'Logs', 'Capability', 'Trust'];
+const SIMPLE_TABS = ['Preview', 'Plan', 'Code', 'Proof'];
 
 export default function ThreePaneWorkspace() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth() || {};
-  const [collapsed, setCollapsed] = useState(false);
   const [mobileView, setMobileView] = useState('mid');
   const [workspaceMode, setWorkspaceMode] = useState(() => {
     if (user?.workspace_mode) return user.workspace_mode;
     return localStorage.getItem('crucibai_workspace_mode') || 'developer';
   });
-  const [mode, setMode] = useState('build');
+  const [mode, setMode] = useState('auto');
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
   const [running, setRunning] = useState(false);
   const [activeTab, setActiveTab] = useState('Preview');
+  const [jobId, setJobId] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
   const textareaRef = useRef(null);
 
   const isDev = workspaceMode === 'developer';
@@ -74,42 +82,112 @@ export default function ThreePaneWorkspace() {
       axios.post(`${API}/user/workspace-mode`, { mode: next }, {
         headers: { Authorization: `Bearer ${token}` },
         timeout: 5000,
-      }).catch(() => { /* localStorage is enough */ });
+      }).catch(() => {});
     }
   };
 
-  const onRun = async () => {
-    const text = input.trim();
+  // Live SSE stream for the active job — powers activity feed, system HUD, code tree, etc.
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+  const { job, steps, events, proof, isConnected, error: streamError } = useJobStream(jobId, { token });
+
+  // Dashboard handoff: if we land here with state.initialPrompt, auto-fire.
+  useEffect(() => {
+    const st = location?.state;
+    if (!st || typeof st.initialPrompt !== 'string') return;
+    const trimmed = st.initialPrompt.trim();
+    if (!trimmed) return;
+    // Clear navigation state so a refresh doesn't re-fire.
+    navigate(location.pathname + location.search, { replace: true, state: {} });
+    setInput(trimmed);
+    if (st.autoStart) {
+      setTimeout(() => runGoal(trimmed), 40);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Live activity lines for the WorkspaceActivityFeed briefing card.
+  const activityLines = useMemo(() => {
+    const lines = [];
+    if (job?.status) lines.push({ ts: Date.now(), text: `Job ${String(job.status).toLowerCase()}` });
+    (events || []).slice(-6).forEach((e) => {
+      const label = e.event_type || e.type || 'event';
+      lines.push({ ts: e.created_at || Date.now(), text: `${label}: ${JSON.stringify(e.payload || {}).slice(0, 120)}` });
+    });
+    return lines;
+  }, [job, events]);
+
+  const runGoal = useCallback(async (goalText) => {
+    const text = (goalText || input).trim();
     if (!text || running) return;
     setMessages((m) => [...m, { role: 'user', text, ts: Date.now() }]);
     setInput('');
     setRunning(true);
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
     try {
-      const token = localStorage.getItem('token');
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const r = await axios.post(`${API}/runs`, { prompt: text, mode }, { headers, timeout: 30000 });
-      const reply = r?.data?.message || r?.data?.summary || 'Run started. See Runs tab for status.';
-      setMessages((m) => [...m, { role: 'assistant', text: reply, ts: Date.now(), run_id: r?.data?.run_id }]);
-      setActiveTab(isDev ? 'Logs' : 'Preview');
-    } catch (err) {
+      // 1. Plan
+      const planRes = await axios.post(
+        `${API}/orchestrator/plan`,
+        { goal: text, mode: mode === 'auto' ? 'auto' : 'guided', build_target: null },
+        { headers, timeout: 30000 }
+      );
+      const newJid = planRes?.data?.job_id;
+      if (!newJid) throw new Error('no job_id returned from planner');
+      setJobId(newJid);
       setMessages((m) => [...m, {
         role: 'assistant',
-        text: `Run queued locally. (${err?.response?.status || 'offline'})`,
+        text: `Plan ready (job ${newJid.slice(0, 8)}). Starting agents…`,
+        ts: Date.now(),
+        job_id: newJid,
+      }]);
+      // 2. Run
+      await axios.post(`${API}/orchestrator/run-auto`, { job_id: newJid }, { headers, timeout: 15000 });
+      setActiveTab('Preview');
+    } catch (err) {
+      const msg = err?.response?.data?.detail || err?.message || 'Run failed';
+      setMessages((m) => [...m, {
+        role: 'assistant',
+        text: `Could not start run: ${msg}. Falling back to chat…`,
         ts: Date.now(),
       }]);
+      // Fallback: plain chat via /api/ai/chat so the user gets a reply.
+      try {
+        const chatRes = await axios.post(
+          `${API}/ai/chat`,
+          { message: text, model: 'auto' },
+          { headers, timeout: 30000 }
+        );
+        const reply = chatRes?.data?.response || chatRes?.data?.message || 'No reply from model.';
+        setMessages((m) => [...m, { role: 'assistant', text: reply, ts: Date.now() }]);
+      } catch (err2) {
+        setMessages((m) => [...m, {
+          role: 'assistant',
+          text: `Chat also failed: ${err2?.response?.status || 'offline'}`,
+          ts: Date.now(),
+        }]);
+      }
     } finally {
       setRunning(false);
     }
-  };
+  }, [input, mode, running, token]);
+
+  const onRun = () => runGoal(input);
 
   const onKeyDown = (e) => {
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       onRun();
     }
   };
 
-  const visibleNav = useMemo(() => NAV.filter((n) => !n.devOnly || isDev), [isDev]);
+  // System HUD props (real numbers only).
+  const hudProps = {
+    connectionMode: isConnected ? 'connected' : (jobId ? 'connecting' : 'offline'),
+    activeAgentCount: (steps || []).filter((s) => s.status === 'running').length,
+    jobStatus: job?.status || 'idle',
+    steps: steps || [],
+    eventCount: (events || []).length,
+    proofItemCount: proof?.total_proof_items || 0,
+  };
 
   return (
     <div className="tp-root" data-testid="crucib-three-pane-root" data-mobile-view={mobileView}>
@@ -139,12 +217,15 @@ export default function ThreePaneWorkspace() {
           >
             {EXECUTION_MODES.map((m) => (<option key={m.value} value={m.value}>{m.label}</option>))}
           </select>
+          <div style={{ marginLeft: 'auto' }}>
+            <SystemStatusHUD {...hudProps} />
+          </div>
         </div>
         <div className="tp-mid__messages" aria-live="polite">
           {messages.length === 0 ? (
             <div className="tp-empty-state">
               <strong>Start a thread</strong>
-              Describe what you want to build, improve, or automate. Crucib will pick skills, tools, and a plan.
+              Describe what you want to build, improve, or automate. Crucib will plan, pick agents from the DAG, and stream the run live into the right pane.
             </div>
           ) : messages.map((m, i) => (
             <div key={i} className={`tp-msg tp-msg--${m.role}`}>
@@ -152,7 +233,18 @@ export default function ThreePaneWorkspace() {
             </div>
           ))}
         </div>
-        <div className="tp-mid__composer-toolbar" style={{ display: "flex", gap: 8, padding: "4px 8px", alignItems: "center", borderTop: "1px solid #e4e4e7" }}>
+        {jobId && (
+          <div style={{ padding: '8px 12px', borderTop: '1px solid var(--theme-border,#e4e4e7)' }}>
+            <WorkspaceActivityFeed
+              jobId={jobId}
+              jobStatus={job?.status}
+              steps={steps || []}
+              events={events || []}
+              activityLines={activityLines}
+            />
+          </div>
+        )}
+        <div className="tp-mid__composer-toolbar" style={{ display: 'flex', gap: 8, padding: '4px 8px', alignItems: 'center', borderTop: '1px solid var(--theme-border,#e4e4e7)' }}>
           <VoiceRecorder
             sessionId={'tp-' + (user?.id || 'anon')}
             onTranscript={(t) => setInput((prev) => (prev ? prev + ' ' : '') + t)}
@@ -171,7 +263,7 @@ export default function ThreePaneWorkspace() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Describe what you want to build… (⌘/Ctrl+Enter to run)"
+            placeholder="Describe what you want to build… (Enter to send, Shift+Enter newline)"
             aria-label="Chat input"
           />
           <button
@@ -181,12 +273,12 @@ export default function ThreePaneWorkspace() {
             disabled={running || !input.trim()}
             data-testid="tp-run-btn"
           >
-            {running ? <><Square size={14} /> Running</> : <><Play size={14} /> Run</>}
+            {running ? <><Square size={14} /> Running</> : <><Send size={14} /> Send</>}
           </button>
         </div>
       </section>
 
-      {/* RIGHT — everything else */}
+      {/* RIGHT — everything else (real panels, not stubs) */}
       <aside className="tp-right" role="complementary">
         <div className="tp-right__tabs" role="tablist">
           {tabs.map((t) => (
@@ -201,7 +293,20 @@ export default function ThreePaneWorkspace() {
           ))}
         </div>
         <div className="tp-right__pane" role="tabpanel">
-          <RightPaneContent tab={activeTab} isDev={isDev} />
+          <RightPaneContent
+            tab={activeTab}
+            isDev={isDev}
+            jobId={jobId}
+            job={job}
+            steps={steps}
+            events={events}
+            proof={proof}
+            streamError={streamError}
+            isConnected={isConnected}
+            selectedFile={selectedFile}
+            setSelectedFile={setSelectedFile}
+            token={token}
+          />
         </div>
       </aside>
 
@@ -217,40 +322,129 @@ export default function ThreePaneWorkspace() {
   );
 }
 
-function RightPaneContent({ tab, isDev }) {
+function RightPaneContent({
+  tab, isDev, jobId, job, steps, events, proof, streamError, isConnected,
+  selectedFile, setSelectedFile, token,
+}) {
+  // No job yet → show a friendly empty state explaining what goes here.
+  const noJobYet = !jobId;
+
   if (tab === 'Preview') {
     return (
-      <div>
-        <div style={{ marginBottom: 12, fontSize: 13, color: '#52525b' }}>Live preview</div>
-        <div style={{ border: '1px solid #e4e4e7', borderRadius: 8, overflow: 'hidden', background: '#fff', minHeight: 280 }}>
-          <iframe
-            title="preview"
-            src="about:blank"
-            style={{ width: '100%', minHeight: 280, border: 0 }}
+      <div style={{ height: '100%' }}>
+        {noJobYet ? (
+          <EmptyState title="Live preview"
+            body="The running app will render here. Send a goal in the chat and the preview will boot as soon as files are ready." />
+        ) : (
+          <PreviewPanel
+            previewUrl={job?.preview_url || null}
+            status={job?.status || 'idle'}
+            sandpackFiles={null}
+            sandpackDeps={null}
+            filesReadyKey={`job-${jobId}`}
+            blockedDetail={streamError || null}
+            jobId={jobId}
+            token={token}
+            apiBase={API}
           />
-        </div>
-        <div className="tp-empty-state" style={{ padding: '12px 0' }}>
-          Preview attaches to the active run. Kick off a run from the chat to see it render here.
-        </div>
+        )}
       </div>
     );
   }
-  if (tab === 'Plan')        return <SimpleList title="Plan"        empty="No plan yet. The plan tab shows steps as they're generated." />;
-  if (tab === 'Artifacts')   return <SimpleList title="Artifacts"   empty="Files produced by the current run will appear here." />;
-  if (tab === 'Screenshots') return <SimpleList title="Screenshots" empty="Visual snapshots from the preview will appear here." />;
-  if (tab === 'Runs')        return <SimpleList title="Runs"        empty="Run history — click any run to resume or inspect." />;
-  if (tab === 'Logs')        return <SimpleList title="Logs"        empty="Raw runtime logs. (Developer view only.)" />;
-  if (tab === 'Code')        return <SimpleList title="Code"        empty="Changed files + diffs from the latest run." />;
-  if (tab === 'Capability')  return <SimpleList title="Capability"  empty="Capability audit — what this run needed vs what was granted." />;
-  if (tab === 'Trust')       return <SimpleList title="Trust"       empty="Proof score, test coverage, and reproducibility signals." />;
-  return <div className="tp-empty-state">Pick a tab.</div>;
+
+  if (tab === 'Plan') {
+    return noJobYet
+      ? <EmptyState title="Plan" body="The planner's proposed steps will appear here. The Brain explains its choices live as the run progresses." />
+      : (
+        <BrainGuidancePanel
+          jobId={jobId}
+          job={job}
+          steps={steps || []}
+          events={events || []}
+        />
+      );
+  }
+
+  if (tab === 'Code') {
+    return noJobYet
+      ? <EmptyState title="Code" body="Every file the agents write lives here, browsable + diffable. Click a file for the full contents." />
+      : (
+        <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 8, height: '100%' }}>
+          <div style={{ borderRight: '1px solid var(--theme-border,#e4e4e7)', overflow: 'auto' }}>
+            <WorkspaceFileTree
+              jobId={jobId}
+              token={token}
+              apiBase={API}
+              onSelect={setSelectedFile}
+              selected={selectedFile}
+            />
+          </div>
+          <div style={{ overflow: 'auto' }}>
+            <WorkspaceFileViewer
+              jobId={jobId}
+              token={token}
+              apiBase={API}
+              file={selectedFile}
+            />
+          </div>
+        </div>
+      );
+  }
+
+  if (tab === 'Proof') {
+    return noJobYet
+      ? <EmptyState title="Proof" body="Trust bundle — tests, checks, verifications. Appears once the run produces evidence." />
+      : <ProofPanel jobId={jobId} proof={proof} />;
+  }
+
+  if (tab === 'Logs') {
+    return noJobYet
+      ? <EmptyState title="Logs" body="Raw runtime events from the SSE stream. Developer view only." />
+      : (
+        <div style={{ height: '100%', overflow: 'auto' }}>
+          <ExecutionTimeline job={job} steps={steps || []} events={events || []} />
+        </div>
+      );
+  }
+
+  if (tab === 'Capability') {
+    return noJobYet
+      ? <EmptyState title="Capability" body="Shows what this run needed (tools / skills / agents) vs what the current tier grants." />
+      : (
+        <div style={{ padding: 16 }}>
+          <div style={{ fontWeight: 600, marginBottom: 8 }}>Capability</div>
+          <div style={{ fontSize: 13, color: 'var(--theme-text-secondary,#52525b)' }}>
+            Job <code>{jobId.slice(0, 8)}</code> · {isConnected ? 'live' : 'offline'} · {(steps || []).length} steps · {(events || []).length} events
+          </div>
+        </div>
+      );
+  }
+
+  if (tab === 'Trust') {
+    return noJobYet
+      ? <EmptyState title="Trust" body="Proof score, test coverage, and reproducibility signals." />
+      : (
+        <div style={{ padding: 16 }}>
+          <div style={{ fontWeight: 600, marginBottom: 8 }}>Trust</div>
+          <div style={{ fontSize: 13, color: 'var(--theme-text-secondary,#52525b)' }}>
+            {proof?.total_proof_items || 0} proof items · quality score {proof?.quality_score ?? 0}
+          </div>
+          <FailureDrawer jobId={jobId} job={job} events={events || []} />
+        </div>
+      );
+  }
+
+  return <EmptyState title="Pick a tab" body="" />;
 }
 
-function SimpleList({ title, empty }) {
+function EmptyState({ title, body }) {
   return (
-    <div>
-      <div style={{ marginBottom: 12, fontSize: 13, fontWeight: 600, color: '#27272a' }}>{title}</div>
-      <div className="tp-empty-state"><strong>Empty</strong>{empty}</div>
+    <div style={{ padding: 16 }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--theme-text,#27272a)', marginBottom: 8 }}>{title}</div>
+      <div className="tp-empty-state">
+        <strong>Ready</strong>
+        {body}
+      </div>
     </div>
   );
 }
