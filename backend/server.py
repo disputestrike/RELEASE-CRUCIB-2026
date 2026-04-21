@@ -469,6 +469,8 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("routes.onboard", "router", False),
     ("routes.deploy_unified", "router", False),
     ("routes.benchmarks_api", "router", True),
+    # CF18 — Phase H closeout: unified preview-loop
+    ("routes.preview_loop", "router", False),
 ]
 
 ROUTE_REGISTRATION_REPORT: List[Dict[str, Any]] = []
