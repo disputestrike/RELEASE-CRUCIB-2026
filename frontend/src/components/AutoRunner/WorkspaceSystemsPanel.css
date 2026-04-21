@@ -1,0 +1,266 @@
+.wsp-root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 100%;
+}
+
+.wsp-card {
+  border: 1px solid var(--border-1);
+  background: var(--bg-1);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.wsp-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.wsp-card-header h3,
+.wsp-card-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.wsp-card-header p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.wsp-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wsp-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(84px, 1fr));
+  gap: 8px;
+}
+
+.wsp-summary-grid div,
+.wsp-result div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.wsp-summary-grid span,
+.wsp-result span,
+.wsp-inline-item span,
+.wsp-checklist-section span {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.wsp-summary-grid strong,
+.wsp-result strong,
+.wsp-inline-item strong,
+.wsp-checklist-section strong,
+.wsp-mobile-copy strong {
+  font-size: 12px;
+  color: var(--text-strong);
+}
+
+.wsp-inline-list {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.wsp-inline-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--bg-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-1);
+}
+
+.wsp-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.wsp-chip {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-1);
+  color: var(--text-secondary);
+}
+
+.wsp-link-btn,
+.wsp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-1);
+  background: var(--bg-2);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.wsp-btn:hover,
+.wsp-link-btn:hover {
+  background: var(--bg-3);
+  color: var(--text-strong);
+}
+
+.wsp-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.wsp-btn-secondary {
+  background: transparent;
+}
+
+.wsp-textarea,
+.wsp-input,
+.wsp-form-row label {
+  width: 100%;
+}
+
+.wsp-textarea,
+.wsp-input {
+  margin-top: 6px;
+  background: var(--bg-0);
+  color: var(--text-primary);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 12px;
+}
+
+.wsp-textarea {
+  min-height: 74px;
+  resize: vertical;
+}
+
+.wsp-form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.wsp-form-row label,
+.wsp-card label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.wsp-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.wsp-result,
+.wsp-checklist,
+.wsp-mobile-preview {
+  border: 1px solid var(--border-1);
+  background: var(--bg-0);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+}
+
+.wsp-result {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.wsp-error {
+  color: var(--state-error);
+  font-size: 12px;
+}
+
+.wsp-muted {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.wsp-mobile-preview {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.wsp-qr {
+  width: 88px;
+  height: 88px;
+  border-radius: 8px;
+  background: #fff;
+  object-fit: contain;
+}
+
+.wsp-mobile-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wsp-mobile-copy span {
+  font-size: 11px;
+  color: var(--text-muted);
+  word-break: break-all;
+}
+
+.wsp-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wsp-checklist-section {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.wsp-card-terminal {
+  min-height: 320px;
+}
+
+.wsp-terminal-wrap {
+  min-height: 250px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border-1);
+}
+
+@media (max-width: 980px) {
+  .wsp-card-header,
+  .wsp-form-row,
+  .wsp-result,
+  .wsp-summary-grid {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .wsp-card-header {
+    display: flex;
+    flex-direction: column;
+  }
+}

@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Share2,
   FileArchive,
+  Wrench,
 } from 'lucide-react';
 import AutoRunnerPanel from '../components/AutoRunner/AutoRunnerPanel';
 import GoalComposer from '../components/AutoRunner/GoalComposer';
@@ -31,6 +32,7 @@ import WorkspaceUserChat from '../components/AutoRunner/WorkspaceUserChat';
 import WorkspaceStatusDock from '../components/AutoRunner/WorkspaceStatusDock';
 import BrainGuidancePanel from '../components/AutoRunner/BrainGuidancePanel';
 import SystemStatusHUD from '../components/AutoRunner/SystemStatusHUD';
+import WorkspaceSystemsPanel from '../components/AutoRunner/WorkspaceSystemsPanel';
 import PreviewPanel from '../components/AutoRunner/PreviewPanel';
 import ResizableDivider from '../components/AutoRunner/ResizableDivider';
 import WorkspaceFileTree from '../components/AutoRunner/WorkspaceFileTree';
@@ -57,7 +59,12 @@ import '../styles/unified-workspace-tokens.css';
 import './AutoRunnerPage.css';
 import '../components/workspace-v4/workspace-v4.css';
 
-const RIGHT_ORDER = ['preview', 'proof', 'explorer', 'replay', 'failure', 'timeline', 'code'];
+const RIGHT_ORDER = ['preview', 'proof', 'systems', 'explorer', 'replay', 'failure', 'timeline', 'code'];
+
+function sanitizePane(raw) {
+  const pane = String(raw || '').trim().toLowerCase();
+  return RIGHT_ORDER.includes(pane) ? pane : 'preview';
+}
 
 function formatCoachReply(guidance) {
   if (!guidance || typeof guidance !== 'object') return '';
@@ -177,7 +184,7 @@ export default function UnifiedWorkspace() {
   const [errorRaw, setErrorRaw] = useState(null);
   /** User prompts sent from the composer — shown as bubbles above activity (input stays empty after send). */
   const [userChatMessages, setUserChatMessages] = useState([]);
-  const [activePane, setActivePane] = useState('preview');
+  const [activePane, setActivePane] = useState(() => sanitizePane(searchParams.get('panel')));
   const [failedStep, setFailedStep] = useState(null);
   useEffect(() => {
     if (!API) return;
@@ -1098,9 +1105,19 @@ export default function UnifiedWorkspace() {
   const activeAgentCount = [...new Set(steps.filter((s) => s.status === 'running').map((s) => s.agent_name))].length;
 
   const visibleRightPanes = RIGHT_ORDER.filter((p) => {
-    if (uxMode === 'beginner' && (p === 'explorer' || p === 'replay' || p === 'code')) return false;
+    if (uxMode === 'beginner' && (p === 'systems' || p === 'explorer' || p === 'replay' || p === 'code')) return false;
     return true;
   });
+
+  useEffect(() => {
+    const paneFromUrl = sanitizePane(searchParams.get('panel'));
+    setActivePane((cur) => (cur === paneFromUrl ? cur : paneFromUrl));
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (visibleRightPanes.includes(activePane)) return;
+    setActivePane(visibleRightPanes[0] || 'preview');
+  }, [visibleRightPanes, activePane]);
 
   const failureStep = failedStep || latestFailedStep;
 
@@ -1383,6 +1400,18 @@ export default function UnifiedWorkspace() {
                 </button>
                 <button
                   type="button"
+                  className="arp-topbar-btn arp-toolbar-icon-btn"
+                  title="Systems"
+                  aria-label="Systems"
+                  onClick={() => {
+                    setActivePane('systems');
+                    setRightCollapsed(false);
+                  }}
+                >
+                  <Wrench size={16} />
+                </button>
+                <button
+                  type="button"
                   className="arp-topbar-btn arp-toolbar-icon-btn arp-topbar-btn-share"
                   title="Share — copy link"
                   aria-label="Share"
@@ -1453,6 +1482,15 @@ export default function UnifiedWorkspace() {
                     openWorkspacePath={openWorkspacePath}
                     milestoneBatch={milestoneBatch}
                     repairQueueLen={repairQueueLen}
+                  />
+                )}
+                {activePane === 'systems' && uxMode === 'pro' && (
+                  <WorkspaceSystemsPanel
+                    jobId={effectiveJobId}
+                    projectId={effectiveProjectId}
+                    token={token}
+                    events={events}
+                    proof={proof}
                   />
                 )}
                 {activePane === 'explorer' && uxMode === 'pro' && (

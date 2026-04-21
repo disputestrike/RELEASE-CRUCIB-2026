@@ -127,6 +127,62 @@ function isBuildIntent(text) {
   return /\b(build|create|make|fix|refactor|deploy|automate|scaffold|generate|app|site|dashboard|tool|import)\b/.test(t);
 }
 
+function normalizeReadiness(result, opts = {}) {
+  if (result.status === 'fulfilled') return { state: 'ready', detail: opts.okText || 'ready' };
+  const code = result.reason?.response?.status;
+  if (code === 403) return { state: 'policy', detail: opts.policyText || 'policy gated' };
+  if (code === 401) return { state: 'policy', detail: opts.authText || 'auth required' };
+  return { state: 'degraded', detail: opts.failText || 'unavailable' };
+}
+
+function SystemsSummaryCard({ readiness, loading }) {
+  const rows = [
+    { key: 'simulation', label: 'Simulation orchestrator' },
+    { key: 'mobile', label: 'Mobile builder' },
+    { key: 'terminal', label: 'Terminal tooling' },
+  ];
+
+  const stateClass = {
+    ready: 'dvx-systems-state--ready',
+    policy: 'dvx-systems-state--policy',
+    degraded: 'dvx-systems-state--degraded',
+  };
+
+  return (
+    <div className="dvx-systems-card" aria-label="Systems readiness summary">
+      <div className="dvx-systems-head">
+        <div>
+          <h3>Systems readiness</h3>
+          <p>Current operator capabilities for workspace systems panel.</p>
+        </div>
+        <Link
+          to="/app/workspace?mode=developer&surface=inspect&panel=systems"
+          className="dvx-systems-open"
+        >
+          Open systems panel
+          <ChevronRight size={14} aria-hidden />
+        </Link>
+      </div>
+      <div className="dvx-systems-grid">
+        {rows.map(({ key, label }) => {
+          const entry = readiness[key] || { state: 'degraded', detail: 'unknown' };
+          return (
+            <div key={key} className="dvx-systems-row">
+              <span>{label}</span>
+              <div className="dvx-systems-status-wrap">
+                <span className={`dvx-systems-state ${stateClass[entry.state] || 'dvx-systems-state--degraded'}`}>
+                  {loading ? 'Checking…' : entry.state}
+                </span>
+                <small>{loading ? 'running checks' : entry.detail}</small>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ---------- sidebar ----------
 function DashSidebar({
   user,
@@ -586,6 +642,50 @@ export default function DashboardVNext() {
   }, [text, headers, navigate]);
 
   const [showMore, setShowMore] = useState(false);
+  const [systemsReadyLoading, setSystemsReadyLoading] = useState(false);
+  const [systemsReadiness, setSystemsReadiness] = useState({
+    simulation: { state: 'degraded', detail: 'unknown' },
+    mobile: { state: 'degraded', detail: 'unknown' },
+    terminal: { state: 'degraded', detail: 'unknown' },
+  });
+
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    setSystemsReadyLoading(true);
+    (async () => {
+      const [simulationRes, mobileRes, terminalRes] = await Promise.allSettled([
+        axios.get(`${API}/runtime/inspect?limit=1`, { headers, timeout: 8000 }),
+        axios.get(`${API}/mobile/jobs`, { headers, timeout: 8000 }),
+        axios.get(`${API}/terminal/audit?limit=1`, { headers, timeout: 8000 }),
+      ]);
+      if (cancelled) return;
+      setSystemsReadiness({
+        simulation: normalizeReadiness(simulationRes, {
+          okText: 'runtime online',
+          failText: 'runtime unavailable',
+        }),
+        mobile: normalizeReadiness(mobileRes, {
+          okText: 'queue route online',
+          failText: 'route unavailable',
+        }),
+        terminal: normalizeReadiness(terminalRes, {
+          okText: 'terminal route online',
+          policyText: 'policy disabled',
+          authText: 'auth required',
+          failText: 'route unavailable',
+        }),
+      });
+      setSystemsReadyLoading(false);
+    })().catch(() => {
+      if (!cancelled) {
+        setSystemsReadyLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, headers]);
 
   // ---------- suggested prompts ----------
   const suggestedPrompts = [
@@ -699,6 +799,8 @@ export default function DashboardVNext() {
               )}
             </div>
           </div>
+
+          <SystemsSummaryCard readiness={systemsReadiness} loading={systemsReadyLoading} />
 
           {/* Suggested prompts */}
           <div className="dvx-suggested-label">Try asking</div>
