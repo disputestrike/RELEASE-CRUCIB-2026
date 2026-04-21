@@ -52,6 +52,10 @@ def _read_json(path: Path) -> Optional[Dict[str, Any]]:
 # Curated competitor baselines.  Numbers reflect what CrucibAI can point to
 # today; competitor cells are intentionally conservative / public-claim based
 # and marked as such so we never fabricate vendor numbers.
+
+# last benchmark refresh: 2026-04-21T11:12:22Z
+
+# last benchmark refresh: 2026-04-21T11:12:23Z
 _COMPETITOR_BASELINE: Dict[str, Any] = {
     "version": "2026-04-20.competitor-baseline.v1",
     "axes": [

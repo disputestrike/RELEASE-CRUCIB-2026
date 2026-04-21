@@ -477,6 +477,8 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     # Wave 5 — Growth & Ecosystem (marketplace listings + tenant API keys)
     ("routes.marketplace", "router", False),
     ("routes.api_keys", "router", False),
+    # CF26 — mobile build API
+    ("routes.mobile_build", "router", False),
 ]
 
 ROUTE_REGISTRATION_REPORT: List[Dict[str, Any]] = []
