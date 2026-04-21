@@ -506,3 +506,84 @@ def test_wave3_seeded_runner_produces_valid_json(tmp_path):
     assert "axes" in data, data
     assert "competitors" in data, data
     assert "version" in data, data
+
+
+# ─── Wave 5: Growth & Ecosystem ───────────────────────────────────────────────
+
+def test_w5_marketplace_listings_returns_shape():
+    """GET /api/marketplace/listings -> 200, has listings array or degraded=true."""
+    app = _app_for("routes.marketplace")
+    client = TestClient(app)
+    r = client.get("/api/marketplace/listings")
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert "listings" in data
+    assert isinstance(data["listings"], list)
+    if data.get("degraded"):
+        assert data["degraded"] is True
+    else:
+        assert isinstance(data["listings"], list)
+
+
+def test_w5_marketplace_listings_kind_filter():
+    """GET /api/marketplace/listings?kind=template -> 200, shape preserved."""
+    app = _app_for("routes.marketplace")
+    client = TestClient(app)
+    r = client.get("/api/marketplace/listings?kind=template")
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert "listings" in data
+
+
+def test_w5_marketplace_featured_returns_shape():
+    """GET /api/marketplace/featured -> 200, has listings array."""
+    app = _app_for("routes.marketplace")
+    client = TestClient(app)
+    r = client.get("/api/marketplace/featured")
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert "listings" in data
+    assert isinstance(data["listings"], list)
+
+
+def test_w5_api_key_create_returns_secret():
+    """POST /api/keys -> 200, secret starts with crc_, prefix present."""
+    app = _app_for("routes.api_keys")
+    client = TestClient(app)
+    r = client.post("/api/keys", json={"name": "test-key"})
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert "secret" in data, data
+    assert data["secret"].startswith("crc_"), data["secret"]
+    assert "prefix" in data, data
+    assert "id" in data, data
+
+
+def test_w5_api_key_list_no_secrets():
+    """GET /api/keys after create -> 200, entries have no secret / hashed_secret."""
+    app = _app_for("routes.api_keys")
+    client = TestClient(app)
+    cr = client.post("/api/keys", json={"name": "list-test-key"})
+    assert cr.status_code == 200, cr.text
+    r = client.get("/api/keys")
+    assert r.status_code == 200, r.text
+    data = r.json()
+    if data.get("degraded"):
+        return
+    assert "keys" in data
+    for key in data["keys"]:
+        assert "secret" not in key, "secret must never appear in list response"
+        assert "hashed_secret" not in key, "hashed_secret must never appear in list response"
+
+
+def test_w5_api_key_delete():
+    """DELETE /api/keys/{id} -> 200."""
+    app = _app_for("routes.api_keys")
+    client = TestClient(app)
+    cr = client.post("/api/keys", json={"name": "revoke-test"})
+    assert cr.status_code == 200, cr.text
+    key_id = cr.json()["id"]
+    dr = client.delete(f"/api/keys/{key_id}")
+    assert dr.status_code == 200, dr.text
+    data = dr.json()
+    assert data.get("revoked") is True or data.get("degraded") is True, data

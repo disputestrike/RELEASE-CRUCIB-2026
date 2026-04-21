@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "crucibai"
+version = "0.1.0"
+description = "Official Python SDK for the CrucibAI platform"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+dependencies = [
+    "httpx>=0.24",
+]
+
+[project.urls]
+Homepage = "https://crucibai.com"
+Documentation = "https://docs.crucibai.com/sdk/python"
+Repository = "https://github.com/crucibai/crucibai-python"
