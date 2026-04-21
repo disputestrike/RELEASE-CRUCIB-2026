@@ -31,17 +31,23 @@ def test_orchestration_index_is_barrel_not_css_dump():
 
 
 def test_live_orchestration_board_is_mounted_in_workspace_surfaces():
+    """CF21 — canonical workspace is now WorkspaceV3Shell (CrucibAIWorkspace was deleted in EX17).
+
+    Ensures the live orchestration surfaces are wired into the V3 shell directly so
+    users get Controller Brain + Kanban + job stream without going through legacy panels.
+    """
     panels = (
         ROOT / "frontend/src/components/workspace/WorkspaceProPanels.jsx"
     ).read_text(encoding="utf-8")
-    crucib = (ROOT / "frontend/src/pages/CrucibAIWorkspace.jsx").read_text(encoding="utf-8")
+    v3_shell = (ROOT / "frontend/src/pages/WorkspaceV3Shell.jsx").read_text(encoding="utf-8")
     kanban = (ROOT / "frontend/src/components/orchestration/KanbanBoard.jsx").read_text(
         encoding="utf-8"
     )
 
     assert "KanbanBoard" in panels
-    assert "useJobStream" in crucib
-    assert "data-testid=\"crucib-workspace-root\"" in crucib
+    assert "useJobStream" in v3_shell
+    assert "KanbanBoard" in v3_shell
+    assert "data-testid=\"crucib-workspace-root\"" in v3_shell
     assert "Controller Brain" in kanban
     assert "Recommended focus" in kanban
     assert "Next actions" in kanban

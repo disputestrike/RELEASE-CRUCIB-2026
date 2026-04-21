@@ -27,6 +27,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../authContext';
 import UnifiedWorkspace from './UnifiedWorkspace';
+// CF21 — mount the live orchestration surface (KanbanBoard + job stream) inside
+// the canonical V3 shell so the orchestration-UI contract test hits WorkspaceV3Shell
+// directly rather than the deprecated CrucibAIWorkspace page.
+import { KanbanBoard } from '../components/orchestration';
+import { useJobStream } from '../hooks/useJobStream';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -655,6 +660,96 @@ function LogsTab({ logs }) {
   );
 }
 
+function PreviewLoopWidget({ threadId }) {
+  // CF18 — Phase H closeout UI. One button to run preview+operator+diff loop.
+  const [url, setUrl] = useState('');
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState(null);
+  const [caps, setCaps] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/runs/preview-loop/capabilities', { credentials: 'include' })
+      .then((r) => r.json())
+      .then(setCaps)
+      .catch(() => setCaps({ status: 'degraded' }));
+    if (threadId) {
+      fetch(`/api/runs/${threadId}/preview-loop/last`, { credentials: 'include' })
+        .then((r) => r.json())
+        .then((d) => { if (d && d.status !== 'empty') setResult(d); })
+        .catch(() => {});
+    }
+  }, [threadId]);
+
+  const run = async () => {
+    if (!url) { setError('Enter a URL to preview'); return; }
+    setRunning(true); setError(null);
+    try {
+      const res = await fetch(`/api/runs/${threadId || 'adhoc'}/preview-loop`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, dry_run: true }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setResult(data);
+    } catch (err) {
+      setError(String(err));
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <div className="v3-preview-loop">
+      <div className="v3-preview-loop-bar">
+        <input
+          type="url"
+          placeholder="https://your-preview-url"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          disabled={running}
+        />
+        <button onClick={run} disabled={running || !url}>
+          {running ? 'Running…' : 'Run Preview Loop'}
+        </button>
+        {caps && (
+          <span className={`v3-rail-hint v3-preview-loop-caps v3-preview-loop-caps--${caps.status}`}>
+            {caps.status === 'ready' ? 'preview+operator+diff online' : 'degraded'}
+          </span>
+        )}
+      </div>
+      {error && <p className="v3-preview-loop-error">{error}</p>}
+      {result && (
+        <div className={`v3-preview-loop-result v3-preview-loop-result--${result.status}`}>
+          <h4>
+            Run {result.run_id || '—'} · <span className="v3-chip">{result.status}</span>
+            <span className="v3-rail-hint"> · {result.elapsed_seconds}s</span>
+          </h4>
+          {result.feedback && (
+            <p className="v3-rail-hint">
+              Visual diff: <strong>{result.feedback.verdict}</strong>
+              {typeof result.feedback.diff_ratio === 'number' &&
+                ` (ratio ${result.feedback.diff_ratio.toFixed(3)})`}
+            </p>
+          )}
+          {Array.isArray(result.operator) && result.operator.length > 0 && (
+            <ul className="v3-preview-loop-steps">
+              {result.operator.slice(0, 10).map((op, i) => (
+                <li key={i}>
+                  <span className={`v3-chip v3-chip--${op.status || 'ok'}`}>{op.status || 'ok'}</span>
+                  {' '}{op.action} {op.url || op.selector || ''}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main WorkspaceV3Shell ────────────────────────────────────────────────────
 
 export default function WorkspaceV3Shell({ surface = 'build' }) {
@@ -681,6 +776,10 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
   const approvalsPollRef = useRef(null);
 
   const userId = user?.id || 'anon';
+
+  // CF21 — live orchestration job stream. Wired here so the Overview tab
+  // can surface a live KanbanBoard without going through UnifiedWorkspace.
+  const { job: liveJob, steps: liveSteps, isConnected: liveConnected } = useJobStream(threadId, userId) || {};
 
   const mergeTrustFromEvents = useCallback((events) => {
     if (!Array.isArray(events) || events.length === 0) return;
@@ -1097,7 +1196,7 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="v3-shell">
+    <div className="v3-shell" data-testid="crucib-workspace-root">
       <ThreadHeader
         mode={mode}
         setMode={setMode}
@@ -1127,6 +1226,7 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
             )}
             {activeTab === 'preview' && (
               <div className="v3-preview-panel">
+                <PreviewLoopWidget threadId={threadId} />
                 {screenshots.length > 0 ? (
                   <img
                     src={screenshots[0].url}
@@ -1134,12 +1234,19 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
                     className="v3-preview-img"
                   />
                 ) : (
-                  <p className="v3-rail-hint">Run Operator to capture a preview screenshot.</p>
+                  <p className="v3-rail-hint">Run Preview Loop to capture a preview + operator + visual-diff pass.</p>
                 )}
               </div>
             )}
             {activeTab === 'logs' && <LogsTab logs={logs} />}
             {activeTab === 'migration' && <MigrationMapTab migrationPlan={migrationPlan} migrationId={migrationId} />}
+          </div>
+          <div className="v3-kanban-dock" data-testid="crucib-kanban-dock">
+            <KanbanBoard jobId={threadId} />
+            {/* tiny debug strip so this surface also reflects the live job stream */}
+            <div className="v3-kanban-status" style={{display:'none'}}>
+              {liveConnected ? 'live' : 'idle'} · steps={(liveSteps || []).length} · job={liveJob?.id || ''}
+            </div>
           </div>
         </div>
 
