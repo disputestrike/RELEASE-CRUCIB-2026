@@ -9,7 +9,10 @@ import {
   Home, FolderKanban, Bot, Wrench, Store, BarChart3,
   History, Code2, Settings as SettingsIcon,
   ChevronLeft, ChevronRight, Play, Square,
+  DollarSign, Stethoscope,
 } from 'lucide-react';
+import VoiceRecorder from '../components/voice/VoiceRecorder';
+import CompactButton from '../components/CompactButton';
 import axios from 'axios';
 import { API_BASE as API } from '../apiBase';
 import { useAuth } from '../authContext';
@@ -24,6 +27,8 @@ const NAV = [
   { to: '/app/benchmarks',      label: 'Benchmarks', icon: BarChart3 },
   { to: '/app/changelog',       label: 'Changelog', icon: History },
   { to: '/app/developer',       label: 'Developer', icon: Code2, devOnly: true },
+  { to: '/app/cost',            label: 'Cost',      icon: DollarSign, devOnly: true },
+  { to: '/app/doctor',          label: 'Doctor',    icon: Stethoscope, devOnly: true },
   { to: '/app/settings',        label: 'Settings',  icon: SettingsIcon },
 ];
 
@@ -167,6 +172,19 @@ export default function ThreePaneWorkspace() {
               <div className="tp-msg__bubble">{m.text}</div>
             </div>
           ))}
+        </div>
+        <div className="tp-mid__composer-toolbar" style={{ display: "flex", gap: 8, padding: "4px 8px", alignItems: "center", borderTop: "1px solid #e4e4e7" }}>
+          <VoiceRecorder
+            sessionId={'tp-' + (user?.id || 'anon')}
+            onTranscript={(t) => setInput((prev) => (prev ? prev + ' ' : '') + t)}
+          />
+          <CompactButton
+            sessionId={'tp-' + (user?.id || 'anon')}
+            messages={messages.map((m) => ({ role: m.role, content: m.text }))}
+            onCompacted={(res) => {
+              setMessages((ms) => [...ms, { role: 'system', text: `Context compacted: ${res.tokens_before} -> ${res.tokens_after_target} tokens (ratio ${res.ratio?.toFixed?.(2) ?? res.ratio})` }]);
+            }}
+          />
         </div>
         <div className="tp-mid__composer">
           <textarea

@@ -110,6 +110,9 @@ import ChangelogLive from "./pages/ChangelogLive";
 import Marketplace from "./pages/Marketplace";
 import TemplateGallery from "./pages/TemplateGallery";
 import DeveloperPortal from "./pages/DeveloperPortal";
+import CostCenter from "./pages/CostCenter";
+import Doctor from "./pages/Doctor";
+import QuickLauncher from "./components/QuickLauncher";
 import { LayoutProvider } from "./stores/useLayoutStore";
 import { TaskProvider } from "./stores/useTaskStore";
 
@@ -445,6 +448,7 @@ function App() {
       <AuthProvider>
         <BrowserRouter>
         <CrucibAiEngineInit />
+        <QuickLauncher />
         <ScrollToPlace />
         <Routes>
           <Route path="/" element={<LandingPage />} />
@@ -534,6 +538,8 @@ function App() {
             <Route path="marketplace" element={<Marketplace />} />
             <Route path="templates-gallery" element={<TemplateGallery />} />
             <Route path="developer" element={<DeveloperPortal />} />
+            <Route path="cost" element={<CostCenter />} />
+            <Route path="doctor" element={<Doctor />} />
             <Route path="auto-runner" element={<AutoRunnerRedirect />} />
           </Route>
         </Routes>
