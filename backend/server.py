@@ -462,6 +462,9 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     # Phase-1 capability build-out  (engineering/master-list-closeout)
     ("routes.artifacts", "router", False),
     ("routes.approvals", "router", False),
+    # Phase-1 corrective action (CF4 + CF5)
+    ("routes.images", "router", False),
+    ("routes.migration", "router", False),
 ]
 
 ROUTE_REGISTRATION_REPORT: List[Dict[str, Any]] = []
