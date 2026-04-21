@@ -36,9 +36,11 @@ import ExportCenter from "./pages/ExportCenter";
 import PatternLibrary from "./pages/PatternLibrary";
 import Settings from "./pages/Settings";
 import WorkspaceVNext from "./pages/WorkspaceVNext";
-const WorkspaceV3Shell = process.env.REACT_APP_WORKSPACE_V3 === 'true'
-  ? require('./pages/WorkspaceV3Shell').default
-  : null;
+// CF7 — V3 is canonical; legacy UnifiedWorkspace only when REACT_APP_WORKSPACE_LEGACY is true.
+const USE_LEGACY_WORKSPACE = process.env.REACT_APP_WORKSPACE_LEGACY === 'true';
+const WorkspaceV3Shell = USE_LEGACY_WORKSPACE
+  ? null
+  : require('./pages/WorkspaceV3Shell').default;
 import Layout from "./components/Layout";
 import ShareView from "./pages/ShareView";
 import ExamplesGallery from "./pages/ExamplesGallery";
