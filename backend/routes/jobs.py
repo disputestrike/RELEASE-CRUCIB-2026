@@ -15,7 +15,7 @@ import logging
 import re
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from services.job_service import (
     create_job_service,
     get_job_checkpoint_service,
@@ -476,3 +476,63 @@ async def estimate_job_cost(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Steer / Cancel / Resume — wired to UnifiedWorkspace ──────────────────────
+
+@router.post("/jobs/{job_id}/steer")
+async def steer_job(job_id: str, request: Request, user: dict = Depends(get_current_user)):
+    """Inject a steering instruction into a running job."""
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    message = body.get("message") or body.get("instruction") or ""
+    resume = body.get("resume", True)
+    try:
+        from db_pg import get_pg_pool
+        import json as _json
+        pool = await get_pg_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """UPDATE jobs SET
+                   steer_queue = COALESCE(steer_queue, '[]'::jsonb) || $1::jsonb
+                   WHERE id = $2""",
+                _json.dumps([{"message": message, "resume": resume}]),
+                job_id,
+            )
+    except Exception as e:
+        logger.warning("steer_job db: %s", e)
+    return {"accepted": True, "job_id": job_id, "message": message}
+
+
+@router.post("/jobs/{job_id}/cancel")
+async def cancel_job(job_id: str, user: dict = Depends(get_current_user)):
+    """Cancel a running job."""
+    try:
+        from db_pg import get_pg_pool
+        pool = await get_pg_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE jobs SET status='cancelled', updated_at=NOW() WHERE id=$1",
+                job_id,
+            )
+    except Exception as e:
+        logger.warning("cancel_job db: %s", e)
+    return {"cancelled": True, "job_id": job_id}
+
+
+@router.post("/jobs/{job_id}/resume")
+async def resume_job(job_id: str, user: dict = Depends(get_current_user)):
+    """Resume a paused or failed job."""
+    try:
+        from orchestration.auto_runner import prepare_failed_job_for_rerun, resume_job as _resume
+        from db_pg import get_pg_pool
+        pool = await get_pg_pool()
+        await prepare_failed_job_for_rerun(job_id)
+        import asyncio
+        asyncio.create_task(_resume(job_id, "", pool))
+        return {"resumed": True, "job_id": job_id}
+    except Exception as e:
+        logger.warning("resume_job: %s", e)
+        return {"resumed": False, "job_id": job_id, "error": str(e)}

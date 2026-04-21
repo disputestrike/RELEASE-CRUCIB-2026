@@ -828,3 +828,30 @@ async def list_orchestrator_build_jobs(
     except Exception as e:
         logger.exception("orchestrator/build-jobs")
         return {"success": False, "jobs": [], "error": str(e)}
+
+
+@router.get("/jobs/{job_id}/plan-draft")
+async def get_plan_draft(job_id: str, user: dict = Depends(_get_auth())):
+    """Return the draft plan for a job in 'planned' state.
+    Used by UnifiedWorkspace to show the plan before run-auto is called."""
+    try:
+        from db_pg import get_pg_pool
+        pool = await get_pg_pool()
+        async with pool.acquire() as conn:
+            # Try build_plans table first
+            row = await conn.fetchrow(
+                "SELECT plan_json FROM build_plans WHERE job_id=$1 ORDER BY created_at DESC LIMIT 1",
+                job_id
+            )
+            if row and row["plan_json"]:
+                import json as _json
+                plan = row["plan_json"] if isinstance(row["plan_json"], dict) else _json.loads(row["plan_json"])
+                return {"plan": plan, "job_id": job_id}
+            # Fallback: check jobs table
+            jrow = await conn.fetchrow("SELECT plan_json FROM jobs WHERE id=$1", job_id)
+            if jrow and jrow.get("plan_json"):
+                plan = jrow["plan_json"] if isinstance(jrow["plan_json"], dict) else _json.loads(jrow["plan_json"])
+                return {"plan": plan, "job_id": job_id}
+    except Exception:
+        pass
+    return {"plan": None, "job_id": job_id}
