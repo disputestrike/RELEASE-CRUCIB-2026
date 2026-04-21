@@ -184,6 +184,20 @@ function RightRail({ artifacts, runs, screenshots, plan, sources, threadId, trus
   );
 }
 
+function formatAge(ts) {
+  if (!ts) return 'n/a';
+  const ms = Date.now() - new Date(ts).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return 'just now';
+  const sec = Math.floor(ms / 1000);
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hrs = Math.floor(min / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
+
 function TrustPanel({ trust }) {
   if (!trust) return <p className="v3-rail-empty">No trust signals yet.</p>;
 
@@ -198,6 +212,11 @@ function TrustPanel({ trust }) {
         <li className="v3-trust-item"><span>Skill</span><strong>{trust.skill || 'pending'}</strong></li>
         <li className="v3-trust-item"><span>Permission</span><strong>{trust.permission || 'pending'}</strong></li>
         <li className="v3-trust-item"><span>Last Spawn</span><strong>{trust.lastSpawn || 'none'}</strong></li>
+        <li className="v3-trust-item"><span>Runtime State</span><strong>{trust.runtimeState || 'unknown'}</strong></li>
+        <li className="v3-trust-item"><span>State Changed</span><strong>{trust.runtimeStateAt ? formatAge(trust.runtimeStateAt) : 'n/a'}</strong></li>
+        <li className="v3-trust-item"><span>Checkpoint Age</span><strong>{trust.checkpointAge || 'n/a'}</strong></li>
+        <li className="v3-trust-item"><span>Memory Nodes</span><strong>{trust.memoryNodes ?? 0}</strong></li>
+        <li className="v3-trust-item"><span>Memory Edges</span><strong>{trust.memoryEdges ?? 0}</strong></li>
       </ul>
 
       <p className="v3-plan-title">Phases</p>
@@ -401,6 +420,7 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
   const [artifacts, setArtifacts] = useState([]);
   const [screenshots, setScreenshots] = useState([]);
   const [logs, setLogs] = useState([]);
+  const [sources, setSources] = useState([]);
   const [plan, setPlan] = useState(null);
   const [migrationPlan, setMigrationPlan] = useState(null);
   const [resumeState, setResumeState] = useState(null);
@@ -408,6 +428,7 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
   const [threadId] = useState(() => `thread-${Date.now()}`);
   const trustPollRef = useRef(null);
   const checkpointPollRef = useRef(null);
+  const memoryPollRef = useRef(null);
 
   const userId = user?.id || 'anon';
 
@@ -418,6 +439,8 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
     let latestSpawn = null;
     let latestSkill = null;
     let latestPermission = null;
+    let latestRuntimeState = null;
+    let latestRuntimeStateAt = null;
 
     for (const e of events) {
       if (!e || !e.type) continue;
@@ -439,6 +462,33 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
       if (e.type === 'phase_end' && payload.phase === 'resolve_skill') {
         latestSkill = payload.skill || null;
       }
+
+      if (e.type === 'task.started') {
+        latestRuntimeState = 'running';
+        latestRuntimeStateAt = e.ts || e.created_at || new Date().toISOString();
+      }
+
+      if (e.type === 'task.updated' || e.type === 'task.status') {
+        if (payload.status) {
+          latestRuntimeState = payload.status;
+          latestRuntimeStateAt = e.ts || e.created_at || new Date().toISOString();
+        }
+      }
+
+      if (e.type === 'task.completed') {
+        latestRuntimeState = 'completed';
+        latestRuntimeStateAt = e.ts || e.created_at || new Date().toISOString();
+      }
+
+      if (e.type === 'task.failed') {
+        latestRuntimeState = 'failed';
+        latestRuntimeStateAt = e.ts || e.created_at || new Date().toISOString();
+      }
+
+      if (e.type === 'task.cancelled') {
+        latestRuntimeState = 'cancelled';
+        latestRuntimeStateAt = e.ts || e.created_at || new Date().toISOString();
+      }
     }
 
     setTrust((prev) => ({
@@ -447,6 +497,8 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
       skill: latestSkill || (prev && prev.skill) || 'pending',
       permission: latestPermission || (prev && prev.permission) || 'pending',
       lastSpawn: latestSpawn || (prev && prev.lastSpawn) || 'none',
+      runtimeState: latestRuntimeState || (prev && prev.runtimeState) || 'unknown',
+      runtimeStateAt: latestRuntimeStateAt || (prev && prev.runtimeStateAt) || null,
     }));
   }, []);
 
@@ -499,6 +551,10 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
           checkpointId: state.checkpoint_id || null,
           createdAt: state.created_at || null,
         });
+        setTrust((prev) => ({
+          ...(prev || {}),
+          checkpointAge: formatAge(state.created_at),
+        }));
       } catch {
         // Ignore polling failures; keep existing UI state.
       }
@@ -511,6 +567,44 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
       if (checkpointPollRef.current) {
         clearInterval(checkpointPollRef.current);
         checkpointPollRef.current = null;
+      }
+    };
+  }, [threadId]);
+
+  useEffect(() => {
+    const pollMemorySummary = async () => {
+      try {
+        const res = await fetch(`/api/threads/${threadId}/memory-summary?limit=40`, { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const summary = data.summary || {};
+
+        setTrust((prev) => ({
+          ...(prev || {}),
+          memoryNodes: summary.node_count || 0,
+          memoryEdges: summary.edge_count || 0,
+        }));
+
+        const tagSources = Array.isArray(summary.tags) ? summary.tags.map((t) => `tag:${t}`) : [];
+        const stepSources = Array.isArray(summary.recent)
+          ? summary.recent
+            .slice(0, 8)
+            .map((r) => r.step_id || r.type)
+            .filter(Boolean)
+          : [];
+        setSources([...tagSources, ...stepSources]);
+      } catch {
+        // Ignore transient poll errors.
+      }
+    };
+
+    pollMemorySummary();
+    memoryPollRef.current = setInterval(pollMemorySummary, 5000);
+
+    return () => {
+      if (memoryPollRef.current) {
+        clearInterval(memoryPollRef.current);
+        memoryPollRef.current = null;
       }
     };
   }, [threadId]);
@@ -543,7 +637,13 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
         skill: 'pending',
         permission: 'pending',
         lastSpawn: 'none',
+        runtimeState: data.status || 'running',
+        runtimeStateAt: new Date().toISOString(),
+        checkpointAge: 'n/a',
+        memoryNodes: 0,
+        memoryEdges: 0,
       });
+      setSources([]);
       setPlan({
         title: `Execution Plan (${data.mode || 'build'})`,
         steps: (data.engine_context?.phases || []).map((phase) => ({ description: phase, status: 'pending' })),
@@ -715,7 +815,7 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
           runs={runs}
           screenshots={screenshots}
           plan={plan}
-          sources={[]}
+          sources={sources}
           threadId={threadId}
           trust={trust}
         />

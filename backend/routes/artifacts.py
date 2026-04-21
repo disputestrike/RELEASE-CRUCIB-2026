@@ -286,6 +286,71 @@ async def get_latest_thread_checkpoint(
     }
 
 
+@router.get("/threads/{thread_id}/memory-summary")
+async def get_thread_memory_summary(
+    thread_id: str,
+    limit: int = 40,
+    user: dict = Depends(_get_auth()),
+):
+    """Return a compact memory-graph summary for a thread."""
+    from db_pg import get_db
+    from services.agent_loop import agent_loop
+    from services.runtime.memory_graph import query_nodes, get_graph
+
+    db = await get_db()
+    user_id = user.get("id") or user.get("sub", "anon")
+    project_id = f"runtime-{user_id}"
+
+    cp = await agent_loop.load_checkpoint(thread_id=thread_id, db=db)
+    cp_data = (cp or {}).get("checkpoint_data") or {}
+    run_id = cp_data.get("run_id")
+
+    rows = query_nodes(project_id, task_id=run_id, limit=max(1, min(int(limit), 200))) if run_id else []
+    graph = get_graph(project_id)
+    node_ids = {str(r.get("id")) for r in rows}
+    edges = [
+        e for e in (graph.get("edges") or [])
+        if str(e.get("from")) in node_ids or str(e.get("to")) in node_ids
+    ]
+
+    tags = []
+    seen = set()
+    for r in rows:
+        for t in (r.get("tags") or []):
+            if t in seen:
+                continue
+            seen.add(t)
+            tags.append(t)
+
+    recent = []
+    for r in rows[:20]:
+        payload = r.get("payload") or {}
+        recent.append(
+            {
+                "id": r.get("id"),
+                "type": r.get("type"),
+                "step_id": payload.get("step_id"),
+                "skill": payload.get("skill"),
+                "provider": (payload.get("provider") or {}).get("alias") if isinstance(payload.get("provider"), dict) else payload.get("provider"),
+                "success": payload.get("success"),
+                "ts": r.get("ts"),
+            }
+        )
+
+    return {
+        "thread_id": thread_id,
+        "summary": {
+            "project_id": project_id,
+            "run_id": run_id,
+            "node_count": len(rows),
+            "edge_count": len(edges),
+            "last_node_id": rows[0].get("id") if rows else None,
+            "tags": tags[:30],
+            "recent": recent,
+        },
+    }
+
+
 @router.post("/threads/{thread_id}/resume")
 async def resume_thread(
     thread_id: str,
