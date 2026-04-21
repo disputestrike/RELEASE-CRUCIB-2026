@@ -458,3 +458,51 @@ def test_cf19_phase_decide_falls_back_when_brain_raises():
     # Fallback shape must be intact
     assert decision.get("action") == "default"
     assert decision.get("skill") == "default"
+
+
+# ─── Wave 3: Proof & Distribution ────────────────────────────────────────────
+
+
+def test_wave3_public_scorecard_returns_200_with_shape():
+    """GET /public/benchmarks/scorecard returns 200 and expected keys."""
+    client = TestClient(_app_for("routes.public_benchmarks"))
+    resp = client.get("/public/benchmarks/scorecard")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    # At least one of the canonical shape keys must be present
+    assert any(k in body for k in ("axes", "scorecards", "competitors")), body
+
+
+def test_wave3_changelog_returns_200_with_commits_array():
+    """GET /api/changelog returns 200 and a commits array (may be empty when degraded)."""
+    client = TestClient(_app_for("routes.changelog"))
+    resp = client.get("/api/changelog")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert "commits" in body, body
+    assert isinstance(body["commits"], list), body
+
+
+def test_wave3_seeded_runner_produces_valid_json(tmp_path):
+    """run_competitor_benchmarks.py --mode=seeded writes a file with expected keys."""
+    import subprocess
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(_BACKEND.parent / "scripts" / "run_competitor_benchmarks.py"),
+            "--mode=seeded",
+            "--out",
+            str(tmp_path),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    files = list(tmp_path.glob("*.json"))
+    assert len(files) == 1, f"Expected 1 JSON file, found: {files}"
+    with files[0].open() as fh:
+        import json as _json
+        data = _json.load(fh)
+    assert "axes" in data, data
+    assert "competitors" in data, data
+    assert "version" in data, data
