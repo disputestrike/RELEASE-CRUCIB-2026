@@ -49,7 +49,16 @@ const EXECUTION_MODES = [
   { value: 'short_pass',  label: 'Short Pass' },
 ];
 
-const RAIL_SECTIONS = ['Artifacts', 'Plan', 'Screenshots', 'Runs', 'Sources', 'Trust'];
+const RAIL_SECTIONS = [
+  'Artifacts',
+  'Plan',
+  'Screenshots',
+  'Runs',
+  'Sources',
+  'Trust',
+  'Approvals',   // CF8 -- approval "ask" lifecycle UI
+  'Capability',  // CF10 -- capability audit surface
+];
 
 // ─── ThreadHeader ─────────────────────────────────────────────────────────────
 
@@ -140,7 +149,7 @@ function WorkspaceTabs({ activeTab, setActiveTab, surface }) {
 
 // ─── RightRail ───────────────────────────────────────────────────────────────
 
-function RightRail({ artifacts, runs, screenshots, plan, sources, threadId, trust }) {
+function RightRail({ artifacts, runs, screenshots, plan, sources, threadId, trust, approvals, capability, onApproval, onCapabilityRefresh }) {
   const [activeSection, setActiveSection] = useState('Artifacts');
 
   return (
@@ -178,6 +187,12 @@ function RightRail({ artifacts, runs, screenshots, plan, sources, threadId, trus
         )}
         {activeSection === 'Trust' && (
           <TrustPanel trust={trust} />
+        )}
+        {activeSection === 'Approvals' && (
+          <ApprovalsPanel approvals={approvals} onApproval={onApproval} />
+        )}
+        {activeSection === 'Capability' && (
+          <CapabilityAuditPanel capability={capability} onRefresh={onCapabilityRefresh} />
         )}
       </div>
     </aside>
@@ -272,6 +287,123 @@ function TrustPanel({ trust }) {
         </ul>
       ) : (
         <p className="v3-rail-hint">No runtime transitions yet.</p>
+      )}
+    </div>
+  );
+}
+
+// ─── CF8: Approvals "ask" lifecycle panel ───────────────────────────────────
+function ApprovalsPanel({ approvals, onApproval }) {
+  const pending = Array.isArray(approvals) ? approvals.filter((a) => a.status === 'pending') : [];
+  const recent  = Array.isArray(approvals) ? approvals.filter((a) => a.status !== 'pending').slice(0, 10) : [];
+
+  if (!pending.length && !recent.length) {
+    return (
+      <div>
+        <p className="v3-rail-empty">No approval requests.</p>
+        <p className="v3-rail-hint">When the runtime pauses for permission in `ask` mode, requests show up here.</p>
+      </div>
+    );
+  }
+
+  const act = async (id, decision) => {
+    try {
+      const res = await fetch(`/api/approvals/${id}/decide`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ decision }),
+      });
+      if (res.ok && typeof onApproval === 'function') onApproval();
+    } catch {
+      // swallow — user can retry
+    }
+  };
+
+  return (
+    <div className="v3-approvals-panel">
+      <p className="v3-plan-title">Pending ({pending.length})</p>
+      {pending.length === 0 && <p className="v3-rail-hint">No pending requests.</p>}
+      <ul className="v3-approvals-list">
+        {pending.map((a) => (
+          <li key={a.id} className="v3-approval-item">
+            <div className="v3-approval-head">
+              <strong>{a.skill || a.tool || 'capability'}</strong>
+              <span className="v3-approval-age">{formatAge(a.created_at)}</span>
+            </div>
+            <div className="v3-approval-reason">{a.reason || 'No reason supplied.'}</div>
+            <div className="v3-approval-actions">
+              <button type="button" className="v3-btn v3-btn--approve" onClick={() => act(a.id, 'approve')}>Approve</button>
+              <button type="button" className="v3-btn v3-btn--deny"    onClick={() => act(a.id, 'deny')}>Deny</button>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      {recent.length > 0 && (
+        <>
+          <p className="v3-plan-title" style={{ marginTop: 12 }}>Recent decisions</p>
+          <ul className="v3-sources-list">
+            {recent.map((a) => (
+              <li key={a.id} className="v3-source-item">
+                {a.skill || a.tool || 'capability'} → <strong>{a.status}</strong> ({formatAge(a.decided_at || a.updated_at)})
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── CF10: Capability audit panel ──────────────────────────────────────────
+function CapabilityAuditPanel({ capability, onRefresh }) {
+  if (!capability) {
+    return (
+      <div>
+        <p className="v3-rail-empty">Capability audit not yet run.</p>
+        <button type="button" className="v3-btn" onClick={() => onRefresh && onRefresh()}>
+          Run capability audit
+        </button>
+      </div>
+    );
+  }
+
+  const rows = Array.isArray(capability.rows) ? capability.rows : [];
+  const rollup = capability.rollup || {};
+
+  return (
+    <div className="v3-capability-panel">
+      <div className="v3-capability-head">
+        <p className="v3-plan-title">Capability Audit</p>
+        <button type="button" className="v3-btn" onClick={() => onRefresh && onRefresh()}>Refresh</button>
+      </div>
+
+      {Object.keys(rollup).length > 0 && (
+        <ul className="v3-trust-list">
+          {Object.entries(rollup).map(([status, count]) => (
+            <li key={status} className="v3-trust-item">
+              <span>{status}</span><strong>{count}</strong>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {rows.length === 0 ? (
+        <p className="v3-rail-hint">No capability rows emitted yet.</p>
+      ) : (
+        <ul className="v3-sources-list">
+          {rows.slice(0, 25).map((r) => (
+            <li key={r.id || r.capability} className="v3-source-item" title={r.evidence || ''}>
+              <strong>{r.capability}</strong>: {r.status}
+              {r.gap ? ` — ${r.gap}` : ''}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {capability.run_at && (
+        <p className="v3-rail-hint">Last run: {formatAge(capability.run_at)}</p>
       )}
     </div>
   );
@@ -458,10 +590,13 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
   const [migrationPlan, setMigrationPlan] = useState(null);
   const [resumeState, setResumeState] = useState(null);
   const [trust, setTrust] = useState(null);
+  const [approvals, setApprovals] = useState([]);
+  const [capability, setCapability] = useState(null);
   const [threadId] = useState(() => `thread-${Date.now()}`);
   const trustPollRef = useRef(null);
   const checkpointPollRef = useRef(null);
   const memoryPollRef = useRef(null);
+  const approvalsPollRef = useRef(null);
 
   const userId = user?.id || 'anon';
 
@@ -665,6 +800,40 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
       }
     };
   }, [threadId]);
+
+  // ── CF8/CF10: approvals + capability audit fetchers ───────────────────
+  const fetchApprovals = useCallback(async () => {
+    try {
+      const res = await fetch('/api/approvals', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setApprovals(Array.isArray(data) ? data : (data.approvals || []));
+      }
+    } catch {
+      // non-fatal in UI
+    }
+  }, []);
+
+  const fetchCapabilityAudit = useCallback(async () => {
+    try {
+      const res = await fetch('/api/approvals/capability-audit', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setCapability(data);
+      }
+    } catch {
+      // non-fatal in UI
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchApprovals();
+    fetchCapabilityAudit();
+    approvalsPollRef.current = setInterval(fetchApprovals, 15000);
+    return () => {
+      if (approvalsPollRef.current) clearInterval(approvalsPollRef.current);
+    };
+  }, [fetchApprovals, fetchCapabilityAudit]);
 
   // ── Action handlers ─────────────────────────────────────────────────────
 
@@ -878,6 +1047,10 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
           sources={sources}
           threadId={threadId}
           trust={trust}
+          approvals={approvals}
+          capability={capability}
+          onApproval={fetchApprovals}
+          onCapabilityRefresh={fetchCapabilityAudit}
         />
       </div>
     </div>
