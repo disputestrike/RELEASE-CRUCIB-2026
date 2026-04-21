@@ -240,6 +240,39 @@ function TrustPanel({ trust }) {
       ) : (
         <p className="v3-rail-hint">Agent selection not emitted yet.</p>
       )}
+
+      <p className="v3-plan-title">Top Skills</p>
+      {Array.isArray(trust.topSkills) && trust.topSkills.length > 0 ? (
+        <ul className="v3-sources-list">
+          {trust.topSkills.map((s) => (
+            <li key={s.name} className="v3-source-item">{s.name} ({s.count})</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="v3-rail-hint">No skill aggregation yet.</p>
+      )}
+
+      <p className="v3-plan-title">Top Providers</p>
+      {Array.isArray(trust.topProviders) && trust.topProviders.length > 0 ? (
+        <ul className="v3-sources-list">
+          {trust.topProviders.map((p) => (
+            <li key={p.name} className="v3-source-item">{p.name} ({p.count})</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="v3-rail-hint">No provider aggregation yet.</p>
+      )}
+
+      <p className="v3-plan-title">Runtime Timeline</p>
+      {Array.isArray(trust.stateTimeline) && trust.stateTimeline.length > 0 ? (
+        <ul className="v3-sources-list">
+          {trust.stateTimeline.slice(0, 8).map((t, idx) => (
+            <li key={`${t.state}-${t.ts || idx}`} className="v3-source-item">{t.state} {t.ts ? `(${formatAge(t.ts)})` : ''}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="v3-rail-hint">No runtime transitions yet.</p>
+      )}
     </div>
   );
 }
@@ -441,6 +474,7 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
     let latestPermission = null;
     let latestRuntimeState = null;
     let latestRuntimeStateAt = null;
+    let latestTransition = null;
 
     for (const e of events) {
       if (!e || !e.type) continue;
@@ -466,33 +500,47 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
       if (e.type === 'task.started') {
         latestRuntimeState = 'running';
         latestRuntimeStateAt = e.ts || e.created_at || new Date().toISOString();
+        latestTransition = { state: 'running', ts: latestRuntimeStateAt };
       }
 
       if (e.type === 'task.updated' || e.type === 'task.status') {
         if (payload.status) {
           latestRuntimeState = payload.status;
           latestRuntimeStateAt = e.ts || e.created_at || new Date().toISOString();
+          latestTransition = { state: payload.status, ts: latestRuntimeStateAt };
         }
       }
 
       if (e.type === 'task.completed') {
         latestRuntimeState = 'completed';
         latestRuntimeStateAt = e.ts || e.created_at || new Date().toISOString();
+        latestTransition = { state: 'completed', ts: latestRuntimeStateAt };
       }
 
       if (e.type === 'task.failed') {
         latestRuntimeState = 'failed';
         latestRuntimeStateAt = e.ts || e.created_at || new Date().toISOString();
+        latestTransition = { state: 'failed', ts: latestRuntimeStateAt };
       }
 
       if (e.type === 'task.cancelled') {
         latestRuntimeState = 'cancelled';
         latestRuntimeStateAt = e.ts || e.created_at || new Date().toISOString();
+        latestTransition = { state: 'cancelled', ts: latestRuntimeStateAt };
       }
     }
 
     setTrust((prev) => ({
       ...(prev || {}),
+      ...(() => {
+        const existing = Array.isArray(prev && prev.stateTimeline) ? prev.stateTimeline : [];
+        if (!latestTransition) return { stateTimeline: existing };
+        const head = existing[0];
+        if (head && head.state === latestTransition.state && head.ts === latestTransition.ts) {
+          return { stateTimeline: existing };
+        }
+        return { stateTimeline: [latestTransition, ...existing].slice(0, 12) };
+      })(),
       provider: latestProvider || (prev && prev.provider) || 'pending',
       skill: latestSkill || (prev && prev.skill) || 'pending',
       permission: latestPermission || (prev && prev.permission) || 'pending',
@@ -583,16 +631,25 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
           ...(prev || {}),
           memoryNodes: summary.node_count || 0,
           memoryEdges: summary.edge_count || 0,
+          topSkills: summary.top_skills || [],
+          topProviders: summary.top_providers || [],
+          stateTimeline: summary.state_timeline || (prev && prev.stateTimeline) || [],
         }));
 
         const tagSources = Array.isArray(summary.tags) ? summary.tags.map((t) => `tag:${t}`) : [];
+        const skillSources = Array.isArray(summary.top_skills)
+          ? summary.top_skills.slice(0, 4).map((s) => `skill:${s.name} (${s.count})`)
+          : [];
+        const providerSources = Array.isArray(summary.top_providers)
+          ? summary.top_providers.slice(0, 4).map((p) => `provider:${p.name} (${p.count})`)
+          : [];
         const stepSources = Array.isArray(summary.recent)
           ? summary.recent
             .slice(0, 8)
             .map((r) => r.step_id || r.type)
             .filter(Boolean)
           : [];
-        setSources([...tagSources, ...stepSources]);
+        setSources([...tagSources, ...skillSources, ...providerSources, ...stepSources]);
       } catch {
         // Ignore transient poll errors.
       }
@@ -642,6 +699,9 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
         checkpointAge: 'n/a',
         memoryNodes: 0,
         memoryEdges: 0,
+        topSkills: [],
+        topProviders: [],
+        stateTimeline: [{ state: data.status || 'running', ts: new Date().toISOString() }],
       });
       setSources([]);
       setPlan({

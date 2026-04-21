@@ -18,6 +18,7 @@ Endpoints:
 
 from __future__ import annotations
 
+from collections import Counter
 import logging
 import os
 from typing import Optional
@@ -323,19 +324,48 @@ async def get_thread_memory_summary(
             tags.append(t)
 
     recent = []
+    skill_counts: Counter[str] = Counter()
+    provider_counts: Counter[str] = Counter()
+    state_timeline = []
     for r in rows[:20]:
         payload = r.get("payload") or {}
+        skill = payload.get("skill")
+        provider = (payload.get("provider") or {}).get("alias") if isinstance(payload.get("provider"), dict) else payload.get("provider")
+        if skill:
+            skill_counts[str(skill)] += 1
+        if provider:
+            provider_counts[str(provider)] += 1
+
+        success = payload.get("success")
+        if success is True:
+            state = "succeeded"
+        elif success is False:
+            state = "failed"
+        else:
+            state = "unknown"
+
         recent.append(
             {
                 "id": r.get("id"),
                 "type": r.get("type"),
                 "step_id": payload.get("step_id"),
-                "skill": payload.get("skill"),
-                "provider": (payload.get("provider") or {}).get("alias") if isinstance(payload.get("provider"), dict) else payload.get("provider"),
-                "success": payload.get("success"),
+                "skill": skill,
+                "provider": provider,
+                "success": success,
                 "ts": r.get("ts"),
             }
         )
+        state_timeline.append(
+            {
+                "node_id": r.get("id"),
+                "step_id": payload.get("step_id"),
+                "state": state,
+                "ts": r.get("ts"),
+            }
+        )
+
+    top_skills = [{"name": k, "count": v} for k, v in skill_counts.most_common(5)]
+    top_providers = [{"name": k, "count": v} for k, v in provider_counts.most_common(5)]
 
     return {
         "thread_id": thread_id,
@@ -347,6 +377,9 @@ async def get_thread_memory_summary(
             "last_node_id": rows[0].get("id") if rows else None,
             "tags": tags[:30],
             "recent": recent,
+            "top_skills": top_skills,
+            "top_providers": top_providers,
+            "state_timeline": state_timeline[:12],
         },
     }
 

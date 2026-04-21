@@ -113,6 +113,13 @@ async def test_get_thread_memory_summary_uses_checkpoint_run_id(monkeypatch):
                 "tags": ["step", "run-3"],
                 "payload": {"step_id": "run-3-step-1", "skill": "build", "provider": {"alias": "haiku"}, "success": True},
                 "ts": 1.0,
+            },
+            {
+                "id": "n2",
+                "type": "step_result",
+                "tags": ["step", "run-3", "provider:haiku"],
+                "payload": {"step_id": "run-3-step-2", "skill": "build", "provider": {"alias": "haiku"}, "success": False},
+                "ts": 2.0,
             }
         ]
 
@@ -131,9 +138,13 @@ async def test_get_thread_memory_summary_uses_checkpoint_run_id(monkeypatch):
     assert out["thread_id"] == "thread-3"
     summary = out["summary"]
     assert summary["run_id"] == "run-3"
-    assert summary["node_count"] == 1
+    assert summary["node_count"] == 2
     assert summary["edge_count"] == 1
     assert summary["recent"][0]["provider"] == "haiku"
+    assert summary["top_skills"][0]["name"] == "build"
+    assert summary["top_skills"][0]["count"] == 2
+    assert summary["top_providers"][0]["name"] == "haiku"
+    assert summary["state_timeline"][0]["state"] in {"failed", "succeeded", "unknown"}
 
 
 @pytest.mark.asyncio
@@ -155,3 +166,6 @@ async def test_get_thread_memory_summary_without_checkpoint(monkeypatch):
     assert summary["run_id"] is None
     assert summary["node_count"] == 0
     assert summary["edge_count"] == 0
+    assert summary["top_skills"] == []
+    assert summary["top_providers"] == []
+    assert summary["state_timeline"] == []
