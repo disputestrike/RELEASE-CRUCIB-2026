@@ -258,6 +258,34 @@ async def save_thread_checkpoint(
     return {"checkpoint_id": checkpoint_id, "thread_id": thread_id}
 
 
+@router.get("/threads/{thread_id}/checkpoint/latest")
+async def get_latest_thread_checkpoint(
+    thread_id: str,
+    user: dict = Depends(_get_auth()),
+):
+    """Return latest checkpoint for a thread (non-mutating)."""
+    from db_pg import get_db
+    from services.agent_loop import agent_loop
+
+    db = await get_db()
+    cp = await agent_loop.load_checkpoint(thread_id=thread_id, db=db)
+    if not cp:
+        return {"thread_id": thread_id, "checkpoint": None}
+
+    data = cp.get("checkpoint_data") or {}
+    return {
+        "thread_id": thread_id,
+        "checkpoint": cp,
+        "resume_state": {
+            "run_id": data.get("run_id"),
+            "phase": data.get("phase") or cp.get("phase"),
+            "status": cp.get("status"),
+            "created_at": cp.get("created_at"),
+            "checkpoint_id": cp.get("id"),
+        },
+    }
+
+
 @router.post("/threads/{thread_id}/resume")
 async def resume_thread(
     thread_id: str,
@@ -275,5 +303,17 @@ async def resume_thread(
     if not cp:
         raise HTTPException(status_code=404, detail="No checkpoint found for this thread")
 
-    result = await agent_loop.resume(cp.get("checkpoint_data", {}).get("run_id", thread_id))
-    return {"thread_id": thread_id, "checkpoint": cp, "result": result}
+    cp_data = cp.get("checkpoint_data") or {}
+    run_id = cp_data.get("run_id", thread_id)
+    result = await agent_loop.resume(run_id)
+    return {
+        "thread_id": thread_id,
+        "checkpoint": cp,
+        "resume_state": {
+            "run_id": run_id,
+            "phase": cp_data.get("phase") or cp.get("phase"),
+            "status": result.get("status", "resumed"),
+            "checkpoint_id": cp.get("id"),
+        },
+        "result": result,
+    }

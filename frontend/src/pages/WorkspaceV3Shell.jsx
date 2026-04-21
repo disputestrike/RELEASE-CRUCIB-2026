@@ -407,6 +407,7 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
   const [trust, setTrust] = useState(null);
   const [threadId] = useState(() => `thread-${Date.now()}`);
   const trustPollRef = useRef(null);
+  const checkpointPollRef = useRef(null);
 
   const userId = user?.id || 'anon';
 
@@ -480,6 +481,40 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
     };
   }, [trust, mergeTrustFromEvents]);
 
+  useEffect(() => {
+    const pollCheckpoint = async () => {
+      try {
+        const res = await fetch(`/api/threads/${threadId}/checkpoint/latest`, { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const state = data.resume_state;
+        if (!state) {
+          setResumeState(null);
+          return;
+        }
+        setResumeState({
+          phase: state.phase || 'unknown',
+          status: state.status || 'saved',
+          runId: state.run_id || null,
+          checkpointId: state.checkpoint_id || null,
+          createdAt: state.created_at || null,
+        });
+      } catch {
+        // Ignore polling failures; keep existing UI state.
+      }
+    };
+
+    pollCheckpoint();
+    checkpointPollRef.current = setInterval(pollCheckpoint, 5000);
+
+    return () => {
+      if (checkpointPollRef.current) {
+        clearInterval(checkpointPollRef.current);
+        checkpointPollRef.current = null;
+      }
+    };
+  }, [threadId]);
+
   // ── Action handlers ─────────────────────────────────────────────────────
 
   const handleRun = async () => {
@@ -497,6 +532,7 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
       });
       const data = await res.json();
       setRuns((prev) => [data, ...prev]);
+      setResumeState(null);
       setTrust({
         mode: data.mode,
         status: data.status,
