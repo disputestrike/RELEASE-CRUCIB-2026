@@ -267,7 +267,7 @@ export default function Pricing() {
               <p className="text-3xl font-bold mb-2">$0</p>
               <p className="text-stone-500 text-sm mb-4">Start today with the free tier.</p>
               <button
-                onClick={() => navigate('/app/workspace')}
+                onClick={() => navigate('/app')}
                 className="w-full md:w-auto px-6 py-3 bg-[#1A1A1A] text-white font-medium rounded-lg hover:opacity-90 transition"
               >
                 {user ? 'Go to Workspace' : 'Get started free'}

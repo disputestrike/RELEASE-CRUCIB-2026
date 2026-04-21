@@ -8,22 +8,19 @@ import {
   LayoutGrid, BookOpen, HelpCircle, Coins,
   X, MoreHorizontal, ExternalLink, Pencil, Share2,
   Trash2, FolderInput, Star, Settings, Shield,
-  PanelLeftClose, PanelLeftOpen, History, Home, BarChart3,
-  DollarSign, Stethoscope, Activity,
+  PanelLeftClose, PanelLeftOpen, History, Home,
 } from 'lucide-react';
 import Logo from './Logo';
-import { useWorkspaceRail } from '../contexts/WorkspaceRailContext';
 import './Sidebar.css';
 
 /**
  * Sidebar — minimal primary nav (Manus-style density).
- * Create: New + menu (task / project). Work: Home, Agents, Workspace. Library: Prompts / Learn / Patterns.
+ * Create: New + menu (task / project). Work: Home, Agents. Library: Prompts / Learn / Patterns.
  * History: only when there is at least one task or project.
  * Runs, Marketplace, and other power routes: Settings → Engine room only (not duplicated here).
  */
 
 export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], sidebarOpen = true, onToggleSidebar }) => {
-  const { rail: workspaceRail } = useWorkspaceRail();
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -82,9 +79,12 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
   const isActive = (path) => location.pathname === path;
   const isActivePrefix = (path) => location.pathname.startsWith(path);
   /** Unified workspace: Manus-style headline — logo only in pane 1; wordmark lives in workspace center header. */
-  const workspaceHeadlineLayout = /^\/app\/workspace(\/|$)/.test(location.pathname);
-  const currentTaskId = location.pathname === '/app/workspace' ? searchParams.get('taskId') : null;
-  const jobIdFromUrl = location.pathname === '/app/workspace' ? searchParams.get('jobId') : null;
+  const workspaceHeadlineLayout =
+    /^\/app\/workspace(\/|$)/.test(location.pathname) || /^\/app\/workspace-manus(\/|$)/.test(location.pathname);
+  const currentTaskId =
+    location.pathname === '/app/workspace' || location.pathname === '/app/workspace-manus'
+      ? searchParams.get('taskId')
+      : null;
 
   const togglePin = React.useCallback((id) => {
     setPinnedIds((prev) => {
@@ -118,7 +118,6 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
       isProject: false,
       createdAt: t.createdAt ?? Date.now(),
       linkedProjectId: t.linkedProjectId || null,
-      jobId: t.jobId ?? null,
     }));
     return [...fromProjects, ...fromStore];
   }, [projects, storeTasks, propTasks]);
@@ -174,7 +173,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
   const openTask = (item) => {
     if (item.isProject) navigate(`/app/projects/${item.id}`);
     else if (item.type === 'chat' || item.type === 'query') {
-      navigate(`/app/workspace?chatTaskId=${encodeURIComponent(item.id)}`, { state: { chatTaskId: item.id } });
+      navigate(`/app?chatTaskId=${encodeURIComponent(item.id)}`, { state: { chatTaskId: item.id } });
     } else {
       const qs = new URLSearchParams({ taskId: item.id });
       if (item.linkedProjectId) qs.set('projectId', item.linkedProjectId);
@@ -186,7 +185,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
   const openInNewTab = (item) => {
     if (item.isProject) window.open(`${window.location.origin}/app/projects/${item.id}`, '_blank');
     else if (item.type === 'chat' || item.type === 'query') {
-      window.open(`${window.location.origin}/app/workspace?chatTaskId=${encodeURIComponent(item.id)}`, '_blank');
+      window.open(`${window.location.origin}/app?chatTaskId=${encodeURIComponent(item.id)}`, '_blank');
     } else {
       const qs = new URLSearchParams({ taskId: item.id });
       if (item.linkedProjectId) qs.set('projectId', item.linkedProjectId);
@@ -217,7 +216,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     removeTask(deleteConfirmTask.id);
     setDeleteConfirmTask(null);
     if (wasViewing || wasLastTask) {
-      navigate('/app/workspace', { replace: true, state: { newAgent: true } });
+      navigate('/app', { replace: true, state: { newAgent: true } });
     }
   };
 
@@ -228,7 +227,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
     else if (item.type === 'chat' || item.type === 'query') {
       const qs = new URLSearchParams({ chatTaskId: item.id });
       if (item.linkedProjectId) qs.set('projectId', item.linkedProjectId);
-      url = `${origin}/app/workspace?${qs.toString()}`;
+      url = `${origin}/app?${qs.toString()}`;
     } else {
       const qs = new URLSearchParams({ taskId: item.id });
       if (item.linkedProjectId) qs.set('projectId', item.linkedProjectId);
@@ -336,15 +335,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
 
   const renderHistoryRow = (item) => {
     const isLocalTask = !item.isProject && item.id.startsWith('task_');
-    const isWorkspaceTaskRow =
-      !item.isProject && (isLocalTask || item.type === 'build' || item.jobId);
-    const matchesJobUrl =
-      Boolean(jobIdFromUrl) &&
-      item.jobId != null &&
-      String(item.jobId) === String(jobIdFromUrl);
-    const isSelected = isWorkspaceTaskRow
-      ? currentTaskId === item.id || matchesJobUrl
-      : isActive(`/app/projects/${item.id}`);
+    const isSelected = isLocalTask ? currentTaskId === item.id : isActive(`/app/projects/${item.id}`);
     const isEditing = renameTaskId === item.id;
     const showMenu = menuTaskId === item.id;
     return (
@@ -506,14 +497,14 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
           </button>
           <button
             type="button"
-            onClick={() => navigate('/app/workspace', { state: { newAgent: Date.now() } })}
+            onClick={() => navigate('/app', { state: { newAgent: Date.now() } })}
             className="sidebar-collapsed-icon"
             title="New task"
             aria-label="New task"
           >
             <Plus size={20} />
           </button>
-          <Link to="/app/workspace" className="sidebar-collapsed-icon" title="Home" aria-label="Home">
+          <Link to="/app" className="sidebar-collapsed-icon" title="Home" aria-label="Home">
             <Home size={20} />
           </Link>
           <Link to="/app/agents" className="sidebar-collapsed-icon" title="Agents" aria-label="Agents">
@@ -543,7 +534,6 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
               <div className="sidebar-account-menu sidebar-account-menu--dropup" role="menu">
                 <Link to="/app/settings" role="menuitem" onClick={() => setAccountMenuOpen(false)}><Settings size={16} /> Settings</Link>
                 <Link to="/app/settings" state={{ openTab: 'engine' }} role="menuitem" onClick={() => setAccountMenuOpen(false)}><LayoutGrid size={16} /> Engine room</Link>
-                <Link to="/app/agents/dashboard" role="menuitem" onClick={() => setAccountMenuOpen(false)}><Shield size={16} /> Agent Audit</Link>
                 <Link to="/app/tokens" role="menuitem" onClick={() => setAccountMenuOpen(false)}><Coins size={16} /> Credits & Billing</Link>
                 <Link to="/pricing" role="menuitem" onClick={() => setAccountMenuOpen(false)}><Zap size={16} /> Upgrade plan</Link>
                 <div className="sidebar-account-menu-divider" />
@@ -559,7 +549,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
         <Logo
           variant="full"
           height={32}
-          href="/app/dashboard"
+          href="/app"
           className="sidebar-logo"
           showTagline={false}
           showWordmark={!workspaceHeadlineLayout}
@@ -608,8 +598,8 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
           <div className="sidebar-create-row">
             <button
               type="button"
-              onClick={() => navigate('/app/workspace', { state: { newAgent: Date.now() } })}
-              className={`sidebar-nav-item sidebar-create-main ${isActive('/app/workspace') ? 'active' : ''}`}
+              onClick={() => navigate('/app', { state: { newAgent: Date.now() } })}
+              className={`sidebar-nav-item sidebar-create-main ${isActive('/app') ? 'active' : ''}`}
             >
               <Plus size={18} className="sidebar-nav-icon" />
               <span className="sidebar-nav-label">New</span>
@@ -629,10 +619,10 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
           </div>
           {createMenuOpen && (
             <div className="sidebar-create-popover" role="menu">
-              <button type="button" role="menuitem" className="sidebar-create-popover-item" onClick={() => { navigate('/app/workspace', { state: { newAgent: Date.now() } }); setCreateMenuOpen(false); }}>
+              <button type="button" role="menuitem" className="sidebar-create-popover-item" onClick={() => { navigate('/app', { state: { newAgent: Date.now() } }); setCreateMenuOpen(false); }}>
                 <Plus size={14} /> New task
               </button>
-              <button type="button" role="menuitem" className="sidebar-create-popover-item" onClick={() => { navigate('/app/workspace', { state: { newProject: true } }); setCreateMenuOpen(false); }}>
+              <button type="button" role="menuitem" className="sidebar-create-popover-item" onClick={() => { navigate('/app', { state: { newProject: true } }); setCreateMenuOpen(false); }}>
                 <FolderPlus size={14} /> New project
               </button>
             </div>
@@ -640,17 +630,9 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
         </div>
         <div className="sidebar-nav-group-label">Work</div>
         <div className="sidebar-nav-section">
-          <Link to="/app/dashboard" className={`sidebar-nav-item ${isActive('/app/dashboard') ? 'active' : ''}`}>
-            <BarChart3 size={18} className="sidebar-nav-icon" />
-            <span className="sidebar-nav-label">Dashboard</span>
-          </Link>
-          <Link to="/app/workspace" className={`sidebar-nav-item ${isActive('/app/workspace') ? 'active' : ''}`}>
+          <Link to="/app" className={`sidebar-nav-item ${isActive('/app') ? 'active' : ''}`}>
             <Home size={18} className="sidebar-nav-icon" />
-            <span className="sidebar-nav-label">Workspace</span>
-          </Link>
-          <Link to="/app/live" className={`sidebar-nav-item ${isActive('/app/live') || isActive('/app/monitoring') ? 'active' : ''}`}>
-            <Zap size={18} className="sidebar-nav-icon" />
-            <span className="sidebar-nav-label">Live View</span>
+            <span className="sidebar-nav-label">Home</span>
           </Link>
           <Link to="/app/agents" className={`sidebar-nav-item ${isActivePrefix('/app/agents') && !isActivePrefix('/app/agents/dashboard') ? 'active' : ''}`}>
             <FolderOpen size={18} className="sidebar-nav-icon" />
@@ -659,14 +641,6 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
           <Link to="/app/agents/dashboard" className={`sidebar-nav-item sidebar-nav-item--nested ${isActivePrefix('/app/agents/dashboard') ? 'active' : ''}`}>
             <Shield size={16} className="sidebar-nav-icon" />
             <span className="sidebar-nav-label">Agent Audit</span>
-          </Link>
-          <Link to="/app/cost" className={`sidebar-nav-item ${isActive('/app/cost') ? 'active' : ''}`}>
-            <DollarSign size={18} className="sidebar-nav-icon" />
-            <span className="sidebar-nav-label">Cost</span>
-          </Link>
-          <Link to="/app/doctor" className={`sidebar-nav-item ${isActive('/app/doctor') ? 'active' : ''}`}>
-            <Stethoscope size={18} className="sidebar-nav-icon" />
-            <span className="sidebar-nav-label">Doctor</span>
           </Link>
         </div>
         <div className="sidebar-nav-group-label">Library</div>
@@ -698,12 +672,6 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
             </div>
           )}
         </div>
-        {workspaceRail && (
-          <>
-            <div className="sidebar-nav-group-label">Workspace</div>
-            <div className="sidebar-workspace-fuse sidebar-workspace-fuse--in-nav">{workspaceRail}</div>
-          </>
-        )}
       </nav>
 
       {/* History — only when there is at least one task or project */}
@@ -807,13 +775,6 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
               onClick={() => setAccountMenuOpen(false)}
             >
               <LayoutGrid size={16} /> Engine room
-            </Link>
-            <Link
-              to="/app/agents/dashboard"
-              role="menuitem"
-              onClick={() => setAccountMenuOpen(false)}
-            >
-              <Shield size={16} /> Agent Audit
             </Link>
             <Link
               to="/app/tokens"

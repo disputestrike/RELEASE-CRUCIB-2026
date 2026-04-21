@@ -3,11 +3,6 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
 import App from "./App";
-import { bootstrapTheme } from "./utils/themeBootstrap";
-import { guardAgainstStaleMainChunk } from "./utils/runtimeAssetGuard";
-
-bootstrapTheme();
-void guardAgainstStaleMainChunk();
 
 class ErrorBoundary extends React.Component {
   state = { hasError: false, error: null };

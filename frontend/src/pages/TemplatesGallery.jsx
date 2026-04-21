@@ -21,7 +21,7 @@ export default function TemplatesGallery() {
 
   const createFromTemplate = (templateId) => {
     if (!token) {
-      navigate('/app/workspace');
+      navigate('/app');
       return;
     }
     setCreatingId(templateId);

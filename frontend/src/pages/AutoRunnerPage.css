@@ -223,16 +223,6 @@
   text-overflow: ellipsis;
 }
 
-.uw-left-tree-wrap {
-  margin-top: 8px;
-  min-height: 0;
-  flex: 1;
-  overflow: hidden;
-  border: 1px solid var(--border-1);
-  border-radius: var(--radius-sm);
-  background: var(--bg-0);
-}
-
 /* ── Center pane ──────────────────────────────────────────────────────── */
 .arp-center-pane {
   flex: 1;
@@ -481,12 +471,6 @@
   .arp-layout {
     flex-direction: column;
     overflow-y: auto;
-  }
-  .arp-left-rail,
-  .arp-left-rail.collapsed {
-    width: 100% !important;
-    border-right: none;
-    border-bottom: 1px solid var(--border-1);
   }
   .arp-center-pane {
     flex: 1;

@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import './ChatInterface.css';
-import { contextManager } from '../lib/contextManager';
 
 interface Message {
   id: string;
@@ -109,7 +108,6 @@ export const ChatInterface: React.FC<{ sessionId?: string }> = ({ sessionId: ini
         const lastMessage = newMessages[newMessages.length - 1];
         if (lastMessage?.type === 'assistant') {
           lastMessage.content += '\n' + content;
-          contextManager.addTurn('assistant', content || '');
         } else {
           newMessages.push({
             id: `msg_${Date.now()}_${Math.random()}`,
@@ -118,7 +116,6 @@ export const ChatInterface: React.FC<{ sessionId?: string }> = ({ sessionId: ini
             timestamp: new Date(),
             metadata,
           });
-          contextManager.addTurn('assistant', content || '');
         }
       } else if (type === 'agent_complete') {
         setSession((s) => ({ ...s, isLoading: false }));
@@ -177,7 +174,6 @@ export const ChatInterface: React.FC<{ sessionId?: string }> = ({ sessionId: ini
       messages: [...prev.messages, userMessage],
       isLoading: true,
     }));
-    contextManager.addTurn('user', inputValue);
 
     setInputValue('');
 
@@ -190,9 +186,6 @@ export const ChatInterface: React.FC<{ sessionId?: string }> = ({ sessionId: ini
         body: JSON.stringify({
           session_id: session.sessionId,
           message: inputValue,
-          context: {
-            optimized_turns: contextManager.getOptimized(),
-          },
         }),
       });
 

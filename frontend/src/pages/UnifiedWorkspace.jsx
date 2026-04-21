@@ -32,7 +32,6 @@ import WorkspaceStatusDock from '../components/AutoRunner/WorkspaceStatusDock';
 import BrainGuidancePanel from '../components/AutoRunner/BrainGuidancePanel';
 import SystemStatusHUD from '../components/AutoRunner/SystemStatusHUD';
 import PreviewPanel from '../components/AutoRunner/PreviewPanel';
-import WorkspaceLeftRail from '../components/AutoRunner/WorkspaceLeftRail';
 import ResizableDivider from '../components/AutoRunner/ResizableDivider';
 import WorkspaceFileTree from '../components/AutoRunner/WorkspaceFileTree';
 import WorkspaceOrchestrationBoard from '../components/workspace-v4/WorkspaceOrchestrationBoard';
@@ -55,7 +54,6 @@ import {
   isWorkspaceLiveBuildPhase,
   selectWorkspacePreviewStatus,
 } from '../workspace/workspaceLiveUi';
-import { paneForWorkspaceSurface } from '../workspace/workspaceSurfaceMode';
 import '../styles/unified-workspace-tokens.css';
 import './AutoRunnerPage.css';
 import '../components/workspace-v4/workspace-v4.css';
@@ -72,7 +70,7 @@ function formatCoachReply(guidance) {
   return lines.join('\n\n').trim();
 }
 
-export default function UnifiedWorkspace({ workspaceSurface = 'build' }) {
+export default function UnifiedWorkspace() {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -135,43 +133,22 @@ export default function UnifiedWorkspace({ workspaceSurface = 'build' }) {
     localStorage.setItem('crucibai_right_collapsed', rightCollapsed);
   }, [rightCollapsed]);
 
-  const [leftCollapsed, setLeftCollapsed] = useState(() => localStorage.getItem('crucibai_left_collapsed') === 'true');
-  useEffect(() => {
-    localStorage.setItem('crucibai_left_collapsed', leftCollapsed);
-  }, [leftCollapsed]);
-
-  const [leftWidth, setLeftWidth] = useState(() => parseInt(localStorage.getItem('crucibai_left_width') || '280', 10));
-  useEffect(() => {
-    localStorage.setItem('crucibai_left_width', String(leftWidth));
-  }, [leftWidth]);
-
   const [rightWidth, setRightWidth] = useState(() => parseInt(localStorage.getItem('crucibai_right_width') || '440', 10));
   useEffect(() => {
     localStorage.setItem('crucibai_right_width', String(rightWidth));
   }, [rightWidth]);
 
-  const handleLeftResize = useCallback((delta) => {
-    setLeftWidth((w) => {
-      const minLeft = 220;
-      const minCenter = 280;
-      const inner = typeof window !== 'undefined' ? window.innerWidth : 1440;
-      const rightReserve = rightCollapsed ? 32 : rightWidth + 10;
-      const maxLeft = Math.max(minLeft, inner - rightReserve - minCenter - 24);
-      return Math.min(maxLeft, Math.max(minLeft, w + delta));
-    });
-  }, [rightCollapsed, rightWidth]);
-  const handleResetLeftWidth = useCallback(() => setLeftWidth(280), []);
-
   const handleResize = useCallback((delta) => {
     setRightWidth((w) => {
       const minRight = 200;
       const minCenter = 280;
+      const div = 10;
       const inner = typeof window !== 'undefined' ? window.innerWidth : 1440;
-      const leftReserve = leftCollapsed ? 72 : leftWidth + 10;
-      const maxRight = Math.max(minRight, inner - leftReserve - minCenter - 24);
+      const sidebarReserve = 300;
+      const maxRight = Math.max(minRight, inner - sidebarReserve - div - minCenter);
       return Math.min(maxRight, Math.max(minRight, w + delta));
     });
-  }, [leftCollapsed, leftWidth]);
+  }, []);
   const handleResetWidth = useCallback(() => setRightWidth(440), []);
 
   const [editorColorMode, setEditorColorMode] = useState(() =>
@@ -594,12 +571,7 @@ export default function UnifiedWorkspace({ workspaceSurface = 'build' }) {
     return () => clearTimeout(id);
   }, [events]);
 
-  // Auto-scroll center pane to bottom when messages or steps update
-  useEffect(() => {
-    const el = centerScrollRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
-  }, [userChatMessages, steps, events]);
+  // Wire brain_guidance SSE events → live chat feed so the brain talks during builds
   const lastBrainEventIdRef = useRef(null);
   useEffect(() => {
     if (!events.length) return;
@@ -679,7 +651,6 @@ export default function UnifiedWorkspace({ workspaceSurface = 'build' }) {
   );
 
   const sendInFlightRef = useRef(false);
-  const centerScrollRef = useRef(null);
 
   const handleApprove = async () => {
     const jid = jobId || jobIdFromUrl;
@@ -1134,14 +1105,6 @@ export default function UnifiedWorkspace({ workspaceSurface = 'build' }) {
 
   const failureStep = failedStep || latestFailedStep;
 
-  useEffect(() => {
-    const pane = paneForWorkspaceSurface(workspaceSurface, uxMode, Boolean(failureStep || latestFailure));
-    setActivePane((current) => (current === pane ? current : pane));
-    if (workspaceSurface === 'inspect' || workspaceSurface === 'repair' || workspaceSurface === 'what-if') {
-      setRightCollapsed(false);
-    }
-  }, [workspaceSurface, uxMode, failureStep, latestFailure]);
-
   const previewBlockedDetail = useMemo(() => {
     const fromStep = failureStep?.error_message || failureStep?.step_key;
     if (latestFailure && typeof latestFailure === 'object') {
@@ -1178,7 +1141,6 @@ export default function UnifiedWorkspace({ workspaceSurface = 'build' }) {
   const rightRailSubtitle = useMemo(() => deriveRightRailSubtitle(events, steps), [events, steps]);
 
   useEffect(() => {
-    if (workspaceSurface !== 'build' && workspaceSurface !== 'deploy') return;
     if (!effectiveJobId || isCompleted) return;
     const js = job?.status;
     if (js === 'failed' || js === 'cancelled' || js === 'blocked') return;
@@ -1187,35 +1149,12 @@ export default function UnifiedWorkspace({ workspaceSurface = 'build' }) {
     autoPreviewOnceForJobRef.current = effectiveJobId;
     setActivePane('preview');
     setRightCollapsed(false);
-  }, [effectiveJobId, isCompleted, job?.status, stage, workspaceSurface]);
+  }, [effectiveJobId, isCompleted, job?.status, stage]);
 
   return (
     <WorkspaceNavProvider value={workspaceNavValue}>
     <div className={`uw-root arp-root arp-ux-${uxMode}`} data-testid="unified-workspace-root">
       <div className="arp-layout arp-layout--no-inner-rail">
-        <WorkspaceLeftRail
-          leftCollapsed={leftCollapsed}
-          leftWidth={leftWidth}
-          activePane={activePane}
-          wsPaths={wsPaths}
-          activeWsPath={activeWsPath}
-          treeRevealTick={treeRevealTick}
-          wsListLoading={wsListLoading}
-          onToggleCollapsed={() => setLeftCollapsed((v) => !v)}
-          onSelectPane={(pane) => {
-            setActivePane(pane);
-            setRightCollapsed(false);
-          }}
-          onSelectWorkspacePath={(p) => {
-            setActiveWsPath(p);
-            setTreeRevealTick((t) => t + 1);
-            setActivePane('code');
-            setRightCollapsed(false);
-          }}
-        />
-
-        {!leftCollapsed && <ResizableDivider onResize={handleLeftResize} onDoubleClick={handleResetLeftWidth} invertDelta />}
-
         <div className="arp-center-pane arp-center-pane--composer-bottom">
           <div className="arp-center-toolbar uw-center-headline">
             <div className="uw-center-headline-brand" aria-label="Crucible product version">
@@ -1249,7 +1188,7 @@ export default function UnifiedWorkspace({ workspaceSurface = 'build' }) {
             </div>
           </div>
 
-          <div className="arp-center-pane-scroll" ref={centerScrollRef}>
+          <div className="arp-center-pane-scroll">
             {(effectiveJobId || effectiveProjectId) && (
               <div className="uw-build-identity" aria-label="Active build">
                 <div className="uw-build-identity-title">{buildDisplayTitle}</div>

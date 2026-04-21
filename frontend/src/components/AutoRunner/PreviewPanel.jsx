@@ -169,7 +169,7 @@ export default function PreviewPanel({
           <div className="pp-preview-ready-fallback">
             <div className="pp-preview-fallback-message">
               <span className="pp-preview-idle-text">
-                Build complete! When your UI files are in the workspace, preview appears here automatically.
+                Build complete! Add your UI files below or use Sync to pull generated code.
               </span>
             </div>
             {/* Show minimal Sandpack shell for immediate interactivity */}

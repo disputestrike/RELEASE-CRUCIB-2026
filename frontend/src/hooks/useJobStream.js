@@ -7,7 +7,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { API_BASE, getJobStreamUrl } from '../apiBase';
-import { buildStreamEventId, normalizeJobEvents } from '../lib/jobState';
 
 const EMPTY_PROOF = {
   bundle: {
@@ -38,11 +37,10 @@ function handleStreamPayload(data, jobId, token, setters) {
   if (!data || !data.type || data.type === 'heartbeat') return;
 
   setEvents((prev) => {
-    const id = buildStreamEventId(data);
+    const id = data.id ?? `${data.type}-${data.step_id ?? ''}-${data.ts ?? ''}-${JSON.stringify(data.payload || {}).slice(0, 80)}`;
     const exists = prev.some((e) => (e.id ?? '') === id);
     if (exists) return prev;
-    const next = [...prev, { ...data, id }];
-    return next.length > 500 ? next.slice(-500) : next;
+    return [...prev, { ...data, id }];
   });
 
   if (
@@ -53,11 +51,8 @@ function handleStreamPayload(data, jobId, token, setters) {
   ) {
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
     axios
-      .get(`${API_BASE}/jobs/${jobId}/history`, { headers })
-      .then((r) => {
-        setSteps(r.data?.steps || []);
-        setEvents(normalizeJobEvents(r.data?.events || []));
-      })
+      .get(`${API_BASE}/jobs/${jobId}/steps`, { headers })
+      .then((r) => setSteps(r.data?.steps || []))
       .catch(() => {});
     if (data.type === 'step_completed' || data.type === 'step_failed') {
       axios
@@ -147,7 +142,8 @@ export function useJobStream(jobId, token) {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const [jobRes, stepsRes, eventsRes, proofRes] = await Promise.allSettled([
         axios.get(`${API_BASE}/jobs/${jobId}`, { headers }),
-        axios.get(`${API_BASE}/jobs/${jobId}/history`, { headers }),
+        axios.get(`${API_BASE}/jobs/${jobId}/steps`, { headers }),
+        axios.get(`${API_BASE}/jobs/${jobId}/events`, { headers }),
         axios.get(`${API_BASE}/jobs/${jobId}/proof`, { headers }),
       ]);
       if (jobRes.status === 'fulfilled') {
@@ -155,10 +151,8 @@ export function useJobStream(jobId, token) {
         setJob(d?.job ?? d);
         setLatestFailure(d?.latest_failure ?? null);
       }
-      if (stepsRes.status === 'fulfilled') {
-        setSteps(stepsRes.value.data?.steps || []);
-        setEvents(normalizeJobEvents(stepsRes.value.data?.events || []));
-      }
+      if (stepsRes.status === 'fulfilled') setSteps(stepsRes.value.data?.steps || []);
+      if (eventsRes.status === 'fulfilled') setEvents(eventsRes.value.data?.events || []);
       if (proofRes.status === 'fulfilled') {
         setProof(normalizeProofPayload(proofRes.value.data, jobId));
       } else {
@@ -173,7 +167,7 @@ export function useJobStream(jobId, token) {
         });
       }
       if (token) await fetchCheckpoints();
-      const anySuccess = [jobRes, stepsRes, proofRes].some((result) => result.status === 'fulfilled');
+      const anySuccess = [jobRes, stepsRes, eventsRes, proofRes].some((result) => result.status === 'fulfilled');
       if (anySuccess && pollRef.current) {
         setConnectionMode('polling');
       }
@@ -262,11 +256,7 @@ export function useJobStream(jobId, token) {
       } catch (e) {
         if (e?.name === 'AbortError') return;
         setIsConnected(false);
-        setError(
-          String(e?.message || '').includes('stream 404')
-            ? null
-            : 'Stream disconnected — falling back to polling'
-        );
+        setError('Stream disconnected — falling back to polling');
         startPoll();
       }
     })();

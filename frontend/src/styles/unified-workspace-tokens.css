@@ -4,6 +4,7 @@
  * Global :root in index.css remains unchanged; this layer overrides inside the workspace only.
  */
 .uw-root {
+  /* Primary aliases (use in new UI) */
   --uw-bg-root: #0d0d0d;
   --uw-bg-surface: #141414;
   --uw-bg-elevated: #1a1a1a;
@@ -17,10 +18,15 @@
   --uw-accent-error-dim: rgba(248, 113, 113, 0.12);
   --uw-accent-warn: #fbbf24;
   --uw-tab-active-underline: var(--uw-accent-success);
+
+  /* Focus ring — keyboard / :focus-visible only (see rules below) */
   --uw-focus-ring-color: var(--uw-accent-success);
   --uw-focus-ring: 0 0 0 2px var(--uw-bg-root), 0 0 0 4px var(--uw-focus-ring-color);
+
+  /* Bridge — existing Auto Runner + Proof components */
   --bg-0: var(--uw-bg-root);
   --bg-1: var(--uw-bg-surface);
+  /* Panels / chips — follow elevated surface so light theme is not stuck on dark zinc */
   --bg-2: var(--uw-bg-elevated);
   --bg-3: color-mix(in srgb, var(--uw-bg-elevated) 88%, var(--uw-text) 12%);
   --border-1: var(--uw-border-subtle);
@@ -38,7 +44,11 @@
   --radius-md: 10px;
   --radius-lg: 12px;
   --transition-ui: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Main prompt / plan column — Manus-scale wide composer (was ~640px). */
   --uw-composer-max-width: min(920px, calc(100vw - 96px));
+
+  /* Soft elevation (prefer over 1px hairlines inside unified workspace). */
   --uw-activity-shadow: 0 16px 42px rgba(0, 0, 0, 0.28);
   --uw-activity-shadow-light: 0 12px 32px rgba(15, 23, 42, 0.07);
   --uw-chrome-shadow-down: 0 14px 36px rgba(0, 0, 0, 0.35);
@@ -47,7 +57,9 @@
   --uw-chrome-sep-light: 0 1px 0 rgba(255, 255, 255, 0.92);
 }
 
+/* Light theme — match global app tokens (data-theme on documentElement) */
 [data-theme="light"] .uw-root {
+  /* ChatGPT-like calm neutrals + minimal green accent */
   --uw-bg-root: #ffffff;
   --uw-bg-surface: #ffffff;
   --uw-bg-elevated: #f7f7f8;
@@ -65,11 +77,14 @@
   --uw-tab-active-underline: #10a37f;
   --uw-focus-ring-color: #10a37f;
   --uw-focus-ring: 0 0 0 2px var(--uw-bg-root), 0 0 0 4px var(--uw-focus-ring-color);
+
+  /* Bridge vars — base .uw-root used dark-tinted literals; re-map for readable light UI */
   --text-strong: #1f1f1f;
   --text-primary: #1f1f1f;
   --text-secondary: #6b6b6b;
   --text-muted: #9a9a9a;
   --accent: #6b6b6b;
+  /* Slightly stronger hover / active panels than flat surface2 */
   --bg-3: color-mix(in srgb, var(--uw-bg-elevated) 88%, var(--uw-text) 12%);
 }
 
@@ -95,6 +110,7 @@
   color: #ffffff;
 }
 
+/* Light: clearer split between center column and proof / preview pane */
 [data-theme="light"] .uw-root .arp-right-pane {
   border-left: 1px solid var(--uw-border-subtle);
 }
@@ -103,6 +119,7 @@
   border-color: var(--uw-border-subtle);
 }
 
+/* Build title — one soft surface, no heavy box */
 .uw-root .uw-build-identity {
   width: 100%;
   max-width: var(--uw-composer-max-width, min(920px, calc(100vw - 96px)));
@@ -323,6 +340,7 @@
   min-height: 200px;
 }
 
+/* Focus-visible: token-driven ring for interactive controls inside unified workspace */
 .uw-root button:focus-visible,
 .uw-root a:focus-visible,
 .uw-root [role='button']:focus-visible,
@@ -349,6 +367,7 @@
   outline-offset: 1px;
 }
 
+/* ── Manus-style chrome: shade + shadow instead of stacked hairlines ───── */
 .uw-root .arp-topbar {
   border-bottom: none;
   box-shadow: var(--uw-chrome-sep), var(--uw-chrome-shadow-down);
@@ -358,6 +377,7 @@
   box-shadow: var(--uw-chrome-sep-light), var(--uw-chrome-shadow-down-light);
 }
 
+/* One headline row with pane 2 + pane 3 (aligns with sidebar header when workspace headline layout is on) */
 .uw-root .arp-center-toolbar.uw-center-headline {
   display: flex;
   flex-direction: row;
@@ -463,6 +483,7 @@
   box-shadow: 0 16px 40px color-mix(in srgb, #000 26%, transparent), inset 0 1px 0 color-mix(in srgb, var(--uw-text) 7%, transparent);
 }
 
+/* Light: white shell — do not gray-wash the composer (was color-mix read as “heavy gray”). */
 [data-theme='light'] .uw-root .gc-composer-shell {
   background: #ffffff;
   border: 1px solid rgba(15, 23, 42, 0.08);

@@ -20,9 +20,8 @@ const AdminUsers = () => {
         const params = new URLSearchParams();
         if (emailQ) params.set('email', emailQ);
         if (planQ) params.set('plan', planQ);
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
         const res = await axios.get(`${API}/admin/users?${params}`, {
-          headers,
+          headers: { Authorization: `Bearer ${token}` },
         });
         setUsers(res.data.users || []);
       } catch (e) {
@@ -31,7 +30,7 @@ const AdminUsers = () => {
         setLoading(false);
       }
     };
-    fetchUsers();
+    if (token) fetchUsers();
   }, [token, emailQ, planQ]);
 
   if (error) {

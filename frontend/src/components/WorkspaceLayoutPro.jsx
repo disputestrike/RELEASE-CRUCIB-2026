@@ -6,7 +6,6 @@ import {
   Database, Gauge, Clock, TrendingUp, Globe
 } from 'lucide-react';
 import './WorkspaceLayoutPro.css';
-import Logo from './Logo';
 
 /**
  * Professional Workspace Layout - Manus-inspired with ALL 50+ features
@@ -168,7 +167,7 @@ export const WorkspaceLayoutPro = ({
         <div className="sidebar-header">
           <div className="sidebar-logo">
             <div className="logo-icon">⬜</div>
-            <Logo href="/app/dashboard" height={32} showTagline={false} showWordmark={sidebarOpen} />
+            {sidebarOpen && <span className="logo-text">CrucibAI</span>}
           </div>
           <button 
             className="sidebar-toggle"

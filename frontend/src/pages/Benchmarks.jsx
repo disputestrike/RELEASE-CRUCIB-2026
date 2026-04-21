@@ -89,11 +89,7 @@ export default function Benchmarks() {
         </motion.div>
 
         <div className="mt-10 text-center">
-          <div className="flex flex-wrap items-center justify-center gap-4">
-            <Link to="/proof" className="text-kimi-accent hover:text-kimi-text font-medium">Open public proof</Link>
-            <Link to="/app/workspace" className="text-kimi-accent hover:text-kimi-text font-medium">Start in chat workspace</Link>
-            <Link to="/" className="text-kimi-accent hover:text-kimi-text font-medium">Back to home</Link>
-          </div>
+          <Link to="/" className="text-kimi-accent hover:text-kimi-text font-medium">Back to home</Link>
         </div>
       </div>
     </div>

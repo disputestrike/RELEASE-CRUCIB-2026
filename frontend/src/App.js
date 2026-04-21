@@ -1,5 +1,15 @@
-import { useState, useEffect, useRef, Component, useCallback } from "react";
 import { AuthContext, useAuth as _useAuth } from "./authContext";
+import { useState, useEffect, useRef, createContext, useContext, Component, useCallback } from "react";
+
+// Theme system — respects user preference stored in localStorage
+const THEME_KEY = 'crucibai-theme';
+const getInitialTheme = () => localStorage.getItem(THEME_KEY) || 'light';
+const applyTheme = (theme) => {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem(THEME_KEY, theme);
+};
+// Apply immediately on load (before React renders)
+applyTheme(getInitialTheme());
 
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import axios from "axios";
@@ -28,27 +38,16 @@ class AppErrorBoundary extends Component {
 import LandingPage from "./pages/LandingPage";
 import OurProjectsPage from "./pages/OurProjectsPage";
 import AuthPage from "./pages/AuthPage";
-import ProjectBuilder from "./pages/ProjectBuilder";
-import DashboardVNext from "./pages/DashboardVNext";
 import Dashboard from "./pages/Dashboard";
+import ProjectBuilder from "./pages/ProjectBuilder";
 import AgentMonitor from "./pages/AgentMonitor";
 import TokenCenter from "./pages/TokenCenter";
 import ExportCenter from "./pages/ExportCenter";
 import PatternLibrary from "./pages/PatternLibrary";
 import Settings from "./pages/Settings";
-import WorkspaceVNext from "./pages/WorkspaceVNext";
-// CF33 — ThreePaneWorkspace is THE approved shell. DO NOT swap it for
-//         UnifiedWorkspace or any other "new" workspace. The right-pane panels
-//         (system consciousness, live feed, developer, code, preview) are
-//         fused INTO ThreePaneWorkspace, not into a replacement page.
-//         Flags retained only for rollback.
-const USE_LEGACY_WORKSPACE = process.env.REACT_APP_WORKSPACE_LEGACY === 'true';
-const WorkspaceV3Shell = require('./pages/WorkspaceV3Shell').default;
-const USE_V3_SHELL = process.env.REACT_APP_WORKSPACE_V3 === '1';
-const ThreePaneWorkspace = require('./pages/ThreePaneWorkspace').default;
-const CanonicalWorkspace = USE_LEGACY_WORKSPACE
-  ? WorkspaceVNext
-  : (USE_V3_SHELL ? WorkspaceV3Shell : ThreePaneWorkspace);
+import Builder from "./pages/Builder";
+import Workspace from "./pages/Workspace";
+import WorkspaceManus from "./pages/WorkspaceManus";
 import Layout from "./components/Layout";
 import ShareView from "./pages/ShareView";
 import ExamplesGallery from "./pages/ExamplesGallery";
@@ -80,7 +79,6 @@ import Changelog from "./pages/Changelog";
 import Status from "./pages/Status";
 import PromptsPublic from "./pages/PromptsPublic";
 import Benchmarks from "./pages/Benchmarks";
-import PublicProofPage from "./pages/PublicProofPage";
 import Blog from "./pages/Blog";
 import GenerateContent from "./pages/GenerateContent";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -106,22 +104,11 @@ import CommerceManagePage from "./pages/CommerceManagePage";
 import WorkspaceMembersPage from "./pages/WorkspaceMembersPage";
 import SkillsPage from "./pages/SkillsPage";
 import SkillsMarketplace from "./pages/SkillsMarketplace";
-// Wave 3 + Wave 5 pages wired into the canonical router (CF22).
-import BenchmarksPublic from "./pages/BenchmarksPublic";
-import ChangelogLive from "./pages/ChangelogLive";
-import Marketplace from "./pages/Marketplace";
-import TemplateGallery from "./pages/TemplateGallery";
-import DeveloperPortal from "./pages/DeveloperPortal";
-import CostCenter from "./pages/CostCenter";
-import Doctor from "./pages/Doctor";
-import QuickLauncher from "./components/QuickLauncher";
+import UnifiedWorkspace from "./pages/UnifiedWorkspace";
 import { LayoutProvider } from "./stores/useLayoutStore";
 import { TaskProvider } from "./stores/useTaskStore";
 
 import { API_BASE } from "./apiBase";
-import { memoryGraph } from "./lib/memoryGraph";
-import { permissionEngine } from "./lib/permissionEngine";
-import { contextManager } from "./lib/contextManager";
 
 // Same-origin /api when unset (CRA dev proxy to backend).
 export const API = API_BASE;
@@ -129,8 +116,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
 console.log("API configured as:", API, "BACKEND_URL:", BACKEND_URL || "(same-origin / proxy to :8000 in dev)");
 
 // Auth Context
-// AuthContext and useAuth imported from ./authContext
-export const useAuth = _useAuth; // re-export for backward compat
+export const useAuth = _useAuth; // re-export from authContext
 
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -297,7 +283,7 @@ const AuthProvider = ({ children }) => {
   );
 };
 
-// Onboarding route — authenticated only; if workspace_mode set, redirect to the canonical workspace
+// Onboarding route — authenticated only; if workspace_mode set, redirect to /app
 const OnboardingRoute = ({ children }) => {
   const { user, loading } = useAuth();
   if (loading) {
@@ -310,8 +296,8 @@ const OnboardingRoute = ({ children }) => {
       </div>
     );
   }
-  if (!user) return <Navigate to="/app/workspace" replace />;
-  if (user.workspace_mode) return <Navigate to="/app/workspace" replace />;
+  if (!user) return <Navigate to="/app" replace />;
+  if (user.workspace_mode) return <Navigate to="/app" replace />;
   return children;
 };
 
@@ -361,10 +347,13 @@ const ProtectedRoute = ({ children }) => {
       </div>
     );
   }
+  if (!user.workspace_mode) {
+    return <Navigate to="/onboarding" replace />;
+  }
   return children;
 };
 
-// Admin route: require admin_role or redirect to the canonical workspace
+// Admin route: require admin_role or redirect to app
 const AdminRoute = ({ children }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
@@ -379,30 +368,20 @@ const AdminRoute = ({ children }) => {
     );
   }
   if (!user) return <Navigate to="/auth" state={{ from: location }} replace />;
-  if (!user.admin_role) return <Navigate to="/app/workspace" replace />;
+  if (!user.admin_role) return <Navigate to="/app" replace />;
   return children;
 };
 
-// Redirect /workspace → /app/workspace; preserve query string.
+// Redirect /workspace → /app/workspace so the left sidebar (Layout) always shows; preserve query string.
 function RedirectWorkspaceToApp() {
-  const { search, state } = useLocation();
-  return <Navigate to={`/app/workspace${search}`} state={state} replace />;
+  const { search } = useLocation();
+  return <Navigate to={`/app/workspace${search}`} replace />;
 }
 
-function RedirectAppIndexToWorkspace() {
-  const { search, state } = useLocation();
-  return <Navigate to={`/app/workspace${search}`} state={state} replace />;
-}
-
-function RedirectWorkspaceAliasToCanonical() {
-  const { search, state } = useLocation();
-  return <Navigate to={`/app/workspace${search}`} state={state} replace />;
-}
-
-/** Deep links to /app/auto-runner land on the canonical workspace (same shell, query preserved). */
+/** Deep links to /app/auto-runner land on the unified workspace (same shell, query preserved). */
 function AutoRunnerRedirect() {
-  const { search, state } = useLocation();
-  return <Navigate to={`/app/workspace${search}`} state={state} replace />;
+  const { search } = useLocation();
+  return <Navigate to={`/app/workspace${search}`} replace />;
 }
 
 // On route change: scroll to top so new page starts at top. When URL has a hash, scroll to that section so "go to" links land in the right place.
@@ -428,36 +407,18 @@ function ScrollToPlace() {
   return null;
 }
 
-/** Load persisted memory + permission rules once (v10 engine layer). */
-function CrucibAiEngineInit() {
-  useEffect(() => {
-    memoryGraph.loadAll();
-    void permissionEngine.load();
-    if (typeof window !== "undefined") {
-      try {
-        window.__CRUCIB_CONTEXT_MANAGER__ = contextManager;
-      } catch {
-        /* ignore */
-      }
-    }
-  }, []);
-  return null;
-}
-
 function App() {
   return (
     <AppErrorBoundary>
       <AuthProvider>
         <BrowserRouter>
-        <CrucibAiEngineInit />
-        <QuickLauncher />
         <ScrollToPlace />
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/our-projects" element={<OurProjectsPage />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/onboarding" element={<OnboardingRoute><OnboardingPage /></OnboardingRoute>} />
-          <Route path="/builder" element={<RedirectWorkspaceToApp />} />
+          <Route path="/builder" element={<Builder />} />
           <Route path="/workspace" element={<RedirectWorkspaceToApp />} />
           <Route path="/share/:token" element={<ShareView />} />
           <Route path="/privacy" element={<Privacy />} />
@@ -481,30 +442,16 @@ function App() {
           <Route path="/shortcuts" element={<ShortcutsPublic />} />
           <Route path="/prompts" element={<PromptsPublic />} />
           <Route path="/benchmarks" element={<Benchmarks />} />
-          <Route path="/benchmarks/public" element={<BenchmarksPublic />} />
-          <Route path="/proof" element={<PublicProofPage />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/:slug" element={<Blog />} />
           <Route path="/changelog" element={<Changelog />} />
-          <Route path="/changelog/live" element={<ChangelogLive />} />
           <Route path="/status" element={<Status />} />
-          <Route path="/app/workspace-engine" element={<RedirectWorkspaceAliasToCanonical />} />
-          <Route path="/app/workspace-unified" element={<RedirectWorkspaceAliasToCanonical />} />
-          <Route path="/app/workspace-manus" element={<RedirectWorkspaceAliasToCanonical />} />
-          <Route path="/app/workspace-classic" element={<RedirectWorkspaceAliasToCanonical />} />
-          {/* CF34 — Approved dashboard: standalone (owns its own chrome). */}
-          <Route path="/app/dashboard" element={<ProtectedRoute><DashboardVNext /></ProtectedRoute>} />
           <Route path="/app" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-            {/* CF34: /app -> redirect to approved dashboard. */}
-            <Route index element={<Navigate to="/app/dashboard" replace />} />
-            <Route path="builder" element={<Navigate to="/app/workspace" replace />} />
-            <Route path="workspace" element={<CanonicalWorkspace />} />
-            <Route path="workspace-v3" element={WorkspaceV3Shell ? <WorkspaceV3Shell /> : <WorkspaceVNext />} />
-            <Route path="workspace-legacy" element={<WorkspaceVNext />} />
-            {/* CF34: legacy in-shell /app/dashboard redirect (should be shadowed by standalone above). */}
-            <Route path="dashboard" element={<Navigate to="/app/dashboard" replace />} />
-            <Route path="pulse" element={<DashboardVNext />} />
-            <Route path="live" element={<MonitoringDashboard />} />
+            <Route index element={<Dashboard />} />
+            <Route path="builder" element={<Builder />} />
+            <Route path="workspace" element={<UnifiedWorkspace />} />
+            <Route path="workspace-manus" element={<WorkspaceManus />} />
+            <Route path="workspace-classic" element={<Workspace />} />
             <Route path="projects/new" element={<ProjectBuilder />} />
             <Route path="projects/:id" element={<AgentMonitor />} />
             <Route path="tokens" element={<TokenCenter />} />
@@ -542,11 +489,6 @@ function App() {
             <Route path="members" element={<WorkspaceMembersPage />} />
             <Route path="skills" element={<SkillsPage />} />
             <Route path="skills/marketplace" element={<SkillsMarketplace />} />
-            <Route path="marketplace" element={<Marketplace />} />
-            <Route path="templates-gallery" element={<TemplateGallery />} />
-            <Route path="developer" element={<DeveloperPortal />} />
-            <Route path="cost" element={<CostCenter />} />
-            <Route path="doctor" element={<Doctor />} />
             <Route path="auto-runner" element={<AutoRunnerRedirect />} />
           </Route>
         </Routes>

@@ -14,7 +14,7 @@ export default function PaymentsWizard() {
 
   const handleInjectStripe = async () => {
     if (!token) {
-      navigate('/app/workspace');
+      navigate('/app');
       return;
     }
     setInjecting(true);

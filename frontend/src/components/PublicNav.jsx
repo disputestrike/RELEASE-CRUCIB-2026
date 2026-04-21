@@ -7,7 +7,6 @@ import SolutionsNavDropdown from './SolutionsNavDropdown';
 export default function PublicNav() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  // Canonical workspace entry reference for source-of-truth audits: to="/app/workspace"
 
   const navBg = 'marketing-top-nav bg-[var(--kimi-bg)] border-b border-white/10';
   const linkClass = 'text-kimi-nav text-kimi-muted hover:text-kimi-text transition flex items-center gap-2';

@@ -12,16 +12,17 @@ import Layout3Column from './Layout3Column';
 import Logo from './Logo';
 import './Layout.css';
 import Sidebar from './Sidebar';
+import RightPanel from './RightPanel';
 import OnboardingTour from './OnboardingTour';
-import { WorkspaceRailProvider } from '../contexts/WorkspaceRailContext';
 
 /**
  * Layout — Redesigned wrapper
  * 
  * Changes from spec:
- * - Canonical workspace owns the right pane; shell no longer manages a competing preview panel
+ * - Right panel hidden by default on non-workspace pages
+ * - Right panel auto-slides in when on workspace/project build views
  * - Sidebar now receives only tasks (projects section removed per spec)
- * - Center panel state is managed by child pages
+ * - Center panel state is managed by child pages (Dashboard = EMPTY state)
  */
 
 const Layout = () => {
@@ -35,10 +36,24 @@ const Layout = () => {
   const [backendOk, setBackendOk] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const isWorkspaceView = ['/app/workspace', '/app/builder', '/app/auto-runner'].some(p => location.pathname.startsWith(p))
+  // Right panel: HIDDEN on workspace (workspace has its own Sandpack panel)
+  const isWorkspaceView = ['/app/workspace', '/app/workspace-manus', '/app/builder', '/app/auto-runner'].some(p => location.pathname.startsWith(p))
     || location.pathname.match(/\/app\/projects\/[^/]+$/);
+  const [rightPanelVisible, setRightPanelVisible] = useState(false);
+
+  // Auto-hide right panel on workspace views (workspace manages its own preview)
+  useEffect(() => {
+    setRightPanelVisible(false);
+  }, [isWorkspaceView]);
 
   const [projects, setProjects] = useState([]);
+
+  // Data for right panel
+  const [previewContent, setPreviewContent] = useState(null);
+  const [codeContent, setCodeContent] = useState(null);
+  const [codeFiles, setCodeFiles] = useState({});
+  const [terminalOutput, setTerminalOutput] = useState([]);
+  const [buildHistory, setBuildHistory] = useState([]);
   /** Throttle refreshUser after health: every ping was hitting /auth/me and burning the API rate limit. */
   const lastUserRefreshRef = useRef(0);
 
@@ -86,19 +101,6 @@ const Layout = () => {
       ? (user.credit_balance ?? Math.floor((user.token_balance ?? 0) / 1000) ?? 0).toLocaleString()
       : '—';
 
-  if (isWorkspaceView) {
-    return (
-      <WorkspaceRailProvider>
-        <div className="app-viewport app-viewport--workspace-only">
-          <div className="layout-page-content layout-page-content--workspace-standalone">
-            <Outlet />
-          </div>
-          <OnboardingTour />
-        </div>
-      </WorkspaceRailProvider>
-    );
-  }
-
   // Sidebar content (receives collapse state for collapsed strip + account menu)
   const sidebarContent = (
     <Sidebar
@@ -110,6 +112,27 @@ const Layout = () => {
       onToggleSidebar={toggleSidebar}
     />
   );
+
+  // Right panel content (only for workspace views, hidden by default elsewhere)
+  const rightPanelContent = rightPanelVisible ? (
+    <RightPanel
+      preview={previewContent}
+      code={codeContent}
+      files={codeFiles}
+      terminalOutput={terminalOutput}
+      buildHistory={buildHistory}
+      onClose={() => setRightPanelVisible(false)}
+      onShare={() => {
+        navigator.clipboard.writeText(window.location.href);
+      }}
+      onDownload={() => {
+        // Trigger download of current code
+      }}
+      onRefreshPreview={() => {
+        // Refresh preview iframe
+      }}
+    />
+  ) : null;
 
   // Main content
   const mainContent = (
@@ -133,7 +156,16 @@ const Layout = () => {
       <div
         className={`layout-page-content ${isWorkspaceView ? 'layout-page-content--fullbleed' : ''} ${isAppHomeDashboard ? 'layout-page-content--dash-home' : ''}`}
       >
-        <Outlet />
+        <Outlet context={{
+          setPreviewContent,
+          setCodeContent,
+          setCodeFiles,
+          setTerminalOutput,
+          setBuildHistory,
+          setRightPanelVisible,
+          backendOk,
+          checkBackend,
+        }} />
       </div>
 
       {/* Footer — hidden on workspace (max vertical space); home chat trust line; elsewhere status + legal */}
@@ -170,11 +202,10 @@ const Layout = () => {
   );
 
   return (
-    <WorkspaceRailProvider>
     <div className="app-viewport">
       {/* Mobile Header */}
       <header className="layout-mobile-header-bar">
-        <Logo variant="full" height={28} href="/app/dashboard" className="layout-mobile-logo" showTagline={false} />
+        <Logo variant="full" height={28} href="/app" className="layout-mobile-logo" showTagline={false} />
         <div className="layout-mobile-header-actions">
           {!isWorkspaceView && (
             <Link to="/app/tokens" className="layout-mobile-credits" title="Credits & Billing">
@@ -206,7 +237,7 @@ const Layout = () => {
       <Layout3Column
         sidebar={sidebarContent}
         main={mainContent}
-        rightPanel={null}
+        rightPanel={rightPanelContent}
         sidebarOpen={sidebarOpen}
         onToggleSidebar={toggleSidebar}
         setSidebarOpen={setSidebarOpen}
@@ -217,7 +248,6 @@ const Layout = () => {
       {/* Onboarding Tour for first-time users */}
       <OnboardingTour />
     </div>
-    </WorkspaceRailProvider>
   );
 };
 

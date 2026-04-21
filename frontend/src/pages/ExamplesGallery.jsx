@@ -24,7 +24,7 @@ export default function ExamplesGallery() {
 
   const forkExample = (name) => {
     if (!token) {
-      navigate('/app/workspace');
+      navigate('/app');
       return;
     }
     setForking(name);
