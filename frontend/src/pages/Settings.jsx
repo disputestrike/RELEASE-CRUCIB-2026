@@ -155,6 +155,37 @@ const Settings = () => {
     el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }, [tab, focusEngineHref, location.key]);
 
+  // CF20 — real supported-languages list (UI-facing). Translation resource bundles land via i18n
+  // loader; this selector controls the active locale and is persisted to localStorage.
+  const SUPPORTED_LANGUAGES = [
+    { code: 'en', label: 'English' },
+    { code: 'es', label: 'Español (Spanish)' },
+    { code: 'fr', label: 'Français (French)' },
+    { code: 'de', label: 'Deutsch (German)' },
+    { code: 'pt-br', label: 'Português (Brasil)' },
+    { code: 'it', label: 'Italiano (Italian)' },
+    { code: 'nl', label: 'Nederlands (Dutch)' },
+    { code: 'ja', label: '日本語 (Japanese)' },
+    { code: 'ko', label: '한국어 (Korean)' },
+    { code: 'zh-cn', label: '中文 (简体)' },
+    { code: 'zh-tw', label: '中文 (繁體)' },
+    { code: 'ar', label: 'العربية (Arabic)' },
+    { code: 'hi', label: 'हिन्दी (Hindi)' },
+    { code: 'ru', label: 'Русский (Russian)' },
+    { code: 'tr', label: 'Türkçe (Turkish)' },
+    { code: 'pl', label: 'Polski (Polish)' },
+  ];
+  const [language, setLanguage] = useState(() => {
+    try { return localStorage.getItem('crucibai.lang') || 'en'; } catch (_) { return 'en'; }
+  });
+  useEffect(() => {
+    try {
+      if (typeof document !== 'undefined' && document.documentElement) {
+        document.documentElement.lang = language;
+      }
+    } catch (_) {}
+  }, [language]);
+
   // Theme system — real working toggle
   const [theme, setTheme] = useState(() => localStorage.getItem('crucibai-theme') || 'dark');
   const toggleTheme = (newTheme) => {
@@ -612,16 +643,28 @@ const Settings = () => {
             <Card>
               <SectionTitle>Language</SectionTitle>
               <select
+                value={language}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setLanguage(next);
+                  try { localStorage.setItem('crucibai.lang', next); } catch (_) {}
+                }}
                 style={{
                   padding: '10px 12px', borderRadius: 8, fontSize: 13,
-                  background: T.input, color: T.text, outline: 'none', width: 200,
+                  background: T.input, color: T.text, outline: 'none', width: 260,
                   border: `1.5px solid rgba(255,255,255,0.2)`,
                   cursor: 'pointer',
                 }}
+                data-testid="settings-language-select"
               >
-                <option value="en">English</option>
+                {SUPPORTED_LANGUAGES.map((lang) => (
+                  <option key={lang.code} value={lang.code}>{lang.label}</option>
+                ))}
               </select>
-              <p style={{ fontSize: 12, color: T.muted, marginTop: 8 }}>More languages coming soon.</p>
+              <p style={{ fontSize: 12, color: T.muted, marginTop: 8 }}>
+                Active: <strong style={{ color: T.text }}>{(SUPPORTED_LANGUAGES.find((l) => l.code === language) || SUPPORTED_LANGUAGES[0]).label}</strong>
+                {' '}— your choice is saved locally and applied to <code>&lt;html lang&gt;</code>. UI strings follow as translation bundles land.
+              </p>
             </Card>
           </motion.div>
         )}
