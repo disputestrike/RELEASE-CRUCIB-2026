@@ -176,6 +176,8 @@ class AgentLoop:
                 progress_callback=(
                     (lambda payload: on_event("progress", payload)) if on_event else None
                 ),
+                mode=mode.value,  # CF2
+                allowed_phases=phases,  # CF2
             )
             return {
                 "run_id": run_id,

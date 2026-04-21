@@ -64,12 +64,22 @@ from services.runtime.memory_graph import add_edge as memory_add_edge
 from services.runtime.virtual_fs import task_workspace
 from services.runtime.cost_tracker import cost_tracker
 from services.policy.permission_engine import evaluate_tool_call
+try:
+    from services.memory_store import memory_store, MemoryScope  # CF3
+except Exception:  # pragma: no cover
+    memory_store = None  # type: ignore
+    MemoryScope = None  # type: ignore
+try:
+    from services.capability_inspector import capability_inspector  # CF1
+except Exception:  # pragma: no cover
+    capability_inspector = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 
 
 class ExecutionPhase(Enum):
     """Phases of execution."""
+    INSPECT = "inspect"
     DECIDE = "decide"
     RESOLVE_SKILL = "resolve_skill"
     CHECK_PERMISSION = "check_permission"
@@ -153,6 +163,9 @@ class RuntimeEngine:
         conversation_id: Optional[str] = None,
         parent_task_id: Optional[str] = None,
         progress_callback: Optional[Callable[[Dict[str, Any]], Any]] = None,
+        mode: Optional[str] = None,  # CF2
+        allowed_phases: Optional[List[str]] = None,  # CF2
+        project_id_override: Optional[str] = None,  # CF3
     ) -> Dict[str, Any]:
         """
         Main execution entry point with FULL control.
@@ -208,6 +221,8 @@ class RuntimeEngine:
                 task_id=effective_task_id,
                 user_message=request,
                 progress_callback=progress_callback,
+                mode=mode,  # CF2
+                allowed_phases=allowed_phases,  # CF2
             )
 
             status = brain_result.get("status")
@@ -239,6 +254,27 @@ class RuntimeEngine:
                 },
             )
 
+            # ── CF3: memory write-back on completion ──────────────────
+            if memory_store is not None and brain_result.get("status") not in ("execution_failed", "execution_cancelled"):
+                try:
+                    from db_pg import get_db as _get_db_for_wb  # type: ignore
+                    _db_wb = await _get_db_for_wb()
+                    # write strings only — conventions dict expects str values
+                    conv_payload = {
+                        "last_intent": str(brain_result.get("intent") or ""),
+                        "last_agents": ",".join(map(str, brain_result.get("selected_agents", []) or [])),
+                        "last_task_id": str(effective_task_id),
+                    }
+                    await memory_store.write_back_conventions(
+                        project_id=project_id,
+                        user_id=user_id,
+                        conventions=conv_payload,
+                        db=_db_wb,
+                    )
+                    event_bus.emit("memory.writeback", {"task_id": effective_task_id})
+                except Exception as _wb_exc:  # pragma: no cover
+                    logger.warning("memory writeback failed (non-fatal): %s", _wb_exc)
+
             return {
                 "task_id": effective_task_id,
                 "requested_task_id": task_id,
@@ -246,6 +282,8 @@ class RuntimeEngine:
                 "task_status": (current_task or {}).get("status"),
                 "brain_result": brain_result,
                 "assistant_response": brain_result.get("assistant_response"),
+                "mode": mode,
+                "allowed_phases": allowed_phases,
             }
         except Exception as e:
             task_manager.fail_task(project_id, effective_task_id, error=str(e))
@@ -1177,8 +1215,50 @@ class RuntimeEngine:
         user_message: str,
         progress_callback: Optional[Callable[[Dict[str, Any]], Any]] = None,
         planner: Optional[BrainLayer] = None,
+        mode: Optional[str] = None,  # CF2
+        allowed_phases: Optional[List[str]] = None,  # CF2
     ) -> Dict[str, Any]:
         brain = planner or self._brain_factory()
+
+        # ── CF1: mandatory inspector gate ─────────────────────────────
+        if capability_inspector is not None:
+            try:
+                event_bus.emit("inspect.started", {"task_id": task_id, "mode": mode})
+                inspect_rows = await capability_inspector.inspect_all()
+                event_bus.emit(
+                    "inspect.completed",
+                    {"task_id": task_id, "row_count": len(inspect_rows), "mode": mode},
+                )
+                session.metadata = session.metadata or {}
+                session.metadata["capability_audit_row_count"] = len(inspect_rows)
+            except Exception as _ins_exc:  # pragma: no cover
+                logger.warning("inspector gate failed (non-fatal): %s", _ins_exc)
+
+        # ── CF3: pull conventions from memory_store into session ──────
+        if memory_store is not None and MemoryScope is not None:
+            try:
+                from db_pg import get_db as _get_db_for_mem  # type: ignore
+                _db = await _get_db_for_mem()
+                conv = await memory_store.get_conventions(
+                    project_id=project_id, user_id=session.user_id, db=_db
+                )
+                if conv:
+                    session.metadata = session.metadata or {}
+                    session.metadata["conventions"] = conv
+                    event_bus.emit("memory.loaded", {"task_id": task_id, "keys": list(conv.keys())[:10]})
+            except Exception as _mem_exc:  # pragma: no cover
+                logger.warning("memory_store.get_conventions failed (non-fatal): %s", _mem_exc)
+
+        # ── CF2: honor mode phase gate ────────────────────────────────
+        if allowed_phases and "decide" not in allowed_phases and "inspect" in allowed_phases:
+            event_bus.emit("mode.phases_gated", {"task_id": task_id, "mode": mode, "allowed": allowed_phases})
+            return {
+                "status": "inspect_only_mode",
+                "mode": mode,
+                "allowed_phases": allowed_phases,
+                "intent": "analyze_only",
+                "task_id": task_id,
+            }
 
         msg_lower = (user_message or "").lower()
         benchmark_mode = (

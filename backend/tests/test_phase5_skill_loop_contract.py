@@ -10,7 +10,7 @@ async def test_agent_loop_run_calls_runtime_engine_with_expected_contract(monkey
     captured = {}
 
     class _Engine:
-        async def execute_with_control(self, *, task_id, user_id, request, conversation_id=None, parent_task_id=None, progress_callback=None):
+        async def execute_with_control(self, *, task_id, user_id, request, conversation_id=None, parent_task_id=None, progress_callback=None, mode=None, allowed_phases=None, project_id_override=None, **_extra):
             captured["task_id"] = task_id
             captured["user_id"] = user_id
             captured["request"] = request
@@ -68,7 +68,7 @@ async def test_agent_loop_invalid_mode_defaults_to_build(monkeypatch):
     from services.agent_loop import AgentLoop
 
     class _Engine:
-        async def execute_with_control(self, *, task_id, user_id, request, conversation_id=None, parent_task_id=None, progress_callback=None):
+        async def execute_with_control(self, *, task_id, user_id, request, conversation_id=None, parent_task_id=None, progress_callback=None, mode=None, allowed_phases=None, project_id_override=None, **_extra):
             return {"ok": True}
 
     loop = AgentLoop()
