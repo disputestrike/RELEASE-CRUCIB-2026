@@ -34,7 +34,6 @@ import SystemStatusHUD from '../components/AutoRunner/SystemStatusHUD';
 import PreviewPanel from '../components/AutoRunner/PreviewPanel';
 import ResizableDivider from '../components/AutoRunner/ResizableDivider';
 import WorkspaceFileTree from '../components/AutoRunner/WorkspaceFileTree';
-import WorkspaceOrchestrationBoard from '../components/workspace-v4/WorkspaceOrchestrationBoard';
 import WorkspaceFileViewer from '../components/AutoRunner/WorkspaceFileViewer';
 import { DEFAULT_FILES } from '../components/workspace/constants';
 import { computeSandpackFilesWithMeta, computeSandpackDeps } from '../workspace/sandpackFromFiles';
@@ -1207,23 +1206,6 @@ export default function UnifiedWorkspace() {
               repairQueueLen={repairQueueLen}
               steps={steps}
             />
-            {(stage === 'running' || stage === 'completed' || stage === 'failed') && (
-              <div className="wsv4-orchestration-frame">
-                <WorkspaceOrchestrationBoard
-                  buildTitle={buildDisplayTitle}
-                  plan={plan}
-                  stage={stage}
-                  job={job}
-                  steps={steps}
-                  events={events}
-                  latestFailure={latestFailure}
-                  milestoneBatch={milestoneBatch}
-                  repairQueueLen={repairQueueLen}
-                  onOpenPane={(pane) => setActivePane(pane)}
-                  onOpenWorkspacePath={openWorkspacePath}
-                />
-              </div>
-            )}
             {stage === 'input' && (
               <WorkspaceActivityFeed
                 stage={stage}
