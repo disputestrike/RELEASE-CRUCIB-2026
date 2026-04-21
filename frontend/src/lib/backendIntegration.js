@@ -64,7 +64,7 @@ export async function getJobStatus(jobId, token) {
 }
 
 export async function getJobSteps(jobId, token) {
-  const res = await fetch(`${BASE}/api/jobs/${jobId}/steps`, { headers: authHeaders(token) });
+  const res = await fetch(`${BASE}/api/jobs/${jobId}/history`, { headers: authHeaders(token) });
   return res.ok ? (await res.json()).steps || [] : [];
 }
 

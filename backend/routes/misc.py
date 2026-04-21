@@ -959,7 +959,7 @@ async def get_prompt_templates(user: dict = Depends(_get_optional_user())):
 @router.get("/prompts/recent")
 async def get_recent_prompts(user: dict = Depends(_get_optional_user())):
     db = _get_db()
-    if not user:
+    if not user or db is None:
         return {"prompts": []}
     cursor = (
         db.chat_history.find({"user_id": user["id"]}, {"message": 1, "created_at": 1})
@@ -995,6 +995,10 @@ async def save_prompt(data: SavePromptBody, user: dict = Depends(_get_auth())):
 @router.get("/prompts/saved")
 async def get_saved_prompts(user: dict = Depends(_get_auth())):
     db = _get_db()
+    if db is None:
+        if os.environ.get("CRUCIBAI_DEV") == "1":
+            return {"prompts": []}
+        raise HTTPException(status_code=503, detail="Database not ready")
     cursor = db.saved_prompts.find({"user_id": user["id"]}, {"_id": 0}).sort(
         "created_at", -1
     )

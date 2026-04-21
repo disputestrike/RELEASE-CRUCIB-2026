@@ -53,8 +53,11 @@ function handleStreamPayload(data, jobId, token, setters) {
   ) {
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
     axios
-      .get(`${API_BASE}/jobs/${jobId}/steps`, { headers })
-      .then((r) => setSteps(r.data?.steps || []))
+      .get(`${API_BASE}/jobs/${jobId}/history`, { headers })
+      .then((r) => {
+        setSteps(r.data?.steps || []);
+        setEvents(normalizeJobEvents(r.data?.events || []));
+      })
       .catch(() => {});
     if (data.type === 'step_completed' || data.type === 'step_failed') {
       axios
@@ -144,8 +147,7 @@ export function useJobStream(jobId, token) {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const [jobRes, stepsRes, eventsRes, proofRes] = await Promise.allSettled([
         axios.get(`${API_BASE}/jobs/${jobId}`, { headers }),
-        axios.get(`${API_BASE}/jobs/${jobId}/steps`, { headers }),
-        axios.get(`${API_BASE}/jobs/${jobId}/events`, { headers }),
+        axios.get(`${API_BASE}/jobs/${jobId}/history`, { headers }),
         axios.get(`${API_BASE}/jobs/${jobId}/proof`, { headers }),
       ]);
       if (jobRes.status === 'fulfilled') {
@@ -153,9 +155,9 @@ export function useJobStream(jobId, token) {
         setJob(d?.job ?? d);
         setLatestFailure(d?.latest_failure ?? null);
       }
-      if (stepsRes.status === 'fulfilled') setSteps(stepsRes.value.data?.steps || []);
-      if (eventsRes.status === 'fulfilled') {
-        setEvents(normalizeJobEvents(eventsRes.value.data?.events || []));
+      if (stepsRes.status === 'fulfilled') {
+        setSteps(stepsRes.value.data?.steps || []);
+        setEvents(normalizeJobEvents(stepsRes.value.data?.events || []));
       }
       if (proofRes.status === 'fulfilled') {
         setProof(normalizeProofPayload(proofRes.value.data, jobId));
@@ -171,7 +173,7 @@ export function useJobStream(jobId, token) {
         });
       }
       if (token) await fetchCheckpoints();
-      const anySuccess = [jobRes, stepsRes, eventsRes, proofRes].some((result) => result.status === 'fulfilled');
+      const anySuccess = [jobRes, stepsRes, proofRes].some((result) => result.status === 'fulfilled');
       if (anySuccess && pollRef.current) {
         setConnectionMode('polling');
       }
@@ -260,7 +262,11 @@ export function useJobStream(jobId, token) {
       } catch (e) {
         if (e?.name === 'AbortError') return;
         setIsConnected(false);
-        setError('Stream disconnected — falling back to polling');
+        setError(
+          String(e?.message || '').includes('stream 404')
+            ? null
+            : 'Stream disconnected — falling back to polling'
+        );
         startPoll();
       }
     })();

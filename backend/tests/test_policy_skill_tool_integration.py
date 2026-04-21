@@ -29,9 +29,9 @@ async def test_permission_skill_tool_full_chain(monkeypatch):
     original_eval = pe.evaluate_tool_call
     calls = []
 
-    def _wrapped_eval(tool_name, params):
+    def _wrapped_eval(tool_name, params, **kwargs):
         calls.append((tool_name, dict(params or {})))
-        return original_eval(tool_name, params)
+        return original_eval(tool_name, params, **kwargs)
 
     monkeypatch.setattr(pe, "evaluate_tool_call", _wrapped_eval)
 

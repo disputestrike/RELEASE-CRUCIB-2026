@@ -2,32 +2,11 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 /**
- * Logo — Your icon + "CrucibAI — Inevitable AI" (or name only when showTagline=false).
- * Uses your logo image from public/logo-icon.png when present; otherwise shows
- * an inline version of your icon (dark rounded square with 2×2 grid).
+ * Logo — approved brand mark + "CrucibAI — Inevitable AI" (or name only when
+ * showTagline=false). Uses the shared SVG in public so the same mark appears on
+ * landing, auth, dashboard, workspace surfaces, favicon, and install metadata.
  */
-const LOGO_ICON = '/logo-icon.png';
-
-/** Your icon: dark rounded square with 2×2 grid of white squares (shows when image missing) */
-function YourIconSvg({ size }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 32 32"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden
-      style={{ display: 'block', flexShrink: 0 }}
-    >
-      <rect width="32" height="32" rx="8" fill="#2D2D2D" />
-      <rect x="4" y="4" width="10" height="10" rx="2" fill="white" opacity="0.95" />
-      <rect x="18" y="4" width="10" height="10" rx="2" fill="white" opacity="0.95" />
-      <rect x="4" y="18" width="10" height="10" rx="2" fill="white" opacity="0.95" />
-      <rect x="18" y="18" width="10" height="10" rx="2" fill="white" opacity="0.95" />
-    </svg>
-  );
-}
+const LOGO_ICON = '/logo-approved.png';
 
 export function Logo({
   variant: _variant = 'full',
@@ -70,7 +49,7 @@ export function Logo({
           onError={() => setIconError(true)}
         />
       ) : (
-        <YourIconSvg size={height} />
+        <span style={{ width: `${height}px`, height: `${height}px`, display: 'inline-block', flexShrink: 0 }} aria-hidden />
       )}
       {showWordmark && (
         <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, flexWrap: 'nowrap' }}>

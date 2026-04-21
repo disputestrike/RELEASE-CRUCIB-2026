@@ -301,6 +301,10 @@ async def get_projects(
     user: dict = Depends(get_current_user),
 ):
     db = get_db()
+    if db is None:
+        if os.environ.get("CRUCIBAI_DEV") == "1":
+            return {"projects": []}
+        raise HTTPException(status_code=503, detail="Database not ready")
     cursor = db.projects.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1)
     projects = await cursor.to_list(limit)
     return {"projects": projects}

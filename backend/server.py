@@ -366,11 +366,12 @@ audit_logger = None
 async def lifespan(_app: FastAPI):
     global db
     try:
-        from db_pg import get_db
+        from db_pg import ensure_all_tables, get_db
         from deps import init as init_deps
 
         if os.environ.get("DATABASE_URL", "").strip():
             db = await get_db()
+            await ensure_all_tables()
             init_deps(db=db, audit_logger=audit_logger)
             logger.info("Database initialized for FastAPI server")
         else:

@@ -86,6 +86,19 @@ const Layout = () => {
       ? (user.credit_balance ?? Math.floor((user.token_balance ?? 0) / 1000) ?? 0).toLocaleString()
       : '—';
 
+  if (isWorkspaceView) {
+    return (
+      <WorkspaceRailProvider>
+        <div className="app-viewport app-viewport--workspace-only">
+          <div className="layout-page-content layout-page-content--workspace-standalone">
+            <Outlet />
+          </div>
+          <OnboardingTour />
+        </div>
+      </WorkspaceRailProvider>
+    );
+  }
+
   // Sidebar content (receives collapse state for collapsed strip + account menu)
   const sidebarContent = (
     <Sidebar

@@ -4,6 +4,7 @@ import {
   ChevronRight, Lightbulb, BookOpen, Download, Share2, HelpCircle,
 } from 'lucide-react';
 import './WorkspaceLayoutSimple.css';
+import Logo from './Logo';
 
 /**
  * Simplified Workspace Layout - For Non-Developers
@@ -56,7 +57,7 @@ export const WorkspaceLayoutSimple = ({
           </button>
           <div className="header-logo">
             <div className="logo-icon">⬜</div>
-            <span className="logo-text">CrucibAI</span>
+            <Logo href="/app/dashboard" height={36} showTagline={false} />
           </div>
         </div>
 
