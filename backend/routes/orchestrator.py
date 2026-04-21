@@ -715,8 +715,13 @@ async def run_auto(
         runtime_state, _, _, _, _ = _get_orchestration()
         from db_pg import get_pg_pool
 
-        pool = await get_pg_pool()
-        runtime_state.set_pool(pool)
+        try:
+            pool = await get_pg_pool()
+        except Exception as exc:
+            logger.warning("orchestrator/run-auto: continuing without DB pool: %s", exc)
+            pool = None
+        if pool is not None:
+            runtime_state.set_pool(pool)
 
         job = await runtime_state.get_job(body.job_id)
         if not job:
@@ -746,11 +751,13 @@ async def run_auto(
         goal_text = (job.get("goal") or "").strip()
         risk_flags = []
         plan_build_target = None
-        async with pool.acquire() as conn:
-            prow = await conn.fetchrow(
-                "SELECT plan_json FROM build_plans WHERE job_id = $1 ORDER BY created_at DESC LIMIT 1",
-                body.job_id,
-            )
+        prow = None
+        if pool is not None:
+            async with pool.acquire() as conn:
+                prow = await conn.fetchrow(
+                    "SELECT plan_json FROM build_plans WHERE job_id = $1 ORDER BY created_at DESC LIMIT 1",
+                    body.job_id,
+                )
         if prow and prow.get("plan_json"):
             try:
                 _pj = _sg_json.loads(prow["plan_json"])
@@ -819,8 +826,13 @@ async def list_orchestrator_build_jobs(
         runtime_state, _, _, _, _ = _get_orchestration()
         from db_pg import get_pg_pool
 
-        pool = await get_pg_pool()
-        runtime_state.set_pool(pool)
+        try:
+            pool = await get_pg_pool()
+        except Exception as exc:
+            logger.warning("orchestrator/build-jobs: continuing without DB pool: %s", exc)
+            pool = None
+        if pool is not None:
+            runtime_state.set_pool(pool)
         from orchestration import runtime_state as orch_rs
 
         jobs = await orch_rs.list_jobs_for_user(user["id"], min(max(1, limit), 50))

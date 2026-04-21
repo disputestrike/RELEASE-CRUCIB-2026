@@ -61,14 +61,19 @@ def _get_proof_service():
 async def _get_pool():
     from db_pg import get_pg_pool
 
-    return await get_pg_pool()
+    try:
+        return await get_pg_pool()
+    except Exception as exc:
+        logger.warning("jobs: continuing without DB pool: %s", exc)
+        return None
 
 
 async def _resolve_job(job_id: str, user: dict) -> dict:
     """Fetch a job from the DB and assert ownership. Raises 404/403 on failure."""
     rs = _get_runtime_state()
     pool = await _get_pool()
-    rs.set_pool(pool)
+    if pool is not None:
+        rs.set_pool(pool)
     job = await rs.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")

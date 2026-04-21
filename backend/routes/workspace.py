@@ -85,8 +85,13 @@ async def _assert_job_access(job_id: str, user: dict) -> Path:
 
             runtime_state = _runtime_state
 
-        pool = await get_pg_pool()
-        runtime_state.set_pool(pool)
+        try:
+            pool = await get_pg_pool()
+        except Exception as exc:
+            logger.warning("workspace: continuing without DB pool for job %s: %s", job_id, exc)
+            pool = None
+        if pool is not None:
+            runtime_state.set_pool(pool)
         job = await runtime_state.get_job(job_id)
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
