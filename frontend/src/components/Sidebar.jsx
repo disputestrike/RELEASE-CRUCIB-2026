@@ -559,7 +559,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
         <Logo
           variant="full"
           height={32}
-          href="/app/workspace"
+          href="/app/dashboard"
           className="sidebar-logo"
           showTagline={false}
           showWordmark={!workspaceHeadlineLayout}

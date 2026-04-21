@@ -161,7 +161,7 @@ const Layout = () => {
     <div className="app-viewport">
       {/* Mobile Header */}
       <header className="layout-mobile-header-bar">
-        <Logo variant="full" height={28} href="/app/workspace" className="layout-mobile-logo" showTagline={false} />
+        <Logo variant="full" height={28} href="/app/dashboard" className="layout-mobile-logo" showTagline={false} />
         <div className="layout-mobile-header-actions">
           {!isWorkspaceView && (
             <Link to="/app/tokens" className="layout-mobile-credits" title="Credits & Billing">

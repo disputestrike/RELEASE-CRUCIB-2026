@@ -492,13 +492,17 @@ function App() {
           <Route path="/app/workspace-unified" element={<RedirectWorkspaceAliasToCanonical />} />
           <Route path="/app/workspace-manus" element={<RedirectWorkspaceAliasToCanonical />} />
           <Route path="/app/workspace-classic" element={<RedirectWorkspaceAliasToCanonical />} />
+          {/* CF34 — Approved dashboard: standalone (owns its own chrome). */}
+          <Route path="/app/dashboard" element={<ProtectedRoute><DashboardVNext /></ProtectedRoute>} />
           <Route path="/app" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-            <Route index element={<Dashboard />} />
+            {/* CF34: /app -> redirect to approved dashboard. */}
+            <Route index element={<Navigate to="/app/dashboard" replace />} />
             <Route path="builder" element={<Navigate to="/app/workspace" replace />} />
             <Route path="workspace" element={<CanonicalWorkspace />} />
             <Route path="workspace-v3" element={WorkspaceV3Shell ? <WorkspaceV3Shell /> : <WorkspaceVNext />} />
             <Route path="workspace-legacy" element={<WorkspaceVNext />} />
-            <Route path="dashboard" element={<Dashboard />} />
+            {/* CF34: legacy in-shell /app/dashboard redirect (should be shadowed by standalone above). */}
+            <Route path="dashboard" element={<Navigate to="/app/dashboard" replace />} />
             <Route path="pulse" element={<DashboardVNext />} />
             <Route path="live" element={<MonitoringDashboard />} />
             <Route path="projects/new" element={<ProjectBuilder />} />

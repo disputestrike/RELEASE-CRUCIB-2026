@@ -1,389 +1,785 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+/**
+ * DashboardVNext — Approved CrucibAI dashboard (CF34).
+ *
+ * This is the canonical post-login intent-intake surface. Route `/app/dashboard`
+ * and `/app` (index) both mount this component. It owns its own chrome
+ * (sidebar + center + top utility row) because the screenshot-exact layout
+ * differs from the global Layout/Sidebar used by /app/workspace etc.
+ *
+ * Backend wiring (real endpoints only):
+ *   GET  /api/auth/me                 — identity, plan, credits
+ *   POST /api/ai/chat                 — main composer send
+ *   POST /api/voice/transcribe        — mic dictation
+ *   GET  /api/projects                — history/search + project list
+ *   GET  /api/prompts/recent          — history enrichment
+ *   GET  /api/prompts/saved           — Browse
+ *   GET  /api/prompts/templates       — Template chip
+ *   GET  /api/templates               — Browse + Template
+ *   POST /api/templates/{id}/remix    — Template remix
+ *   POST /api/runtime/what-if         — What-if chip
+ *   GET  /api/automation/workflows    — Automation nav preview
+ *   GET  /api/agents                  — Agents nav preview
+ *   GET  /api/tokens/bundles          — Upgrade context
+ *
+ * Non-goals: this page does not render proof/trust panels, cost panels,
+ * doctor, live-view, or engine-room widgets. Dashboard = intake. Workspace = execution.
+ */
+
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
-  Activity,
-  ArrowRight,
-  BadgeCheck,
-  Database,
-  RefreshCw,
-  Rocket,
-  ShieldCheck,
-  Sparkles,
-  Play,
-  Workflow,
-  FolderOpen,
-  Clock3,
+  Search,
+  Plus,
+  ChevronDown,
+  Home,
+  Folder,
   Bot,
+  GitBranch,
+  Zap,
+  Bell,
+  MessageSquare,
+  Paperclip,
+  Globe,
+  Mic,
+  ArrowUp,
+  Sparkles,
+  LayoutGrid,
+  BarChart3,
+  Briefcase,
+  MoreHorizontal,
+  PanelLeftClose,
+  HelpCircle,
+  Shield,
+  Hammer,
+  LineChart,
+  ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '../authContext';
 import { API_BASE as API } from '../apiBase';
+import Logo from '../components/Logo';
 import './DashboardVNext.css';
 
-function statusTone(status) {
-  const value = String(status || '').toLowerCase();
-  if (value === 'completed' || value === 'success' || value === 'deployed') return 'good';
-  if (value === 'failed' || value === 'error' || value === 'cancelled') return 'bad';
-  if (value === 'running' || value === 'queued' || value === 'pending' || value === 'blocked') return 'warn';
-  return 'muted';
+// ---------- helpers ----------
+function greetingByTime(d = new Date()) {
+  const h = d.getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 18) return 'Good afternoon';
+  return 'Good evening';
 }
 
-function formatRelative(value) {
-  if (!value) return 'No timestamp';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'No timestamp';
-  const minutes = Math.round((Date.now() - date.getTime()) / 60000);
-  if (minutes < 1) return 'Just now';
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.round(hours / 24);
-  return `${days}d ago`;
+function firstNameFromUser(user) {
+  if (!user) return 'Guest';
+  const raw =
+    user.first_name ||
+    user.name ||
+    user.display_name ||
+    user.full_name ||
+    (user.email && !String(user.email).toLowerCase().includes('guest')
+      ? String(user.email).split('@')[0]
+      : null);
+  if (!raw) return 'Guest';
+  // Clean up "ben.xp" or "ben_xp" → "Ben"
+  const cleaned = String(raw).split(/[._\s]+/)[0];
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
 }
 
-export default function DashboardVNext() {
-  const navigate = useNavigate();
-  const { token, user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [projects, setProjects] = useState([]);
-  const [jobs, setJobs] = useState([]);
-  const [workflows, setWorkflows] = useState({});
-  const [runtimeEvents, setRuntimeEvents] = useState([]);
-  const [trustSummary, setTrustSummary] = useState(null);
-  const [selectedWorkflow, setSelectedWorkflow] = useState('');
-  const [goal, setGoal] = useState('');
-  const [runBusy, setRunBusy] = useState(false);
-  const [runError, setRunError] = useState('');
+function relativeTime(ts) {
+  if (!ts) return '';
+  const date = new Date(ts);
+  if (Number.isNaN(date.getTime())) return '';
+  const sec = Math.round((Date.now() - date.getTime()) / 1000);
+  if (sec < 60) return 'just now';
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const d = Math.round(hr / 24);
+  return `${d}d ago`;
+}
 
-  const headers = useMemo(() => (token ? { Authorization: `Bearer ${token}` } : {}), [token]);
+function classifyHistoryItem(item) {
+  // best-effort: map projects/jobs/prompts into dashboard history icon category
+  const kind = (item?.kind || item?.type || item?.category || '').toLowerCase();
+  const title = String(item?.title || item?.name || item?.goal || '').toLowerCase();
+  if (kind.includes('automat') || title.includes('automat') || title.includes('schedule')) return 'automation';
+  if (kind.includes('analysis') || title.includes('analyz') || title.includes('research') || title.includes('data')) return 'analysis';
+  if (kind.includes('build') || kind.includes('project') || title.includes('build') || title.includes('app') || title.includes('landing') || title.includes('dashboard')) return 'build';
+  return 'chat';
+}
 
-  const refresh = async (isManual = false) => {
-    if (!token) return;
-    if (isManual) setRefreshing(true);
-    try {
-      const [projectsRes, jobsRes, workflowsRes, eventsRes, trustRes] = await Promise.allSettled([
-        axios.get(`${API}/projects`, { headers, timeout: 12000 }),
-        axios.get(`${API}/jobs`, { headers, timeout: 12000 }),
-        axios.get(`${API}/workflows`, { headers, timeout: 12000 }),
-        axios.get(`${API}/runtime/events/recent`, { headers, timeout: 12000 }),
-        axios.get(`${API}/trust/benchmark-summary`, { timeout: 12000 }),
-      ]);
+function iconForKind(kind, size = 14) {
+  switch (kind) {
+    case 'build':
+      return <Hammer size={size} aria-hidden />;
+    case 'analysis':
+      return <LineChart size={size} aria-hidden />;
+    case 'automation':
+      return <Zap size={size} aria-hidden />;
+    case 'chat':
+    default:
+      return <MessageSquare size={size} aria-hidden />;
+  }
+}
 
-      if (projectsRes.status === 'fulfilled') {
-        const rows = projectsRes.value.data?.projects || projectsRes.value.data || [];
-        setProjects(Array.isArray(rows) ? rows : []);
-      }
-      if (jobsRes.status === 'fulfilled') {
-        const rows = jobsRes.value.data?.jobs || [];
-        setJobs(Array.isArray(rows) ? rows : []);
-      }
-      if (workflowsRes.status === 'fulfilled') {
-        setWorkflows(workflowsRes.value.data?.workflows || {});
-      }
-      if (eventsRes.status === 'fulfilled') {
-        setRuntimeEvents(eventsRes.value.data?.events || []);
-      }
-      if (trustRes.status === 'fulfilled') {
-        setTrustSummary(trustRes.value.data || null);
-      }
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+function isBuildIntent(text) {
+  const t = String(text || '').toLowerCase();
+  return /\b(build|create|make|fix|refactor|deploy|automate|scaffold|generate|app|site|dashboard|tool|import)\b/.test(t);
+}
 
-  useEffect(() => {
-    if (!token) return;
-    refresh(false);
-    const id = setInterval(() => {
-      refresh(false).catch(() => {});
-    }, 15000);
-    return () => clearInterval(id);
-  }, [token]);
-
-  const workflowOptions = useMemo(() => {
-    return Object.entries(workflows || {}).flatMap(([group, items]) => {
-      if (!Array.isArray(items)) return [];
-      return items.map((item) => ({ ...item, group }));
-    });
-  }, [workflows]);
-
-  const runningJobs = jobs.filter((job) => ['running', 'queued', 'pending', 'blocked'].includes(String(job.status || '').toLowerCase()));
-  const completedJobs = jobs.filter((job) => ['completed', 'success'].includes(String(job.status || '').toLowerCase()));
-  const failedJobs = jobs.filter((job) => ['failed', 'cancelled'].includes(String(job.status || '').toLowerCase()));
-  const latestProject = projects[0];
-  const latestRuntimeEvent = runtimeEvents[0];
-
-  const summaryCards = [
-    {
-      label: 'Projects',
-      value: projects.length,
-      detail: latestProject ? `Latest: ${latestProject.name || latestProject.id}` : 'No projects yet',
-      icon: FolderOpen,
-    },
-    {
-      label: 'Active runs',
-      value: runningJobs.length,
-      detail: runningJobs[0] ? String(runningJobs[0].goal || runningJobs[0].id).slice(0, 56) : 'No live orchestration right now',
-      icon: Activity,
-    },
-    {
-      label: 'Completed jobs',
-      value: completedJobs.length,
-      detail: completedJobs[0] ? `Last finish ${formatRelative(completedJobs[0].updated_at || completedJobs[0].completed_at)}` : 'No completions recorded',
-      icon: BadgeCheck,
-    },
-    {
-      label: 'Trust pass rate',
-      value: trustSummary?.pass_rate ? `${Math.round(Number(trustSummary.pass_rate) * 100)}%` : 'N/A',
-      detail: trustSummary ? `${trustSummary.passed_count ?? 0}/${trustSummary.prompt_count ?? 0} proof checks passing` : 'Trust benchmark unavailable',
-      icon: ShieldCheck,
-    },
+// ---------- sidebar ----------
+function DashSidebar({
+  user,
+  creditsDisplay,
+  onNewClick,
+  searchQuery,
+  setSearchQuery,
+  history,
+  onUpgradeClick,
+  onLogoClick,
+}) {
+  const navItems = [
+    { to: '/app/workspace', label: 'Workspace', Icon: Home },
+    { to: '/app/projects', label: 'Projects', Icon: Folder },
+    { to: '/app/agents', label: 'Agents', Icon: Bot },
+    { to: '/app/what-if', label: 'What-if Analysis', Icon: GitBranch },
+    { to: '/app/automation', label: 'Automation', Icon: Zap },
   ];
 
-  const runWorkflow = async () => {
-    if (!selectedWorkflow || !token) return;
-    setRunBusy(true);
-    setRunError('');
+  return (
+    <aside className="dvx-side" aria-label="Primary navigation">
+      {/* Logo + collapse */}
+      <div className="dvx-side-header">
+        <Link to="/app/dashboard" className="dvx-logo-link" onClick={onLogoClick} aria-label="CrucibAI home">
+          <Logo
+            variant="full"
+            height={28}
+            href={null}
+            className="dvx-logo"
+            showTagline={false}
+            showWordmark
+            nameClassName="dvx-logo-text"
+          />
+        </Link>
+        <button type="button" className="dvx-side-collapse" aria-label="Collapse sidebar" title="Collapse">
+          <PanelLeftClose size={18} aria-hidden />
+        </button>
+      </div>
+
+      {/* Search */}
+      <div className="dvx-side-search">
+        <Search size={14} className="dvx-side-search-icon" aria-hidden />
+        <input
+          type="text"
+          className="dvx-side-search-input"
+          placeholder="Search..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          aria-label="Search your work"
+        />
+        <span className="dvx-side-search-kbd" aria-hidden>⌘K</span>
+      </div>
+
+      {/* New button */}
+      <button type="button" className="dvx-side-new" onClick={onNewClick}>
+        <span className="dvx-side-new-left">
+          <Plus size={16} aria-hidden />
+          <span>New</span>
+        </span>
+        <ChevronDown size={16} aria-hidden className="dvx-side-new-chevron" />
+      </button>
+
+      {/* WORK nav */}
+      <div className="dvx-side-section">
+        <div className="dvx-side-label">WORK</div>
+        <nav className="dvx-side-nav" aria-label="Work">
+          {navItems.map(({ to, label, Icon }) => (
+            <Link key={to} to={to} className="dvx-side-item">
+              <Icon size={16} aria-hidden />
+              <span>{label}</span>
+            </Link>
+          ))}
+        </nav>
+      </div>
+
+      {/* HISTORY */}
+      <div className="dvx-side-section dvx-side-section--history">
+        <div className="dvx-side-label">HISTORY</div>
+        <nav className="dvx-side-history" aria-label="Recent history">
+          {history.length === 0 ? (
+            <div className="dvx-side-history-empty">No recent items yet.</div>
+          ) : (
+            history.slice(0, 7).map((h) => {
+              const kind = classifyHistoryItem(h);
+              const title = h.title || h.name || h.goal || 'Untitled';
+              const stamp = relativeTime(h.updated_at || h.created_at || h.last_updated);
+              return (
+                <Link
+                  key={h.id || `${kind}-${title}`}
+                  to={h.id ? `/app/projects/${h.id}` : '/app/workspace'}
+                  state={h.id ? undefined : { initialPrompt: title }}
+                  className="dvx-side-history-item"
+                  title={title}
+                >
+                  <span className="dvx-side-history-icon">{iconForKind(kind, 14)}</span>
+                  <span className="dvx-side-history-title">{title}</span>
+                  {stamp && <span className="dvx-side-history-time">{stamp}</span>}
+                </Link>
+              );
+            })
+          )}
+          <Link to="/app/projects" className="dvx-side-history-view-all">
+            <span>View all history</span>
+            <ChevronRight size={14} aria-hidden />
+          </Link>
+        </nav>
+      </div>
+
+      {/* Account row */}
+      <div className="dvx-side-account">
+        <div className="dvx-side-account-avatar" aria-hidden>
+          {(firstNameFromUser(user)[0] || 'G').toUpperCase()}
+        </div>
+        <div className="dvx-side-account-info">
+          <div className="dvx-side-account-name">{firstNameFromUser(user)}</div>
+          <div className="dvx-side-account-plan">
+            {user?.plan ? `${user.plan.charAt(0).toUpperCase()}${user.plan.slice(1)}` : 'Free'}
+          </div>
+        </div>
+        <button type="button" className="dvx-side-account-upgrade" onClick={onUpgradeClick}>
+          <Zap size={13} aria-hidden />
+          <span>Upgrade to Pro</span>
+        </button>
+        <Link to="/app/settings" className="dvx-side-account-more" aria-label="Account menu" title="Account">
+          <MoreHorizontal size={16} aria-hidden />
+        </Link>
+      </div>
+    </aside>
+  );
+}
+
+// ---------- center canvas ----------
+function TopUtility({ creditsDisplay, user, onBellClick }) {
+  return (
+    <div className="dvx-top-utility">
+      <Link to="/app/tokens" className="dvx-credits" title="Credits & Billing">
+        <Zap size={14} aria-hidden className="dvx-credits-icon" />
+        <span className="dvx-credits-value">{creditsDisplay}</span>
+      </Link>
+      <button type="button" className="dvx-bell" onClick={onBellClick} aria-label="Notifications" title="Notifications">
+        <Bell size={16} aria-hidden />
+      </button>
+      <Link to="/app/settings" className="dvx-avatar" title="Account">
+        {(firstNameFromUser(user)[0] || 'G').toUpperCase()}
+      </Link>
+    </div>
+  );
+}
+
+function Composer({
+  text,
+  setText,
+  onSend,
+  busy,
+  onAttach,
+  onMic,
+  recording,
+  fileAttached,
+}) {
+  const inputRef = useRef(null);
+  return (
+    <div className={`dvx-composer ${busy ? 'dvx-composer--busy' : ''}`}>
+      <textarea
+        ref={inputRef}
+        className="dvx-composer-input"
+        placeholder="Ask anything or give an instruction..."
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (text.trim() && !busy) onSend();
+          }
+        }}
+        rows={2}
+        disabled={busy}
+      />
+      <div className="dvx-composer-tools">
+        <button type="button" className="dvx-composer-tool" onClick={onAttach} title="Attach file" aria-label="Attach file">
+          <Paperclip size={16} aria-hidden />
+          {fileAttached && <span className="dvx-composer-tool-dot" aria-hidden />}
+        </button>
+        <div className="dvx-composer-tools-right">
+          <button type="button" className="dvx-composer-tool" title="Web context" aria-label="Web context">
+            <Globe size={16} aria-hidden />
+          </button>
+          <button
+            type="button"
+            className={`dvx-composer-tool ${recording ? 'dvx-composer-tool--rec' : ''}`}
+            onClick={onMic}
+            title={recording ? 'Stop dictation' : 'Start dictation'}
+            aria-label={recording ? 'Stop dictation' : 'Start dictation'}
+          >
+            <Mic size={16} aria-hidden />
+          </button>
+          <button
+            type="button"
+            className="dvx-composer-send"
+            onClick={onSend}
+            disabled={busy || !text.trim()}
+            aria-label="Send"
+            title="Send"
+          >
+            <ArrowUp size={16} aria-hidden />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- component ----------
+export default function DashboardVNext() {
+  const navigate = useNavigate();
+  const { user, token } = useAuth();
+  const headers = useMemo(() => (token ? { Authorization: `Bearer ${token}` } : {}), [token]);
+
+  // Composer state
+  const [text, setText] = useState('');
+  const [sendBusy, setSendBusy] = useState(false);
+  const [sendError, setSendError] = useState('');
+  const [fileAttached, setFileAttached] = useState(null);
+  const fileInputRef = useRef(null);
+
+  // Mic state
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const [recording, setRecording] = useState(false);
+
+  // History / data
+  const [projects, setProjects] = useState([]);
+  const [recentPrompts, setRecentPrompts] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Credits
+  const creditsDisplay = useMemo(() => {
+    if (!user) return '—';
+    const val = user.credit_balance ?? Math.floor((user.token_balance ?? 0) / 1000);
+    if (val == null || Number.isNaN(val)) return '—';
+    return Number(val).toLocaleString();
+  }, [user]);
+
+  // ---------- load dashboard data ----------
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [projRes, recentRes] = await Promise.allSettled([
+          axios.get(`${API}/projects`, { headers, timeout: 10000 }),
+          axios.get(`${API}/prompts/recent`, { headers, timeout: 10000 }),
+        ]);
+        if (cancelled) return;
+        if (projRes.status === 'fulfilled') {
+          const rows = projRes.value.data?.projects || projRes.value.data || [];
+          setProjects(Array.isArray(rows) ? rows : []);
+        }
+        if (recentRes.status === 'fulfilled') {
+          const rows = recentRes.value.data?.prompts || recentRes.value.data || [];
+          setRecentPrompts(Array.isArray(rows) ? rows : []);
+        }
+      } catch {
+        /* ignored */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [token, headers]);
+
+  // Build unified history from projects + recentPrompts, filtered by searchQuery
+  useEffect(() => {
+    const projectItems = (projects || []).map((p) => ({
+      id: p.id || p.project_id,
+      title: p.name || p.title || 'Untitled project',
+      kind: 'build',
+      updated_at: p.updated_at || p.last_updated || p.created_at,
+    }));
+    const promptItems = (recentPrompts || []).map((pr, i) => ({
+      id: pr.id || `prompt-${i}`,
+      title: pr.title || pr.prompt || pr.text || 'Recent prompt',
+      kind: pr.kind || 'chat',
+      updated_at: pr.updated_at || pr.created_at,
+    }));
+    const merged = [...projectItems, ...promptItems].sort((a, b) => {
+      const ta = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+      const tb = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+      return tb - ta;
+    });
+    const q = searchQuery.trim().toLowerCase();
+    const filtered = q ? merged.filter((m) => String(m.title).toLowerCase().includes(q)) : merged;
+    setHistory(filtered);
+  }, [projects, recentPrompts, searchQuery]);
+
+  // ---------- send flow ----------
+  const handleSend = useCallback(async () => {
+    const raw = text.trim();
+    if (!raw || sendBusy) return;
+    setSendBusy(true);
+    setSendError('');
     try {
-      const res = await axios.post(
-        `${API}/workflows/run`,
-        {
-          workflow_key: selectedWorkflow,
-          context: goal || undefined,
-        },
-        { headers, timeout: 20000 },
-      );
-      const jobId = res.data?.job_id;
-      if (jobId) {
-        navigate(`/app/workspace?jobId=${encodeURIComponent(jobId)}`);
+      // If execution-heavy, hand off straight to workspace with the prompt (autoStart).
+      if (isBuildIntent(raw)) {
+        navigate('/app/workspace', {
+          state: {
+            initialPrompt: raw,
+            autoStart: true,
+            handoffNonce: Date.now(),
+            attachment: fileAttached?.name || null,
+          },
+        });
         return;
       }
-      navigate('/app/workspace', { state: { initialPrompt: goal || 'Run selected workflow' } });
-    } catch (e) {
-      setRunError(e?.response?.data?.detail || e?.message || 'Workflow run failed');
-    } finally {
-      setRunBusy(false);
-    }
-  };
 
-  return (
-    <div className="dash-vnext">
-      <section className="dash-vnext-hero">
-        <div>
-          <div className="dash-vnext-eyebrow">
-            <Sparkles size={14} />
-            Operating center
-          </div>
-          <h1>Run CrucibAI like a product studio, not a pile of tabs.</h1>
-          <p>
-            Projects, orchestration, trust signals, and live activity are all in one calmer surface.
-            The structure follows the workspace style you shared while staying wired to your real backend.
-          </p>
-        </div>
-        <div className="dash-vnext-hero-actions">
-          <button type="button" className="dash-vnext-btn" onClick={() => refresh(true)} disabled={refreshing || loading}>
-            <RefreshCw size={14} />
-            {refreshing ? 'Refreshing' : 'Refresh'}
-          </button>
-          <button type="button" className="dash-vnext-btn dash-vnext-btn-primary" onClick={() => navigate('/app/workspace')}>
-            <Rocket size={14} />
-            Open workspace
-          </button>
-        </div>
-      </section>
+      // Otherwise answer inline via /api/ai/chat.
+      const fd = new FormData();
+      fd.append('message', raw);
+      fd.append('model', 'auto');
+      if (fileAttached) fd.append('file', fileAttached);
 
-      <section className="dash-vnext-summary">
-        {summaryCards.map((card) => {
-          const Icon = card.icon;
-          return (
-            <article key={card.label} className="dash-vnext-summary-card">
-              <div className="dash-vnext-summary-head">
-                <span>{card.label}</span>
-                <Icon size={16} />
-              </div>
-              <strong>{card.value}</strong>
-              <p>{card.detail}</p>
-            </article>
+      const res = await axios.post(`${API}/ai/chat`, fd, {
+        headers: { ...headers },
+        timeout: 60000,
+      }).catch(async (err) => {
+        // Retry with JSON body if multipart isn't accepted.
+        if (err?.response?.status === 415 || err?.response?.status === 422) {
+          return axios.post(
+            `${API}/ai/chat`,
+            { message: raw, model: 'auto' },
+            { headers: { ...headers, 'Content-Type': 'application/json' }, timeout: 60000 },
           );
-        })}
-      </section>
+        }
+        throw err;
+      });
 
-      <section className="dash-vnext-grid">
-        <aside className="dash-vnext-panel dash-vnext-panel-left">
-          <div className="dash-vnext-panel-title">
-            <h2>Recent projects</h2>
-            <button type="button" className="dash-vnext-link-btn" onClick={() => navigate('/app/workspace')}>
-              New build
-              <ArrowRight size={14} />
+      // If the backend recommends workspace handoff, honor it.
+      const data = res?.data || {};
+      if (data.route === 'workspace' || data.next === 'workspace' || data.handoff === true) {
+        navigate('/app/workspace', {
+          state: {
+            initialPrompt: raw,
+            autoStart: true,
+            handoffNonce: Date.now(),
+          },
+        });
+        return;
+      }
+
+      // Inline answer: move the user into workspace chat for continuity (dashboard is intake, workspace is execution).
+      navigate('/app/workspace', {
+        state: {
+          initialPrompt: raw,
+          initialReply: data.reply || data.response || data.message || '',
+          autoStart: false,
+          handoffNonce: Date.now(),
+        },
+      });
+    } catch (e) {
+      setSendError(e?.response?.data?.detail || e?.message || 'Send failed.');
+    } finally {
+      setSendBusy(false);
+      setText('');
+      setFileAttached(null);
+    }
+  }, [text, sendBusy, fileAttached, headers, navigate]);
+
+  // ---------- attach ----------
+  const handleAttachClick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+  const handleFilePicked = useCallback((e) => {
+    const f = e.target.files?.[0];
+    if (f) setFileAttached(f);
+    e.target.value = '';
+  }, []);
+
+  // ---------- mic ----------
+  const startRecording = useCallback(async () => {
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setSendError('Microphone not supported in this browser.');
+        return;
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+      mr.ondataavailable = (ev) => { if (ev.data.size > 0) audioChunksRef.current.push(ev.data); };
+      mr.onstop = async () => {
+        try {
+          const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          const fd = new FormData();
+          fd.append('file', blob, 'voice.webm');
+          const res = await axios.post(`${API}/voice/transcribe`, fd, { headers, timeout: 45000 });
+          const t = res?.data?.transcript || res?.data?.text || '';
+          if (t) setText((prev) => (prev ? `${prev} ${t}` : t));
+        } catch (e) {
+          setSendError('Transcription failed.');
+        } finally {
+          stream.getTracks().forEach((tr) => tr.stop());
+        }
+      };
+      mr.start();
+      mediaRecorderRef.current = mr;
+      setRecording(true);
+    } catch (e) {
+      setSendError('Microphone permission denied.');
+    }
+  }, [headers]);
+
+  const stopRecording = useCallback(() => {
+    try {
+      mediaRecorderRef.current?.stop();
+    } catch { /* ignore */ }
+    setRecording(false);
+  }, []);
+
+  const handleMicClick = useCallback(() => {
+    if (recording) stopRecording();
+    else startRecording();
+  }, [recording, startRecording, stopRecording]);
+
+  // ---------- chips ----------
+  const handleChipUseAI = useCallback(() => {
+    if (!text.trim()) {
+      setText('Help me phrase this: ');
+    }
+  }, [text]);
+
+  const [showBrowse, setShowBrowse] = useState(false);
+  const [browseItems, setBrowseItems] = useState({ templates: [], saved: [], recent: [] });
+  const openBrowse = useCallback(async () => {
+    setShowBrowse(true);
+    try {
+      const [tpl, saved, recent] = await Promise.allSettled([
+        axios.get(`${API}/prompts/templates`, { headers, timeout: 10000 }),
+        axios.get(`${API}/prompts/saved`, { headers, timeout: 10000 }),
+        axios.get(`${API}/prompts/recent`, { headers, timeout: 10000 }),
+      ]);
+      setBrowseItems({
+        templates: tpl.status === 'fulfilled' ? (tpl.value.data?.templates || tpl.value.data || []) : [],
+        saved: saved.status === 'fulfilled' ? (saved.value.data?.prompts || saved.value.data || []) : [],
+        recent: recent.status === 'fulfilled' ? (recent.value.data?.prompts || recent.value.data || []) : [],
+      });
+    } catch { /* ignore */ }
+  }, [headers]);
+
+  const handleChipWhatIf = useCallback(async () => {
+    const raw = text.trim() || 'Simulate the next best step for my current goal';
+    try {
+      setSendBusy(true);
+      await axios.post(`${API}/runtime/what-if`, { goal: raw, prompt: raw }, { headers, timeout: 30000 }).catch(() => null);
+      navigate('/app/workspace', {
+        state: { initialPrompt: raw, mode: 'what-if', autoStart: true, handoffNonce: Date.now() },
+      });
+    } finally {
+      setSendBusy(false);
+    }
+  }, [text, headers, navigate]);
+
+  const [showMore, setShowMore] = useState(false);
+
+  // ---------- suggested prompts ----------
+  const suggestedPrompts = [
+    { label: 'Build a task management app', Icon: Hammer },
+    { label: 'Analyze my website performance', Icon: LineChart },
+    { label: 'Create a marketing plan', Icon: Briefcase },
+  ];
+
+  // ---------- greeting ----------
+  const first = firstNameFromUser(user);
+  const greeting = `${greetingByTime()}, ${first}`;
+
+  // ---------- render ----------
+  return (
+    <div className="dvx-root">
+      <DashSidebar
+        user={user}
+        creditsDisplay={creditsDisplay}
+        onNewClick={() => {
+          setText('');
+          setFileAttached(null);
+          setTimeout(() => document.querySelector('.dvx-composer-input')?.focus(), 0);
+        }}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        history={history}
+        onUpgradeClick={() => navigate('/pricing')}
+        onLogoClick={() => { /* already navigating via Link */ }}
+      />
+
+      <main className="dvx-main" role="main">
+        <TopUtility
+          creditsDisplay={creditsDisplay}
+          user={user}
+          onBellClick={() => navigate('/app/settings', { state: { openTab: 'notifications' } })}
+        />
+
+        <div className="dvx-hero">
+          <h1 className="dvx-hero-greet">
+            {greeting} <span aria-hidden>👋</span>
+          </h1>
+          <p className="dvx-hero-sub">What can I do for you today?</p>
+
+          <Composer
+            text={text}
+            setText={setText}
+            onSend={handleSend}
+            busy={sendBusy}
+            onAttach={handleAttachClick}
+            onMic={handleMicClick}
+            recording={recording}
+            fileAttached={!!fileAttached}
+          />
+
+          {sendError && <div className="dvx-error" role="alert">{sendError}</div>}
+          {fileAttached && (
+            <div className="dvx-attached" role="status">
+              Attached: <strong>{fileAttached.name}</strong>
+              <button type="button" className="dvx-attached-clear" onClick={() => setFileAttached(null)}>Remove</button>
+            </div>
+          )}
+
+          {/* hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            style={{ display: 'none' }}
+            onChange={handleFilePicked}
+            accept="image/*,application/pdf,text/*,.zip,.doc,.docx,.csv,.json,.md,.py,.js,.jsx,.ts,.tsx,.html"
+          />
+
+          {/* Action chips */}
+          <div className="dvx-chips">
+            <button type="button" className="dvx-chip" onClick={handleChipUseAI}>
+              <Sparkles size={14} aria-hidden />
+              <span>Use AI</span>
             </button>
-          </div>
-          <div className="dash-vnext-list">
-            {projects.slice(0, 8).map((project) => (
-              <button
-                type="button"
-                key={project.id}
-                className="dash-vnext-row"
-                onClick={() => navigate(`/app/workspace?projectId=${encodeURIComponent(project.id)}`)}
-              >
-                <div className="dash-vnext-row-copy">
-                  <strong>{project.name || project.id}</strong>
-                  <span>{project.project_type || 'project'} · {formatRelative(project.updated_at || project.created_at)}</span>
+            <Link to="/app/templates" className="dvx-chip">
+              <LayoutGrid size={14} aria-hidden />
+              <span>Template</span>
+            </Link>
+            <button type="button" className="dvx-chip" onClick={handleChipWhatIf}>
+              <GitBranch size={14} aria-hidden />
+              <span>What-if Analysis</span>
+            </button>
+            <button type="button" className="dvx-chip" onClick={openBrowse}>
+              <Globe size={14} aria-hidden />
+              <span>Browse</span>
+            </button>
+            <div className="dvx-chip-more-wrap">
+              <button type="button" className="dvx-chip" onClick={() => setShowMore((v) => !v)}>
+                <MoreHorizontal size={14} aria-hidden />
+                <span>More</span>
+                <ChevronDown size={12} aria-hidden />
+              </button>
+              {showMore && (
+                <div className="dvx-chip-more-menu" role="menu">
+                  <button type="button" className="dvx-chip-more-item" role="menuitem" onClick={() => { setShowMore(false); fileInputRef.current?.click(); }}>
+                    Import code / zip
+                  </button>
+                  <Link to="/app/projects" className="dvx-chip-more-item" role="menuitem" onClick={() => setShowMore(false)}>
+                    Connect a project
+                  </Link>
+                  <Link to="/app/exports" className="dvx-chip-more-item" role="menuitem" onClick={() => setShowMore(false)}>
+                    Export
+                  </Link>
+                  <Link to="/app/settings" className="dvx-chip-more-item" role="menuitem" onClick={() => setShowMore(false)}>
+                    Advanced options
+                  </Link>
                 </div>
-                <em className={`tone-${statusTone(project.status)}`}>{project.status || 'unknown'}</em>
+              )}
+            </div>
+          </div>
+
+          {/* Suggested prompts */}
+          <div className="dvx-suggested-label">Try asking</div>
+          <div className="dvx-suggested">
+            {suggestedPrompts.map(({ label, Icon }) => (
+              <button
+                key={label}
+                type="button"
+                className="dvx-suggested-chip"
+                onClick={() => setText(label)}
+              >
+                <Icon size={14} aria-hidden />
+                <span>{label}</span>
               </button>
             ))}
-            {!projects.length && !loading && <p className="dash-vnext-empty">No projects found yet.</p>}
+            <Link to="/app/prompts" className="dvx-suggested-chip dvx-suggested-chip--more">
+              <span>More examples</span>
+              <ChevronRight size={14} aria-hidden />
+            </Link>
           </div>
+        </div>
 
-          <div className="dash-vnext-subpanel">
-            <div className="dash-vnext-subpanel-head">
-              <h3>System pulse</h3>
-              <Clock3 size={14} />
+        {/* Footer disclaimer */}
+        <div className="dvx-footer">
+          <p>CrucibAI can make mistakes. Please verify important information.</p>
+          <Link to="/learn" className="dvx-footer-learn">
+            <span>Learn more</span>
+            <ChevronRight size={12} aria-hidden />
+          </Link>
+        </div>
+      </main>
+
+      {/* Help floating button */}
+      <Link to="/get-help" className="dvx-help" aria-label="Help" title="Help">
+        <HelpCircle size={18} aria-hidden />
+      </Link>
+
+      {/* Browse modal */}
+      {showBrowse && (
+        <div className="dvx-modal" role="dialog" aria-label="Browse prompts and templates" onClick={() => setShowBrowse(false)}>
+          <div className="dvx-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="dvx-modal-head">
+              <h2>Browse</h2>
+              <button type="button" className="dvx-modal-close" onClick={() => setShowBrowse(false)}>Close</button>
             </div>
-            <div className="dash-vnext-pulse">
-              <div>
-                <span>Latest event</span>
-                <strong>{latestRuntimeEvent?.type || 'No recent events'}</strong>
-              </div>
-              <p>{latestRuntimeEvent?.ts ? formatRelative(latestRuntimeEvent.ts) : 'Waiting for runtime activity'}</p>
-            </div>
-          </div>
-        </aside>
-
-        <main className="dash-vnext-panel dash-vnext-panel-main">
-          <div className="dash-vnext-panel-title">
-            <h2>Command composer</h2>
-            <span className="dash-vnext-caption">Start a workflow or jump into the full workspace.</span>
-          </div>
-          <div className="dash-vnext-composer">
-            <label htmlFor="dashboard-workflow">Workflow</label>
-            <select id="dashboard-workflow" value={selectedWorkflow} onChange={(e) => setSelectedWorkflow(e.target.value)}>
-              <option value="">Select a workflow</option>
-              {workflowOptions.map((workflow) => (
-                <option key={workflow.key} value={workflow.key}>
-                  {workflow.group} · {workflow.name}
-                </option>
-              ))}
-            </select>
-
-            <label htmlFor="dashboard-goal">Goal / context</label>
-            <textarea
-              id="dashboard-goal"
-              rows={6}
-              value={goal}
-              onChange={(e) => setGoal(e.target.value)}
-              placeholder="Describe what this run should deliver, what should be changed, or what should be verified."
-            />
-
-            <div className="dash-vnext-actions">
-              <button type="button" className="dash-vnext-btn dash-vnext-btn-primary" onClick={runWorkflow} disabled={!selectedWorkflow || runBusy}>
-                <Play size={14} />
-                {runBusy ? 'Starting...' : 'Run workflow'}
-              </button>
-              <button type="button" className="dash-vnext-btn" onClick={() => navigate('/app/workspace', { state: { initialPrompt: goal || undefined } })}>
-                <Workflow size={14} />
-                Continue in workspace
-              </button>
-            </div>
-            {runError ? <p className="dash-vnext-error">{runError}</p> : null}
-          </div>
-
-          <div className="dash-vnext-subgrid">
-            <section className="dash-vnext-subpanel">
-              <div className="dash-vnext-subpanel-head">
-                <h3>Live activity</h3>
-                <Activity size={14} />
-              </div>
-              <ul className="dash-vnext-events">
-                {runtimeEvents.slice(0, 8).map((event, index) => (
-                  <li key={`${event.ts || index}-${event.type || 'event'}`}>
-                    <div>
-                      <strong>{event.type || 'event'}</strong>
-                      <span>{event.payload?.path || event.payload?.command || event.payload?.headline || 'Runtime update'}</span>
-                    </div>
-                    <em>{event.ts ? formatRelative(event.ts) : 'now'}</em>
-                  </li>
-                ))}
-                {!runtimeEvents.length && !loading && <li className="dash-vnext-empty">No recent runtime events.</li>}
-              </ul>
-            </section>
-
-            <section className="dash-vnext-subpanel">
-              <div className="dash-vnext-subpanel-head">
-                <h3>Capabilities online</h3>
-                <Database size={14} />
-              </div>
-              <div className="dash-vnext-tags">
-                {['Backend server', 'Database', 'Auth', 'Workflows', 'Trust proof'].map((item) => (
-                  <span key={item}>{item}</span>
-                ))}
-              </div>
-              <p className="dash-vnext-note">
-                Signed in as {user?.name || user?.email || 'guest'}.
-                Use the workspace for build execution and this dashboard for orchestration, monitoring, and navigation.
-              </p>
-            </section>
-          </div>
-        </main>
-
-        <aside className="dash-vnext-panel dash-vnext-panel-right">
-          <div className="dash-vnext-panel-title">
-            <h2>Jobs and trust</h2>
-            <span className="dash-vnext-caption">The right rail stays focused on health and outcomes.</span>
-          </div>
-
-          <div className="dash-vnext-subpanel">
-            <div className="dash-vnext-subpanel-head">
-              <h3>Recent jobs</h3>
-              <Bot size={14} />
-            </div>
-            <div className="dash-vnext-list">
-              {jobs.slice(0, 7).map((job) => (
-                <button
-                  type="button"
-                  key={job.id}
-                  className="dash-vnext-row"
-                  onClick={() => navigate(`/app/workspace?jobId=${encodeURIComponent(job.id)}`)}
-                >
-                  <div className="dash-vnext-row-copy">
-                    <strong>{job.goal ? String(job.goal).slice(0, 54) : job.id}</strong>
-                    <span>{formatRelative(job.updated_at || job.created_at)}</span>
-                  </div>
-                  <em className={`tone-${statusTone(job.status)}`}>{job.status || 'unknown'}</em>
-                </button>
-              ))}
-              {!jobs.length && !loading && <p className="dash-vnext-empty">No jobs yet.</p>}
+            <div className="dvx-modal-body">
+              <BrowseList title="Templates" items={browseItems.templates} onPick={(t) => { setText(t.prompt || t.description || t.name || ''); setShowBrowse(false); }} />
+              <BrowseList title="Saved prompts" items={browseItems.saved} onPick={(t) => { setText(t.prompt || t.text || t.name || ''); setShowBrowse(false); }} />
+              <BrowseList title="Recent prompts" items={browseItems.recent} onPick={(t) => { setText(t.prompt || t.text || t.name || ''); setShowBrowse(false); }} />
             </div>
           </div>
-
-          <div className="dash-vnext-subpanel">
-            <div className="dash-vnext-subpanel-head">
-              <h3>Trust benchmark</h3>
-              <ShieldCheck size={14} />
-            </div>
-            <div className="dash-vnext-trust">
-              <div>
-                <span>Status</span>
-                <strong>{trustSummary?.status || 'not_available'}</strong>
-              </div>
-              <div>
-                <span>Prompt count</span>
-                <strong>{trustSummary?.prompt_count ?? 0}</strong>
-              </div>
-              <div>
-                <span>Passed</span>
-                <strong>{trustSummary?.passed_count ?? 0}</strong>
-              </div>
-              <div>
-                <span>Failures</span>
-                <strong>{failedJobs.length}</strong>
-              </div>
-            </div>
-          </div>
-        </aside>
-      </section>
+        </div>
+      )}
     </div>
+  );
+}
+
+function BrowseList({ title, items, onPick }) {
+  if (!items || !items.length) {
+    return (
+      <section className="dvx-browse-section">
+        <h3>{title}</h3>
+        <p className="dvx-browse-empty">No items.</p>
+      </section>
+    );
+  }
+  return (
+    <section className="dvx-browse-section">
+      <h3>{title}</h3>
+      <ul className="dvx-browse-list">
+        {items.slice(0, 10).map((it, idx) => (
+          <li key={it.id || idx}>
+            <button type="button" onClick={() => onPick(it)} className="dvx-browse-item">
+              <span className="dvx-browse-item-title">{it.title || it.name || it.prompt || 'Untitled'}</span>
+              {(it.description || it.summary) && (
+                <span className="dvx-browse-item-desc">{it.description || it.summary}</span>
+              )}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
