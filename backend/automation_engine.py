@@ -152,6 +152,117 @@ def get_run(run_id: str) -> Optional[dict]:
     return _runs.get(run_id)
 
 
+# ── CF6: optional DB persistence (write-through) ─────────────────────────────
+import json as _json
+
+
+async def persist_workflow(wf: dict, *, db=None) -> None:
+    """Write workflow through to the `automations` table if available."""
+    if db is None:
+        try:
+            from db_pg import get_db
+            db = await get_db()
+        except Exception:
+            return
+    try:
+        await db.execute(
+            """
+            INSERT INTO automations (id, user_id, name, description, schedule, mode, config, enabled, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, NOW())
+            ON CONFLICT (id) DO UPDATE SET
+                name = EXCLUDED.name,
+                description = EXCLUDED.description,
+                schedule = EXCLUDED.schedule,
+                mode = EXCLUDED.mode,
+                config = EXCLUDED.config,
+                enabled = EXCLUDED.enabled
+            """,
+            wf.get("id"),
+            wf.get("user_id") or "system",
+            wf.get("name"),
+            wf.get("description"),
+            wf.get("schedule"),
+            wf.get("mode") or "one_pass",
+            _json.dumps({"steps": wf.get("steps", []), "trigger": str(wf.get("trigger") or "")}),
+            bool(wf.get("enabled", True)),
+        )
+    except Exception as exc:
+        logger.warning("persist_workflow write-through failed (non-fatal): %s", exc)
+
+
+async def persist_run(run: dict, *, db=None) -> None:
+    """Write run through to the `automation_runs` table if available."""
+    if db is None:
+        try:
+            from db_pg import get_db
+            db = await get_db()
+        except Exception:
+            return
+    try:
+        await db.execute(
+            """
+            INSERT INTO automation_runs
+                (id, automation_id, thread_id, status, result, error,
+                 started_at, finished_at)
+            VALUES ($1, $2, $3, $4, $5::jsonb, $6,
+                    COALESCE($7::timestamptz, NOW()), $8::timestamptz)
+            ON CONFLICT (id) DO UPDATE SET
+                status = EXCLUDED.status,
+                result = EXCLUDED.result,
+                error = EXCLUDED.error,
+                finished_at = EXCLUDED.finished_at
+            """,
+            run.get("id"),
+            run.get("workflow_id"),
+            run.get("thread_id"),
+            str(run.get("status", "pending")),
+            _json.dumps({"results": run.get("results") or [], "trigger_data": run.get("trigger_data") or {}}),
+            run.get("error"),
+            run.get("started_at"),
+            run.get("completed_at"),
+        )
+    except Exception as exc:
+        logger.warning("persist_run write-through failed (non-fatal): %s", exc)
+
+
+async def load_workflows_from_db(*, db=None) -> int:
+    """Hydrate in-memory _workflows from the automations table.  Returns count."""
+    if db is None:
+        try:
+            from db_pg import get_db
+            db = await get_db()
+        except Exception:
+            return 0
+    try:
+        rows = await db.fetch(
+            "SELECT id, user_id, name, description, schedule, mode, config, enabled FROM automations"
+        )
+    except Exception as exc:
+        logger.warning("load_workflows_from_db failed (non-fatal): %s", exc)
+        return 0
+    count = 0
+    for r in rows or []:
+        cfg = r["config"] if isinstance(r["config"], dict) else _json.loads(r["config"] or "{}")
+        # trigger comes from config for schema-alignment
+        try:
+            trig = TriggerType(cfg.get("trigger") or (TriggerType.SCHEDULE if r["schedule"] else TriggerType.MANUAL))
+        except Exception:
+            trig = TriggerType.MANUAL
+        _workflows[r["id"]] = {
+            "id": r["id"],
+            "name": r["name"],
+            "description": r.get("description") if hasattr(r, "get") else None,
+            "trigger": trig,
+            "steps": cfg.get("steps", []),
+            "enabled": bool(r["enabled"]),
+            "user_id": r["user_id"],
+            "schedule": r["schedule"],
+            "mode": r["mode"],
+        }
+        count += 1
+    return count
+
+
 # ── Built-in workflow templates ────────────────────────────────────────────────
 def setup_default_workflows():
     """Set up default automation workflows."""
