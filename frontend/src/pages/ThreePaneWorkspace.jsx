@@ -7,13 +7,12 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
+  ChevronsLeftRight,
   Circle,
-  CircleDashed,
   Database,
   ExternalLink,
   FileCode2,
   FolderKanban,
-  GitBranch,
   Globe,
   LayoutDashboard,
   Mic,
@@ -42,61 +41,79 @@ import ExecutionTimeline from '../components/AutoRunner/ExecutionTimeline';
 import Logo from '../components/Logo';
 import '../styles/three_pane.css';
 
-const EXECUTION_MODES = [
-  { value: 'auto', label: 'Auto' },
-  { value: 'build', label: 'Build' },
-  { value: 'analyze_only', label: 'Analyze' },
-  { value: 'plan_first', label: 'Plan' },
-  { value: 'migration', label: 'Migrate' },
-  { value: 'repair', label: 'Repair' },
-];
-
-const RIGHT_TABS = ['Preview', 'Proof', 'Database', 'Deploy', 'Logs'];
-
-const PHASES = [
-  { key: 'initialize', title: 'Initialize project', description: 'Creating project structure, installing dependencies...' },
-  { key: 'schema', title: 'Design database schema', description: 'Analyzing requirements, tenant isolation, and schema planning.' },
-  { key: 'auth', title: 'Setup authentication', description: 'Setting up auth system and user management.' },
-  { key: 'modules', title: 'Build core modules', description: 'Creating tenant, billing, and dashboard modules.' },
-  { key: 'payments', title: 'Integrate payment system', description: 'Setting up payment integration and billing.' },
-  { key: 'analytics', title: 'Build analytics dashboard', description: 'Creating analytics and reporting dashboard.' },
-  { key: 'deploy', title: 'Deploy to production', description: 'Setting up CI/CD and deploying application.' },
-];
+const RIGHT_TABS = ['Preview', 'Proof', 'Files', 'Database', 'Deploy', 'Logs'];
+const LEFT_MIN = 240;
+const LEFT_MAX = 340;
+const RIGHT_MIN = 360;
+const RIGHT_MAX = 560;
 
 const NAV_ITEMS = [
   { key: 'workspace', label: 'Workspace', icon: LayoutDashboard, action: '/app/workspace' },
   { key: 'projects', label: 'Projects', icon: FolderKanban, action: '/app/projects/new' },
   { key: 'agents', label: 'Agents', icon: Bot, action: '/app/agents' },
-  { key: 'files', label: 'Files', icon: FileCode2, action: '#tab:Database' },
+  { key: 'files', label: 'Files', icon: FileCode2, action: '#tab:Files' },
   { key: 'proof', label: 'Proof', icon: CheckCircle2, action: '#tab:Proof' },
   { key: 'deploy', label: 'Deploy', icon: Rocket, action: '#tab:Deploy' },
   { key: 'automation', label: 'Automation', icon: Zap, action: '/app/live' },
-  { key: 'settings', label: 'Settings', icon: GitBranch, action: '/app/settings' },
+  { key: 'settings', label: 'Settings', icon: Database, action: '/app/settings' },
 ];
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
 
 function compactTitle(text) {
   const value = String(text || '').trim();
   if (!value) return 'New workspace';
-  return value.length > 32 ? `${value.slice(0, 32).trim()}...` : value;
+  return value.length > 42 ? `${value.slice(0, 42).trim()}...` : value;
+}
+
+function titleFromStep(step) {
+  const key = String(step?.step_key || step?.phase || step?.agent_name || 'phase').replace(/[._-]+/g, ' ').trim();
+  if (!key) return 'Phase';
+  return key
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function descFromStep(step) {
+  if (step?.agent_name) return `Handled by ${String(step.agent_name).replace(/_/g, ' ')}`;
+  if (step?.phase) return `Runtime phase: ${String(step.phase).replace(/_/g, ' ')}`;
+  return 'Runtime step created by orchestrator';
+}
+
+function toPhaseStatus(stepStatus) {
+  const value = String(stepStatus || '').toLowerCase();
+  if (value === 'completed') return 'completed';
+  if (value === 'failed' || value === 'error') return 'failed';
+  if (value === 'running' || value === 'in_progress' || value === 'queued') return 'active';
+  return 'pending';
 }
 
 function humanStatus(raw) {
   const value = String(raw || '').toLowerCase();
-  if (value === 'running' || value === 'planning' || value === 'queued' || value === 'in_progress') return 'In Progress';
+  if (value === 'running' || value === 'planning' || value === 'queued' || value === 'in_progress' || value === 'active') return 'In Progress';
   if (value === 'completed') return 'Completed';
   if (value === 'failed' || value === 'error') return 'Failed';
   if (value === 'deployed') return 'Deployed';
-  if (value === 'active') return 'In Progress';
+  if (value === 'waiting_input') return 'Waiting Input';
+  if (value === 'blocked') return 'Blocked';
   return 'Pending';
 }
 
 function timeOf(ts) {
-  return new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(typeof ts === 'number' ? ts : Date.now());
+  const parsed = typeof ts === 'number' ? ts : Date.parse(String(ts || ''));
+  const value = Number.isFinite(parsed) ? parsed : Date.now();
+  return new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' }).format(value);
 }
 
 function timeAgo(ts) {
   if (!ts) return 'now';
-  const diffMin = Math.max(0, Math.round((Date.now() - ts) / 60000));
+  const parsed = typeof ts === 'number' ? ts : Date.parse(String(ts));
+  if (!Number.isFinite(parsed)) return 'now';
+  const diffMin = Math.max(0, Math.round((Date.now() - parsed) / 60000));
   if (diffMin < 1) return 'now';
   if (diffMin < 60) return `${diffMin}m ago`;
   const diffHour = Math.round(diffMin / 60);
@@ -104,11 +121,19 @@ function timeAgo(ts) {
   return `${Math.round(diffHour / 24)}d ago`;
 }
 
-function PhaseCard({ phase, index, logs, onLogs, onDatabase, onFiles }) {
+function extractLogText(payload) {
+  if (!payload) return '';
+  if (typeof payload.message === 'string' && payload.message.trim()) return payload.message;
+  if (typeof payload.reason === 'string' && payload.reason.trim()) return payload.reason;
+  if (typeof payload.status === 'string' && payload.status.trim()) return payload.status;
+  return '';
+}
+
+function PhaseCard({ phase, index, open, onToggle, onLogs, onDatabase, onFiles }) {
   const icon = phase.status === 'completed'
     ? <CheckCircle2 size={18} />
     : phase.status === 'active'
-      ? <CircleDashed size={18} />
+      ? <ChevronsLeftRight size={18} />
       : <Circle size={18} />;
 
   return (
@@ -116,33 +141,41 @@ function PhaseCard({ phase, index, logs, onLogs, onDatabase, onFiles }) {
       <div className="workspace-phase__spine" />
       <div className="workspace-phase__icon">{icon}</div>
       <div className="workspace-phase__card">
-        <div className="workspace-phase__header">
+        <button type="button" className="workspace-phase__header" onClick={onToggle}>
           <div>
             <div className="workspace-phase__title">{index}. {phase.title}</div>
             <div className="workspace-phase__description">{phase.description}</div>
           </div>
           <div className="workspace-phase__meta">
             <span className={`workspace-phase__badge workspace-phase__badge--${phase.status}`}>{humanStatus(phase.status)}</span>
-            {phase.timestamp ? <span>{phase.timestamp}</span> : null}
-            <ChevronDown size={15} />
+            {phase.timestamp ? <span>{timeOf(phase.timestamp)}</span> : null}
+            <ChevronDown size={15} className={open ? 'workspace-phase__chevron-open' : ''} />
           </div>
-        </div>
+        </button>
 
-        {phase.status === 'active' ? (
+        {open ? (
           <div className="workspace-phase__details">
-            <ul className="workspace-phase__checklist">
-              <li><Circle size={10} /> Analyzing requirements...</li>
-              <li><Circle size={10} /> Designing multi-tenant schema...</li>
-              <li><Circle size={10} /> Creating 28 tables...</li>
-            </ul>
-            <div className="workspace-phase__logbox">
-              {logs.map((line) => (
-                <div key={line.id} className="workspace-phase__logline">
-                  <span>{timeOf(line.ts)}</span>
-                  <span>{line.text}</span>
-                </div>
-              ))}
-            </div>
+            {phase.substeps.length ? (
+              <ul className="workspace-phase__checklist">
+                {phase.substeps.slice(0, 4).map((substep) => (
+                  <li key={substep.id}><Circle size={10} /> {substep.label}</li>
+                ))}
+              </ul>
+            ) : null}
+
+            {phase.logs.length ? (
+              <div className="workspace-phase__logbox">
+                {phase.logs.slice(0, 8).map((line) => (
+                  <div key={line.id} className="workspace-phase__logline">
+                    <span>{timeOf(line.ts)}</span>
+                    <span>{line.text}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="workspace-phase__no-logs">No live logs yet for this phase.</div>
+            )}
+
             <div className="workspace-phase__actions">
               <button type="button" onClick={onLogs}><FileCode2 size={14} /> View Logs</button>
               <button type="button" onClick={onDatabase}><Database size={14} /> Open Database</button>
@@ -159,6 +192,8 @@ export default function ThreePaneWorkspace() {
   const navigate = useNavigate();
   const location = useLocation();
   const fileInputRef = useRef(null);
+  const messageRef = useRef([]);
+  const draggingRef = useRef(null);
   const { user, token } = useAuth() || {};
   const { tasks, addTask, updateTask } = useTaskStore();
 
@@ -177,12 +212,33 @@ export default function ThreePaneWorkspace() {
   const [attachmentName, setAttachmentName] = useState('');
   const [railCollapsed, setRailCollapsed] = useState(false);
   const [searchText, setSearchText] = useState('');
+  const [leftPane, setLeftPane] = useState(() => {
+    const raw = Number(localStorage.getItem('crucibai_workspace_left_width'));
+    return Number.isFinite(raw) ? clamp(raw, LEFT_MIN, LEFT_MAX) : 272;
+  });
+  const [rightPane, setRightPane] = useState(() => {
+    const raw = Number(localStorage.getItem('crucibai_workspace_right_width'));
+    return Number.isFinite(raw) ? clamp(raw, RIGHT_MIN, RIGHT_MAX) : 440;
+  });
+  const [openPhaseId, setOpenPhaseId] = useState(null);
 
   const { job, steps, events, proof, isConnected, error: streamError } = useJobStream(jobId, token);
 
   useEffect(() => {
+    messageRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
     if (!RIGHT_TABS.includes(activeTab)) setActiveTab('Preview');
   }, [activeTab]);
+
+  useEffect(() => {
+    localStorage.setItem('crucibai_workspace_left_width', String(leftPane));
+  }, [leftPane]);
+
+  useEffect(() => {
+    localStorage.setItem('crucibai_workspace_right_width', String(rightPane));
+  }, [rightPane]);
 
   useEffect(() => {
     const st = location?.state;
@@ -207,6 +263,36 @@ export default function ThreePaneWorkspace() {
       setMessages([{ role: 'user', text: fromStore.prompt, ts: fromStore.createdAt || Date.now() }]);
     }
   }, [location.search, tasks]);
+
+  useEffect(() => {
+    const onMove = (event) => {
+      if (!draggingRef.current) return;
+      if (draggingRef.current === 'left') {
+        setLeftPane(clamp(event.clientX, LEFT_MIN, LEFT_MAX));
+        return;
+      }
+      const nextRight = clamp(window.innerWidth - event.clientX, RIGHT_MIN, RIGHT_MAX);
+      setRightPane(nextRight);
+    };
+
+    const onUp = () => {
+      draggingRef.current = null;
+      document.body.classList.remove('workspace-resizing');
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, []);
+
+  const beginResize = (target) => {
+    if (window.innerWidth < 900) return;
+    draggingRef.current = target;
+    document.body.classList.add('workspace-resizing');
+  };
 
   const syncTask = useCallback((id, patch) => {
     if (!id) return;
@@ -236,12 +322,13 @@ export default function ThreePaneWorkspace() {
       navigate(`/app/workspace?taskId=${encodeURIComponent(nextTaskId)}`, { replace: true });
     }
 
-    setMessages((prev) => [...prev, userMessage]);
+    const nextMessages = [...messageRef.current, userMessage];
+    setMessages(nextMessages);
     syncTask(nextTaskId, {
       name: compactTitle(text),
       prompt: text,
       status: 'running',
-      messages: [...messages, userMessage],
+      messages: nextMessages,
     });
 
     setInput('');
@@ -260,14 +347,15 @@ export default function ThreePaneWorkspace() {
       setJobId(newJid);
       const assistant = {
         role: 'assistant',
-        text: `I'll build this in the same workspace thread and keep progress visible. Job ${newJid.slice(0, 8)} started.`,
+        text: `Plan ready (${newJid.slice(0, 8)}). Starting orchestrator...`,
         ts: Date.now(),
       };
-      setMessages((prev) => [...prev, assistant]);
+      const afterPlan = [...nextMessages, assistant];
+      setMessages(afterPlan);
       syncTask(nextTaskId, {
         jobId: newJid,
         status: 'running',
-        messages: [...messages, userMessage, assistant],
+        messages: afterPlan,
       });
 
       await axios.post(`${API}/orchestrator/run-auto`, { job_id: newJid }, { headers, timeout: 15000 });
@@ -275,12 +363,13 @@ export default function ThreePaneWorkspace() {
     } catch (err) {
       const detail = err?.response?.data?.detail || err?.message || 'Run failed';
       const fail = { role: 'assistant', text: `Could not start run: ${detail}`, ts: Date.now() };
-      setMessages((prev) => [...prev, fail]);
-      syncTask(nextTaskId, { status: 'failed', messages: [...messages, userMessage, fail] });
+      const failedMessages = [...nextMessages, fail];
+      setMessages(failedMessages);
+      syncTask(nextTaskId, { status: 'failed', messages: failedMessages });
     } finally {
       setRunning(false);
     }
-  }, [input, running, taskId, addTask, navigate, syncTask, messages, token, mode]);
+  }, [input, running, taskId, addTask, navigate, syncTask, token, mode]);
 
   const onRun = () => runGoal(input);
 
@@ -295,7 +384,7 @@ export default function ThreePaneWorkspace() {
     const selectedTask = tasks.find((task) => task.id === taskId);
     if (selectedTask?.name) return selectedTask.name;
     const firstUser = messages.find((message) => message.role === 'user');
-    return compactTitle(firstUser?.text || 'Build SaaS platform');
+    return compactTitle(firstUser?.text || 'Build workspace');
   }, [messages, taskId, tasks]);
 
   const currentStatus = useMemo(() => {
@@ -319,48 +408,73 @@ export default function ThreePaneWorkspace() {
         const haystack = `${task.name || ''} ${task.prompt || ''}`.toLowerCase();
         return haystack.includes(q);
       })
-      .slice(0, 6);
+      .slice(0, 8);
   }, [tasks, searchText]);
 
-  const eventLines = useMemo(() => {
-    if (events?.length) {
-      return events.slice(-5).map((event) => ({
-        id: event.id || `${event.event_type}-${event.created_at}`,
-        ts: event.created_at ? new Date(event.created_at).getTime() : Date.now(),
-        text: event.payload?.message || event.event_type || 'Processing event',
-      }));
-    }
-    if (jobId) {
-      return [
-        { id: 'l1', ts: Date.now(), text: 'Analyzing business requirements' },
-        { id: 'l2', ts: Date.now(), text: 'Identified 28 core entities' },
-        { id: 'l3', ts: Date.now(), text: 'Designing tenant isolation strategy' },
-        { id: 'l4', ts: Date.now(), text: 'Creating relationships and constraints' },
-        { id: 'l5', ts: Date.now(), text: 'Schema design 75% complete' },
-      ];
-    }
-    return [];
-  }, [events, jobId]);
-
   const phases = useMemo(() => {
-    const status = String(job?.status || '').toLowerCase();
-    return PHASES.map((phase, index) => {
-      let state = 'pending';
-      if (status === 'completed') state = 'completed';
-      else if (status === 'failed' || status === 'error') state = index <= 1 ? (index === 1 ? 'failed' : 'completed') : 'pending';
-      else if (jobId) state = index === 0 ? 'completed' : index === 1 ? 'active' : 'pending';
-      else if (messages.length) state = index === 0 ? 'active' : 'pending';
+    if (!jobId && !messages.length) return [];
+
+    const byStepId = new Map();
+    (events || []).forEach((event) => {
+      const sid = event.step_id;
+      if (!sid) return;
+      if (!byStepId.has(sid)) byStepId.set(sid, []);
+      byStepId.get(sid).push(event);
+    });
+
+    const normalized = (steps || []).map((step, index) => {
+      const stepEvents = byStepId.get(step.id) || [];
+      const logs = stepEvents
+        .map((event, i) => ({
+          id: `${event.id || event.event_type || 'event'}-${i}`,
+          ts: event.created_at || event.ts || Date.now(),
+          text: extractLogText(event.payload || {}) || event.event_type || 'event',
+        }))
+        .filter((line) => line.text);
+
+      const substeps = stepEvents
+        .filter((event) => ['step_started', 'step_retrying', 'step_completed', 'step_failed'].includes(String(event.event_type || '')))
+        .map((event, i) => ({
+          id: `${event.id || event.event_type || 'sub'}-${i}`,
+          label: extractLogText(event.payload || {}) || String(event.event_type || 'update').replace(/_/g, ' '),
+          status: String(event.event_type || 'pending').includes('failed') ? 'failed' : 'completed',
+        }));
 
       return {
-        ...phase,
-        status: state,
-        timestamp: index === 0 && (jobId || messages.length) ? timeOf(messages[0]?.ts || Date.now()) : null,
+        id: step.id || `step-${index}`,
+        title: titleFromStep(step),
+        description: descFromStep(step),
+        status: toPhaseStatus(step.status),
+        timestamp: step.started_at || step.created_at || null,
+        logs,
+        substeps,
       };
     });
-  }, [jobId, job?.status, messages]);
+
+    if (normalized.length) return normalized;
+
+    return [{
+      id: `job-${jobId || 'draft'}`,
+      title: titleFromStep({ step_key: job?.current_phase || 'planning' }),
+      description: 'Waiting for runtime steps from orchestrator...',
+      status: toPhaseStatus(job?.status || 'queued'),
+      timestamp: job?.started_at || job?.created_at || null,
+      logs: [],
+      substeps: [],
+    }];
+  }, [events, jobId, job, messages.length, steps]);
+
+  useEffect(() => {
+    const firstActive = phases.find((phase) => phase.status === 'active') || phases[0] || null;
+    if (!firstActive) {
+      setOpenPhaseId(null);
+      return;
+    }
+    setOpenPhaseId((prev) => prev || firstActive.id);
+  }, [phases]);
 
   const previewUrl = job?.preview_url || proof?.preview_url || null;
-  const addressValue = previewUrl || `https://preview.crucibai.app/${headerTitle.toLowerCase().replace(/\s+/g, '-')}`;
+  const addressValue = previewUrl || (jobId ? `https://preview.crucibai.app/${jobId}` : 'Start a build to generate preview URL');
 
   const openHistory = (item) => {
     setTaskId(item.id);
@@ -389,9 +503,7 @@ export default function ThreePaneWorkspace() {
   const onNav = (path) => {
     if (path.startsWith('#tab:')) {
       const nextTab = path.replace('#tab:', '').trim();
-      if (RIGHT_TABS.includes(nextTab)) {
-        setActiveTab(nextTab);
-      }
+      if (RIGHT_TABS.includes(nextTab)) setActiveTab(nextTab);
       return;
     }
     if (path === '/app/workspace') return;
@@ -399,9 +511,16 @@ export default function ThreePaneWorkspace() {
   };
 
   const isDeveloper = workspaceMode === 'developer';
+  const isEmptyWorkspace = !jobId && messages.length === 0;
 
   return (
-    <div className="workspace-shell" data-testid="crucib-three-pane-root">
+    <div
+      className="workspace-shell"
+      data-testid="crucib-three-pane-root"
+      style={{
+        gridTemplateColumns: `${railCollapsed ? 84 : leftPane}px 6px minmax(0,1fr)`,
+      }}
+    >
       <input
         ref={fileInputRef}
         className="workspace-hidden-input"
@@ -481,6 +600,10 @@ export default function ThreePaneWorkspace() {
         </div>
       </aside>
 
+      <div className="workspace-splitter" onMouseDown={() => beginResize('left')} aria-hidden>
+        <ChevronsLeftRight size={14} />
+      </div>
+
       <section className="workspace-canvas">
         <header className="workspace-header">
           <div className="workspace-header__title">
@@ -529,11 +652,11 @@ export default function ThreePaneWorkspace() {
           </div>
         </header>
 
-        <div className="workspace-grid">
+        <div className="workspace-grid" style={{ gridTemplateColumns: `minmax(0,1fr) 6px ${rightPane}px` }}>
           <div className="workspace-thread">
             <div className="workspace-thread__messages">
-              {messages.slice(0, 2).map((message, index) => (
-                <div key={`${message.role}-${index}`} className={`workspace-bubble workspace-bubble--${message.role}`}>
+              {messages.map((message, index) => (
+                <div key={`${message.role}-${index}-${message.ts || 'ts'}`} className={`workspace-bubble workspace-bubble--${message.role}`}>
                   <div className="workspace-bubble__avatar">{message.role === 'assistant' ? <Logo variant="mark" height={20} showTagline={false} /> : userInitial}</div>
                   <div className="workspace-bubble__content">
                     <p>{message.text}</p>
@@ -542,22 +665,30 @@ export default function ThreePaneWorkspace() {
                 </div>
               ))}
 
-              <div className="workspace-timeline">
-                {phases.map((phase, index) => (
-                  <PhaseCard
-                    key={phase.key}
-                    phase={phase}
-                    index={index + 1}
-                    logs={phase.key === 'schema' ? eventLines : []}
-                    onLogs={() => setActiveTab('Logs')}
-                    onDatabase={() => setActiveTab('Database')}
-                    onFiles={() => {
-                      setWorkspaceMode('developer');
-                      setActiveTab('Database');
-                    }}
-                  />
-                ))}
-              </div>
+              {isEmptyWorkspace ? (
+                <div className="workspace-empty-state">
+                  <h2>Start a build</h2>
+                  <p>Use the composer to create or resume a runtime project. Timeline phases will appear from live orchestrator state after the run starts.</p>
+                </div>
+              ) : (
+                <div className="workspace-timeline">
+                  {phases.map((phase, index) => (
+                    <PhaseCard
+                      key={phase.id}
+                      phase={phase}
+                      index={index + 1}
+                      open={openPhaseId === phase.id}
+                      onToggle={() => setOpenPhaseId((prev) => (prev === phase.id ? null : phase.id))}
+                      onLogs={() => setActiveTab('Logs')}
+                      onDatabase={() => setActiveTab('Database')}
+                      onFiles={() => {
+                        setWorkspaceMode('developer');
+                        setActiveTab('Files');
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="workspace-composer">
@@ -582,12 +713,17 @@ export default function ThreePaneWorkspace() {
             </div>
           </div>
 
+          <div className="workspace-splitter workspace-splitter--inner" onMouseDown={() => beginResize('right')} aria-hidden>
+            <ChevronsLeftRight size={14} />
+          </div>
+
           <aside className="workspace-inspector">
             <div className="workspace-tabs" role="tablist">
               {RIGHT_TABS.map((tab) => (
                 <button key={tab} type="button" className={activeTab === tab ? 'active' : ''} onClick={() => setActiveTab(tab)}>
                   {tab === 'Preview' ? <LayoutDashboard size={14} /> : null}
                   {tab === 'Proof' ? <CheckCircle2 size={14} /> : null}
+                  {tab === 'Files' ? <FileCode2 size={14} /> : null}
                   {tab === 'Database' ? <Database size={14} /> : null}
                   {tab === 'Deploy' ? <Rocket size={14} /> : null}
                   {tab === 'Logs' ? <FileCode2 size={14} /> : null}
@@ -625,21 +761,13 @@ export default function ThreePaneWorkspace() {
 
             {activeTab === 'Proof' ? (
               <div className="workspace-inspector__body workspace-inspector__body--plain">
-                <ProofPanel jobId={jobId} proof={proof} />
+                {jobId ? <ProofPanel jobId={jobId} proof={proof} /> : <div className="workspace-panel-empty">No proof yet. Start a run to generate evidence artifacts.</div>}
               </div>
             ) : null}
 
-            {activeTab === 'Database' ? (
+            {activeTab === 'Files' ? (
               <div className="workspace-inspector__body workspace-inspector__body--plain">
-                <div className="workspace-panel-card">
-                  <h3>Database artifacts</h3>
-                  <p>Schema, generated files, and database-related evidence for this run appear here.</p>
-                  <div className="workspace-panel-card__meta">
-                    <span>Connection: {isConnected ? 'Live' : 'Polling'}</span>
-                    <span>Mode: {isDeveloper ? 'Developer' : 'Builder'}</span>
-                  </div>
-                </div>
-                {isDeveloper && jobId ? (
+                {jobId ? (
                   <div className="workspace-file-surface">
                     <div className="workspace-file-surface__tree">
                       <WorkspaceFileTree
@@ -659,7 +787,31 @@ export default function ThreePaneWorkspace() {
                       />
                     </div>
                   </div>
-                ) : null}
+                ) : (
+                  <div className="workspace-panel-empty">Files appear here when the orchestrator creates artifacts.</div>
+                )}
+              </div>
+            ) : null}
+
+            {activeTab === 'Database' ? (
+              <div className="workspace-inspector__body workspace-inspector__body--plain">
+                <div className="workspace-panel-card">
+                  <h3>Database state</h3>
+                  <p>Connected to runtime project data. This panel reflects schema-related artifacts and log-derived status.</p>
+                  <div className="workspace-panel-card__meta">
+                    <span>Connection: {isConnected ? 'Stream' : jobId ? 'Polling' : 'Idle'}</span>
+                    <span>Mode: {isDeveloper ? 'Developer' : 'Builder'}</span>
+                  </div>
+                </div>
+                <div className="workspace-database-list">
+                  {(proof?.bundle?.database || []).slice(0, 8).map((item, index) => (
+                    <div key={`${item?.title || item?.kind || 'db'}-${index}`} className="workspace-db-item">
+                      <strong>{item?.title || item?.kind || 'Database artifact'}</strong>
+                      <span>{item?.summary || item?.path || 'Generated by runtime phase execution.'}</span>
+                    </div>
+                  ))}
+                  {!proof?.bundle?.database?.length ? <div className="workspace-panel-empty">No database artifacts yet for this run.</div> : null}
+                </div>
               </div>
             ) : null}
 
@@ -667,18 +819,24 @@ export default function ThreePaneWorkspace() {
               <div className="workspace-inspector__body workspace-inspector__body--plain">
                 <div className="workspace-panel-card">
                   <h3>Publish and deploy</h3>
-                  <p>Promote this build, inspect preview URLs, and open deployment logs from here.</p>
+                  <p>State is read from the active runtime job and deploy proof artifacts when available.</p>
                   <div className="workspace-panel-card__meta">
                     <span>Status: {currentStatus}</span>
                     <span>Job: {jobId || 'not started'}</span>
                   </div>
                 </div>
+                {(proof?.bundle?.deploy || []).slice(0, 6).map((item, index) => (
+                  <div key={`${item?.title || item?.kind || 'deploy'}-${index}`} className="workspace-db-item">
+                    <strong>{item?.title || item?.kind || 'Deploy artifact'}</strong>
+                    <span>{item?.summary || item?.path || 'Deploy metadata from proof bundle.'}</span>
+                  </div>
+                ))}
               </div>
             ) : null}
 
             {activeTab === 'Logs' ? (
               <div className="workspace-inspector__body workspace-inspector__body--plain">
-                <ExecutionTimeline job={job} steps={steps || []} events={events || []} />
+                {jobId ? <ExecutionTimeline job={job} steps={steps || []} events={events || []} /> : <div className="workspace-panel-empty">Runtime logs appear here once a run starts.</div>}
               </div>
             ) : null}
           </aside>
