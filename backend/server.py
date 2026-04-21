@@ -471,6 +471,12 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("routes.benchmarks_api", "router", True),
     # CF18 — Phase H closeout: unified preview-loop
     ("routes.preview_loop", "router", False),
+    # Wave 3 — Proof & Distribution (public benchmarks scorecard + git-backed changelog)
+    ("routes.public_benchmarks", "router", False),
+    ("routes.changelog", "router", False),
+    # Wave 5 — Growth & Ecosystem (marketplace listings + tenant API keys)
+    ("routes.marketplace", "router", False),
+    ("routes.api_keys", "router", False),
 ]
 
 ROUTE_REGISTRATION_REPORT: List[Dict[str, Any]] = []
