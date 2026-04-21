@@ -9,6 +9,7 @@ import {
   X, MoreHorizontal, ExternalLink, Pencil, Share2,
   Trash2, FolderInput, Star, Settings, Shield,
   PanelLeftClose, PanelLeftOpen, History, Home, BarChart3,
+  DollarSign, Stethoscope, Activity,
 } from 'lucide-react';
 import Logo from './Logo';
 import { useWorkspaceRail } from '../contexts/WorkspaceRailContext';
@@ -658,6 +659,14 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
           <Link to="/app/agents/dashboard" className={`sidebar-nav-item sidebar-nav-item--nested ${isActivePrefix('/app/agents/dashboard') ? 'active' : ''}`}>
             <Shield size={16} className="sidebar-nav-icon" />
             <span className="sidebar-nav-label">Agent Audit</span>
+          </Link>
+          <Link to="/app/cost" className={`sidebar-nav-item ${isActive('/app/cost') ? 'active' : ''}`}>
+            <DollarSign size={18} className="sidebar-nav-icon" />
+            <span className="sidebar-nav-label">Cost</span>
+          </Link>
+          <Link to="/app/doctor" className={`sidebar-nav-item ${isActive('/app/doctor') ? 'active' : ''}`}>
+            <Stethoscope size={18} className="sidebar-nav-icon" />
+            <span className="sidebar-nav-label">Doctor</span>
           </Link>
         </div>
         <div className="sidebar-nav-group-label">Library</div>

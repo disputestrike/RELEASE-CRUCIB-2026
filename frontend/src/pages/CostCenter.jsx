@@ -44,7 +44,7 @@ export default function CostCenter() {
   }, []);
 
   return (
-    <div data-testid="cost-center" style={{ padding: 24, color: "#e5e7eb" }}>
+    <div data-testid="cost-center" style={{ padding: 24, color: "var(--theme-text)" }}>
       <h1 style={{ fontSize: 24, marginBottom: 4 }}>Cost Center</h1>
       <div style={{ opacity: 0.7, marginBottom: 16 }}>
         Live cost usage across all runs. Auto-refreshes every 15s.
@@ -55,8 +55,8 @@ export default function CostCenter() {
           data-testid="cost-error"
           style={{
             padding: 12,
-            background: "#3f1d1d",
-            border: "1px solid #7f1d1d",
+            background: "var(--theme-surface2)",
+            border: "1px solid #ef4444",
             borderRadius: 6,
             marginBottom: 12,
           }}
@@ -95,15 +95,15 @@ export default function CostCenter() {
       <h2 style={{ fontSize: 18, marginBottom: 8 }}>Per-run breakdown</h2>
       <div
         style={{
-          background: "#0b0f17",
-          border: "1px solid #1f2937",
+          background: "var(--theme-surface)",
+          border: "1px solid var(--theme-border)",
           borderRadius: 6,
           overflow: "hidden",
           marginBottom: 24,
         }}
       >
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-          <thead style={{ background: "#111827" }}>
+          <thead style={{ background: "var(--theme-surface2)" }}>
             <tr>
               <Th>Run ID</Th>
               <Th>Model</Th>
@@ -122,7 +122,7 @@ export default function CostCenter() {
               </tr>
             )}
             {(totals?.runs_detail || []).map((r) => (
-              <tr key={r.run_id} style={{ borderTop: "1px solid #1f2937" }}>
+              <tr key={r.run_id} style={{ borderTop: "1px solid var(--theme-border)" }}>
                 <Td mono>{r.run_id}</Td>
                 <Td>{r.model || "-"}</Td>
                 <Td>{r.turns || 0}</Td>
@@ -138,14 +138,14 @@ export default function CostCenter() {
       <h2 style={{ fontSize: 18, marginBottom: 8 }}>Pricing table</h2>
       <div
         style={{
-          background: "#0b0f17",
-          border: "1px solid #1f2937",
+          background: "var(--theme-surface)",
+          border: "1px solid var(--theme-border)",
           borderRadius: 6,
           overflow: "hidden",
         }}
       >
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-          <thead style={{ background: "#111827" }}>
+          <thead style={{ background: "var(--theme-surface2)" }}>
             <tr>
               <Th>Model</Th>
               <Th>Input ($/1M)</Th>
@@ -155,7 +155,7 @@ export default function CostCenter() {
           <tbody>
             {pricing &&
               Object.entries(pricing.pricing || {}).map(([model, p]) => (
-                <tr key={model} style={{ borderTop: "1px solid #1f2937" }}>
+                <tr key={model} style={{ borderTop: "1px solid var(--theme-border)" }}>
                   <Td mono>{model}</Td>
                   <Td>${Number(p.input).toFixed(2)}</Td>
                   <Td>${Number(p.output).toFixed(2)}</Td>
@@ -173,8 +173,8 @@ function Card({ label, value }) {
     <div
       style={{
         padding: 16,
-        background: "#0b0f17",
-        border: "1px solid #1f2937",
+        background: "var(--theme-surface)",
+        border: "1px solid var(--theme-border)",
         borderRadius: 6,
       }}
     >

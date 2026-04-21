@@ -113,25 +113,11 @@ export default function ThreePaneWorkspace() {
 
   return (
     <div className="tp-root" data-testid="crucib-three-pane-root" data-mobile-view={mobileView}>
-      {/* LEFT — nav */}
-      <aside className="tp-left" data-collapsed={collapsed}>
-        <div className="tp-left__header">
-          <span>CrucibAI</span>
-          <button type="button" className="tp-collapse-btn" onClick={() => setCollapsed((c) => !c)} aria-label="Collapse nav">
-            {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-          </button>
-        </div>
-        <nav className="tp-left__nav">
-          {visibleNav.map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={to} end className={({ isActive }) => `tp-nav-item${isActive ? ' active' : ''}`}>
-              <Icon />
-              <span>{label}</span>
-            </NavLink>
-          ))}
-        </nav>
-        <div className="tp-left__footer">
-          <div style={{ marginBottom: 8, color: '#71717a' }}>View</div>
-          <div className="tp-mode-toggle" role="tablist" aria-label="Workspace view mode">
+      {/* MIDDLE — chat */}
+      <section className="tp-mid" role="main">
+        <div className="tp-mid__header">
+          <div className="tp-mid__title">Thread</div>
+          <div className="tp-mode-toggle" role="tablist" aria-label="Workspace view mode" style={{ marginLeft: 12 }}>
             <button
               type="button"
               className={`tp-mode-btn${isDev ? ' active' : ''}`}
@@ -145,13 +131,6 @@ export default function ThreePaneWorkspace() {
               data-testid="tp-mode-simple"
             >Builder</button>
           </div>
-        </div>
-      </aside>
-
-      {/* MIDDLE — chat */}
-      <section className="tp-mid" role="main">
-        <div className="tp-mid__header">
-          <div className="tp-mid__title">Thread</div>
           <select
             className="tp-mid__mode-select"
             value={mode}

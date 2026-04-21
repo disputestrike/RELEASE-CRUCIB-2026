@@ -30,6 +30,7 @@ import OurProjectsPage from "./pages/OurProjectsPage";
 import AuthPage from "./pages/AuthPage";
 import ProjectBuilder from "./pages/ProjectBuilder";
 import DashboardVNext from "./pages/DashboardVNext";
+import Dashboard from "./pages/Dashboard";
 import AgentMonitor from "./pages/AgentMonitor";
 import TokenCenter from "./pages/TokenCenter";
 import ExportCenter from "./pages/ExportCenter";
@@ -491,12 +492,13 @@ function App() {
           <Route path="/app/workspace-manus" element={<RedirectWorkspaceAliasToCanonical />} />
           <Route path="/app/workspace-classic" element={<RedirectWorkspaceAliasToCanonical />} />
           <Route path="/app" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-            <Route index element={<RedirectAppIndexToWorkspace />} />
+            <Route index element={<Dashboard />} />
             <Route path="builder" element={<Navigate to="/app/workspace" replace />} />
             <Route path="workspace" element={<CanonicalWorkspace />} />
             <Route path="workspace-v3" element={WorkspaceV3Shell ? <WorkspaceV3Shell /> : <WorkspaceVNext />} />
             <Route path="workspace-legacy" element={<WorkspaceVNext />} />
-            <Route path="dashboard" element={<DashboardVNext />} />
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="pulse" element={<DashboardVNext />} />
             <Route path="live" element={<MonitoringDashboard />} />
             <Route path="projects/new" element={<ProjectBuilder />} />
             <Route path="projects/:id" element={<AgentMonitor />} />

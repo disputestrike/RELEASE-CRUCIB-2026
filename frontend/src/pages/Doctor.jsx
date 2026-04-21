@@ -41,7 +41,7 @@ export default function Doctor() {
   const failCount = checks.filter((c) => c.status === "fail").length;
 
   return (
-    <div data-testid="doctor-page" style={{ padding: 24, color: "#e5e7eb" }}>
+    <div data-testid="doctor-page" style={{ padding: 24, color: "var(--theme-text)" }}>
       <div
         style={{
           display: "flex",
@@ -57,7 +57,7 @@ export default function Doctor() {
           disabled={loading}
           style={{
             padding: "6px 12px",
-            background: "#1e3a8a",
+            background: "var(--theme-accent)",
             border: "1px solid #2563eb",
             borderRadius: 4,
             color: "white",
@@ -78,8 +78,8 @@ export default function Doctor() {
           data-testid="doctor-error"
           style={{
             padding: 12,
-            background: "#3f1d1d",
-            border: "1px solid #7f1d1d",
+            background: "var(--theme-surface2)",
+            border: "1px solid #ef4444",
             borderRadius: 6,
             marginBottom: 12,
           }}
@@ -105,8 +105,8 @@ export default function Doctor() {
 
       <div
         style={{
-          background: "#0b0f17",
-          border: "1px solid #1f2937",
+          background: "var(--theme-surface)",
+          border: "1px solid var(--theme-border)",
           borderRadius: 6,
           overflow: "hidden",
         }}
@@ -125,7 +125,7 @@ export default function Doctor() {
               gridTemplateColumns: "100px 220px 1fr",
               alignItems: "center",
               padding: "10px 12px",
-              borderTop: i === 0 ? "none" : "1px solid #1f2937",
+              borderTop: i === 0 ? "none" : "1px solid var(--theme-border)",
               gap: 12,
             }}
           >
@@ -146,8 +146,8 @@ function Card({ label, value, color }) {
     <div
       style={{
         padding: 16,
-        background: "#0b0f17",
-        border: `1px solid ${color || "#1f2937"}`,
+        background: "var(--theme-surface)",
+        border: `1px solid ${color || "var(--theme-border)"}`,
         borderRadius: 6,
       }}
     >
@@ -161,9 +161,9 @@ function Badge({ status }) {
   const map = {
     ok: { bg: "#064e3b", fg: "#6ee7b7", label: "OK" },
     warn: { bg: "#78350f", fg: "#fbbf24", label: "WARN" },
-    fail: { bg: "#7f1d1d", fg: "#fca5a5", label: "FAIL" },
+    fail: { bg: "#ef4444", fg: "#fca5a5", label: "FAIL" },
   };
-  const s = map[status] || { bg: "#1f2937", fg: "#cbd5e1", label: status || "?" };
+  const s = map[status] || { bg: "var(--theme-border)", fg: "#cbd5e1", label: status || "?" };
   return (
     <span
       style={{
