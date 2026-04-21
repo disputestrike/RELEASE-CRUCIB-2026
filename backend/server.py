@@ -479,6 +479,13 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("routes.api_keys", "router", False),
     # CF26 — mobile build API
     ("routes.mobile_build", "router", False),
+    # CF27 — audit imports: cost + doctor + autofix-pr + commit-push-pr + voice + compact
+    ("routes.cost_hook", "router", False),
+    ("routes.doctor", "router", False),
+    ("routes.autofix_pr", "router", False),
+    ("routes.commit_push_pr", "router", False),
+    ("routes.voice_input", "router", False),
+    ("routes.compact_command", "router", False),
 ]
 
 ROUTE_REGISTRATION_REPORT: List[Dict[str, Any]] = []
