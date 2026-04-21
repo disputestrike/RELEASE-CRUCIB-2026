@@ -22,7 +22,6 @@ class RuntimeStateAdapter:
         self._pool = None
 
     def set_pool(self, pool: Any) -> None:
-        # Compatibility no-op for modules that still call set_pool().
         self._pool = pool
 
     async def ensure_job_fk_prerequisites(self, project_id: str, user_id: Optional[str]) -> None:
@@ -47,7 +46,9 @@ class RuntimeStateAdapter:
                 "source": "runtime_state.create_job",
             },
         )
-        return self._job_view(task)
+        job = self._job_view(task)
+        await self._upsert_job_row(job)
+        return job
 
     async def get_job(self, job_id: str) -> Optional[Dict[str, Any]]:
         project_id = self._find_project_for_job(job_id)
@@ -82,8 +83,10 @@ class RuntimeStateAdapter:
         task = task_manager.update_task(project_id, job_id, status=status, metadata=extra or {})
         if not task:
             return None
+        job = self._job_view(task)
+        await self._upsert_job_row(job, extra or {})
         await self.append_job_event(job_id, "job_status_changed", {"status": status, **(extra or {})})
-        return self._job_view(task)
+        return job
 
     async def create_step(
         self,
@@ -304,6 +307,47 @@ class RuntimeStateAdapter:
 
     def _save_checkpoints(self, job_id: str, data: Dict[str, Any]) -> None:
         self._save_json(self._job_dir(job_id) / "checkpoints.json", data)
+
+    async def _upsert_job_row(
+        self,
+        job: Dict[str, Any],
+        extra: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        if self._pool is None:
+            return
+        payload = dict(job)
+        if extra:
+            payload.update(extra)
+        async with self._pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO jobs (
+                    id, project_id, user_id, status, mode, goal,
+                    current_phase, error_message, failure_reason,
+                    created_at, updated_at
+                )
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW(),NOW())
+                ON CONFLICT (id) DO UPDATE SET
+                    project_id = EXCLUDED.project_id,
+                    user_id = EXCLUDED.user_id,
+                    status = EXCLUDED.status,
+                    mode = EXCLUDED.mode,
+                    goal = EXCLUDED.goal,
+                    current_phase = COALESCE(EXCLUDED.current_phase, jobs.current_phase),
+                    error_message = COALESCE(EXCLUDED.error_message, jobs.error_message),
+                    failure_reason = COALESCE(EXCLUDED.failure_reason, jobs.failure_reason),
+                    updated_at = NOW()
+                """,
+                str(payload.get("id") or ""),
+                str(payload.get("project_id") or ""),
+                payload.get("user_id"),
+                str(payload.get("status") or "planned"),
+                str(payload.get("mode") or "guided"),
+                str(payload.get("goal") or ""),
+                payload.get("current_phase"),
+                payload.get("error_message"),
+                payload.get("failure_reason"),
+            )
 
 
 runtime_state = RuntimeStateAdapter()

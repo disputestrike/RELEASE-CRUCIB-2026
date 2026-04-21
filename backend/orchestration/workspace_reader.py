@@ -162,6 +162,7 @@ ROOT_CAUSE_GRAPH = {
         ("src/App.jsx", "jsx_syntax", "regenerate_frontend"),
         ("server.py", "python_syntax", "regenerate_backend"),
         ("src/main.jsx", "jsx_syntax", "regenerate_entry_point"),
+        ("vite.config.js", "text_exists", "fix_vite_config"),
     ],
     "verification.security": [
         ("server.py", "python_syntax", "regenerate_backend"),

@@ -11,7 +11,7 @@ from typing import List
 
 # esbuild: "esbuild failed src/App.jsx: ..."
 _RE_ESBUILD = re.compile(
-    r"esbuild failed\s+([^\s:]+\.(?:jsx?|tsx?))\s*:", re.IGNORECASE
+    r"esbuild failed\s+([^\s:]+\.(?:jsx?|tsx?|m?js|cjs))\s*:", re.IGNORECASE
 )
 # Prose: "Prose preamble detected in rel: ..."
 _RE_PROSE = re.compile(

@@ -83,6 +83,14 @@ async def store_proof(
     async with _pool.acquire() as conn:
         await conn.execute(
             """
+            INSERT INTO jobs (id)
+            VALUES ($1)
+            ON CONFLICT (id) DO NOTHING
+            """,
+            job_id,
+        )
+        await conn.execute(
+            """
             INSERT INTO proof_items (id, job_id, step_id, proof_type, title,
                                      payload_json, created_at)
             VALUES ($1,$2,$3,$4,$5,$6,$7)

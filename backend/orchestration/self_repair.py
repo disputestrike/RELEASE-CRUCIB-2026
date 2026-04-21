@@ -58,6 +58,12 @@ PROSE_PREFIXES = (
     "we have",
 )
 
+_VALID_VITE_MARKERS = (
+    "defineconfig",
+    "export default",
+    "@vitejs/plugin-react",
+)
+
 
 def _safe_write(workspace_path: str, rel_path: str, content: str) -> bool:
     if not workspace_path:
@@ -315,8 +321,9 @@ export default function App() {
 
 def repair_vite_config(workspace_path: str) -> Dict[str, Any]:
     content = _read_safe(workspace_path, "vite.config.js")
-    if content and "react" in content.lower():
-        return {"fixed": False, "reason": "vite.config.js already exists"}
+    normalized = (content or "").lower()
+    if content and all(marker in normalized for marker in _VALID_VITE_MARKERS):
+        return {"fixed": False, "reason": "vite.config.js already valid"}
     _safe_write(
         workspace_path,
         "vite.config.js",
@@ -326,10 +333,15 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   build: { outDir: 'dist' },
+  server: { port: 3000 },
 });
 """,
     )
-    return {"fixed": True, "file": "vite.config.js", "action": "created_minimal"}
+    return {
+        "fixed": True,
+        "file": "vite.config.js",
+        "action": "replaced_invalid" if content else "created_minimal",
+    }
 
 
 def repair_index_html(workspace_path: str) -> Dict[str, Any]:
