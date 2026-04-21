@@ -137,9 +137,9 @@ export function useJobStream(jobId, token) {
   }, [jobId, token]);
 
   const fetchJobState = useCallback(async () => {
-    if (!jobId) return;
+    if (!jobId || !token) return;
     try {
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const headers = { Authorization: `Bearer ${token}` };
       const [jobRes, stepsRes, eventsRes, proofRes] = await Promise.allSettled([
         axios.get(`${API_BASE}/jobs/${jobId}`, { headers }),
         axios.get(`${API_BASE}/jobs/${jobId}/steps`, { headers }),
@@ -177,7 +177,7 @@ export function useJobStream(jobId, token) {
   }, [jobId, token, fetchCheckpoints]);
 
   useEffect(() => {
-    if (!jobId) {
+    if (!jobId || !token) {
       setProof(null);
       setJob(null);
       setSteps([]);
@@ -185,6 +185,8 @@ export function useJobStream(jobId, token) {
       setMilestoneBatch(null);
       setRepairQueueLen(0);
       setConnectionMode('offline');
+      setIsConnected(false);
+      setError(null);
       return undefined;
     }
     setProof(null);
@@ -215,7 +217,7 @@ export function useJobStream(jobId, token) {
       try {
         const headers = {
           Accept: 'text/event-stream',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Authorization: `Bearer ${token}`,
         };
         const res = await fetch(url, { headers, signal: ac.signal });
         if (!res.ok) {

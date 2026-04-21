@@ -23,6 +23,10 @@ from services.job_service import (
     list_jobs_service,
     update_job_service,
 )
+from services.job_event_service import (
+    get_job_steps_service,
+    get_job_events_service,
+)
 from pydantic import BaseModel
 from deps import get_current_user
 
@@ -73,6 +77,12 @@ async def _resolve_job(job_id: str, user: dict) -> dict:
     if not owner or not uid or owner != uid:
         raise HTTPException(status_code=403, detail="Not your job")
     return job
+
+
+def _assert_owner(owner_id: Optional[str], user: Optional[dict]) -> None:
+    uid = (user or {}).get("id")
+    if not owner_id or not uid or owner_id != uid:
+        raise HTTPException(status_code=403, detail="Not your job")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -170,6 +180,50 @@ async def get_job(
     except HTTPException:
         raise
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{job_id}/steps")
+async def get_job_steps(
+    job_id: str,
+    user: dict = Depends(_get_auth()),
+):
+    """Get persisted execution steps for a job (owner-scoped)."""
+    try:
+        return await get_job_steps_service(
+            job_id=job_id,
+            user=user,
+            runtime_state_getter=_get_runtime_state,
+            pool_getter=_get_pool,
+            assert_owner=_assert_owner,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("GET /api/jobs/%s/steps error", job_id)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{job_id}/events")
+async def get_job_events(
+    job_id: str,
+    since_id: Optional[str] = None,
+    user: dict = Depends(_get_auth()),
+):
+    """Get persisted event stream for a job (owner-scoped)."""
+    try:
+        return await get_job_events_service(
+            job_id=job_id,
+            user=user,
+            since_id=since_id,
+            runtime_state_getter=_get_runtime_state,
+            pool_getter=_get_pool,
+            assert_owner=_assert_owner,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("GET /api/jobs/%s/events error", job_id)
         raise HTTPException(status_code=500, detail=str(e))
 
 
