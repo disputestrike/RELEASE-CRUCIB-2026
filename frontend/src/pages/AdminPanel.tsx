@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { FEATURE_FLAGS } from '../config/featureFlags';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -324,7 +325,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ isAdmin = true }) => {
                 <CardDescription>Payment and subscription management</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">Revenue analytics coming soon...</p>
+                {/* behind-flag: revenue dashboard requires Stripe webhook integration (Wave 5) */}
+                {FEATURE_FLAGS.revenueAnalytics ? (
+                  <p className="text-muted-foreground">Revenue analytics dashboard</p>
+                ) : (
+                  <p className="text-muted-foreground text-sm">
+                    Revenue analytics will be available once Stripe webhooks are connected.
+                    Contact your account manager to enable billing data ingestion.
+                  </p>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
