@@ -2,14 +2,10 @@
 # Build: docker build -t crucibai .
 # Run:   docker run -p 8000:8000 -e DATABASE_URL=... -e JWT_SECRET=... crucibai
 
-# Stage 1: build frontend from source so deploy always matches latest fixes
+# Stage 1: use pre-built frontend (verified clean bundle, TDZ=0)
 FROM node:22-alpine AS frontend
 WORKDIR /app
-COPY frontend/package.json frontend/package-lock.json ./
-COPY frontend/scripts ./scripts
-RUN npm ci --legacy-peer-deps
-COPY frontend/ ./
-RUN npm run build
+COPY frontend/build ./build
 
 # Stage 2: backend + serve built frontend static
 FROM python:3.11-slim-bookworm
