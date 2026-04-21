@@ -465,6 +465,10 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     # Phase-1 corrective action (CF4 + CF5)
     ("routes.images", "router", False),
     ("routes.migration", "router", False),
+    # Wave 2 corrective action (CF11 onboard + CF12 deploy + CF13 community + CF14 mobile + CF15 benchmarks + CF16 migration map)
+    ("routes.onboard", "router", False),
+    ("routes.deploy_unified", "router", False),
+    ("routes.benchmarks_api", "router", True),
 ]
 
 ROUTE_REGISTRATION_REPORT: List[Dict[str, Any]] = []
