@@ -448,20 +448,43 @@ class RuntimeEngine:
                 "phase": ExecutionPhase.DECIDE.value
             })
             
-            # Call brain layer via existing infrastructure
+            # CF19 — call brain.decide for a real planner verdict instead of
+            # returning a hardcoded default.  Falls back gracefully if the
+            # brain layer cannot be constructed or errors out.
             brain = self._brain_factory()
-            # For now, use existing brain.decide pattern
-            # TODO: Unify with new decision model
-            
-            duration_ms = (time.time() - start_time) * 1000
-            
-            decision = {
+            session_obj = getattr(context, "session", None)
+            if session_obj is None:
+                try:
+                    session_id = getattr(context, "session_id", None) or task_id
+                    user_id = getattr(context, "user_id", None) or "runtime"
+                    session_obj = ConversationSession(session_id=session_id, user_id=user_id)
+                except Exception:
+                    session_obj = None
+
+            decision: Dict[str, Any] = {
                 "action": "default",
                 "skill": "default",
                 "confidence": 1.0,
                 "continue": False,
                 "spawn": False,
             }
+            try:
+                if brain is not None and session_obj is not None:
+                    raw = brain.decide(session_obj, request or "")
+                    if isinstance(raw, dict) and raw:
+                        # normalize the shape expected by _phase_resolve_skill
+                        decision = {
+                            "action": raw.get("action") or raw.get("intent") or "default",
+                            "skill": raw.get("skill") or raw.get("selected_skill") or "default",
+                            "confidence": float(raw.get("confidence", 1.0) or 1.0),
+                            "continue": bool(raw.get("continue", False)),
+                            "spawn": bool(raw.get("spawn", False)),
+                            "raw": raw,
+                        }
+            except Exception as _brain_exc:  # pragma: no cover — defensive
+                logger.warning("brain.decide failed (falling back to default): %s", _brain_exc)
+
+            duration_ms = (time.time() - start_time) * 1000
             
             event_bus.emit("phase_end", {
                 "task_id": task_id,
