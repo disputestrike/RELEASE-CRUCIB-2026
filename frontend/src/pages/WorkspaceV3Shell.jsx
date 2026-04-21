@@ -523,32 +523,113 @@ function SourcesList({ sources }) {
 
 // ─── Tab content panels ───────────────────────────────────────────────────────
 
-function MigrationMapTab({ migrationPlan }) {
-  if (!migrationPlan) return (
-    <div className="v3-migration-empty">
-      <p>No migration in progress.</p>
-      <p className="v3-rail-hint">Start a migration run to see the file action map here.</p>
-    </div>
-  );
-  const actions = migrationPlan.file_actions || [];
+function MigrationMapTab({ migrationPlan, migrationId }) {
+  // CF16 — Real migration map. If a migrationId is provided, fetch /api/migrations/{id}/file-map
+  // for the server-authoritative action list; otherwise fall back to the in-memory plan.
+  const [fetched, setFetched] = useState(null);
+  const [error, setError] = useState(null);
+  const [filter, setFilter] = useState('all');
+  const [query, setQuery] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function pull() {
+      if (!migrationId) { setFetched(null); return; }
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/migrations/${migrationId}/file-map`, { credentials: 'include' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!cancelled) setFetched(data);
+      } catch (err) {
+        if (!cancelled) setError(String(err));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    pull();
+    return () => { cancelled = true; };
+  }, [migrationId]);
+
+  const plan = fetched || migrationPlan;
+
+  if (!plan) {
+    return (
+      <div className="v3-migration-empty">
+        <p>No migration in progress.</p>
+        <p className="v3-rail-hint">Start a migration run to see the file action map here.</p>
+      </div>
+    );
+  }
+
+  const rawActions = plan.file_actions || plan.actions || [];
+  const actionTypes = Array.from(new Set(rawActions.map(a => a.action))).sort();
+  const totals = rawActions.reduce((acc, a) => {
+    acc[a.action] = (acc[a.action] || 0) + 1;
+    return acc;
+  }, {});
+
+  const q = query.trim().toLowerCase();
+  const filtered = rawActions.filter(a => {
+    if (filter !== 'all' && a.action !== filter) return false;
+    if (!q) return true;
+    const src = (a.source_path || '').toLowerCase();
+    const tgt = (a.target_path || '').toLowerCase();
+    return src.includes(q) || tgt.includes(q);
+  });
+
   return (
     <div className="v3-migration-map">
-      <h3>{migrationPlan.strategy} — {actions.length} file actions</h3>
-      <p className="v3-migration-summary">{migrationPlan.summary}</p>
+      <div className="v3-migration-header">
+        <h3>
+          {plan.strategy || 'Migration'} — {rawActions.length} file action{rawActions.length === 1 ? '' : 's'}
+          {loading && <span className="v3-rail-hint"> · loading…</span>}
+        </h3>
+        {plan.summary && <p className="v3-migration-summary">{plan.summary}</p>}
+        {error && <p className="v3-migration-error">File-map fetch failed: {error}</p>}
+        <div className="v3-migration-counts">
+          {actionTypes.map(t => (
+            <span key={t} className={`v3-migration-chip v3-migration-chip--${t}`}>
+              {t}: {totals[t]}
+            </span>
+          ))}
+        </div>
+        <div className="v3-migration-controls">
+          <select value={filter} onChange={(e) => setFilter(e.target.value)}>
+            <option value="all">All actions ({rawActions.length})</option>
+            {actionTypes.map(t => (
+              <option key={t} value={t}>{t} ({totals[t]})</option>
+            ))}
+          </select>
+          <input
+            type="search"
+            placeholder="Filter by path…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <span className="v3-rail-hint">{filtered.length} shown</span>
+        </div>
+      </div>
       <table className="v3-migration-table">
         <thead>
-          <tr><th>Source</th><th>Action</th><th>Target</th></tr>
+          <tr><th>Source</th><th>Action</th><th>Target</th><th>Reason</th></tr>
         </thead>
         <tbody>
-          {actions.slice(0, 100).map((a, i) => (
-            <tr key={i}>
-              <td className="v3-migration-path">{a.source_path}</td>
+          {filtered.slice(0, 500).map((a, i) => (
+            <tr key={`${a.source_path}-${i}`}>
+              <td className="v3-migration-path">{a.source_path || '—'}</td>
               <td className={`v3-migration-action v3-migration-action--${a.action}`}>{a.action}</td>
               <td className="v3-migration-path">{a.target_path || '—'}</td>
+              <td className="v3-migration-reason">{a.reason || a.notes || ''}</td>
             </tr>
           ))}
         </tbody>
       </table>
+      {filtered.length > 500 && (
+        <p className="v3-rail-hint">Showing first 500 of {filtered.length}. Use filters to narrow.</p>
+      )}
     </div>
   );
 }
@@ -588,6 +669,7 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
   const [sources, setSources] = useState([]);
   const [plan, setPlan] = useState(null);
   const [migrationPlan, setMigrationPlan] = useState(null);
+  const [migrationId, setMigrationId] = useState(null);
   const [resumeState, setResumeState] = useState(null);
   const [trust, setTrust] = useState(null);
   const [approvals, setApprovals] = useState([]);
@@ -896,6 +978,27 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
 
     setLoading(true);
     try {
+      // CF16: create a real migration plan so the Migration Map tab can fetch /file-map
+      let planId = null;
+      try {
+        const planRes = await fetch('/api/migrations/plan', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source_path: source, target_path: target, strategy }),
+        });
+        if (planRes.ok) {
+          const plan = await planRes.json();
+          planId = plan.migration_id || plan.id || null;
+          if (planId) setMigrationId(planId);
+          if (plan.plan) setMigrationPlan(plan.plan);
+          else setMigrationPlan(plan);
+        }
+      } catch (planErr) {
+        // non-fatal: still run the agent-loop migration
+        console.warn('migration plan create failed', planErr);
+      }
+
       const res = await fetch('/api/agent-loop/run', {
         method: 'POST',
         credentials: 'include',
@@ -904,6 +1007,7 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
           goal: `Migrate codebase from ${source} to ${target} using ${strategy} strategy`,
           mode: 'migration',
           thread_id: threadId,
+          migration_id: planId,
         }),
       });
       const data = await res.json();
@@ -1035,7 +1139,7 @@ export default function WorkspaceV3Shell({ surface = 'build' }) {
               </div>
             )}
             {activeTab === 'logs' && <LogsTab logs={logs} />}
-            {activeTab === 'migration' && <MigrationMapTab migrationPlan={migrationPlan} />}
+            {activeTab === 'migration' && <MigrationMapTab migrationPlan={migrationPlan} migrationId={migrationId} />}
           </div>
         </div>
 
