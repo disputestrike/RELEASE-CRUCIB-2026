@@ -24,6 +24,7 @@ from services.job_service import (
     update_job_service,
 )
 from pydantic import BaseModel
+from deps import get_current_user
 
 logger = logging.getLogger(__name__)
 

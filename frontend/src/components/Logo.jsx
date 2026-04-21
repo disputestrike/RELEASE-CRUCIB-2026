@@ -3,10 +3,10 @@ import { Link } from 'react-router-dom';
 
 /**
  * Logo — Your icon + "CrucibAI — Inevitable AI" (or name only when showTagline=false).
- * Uses your logo image from public/logo-icon.png when present; otherwise shows
+ * Uses your logo image from public/logo.png when present; otherwise shows
  * an inline version of your icon (dark rounded square with 2×2 grid).
  */
-const LOGO_ICON = '/logo-icon.png';
+const LOGO_ICON = '/logo.png';
 
 /** Your icon: dark rounded square with 2×2 grid of white squares (shows when image missing) */
 function YourIconSvg({ size }) {
