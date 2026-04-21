@@ -70,7 +70,21 @@ async def _assert_job_access(job_id: str, user: dict) -> Path:
         from db_pg import get_pg_pool
         from server import _assert_job_owner_match, _get_orchestration
 
-        runtime_state, *_ = _get_orchestration()
+        runtime_state = None
+        try:
+            orchestration_obj = _get_orchestration()
+            if isinstance(orchestration_obj, tuple):
+                runtime_state = orchestration_obj[0] if orchestration_obj else None
+            elif orchestration_obj is not None:
+                runtime_state = orchestration_obj
+        except Exception:
+            runtime_state = None
+
+        if runtime_state is None:
+            from orchestration import runtime_state as _runtime_state
+
+            runtime_state = _runtime_state
+
         pool = await get_pg_pool()
         runtime_state.set_pool(pool)
         job = await runtime_state.get_job(job_id)

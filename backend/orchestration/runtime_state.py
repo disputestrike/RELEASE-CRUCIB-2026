@@ -169,20 +169,33 @@ class RuntimeStateAdapter:
                 return step
         return None
 
-    async def append_job_event(self, job_id: str, event_type: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    async def append_job_event(
+        self,
+        job_id: str,
+        event_type: str,
+        payload: Optional[Dict[str, Any]] = None,
+        **kwargs: Any,
+    ) -> Dict[str, Any]:
+        event_payload: Dict[str, Any] = {}
+        if isinstance(payload, dict):
+            event_payload.update(payload)
+        elif payload is not None:
+            event_payload["value"] = payload
+        if kwargs:
+            event_payload.update(kwargs)
         rows = self._load_events(job_id)
         event = {
             "id": f"evt_{uuid.uuid4().hex[:12]}",
             "job_id": job_id,
             "event_type": event_type,
-            "payload_json": json.dumps(payload or {}, ensure_ascii=True),
+            "payload_json": json.dumps(event_payload, ensure_ascii=True),
             "created_at": time.time(),
         }
         rows.append(event)
         if len(rows) > 5000:
             rows = rows[-5000:]
         self._save_events(job_id, rows)
-        event_bus.emit(event_type, {"job_id": job_id, **(payload or {})})
+        event_bus.emit(event_type, {"job_id": job_id, **event_payload})
         return dict(event)
 
     async def get_job_events(
@@ -351,8 +364,13 @@ async def update_step_state(step_id: str, status: str, extra: Optional[Dict[str,
     return await runtime_state.update_step_state(step_id, status, extra=extra)
 
 
-async def append_job_event(job_id: str, event_type: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-    return await runtime_state.append_job_event(job_id, event_type, payload)
+async def append_job_event(
+    job_id: str,
+    event_type: str,
+    payload: Optional[Dict[str, Any]] = None,
+    **kwargs: Any,
+) -> Dict[str, Any]:
+    return await runtime_state.append_job_event(job_id, event_type, payload, **kwargs)
 
 
 async def get_job_events(job_id: str, since_id: Optional[str] = None, limit: int = 200) -> List[Dict[str, Any]]:
