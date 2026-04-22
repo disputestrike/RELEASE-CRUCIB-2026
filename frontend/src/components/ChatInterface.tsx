@@ -178,7 +178,7 @@ export const ChatInterface: React.FC<{ sessionId?: string }> = ({ sessionId: ini
     setInputValue('');
 
     try {
-      const response = await fetch('/api/chat/message', {
+      const response = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
