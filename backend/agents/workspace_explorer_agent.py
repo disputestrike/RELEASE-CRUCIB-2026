@@ -68,7 +68,7 @@ class WorkspaceExplorerAgent(BaseAgent):
                 context["action"] = "discover"
 
         action = context["action"]
-        valid_actions = ["discover", "search", "analyze_dependencies", "locate_pattern", "project_map"]
+        valid_actions = ["discover", "search", "analyze_dependencies", "locate_pattern", "project_map", "symbol_index", "file_summary"]
         if action not in valid_actions:
             raise AgentValidationError(f"{self.name}: action must be one of {valid_actions}")
 
@@ -104,6 +104,11 @@ class WorkspaceExplorerAgent(BaseAgent):
                 result = self._locate_pattern(pattern, path)
             elif action == "project_map":
                 result = self._generate_project_map(path)
+            elif action == "symbol_index":
+                result = self._symbol_index(path)
+            elif action == "file_summary":
+                target = context.get("target") or context.get("file") or path
+                result = self._file_summary(target)
             else:
                 result = {"error": f"Unknown action: {action}"}
 
@@ -367,3 +372,87 @@ class WorkspaceExplorerAgent(BaseAgent):
             "structure": structure[:100],  # Limit to 100 lines
             "stats": stats,
         }
+
+    def _symbol_index(self, root_path: str) -> Dict[str, Any]:
+        """Build a lightweight symbol index (classes, functions) for .py files via AST."""
+        import ast as _ast
+        root = Path(root_path)
+        if not root.exists():
+            return {"error": f"Path does not exist: {root_path}", "symbols": {}}
+
+        ignore_dirs = {".git", "__pycache__", "node_modules", ".venv", "venv"}
+        index: Dict[str, List[Dict[str, Any]]] = {}
+        total = 0
+
+        def walk(p: Path):
+            nonlocal total
+            try:
+                for item in p.iterdir():
+                    if item.is_dir() and item.name not in ignore_dirs and not item.name.startswith("."):
+                        walk(item)
+                        continue
+                    if item.suffix != ".py":
+                        continue
+                    try:
+                        tree = _ast.parse(item.read_text(encoding="utf-8", errors="ignore"))
+                    except Exception:
+                        continue
+                    syms: List[Dict[str, Any]] = []
+                    for node in _ast.walk(tree):
+                        if isinstance(node, (_ast.FunctionDef, _ast.AsyncFunctionDef)):
+                            syms.append({"kind": "function", "name": node.name, "line": getattr(node, "lineno", 0)})
+                        elif isinstance(node, _ast.ClassDef):
+                            syms.append({"kind": "class", "name": node.name, "line": getattr(node, "lineno", 0)})
+                    if syms:
+                        try:
+                            rel = str(item.relative_to(root))
+                        except Exception:
+                            rel = str(item)
+                        index[rel] = syms[:50]
+                        total += len(syms)
+                        if len(index) >= 100:
+                            return
+            except PermissionError:
+                return
+
+        walk(root)
+        return {"root": str(root), "symbols": index, "file_count": len(index), "symbol_count": total}
+
+    def _file_summary(self, target: str) -> Dict[str, Any]:
+        """Return a quick summary (size, line count, first docstring, top imports) for a single file."""
+        import ast as _ast
+        p = Path(target)
+        if not p.exists() or not p.is_file():
+            return {"error": f"Not a file: {target}"}
+        try:
+            content = p.read_text(encoding="utf-8", errors="ignore")
+        except Exception as e:
+            return {"error": f"read error: {e}"}
+        summary: Dict[str, Any] = {
+            "path": str(p),
+            "size": p.stat().st_size,
+            "lines": content.count("\n") + 1,
+        }
+        if p.suffix == ".py":
+            try:
+                tree = _ast.parse(content)
+                ds = _ast.get_docstring(tree)
+                if ds:
+                    summary["docstring"] = ds[:400]
+                summary["imports"] = [
+                    n.names[0].name if isinstance(n, _ast.Import) else f"{n.module}.{n.names[0].name}"
+                    for n in tree.body
+                    if isinstance(n, (_ast.Import, _ast.ImportFrom)) and getattr(n, "names", None)
+                ][:15]
+                summary["symbols"] = [
+                    {"kind": "class" if isinstance(n, _ast.ClassDef) else "function", "name": n.name}
+                    for n in tree.body
+                    if isinstance(n, (_ast.FunctionDef, _ast.AsyncFunctionDef, _ast.ClassDef))
+                ][:30]
+            except Exception:
+                pass
+        else:
+            # Generic summary: first non-empty 5 lines
+            preview = [ln for ln in content.splitlines() if ln.strip()][:5]
+            summary["preview"] = preview
+        return summary
