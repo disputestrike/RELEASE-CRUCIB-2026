@@ -1131,13 +1131,106 @@ except Exception:
         return None
 
 try:
-    from dev_stub_llm import stub_build_enabled, stub_multifile_markdown  # noqa: F401
+    from dev_stub_llm import (  # noqa: F401
+        REAL_AGENT_NO_LLM_KEYS_DETAIL,
+        chat_llm_available,
+        is_real_agent_only,
+        stub_build_enabled,
+        stub_multifile_markdown,
+    )
 except Exception:
+    REAL_AGENT_NO_LLM_KEYS_DETAIL = ""
+
+    def chat_llm_available(effective_keys: Optional[Dict[str, Any]] = None) -> bool:
+        _ = effective_keys
+        return False
+
+    def is_real_agent_only() -> bool:
+        return False
+
     def stub_build_enabled() -> bool:
         return False
 
     def stub_multifile_markdown(prompt: str, build_kind: Optional[str] = None) -> str:
         return ""
+
+
+def _tokens_to_credits(tokens: int) -> int:
+    try:
+        value = int(tokens or 0)
+    except Exception:
+        value = 0
+    return max(1, value // max(1, int(CREDITS_PER_TOKEN or 1000)))
+
+
+def _merge_prior_turns_into_message(
+    message: str, prior_turns: Optional[List[Dict[str, Any]]] = None
+) -> str:
+    base = (message or "").strip()
+    turns = prior_turns or []
+    if not turns:
+        return base
+    lines: List[str] = []
+    for turn in turns[-8:]:
+        role = str((turn or {}).get("role") or "user").strip() or "user"
+        content = str(
+            (turn or {}).get("content")
+            or (turn or {}).get("message")
+            or (turn or {}).get("text")
+            or ""
+        ).strip()
+        if content:
+            lines.append(f"{role}: {content}")
+    if base:
+        lines.append(f"user: {base}")
+    return "\n".join(lines).strip()
+
+
+def _is_conversational_message(message: str) -> bool:
+    m = (message or "").lower()
+    return len(m.split()) <= 12 and not any(
+        k in m for k in ("build", "create", "generate", "implement", "code", "deploy")
+    )
+
+
+def _needs_live_data(message: str) -> bool:
+    m = (message or "").lower()
+    return any(
+        k in m
+        for k in ("latest", "today", "current", "news", "price", "weather", "stock", "live")
+    )
+
+
+async def _fetch_search_context(_message: str) -> str:
+    return ""
+
+
+async def _build_chat_system_prompt_for_request(_message: str, _user_id: Optional[str]) -> str:
+    return "You are CrucibAI. Be concise, accurate, and action-oriented."
+
+
+def _extract_pdf_text_from_b64(b64: str) -> str:
+    import base64 as _b64
+
+    raw = str(b64 or "").strip()
+    if not raw:
+        return ""
+    try:
+        data = _b64.b64decode(raw, validate=False)
+        return f"[PDF uploaded: {len(data)} bytes]"
+    except Exception:
+        return "[PDF uploaded]"
+
+
+def _speed_from_plan(plan: str) -> str:
+    p = (plan or "").strip().lower()
+    if p == "free":
+        return "lite"
+    if p in {"builder", "starter"}:
+        return "pro"
+    if p in {"pro", "scale", "teams"}:
+        return "max"
+    return "lite"
 
 
 
