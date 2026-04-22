@@ -90,7 +90,7 @@ backend/logs/
 backend/golden_eval_report.json
 # Generated frontend bundle copied for backend static serving in production images.
 backend/static/
-frontend/build/
+# frontend/build/ — tracked in git for Railway deploy (Dockerfile copies pre-built assets)
 
 # Workspace directories for tool agents (root only — do not use plain workspace/ or frontend/src/workspace is omitted from Docker/Railway)
 /workspace/
