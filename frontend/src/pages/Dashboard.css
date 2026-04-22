@@ -1247,3 +1247,11 @@
 .agentdash-bar--good { background: linear-gradient(90deg,#10b981,#34d399); }
 .agentdash-bar--warn { background: linear-gradient(90deg,#f59e0b,#fbbf24); }
 .agentdash-bar--bad { background: linear-gradient(90deg,#ef4444,#f87171); }
+
+
+/* Utility: hide the <input type="file"> that the paperclip button proxies to.
+   CRA has no Tailwind base, so className="hidden" was a no-op — the bare file
+   input was rendering in the composer. */
+.hidden {
+  display: none !important;
+}

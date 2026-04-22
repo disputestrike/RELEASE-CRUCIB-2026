@@ -8,7 +8,7 @@ import {
   LayoutGrid, BookOpen, HelpCircle, Coins,
   X, MoreHorizontal, ExternalLink, Pencil, Share2,
   Trash2, FolderInput, Star, Settings, Shield,
-  PanelLeftClose, PanelLeftOpen, History, Home,
+  PanelLeftClose, PanelLeftOpen, History, Home, GitBranch,
 } from 'lucide-react';
 import Logo from './Logo';
 import './Sidebar.css';
@@ -634,13 +634,13 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
             <Home size={18} className="sidebar-nav-icon" />
             <span className="sidebar-nav-label">Home</span>
           </Link>
-          <Link to="/app/agents" className={`sidebar-nav-item ${isActivePrefix('/app/agents') && !isActivePrefix('/app/agents/dashboard') ? 'active' : ''}`}>
+          <Link to="/app/agents" className={`sidebar-nav-item ${isActivePrefix('/app/agents') ? 'active' : ''}`}>
             <FolderOpen size={18} className="sidebar-nav-icon" />
             <span className="sidebar-nav-label">Agents</span>
           </Link>
-          <Link to="/app/agents/dashboard" className={`sidebar-nav-item sidebar-nav-item--nested ${isActivePrefix('/app/agents/dashboard') ? 'active' : ''}`}>
-            <Shield size={16} className="sidebar-nav-icon" />
-            <span className="sidebar-nav-label">Agent Audit</span>
+          <Link to="/app/what-if" className={`sidebar-nav-item ${isActivePrefix('/app/what-if') ? 'active' : ''}`}>
+            <GitBranch size={18} className="sidebar-nav-icon" />
+            <span className="sidebar-nav-label">What-If</span>
           </Link>
         </div>
         <div className="sidebar-nav-group-label">Library</div>

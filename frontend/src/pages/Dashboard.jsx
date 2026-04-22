@@ -8,7 +8,7 @@ import {
   Layout, Code, Zap, Globe, Monitor,
   Copy, Check, Pencil, Play, CheckCircle, Clock, AlertCircle,
   BarChart3, ExternalLink, ChevronDown,
-  ThumbsUp, ThumbsDown, Share2, RefreshCw,
+  ThumbsUp, ThumbsDown, Share2, RefreshCw, GitBranch,
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import { useAuth } from '../authContext';
@@ -260,11 +260,12 @@ const QUICK_START_CHIPS = [
   { label: 'Develop app', icon: Code, prompt: 'Build a complete React web app with multiple pages, authentication UI, dashboard, and CRUD data management' },
   { label: 'Design UI', icon: Globe, prompt: 'Design a beautiful modern SaaS product UI with clean design system, multiple pages, components, and responsive layout' },
   { label: 'SaaS MVP', icon: Zap, prompt: 'Build a SaaS MVP with login/register pages, dashboard, subscription pricing table, settings, and admin panel' },
+  { label: 'What-If', icon: GitBranch, prompt: null, action: 'navigate', to: '/app/what-if' },
   { label: 'Import code', icon: Upload, prompt: null, action: 'import' },
 ];
 
 /** First row on home (Manus-style); Import + templates live under “More”. */
-const HOME_PRIMARY_CHIPS = QUICK_START_CHIPS.slice(0, 4);
+const HOME_PRIMARY_CHIPS = QUICK_START_CHIPS.slice(0, 5);
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -622,6 +623,10 @@ const Dashboard = () => {
   const handleChipClick = (chip) => {
     if (chip.action === 'import') {
       setShowImportModal(true);
+      return;
+    }
+    if (chip.action === 'navigate' && chip.to) {
+      navigate(chip.to);
       return;
     }
     if (chip.prompt) {
@@ -1068,7 +1073,7 @@ const Dashboard = () => {
                   </button>
                   {moreMenuOpen && (
                     <div className="dashboard-more-menu" role="menu">
-                      {QUICK_START_CHIPS.slice(4).map((chip) => (
+                      {QUICK_START_CHIPS.slice(5).map((chip) => (
                         <button
                           key={chip.label}
                           type="button"

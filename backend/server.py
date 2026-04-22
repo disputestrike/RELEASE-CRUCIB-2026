@@ -1210,19 +1210,100 @@ def _is_conversational_message(message: str) -> bool:
 
 
 def _needs_live_data(message: str) -> bool:
+    """Heuristic: does the user need real-world / time-sensitive data?
+
+    Broadened from the original narrow keyword list so questions like
+    "who is the US president?", "what day is it?", "what is X worth?" route
+    through the search path instead of the model's stale training data.
+    """
     m = (message or "").lower()
-    return any(
-        k in m
-        for k in ("latest", "today", "current", "news", "price", "weather", "stock", "live")
+    keywords = (
+        # time/date explicit
+        "today", "tonight", "tomorrow", "yesterday", "right now", "currently",
+        "this week", "this month", "this year", "as of", "date", "day is",
+        # freshness adjectives
+        "latest", "current", "recent", "live", "breaking",
+        # market / money
+        "price", "stock", "market", "crypto", "bitcoin", "ethereum", "exchange rate",
+        # world events
+        "news", "weather", "score", "game", "election", "poll", "president",
+        "prime minister", "ceo of", "who is the", "who's the",
+        # version / release
+        "latest version", "release of", "when was", "when did",
     )
+    return any(k in m for k in keywords)
 
 
-async def _fetch_search_context(_message: str) -> str:
-    return ""
+async def _fetch_search_context(message: str) -> str:
+    """Fetch a compact live-search context using the DuckDuckGo HTML endpoint.
+
+    No API key required. Returns a few top result titles + snippets so the
+    model can answer time-sensitive questions ("who is the US president?",
+    "today's date", stock prices, etc.). Fails silently to empty string so
+    the chat never breaks when network / endpoint is unavailable.
+    """
+    q = (message or "").strip()
+    if not q:
+        return ""
+    try:
+        import httpx  # already in backend requirements
+        import re as _re
+        import html as _html
+        async with httpx.AsyncClient(timeout=6.0, follow_redirects=True) as client:
+            resp = await client.post(
+                "https://html.duckduckgo.com/html/",
+                data={"q": q},
+                headers={
+                    "User-Agent": (
+                        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                        "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"
+                    )
+                },
+            )
+            if resp.status_code != 200:
+                return ""
+            text = resp.text
+        results = []
+        # Titles
+        titles = _re.findall(
+            r'<a[^>]+class="[^"]*result__a[^"]*"[^>]*>(.*?)</a>',
+            text, flags=_re.DOTALL,
+        )
+        # Snippets
+        snippets = _re.findall(
+            r'<a[^>]+class="[^"]*result__snippet[^"]*"[^>]*>(.*?)</a>',
+            text, flags=_re.DOTALL,
+        )
+        def _clean(s: str) -> str:
+            s = _re.sub(r"<[^>]+>", "", s or "")
+            s = _html.unescape(s).strip()
+            return _re.sub(r"\s+", " ", s)
+        for i in range(min(3, len(titles))):
+            t = _clean(titles[i])
+            sn = _clean(snippets[i]) if i < len(snippets) else ""
+            if t:
+                results.append(f"- {t}" + (f" — {sn}" if sn else ""))
+        return "\n".join(results)
+    except Exception:
+        return ""
 
 
-async def _build_chat_system_prompt_for_request(_message: str, _user_id: Optional[str]) -> str:
-    return "You are CrucibAI. Be concise, accurate, and action-oriented."
+async def _build_chat_system_prompt_for_request(
+    _message: str, _user_id: Optional[str]
+) -> str:
+    """Default chat system prompt. Injects today's date so the model stops
+    confidently claiming an outdated cutoff for time-sensitive questions."""
+    import datetime as _dt
+    today = _dt.date.today().isoformat()
+    return (
+        "You are CrucibAI. Be concise, accurate, and action-oriented. "
+        f"Today's date is {today}. "
+        "When the user asks about current events, people in positions (e.g. "
+        "presidents, CEOs), prices, or other time-sensitive facts and you "
+        "do not have up-to-date information, answer with what you do know "
+        "and clearly note that the fact may have changed. Never claim a "
+        "knowledge cutoff date that contradicts the Today's date above."
+    )
 
 
 def _extract_pdf_text_from_b64(b64: str) -> str:

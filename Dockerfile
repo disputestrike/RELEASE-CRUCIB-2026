@@ -2,10 +2,21 @@
 # Build: docker build -t crucibai .
 # Run:   docker run -p 8000:8000 -e DATABASE_URL=... -e JWT_SECRET=... crucibai
 
-# Stage 1: use pre-built frontend (verified clean bundle, TDZ=0)
+# Stage 1: build the frontend from source so Railway always ships a fresh bundle
+# (the committed frontend/build/ is kept as a fallback but is no longer the
+# source of truth — Stage 1 rebuilds from frontend/src on every deploy).
 FROM node:22-alpine AS frontend
 WORKDIR /app
-COPY frontend/build ./build
+# Install dependencies first (better layer cache).
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm ci --no-audit --no-fund --loglevel=error
+# Copy the rest of the frontend source.
+COPY frontend/ ./
+# Build — ESLint disabled (CRA warnings don't break the bundle and we lint in CI).
+ENV CI=true
+ENV DISABLE_ESLINT_PLUGIN=true
+ENV GENERATE_SOURCEMAP=false
+RUN npm run build
 
 # Stage 2: backend + serve built frontend static
 FROM python:3.11-slim-bookworm

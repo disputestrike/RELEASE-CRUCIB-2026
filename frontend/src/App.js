@@ -89,6 +89,7 @@ import AdminAnalytics from "./pages/AdminAnalytics";
 import AdminLegal from "./pages/AdminLegal";
 import AuditLog from "./pages/AuditLog";
 import AgentsPage from "./pages/AgentsPage";
+import WhatIfPage from "./pages/WhatIfPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import MonitoringDashboard from "./pages/MonitoringDashboard";
 import VibeCodePage from "./pages/VibeCodePage";
@@ -466,6 +467,7 @@ function App() {
             <Route path="examples" element={<ExamplesGallery />} />
             <Route path="generate" element={<GenerateContent />} />
             <Route path="agents" element={<AgentsPage />} />
+            <Route path="what-if" element={<WhatIfPage />} />
             <Route path="agents/:id" element={<AgentsPage />} />
             <Route path="settings" element={<Settings />} />
             <Route path="audit-log" element={<AuditLog />} />
