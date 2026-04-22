@@ -443,6 +443,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# WS-I: COOP/COEP headers for WebContainers in-browser preview.
+# Gated by env FEATURE_WEBCONTAINER_COOP (default off) to avoid affecting
+# existing embedding. When on, serves cross-origin-isolated headers required
+# by SharedArrayBuffer / WebContainers API.
+import os as _os_ws_i
+def _webcontainer_coop_coep(request, call_next):
+    pass  # placeholder for type-checkers
+try:
+    from starlette.middleware.base import BaseHTTPMiddleware as _BaseHTTPMiddleware
+    from starlette.responses import Response as _StarletteResponse
+
+    class WebContainerCoopCoepMiddleware(_BaseHTTPMiddleware):
+        async def dispatch(self, request, call_next):
+            response: _StarletteResponse = await call_next(request)
+            if _os_ws_i.environ.get("FEATURE_WEBCONTAINER_COOP", "").lower() in ("1", "true", "yes", "on"):
+                response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+                response.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
+                response.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
+            return response
+
+    # Register as early as possible; FastAPI app object is `app`.
+    try:
+        app.add_middleware(WebContainerCoopCoepMiddleware)  # type: ignore[name-defined]
+    except Exception:
+        # app not yet defined at this import site; will be wired when module reloaded
+        pass
+except Exception:
+    pass
+
 _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("routes.compat", "router", False),
     ("routes.misc", "router", False),
@@ -472,6 +502,7 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("routes.memory", "router", False),
     ("routes.chat_react", "router", False),
     ("routes.share", "router", False),
+    ("routes.preview_serve", "router", False),
     ("routes.sso", "router", True),
     ("routes.terminal", "router", False),
     ("routes.tokens", "router", False),
