@@ -32,6 +32,11 @@ from deps import get_current_user
 
 logger = logging.getLogger(__name__)
 
+# Lazy imports for SSE streaming; kept here so server import graph stays identical.
+import asyncio as _asyncio
+import json as _json
+from fastapi.responses import StreamingResponse as _StreamingResponse
+
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 
 # Safe checkpoint keys for GET (alphanumeric, underscore, hyphen; bounded length).
@@ -230,6 +235,53 @@ async def get_job_events(
     except Exception as e:
         logger.exception("GET /api/jobs/%s/events error", job_id)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{job_id}/stream")
+async def stream_job_events(job_id: str, request: Request):
+    """Server-Sent Events stream of live job events.
+
+    Subscribes to ``orchestration.event_bus`` and forwards each published event
+    as an SSE frame. Emits a heartbeat every 15s so dev proxies (CRA, nginx)
+    do not idle-close the connection. Clients should reconnect on error; the
+    companion ``/api/jobs/{id}/events`` endpoint serves backfill via ``since_id``.
+    """
+    from orchestration.event_bus import subscribe, unsubscribe
+
+    queue = await subscribe(job_id)
+
+    async def _gen():
+        # Initial hello so EventSource fires onopen immediately.
+        yield f"event: connected\ndata: {_json.dumps({'job_id': job_id})}\n\n"
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    event = await _asyncio.wait_for(queue.get(), timeout=15.0)
+                except _asyncio.TimeoutError:
+                    # Heartbeat; keeps proxies from closing the stream.
+                    yield ": ping\n\n"
+                    continue
+                try:
+                    etype = event.get("type", "message")
+                    data = _json.dumps(event)
+                except Exception:
+                    etype = "message"
+                    data = _json.dumps({"raw": str(event)})
+                yield f"event: {etype}\ndata: {data}\n\n"
+        finally:
+            await unsubscribe(job_id, queue)
+
+    return _StreamingResponse(
+        _gen(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
 
 
 @router.get("/{job_id}/checkpoint/{checkpoint_key}")
@@ -540,7 +592,7 @@ async def estimate_job_cost(
 
 # ── Steer / Cancel / Resume — wired to UnifiedWorkspace ──────────────────────
 
-@router.post("/jobs/{job_id}/steer")
+@router.post("/{job_id}/steer")
 async def steer_job(job_id: str, request: Request, user: dict = Depends(get_current_user)):
     """Inject a steering instruction into a running job."""
     try:
@@ -566,23 +618,7 @@ async def steer_job(job_id: str, request: Request, user: dict = Depends(get_curr
     return {"accepted": True, "job_id": job_id, "message": message}
 
 
-@router.post("/jobs/{job_id}/cancel")
-async def cancel_job(job_id: str, user: dict = Depends(get_current_user)):
-    """Cancel a running job."""
-    try:
-        from db_pg import get_pg_pool
-        pool = await get_pg_pool()
-        async with pool.acquire() as conn:
-            await conn.execute(
-                "UPDATE jobs SET status='cancelled', updated_at=NOW() WHERE id=$1",
-                job_id,
-            )
-    except Exception as e:
-        logger.warning("cancel_job db: %s", e)
-    return {"cancelled": True, "job_id": job_id}
-
-
-@router.post("/jobs/{job_id}/resume")
+@router.post("/{job_id}/resume")
 async def resume_job(job_id: str, user: dict = Depends(get_current_user)):
     """Resume a paused or failed job."""
     try:
