@@ -6,6 +6,7 @@ validate-and-fix, async build, tests/docs generation.
 from __future__ import annotations
 
 import base64
+import inspect
 import logging
 import os
 import uuid
@@ -18,6 +19,12 @@ from pydantic import BaseModel, Field
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["ai"])
+
+
+async def _maybe_await(value: Any) -> Any:
+    if inspect.isawaitable(value):
+        return await value
+    return value
 
 
 # ── Lazy-import helpers ───────────────────────────────────────────────────────
@@ -133,10 +140,12 @@ async def ai_chat(
         user_id_for_skill = (user or {}).get("id") if user else None
         system_message = (
             data.system_message
-            or await _build_chat_system_prompt_for_request(message, user_id_for_skill)
+            or await _maybe_await(
+                _build_chat_system_prompt_for_request(message, user_id_for_skill)
+            )
         )
         if not data.system_message and _needs_live_data(message):
-            search_ctx = await _fetch_search_context(message)
+            search_ctx = await _maybe_await(_fetch_search_context(message))
             if search_ctx:
                 system_message = CHAT_WITH_SEARCH_SYSTEM
                 message_for_llm = (
