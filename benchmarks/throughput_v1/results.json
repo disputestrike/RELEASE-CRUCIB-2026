@@ -1,0 +1,41 @@
+[
+  {
+    "prompt_id": "todo_app",
+    "goal": "Build a todo app with add, complete, and delete; persist to localStorage.",
+    "t_plan": null,
+    "t_first_file": null,
+    "t_total": 0.007,
+    "step_count": 0,
+    "final_file_count": 0,
+    "success": false,
+    "error": "create_failed: status=401 body={'detail': 'Not authenticated'}",
+    "job_id": null,
+    "final_status": null
+  },
+  {
+    "prompt_id": "landing_page",
+    "goal": "Build a modern SaaS landing page with hero, features, pricing, and footer.",
+    "t_plan": null,
+    "t_first_file": null,
+    "t_total": 0.003,
+    "step_count": 0,
+    "final_file_count": 0,
+    "success": false,
+    "error": "create_failed: status=401 body={'detail': 'Not authenticated'}",
+    "job_id": null,
+    "final_status": null
+  },
+  {
+    "prompt_id": "rest_api_blog",
+    "goal": "Build a REST API for a blog with posts and comments, CRUD routes, JSON.",
+    "t_plan": null,
+    "t_first_file": null,
+    "t_total": 0.003,
+    "step_count": 0,
+    "final_file_count": 0,
+    "success": false,
+    "error": "create_failed: status=401 body={'detail': 'Not authenticated'}",
+    "job_id": null,
+    "final_status": null
+  }
+]
