@@ -537,3 +537,41 @@ async def toggle_skill_active(skill_id: str, user: dict = Depends(_get_auth())):
         {"id": user["id"]}, {"$set": {"active_skill_ids": active_ids}}
     )
     return {"status": action, "skill_id": skill_id, "active_skill_ids": active_ids}
+
+
+# ───────────────────────── File-based MD skill loader ─────────────────────────
+# WS-A: Drop *.md into backend/skills/ and they're live after /skills/reload.
+# Orthogonal to the DB-backed skills above — these are registry objects for
+# prompt-level skill selection (not stored per-user in the DB).
+
+from services.skills.md_loader import get_registry as _get_md_registry  # noqa: E402
+
+
+@router.get("/skills/md/list")
+async def md_skills_list():
+    """List file-backed skills (MD + YAML frontmatter) known to the runtime."""
+    reg = _get_md_registry()
+    return {
+        "directory": reg.directory,
+        "count": len(reg.list_all()),
+        "last_loaded_at": reg.last_loaded_at,
+        "skills": [s.to_public() for s in reg.list_all()],
+    }
+
+
+@router.post("/skills/md/reload")
+async def md_skills_reload():
+    """Rescan the skills directory and reload every *.md — no redeploy needed."""
+    reg = _get_md_registry()
+    count = reg.reload()
+    return {"status": "ok", "count": count, "directory": reg.directory}
+
+
+@router.get("/skills/md/{name}")
+async def md_skills_get(name: str):
+    """Return a single MD skill including its full body."""
+    reg = _get_md_registry()
+    s = reg.get(name)
+    if s is None:
+        raise HTTPException(status_code=404, detail=f"skill '{name}' not found")
+    return s.to_full()

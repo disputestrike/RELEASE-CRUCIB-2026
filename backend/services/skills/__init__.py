@@ -1,13 +1,2 @@
-"""Skills services package."""
-
-from .skill_executor import detect_skill, skill_allows_tool, skill_meta
-from .skill_registry import SkillDef, list_skills, resolve_skill
-
-__all__ = [
-    "detect_skill",
-    "skill_allows_tool",
-    "skill_meta",
-    "SkillDef",
-    "list_skills",
-    "resolve_skill",
-]
+"""File-based skill registry — load *.md files with YAML frontmatter at runtime."""
+from .md_loader import SkillRegistry, Skill, get_registry  # noqa: F401
