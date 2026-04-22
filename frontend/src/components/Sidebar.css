@@ -164,33 +164,39 @@
 
 .sidebar-collapse-btn--expand {
   margin-bottom: 4px;
-  position: relative;
 }
 
-/* Hover-swap identity: cube logo at rest → collapse/expand icon on hover.
-   Both children occupy the same 36x36 slot; we crossfade via opacity. */
-.sidebar-collapse-btn--expand .sidebar-collapse-btn-logo,
-.sidebar-collapse-btn--expand .sidebar-collapse-btn-icon {
+/* Hover-swap identity: cube at rest → expand-toggle icon on hover.
+   Both children occupy the SAME 36x36 slot; they crossfade via opacity.
+   Specificity note: ".sidebar-collapsed-strip .sidebar-collapse-btn"
+   (2 classes) sets position:static earlier, so we must match that
+   specificity on the button itself to make position:relative win. */
+.sidebar-collapsed-strip .sidebar-collapse-btn--expand {
+  position: relative;
+  overflow: hidden;
+}
+.sidebar-collapsed-strip .sidebar-collapse-btn--expand .sidebar-collapse-btn-logo,
+.sidebar-collapsed-strip .sidebar-collapse-btn--expand .sidebar-collapse-btn-icon {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: opacity 120ms ease;
   pointer-events: none;
 }
-.sidebar-collapse-btn--expand .sidebar-collapse-btn-logo {
+.sidebar-collapsed-strip .sidebar-collapse-btn--expand .sidebar-collapse-btn-logo {
   opacity: 1;
 }
-.sidebar-collapse-btn--expand .sidebar-collapse-btn-icon {
-  position: absolute;
-  inset: 0;
+.sidebar-collapsed-strip .sidebar-collapse-btn--expand .sidebar-collapse-btn-icon {
   opacity: 0;
 }
-.sidebar-collapse-btn--expand:hover .sidebar-collapse-btn-logo,
-.sidebar-collapse-btn--expand:focus-visible .sidebar-collapse-btn-logo {
+.sidebar-collapsed-strip .sidebar-collapse-btn--expand:hover .sidebar-collapse-btn-logo,
+.sidebar-collapsed-strip .sidebar-collapse-btn--expand:focus-visible .sidebar-collapse-btn-logo {
   opacity: 0;
 }
-.sidebar-collapse-btn--expand:hover .sidebar-collapse-btn-icon,
-.sidebar-collapse-btn--expand:focus-visible .sidebar-collapse-btn-icon {
+.sidebar-collapsed-strip .sidebar-collapse-btn--expand:hover .sidebar-collapse-btn-icon,
+.sidebar-collapsed-strip .sidebar-collapse-btn--expand:focus-visible .sidebar-collapse-btn-icon {
   opacity: 1;
 }
 
