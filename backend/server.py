@@ -468,6 +468,8 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("routes.prompts", "router", False),
     # WS-F: MCP dispatch layer (Slack / GitHub / Notion)
     ("routes.mcp", "router", False),
+    # WS-D: RAG / vector memory
+    ("routes.memory", "router", False),
     ("routes.sso", "router", True),
     ("routes.terminal", "router", False),
     ("routes.tokens", "router", False),

@@ -148,3 +148,6 @@ redis>=5.0.0
 
 # E2B cloud sandbox (optional — enables isolated code execution)
 # e2b-code-interpreter>=0.0.5  # install and set E2B_API_KEY to enable
+
+# WS-D: RAG / vector memory
+chromadb>=0.5.0,<0.6.0
