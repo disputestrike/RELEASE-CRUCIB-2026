@@ -64,17 +64,20 @@ CHAT_WITH_SEARCH_SYSTEM = ""
 REAL_AGENT_NO_LLM_KEYS_DETAIL = ""
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "")
 RATE_LIMIT_PER_MINUTE = int(os.environ.get("RATE_LIMIT_PER_MINUTE", "60"))
+# Canonical pricing — keep aligned with backend/pricing_plans.py (linear $0.03/credit).
+# The Pricing page /tokens/bundles endpoint reads these values, so they MUST match
+# the DEFAULT_BUNDLES in frontend/src/pages/Pricing.jsx.
 TOKEN_BUNDLES: Dict[str, Any] = {
-    "builder": {"name": "Builder", "tokens": 500_000, "credits": 500, "price": 29},
-    "pro": {"name": "Pro", "tokens": 1_500_000, "credits": 1500, "price": 79},
-    "scale": {"name": "Scale", "tokens": 5_000_000, "credits": 5000, "price": 199},
-    "teams": {"name": "Teams", "tokens": 15_000_000, "credits": 15000, "price": 499},
+    "builder": {"name": "Builder", "tokens": 500_000,  "credits": 500,  "price": 15},
+    "pro":     {"name": "Pro",     "tokens": 1_000_000, "credits": 1000, "price": 30},
+    "scale":   {"name": "Scale",   "tokens": 2_000_000, "credits": 2000, "price": 60},
+    "teams":   {"name": "Teams",   "tokens": 5_000_000, "credits": 5000, "price": 150},
 }
 ANNUAL_PRICES: Dict[str, Any] = {
-    "builder": 290,
-    "pro": 790,
-    "scale": 1990,
-    "teams": 4990,
+    "builder": 149.99,
+    "pro": 299.99,
+    "scale": 599.99,
+    "teams": 1499.99,
 }
 STRIPE_SECRET = os.environ.get("STRIPE_SECRET", "")
 REFERRAL_CAP_PER_MONTH = 10
