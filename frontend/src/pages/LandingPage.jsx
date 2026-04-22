@@ -185,12 +185,12 @@ const LandingPage = () => {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-kimi-bg border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-6 py-5 flex items-center gap-6">
           <Logo variant="full" height={32} href="/" className="shrink-0" />
-          <div className="hidden md:flex flex-1 items-center justify-center gap-8 min-w-0">
+          <div className="hidden sm:flex flex-1 items-center justify-center gap-6 md:gap-8 min-w-0">
             <SolutionsNavDropdown />
             <Link to="/pricing" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Pricing</Link>
             <Link to="/our-projects" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Our Project</Link>
           </div>
-          <div className="hidden md:flex items-center gap-4 ml-auto shrink-0">
+          <div className="hidden sm:flex items-center gap-3 md:gap-4 ml-auto shrink-0">
             <button type="button" onClick={() => navigate('/app')} className="text-sm text-kimi-nav text-kimi-muted hover:text-kimi-text transition">
               Dashboard
             </button>
@@ -201,7 +201,7 @@ const LandingPage = () => {
               Get started
             </button>
           </div>
-          <button className="md:hidden text-kimi-text" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+          <button className="sm:hidden text-kimi-text" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
@@ -209,7 +209,7 @@ const LandingPage = () => {
 
       <AnimatePresence>
         {mobileMenuOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-kimi-bg pt-20 px-6 pb-8 overflow-y-auto md:hidden">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-kimi-bg pt-20 px-6 pb-8 overflow-y-auto sm:hidden">
             <div className="flex flex-col gap-6 text-kimi-text min-h-min">
               <p className="text-xs font-semibold uppercase tracking-wider text-kimi-muted">Our solution — who it&apos;s for</p>
               <div className="flex flex-col gap-2 pl-1 border-l border-gray-200">
