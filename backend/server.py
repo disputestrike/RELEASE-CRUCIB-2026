@@ -470,6 +470,7 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("routes.mcp", "router", False),
     # WS-D: RAG / vector memory
     ("routes.memory", "router", False),
+    ("routes.chat_react", "router", False),
     ("routes.sso", "router", True),
     ("routes.terminal", "router", False),
     ("routes.tokens", "router", False),

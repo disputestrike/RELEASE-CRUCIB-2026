@@ -1,130 +1,109 @@
-import React, { useEffect, useRef } from 'react';
-import { Brain, Sparkles, AlertTriangle, CheckCircle, Zap, Loader2 } from 'lucide-react';
-import SubagentProgress from './SubagentProgress';
-import InlineDiff from './InlineDiff';
-import SimulationBlock from './SimulationBlock';
-import { contextManager } from '../lib/contextManager';
+// WS-B: ChatStream — consumes /api/chat/react SSE and renders events live.
+// Feature-gated via localStorage.react_chat === '1'.
 
-const ICONS = {
-  thinking:    <Brain size={13} className="text-zinc-500" />,
-  discovery:   <Sparkles size={13} className="text-emerald-600" />,
-  problem:     <AlertTriangle size={13} className="text-amber-500" />,
-  solution:    <CheckCircle size={13} className="text-emerald-600" />,
-  breakthrough:<Zap size={13} className="text-purple-600" />,
-};
+import React, { useEffect, useRef, useState } from "react";
+import ThinkingStream from "./ThinkingStream";
 
-export default function ChatStream({
-  thoughts = [],
-  events = [],
-  jobId,
-  isRunning,
-  eventSource,
-  onArtifactClick,
-  simulation,
-  simulationPersonas = [],
-  simulationRecommendation,
-  onSimulationContinue,
-  onSimulationStop,
-  onApplyRecommendation,
-}) {
-  const bottomRef = useRef(null);
-  const processedCountRef = useRef(0);
+export function isReactChatEnabled() {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem("react_chat") === "1";
+  } catch (_) {
+    return false;
+  }
+}
 
-  const feed = thoughts.length ? thoughts : (events || []).map((e) => ({
-    id: e.id,
-    timestamp: e.ts || Date.now(),
-    type:
-      e.type === 'step_failed' || e.type === 'job_failed'
-        ? 'problem'
-        : e.type === 'step_completed' || e.type === 'job_completed'
-          ? 'solution'
-          : e.type === 'brain_guidance'
-            ? 'thinking'
-            : 'discovery',
-    message:
-      (e.payload && (e.payload.summary || e.payload.message || e.payload.title))
-      || e.type,
-    detail:
-      e.type === 'simulation.update'
-        ? `Round ${e.round || e.payload?.round || '?'} update`
-        : '',
-  }));
+export default function ChatStream({ apiBase = "", onFinal }) {
+  const [prompt, setPrompt] = useState("");
+  const [events, setEvents] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [budget, setBudget] = useState({ used: 0, total: 8000 });
+  const abortRef = useRef(null);
 
-  useEffect(() => {
-    const start = processedCountRef.current;
-    if (feed.length < start) {
-      // Reset safety when feed is replaced.
-      processedCountRef.current = 0;
-    }
-    for (let i = processedCountRef.current; i < feed.length; i++) {
-      const t = feed[i];
-      const message = (t?.message || '').trim();
-      if (!message) continue;
-      contextManager.addTurn('assistant', message, {
-        source: 'chat_stream',
-        thoughtType: t?.type || 'thinking',
+  if (!isReactChatEnabled()) return null;
+
+  async function send() {
+    if (!prompt.trim() || busy) return;
+    setBusy(true);
+    setEvents([]);
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    try {
+      const resp = await fetch(`${apiBase}/api/chat/react`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, thinking_budget: 8000, max_steps: 6 }),
+        signal: controller.signal,
       });
+      if (!resp.ok || !resp.body) {
+        setEvents((prev) => [...prev, { type: "text", content: `error ${resp.status}` }]);
+        setBusy(false);
+        return;
+      }
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let carry = "";
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        carry += decoder.decode(value, { stream: true });
+        const frames = carry.split("\n\n");
+        carry = frames.pop() || "";
+        for (const frame of frames) {
+          const line = frame.trim();
+          if (!line.startsWith("data:")) continue;
+          const payload = line.slice(5).trim();
+          if (!payload) continue;
+          try {
+            const evt = JSON.parse(payload);
+            setEvents((prev) => [...prev, evt]);
+            if (evt.type === "final") {
+              setBudget({ used: evt.tokens_used || 0, total: evt.budget || 8000 });
+              if (typeof onFinal === "function") onFinal(evt);
+            }
+          } catch (_) {
+            // skip malformed frame
+          }
+        }
+      }
+    } catch (err) {
+      if (err.name !== "AbortError") {
+        setEvents((prev) => [...prev, { type: "text", content: String(err) }]);
+      }
+    } finally {
+      setBusy(false);
+      abortRef.current = null;
     }
-    processedCountRef.current = feed.length;
-  }, [feed]);
+  }
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [feed, simulation, simulationRecommendation]);
+  function cancel() {
+    if (abortRef.current) abortRef.current.abort();
+  }
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
-      {feed.length === 0 && (
-        <div className="text-center text-zinc-400 text-sm py-16">
-          <Brain size={32} className="mx-auto mb-3 opacity-30" />
-          <p>Describe what you want to build.</p>
-          <p className="text-xs mt-1">The system will think out loud here.</p>
-        </div>
-      )}
-      {feed.map((t, i) => (
-        <div key={t.id || i}
-          className={`flex gap-2 p-2.5 rounded-lg border text-sm
-            ${t.type === 'breakthrough' ? 'bg-purple-50 border-purple-200' :
-              t.type === 'problem'      ? 'bg-amber-50 border-amber-200' :
-              t.type === 'solution'     ? 'bg-emerald-50 border-emerald-200' :
-              'bg-white border-zinc-200'}`}>
-          <div className="mt-0.5 shrink-0">{ICONS[t.type] || ICONS.thinking}</div>
-          <div className="flex-1 min-w-0">
-            <p className="text-zinc-800 leading-relaxed">{t.message}</p>
-            {t.detail && <p className="text-xs text-zinc-500 mt-0.5">{t.detail}</p>}
-            {t.diff && <InlineDiff path={t.artifact} after={t.diff} />}
-            {t.artifact && (
-              <button onClick={() => onArtifactClick?.(t.artifact)}
-                className="text-xs text-blue-600 hover:text-blue-700 mt-1 font-medium">
-                View {t.artifact.split('/').pop()}
-              </button>
-            )}
-            {t.subagents && (
-              <SubagentProgress jobId={jobId} eventSource={eventSource} />
-            )}
-            <span className="text-[10px] text-zinc-400 mt-1 block">
-              {new Date(t.timestamp).toLocaleTimeString()}
-            </span>
-          </div>
-        </div>
-      ))}
-      {(simulation || simulationRecommendation) && (
-        <SimulationBlock
-          simulation={simulation}
-          personas={simulationPersonas}
-          recommendation={simulationRecommendation}
-          onContinue={onSimulationContinue}
-          onStop={onSimulationStop}
-          onApplyRecommendation={onApplyRecommendation}
+    <div className="chat-stream" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <ThinkingStream events={events} budget={budget} />
+      <div style={{ display: "flex", gap: 8 }}>
+        <input
+          style={{ flex: 1, padding: 6 }}
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="Ask with reasoning…"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              send();
+            }
+          }}
+          disabled={busy}
         />
-      )}
-      {isRunning && (
-        <div className="flex items-center gap-2 text-zinc-400 text-xs">
-          <Loader2 size={12} className="animate-spin" />
-          <span>Building…</span>
-        </div>
-      )}
-      <div ref={bottomRef} />
+        {busy ? (
+          <button onClick={cancel}>Stop</button>
+        ) : (
+          <button onClick={send}>Send</button>
+        )}
+      </div>
     </div>
   );
 }
