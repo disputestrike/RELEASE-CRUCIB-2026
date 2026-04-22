@@ -449,6 +449,8 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("routes.auth", "auth_router", False),
     ("routes.runtime", "router", False),
     ("routes.projects", "projects_router", False),
+    # WS-G: per-project persistent memory (K/V JSONB)
+    ("routes.project_memory", "router", False),
     ("routes.admin", "admin_router", False),
     ("routes.automation", "router", False),
     ("routes.community", "router", False),
