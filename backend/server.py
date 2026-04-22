@@ -498,6 +498,15 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("routes.orchestrator", "router", False),
     ("routes.jobs", "router", False),
     ("routes.ai", "router", False),
+    # Adapter routes — build-scoped endpoints consumed by the v28 UnifiedWorkspace
+    # These expose /api/builds/{job_id}/{preview,deploy,trust,automation,files,file}
+    # and /api/spawn/{run,scenario}. Optional=True so backend still boots if any fails.
+    ("adapter.routes.preview", "router", True),
+    ("adapter.routes.deploy", "router", True),
+    ("adapter.routes.trust", "router", True),
+    ("adapter.routes.automation", "router", True),
+    ("adapter.routes.files", "router", True),
+    ("adapter.routes.spawn", "router", True),
 ]
 
 ROUTE_REGISTRATION_REPORT: List[Dict[str, Any]] = []
