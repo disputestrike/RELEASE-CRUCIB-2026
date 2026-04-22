@@ -8,7 +8,10 @@
 FROM node:22-alpine AS frontend
 WORKDIR /app
 # Install dependencies first (better layer cache).
+# scripts/ must be copied before npm ci because package.json has a postinstall
+# hook (`node scripts/patch-ajv-formats.js`) that runs during install.
 COPY frontend/package.json frontend/package-lock.json* ./
+COPY frontend/scripts ./scripts
 RUN npm ci --legacy-peer-deps --no-audit --no-fund --loglevel=error
 # Copy the rest of the frontend source.
 COPY frontend/ ./

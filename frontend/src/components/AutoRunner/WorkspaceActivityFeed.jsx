@@ -2,7 +2,7 @@
  * WorkspaceActivityFeed — Manus-style briefing above the composer: soft surfaces,
  * checklist steps, and short live lines (no heavy timeline chrome).
  */
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Check, Loader2, Circle } from 'lucide-react';
 import './WorkspaceActivityFeed.css';
 
@@ -99,6 +99,15 @@ export default function WorkspaceActivityFeed({
     }
     return lines.slice(-14);
   }, [events]);
+
+  // Auto-scroll the live stream to the bottom as new events arrive so users see
+  // latest activity without manual scrolling. Respects reduced-motion preferences.
+  const streamRef = useRef(null);
+  useEffect(() => {
+    const el = streamRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [feedEvents.length]);
 
   const latestWritePaths = useMemo(() => {
     for (let i = events.length - 1; i >= 0; i -= 1) {
@@ -215,7 +224,7 @@ export default function WorkspaceActivityFeed({
             ) : null}
 
             {feedEvents.length > 0 ? (
-              <ul className="uw-af-stream">
+              <ul className="uw-af-stream" ref={streamRef}>
                 {feedEvents.map((row) => (
                   <li key={row.id}>{row.text}</li>
                 ))}

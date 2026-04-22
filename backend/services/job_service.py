@@ -18,9 +18,15 @@ async def create_job_service(
     planner_project_state: Optional[dict] = None,
 ):
     rs = runtime_state_getter()
+    # Surface failures in pool acquisition explicitly — without this the
+    # downstream "NoneType is not awaitable" errors are untraceable.
     try:
         pool = await pool_getter()
     except Exception:
+        import logging as _lg
+        _lg.getLogger(__name__).exception(
+            "create_job_service: pool_getter failed, continuing without pool",
+        )
         pool = None
     if pool:
         rs.set_pool(pool)

@@ -108,6 +108,7 @@ export function useJobStream(jobId, token) {
   const [connectionMode, setConnectionMode] = useState('offline');
   const [error, setError] = useState(null);
   const pollRef = useRef(null);
+  const previousJobIdRef = useRef(null);
 
   const fetchCheckpoints = useCallback(async () => {
     if (!jobId || !token) return;
@@ -187,11 +188,22 @@ export function useJobStream(jobId, token) {
       setConnectionMode('offline');
       setIsConnected(false);
       setError(null);
+      previousJobIdRef.current = null;
       return undefined;
     }
-    setProof(null);
-    setMilestoneBatch(null);
-    setRepairQueueLen(0);
+    // Only clear state when navigating to a *different* job — not on token
+    // refresh or effect re-runs for the same job (which blew away rehydrated
+    // history the moment it arrived).
+    const jobChanged = previousJobIdRef.current !== jobId;
+    if (jobChanged) {
+      setProof(null);
+      setJob(null);
+      setSteps([]);
+      setEvents([]);
+      setMilestoneBatch(null);
+      setRepairQueueLen(0);
+      previousJobIdRef.current = jobId;
+    }
     fetchJobState();
 
     const startPoll = () => {

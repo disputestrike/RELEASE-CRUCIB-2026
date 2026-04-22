@@ -64,12 +64,21 @@ def _get_proof_service():
 
 
 async def _get_pool():
+    """Return the asyncpg pool, or None if DATABASE_URL/pool is unavailable.
+
+    We deliberately do NOT raise here — many endpoints can operate in a degraded
+    in-memory mode when Postgres is absent (e.g. local smoke tests, early boot
+    before the pool is ready). Callers must therefore always check `if pool is
+    not None` before trying to use the return value. Logging the full traceback
+    makes silent-None failure modes visible instead of mysterious downstream
+    "object NoneType can't be used in 'await'" errors.
+    """
     from db_pg import get_pg_pool
 
     try:
         return await get_pg_pool()
-    except Exception as exc:
-        logger.warning("jobs: continuing without DB pool: %s", exc)
+    except Exception:
+        logger.exception("jobs: DB pool unavailable — continuing in degraded mode")
         return None
 
 
@@ -131,7 +140,10 @@ async def create_job(
     """Create a new job (plan + steps) for a project."""
     try:
         from orchestration import planner as planner_mod
-        from orchestration.dag_engine import build_dag_from_plan
+        # NOTE: build_dag_from_plan is no longer passed — create_job_service uses
+        # services.runtime.execution_authority.build_runtime_native_step_defs directly.
+        # Passing it caused every POST /api/jobs to fail with TypeError: unexpected
+        # keyword argument, which was the root cause of the NoneType-await surface.
 
         return await create_job_service(
             body=body,
@@ -139,7 +151,6 @@ async def create_job(
             runtime_state_getter=_get_runtime_state,
             pool_getter=_get_pool,
             generate_plan=planner_mod.generate_plan,
-            build_dag_from_plan=build_dag_from_plan,
         )
     except HTTPException:
         raise

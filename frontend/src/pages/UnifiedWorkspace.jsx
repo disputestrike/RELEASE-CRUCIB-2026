@@ -290,7 +290,21 @@ export default function UnifiedWorkspace() {
         ? crypto.randomUUID()
         : `uw_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
     const jidAt = jobId || jobIdFromUrl || null;
-    setUserChatMessages((prev) => [...prev, { id, body, jobId: jidAt, pendingBind: !jidAt, ts: Date.now() }]);
+    // Dedup: if the very last user message has the same body+jobId, skip —
+    // this eliminates the duplicate-initial-prompt bug on first run.
+    setUserChatMessages((prev) => {
+      const last = prev[prev.length - 1];
+      if (
+        last &&
+        (last.role || 'user') === 'user' &&
+        last.body === body &&
+        (last.jobId || null) === jidAt &&
+        Date.now() - (last.ts || 0) < 5000
+      ) {
+        return prev;
+      }
+      return [...prev, { id, body, jobId: jidAt, pendingBind: !jidAt, ts: Date.now() }];
+    });
   }, [jobId, jobIdFromUrl]);
 
   const clearBuildError = useCallback(() => {
@@ -670,7 +684,7 @@ export default function UnifiedWorkspace() {
     clearBuildError();
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      await axios.post(`${API}/orchestrator/run-auto`, { job_id: jid }, { headers });
+      await axios.post(`${API}/orchestrator/run-auto`, { job_id: jid }, { headers, timeout: 15000 });
     } catch (e) {
       const d = e.response?.data?.detail;
       let msg = 'Failed to start job.';
@@ -707,7 +721,7 @@ export default function UnifiedWorkspace() {
       const pid = (projectIdFromUrl || '').trim();
       if (pid) planBody.project_id = pid;
       try {
-        const res = await axios.post(`${API}/orchestrator/plan`, planBody, { headers });
+        const res = await axios.post(`${API}/orchestrator/plan`, planBody, { headers, timeout: 30000 });
         const newJid = res.data.job_id;
         setPlan(res.data.plan);
         setCapabilityNotice(Array.isArray(res.data.capability_notice) ? res.data.capability_notice : []);
@@ -728,7 +742,7 @@ export default function UnifiedWorkspace() {
         );
 
         try {
-          await axios.post(`${API}/orchestrator/run-auto`, { job_id: newJid }, { headers });
+          await axios.post(`${API}/orchestrator/run-auto`, { job_id: newJid }, { headers, timeout: 15000 });
           setStage('running');
         } catch (e) {
           const d = e.response?.data?.detail;
@@ -1005,7 +1019,7 @@ export default function UnifiedWorkspace() {
     if (!jid) return;
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      await axios.post(`${API}/jobs/${jid}/cancel`, {}, { headers });
+      await axios.post(`${API}/jobs/${jid}/cancel`, {}, { headers, timeout: 10000 });
     } catch (_) {
       /* ignore */
     }
@@ -1016,7 +1030,7 @@ export default function UnifiedWorkspace() {
     if (!jid) return;
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      await axios.post(`${API}/jobs/${jid}/resume`, {}, { headers });
+      await axios.post(`${API}/jobs/${jid}/resume`, {}, { headers, timeout: 10000 });
     } catch (_) {
       /* ignore */
     }
@@ -1118,6 +1132,15 @@ export default function UnifiedWorkspace() {
     if (visibleRightPanes.includes(activePane)) return;
     setActivePane(visibleRightPanes[0] || 'preview');
   }, [visibleRightPanes, activePane]);
+
+  // Re-hydrate data-bearing panes when the user switches into them — prevents
+  // empty Proof/Failure/Timeline/Preview tabs when tab was switched mid-stream.
+  useEffect(() => {
+    if (!effectiveJobId) return;
+    if (['proof', 'timeline', 'failure', 'preview'].includes(activePane)) {
+      try { refresh && refresh(); } catch (_) { /* ignore */ }
+    }
+  }, [activePane, effectiveJobId, refresh]);
 
   const failureStep = failedStep || latestFailedStep;
 
