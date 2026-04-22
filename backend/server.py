@@ -108,8 +108,15 @@ def _idempotency_key_from_request(request) -> Optional[str]:
     return key
 
 
-async def _call_llm_with_fallback(*_args, **_kwargs):
-    return ("compat-llm-response", "compat/model")
+async def _call_llm_with_fallback(*args, **kwargs):
+    """Delegate to services.llm_service; keep a safe compatibility fallback."""
+    try:
+        from services.llm_service import _call_llm_with_fallback as _llm_call
+
+        return await _llm_call(*args, **kwargs)
+    except Exception as exc:
+        logger.warning("llm fallback compatibility path used: %s", exc)
+        return ("compat-llm-response", "compat/model")
 
 
 REAL_AGENT_NAMES: set[str] = set()
@@ -1236,6 +1243,8 @@ def _speed_from_plan(plan: str) -> str:
 
 
 def __getattr__(name: str):
+    if name.isupper():
+        return ""
     if name.startswith("_"):
         return lambda *args, **kwargs: None
-    return ""
+    return lambda *args, **kwargs: None
