@@ -114,8 +114,8 @@ async def _call_llm_with_fallback(*args, **kwargs):
         from services.llm_service import _call_llm_with_fallback as _llm_call
 
         return await _llm_call(*args, **kwargs)
-    except Exception as exc:
-        logger.warning("llm fallback compatibility path used: %s", exc)
+    except (ImportError, ModuleNotFoundError) as exc:
+        logger.warning("llm_service unavailable; using compatibility fallback: %s", exc)
         return ("compat-llm-response", "compat/model")
 
 

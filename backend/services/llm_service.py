@@ -641,15 +641,17 @@ async def _call_llm_with_fallback(
     api_keys: Optional[Dict[str, Optional[str]]] = None,
     content_blocks: Optional[List[Dict[str, Any]]] = None,
     idempotency_key: Optional[str] = None,
+    require_runtime_scope: bool = False,
 ) -> tuple:
     """Intelligent LLM router with Cerebras primary and Haiku fallback.
 
     Routes based on task complexity, user tier, speed selector, and available credits.
     Returns ``(response_text, model_used)`` tuple.
     """
-    from services.runtime.execution_authority import require_runtime_authority
+    if require_runtime_scope:
+        from services.runtime.execution_authority import require_runtime_authority
 
-    require_runtime_authority("llm_service", detail="model execution")
+        require_runtime_authority("llm_service", detail="model execution")
 
     task_complexity = classifier.classify(message, agent_name)
 
