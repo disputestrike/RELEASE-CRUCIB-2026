@@ -186,7 +186,7 @@ const LandingPage = () => {
         <div className="max-w-6xl mx-auto px-6 py-5 flex items-center gap-6">
           <Logo variant="full" height={32} href="/" className="shrink-0" />
           <div className="hidden sm:flex flex-1 items-center justify-center gap-6 md:gap-8 min-w-0">
-            <Link to="/features" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Features</Link>
+            <SolutionsNavDropdown />
             <Link to="/pricing" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Pricing</Link>
             <Link to="/our-projects" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Our Project</Link>
           </div>

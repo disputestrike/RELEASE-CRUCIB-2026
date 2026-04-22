@@ -1249,10 +1249,11 @@
 .agentdash-bar--bad { background: linear-gradient(90deg,#ef4444,#f87171); }
 
 
-/* Utility: hide the <input type="file"> that the paperclip button proxies to.
-   CRA has no Tailwind base, so className="hidden" was a no-op — the bare file
-   input was rendering in the composer. */
-.hidden {
+/* Hide the <input type="file"> proxied by the paperclip button.
+   Scoped to file inputs only — a global .hidden{display:none!important}
+   silently broke Tailwind's responsive overrides like `hidden sm:flex`,
+   causing the landing/nav header items to stay hidden at every breakpoint. */
+input[type="file"].hidden {
   display: none !important;
 }
 
