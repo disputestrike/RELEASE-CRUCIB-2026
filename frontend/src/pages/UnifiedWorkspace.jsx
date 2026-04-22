@@ -231,7 +231,7 @@ export default function UnifiedWorkspace() {
         const st = j.status;
         if (st === 'planned') {
           try {
-            const pr = await axios.get(`${API}/jobs/${jobIdFromUrl}/plan-draft`, { headers });
+            const pr = await axios.get(`${API}/jobs/${jobIdFromUrl}/plan-draft`, { headers, timeout: 15000 });
             if (pr.data?.plan) setPlan(pr.data.plan);
           } catch {
             setPlan(null);
@@ -293,17 +293,10 @@ export default function UnifiedWorkspace() {
     // Dedup: if the very last user message has the same body+jobId, skip —
     // this eliminates the duplicate-initial-prompt bug on first run.
     setUserChatMessages((prev) => {
-      const last = prev[prev.length - 1];
-      if (
-        last &&
-        (last.role || 'user') === 'user' &&
-        last.body === body &&
-        (last.jobId || null) === jidAt &&
-        Date.now() - (last.ts || 0) < 5000
-      ) {
-        return prev;
-      }
-      return [...prev, { id, body, jobId: jidAt, pendingBind: !jidAt, ts: Date.now() }];
+      const msg = { id, body, role: 'user', jobId: jidAt, pendingBind: !jidAt, ts: Date.now() };
+      const key = `${msg.role}:${msg.jobId || ''}:${msg.body}`;
+      if (prev.some((m) => `${m.role || 'user'}:${m.jobId || ''}:${m.body}` === key)) return prev;
+      return [...prev, msg];
     });
   }, [jobId, jobIdFromUrl]);
 
@@ -515,7 +508,7 @@ export default function UnifiedWorkspace() {
         return;
       }
       try {
-        const r = await axios.get(textBase, { params: { path: key }, headers });
+        const r = await axios.get(textBase, { params: { path: key }, headers, timeout: 15000 });
         const text = r.data?.content ?? '';
         const pathReturned = normalizeWorkspacePath(r.data?.path || key);
         const md = pathReturned.endsWith('.md') || key.endsWith('.md');
@@ -802,7 +795,7 @@ export default function UnifiedWorkspace() {
         const res = await axios.post(
           `${API}/jobs/${encodeURIComponent(activeJobId)}/steer`,
           { message: submitted, resume: true },
-          { headers },
+          { headers, timeout: 15000 },
         );
         clearBuildError();
         const coachText = formatCoachReply(res.data?.guidance);
@@ -863,7 +856,7 @@ export default function UnifiedWorkspace() {
         const res = await axios.post(
           `${API}/jobs/${encodeURIComponent(activeJobId)}/steer`,
           { message: submitted, resume: false },
-          { headers },
+          { headers, timeout: 15000 },
         );
         clearBuildError();
         const coachText = formatCoachReply(res.data?.guidance);
@@ -872,17 +865,19 @@ export default function UnifiedWorkspace() {
             typeof crypto !== 'undefined' && crypto.randomUUID
               ? crypto.randomUUID()
               : `uw_coach_${Date.now()}`;
-          setUserChatMessages((prev) => [
-            ...prev,
-            {
+          setUserChatMessages((prev) => {
+            const msg = {
               id: aid,
               body: coachText,
               role: 'assistant',
               jobId: activeJobId,
               pendingBind: false,
               ts: Date.now(),
-            },
-          ]);
+            };
+            const key = `${msg.role}:${msg.jobId || ''}:${msg.body}`;
+            if (prev.some((m) => `${m.role}:${m.jobId || ''}:${m.body}` === key)) return prev;
+            return [...prev, msg];
+          });
         }
         refresh();
       } catch (e) {
@@ -1041,10 +1036,10 @@ export default function UnifiedWorkspace() {
     if (!jid || !step) return;
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      await axios.post(`${API}/jobs/${encodeURIComponent(jid)}/retry-step/${encodeURIComponent(step.id)}`, {}, { headers });
+      await axios.post(`${API}/jobs/${encodeURIComponent(jid)}/retry-step/${encodeURIComponent(step.id)}`, {}, { headers, timeout: 15000 });
       setFailedStep(null);
       if (job?.status === 'failed') {
-        await axios.post(`${API}/jobs/${encodeURIComponent(jid)}/resume`, {}, { headers });
+        await axios.post(`${API}/jobs/${encodeURIComponent(jid)}/resume`, {}, { headers, timeout: 15000 });
         setStage('running');
       }
       refresh();
@@ -1137,8 +1132,15 @@ export default function UnifiedWorkspace() {
   // empty Proof/Failure/Timeline/Preview tabs when tab was switched mid-stream.
   useEffect(() => {
     if (!effectiveJobId) return;
-    if (['proof', 'timeline', 'failure', 'preview'].includes(activePane)) {
+    if (activePane === 'proof') {
       try { refresh && refresh(); } catch (_) { /* ignore */ }
+    } else if (activePane === 'failure') {
+      try { refresh && refresh(); } catch (_) { /* ignore */ }
+    } else if (activePane === 'timeline') {
+      try { refresh && refresh(); } catch (_) { /* ignore */ }
+    } else if (activePane === 'preview') {
+      try { refresh && refresh(); } catch (_) { /* ignore */ }
+      try { setWorkspacePullKey((k) => k + 1); } catch (_) { /* ignore */ }
     }
   }, [activePane, effectiveJobId, refresh]);
 
