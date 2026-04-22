@@ -383,6 +383,38 @@ async def create_plan(body: PlanRequest, user: dict = Depends(_get_auth())):
             body.project_id, user
         )
 
+        # Defensive FK guard: ensure a projects row exists before inserting into jobs.
+        # This keeps plan creation stable even if runtime_state adapters drift.
+        if pool:
+            try:
+                async with pool.acquire() as conn:
+                    try:
+                        await conn.execute(
+                            """
+                            INSERT INTO projects (id, doc)
+                            VALUES ($1, $2::jsonb)
+                            ON CONFLICT (id) DO NOTHING
+                            """,
+                            str(effective_project_id),
+                            _json.dumps({
+                                "user_id": str((user or {}).get("id") or ""),
+                                "created_by": "orchestrator.plan",
+                            }),
+                        )
+                    except Exception:
+                        await conn.execute(
+                            """
+                            INSERT INTO projects (id, user_id, name, status, created_at, updated_at)
+                            VALUES ($1::uuid, $2::uuid, $3, 'active', NOW(), NOW())
+                            ON CONFLICT (id) DO NOTHING
+                            """,
+                            str(effective_project_id),
+                            str((user or {}).get("id") or effective_project_id),
+                            "Auto Workspace",
+                        )
+            except Exception as exc:
+                logger.warning("orchestrator/plan: project FK preflight skipped: %s", exc)
+
         # Generate plan
         plan = await planner_mod.generate_plan(
             body.goal, project_state=_orchestrator_planner_project_state(user)
