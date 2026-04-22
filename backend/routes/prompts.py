@@ -1,7 +1,10 @@
 """Public endpoints for introspecting loaded system-prompt preambles."""
 from fastapi import APIRouter, HTTPException
 
-from backend.prompts.loader import list_available, load_preamble
+try:
+    from backend.prompts.loader import list_available, load_preamble  # dev/test layout
+except ImportError:  # production layout where /app is on sys.path
+    from prompts.loader import list_available, load_preamble  # type: ignore[no-redef]
 
 router = APIRouter(prefix="/api/prompts", tags=["prompts"])
 
