@@ -462,6 +462,8 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("routes.mobile", "mobile_router", True),
     ("routes.monitoring", "router", False),
     ("routes.skills", "router", False),
+    # Honesty-bias preamble surfacing (WS-K)
+    ("routes.prompts", "router", False),
     ("routes.sso", "router", True),
     ("routes.terminal", "router", False),
     ("routes.tokens", "router", False),
