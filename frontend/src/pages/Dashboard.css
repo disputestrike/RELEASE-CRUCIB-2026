@@ -1255,3 +1255,26 @@
 .hidden {
   display: none !important;
 }
+
+/* HomeLeftPane layout: sits to the left of the hero composer on wide viewports
+   and hides itself (via HomeLeftPane.css) below 1024px. The hero stage
+   becomes a row so the pane and the column sit side-by-side. */
+.home-hero-stage {
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: center;
+  gap: 32px;
+}
+.home-hero-stage > .dashboard-home-column {
+  flex: 0 1 640px;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+@media (max-width: 1024px) {
+  .home-hero-stage {
+    flex-direction: column;
+    align-items: center;
+  }
+}

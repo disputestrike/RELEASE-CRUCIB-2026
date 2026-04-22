@@ -1,0 +1,391 @@
+/* What-If Analysis page — purpose-built surface styling.
+   Keeps parity with the rest of the dashboard (inter/system font, rounded 10px
+   cards, neutral grays) but adds a little warmth through accents. */
+
+.whatif-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px;
+  color: #111827;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+}
+
+.whatif-hero {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+.whatif-hero-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #eef2ff 0%, #ecfeff 100%);
+  color: #4f46e5;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.whatif-hero-text h1 {
+  margin: 0 0 4px 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.whatif-hero-text p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #4b5563;
+  max-width: 640px;
+}
+
+.whatif-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 18px 18px 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+.whatif-card-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.whatif-card-head h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+.whatif-card-sub {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.whatif-textarea {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+  box-sizing: border-box;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.whatif-textarea:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+}
+
+.whatif-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.whatif-preset {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #374151;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.whatif-preset:hover {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #3730a3;
+}
+.whatif-preset svg {
+  color: #6366f1;
+}
+
+.whatif-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 14px;
+}
+.whatif-control span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #374151;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.whatif-control em {
+  margin-left: auto;
+  color: #4f46e5;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 12px;
+}
+.whatif-control input[type="range"] {
+  width: 100%;
+  accent-color: #4f46e5;
+}
+
+.whatif-priors {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+.whatif-priors-head {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #4b5563;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+.whatif-prior-row {
+  display: grid;
+  grid-template-columns: 140px 1fr 44px;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  font-size: 12px;
+  color: #374151;
+}
+.whatif-prior-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.whatif-prior-row input[type="range"] {
+  width: 100%;
+  accent-color: #4f46e5;
+}
+.whatif-prior-row em {
+  text-align: right;
+  font-style: normal;
+  font-weight: 600;
+  color: #4f46e5;
+}
+
+.whatif-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 16px;
+}
+.whatif-run {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #111827;
+  color: #fff;
+  border: none;
+  padding: 9px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 120ms ease, transform 80ms ease;
+}
+.whatif-run:hover:not(:disabled) {
+  background: #1f2937;
+}
+.whatif-run:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.whatif-run:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+.whatif-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #b91c1c;
+  font-size: 12px;
+}
+
+.whatif-reco {
+  border-color: #bbf7d0;
+  background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%);
+}
+.whatif-reco-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.whatif-reco-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 9px;
+  border-radius: 999px;
+  color: #065f46;
+  background: #d1fae5;
+  border: 1px solid #a7f3d0;
+}
+.whatif-reco-confidence {
+  margin-left: auto;
+  font-size: 12px;
+  color: #065f46;
+}
+.whatif-reco-title {
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #059669;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.whatif-reco-text {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #064e3b;
+}
+.whatif-reco-tradeoffs-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #047857;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.whatif-reco-tradeoffs ul {
+  margin: 0;
+  padding-left: 16px;
+  color: #065f46;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.whatif-clusters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+.whatif-cluster {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px;
+  background: #fff;
+}
+.whatif-cluster-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+.whatif-cluster-head strong {
+  color: #111827;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+.whatif-cluster-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.whatif-cluster-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4f46e5, #6366f1);
+  border-radius: 999px;
+  transition: width 400ms ease;
+}
+.whatif-cluster-position {
+  font-size: 13px;
+  color: #1f2937;
+  line-height: 1.45;
+}
+.whatif-cluster-args {
+  margin: 8px 0 0 0;
+  padding-left: 16px;
+  font-size: 11.5px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.whatif-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.whatif-timeline-row {
+  display: grid;
+  grid-template-columns: 40px 1fr 90px;
+  align-items: center;
+  gap: 10px;
+  font-size: 11.5px;
+  color: #6b7280;
+}
+.whatif-timeline-label {
+  font-weight: 600;
+  color: #374151;
+  letter-spacing: 0.04em;
+}
+.whatif-timeline-track {
+  display: flex;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #f3f4f6;
+}
+.whatif-timeline-seg {
+  height: 100%;
+  transition: width 400ms ease;
+}
+.whatif-timeline-state {
+  text-align: right;
+  text-transform: uppercase;
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+}
+
+.whatif-empty {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  border: 1px dashed #d1d5db;
+  border-radius: 12px;
+  padding: 18px;
+  color: #6b7280;
+  background: #fafafa;
+}
+.whatif-empty svg {
+  color: #9ca3af;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+.whatif-empty strong {
+  display: block;
+  color: #374151;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.whatif-empty p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .whatif-controls { grid-template-columns: 1fr; }
+  .whatif-prior-row { grid-template-columns: 120px 1fr 36px; }
+}
