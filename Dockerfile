@@ -9,7 +9,7 @@ FROM node:22-alpine AS frontend
 WORKDIR /app
 # Install dependencies first (better layer cache).
 COPY frontend/package.json frontend/package-lock.json* ./
-RUN npm ci --no-audit --no-fund --loglevel=error
+RUN npm ci --legacy-peer-deps --no-audit --no-fund --loglevel=error
 # Copy the rest of the frontend source.
 COPY frontend/ ./
 # Build — ESLint disabled (CRA warnings don't break the bundle and we lint in CI).
