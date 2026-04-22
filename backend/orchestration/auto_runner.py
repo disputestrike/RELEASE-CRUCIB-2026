@@ -268,19 +268,33 @@ async def run_job_to_completion(
         import traceback
 
         error_msg = f"{type(e).__name__}: {str(e)}"
+        tb_full = traceback.format_exc()
         logger.error(
             "auto_runner: UNHANDLED EXCEPTION in job %s: %s",
             job_id,
             error_msg,
             exc_info=True,
         )
+        # Persist traceback to job_events so it's queryable without Railway CLI.
+        try:
+            await append_job_event(
+                job_id,
+                "orchestrator_error_traceback",
+                {
+                    "error_type": type(e).__name__,
+                    "error_message": str(e)[:2000],
+                    "traceback": tb_full[-6000:],
+                },
+            )
+        except Exception:
+            logger.exception("auto_runner: failed to persist orchestrator traceback")
         await _finalize_job_with_failure(job_id, "orchestrator_error", error_msg)
         return {
             "success": False,
             "status": "failed",
             "reason": "orchestrator_error",
             "details": error_msg,
-            "traceback": traceback.format_exc(),
+            "traceback": tb_full,
         }
 
     finally:
@@ -395,11 +409,14 @@ async def _execute_job_loop(
             if len(phases_in_batch) == 1
             else f"parallel:{len(batch)}"
         )
-        await update_job_state(
-            job_id,
-            "running",
-            {"current_phase": phase_label or "running"},
-        )
+        try:
+            await update_job_state(
+                job_id,
+                "running",
+                {"current_phase": phase_label or "running"},
+            )
+        except Exception:
+            logger.exception("auto_runner: update_job_state(running) failed — continuing")
         tasks = [
             asyncio.create_task(_run_single_step(step, job, workspace_path, db_pool))
             for step in batch
@@ -407,6 +424,7 @@ async def _execute_job_loop(
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         for step, result in zip(batch, results):
+          try:
             if isinstance(result, Exception):
                 logger.error("auto_runner: step %s raised %s", step["step_key"], result)
                 result = {"success": False, "error": str(result)}
@@ -575,6 +593,11 @@ async def _execute_job_loop(
                         },
                     )
 
+          except Exception:
+            logger.exception(
+                "auto_runner: per-step result processing failed for step=%s — continuing",
+                (step or {}).get("step_key") if isinstance(step, dict) else "?",
+            )
         try:
             from datetime import datetime, timezone
 
