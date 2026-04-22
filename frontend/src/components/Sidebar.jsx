@@ -493,7 +493,11 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
             aria-label="Expand sidebar"
             title="Expand sidebar"
           >
-            <PanelLeftOpen size={20} />
+            {/* Rest state: cube logo identity. Hover: expand-toggle icon swaps in. */}
+            <span className="sidebar-collapse-btn-logo" aria-hidden="true">
+              <Logo height={20} showWordmark={false} showTagline={false} />
+            </span>
+            <PanelLeftOpen size={20} className="sidebar-collapse-btn-icon" aria-hidden="true" />
           </button>
           <button
             type="button"
@@ -552,7 +556,7 @@ export const Sidebar = ({ user, onLogout, projects = [], tasks: propTasks = [], 
           href="/app"
           className="sidebar-logo"
           showTagline={false}
-          showWordmark={!workspaceHeadlineLayout}
+          showWordmark={true}
           nameClassName="sidebar-logo-text"
         />
         {onToggleSidebar && (
