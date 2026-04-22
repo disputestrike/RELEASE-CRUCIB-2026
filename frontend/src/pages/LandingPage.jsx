@@ -188,7 +188,7 @@ const LandingPage = () => {
           <div className="hidden sm:flex flex-1 items-center justify-center gap-6 md:gap-8 min-w-0">
             <SolutionsNavDropdown />
             <Link to="/pricing" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Pricing</Link>
-            <Link to="/our-projects" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Our Project</Link>
+            <Link to="/our-projects" className="text-kimi-nav text-kimi-muted hover:text-kimi-text transition">Projects</Link>
           </div>
           <div className="hidden sm:flex items-center gap-3 md:gap-4 ml-auto shrink-0">
             <button type="button" onClick={() => navigate('/app')} className="text-sm text-kimi-nav text-kimi-muted hover:text-kimi-text transition">
@@ -224,7 +224,7 @@ const LandingPage = () => {
                 ))}
               </div>
               <Link to="/pricing" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Pricing</Link>
-              <Link to="/our-projects" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Our Project</Link>
+              <Link to="/our-projects" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Projects</Link>
               {!user && (
                 <Link to="/auth" className="text-lg" onClick={() => setMobileMenuOpen(false)}>Log in</Link>
               )}

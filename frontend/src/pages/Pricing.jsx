@@ -13,7 +13,7 @@ import { logApiError } from '../utils/apiError';
 const DEFAULT_BUNDLES = {
   free:    { credits: 200,  price: 0,   name: 'Free' },
   builder: { credits: 500,  price: 15,  name: 'Builder' },
-  pro:     { credits: 1000, price: 30,  name: 'Pro' },
+  pro:     { credits: 1000, price: 15,  name: 'Pro' },
   scale:   { credits: 2000, price: 60,  name: 'Scale' },
   teams:   { credits: 5000, price: 150, name: 'Teams' },
 };

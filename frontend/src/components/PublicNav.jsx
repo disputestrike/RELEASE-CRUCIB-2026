@@ -20,7 +20,7 @@ export default function PublicNav() {
         <div className="hidden sm:flex flex-1 items-center justify-center gap-8 min-w-0">
           <SolutionsNavDropdown />
           <Link to="/pricing" className={linkClass}>Pricing</Link>
-          <Link to="/our-projects" className={linkClass}>Our Project</Link>
+          <Link to="/our-projects" className={linkClass}>Projects</Link>
         </div>
         <div className="flex items-center gap-3 sm:gap-4 ml-auto shrink-0">
           <Link to="/app" className={`${quietClass} hidden sm:inline`}>Dashboard</Link>
