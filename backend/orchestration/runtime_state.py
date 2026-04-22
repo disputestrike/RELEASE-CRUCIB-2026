@@ -25,8 +25,19 @@ class RuntimeStateAdapter:
         self._pool = pool
 
     async def ensure_job_fk_prerequisites(self, project_id: str, user_id: Optional[str]) -> None:
-        _ = project_id, user_id
-        return None
+        """Ensure the projects row exists before inserting a job with this project_id."""
+        if self._pool is None or not project_id:
+            return
+        async with self._pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO projects (id, doc)
+                VALUES ($1, $2::jsonb)
+                ON CONFLICT (id) DO NOTHING
+                """,
+                str(project_id),
+                json.dumps({"user_id": str(user_id) if user_id else None, "created_by": "auto"}),
+            )
 
     async def create_job(
         self,
@@ -47,6 +58,7 @@ class RuntimeStateAdapter:
             },
         )
         job = self._job_view(task)
+        await self.ensure_job_fk_prerequisites(project_id, user_id)
         await self._upsert_job_row(job)
         return job
 
