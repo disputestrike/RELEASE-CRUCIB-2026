@@ -18,18 +18,22 @@ async def create_job_service(
     planner_project_state: Optional[dict] = None,
 ):
     rs = runtime_state_getter()
-    # Surface failures in pool acquisition explicitly — without this the
-    # downstream "NoneType is not awaitable" errors are untraceable.
+    # Surface failures in pool acquisition explicitly — raising HTTPException(503)
+    # instead of swallowing and returning None fixes the downstream
+    # "object NoneType can't be used in 'await' expression" errors.
     try:
         pool = await pool_getter()
-    except Exception:
+    except Exception as exc:
         import logging as _lg
         _lg.getLogger(__name__).exception(
-            "create_job_service: pool_getter failed, continuing without pool",
+            "create_job_service: pool unavailable — raising 503",
         )
-        pool = None
-    if pool:
-        rs.set_pool(pool)
+        raise HTTPException(status_code=503, detail="database pool unavailable") from exc
+    if pool is None:
+        import logging as _lg
+        _lg.getLogger(__name__).error("create_job_service: pool_getter returned None — raising 503")
+        raise HTTPException(status_code=503, detail="database pool unavailable")
+    rs.set_pool(pool)
 
     project_id = body.project_id or user.get("id", "default")
     if resolve_project_id is not None:

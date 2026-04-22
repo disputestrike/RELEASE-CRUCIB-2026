@@ -64,22 +64,24 @@ def _get_proof_service():
 
 
 async def _get_pool():
-    """Return the asyncpg pool, or None if DATABASE_URL/pool is unavailable.
+    """Return the asyncpg pool, raising HTTPException(503) if unavailable.
 
-    We deliberately do NOT raise here — many endpoints can operate in a degraded
-    in-memory mode when Postgres is absent (e.g. local smoke tests, early boot
-    before the pool is ready). Callers must therefore always check `if pool is
-    not None` before trying to use the return value. Logging the full traceback
-    makes silent-None failure modes visible instead of mysterious downstream
-    "object NoneType can't be used in 'await'" errors.
+    Previously this helper returned ``None`` on any failure, which caused
+    downstream ``object NoneType can't be used in 'await' expression`` errors
+    when callers did ``await pool.acquire()``. We now surface the failure
+    explicitly so FastAPI returns a proper 503 to the client.
     """
     from db_pg import get_pg_pool
 
     try:
-        return await get_pg_pool()
-    except Exception:
-        logger.exception("jobs: DB pool unavailable — continuing in degraded mode")
-        return None
+        pool = await get_pg_pool()
+    except Exception as exc:
+        logger.exception("jobs: DB pool unavailable - raising 503")
+        raise HTTPException(status_code=503, detail="database pool unavailable") from exc
+    if pool is None:
+        logger.error("jobs: get_pg_pool returned None - raising 503")
+        raise HTTPException(status_code=503, detail="database pool unavailable")
+    return pool
 
 
 async def _resolve_job(job_id: str, user: dict) -> dict:
