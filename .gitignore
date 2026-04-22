@@ -110,3 +110,6 @@ frontend/test-results/
 pytest-out.txt
 pytest-full.txt
 pytest-final.txt
+
+# WS-D: RAG store
+data/chroma/
