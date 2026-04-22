@@ -1,6 +1,6 @@
 # Rate-Rank-Compare — Tables Only
 
-**Source:** RATE_RANK_COMPARE_CURRENT.md (post–second pass).  
+**Source:** RATE_RANK_COMPARE_LATEST.md (post–pull c3babcc).  
 **Use:** Quick reference for scores and vs competitors.
 
 ---
@@ -9,8 +9,8 @@
 
 | Dimension | Score | Notes |
 |-----------|--------|------|
-| **Product completeness** | 10/10 | 32/32 wired; build history + quick build; Engine Room (Model Manager, Fine-Tuning, Safety Dashboard). |
-| **UX & flow** | 9.5/10 | Landing → dashboard → workspace → export; Engine Room (collapsed by default) for power users. |
+| **Product completeness** | 10/10 | 32/32 wired; Engine Room; input/attach/voice; **live dashboard builds**; **share**; **doubled pricing**. |
+| **UX & flow** | 9.5/10 | Landing (power stats) → dashboard (live progress) → workspace (share) → export; Engine Room. |
 | **Technical depth** | 9.5/10 | DAG, 120+ agents, PostgreSQL, Stripe, SSE, Monaco, Sandpack; routing modes + safety UX. |
 | **GTM readiness** | 10/10 | LAUNCH_GTM; mobile as unique card; app supports the moment; guardrails keep assistant on-build. |
 | **Differentiation** | 10/10 | Prompt → Expo + store; quick build; model/safety/fine-tuning in one app (Engine Room). |
@@ -28,8 +28,8 @@
 | **Cursor / Windsurf** | IDE + AI | **No-code/low-code to shippable app + mobile**; landing → dashboard → workspace → export; **Engine Room**. |
 | **Others** (Figma→code, Deploy) | Design or deploy only | **End-to-end:** prompt → plan → code → preview → export → **mobile store prep**; **Engine Room**. |
 
-**Positioning:** CrucibAI is the only one that takes a **single prompt** to a **full Expo project with App Store and Play Store submission guides**, with an in-app **Engine Room** (Model Manager, Fine-Tuning, Safety Dashboard).
+**Positioning:** CrucibAI is the only one that takes a **single prompt** to a **full Expo project with App Store and Play Store submission guides**, with an in-app **Engine Room**, **live dashboard builds**, **share**, and **doubled credits** (e.g. Builder 500 @ $15).
 
 ---
 
-*Full narrative: docs/RATE_RANK_COMPARE_CURRENT.md. Playground compare: docs/PLAYGROUND_COMPARE.md.*
+*Full narrative: docs/RATE_RANK_COMPARE_LATEST.md. Playground compare: docs/PLAYGROUND_COMPARE.md. After pull: run `npm install` in frontend (ensures jszip etc.); `pip install -r requirements.txt` in backend.*
