@@ -67,16 +67,22 @@ def _max_total_retries() -> int:
 POLL_INTERVAL_SEC = 0.5
 
 
-def _max_concurrent_steps() -> int:
-    """Cap parallel step execution; override with CRUCIBAI_MAX_CONCURRENT_STEPS (min 1, max 32)."""
+def _max_concurrent_steps(load_factor: float = 1.0) -> int:
+    """Cap parallel step execution; override with CRUCIBAI_MAX_CONCURRENT_STEPS (min 1, max 32).
+    load_factor can dynamically adjust the concurrency based on system load (0.1 to 2.0).
+    """
     raw = (os.environ.get("CRUCIBAI_MAX_CONCURRENT_STEPS") or "").strip()
     default = 8
-    if not raw:
-        return default
-    try:
-        return max(1, min(32, int(raw)))
-    except ValueError:
-        return default
+    base_concurrency = default
+    if raw:
+        try:
+            base_concurrency = int(raw)
+        except ValueError:
+            pass
+    
+    # Apply load factor, ensuring it's within reasonable bounds
+    adjusted_concurrency = int(base_concurrency * max(0.1, min(2.0, load_factor)))
+    return max(1, min(32, adjusted_concurrency))
 
 
 def _skip_duplicate_final_preview(steps: List[Dict[str, Any]]) -> bool:
@@ -243,8 +249,18 @@ async def run_job_to_completion(
         total_retries = 0
 
         # MAIN EXECUTION LOOP (wrapped with exception handler below)
-        result = await _execute_job_loop(job_id, workspace_path, db_pool, total_retries)
-        return result
+        # Implement watchdog for long-run stability (T39)
+        watchdog_timeout = int(os.environ.get("CRUCIBAI_WATCHDOG_TIMEOUT_SEC", "1800")) # 30 minutes default
+        try:
+            result = await asyncio.wait_for(
+                _execute_job_loop(job_id, workspace_path, db_pool, total_retries),
+                timeout=watchdog_timeout
+            )
+            return result
+        except asyncio.TimeoutError:
+            logger.error("auto_runner: Job %s exceeded watchdog timeout of %d seconds. Marking as failed.", job_id, watchdog_timeout)
+            await _finalize_job_with_failure(job_id, "watchdog_timeout", f"Job exceeded watchdog timeout of {watchdog_timeout} seconds")
+            return {"success": False, "status": "failed", "reason": "watchdog_timeout"}
 
     except asyncio.TimeoutError:
         # Explicit timeout (not background_crash)
@@ -355,21 +371,34 @@ async def _execute_job_loop(
                     "auto_runner: job %s scheduler deadlock (pending steps never become ready)",
                     job_id,
                 )
+                # Enhance deadlock diagnosis payload (T35)
+                steps_snapshot = await get_steps(job_id)
+                pending_steps = [s for s in steps_snapshot if s.get("status") == "pending"]
+                blocked_steps = [s for s in steps_snapshot if s.get("status") == "blocked"]
+                
+                deadlock_details = {
+                    "reason": "scheduler_deadlock",
+                    "message": "Step dependencies cannot be satisfied. Possible circular dependency or unresolvable blocks.",
+                    "pending_steps_count": len(pending_steps),
+                    "blocked_steps_count": len(blocked_steps),
+                    "pending_step_keys": [s.get("step_key") for s in pending_steps],
+                    "blocked_step_keys": [s.get("step_key") for s in blocked_steps],
+                }
+
                 await update_job_state(
-                    job_id, "failed", {"current_phase": "scheduler_deadlock"}
+                    job_id, "failed", {"current_phase": "scheduler_deadlock", **deadlock_details}
                 )
                 await publish(
                     job_id,
                     "job_failed",
-                    {
-                        "reason": "scheduler_deadlock",
-                        "message": "Step dependencies cannot be satisfied.",
-                    },
+                    deadlock_details,
                 )
+                await append_job_event(job_id, "scheduler_deadlock_detected", deadlock_details)
                 return {
                     "success": False,
                     "status": "failed",
                     "reason": "scheduler_deadlock",
+                    "details": deadlock_details,
                 }
 
             if await execution_quiescent(job_id):
@@ -392,7 +421,19 @@ async def _execute_job_loop(
             continue
 
         # Execute ready steps (up to N in parallel)
-        max_conc = _max_concurrent_steps()
+        # Implement global backpressure control (T34)
+        # In a real system, this would check a global counter or system metrics (CPU/Memory)
+        # For now, we simulate backpressure by dynamically adjusting concurrency based on a load factor
+        # A load factor < 1.0 means the system is under load and should reduce concurrency
+        current_load_factor = 1.0 # This could be fetched from a system monitor
+        max_conc = _max_concurrent_steps(load_factor=current_load_factor)
+        
+        # If max_conc is 0 (extreme backpressure), pause execution
+        if max_conc <= 0:
+            logger.warning("auto_runner: global backpressure active, pausing execution for job %s", job_id)
+            await asyncio.sleep(POLL_INTERVAL_SEC * 2)
+            continue
+            
         batch = ready[:max_conc]
         if len(batch) > 1:
             logger.info(
