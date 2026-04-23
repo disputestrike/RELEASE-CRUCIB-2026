@@ -61,10 +61,12 @@ def test_all_routes_load_dependencies():
     # Test chat/react (to verify ReAct loop and Tavily integration)
     try:
         response = client.post(
-            response = client.post("/api/chat/react", json={
+            "/api/chat/react",
+            json={
                 "prompt": "Who is the current US president?",
                 "project_id": "test_project_id"
-            })
+            }
+        )
         assert response.status_code in [200, 401, 403, 400], f"Unexpected status code for /api/chat/react: {response.status_code} - {response.text}"
         if response.status_code == 200:
             assert "response" in response.json()
