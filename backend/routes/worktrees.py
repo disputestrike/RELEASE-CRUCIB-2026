@@ -20,13 +20,13 @@ router = APIRouter(prefix="/api/worktrees", tags=["worktrees"])
 
 
 def _get_auth():
-    from deps import get_current_user
+    from ..deps import get_current_user
 
     return get_current_user
 
 
 def _user_wt_root(user: dict) -> Path:
-    from project_state import WORKSPACE_ROOT
+    from ..project_state import WORKSPACE_ROOT
 
     uid = str(user.get("id") or "guest")
     base = (WORKSPACE_ROOT / "_worktrees" / uid).resolve()
@@ -73,7 +73,7 @@ async def create_worktree(req: WorktreeCreateRequest, user: dict = Depends(_get_
 @router.post("/merge")
 async def merge_worktree(req: WorktreeMergeRequest, user: dict = Depends(_get_auth())):
     """Copy all files from the worktree into the job's canonical workspace directory."""
-    from routes.workspace import _assert_job_access
+    from ..routes.workspace import _assert_job_access
 
     wid = _safe_id(req.id)
     base = _user_wt_root(user)

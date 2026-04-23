@@ -6,7 +6,7 @@ import logging
 
 from fastapi import FastAPI
 
-from modular_env import modular_safe_import_env
+from ..modular_env import modular_safe_import_env
 
 logger = logging.getLogger(__name__)
 

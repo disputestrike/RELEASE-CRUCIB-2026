@@ -23,7 +23,7 @@ router = APIRouter(prefix="/api", tags=["workspace-ui"])
 
 
 def _get_auth():
-    from deps import get_current_user
+    from ..deps import get_current_user
 
     return get_current_user
 
@@ -39,8 +39,8 @@ async def _load_job_with_fallback(job_id: str, user: dict) -> Dict[str, Any]:
     """Prefer orchestration runtime if available; fall back to DB jobs table."""
     runtime_state = None
     try:
-        from db_pg import get_pg_pool
-        from server import _get_orchestration
+        from ..db_pg import get_pg_pool
+        from ..server import _get_orchestration
 
         candidate = _get_orchestration()
         if isinstance(candidate, tuple) and candidate and hasattr(candidate[0], "get_job"):
@@ -54,7 +54,7 @@ async def _load_job_with_fallback(job_id: str, user: dict) -> Dict[str, Any]:
     except Exception:
         runtime_state = None
 
-    from db_pg import get_db
+    from ..db_pg import get_db
 
     db = await get_db()
     job = await db.jobs.find_one({"id": job_id}, {"_id": 0})
@@ -66,7 +66,7 @@ async def _load_job_with_fallback(job_id: str, user: dict) -> Dict[str, Any]:
 
 async def _persist_spawn_log(job_id: str, user_id: str, kind: str, payload: Dict[str, Any]) -> None:
     try:
-        from db_pg import get_db
+        from ..db_pg import get_db
 
         db = await get_db()
         await db.project_logs.insert_one(
@@ -110,8 +110,8 @@ class SpawnSimulateBody(BaseModel):
 
 @router.post("/spawn/run")
 async def spawn_run(body: SpawnRunBody, user: dict = Depends(_get_auth())):
-    from services.events import event_bus
-    from services.runtime.subagent_orchestrator import SubagentOrchestrator
+    from ..services.events import event_bus
+    from ..services.runtime.subagent_orchestrator import SubagentOrchestrator
 
     job = await _load_job_with_fallback(body.job_id, user)
     job_id = body.job_id
@@ -165,8 +165,8 @@ async def spawn_run(body: SpawnRunBody, user: dict = Depends(_get_auth())):
 @router.post("/spawn/simulate")
 async def spawn_simulate(body: SpawnSimulateBody, user: dict = Depends(_get_auth())):
     """Run scenario simulation and return updates + recommendation + personas."""
-    from services.events import event_bus
-    from services.runtime.simulation_orchestrator import SimulationOrchestrator
+    from ..services.events import event_bus
+    from ..services.runtime.simulation_orchestrator import SimulationOrchestrator
 
     job = await _load_job_with_fallback(body.job_id, user)
     uid = str((user or {}).get("id") or job.get("user_id") or "")
@@ -219,8 +219,8 @@ async def spawn_simulate(body: SpawnSimulateBody, user: dict = Depends(_get_auth
 @router.post("/spawn/simulate/stream")
 async def spawn_simulate_stream(body: SpawnSimulateBody, user: dict = Depends(_get_auth())):
     """Stream simulation updates as NDJSON lines for progressive UI rendering."""
-    from services.events import event_bus
-    from services.runtime.simulation_orchestrator import SimulationOrchestrator
+    from ..services.events import event_bus
+    from ..services.runtime.simulation_orchestrator import SimulationOrchestrator
 
     job = await _load_job_with_fallback(body.job_id, user)
     uid = str((user or {}).get("id") or job.get("user_id") or "")

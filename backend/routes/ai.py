@@ -31,19 +31,19 @@ async def _maybe_await(value: Any) -> Any:
 
 
 def _get_authenticated_or_api_user():
-    from server import get_authenticated_or_api_user
+    from ..server import get_authenticated_or_api_user
 
     return get_authenticated_or_api_user
 
 
 def _get_auth():
-    from server import get_current_user
+    from ..server import get_current_user
 
     return get_current_user
 
 
 def _get_db():
-    import server
+    from .. import server
 
     return server.db
 
@@ -97,7 +97,7 @@ async def ai_chat(
 ):
     """Multi-model AI chat with auto-selection and fallback on failure."""
     from fastapi import Request as _Req
-    from server import (
+    from ..server import (
         CHAT_WITH_SEARCH_SYSTEM,
         MIN_CREDITS_FOR_LLM,
         REAL_AGENT_NO_LLM_KEYS_DETAIL,
@@ -109,6 +109,7 @@ async def ai_chat(
         _fetch_search_context,
         _get_model_chain,
         _is_conversational_message,
+        _is_product_support_query,
         _merge_prior_turns_into_message,
         _needs_live_data,
         _speed_from_plan,
@@ -136,6 +137,15 @@ async def ai_chat(
         effective = _effective_api_keys(user_keys)
         session_id = data.session_id or str(uuid.uuid4())
         message = (data.message or "").strip()
+        support_response = _is_product_support_query(message)
+        if support_response:
+            return {
+                "response": support_response,
+                "message": support_response,
+                "session_id": data.session_id or str(uuid.uuid4()),
+                "model_used": "canned-support",
+                "tokens_used": 0,
+            }
         message_for_llm = _merge_prior_turns_into_message(message, data.prior_turns)
         user_id_for_skill = (user or {}).get("id") if user else None
         system_message = (
@@ -228,7 +238,7 @@ async def ai_chat(
         available_credits = user.get("credit_balance", 0) if user else 0
         speed_selector = _speed_from_plan(user_tier)
         if _is_conversational_message(message):
-            from llm_router import HAIKU_MODEL
+            from ..llm_router import HAIKU_MODEL
 
             haiku_key = (effective or {}).get("anthropic") or os.environ.get(
                 "ANTHROPIC_API_KEY"

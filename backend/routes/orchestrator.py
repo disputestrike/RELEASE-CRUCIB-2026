@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from services.orchestration_service import (
+from ..services.orchestration_service import (
     estimate_orchestration_service,
     generate_public_plan_service,
     planner_project_state_service,
@@ -18,27 +18,27 @@ from services.orchestration_service import (
     update_last_build_state_service,
 )
 from pydantic import BaseModel
-from deps import get_user_credits
-from server import _get_server_helpers
+from ..deps import get_user_credits
+from ..server import _get_server_helpers
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["orchestrator"])
 
 
 def _get_auth():
-    from server import get_current_user
+    from ..server import get_current_user
 
     return get_current_user
 
 
 def _get_optional_user():
-    from server import get_optional_user
+    from ..server import get_optional_user
 
     return get_optional_user
 
 
 def _get_server_globals():
-    import server
+    from .. import server
 
     return (
         server.AGENT_DAG,
@@ -60,12 +60,12 @@ _sys.path.insert(0, os.path.dirname(__file__))
 
 # Lazy-load orchestration modules to avoid circular imports
 def _get_orchestration():
-    from orchestration import auto_runner as ar_mod
-    from orchestration import dag_engine
-    from orchestration import planner as planner_mod
-    from orchestration import runtime_state
+    from ..orchestration import auto_runner as ar_mod
+    from ..orchestration import dag_engine
+    from ..orchestration import planner as planner_mod
+    from ..orchestration import runtime_state
 
-    from proof import proof_service as ps_mod
+    from ..proof import proof_service as ps_mod
 
     return runtime_state, dag_engine, planner_mod, ar_mod, ps_mod
 
@@ -97,7 +97,7 @@ class CostEstimateRequest(BaseModel):
 
 
 try:
-    from server import BuildGoalRequest
+    from ..server import BuildGoalRequest
 except ImportError:
 
     class BuildGoalRequest(BaseModel):
@@ -107,7 +107,7 @@ except ImportError:
 
 async def _orchestrator_planner_project_state(user: Optional[dict] = None) -> Dict[str, Any]:
     """Shared planner context used by orchestrator and job creation."""
-    return await planner_project_state_service(user, user_credits=await get_user_credits(user))
+    return await planner_project_state_service(user, user_credits=get_user_credits)
 
 
 def _update_last_build_state(plan: Dict[str, Any]) -> None:
@@ -520,7 +520,7 @@ async def _background_auto_runner_job(job_id: str, workspace_path: str) -> None:
     try:
         from db_pg import get_pg_pool
         from orchestration import auto_runner as _orch_ar
-        from orchestration import runtime_state as _orch_rs
+        from ..orchestration import runtime_state as _orch_rs
 
         pool = await get_pg_pool()
         if pool is None:
@@ -590,7 +590,7 @@ async def _background_auto_runner_job(job_id: str, workspace_path: str) -> None:
             import traceback
 
             from db_pg import get_pg_pool as _gp
-            from orchestration import runtime_state as _ors
+            from ..orchestration import runtime_state as _ors
             from orchestration.event_bus import publish as _pub
 
             pool = await _gp()
@@ -629,7 +629,7 @@ async def _background_resume_auto_job(job_id: str, workspace_path: str) -> None:
     try:
         from db_pg import get_pg_pool
         from orchestration import auto_runner as _orch_ar
-        from orchestration import runtime_state as _orch_rs
+        from ..orchestration import runtime_state as _orch_rs
 
         pool = await get_pg_pool()
         if pool is None:
@@ -677,7 +677,7 @@ async def _background_resume_auto_job(job_id: str, workspace_path: str) -> None:
             import traceback
 
             from db_pg import get_pg_pool as _gp
-            from orchestration import runtime_state as _ors
+            from ..orchestration import runtime_state as _ors
             from orchestration.event_bus import publish as _pub
 
             pool = await _gp()
@@ -855,7 +855,7 @@ async def list_orchestrator_build_jobs(
             pool = None
         if pool is not None:
             runtime_state.set_pool(pool)
-        from orchestration import runtime_state as orch_rs
+        from ..orchestration import runtime_state as orch_rs
 
         jobs = await orch_rs.list_jobs_for_user(user["id"], min(max(1, limit), 50))
         return {"success": True, "jobs": jobs}

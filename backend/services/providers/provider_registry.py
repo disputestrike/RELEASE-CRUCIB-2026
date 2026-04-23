@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from typing import Dict, List, Tuple
 
-from services.providers.provider_contracts import PROVIDER_CONTRACTS
+from .provider_contracts import PROVIDER_CONTRACTS
 
 
 def _enabled() -> bool:

@@ -21,25 +21,25 @@ router = APIRouter(prefix="/api", tags=["misc"])
 
 
 def _get_auth():
-    from server import get_current_user
+    from ..server import get_current_user
 
     return get_current_user
 
 
 def _get_optional_user():
-    from server import get_optional_user
+    from ..server import get_optional_user
 
     return get_optional_user
 
 
 def _get_authenticated_or_api_user():
-    from server import get_authenticated_or_api_user
+    from ..server import get_authenticated_or_api_user
 
     return get_authenticated_or_api_user
 
 
 def _get_db():
-    import server
+    from .. import server
 
     return server.db
 
@@ -82,7 +82,7 @@ def _get_llm_helpers():
 
 
 try:
-    from server import (
+    from ..server import (
         ContactSubmission,
         DocumentProcess,
         EnterpriseContact,
@@ -108,7 +108,7 @@ except ImportError:
     pass
 
 try:
-    from server import Permission, require_permission
+    from ..server import Permission, require_permission
 except ImportError:
     require_permission = lambda p: lambda user: user
 

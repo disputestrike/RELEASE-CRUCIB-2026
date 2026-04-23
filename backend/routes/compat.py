@@ -9,13 +9,13 @@ router = APIRouter(prefix="/api", tags=["compat"])
 
 
 def _get_auth():
-    from deps import get_current_user
+    from ..deps import get_current_user
 
     return get_current_user
 
 
 def _get_db():
-    import server
+    from .. import server
 
     return server.db
 

@@ -5,10 +5,10 @@ from __future__ import annotations
 import logging
 from typing import Any, Callable, Dict, List, Optional
 
-from agents.registry import AgentRegistry
-from services.conversation_manager import ConversationSession, ContextEnricher
-from services.events import event_bus
-from services.semantic_router import SemanticRouter
+from backend.agents.registry import AgentRegistry
+from backend.services.conversation_manager import ConversationSession, ContextEnricher
+from backend.services.events import event_bus
+from backend.services.semantic_router import SemanticRouter
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class BrainLayer:
     """Planner-only brain layer. Execution authority belongs to runtime_engine."""
 
-    def __init__(self, router: Optional[SemanticRouter] = None):
+    def __init__(self, router: Optional[SemanticRouter] = None, runtime_engine: Optional[Any] = None):
         self.router = router or SemanticRouter()
 
     @staticmethod
@@ -116,14 +116,17 @@ class BrainLayer:
         execution_meta: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Backward-compatible adapter that routes execution through runtime_engine."""
-        from services.runtime.runtime_engine import runtime_engine
+
 
         meta = execution_meta or {}
         project_id = (meta.get("project_id") or f"brain-{getattr(session, 'session_id', 'session')}").strip()
         task_id = (meta.get("task_id") or "").strip() or None
 
+        if self.runtime_engine is None:
+            raise RuntimeError("Runtime engine not initialized for BrainLayer")
+
         if task_id:
-            return await runtime_engine.run_task_loop(
+            return await self.runtime_engine.run_task_loop(
                 session=session,
                 project_id=project_id,
                 task_id=task_id,
@@ -132,7 +135,7 @@ class BrainLayer:
                 planner=self,
             )
 
-        out = await runtime_engine.start_task(
+        out = await self.runtime_engine.start_task(
             session=session,
             session_id=getattr(session, "session_id", "session"),
             project_id=project_id,

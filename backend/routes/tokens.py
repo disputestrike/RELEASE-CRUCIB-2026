@@ -13,19 +13,19 @@ router = APIRouter(prefix="/api", tags=["tokens"])
 
 
 def _get_auth():
-    from server import get_current_user
+    from ..server import get_current_user
 
     return get_current_user
 
 
 def _get_db():
-    import server
+    from .. import server
 
     return server.db
 
 
 def _get_token_constants():
-    import server
+    from .. import server
 
     return (
         server.TOKEN_BUNDLES,
@@ -38,11 +38,11 @@ def _get_token_constants():
     )
 
 
-from server import _get_server_helpers
+from ..server import _get_server_helpers
 
 
 try:
-    from server import TokenPurchase, TokenPurchaseCustom
+    from ..server import TokenPurchase, TokenPurchaseCustom
 except ImportError:
     from pydantic import BaseModel
 

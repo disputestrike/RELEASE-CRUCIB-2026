@@ -6,9 +6,9 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from project_state import WORKSPACE_ROOT
-from services.events import event_bus
-from services.runtime.task_manager import task_manager
+from backend.project_state import WORKSPACE_ROOT
+from backend.services.events import event_bus
+from backend.services.runtime.task_manager import task_manager
 
 
 class RuntimeStateAdapter:

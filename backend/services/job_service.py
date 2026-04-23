@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, Awaitable, Callable, Dict, Optional
 
 from fastapi import HTTPException
-from services.runtime.execution_authority import build_runtime_native_step_defs
+from ..services.runtime.execution_authority import build_runtime_native_step_defs
 
 
 async def create_job_service(

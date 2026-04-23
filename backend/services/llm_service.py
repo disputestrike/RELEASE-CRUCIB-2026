@@ -19,19 +19,19 @@ from fastapi import Depends, HTTPException
 ROOT_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT_DIR / ".env", override=True)
 
-from anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_model
-from deps import get_optional_user
-from dev_stub_llm import REAL_AGENT_NO_LLM_KEYS_DETAIL, chat_llm_available
-from dev_stub_llm import detect_build_kind as _stub_detect_build_kind
-from dev_stub_llm import is_real_agent_only
-from dev_stub_llm import plan_and_suggestions as _stub_plan_and_suggestions
-from dev_stub_llm import stub_build_enabled, stub_file_dict, stub_multifile_markdown
-from llm_router import CEREBRAS_MODEL
-from llm_router import TaskComplexity, classifier
-from llm_router import get_cerebras_key as _get_cerebras_key
-from llm_router import router as llm_router
-from services.events import event_bus
-from services.skills import detect_skill
+from ..anthropic_models import ANTHROPIC_HAIKU_MODEL, normalize_anthropic_model
+from ..deps import get_optional_user
+from ..dev_stub_llm import REAL_AGENT_NO_LLM_KEYS_DETAIL, chat_llm_available
+from ..dev_stub_llm import detect_build_kind as _stub_detect_build_kind
+from ..dev_stub_llm import is_real_agent_only
+from ..dev_stub_llm import plan_and_suggestions as _stub_plan_and_suggestions
+from ..dev_stub_llm import stub_build_enabled, stub_file_dict, stub_multifile_markdown
+from ..llm_router import CEREBRAS_MODEL
+from ..llm_router import TaskComplexity, classifier
+from ..llm_router import get_cerebras_key as _get_cerebras_key
+from ..llm_router import router as llm_router
+from .events import event_bus
+from .skills import detect_skill
 
 logger = logging.getLogger(__name__)
 
@@ -212,6 +212,18 @@ async def _auto_detect_skill(prompt: str, user_id: str) -> Optional[str]:
 # ---------------------------------------------------------------------------
 # Task complexity / type classification
 # ---------------------------------------------------------------------------
+
+
+def _is_product_support_query(prompt: str) -> Optional[str]:
+    """Detect if the user is asking for product support and return a canned response."""
+    p = prompt.lower().strip()
+    support_keywords = [
+        "how do i", "how to", "help with", "support", "password reset",
+        "billing", "subscription", "account", "refund", "contact", "issue"
+    ]
+    if any(kw in p for kw in support_keywords) and len(p) < 100:
+        return "For product support, billing inquiries, or technical assistance, please visit our Help Center at https://help.manus.im or contact our support team directly."
+    return None
 
 
 def _classify_task_complexity(prompt: str) -> str:
@@ -825,6 +837,7 @@ async def _call_llm_with_fallback(
 __all__ = [
     "get_authenticated_or_api_user",
     "_auto_detect_skill",
+    "_is_product_support_query",
     "_classify_task_complexity",
     "detect_task_type",
     "_provider_has_key",

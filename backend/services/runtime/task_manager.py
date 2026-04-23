@@ -8,9 +8,9 @@ from dataclasses import dataclass
 from threading import Lock
 from typing import Any, Dict, List, Optional
 
-from services.events import event_bus
-from services.runtime.task_store import delete_task, list_tasks, load_task, save_task
-from services.runtime.task_state_unifier import mirror_task_event, mirror_task_snapshot
+from ..events import event_bus
+from .task_store import delete_task, list_tasks, load_task, save_task
+from .task_state_unifier import mirror_task_event, mirror_task_snapshot
 
 
 TERMINAL_STATUSES = {"completed", "failed", "killed"}

@@ -17,19 +17,19 @@ router = APIRouter(prefix="/api", tags=["skills"])
 
 
 def _get_auth():
-    from server import get_current_user
+    from ..server import get_current_user
 
     return get_current_user
 
 
 def _get_optional_user():
-    from server import get_optional_user
+    from ..server import get_optional_user
 
     return get_optional_user
 
 
 def _get_db():
-    import server
+    from .. import server
 
     return server.db
 
@@ -544,7 +544,7 @@ async def toggle_skill_active(skill_id: str, user: dict = Depends(_get_auth())):
 # Orthogonal to the DB-backed skills above — these are registry objects for
 # prompt-level skill selection (not stored per-user in the DB).
 
-from services.skills.md_loader import get_registry as _get_md_registry  # noqa: E402
+from ..services.skills.md_loader import get_registry as _get_md_registry  # noqa: E402
 
 
 @router.get("/skills/md/list")

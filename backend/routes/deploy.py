@@ -42,13 +42,13 @@ class DeployValidateRequest(BaseModel):
 
 
 def _get_auth():
-    from server import get_current_user
+    from ..server import get_current_user
 
     return get_current_user
 
 
 def _get_db():
-    from server import db
+    from ..server import db
 
     return db
 
@@ -97,7 +97,7 @@ async def update_deploy_tokens(
 @router.post("/deploy/validate")
 async def deploy_validate(body: DeployValidateRequest):
     """Validate a set of project files against platform-specific deploy rules."""
-    from validate_deployment import validate_deployment
+    from ..validate_deployment import validate_deployment
 
     result = validate_deployment(body.platform, body.files, body.config)
     return {

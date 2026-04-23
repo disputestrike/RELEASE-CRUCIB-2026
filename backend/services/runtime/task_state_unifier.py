@@ -12,7 +12,7 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List
 
-from project_state import WORKSPACE_ROOT
+from ...config import WORKSPACE_ROOT
 
 
 def _runtime_state_dir(project_id: str, task_id: str) -> Path:

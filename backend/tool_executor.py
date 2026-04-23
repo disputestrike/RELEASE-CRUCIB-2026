@@ -18,25 +18,25 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
-from project_state import WORKSPACE_ROOT
-from services.events import event_bus
-from services.hooks import (
+from backend.project_state import WORKSPACE_ROOT
+from backend.services.events import event_bus
+from backend.services.hooks import (
     HOOK_TOOL_ERROR,
     HOOK_TOOL_POST,
     HOOK_TOOL_PRE,
     fire as fire_hook,
 )
-from services.policy import permission_engine
-from services.session_journal import append_entry
-from services.runtime.execution_authority import require_runtime_authority
-from services.runtime.execution_context import (
+from backend.services.policy import permission_engine
+from backend.services.session_journal import append_entry
+from backend.services.runtime.execution_authority import require_runtime_authority
+from backend.services.runtime.execution_context import (
     current_project_id,
     current_skill_hint,
     current_task_id,
 )
-from services.skills.skill_registry import SkillDef, resolve_skill
-from services.skills.skill_executor import skill_allows_tool
-from services.tools import get_tool_contract
+from backend.services.skills.skill_registry import SkillDef, resolve_skill
+from backend.services.skills.skill_executor import skill_allows_tool
+from backend.services.tools import get_tool_contract
 
 logger = logging.getLogger(__name__)
 

@@ -11,8 +11,8 @@ import json
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-from services.runtime.cost_tracker import cost_tracker
-from services.runtime.virtual_fs import task_workspace
+from .cost_tracker import cost_tracker
+from .virtual_fs import task_workspace
 
 
 class RuntimeContextManager:

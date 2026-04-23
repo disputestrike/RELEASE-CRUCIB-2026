@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from project_state import WORKSPACE_ROOT
+from ..config import WORKSPACE_ROOT
 
 
 def _safe_project_id(project_id: str) -> str:

@@ -16,19 +16,19 @@ import re
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from services.job_service import (
+from ..services.job_service import (
     create_job_service,
     get_job_checkpoint_service,
     get_job_service,
     list_jobs_service,
     update_job_service,
 )
-from services.job_event_service import (
+from ..services.job_event_service import (
     get_job_steps_service,
     get_job_events_service,
 )
 from pydantic import BaseModel
-from deps import get_current_user
+from ..deps import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -46,19 +46,19 @@ _CHECKPOINT_KEY_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
 
 
 def _get_auth():
-    from server import get_current_user
+    from ..server import get_current_user
 
     return get_current_user
 
 
 def _get_runtime_state():
-    from orchestration import runtime_state
+    from ..orchestration import runtime_state
 
     return runtime_state
 
 
 def _get_proof_service():
-    from proof import proof_service
+    from ..proof import proof_service
 
     return proof_service
 
@@ -71,7 +71,7 @@ async def _get_pool():
     when callers did ``await pool.acquire()``. We now surface the failure
     explicitly so FastAPI returns a proper 503 to the client.
     """
-    from db_pg import get_pg_pool
+    from ..db_pg import get_pg_pool
 
     try:
         pool = await get_pg_pool()
@@ -140,8 +140,9 @@ async def create_job(
     user: dict = Depends(_get_auth()),
 ):
     """Create a new job (plan + steps) for a project."""
+    print(f"DEBUG: create_job endpoint hit with body: {body.model_dump_json()}")
     try:
-        from orchestration import planner as planner_mod
+        from ..orchestration import planner as planner_mod
         # NOTE: build_dag_from_plan is no longer passed — create_job_service uses
         # services.runtime.execution_authority.build_runtime_native_step_defs directly.
         # Passing it caused every POST /api/jobs to fail with TypeError: unexpected
@@ -615,7 +616,7 @@ async def steer_job(job_id: str, request: Request, user: dict = Depends(get_curr
     message = body.get("message") or body.get("instruction") or ""
     resume = body.get("resume", True)
     try:
-        from db_pg import get_pg_pool
+        from ..db_pg import get_pg_pool
         import json as _json
         pool = await get_pg_pool()
         async with pool.acquire() as conn:
@@ -635,8 +636,8 @@ async def steer_job(job_id: str, request: Request, user: dict = Depends(get_curr
 async def resume_job(job_id: str, user: dict = Depends(get_current_user)):
     """Resume a paused or failed job."""
     try:
-        from orchestration.auto_runner import prepare_failed_job_for_rerun, resume_job as _resume
-        from db_pg import get_pg_pool
+        from ..orchestration.auto_runner import prepare_failed_job_for_rerun, resume_job as _resume
+        from ..db_pg import get_pg_pool
         pool = await get_pg_pool()
         await prepare_failed_job_for_rerun(job_id)
         import asyncio

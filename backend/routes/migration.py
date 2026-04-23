@@ -19,7 +19,7 @@ router = APIRouter(prefix="/api/migrations", tags=["migrations"])
 
 
 def _get_auth():
-    from server import get_current_user
+    from ..server import get_current_user
     return get_current_user
 
 
@@ -99,7 +99,7 @@ async def plan_migration(
     user: dict = Depends(_get_auth()),
 ) -> Dict[str, Any]:
     """Produce a migration plan (no side effects)."""
-    from services.migration_engine import migration_engine
+    from ..services.migration_engine import migration_engine
 
     body = await request.json()
     source_root = body.get("source_root")
@@ -124,7 +124,7 @@ async def plan_migration(
 
     db = None
     try:
-        from db_pg import get_db
+        from ..db_pg import get_db
         db = await get_db()
     except Exception:
         db = None
@@ -162,7 +162,7 @@ async def execute_migration(
     implemented — requires full plan round-trip) OR the full plan payload
     under `plan` to run without round-trip.  `dry_run=true` by default.
     """
-    from services.migration_engine import (
+    from ..services.migration_engine import (
         MigrationPlan,
         FileAction,
         migration_engine,
@@ -203,7 +203,7 @@ async def execute_migration(
 
     db = None
     try:
-        from db_pg import get_db
+        from ..db_pg import get_db
         db = await get_db()
     except Exception:
         db = None
@@ -232,7 +232,7 @@ async def get_migration(
 ) -> Dict[str, Any]:
     """Return a migration run row."""
     try:
-        from db_pg import get_db
+        from ..db_pg import get_db
         db = await get_db()
     except Exception:
         db = None
@@ -260,7 +260,7 @@ async def get_migration_file_map(
 ) -> Dict[str, Any]:
     """Return the source→target file map for a migration run."""
     try:
-        from db_pg import get_db
+        from ..db_pg import get_db
         db = await get_db()
     except Exception:
         db = None

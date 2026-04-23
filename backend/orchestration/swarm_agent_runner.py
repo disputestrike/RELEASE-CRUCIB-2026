@@ -161,8 +161,8 @@ def _extract_artifact_from_llm_output(
         # Generic: return response stripped
         return llm_response.strip() if llm_response.strip() else ""
 
-from agent_dag import _AGENT_RELEVANT_DEPS, AGENT_DAG, get_execution_phases
-from agent_resilience import get_criticality
+from backend.agent_dag import _AGENT_RELEVANT_DEPS, AGENT_DAG, get_execution_phases
+from backend.agent_resilience import get_criticality
 
 from .agent_selection_logic import (
     BASE_AGENTS,

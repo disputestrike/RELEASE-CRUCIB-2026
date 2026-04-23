@@ -22,7 +22,7 @@ import httpx
 import jwt
 import pyotp
 import qrcode
-from deps import (
+from ..deps import (
     ADMIN_USER_IDS,
     JWT_ALGORITHM,
     JWT_SECRET,
@@ -35,20 +35,20 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, EmailStr, Field
-from services.auth_service import (
+from ..services.auth_service import (
     create_guest_user_service,
     login_user_service,
     register_user_service,
     verify_mfa_login_service,
 )
-from services.trust_service import (
+from ..services.trust_service import (
     mfa_backup_code_use_service,
     mfa_disable_service,
     mfa_setup_service,
     mfa_status_service,
     mfa_verify_service,
 )
-from services.user_service import (
+from ..services.user_service import (
     change_password_service,
     delete_account_service,
     get_me_service,
@@ -67,7 +67,7 @@ auth_router = APIRouter(prefix="/api", tags=["auth"])
 # Credit / tier constants (kept local to avoid circular imports)
 # ---------------------------------------------------------------------------
 try:
-    from pricing_plans import CREDITS_PER_TOKEN
+    from ..pricing_plans import CREDITS_PER_TOKEN
 except ImportError:
     CREDITS_PER_TOKEN = 1000
 

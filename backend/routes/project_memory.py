@@ -8,7 +8,7 @@ router = APIRouter(prefix="/api/projects", tags=["project-memory"])
 
 
 def _get_auth():
-    from server import get_current_user
+    from ..server import get_current_user
 
     return get_current_user
 
@@ -16,7 +16,7 @@ def _get_auth():
 async def _require_project_access(project_id: str, user: dict) -> None:
     """Best-effort ownership check; silent no-op if db not ready."""
     try:
-        import server
+        from .. import server
 
         if server.db is None:
             return
@@ -35,7 +35,7 @@ async def _require_project_access(project_id: str, user: dict) -> None:
 
 @router.get("/{project_id}/memory")
 async def list_memory(project_id: str, user: dict = Depends(_get_auth())):
-    from services.project_memory import get_project_memory
+    from ..services.project_memory import get_project_memory
 
     await _require_project_access(project_id, user)
     mem = await get_project_memory()
@@ -44,7 +44,7 @@ async def list_memory(project_id: str, user: dict = Depends(_get_auth())):
 
 @router.get("/{project_id}/memory/{key}")
 async def get_memory(project_id: str, key: str, user: dict = Depends(_get_auth())):
-    from services.project_memory import get_project_memory
+    from ..services.project_memory import get_project_memory
 
     await _require_project_access(project_id, user)
     mem = await get_project_memory()
@@ -64,7 +64,7 @@ async def set_memory(
     """PUT /api/projects/{project_id}/memory/{key} with body: { "value": <any-json> }."""
     if "value" not in body:
         raise HTTPException(status_code=400, detail="body must include 'value'")
-    from services.project_memory import get_project_memory
+    from ..services.project_memory import get_project_memory
 
     await _require_project_access(project_id, user)
     mem = await get_project_memory()
@@ -74,7 +74,7 @@ async def set_memory(
 
 @router.delete("/{project_id}/memory/{key}")
 async def delete_memory(project_id: str, key: str, user: dict = Depends(_get_auth())):
-    from services.project_memory import get_project_memory
+    from ..services.project_memory import get_project_memory
 
     await _require_project_access(project_id, user)
     mem = await get_project_memory()

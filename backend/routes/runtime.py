@@ -10,14 +10,14 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from services.events import event_bus
-from services.runtime.task_manager import task_manager
+from ..services.events import event_bus
+from ..services.runtime.task_manager import task_manager
 
 router = APIRouter(prefix="/api/runtime", tags=["runtime"])
 
 
 def _get_auth():
-    from deps import get_current_user
+    from ..deps import get_current_user
 
     return get_current_user
 
@@ -145,7 +145,7 @@ async def swarm_capabilities(_user: dict = Depends(_get_auth())):
 
     agent_count: Optional[int] = None
     try:
-        from routes.projects import _ORCHESTRATION_AGENTS
+        from ..routes.projects import _ORCHESTRATION_AGENTS
 
         agent_count = len(_ORCHESTRATION_AGENTS)
     except Exception:

@@ -20,7 +20,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from deps import (
+from ..services.runtime.runtime_engine import runtime_engine
+
+from ..deps import (
     JWT_ALGORITHM,
     JWT_SECRET,
     get_audit_logger,
@@ -31,11 +33,11 @@ from deps import (
 )
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse, StreamingResponse
-from project_state import WORKSPACE_ROOT, load_state
+from ..project_state import WORKSPACE_ROOT, load_state
 from pydantic import BaseModel, Field, model_validator
 
 try:
-    from utils.rbac import Permission, has_permission
+    from ..utils.rbac import Permission, has_permission
 except ImportError:
     has_permission = lambda u, p: True  # noqa: E731
 
@@ -47,17 +49,17 @@ except ImportError:
 
 
 try:
-    from pricing_plans import CREDITS_PER_TOKEN
+    from ..pricing_plans import CREDITS_PER_TOKEN
 except ImportError:
     CREDITS_PER_TOKEN = 1000
 
 try:
-    from content_policy import screen_user_content
+    from ..content_policy import screen_user_content
 except ImportError:
     screen_user_content = None  # type: ignore[assignment]
 
 try:
-    from agents.legal_compliance import check_request as legal_check_request
+    from ..agents.legal_compliance import check_request as legal_check_request
 except ImportError:
     legal_check_request = None  # type: ignore[assignment]
 
@@ -113,8 +115,6 @@ async def _ensure_credit_balance(user_id: str) -> None:
 async def _run_build_background(project_id: str, user_id: str, prompt: str) -> None:
     """Background task: delegates to RuntimeEngine which is the ONLY executor."""
     try:
-        from services.runtime.runtime_engine import runtime_engine
-
         db = get_db()
         await db.projects.update_one(
             {"id": project_id}, {"$set": {"status": "running"}}
@@ -160,6 +160,7 @@ async def _run_build_background(project_id: str, user_id: str, prompt: str) -> N
 
 
 class ProjectCreate(BaseModel):
+    id: Optional[str] = None
     name: str = Field(..., min_length=1, max_length=500)
     description: str = Field("", max_length=MAX_PROJECT_DESCRIPTION_LENGTH)
     project_type: str = Field(..., max_length=100)
@@ -260,7 +261,7 @@ async def create_project(
                 detail=compliance.get("reason") or "Request violates Acceptable Use Policy.",
             )
 
-    project_id = str(uuid.uuid4())
+    project_id = data.id or str(uuid.uuid4())
     project = {
         "id": project_id,
         "user_id": user["id"],

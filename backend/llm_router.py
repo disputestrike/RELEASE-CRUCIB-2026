@@ -18,8 +18,8 @@ import os
 from enum import Enum
 from typing import Any, Dict, Optional, Tuple
 
-from anthropic_models import ANTHROPIC_HAIKU_MODEL, ANTHROPIC_SONNET_MODEL
-from services.providers import choose_chain, selection_meta
+from .anthropic_models import ANTHROPIC_HAIKU_MODEL, ANTHROPIC_SONNET_MODEL
+from .services.providers import choose_chain, selection_meta
 
 logger = logging.getLogger(__name__)
 

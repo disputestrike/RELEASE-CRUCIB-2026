@@ -9,9 +9,9 @@ from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from services.react_loop import react_stream
-from services.prompts_loader import load_prompt
-from services.tools import get_tools
+from ..services.react_loop import react_stream
+from ..services.prompts_loader import load_prompt
+from ..services.tools import get_tools
 
 router = APIRouter(prefix="/api/chat", tags=["chat-react"])
 

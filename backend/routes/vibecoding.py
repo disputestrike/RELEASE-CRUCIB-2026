@@ -14,19 +14,19 @@ router = APIRouter(prefix="/api", tags=["vibecoding"])
 
 
 def _get_auth():
-    from server import get_current_user
+    from ..server import get_current_user
 
     return get_current_user
 
 
 def _get_optional_user():
-    from server import get_optional_user
+    from ..server import get_optional_user
 
     return get_optional_user
 
 
 def _get_db():
-    import server
+    from .. import server
 
     return server.db
 
@@ -59,7 +59,7 @@ class VibeDetectFrameworksRequest(BaseModel):
 async def vibecoding_analyze(body: VibeAnalyzeRequest):
     """Analyze natural language to detect vibe (style, frameworks, complexity)."""
     try:
-        from vibe_analysis import vibe_analyzer
+        from ..vibe_analysis import vibe_analyzer
 
         vibe = vibe_analyzer.analyze(body.text)
         return {
@@ -76,8 +76,8 @@ async def vibecoding_analyze(body: VibeAnalyzeRequest):
 async def vibecoding_generate(body: VibeGenerateRequest):
     """Generate code from prompt using vibe analysis."""
     try:
-        from vibe_analysis import vibe_analyzer
-        from vibe_code_generator import vibe_code_generator
+        from ..vibe_analysis import vibe_analyzer
+        from ..vibe_code_generator import vibe_code_generator
 
         vibe_obj = vibe_analyzer.analyze(body.prompt)
         gen = vibe_code_generator.generate(vibe_obj, body.prompt, body.language)
@@ -99,7 +99,7 @@ async def vibecoding_generate(body: VibeGenerateRequest):
 async def vibecoding_analyze_audio(body: VibeAnalyzeAudioRequest):
     """Analyze vibe from transcript or from audio (transcribe then analyze). When transcript provided, runs vibe analysis."""
     try:
-        from vibe_analysis import vibe_analyzer
+        from ..vibe_analysis import vibe_analyzer
 
         text = body.transcript or ""
         if body.audio_base64 and not text:
@@ -127,7 +127,7 @@ async def vibecoding_detect_frameworks(
 ):
     """Detect frameworks and languages from text (or from project description when project_id given)."""
     try:
-        from vibe_analysis import vibe_analyzer
+        from ..vibe_analysis import vibe_analyzer
 
         db = _get_db()
         text = body.text or ""

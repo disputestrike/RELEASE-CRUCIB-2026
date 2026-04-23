@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Body, HTTPException, Path
 
-from services.rag.store import get_store
+from ..services.rag.store import get_store
 
 router = APIRouter(prefix="/api/memory", tags=["memory"])
 
