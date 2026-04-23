@@ -367,7 +367,7 @@ function App() {
         <ForceLightTheme />
         <ScrollToPlace />
         <Routes>
-          <Route path="/" element={<LandingPage />} />
+          <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
           <Route path="/our-projects" element={<OurProjectsPage />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/onboarding" element={<OnboardingRoute><OnboardingPage /></OnboardingRoute>} />
