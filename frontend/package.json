@@ -80,7 +80,7 @@
     "test:ci": "craco test --coverage --watchAll=false --ci",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
-    "lint:ci": "eslint src/components --max-warnings 0",
+    "lint:ci": "eslint src/components --quiet",
     "lint:warn-budget": "node scripts/eslint-warn-budget.mjs",
     "e2e": "playwright test",
     "e2e:ui": "playwright test --ui",

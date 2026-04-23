@@ -7,9 +7,12 @@ import { MemoryRouter } from 'react-router-dom';
 import AdminDashboard from '../AdminDashboard';
 
 const mockUseAuth = jest.fn();
-jest.mock('../../App', () => ({
+jest.mock('../../authContext', () => ({
   useAuth: () => mockUseAuth(),
-  API: 'http://test/api',
+}));
+
+jest.mock('../../apiBase', () => ({
+  API_BASE: 'http://test/api',
 }));
 
 const mockGet = jest.fn();

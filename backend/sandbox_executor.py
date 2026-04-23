@@ -14,7 +14,6 @@ Usage:
     result = await executor.execute("print('hello')", language="python", timeout=30)
 """
 import asyncio
-import resource
 import subprocess
 import tempfile
 import os
@@ -24,6 +23,11 @@ import json
 import time
 from typing import Dict, Any, Optional, List
 from pathlib import Path
+
+try:
+    import resource  # type: ignore
+except Exception:  # pragma: no cover - platform specific
+    resource = None
 
 logger = logging.getLogger(__name__)
 
@@ -42,33 +46,64 @@ MAX_CPU_SECONDS = 30            # seconds
 SANDBOX_DIR = "/tmp/crucibai_sandbox"
 
 
+def _env_int_bounded(name: str, default: int, *, lo: int, hi: int) -> int:
+    try:
+        v = int(os.environ.get(name, str(default)))
+        return max(lo, min(hi, v))
+    except (ValueError, TypeError):
+        return default
+
+
+def get_sandbox_resource_limits() -> Dict[str, int]:
+    """Return effective sandbox resource limits from environment overrides."""
+    return {
+        "max_memory_mb": _env_int_bounded(
+            "CRUCIBAI_SANDBOX_MAX_MEMORY_MB", MAX_MEMORY_MB, lo=16, hi=8192
+        ),
+        "max_cpu_seconds": _env_int_bounded(
+            "CRUCIBAI_SANDBOX_CPU_SECONDS", MAX_CPU_SECONDS, lo=1, hi=7200
+        ),
+        "max_nproc": _env_int_bounded("CRUCIBAI_SANDBOX_MAX_NPROC", 10, lo=1, hi=512),
+        "max_fsize_mb": _env_int_bounded(
+            "CRUCIBAI_SANDBOX_MAX_FSIZE_MB", 50, lo=1, hi=4096
+        ),
+    }
+
+
 def _set_resource_limits():
     """
     Set resource limits for sandboxed child processes.
     Called via preexec_fn in subprocess — runs in the child before exec.
     """
+    if resource is None:
+        return
+
+    limits = get_sandbox_resource_limits()
+
     try:
-        # Limit virtual memory to 512MB
-        mem_bytes = MAX_MEMORY_MB * 1024 * 1024
+        # Limit virtual memory.
+        mem_bytes = limits["max_memory_mb"] * 1024 * 1024
         resource.setrlimit(resource.RLIMIT_AS, (mem_bytes, mem_bytes))
     except (ValueError, resource.error):
         pass  # Some systems don't support RLIMIT_AS
 
     try:
-        # Limit CPU time to 30 seconds
-        resource.setrlimit(resource.RLIMIT_CPU, (MAX_CPU_SECONDS, MAX_CPU_SECONDS))
+        # Limit CPU time.
+        cpu_seconds = limits["max_cpu_seconds"]
+        resource.setrlimit(resource.RLIMIT_CPU, (cpu_seconds, cpu_seconds))
     except (ValueError, resource.error):
         pass
 
     try:
-        # Limit number of child processes to 10
-        resource.setrlimit(resource.RLIMIT_NPROC, (10, 10))
+        # Limit number of child processes.
+        max_nproc = limits["max_nproc"]
+        resource.setrlimit(resource.RLIMIT_NPROC, (max_nproc, max_nproc))
     except (ValueError, resource.error):
         pass
 
     try:
-        # Limit file size to 50MB
-        file_limit = 50 * 1024 * 1024
+        # Limit file size.
+        file_limit = limits["max_fsize_mb"] * 1024 * 1024
         resource.setrlimit(resource.RLIMIT_FSIZE, (file_limit, file_limit))
     except (ValueError, resource.error):
         pass
@@ -166,7 +201,7 @@ class SandboxExecutor:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=exec_dir,
-                preexec_fn=_set_resource_limits,
+                preexec_fn=(_set_resource_limits if resource is not None else None),
                 env={
                     "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
                     "HOME": exec_dir,
