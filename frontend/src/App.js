@@ -35,6 +35,7 @@ class AppErrorBoundary extends Component {
 import LandingPage from "./pages/LandingPage";
 import OurProjectsPage from "./pages/OurProjectsPage";
 import AuthPage from "./pages/AuthPage";
+import DashboardVNext from "./pages/DashboardVNext";
 import Dashboard from "./pages/Dashboard";
 import ProjectBuilder from "./pages/ProjectBuilder";
 import AgentMonitor from "./pages/AgentMonitor";
@@ -394,8 +395,11 @@ function App() {
           <Route path="/benchmarks" element={<Benchmarks />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/:slug" element={<Blog />} />
+          <Route path="/app/dashboard" element={<ProtectedRoute><DashboardVNext /></ProtectedRoute>} />
           <Route path="/app" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-            <Route index element={<Dashboard />} />
+            <Route index element={<Navigate to="/app/dashboard" replace />} />
+            <Route path="dashboard" element={<Navigate to="/app/dashboard" replace />} />
+            <Route path="pulse" element={<DashboardVNext />} />
             <Route path="builder" element={<Builder />} />
             <Route path="workspace" element={<Workspace />} />
             <Route path="projects/new" element={<ProjectBuilder />} />
