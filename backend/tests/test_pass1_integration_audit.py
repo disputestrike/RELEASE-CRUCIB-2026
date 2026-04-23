@@ -85,7 +85,7 @@ def test_all_routes_load_dependencies():
                             pass
             assert len(events) > 0, "No SSE events received from /api/chat/react"
             # Check if at least one event contains a 'response' key
-            assert any("response" in event for event in events), "No 'response' key found in SSE events"
+            assert any(event.get("type") == "final" and "content" in event for event in events), "No 'final' event with 'content' key found in SSE events"
 
     except Exception as e:
         pytest.fail(f"/api/chat/react failed with an unexpected exception: {e}")
