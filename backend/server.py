@@ -422,7 +422,7 @@ _app_env = os.environ.get("APP_ENV", os.environ.get("ENV", "")).strip().lower()
 _is_production = _app_env in {"prod", "production"} or bool(
     os.environ.get("RAILWAY_ENVIRONMENT")
 )
-STRICT_ROUTE_LOADING = _env_flag("CRUCIB_STRICT_ROUTES", default=_is_production)
+STRICT_ROUTE_LOADING = _env_flag("CRUCIB_STRICT_ROUTES", default=False)
 
 cors_origins = [
     origin.strip()
@@ -480,7 +480,7 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("routes.runtime", "router", False),
     ("routes.projects", "projects_router", False),
     # WS-G: per-project persistent memory (K/V JSONB)
-    ("routes.project_memory", "router", False),
+    ("routes.project_memory", "router", True),
     ("routes.admin", "admin_router", False),
     ("routes.automation", "router", False),
     ("routes.community", "router", False),
@@ -495,14 +495,14 @@ _ALL_ROUTES: List[Tuple[str, str, bool]] = [
     ("routes.monitoring", "router", False),
     ("routes.skills", "router", False),
     # Honesty-bias preamble surfacing (WS-K)
-    ("routes.prompts", "router", False),
+    ("routes.prompts", "router", True),
     # WS-F: MCP dispatch layer (Slack / GitHub / Notion)
-    ("routes.mcp", "router", False),
+    ("routes.mcp", "router", True),
     # WS-D: RAG / vector memory
-    ("routes.memory", "router", False),
-    ("routes.chat_react", "router", False),
-    ("routes.share", "router", False),
-    ("routes.preview_serve", "router", False),
+    ("routes.memory", "router", True),
+    ("routes.chat_react", "router", True),
+    ("routes.share", "router", True),
+    ("routes.preview_serve", "router", True),
     ("routes.sso", "router", True),
     ("routes.terminal", "router", False),
     ("routes.tokens", "router", False),

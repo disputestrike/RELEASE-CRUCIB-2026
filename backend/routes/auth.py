@@ -5,6 +5,9 @@ import jwt
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+# Compatibility alias required by backend/server.py route loader.
+auth_router = router
+
 @router.post("/login")
 async def login(email: str, password: str):
     """User login with email and password"""
