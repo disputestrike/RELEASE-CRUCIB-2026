@@ -99,6 +99,14 @@ def _generate_referral_code() -> str:
 
     return uuid.uuid4().hex[:8]
 
+def _get_server_helpers():
+    return (
+        _user_credits,
+        _ensure_credit_balance,
+        _generate_referral_code,
+        _project_workspace_path,
+    )
+
 
 def _idempotency_key_from_request(request) -> Optional[str]:
     key = (

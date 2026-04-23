@@ -38,10 +38,7 @@ def _get_token_constants():
     )
 
 
-def _get_server_helpers():
-    from server import _ensure_credit_balance, _generate_referral_code, _user_credits
-
-    return _user_credits, _ensure_credit_balance, _generate_referral_code
+from server import _get_server_helpers
 
 
 try:
