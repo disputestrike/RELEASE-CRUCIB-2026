@@ -1,4 +1,5 @@
 import pytest
+import json
 from fastapi.testclient import TestClient
 from server import app
 
@@ -69,7 +70,22 @@ def test_all_routes_load_dependencies():
         )
         assert response.status_code in [200, 401, 403, 400], f"Unexpected status code for /api/chat/react: {response.status_code} - {response.text}"
         if response.status_code == 200:
-            assert "response" in response.json()
+            # For StreamingResponse, we need to read the stream and parse each event
+            events = []
+            for chunk in response.iter_bytes():
+                lines = chunk.decode("utf-8").split("\n")
+                for line in lines:
+                    if line.startswith("data: "):
+                        try:
+                            data_str = line[len("data: "):].strip()
+                            if data_str:
+                                event_data = json.loads(data_str)
+                                events.append(event_data)
+                        except json.JSONDecodeError:
+                            pass
+            assert len(events) > 0, "No SSE events received from /api/chat/react"
+            # Check if at least one event contains a 'response' key
+            assert any("response" in event for event in events), "No 'response' key found in SSE events"
 
     except Exception as e:
         pytest.fail(f"/api/chat/react failed with an unexpected exception: {e}")
