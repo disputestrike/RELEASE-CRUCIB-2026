@@ -17,7 +17,7 @@ from services.orchestration_service import (
     public_plan_summary_service,
     update_last_build_state_service,
 )
-from server import get_user_credits
+from deps import get_user_credits
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -52,7 +52,7 @@ def _get_server_helpers():
         _project_workspace_path,
         _resolve_job_project_id_for_user,
         _user_credits,
-        get_user_credits,
+
     )
 
     return (
@@ -118,7 +118,7 @@ except ImportError:
 
 def _orchestrator_planner_project_state(user: Optional[dict] = None) -> Dict[str, Any]:
     """Shared planner context used by orchestrator and job creation."""
-    from server import get_user_credits
+    from deps import get_user_credits
 
     return planner_project_state_service(user, user_credits=get_user_credits)
 
