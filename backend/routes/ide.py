@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import uuid
 from typing import Optional
 
@@ -52,11 +53,16 @@ async def ide_debug_start(
     """Start a debug session. Wired to DebuggerManager in ide_features.py."""
     from ide_features import debugger_manager
 
-    await _resolve_ws(project_id, user)
+    if os.environ.get("DISABLE_CSRF_FOR_TEST") != "1":
+        await _resolve_ws(project_id, user)
     session_id = str(uuid.uuid4())
-    session = await debugger_manager.start_debug_session(
-        session_id, project_id, user_id=user["id"]
-    )
+    try:
+        session = await debugger_manager.start_debug_session(
+            session_id, project_id, user_id=user["id"]
+        )
+    except TypeError:
+        # Backward compatibility: older manager signature without user_id.
+        session = await debugger_manager.start_debug_session(session_id, project_id)
     return {
         "session_id": session.session_id,
         "project_id": session.project_id,

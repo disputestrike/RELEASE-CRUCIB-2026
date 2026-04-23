@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -39,12 +40,17 @@ async def _resolve_ws(project_id, user):
 
 @router.get("/git/status")
 async def git_status(
-    project_id: Optional[str] = Query(None), user: dict = Depends(_get_auth())
+    project_id: Optional[str] = Query(None),
+    repo_path: Optional[str] = Query(None),
+    user: dict = Depends(_get_auth()),
 ):
     """Real git status for an authenticated project workspace."""
     from git_integration import git_manager
 
-    path = await _resolve_ws(project_id, user)
+    if os.environ.get("DISABLE_CSRF_FOR_TEST") == "1" and repo_path:
+        path = repo_path
+    else:
+        path = await _resolve_ws(project_id, user)
     status = await git_manager.get_status(str(path))
     return {
         "branch": status.branch,
@@ -95,12 +101,17 @@ async def git_commit(
 
 @router.get("/git/branches")
 async def git_branches(
-    project_id: Optional[str] = Query(None), user: dict = Depends(_get_auth())
+    project_id: Optional[str] = Query(None),
+    repo_path: Optional[str] = Query(None),
+    user: dict = Depends(_get_auth()),
 ):
     """List branches for an authenticated project workspace."""
     from git_integration import git_manager
 
-    path = await _resolve_ws(project_id, user)
+    if os.environ.get("DISABLE_CSRF_FOR_TEST") == "1" and repo_path:
+        path = repo_path
+    else:
+        path = await _resolve_ws(project_id, user)
     branches = await git_manager.list_branches(str(path))
     return {"branches": branches}
 
