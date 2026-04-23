@@ -18,6 +18,7 @@ from services.orchestration_service import (
     update_last_build_state_service,
 )
 from pydantic import BaseModel
+from deps import get_user_credits
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["orchestrator"])
@@ -45,20 +46,7 @@ def _get_server_globals():
     )
 
 
-def _get_server_helpers():
-    from server import (
-        _assert_job_owner_match,
-        _project_workspace_path,
-        _resolve_job_project_id_for_user,
-        _user_credits,
-    )
 
-    return (
-        _user_credits,
-        _assert_job_owner_match,
-        _resolve_job_project_id_for_user,
-        _project_workspace_path,
-    )
 
 
 import asyncio as _asyncio
@@ -116,8 +104,7 @@ except ImportError:
 
 def _orchestrator_planner_project_state(user: Optional[dict] = None) -> Dict[str, Any]:
     """Shared planner context used by orchestrator and job creation."""
-    _user_credits, _, _, _ = _get_server_helpers()
-    return planner_project_state_service(user, user_credits=_user_credits)
+    return planner_project_state_service(user, user_credits=get_user_credits(user))
 
 
 def _update_last_build_state(plan: Dict[str, Any]) -> None:
