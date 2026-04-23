@@ -1,0 +1,279 @@
+.workspace-vnext-root {
+  position: relative;
+}
+
+.workspace-vnext-toolbar {
+  position: fixed;
+  top: 10px;
+  right: 12px;
+  z-index: 1200;
+  display: inline-flex;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(10, 16, 24, 0.88);
+  backdrop-filter: blur(8px);
+}
+
+.workspace-vnext-toolbar--surface {
+  top: 56px;
+  padding: 4px;
+}
+
+.workspace-vnext-mode {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  background: rgba(21, 28, 38, 0.85);
+  color: #e5e7eb;
+  padding: 6px 10px;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.workspace-vnext-mode.active {
+  border-color: rgba(16, 185, 129, 0.7);
+  background: rgba(16, 185, 129, 0.22);
+}
+
+.workspace-vnext-surface {
+  font-size: 11px;
+  padding: 5px 8px;
+}
+
+.workspace-vnext-mode:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.workspace-vnext-notice {
+  position: fixed;
+  top: 100px;
+  right: 14px;
+  z-index: 1200;
+  max-width: 360px;
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  border-radius: 10px;
+  background: rgba(120, 53, 15, 0.85);
+  color: #fef3c7;
+  font-size: 12px;
+  padding: 8px 10px;
+}
+
+.workspace-vnext-telemetry {
+  position: fixed;
+  top: 102px;
+  right: 14px;
+  z-index: 1198;
+  width: 220px;
+  border: 1px solid rgba(59, 130, 246, 0.45);
+  border-radius: 10px;
+  background: rgba(5, 12, 20, 0.9);
+  color: #dbeafe;
+  padding: 10px;
+}
+
+.workspace-vnext-telemetry-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-bottom: 8px;
+}
+
+.workspace-vnext-telemetry-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 8px;
+  font-size: 11px;
+}
+
+.workspace-vnext-telemetry-grid strong {
+  color: #ffffff;
+}
+
+.workspace-vnext-inspect,
+.workspace-vnext-whatif {
+  position: fixed;
+  top: 330px;
+  right: 14px;
+  z-index: 1197;
+  width: 320px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 10px;
+  background: rgba(7, 12, 20, 0.93);
+  color: #e2e8f0;
+  padding: 10px;
+}
+
+.workspace-vnext-inspect-title {
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.workspace-vnext-inspect-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+
+.workspace-vnext-inspect-list {
+  display: grid;
+  gap: 4px;
+  max-height: 180px;
+  overflow: auto;
+  margin-bottom: 8px;
+}
+
+.workspace-vnext-inspect-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  font-size: 11px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 8px;
+  padding: 5px 7px;
+}
+
+.workspace-vnext-inspect-subtitle {
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.workspace-vnext-inspect-failures p {
+  margin: 0 0 6px;
+  font-size: 11px;
+  color: #fecaca;
+}
+
+.workspace-vnext-whatif label {
+  display: block;
+  font-size: 11px;
+  margin-bottom: 6px;
+}
+
+.workspace-vnext-whatif textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.82);
+  color: #e2e8f0;
+  padding: 8px;
+  font-size: 12px;
+}
+
+.workspace-vnext-whatif button {
+  margin-top: 8px;
+  border: 1px solid rgba(16, 185, 129, 0.6);
+  border-radius: 999px;
+  background: rgba(6, 78, 59, 0.8);
+  color: #d1fae5;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.workspace-vnext-whatif button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.workspace-vnext-whatif-error {
+  color: #fecaca;
+  font-size: 11px;
+}
+
+.workspace-vnext-whatif-result {
+  margin-top: 8px;
+  font-size: 11px;
+}
+
+.workspace-vnext-whatif-result p {
+  margin: 0 0 6px;
+}
+
+.workspace-vnext-telemetry {
+  position: fixed;
+  top: 102px;
+  right: 14px;
+  z-index: 1198;
+  width: 220px;
+  border: 1px solid rgba(59, 130, 246, 0.45);
+  border-radius: 10px;
+  background: rgba(5, 12, 20, 0.9);
+  color: #dbeafe;
+  padding: 10px;
+}
+
+.workspace-vnext-telemetry-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-bottom: 8px;
+}
+
+.workspace-vnext-telemetry-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 8px;
+  font-size: 11px;
+}
+
+.workspace-vnext-telemetry-grid strong {
+  color: #ffffff;
+}
+
+@media (max-width: 900px) {
+  .workspace-vnext-toolbar {
+    top: auto;
+    right: auto;
+    left: 10px;
+    bottom: 10px;
+  }
+
+  .workspace-vnext-toolbar--surface {
+    bottom: 58px;
+  }
+
+  .workspace-vnext-notice {
+    top: auto;
+    right: auto;
+    left: 10px;
+    bottom: 106px;
+    max-width: calc(100vw - 20px);
+  }
+
+  .workspace-vnext-telemetry {
+    top: auto;
+    right: auto;
+    left: 10px;
+    bottom: 154px;
+    width: min(280px, calc(100vw - 20px));
+  }
+
+  .workspace-vnext-inspect,
+  .workspace-vnext-whatif {
+    top: auto;
+    right: auto;
+    left: 10px;
+    bottom: 244px;
+    width: min(320px, calc(100vw - 20px));
+    max-height: 220px;
+    overflow: auto;
+  }
+
+  .workspace-vnext-telemetry {
+    top: auto;
+    right: auto;
+    left: 10px;
+    bottom: 154px;
+    width: min(280px, calc(100vw - 20px));
+  }
+}

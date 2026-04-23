@@ -23,7 +23,7 @@ describe('AdminUsers', () => {
     mockUseAuth.mockReturnValue({ token: 'mock-token' });
   });
 
-  it('renders User management heading', () => {
+  it('renders User management heading', async () => {
     mockGet.mockResolvedValue({ data: { users: [] } });
     render(
       <MemoryRouter>
@@ -31,6 +31,9 @@ describe('AdminUsers', () => {
       </MemoryRouter>
     );
     expect(screen.getByText('User management')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/No users match the filters/)).toBeInTheDocument();
+    });
   });
 
   it('displays users when data loads', async () => {

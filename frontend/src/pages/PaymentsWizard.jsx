@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CreditCard, Key, Code, CheckCircle } from 'lucide-react';
-import { useAuth, API } from '../App';
+import { useAuth } from '../authContext';
+import { API_BASE as API } from '../apiBase';
 import axios from 'axios';
 
 export default function PaymentsWizard() {

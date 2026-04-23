@@ -10,9 +10,18 @@ module.exports = {
   		borderRadius: {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
+  			sm: 'calc(var(--radius) - 4px)',
+  			'crucib-sm': '8px',
+  			'crucib-md': '10px',
+  			'crucib-lg': '12px',
+  			'crucib-xl': '16px'
   		},
   		colors: {
+  			bg: { 0: "#0B0D10", 1: "#111418", 2: "#171B20", 3: "#1E242B" },
+  			text: { strong: "#F3F5F7", primary: "#D7DCE1", secondary: "#9AA3AD", muted: "#707984" },
+  			border: { 1: "#242B33", 2: "#313A45" },
+  			state: { success: "#333333", warning: "#666666", error: "#1a1a1a", info: "#999999" },
+  			accent: { primary: "#4a5568" },
   			kimi: {
   				bg: 'var(--kimi-bg)',
   				'elevated': 'var(--kimi-bg-elevated)',
@@ -64,6 +73,13 @@ module.exports = {
   				'4': 'hsl(var(--chart-4))',
   				'5': 'hsl(var(--chart-5))'
   			}
+  		},
+  		boxShadow: {
+  			panel: '0 0 0 1px rgba(255,255,255,0.03), 0 8px 24px rgba(0,0,0,0.28)'
+  		},
+  		fontFamily: {
+  			sans: ['Inter', 'system-ui', 'sans-serif'],
+  			mono: ['JetBrains Mono', 'Consolas', 'monospace']
   		},
   		keyframes: {
   			'accordion-down': {

@@ -4,7 +4,8 @@ import {
   FileText, Table, FileCode, Download, 
   Calendar, Plus, Rocket
 } from 'lucide-react';
-import { useAuth, API } from '../App';
+import { useAuth } from '../authContext';
+import { API_BASE as API } from '../apiBase';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';
 import DeployButton from '../components/DeployButton';

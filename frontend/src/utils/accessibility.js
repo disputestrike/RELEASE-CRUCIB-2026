@@ -60,8 +60,11 @@ export const useFocusTrap = (ref) => {
       }
     };
 
-    ref.current?.addEventListener('keydown', handleKeyDown);
-    return () => ref.current?.removeEventListener('keydown', handleKeyDown);
+    const el = ref.current;
+    el?.addEventListener('keydown', handleKeyDown);
+    return () => {
+      el?.removeEventListener('keydown', handleKeyDown);
+    };
   }, [ref]);
 };
 
@@ -98,7 +101,7 @@ export const getIconButtonAriaLabel = (icon, action) => {
 /**
  * Create ARIA attributes for form fields
  */
-export const createFormFieldAriaAttrs = (fieldName, isRequired, hasError, errorMessage) => {
+export const createFormFieldAriaAttrs = (fieldName, isRequired, hasError, _errorMessage) => {
   return {
     'aria-label': fieldName,
     'aria-required': isRequired,

@@ -1,0 +1,91 @@
+.rst-root {
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  margin: -8px -8px 8px -8px;
+  padding: 12px 14px 12px;
+  background: var(--bg-0);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-sm, 8px);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+}
+
+.rst-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.rst-icon {
+  color: var(--state-info, #666666);
+  flex-shrink: 0;
+}
+
+.rst-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-strong);
+}
+
+.rst-subhead {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin: 10px 0 4px;
+}
+
+.rst-p {
+  margin: 0 0 6px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-primary);
+}
+
+.rst-p.rst-target {
+  color: var(--text-secondary);
+}
+
+.rst-p.rst-muted {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.rst-footer {
+  margin: 10px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-1);
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Close button for scope track */
+.rst-close-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.rst-close-btn:hover {
+  color: var(--text-primary);
+}
+
+.rst-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

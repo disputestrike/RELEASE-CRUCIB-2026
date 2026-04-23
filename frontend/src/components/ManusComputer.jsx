@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Cpu, Zap, Eye } from 'lucide-react';
+import { ChevronUp, Cpu, Zap, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**

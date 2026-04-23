@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { BookOpen, Copy, Check, ArrowRight } from 'lucide-react';
-import { useAuth, API } from '../App';
+import { useAuth } from '../authContext';
+import { API_BASE as API } from '../apiBase';
 import PublicNav from '../components/PublicNav';
+import { withWorkspaceHandoffNonce } from '../utils/workspaceHandoff';
 import PublicFooter from '../components/PublicFooter';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';
@@ -53,7 +55,7 @@ export default function PromptsPublic() {
 
   const tryPrompt = (prompt) => {
     if (user) {
-      navigate('/app/workspace', { state: { initialPrompt: prompt } });
+      navigate('/app/workspace', { state: withWorkspaceHandoffNonce({ initialPrompt: prompt }) });
     } else {
       navigate(`/app/workspace?prompt=${encodeURIComponent(prompt)}`);
     }

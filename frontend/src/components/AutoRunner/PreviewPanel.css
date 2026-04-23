@@ -1,0 +1,229 @@
+.preview-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-0);
+  border-radius: var(--radius-md);
+}
+
+.pp-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-1) 48%, transparent);
+  flex-shrink: 0;
+}
+
+.pp-preview-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pp-preview-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.pp-preview-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.pp-preview-status {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-weight: 500;
+}
+
+.pp-preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pp-preview-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 150ms, color 150ms;
+  text-decoration: none;
+}
+
+.pp-preview-btn:hover {
+  background: var(--bg-2);
+  color: var(--text-primary);
+}
+
+.pp-preview-body {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.pp-preview-blocked-banner {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--state-error, #ef4444) 35%, var(--border-1));
+  background: color-mix(in srgb, var(--state-error, #ef4444) 10%, var(--bg-1));
+}
+
+.pp-preview-blocked-full {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 0;
+  gap: 8px;
+  padding: 16px;
+  background:
+    radial-gradient(circle, var(--border-2) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.pp-preview-blocked-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.pp-preview-blocked-banner .pp-preview-blocked-hint {
+  margin: 6px 0 0;
+  max-width: none;
+  text-align: left;
+}
+
+.pp-preview-blocked-full .pp-preview-blocked-title {
+  margin-bottom: 4px;
+}
+
+.pp-preview-trust-banner {
+  padding: 6px 10px;
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--text-secondary, #a1a1aa);
+  background: color-mix(in srgb, var(--state-warning, #737373) 12%, transparent);
+  border-bottom: 1px solid var(--border-1);
+  flex-shrink: 0;
+}
+
+.pp-preview-trust-banner code {
+  font-size: 9px;
+}
+
+.pp-preview-idle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 0;
+  background:
+    radial-gradient(circle, var(--border-2) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.pp-preview-idle-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 10px 16px;
+  background: color-mix(in srgb, var(--bg-1) 92%, transparent);
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--border-1) 42%, transparent);
+  animation: pp-idle-breathe 3.2s ease-in-out infinite;
+}
+
+@keyframes pp-idle-breathe {
+  0%,
+  100% {
+    opacity: 0.88;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.pp-preview-building {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 12px;
+  background:
+    radial-gradient(circle, var(--border-2) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.pp-preview-blocked-hint {
+  margin: 0 16px;
+  max-width: 420px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  text-align: center;
+  word-break: break-word;
+}
+
+.pp-preview-shimmer {
+  width: 120px;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--border-1) 0%,
+    var(--accent) 50%,
+    var(--border-1) 100%
+  );
+  background-size: 200% 100%;
+  animation: pp-shimmer 1.85s ease-in-out infinite;
+}
+
+@keyframes pp-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.pp-preview-building-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-weight: 500;
+}
+
+.pp-preview-iframe {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border: none;
+  align-self: stretch;
+}
+
+.pp-sandpack-host {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.pp-sandpack-host .sp-wrapper {
+  flex: 1;
+  min-height: 280px;
+}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ExternalLink, Lock, AlertCircle } from 'lucide-react';
-import { API } from '../App';
+import { API_BASE as API } from '../apiBase';
 import axios from 'axios';
 import { logApiError } from '../utils/apiError';
 

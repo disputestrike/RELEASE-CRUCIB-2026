@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Command, Search, ChevronRight, AlertCircle, Lightbulb, Zap } from 'lucide-react';
+import { Search, ChevronRight, AlertCircle, Lightbulb, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**

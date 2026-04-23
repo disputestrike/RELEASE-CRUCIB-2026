@@ -1,0 +1,159 @@
+/* ── BuildCompletionCard — most polished surface ──────────────────── */
+.build-completion-card {
+  background: linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 100%);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-xl);
+  padding: 24px;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.bcc-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.bcc-check {
+  flex-shrink: 0;
+}
+
+.bcc-header {
+  flex: 1;
+}
+
+.bcc-title {
+  font-size: 24px;
+  font-weight: 650;
+  color: var(--text-strong);
+  margin-bottom: 4px;
+  line-height: 1.2;
+}
+
+.bcc-subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* What was created */
+.bcc-created {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.bcc-created-item {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-3);
+  border: 1px solid var(--border-1);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+}
+
+/* Quality score */
+.bcc-score-section {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.bcc-score-num {
+  font-size: 32px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-strong);
+}
+
+.bcc-score-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--state-success);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Status rows */
+.bcc-status-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+
+.bcc-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.bcc-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.bcc-dot-success { background: var(--state-success); }
+.bcc-dot-warn { background: var(--state-warning); }
+.bcc-mono {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  word-break: break-all;
+}
+
+/* CTAs */
+.bcc-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bcc-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  background: var(--bg-2);
+  border: 1px solid var(--border-1);
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: all var(--transition-ui);
+}
+.bcc-btn:hover {
+  background: var(--bg-3);
+  color: var(--text-strong);
+  border-color: var(--border-2);
+}
+
+.bcc-btn-railway {
+  background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+  color: #fff;
+  border-color: transparent;
+  font-weight: 600;
+}
+.bcc-btn-railway:hover:not(:disabled) {
+  background: linear-gradient(135deg, #6d28d9 0%, #4338ca 100%);
+}
+.bcc-btn-railway:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.bcc-dot-error {
+  background: var(--state-error, #f87171);
+}
+@keyframes bcc-spin {
+  to { transform: rotate(360deg); }
+}
+.bcc-spin {
+  animation: bcc-spin 0.8s linear infinite;
+}

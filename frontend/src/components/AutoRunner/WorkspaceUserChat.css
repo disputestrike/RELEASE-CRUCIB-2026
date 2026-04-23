@@ -1,0 +1,75 @@
+/* Chat strip — ChatGPT-like: left flow, minimal chrome, no shouty labels */
+
+.uw-user-chat {
+  width: 100%;
+  max-width: var(--uw-composer-max-width, min(920px, calc(100vw - 96px)));
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 4px 12px;
+  align-items: stretch;
+}
+
+.uw-chat-row {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 4px;
+}
+
+.uw-chat-row--user {
+  align-items: flex-end;
+}
+
+.uw-chat-row--assistant {
+  align-items: flex-start;
+}
+
+.uw-chat-bubble {
+  text-align: left;
+  padding: 0;
+  margin: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-primary, #1f1f1f);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  box-shadow: none;
+  border: none;
+}
+
+.uw-chat-bubble--user {
+  max-width: 85%;
+  padding: 10px 14px;
+  border-radius: 14px 14px 4px 14px;
+  text-align: left;
+  background: color-mix(in srgb, #666666 12%, #f0f4f2);
+  color: var(--text-primary, #1f1f1f);
+}
+
+.uw-chat-bubble--assistant {
+  max-width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--uw-chat-assistant-bg, #f7f7f8);
+  border: none;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--uw-text, #000) 4%, transparent);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-primary, #1f1f1f);
+}
+
+[data-theme='dark'] .uw-chat-bubble--assistant {
+  background: color-mix(in srgb, var(--uw-bg-elevated, #1a1a1a) 94%, #fff 6%);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--uw-text, #fff) 5%, transparent);
+  color: var(--text-primary, #e5e7eb);
+}
+
+[data-theme='dark'] .uw-chat-bubble--user {
+  background: color-mix(in srgb, #666666 15%, var(--uw-bg-elevated, #1a1a1a));
+  color: var(--text-primary, #e5e7eb);
+}

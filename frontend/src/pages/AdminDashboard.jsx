@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth, API } from '../App';
+import { useAuth } from '../authContext';
+import { API_BASE as API } from '../apiBase';
 import axios from 'axios';
 import { Users, TrendingUp, UserPlus, Shield, Link2, Activity, DollarSign } from 'lucide-react';
 

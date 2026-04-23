@@ -4,9 +4,9 @@
  * Supports: voice input, natural language prompts, vibe analysis, style suggestions
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Mic, MicOff, Sparkles, Zap, Palette, Volume2, Send, Loader2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import axios from 'axios';
 
 /**

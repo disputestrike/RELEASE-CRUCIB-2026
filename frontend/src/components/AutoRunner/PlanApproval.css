@@ -1,0 +1,455 @@
+/* ── PlanApproval — flight plan review ─────────────────────────────── */
+.plan-approval {
+  background: var(--bg-1);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  max-width: var(--uw-composer-max-width, min(920px, calc(100vw - 96px)));
+  width: 100%;
+  margin: 0 auto;
+  font-family: 'Inter', system-ui, sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pa-spec-gap-notice {
+  border-left: 3px solid var(--accent-warn, #999999);
+  padding-left: 12px;
+  margin-top: 4px;
+}
+
+.pa-capability-notice-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pa-capability-notice-list li {
+  margin: 0;
+}
+
+.pa-build-target-panel {
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  background: var(--bg-2);
+}
+
+.pa-bt-tagline {
+  margin-top: 4px;
+  margin-bottom: 10px;
+}
+
+.pa-bt-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.pa-bt-col-title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.pa-bt-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.pa-bt-list li {
+  margin-bottom: 4px;
+}
+
+.pa-bt-roadmap li {
+  color: var(--text-muted);
+}
+
+.pa-header {
+  margin-bottom: 4px;
+}
+
+.pa-goal-text {
+  font-size: 18px;
+  font-weight: 650;
+  color: var(--text-strong);
+  line-height: 1.4;
+  margin-bottom: 10px;
+}
+
+.pa-meta {
+  display: flex;
+  gap: 8px;
+}
+
+.pa-badge {
+  padding: 3px 10px;
+  background: var(--bg-3);
+  border: 1px solid var(--border-1);
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+
+/* Sections */
+.pa-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pa-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pa-integrations-hint {
+  margin-top: 0;
+  margin-bottom: 4px;
+}
+
+.pa-integrations-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pa-integration-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-sm);
+}
+
+.pa-integration-key {
+  font-size: 10px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--state-info);
+  text-transform: lowercase;
+}
+
+.pa-integration-desc {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+/* Risks */
+.pa-risks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pa-risk-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--state-warning);
+  background: rgba(210,153,34,0.06);
+  border: 1px solid rgba(210,153,34,0.2);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+}
+.pa-risk-item svg { flex-shrink: 0; }
+
+/* Missing inputs */
+.pa-missing-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-2);
+  border: 1px solid var(--border-1);
+  font-size: 12px;
+}
+.pa-missing-item.blocking {
+  border-color: rgba(248,81,73,0.3);
+}
+.pa-missing-key {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+.pa-missing-desc {
+  color: var(--text-secondary);
+  flex: 1;
+}
+.pa-blocking-tag {
+  background: rgba(248,81,73,0.12);
+  color: var(--state-error);
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.pa-premier-hint {
+  margin: 0 0 6px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.pa-missing-item.pa-missing-advisory {
+  border-color: rgba(56, 189, 248, 0.22);
+  background: rgba(56, 189, 248, 0.04);
+}
+
+.pa-advisory-tag {
+  background: rgba(56, 189, 248, 0.12);
+  color: var(--state-info, #666666);
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.pa-premier-note {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-2);
+  border: 1px dashed var(--border-1);
+}
+
+.pa-code-inline {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--bg-3);
+}
+
+/* Phases */
+.pa-phases {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pa-phase {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.pa-phase-open {
+  border-color: rgba(96, 165, 250, 0.35);
+}
+
+.pa-phase-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+.pa-phase-head:hover {
+  background: var(--bg-3);
+}
+
+.pa-phase-steps {
+  margin: 0;
+  padding: 0 12px 10px 46px;
+  list-style: disc;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.pa-phase-steps li {
+  margin: 4px 0;
+}
+
+.pa-phase-num {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-3);
+  border: 1px solid var(--border-2);
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.pa-phase-label {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-transform: capitalize;
+}
+
+.pa-phase-count {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Acceptance criteria */
+.pa-criteria-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 3px 0;
+}
+.pa-criteria-item svg {
+  color: var(--state-success);
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+/* Resource card */
+.pa-resource-card {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 12px;
+  background: var(--bg-0);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-md);
+}
+@media (max-width: 560px) {
+  .pa-resource-card {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.pa-resource-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pa-resource-k {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.pa-resource-v {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-strong);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.pa-estimate-inline {
+  margin-top: -4px;
+}
+
+/* Cost estimate */
+.pa-estimate {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--bg-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-sm);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.pa-est-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.pa-est-range {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.pa-est-typical {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Actions */
+.pa-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.pa-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-ui);
+}
+.pa-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.pa-btn:hover:not(:disabled) {
+  background: var(--bg-3);
+}
+
+.pa-btn-approve {
+  background: var(--bg-2);
+  border: 1px solid var(--state-success);
+  color: var(--state-success);
+}
+
+.pa-btn-edit {
+  background: var(--bg-2);
+  border: 1px solid var(--border-1);
+  color: var(--accent);
+}
+
+.pa-btn-auto {
+  background: var(--bg-3);
+  border: 1px solid var(--border-1);
+  color: var(--text-secondary);
+}
+
+.pa-blocker-note {
+  font-size: 11px;
+  color: var(--state-error);
+}

@@ -15,15 +15,17 @@ const PARALLEL_PHASES = [
 
 export default function BuildProgress({ projectId, apiBaseUrl }) {
   const [phase, setPhase] = useState(0);
-  const [agent, setAgent] = useState("");
-  const [status, setStatus] = useState("");
+  const [_agent, setAgent] = useState("");
+  const [_status, setStatus] = useState("");
   const [progress, setProgress] = useState(0);
   const [tokensUsed, setTokensUsed] = useState(0);
   const wsRef = useRef(null);
 
   useEffect(() => {
     if (!projectId || !apiBaseUrl) return;
-    const wsUrl = (apiBaseUrl || "").replace(/^http/, "ws") + `/ws/projects/${projectId}/progress`;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    const wsUrl = (apiBaseUrl || "").replace(/^http/, "ws") + `/ws/projects/${projectId}/progress?token=${encodeURIComponent(token)}`;
     let closed = false;
     try {
       const ws = new WebSocket(wsUrl);
@@ -36,14 +38,20 @@ export default function BuildProgress({ projectId, apiBaseUrl }) {
           setStatus(data.status ?? "");
           setProgress(data.progress ?? 0);
           setTokensUsed(data.tokens_used ?? 0);
-        } catch (_) {}
+        } catch {
+          /* ignore malformed WS payload */
+        }
       };
       ws.onclose = () => { if (!closed) setStatus("completed"); };
       return () => {
         closed = true;
-        try { ws.close(); } catch (_) {}
+        try {
+          ws.close();
+        } catch {
+          /* ignore close errors */
+        }
       };
-    } catch (_) {
+    } catch {
       // Fallback: poll every 2s
       const interval = setInterval(async () => {
         try {
@@ -58,7 +66,9 @@ export default function BuildProgress({ projectId, apiBaseUrl }) {
             setTokensUsed(p.project.tokens_used ?? 0);
             if (p.project.status === "completed" || p.project.status === "failed") clearInterval(interval);
           }
-        } catch (_) {}
+        } catch {
+          /* ignore poll errors */
+        }
       }, 2000);
       return () => clearInterval(interval);
     }
