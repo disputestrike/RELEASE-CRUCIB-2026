@@ -6,7 +6,8 @@ Token optimization: set USE_TOKEN_OPTIMIZED_PROMPTS=1 for shorter prompts and sm
 
 import os
 from collections import deque
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Set
+from .agents.clarification_agent import IntentSchema
 
 # Agent names must match _ORCHESTRATION_AGENTS in server.py
 # depends_on = list of agent names that must complete before this one
@@ -1267,3 +1268,47 @@ def build_context_from_previous_agents(
                 total += len(snippet)
 
     return "\n\n".join(parts)
+
+
+def build_dynamic_dag(intent_schema: IntentSchema) -> Dict[str, Dict[str, Any]]:
+    dynamic_dag = {}
+    required_agents = set(intent_schema.required_tools)
+
+    # Add core agents that are always needed or are dependencies of required agents
+    core_agents = {"Planner", "Requirements Clarifier", "Stack Selector"}
+    required_agents.update(core_agents)
+
+    # Recursively add dependencies
+    q = deque(list(required_agents))
+    while q:
+        agent_name = q.popleft()
+        if agent_name not in AGENT_DAG:
+            continue
+        if agent_name not in dynamic_dag:
+            dynamic_dag[agent_name] = AGENT_DAG[agent_name]
+            for dep in AGENT_DAG[agent_name].get("depends_on", []):
+                if dep not in dynamic_dag:
+                    q.append(dep)
+    return dynamic_dag
+
+
+def build_dynamic_dag(intent_schema: IntentSchema) -> Dict[str, Dict[str, Any]]:
+    dynamic_dag = {}
+    required_agents = set(intent_schema.required_tools)
+
+    # Add core agents that are always needed or are dependencies of required agents
+    core_agents = {"Planner", "Requirements Clarifier", "Stack Selector"}
+    required_agents.update(core_agents)
+
+    # Recursively add dependencies
+    q = deque(list(required_agents))
+    while q:
+        agent_name = q.popleft()
+        if agent_name not in AGENT_DAG:
+            continue
+        if agent_name not in dynamic_dag:
+            dynamic_dag[agent_name] = AGENT_DAG[agent_name]
+            for dep in AGENT_DAG[agent_name].get("depends_on", []):
+                if dep not in dynamic_dag:
+                    q.append(dep)
+    return dynamic_dag

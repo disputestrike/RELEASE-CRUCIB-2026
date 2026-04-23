@@ -1,11 +1,13 @@
-"""
+'''
 Clarification Agent: Detects ambiguity and asks intelligent follow-up questions.
 Like when I need more info to give you the best help (like Copilot).
-"""
+'''
 
 import json
 import logging
 from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, Field
 
 from agents.base_agent import AgentValidationError, BaseAgent
 from agents.registry import AgentRegistry
@@ -13,22 +15,30 @@ from agents.registry import AgentRegistry
 logger = logging.getLogger(__name__)
 
 
+class IntentSchema(BaseModel):
+    goal: str = Field(..., description="The primary goal extracted from the user's prompt.")
+    constraints: List[str] = Field(default_factory=list, description="List of constraints identified in the prompt.")
+    risk_level: int = Field(..., ge=1, le=5, description="Assessed risk level of the task (1-5, 5 being highest).")
+    required_tools: List[str] = Field(default_factory=list, description="List of tools identified as necessary for the task.")
+
+
 @AgentRegistry.register
 class ClarificationAgent(BaseAgent):
-    """
+    '''
     Asks clarifying questions when request is ambiguous or incomplete.
-    
+
     Input:
         - user_prompt: str (the original user request)
         - context: dict (optional context about workspace/previous messages)
         - previous_attempts: list (optional failed attempts)
-    
+
     Output:
         - needs_clarification: bool
         - clarifying_questions: list of specific questions
         - assumptions_made: list of assumptions
         - confidence_score: float (0-1, how confident we are about the request)
-    """
+        - intent_schema: IntentSchema (structured representation of the user's intent)
+    '''
 
     def __init__(self, llm_client: Optional[Any] = None, config: Optional[Dict[str, Any]] = None, db: Optional[Any] = None):
         super().__init__(llm_client=llm_client, config=config, db=db)
@@ -48,8 +58,7 @@ class ClarificationAgent(BaseAgent):
 
     def validate_output(self, result: Dict[str, Any]) -> bool:
         super().validate_output(result)
-
-        required = ["needs_clarification", "clarifying_questions", "confidence_score"]
+        required = ["needs_clarification", "clarifying_questions", "confidence_score", "intent_schema"]
         for field in required:
             if field not in result:
                 raise AgentValidationError(f"{self.name}: Missing output field '{field}'")
@@ -60,7 +69,7 @@ class ClarificationAgent(BaseAgent):
         return True
 
     async def execute(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute clarification analysis"""
+        '''Execute clarification analysis'''
         user_prompt = context["user_prompt"]
         workspace_info = context.get("context", {})
         previous_attempts = context.get("previous_attempts", [])
@@ -91,6 +100,7 @@ class ClarificationAgent(BaseAgent):
                 "clarifying_questions": questions,
                 "assumptions_made": assumptions,
                 "recommendation": self._get_recommendation(ambiguity_score, questions),
+                "intent_schema": self._build_intent_schema(user_prompt, understood_info, ambiguity_score),
             }
 
             if self.performance:
@@ -109,9 +119,9 @@ class ClarificationAgent(BaseAgent):
             raise
 
     def _assess_ambiguity(self, prompt: str) -> float:
-        """
+        '''
         Score ambiguity from 0 (crystal clear) to 1 (completely ambiguous).
-        """
+        '''
         score = 0.0
 
         # 1. Length heuristic - too short is usually vague
@@ -162,8 +172,50 @@ class ClarificationAgent(BaseAgent):
 
         return min(1.0, score)
 
+    def _build_intent_schema(self, user_prompt: str, understood_info: Dict[str, Any], ambiguity_score: float) -> IntentSchema:
+        goal = user_prompt # Simple for now, can be refined
+        constraints = understood_info["constraints"]
+        risk_level = self._derive_risk_level(ambiguity_score)
+        required_tools = self._derive_required_tools(understood_info["actions"])
+
+        return IntentSchema(
+            goal=goal,
+            constraints=constraints,
+            risk_level=risk_level,
+            required_tools=required_tools,
+        )
+
+    def _derive_risk_level(self, ambiguity_score: float) -> int:
+        if ambiguity_score < 0.2:
+            return 1
+        elif ambiguity_score < 0.4:
+            return 2
+        elif ambiguity_score < 0.6:
+            return 3
+        elif ambiguity_score < 0.8:
+            return 4
+        else:
+            return 5
+
+    def _derive_required_tools(self, actions: List[str]) -> List[str]:
+        tool_mapping = {
+            "code_analysis": "code_analyzer",
+            "code_review": "code_reviewer",
+            "testing": "test_runner",
+            "debugging": "debugger",
+            "code_generation": "code_generator",
+            "building": "builder",
+            "deployment": "deployer",
+            "refactoring": "refactor_tool",
+            "optimization": "optimizer",
+            "bug_fixing": "bug_fixer",
+            "search": "search_tool",
+            "execution": "executor",
+        }
+        return [tool_mapping[action] for action in actions if action in tool_mapping]
+
     def _extract_understood_info(self, prompt: str) -> Dict[str, Any]:
-        """Extract what we clearly understand from the prompt"""
+        '''Extract what we clearly understand from the prompt'''
         understood = {
             "actions": [],
             "targets": [],
@@ -221,7 +273,7 @@ class ClarificationAgent(BaseAgent):
         return understood
 
     def _identify_missing_info(self, prompt: str, understood: Dict[str, Any]) -> List[Dict[str, str]]:
-        """Identify what information we're missing"""
+        '''Identify what information we're missing'''
         missing = []
 
         # Check actions
@@ -260,7 +312,7 @@ class ClarificationAgent(BaseAgent):
         return missing
 
     def _generate_questions(self, missing_info: List[Dict[str, str]], understood: Dict[str, Any]) -> List[str]:
-        """Generate specific clarifying questions"""
+        '''Generate specific clarifying questions'''
         questions = []
 
         for item in missing_info:
@@ -280,7 +332,7 @@ class ClarificationAgent(BaseAgent):
         return questions[:5]
 
     def _identify_assumptions(self, prompt: str, understood: Dict[str, Any]) -> List[str]:
-        """Track assumptions we're making"""
+        '''Track assumptions we're making'''
         assumptions = []
 
         if len(prompt) < 30:
@@ -298,7 +350,7 @@ class ClarificationAgent(BaseAgent):
         return assumptions
 
     def _count_specificity_keywords(self, text: str) -> int:
-        """Count how many specific/concrete keywords are in the text"""
+        '''Count how many specific/concrete keywords are in the text'''
         specific_keywords = [
             "file",
             "class",
@@ -313,7 +365,7 @@ class ClarificationAgent(BaseAgent):
         return sum(1 for keyword in specific_keywords if keyword in text.lower())
 
     def _get_recommendation(self, ambiguity_score: float, questions: List[str]) -> str:
-        """Get recommendation on how to proceed"""
+        '''Get recommendation on how to proceed'''
         if ambiguity_score < 0.2:
             return "Very clear request - proceed with execution immediately"
         elif ambiguity_score < 0.4:

@@ -68,7 +68,7 @@ RATE_LIMIT_PER_MINUTE = int(os.environ.get("RATE_LIMIT_PER_MINUTE", "60"))
 # the DEFAULT_BUNDLES in frontend/src/pages/Pricing.jsx.
 TOKEN_BUNDLES: Dict[str, Any] = {
     "builder": {"name": "Builder", "tokens": 500_000,  "credits": 500,  "price": 15},
-    "pro":     {"name": "Pro",     "tokens": 1_000_000, "credits": 1000, "price": 15},
+    "pro":     {"name": "Pro",     "tokens": 1_000_000, "credits": 1000, "price": 30},
     "scale":   {"name": "Scale",   "tokens": 2_000_000, "credits": 2000, "price": 60},
     "teams":   {"name": "Teams",   "tokens": 5_000_000, "credits": 5000, "price": 150},
 }

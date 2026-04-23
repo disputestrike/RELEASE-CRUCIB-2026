@@ -5,6 +5,8 @@ import time
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from ..agent_dag import AGENT_DAG, build_dynamic_dag
+from ..agents.clarification_agent import IntentSchema
 
 from backend.project_state import WORKSPACE_ROOT
 from backend.services.events import event_bus
@@ -45,6 +47,7 @@ class RuntimeStateAdapter:
         project_id: str,
         mode: str,
         goal: str,
+        intent_schema: Optional[IntentSchema] = None,
         user_id: Optional[str],
     ) -> Dict[str, Any]:
         task = task_manager.create_task(
@@ -55,11 +58,14 @@ class RuntimeStateAdapter:
                 "goal": goal,
                 "user_id": user_id,
                 "source": "runtime_state.create_job",
+                "intent_schema": intent_schema.model_dump() if intent_schema else None,
             },
+            intent_schema=intent_schema,
         )
         job = self._job_view(task)
         await self.ensure_job_fk_prerequisites(project_id, user_id)
         await self._upsert_job_row(job)
+        await self._create_steps_from_dag(job["id"], project_id, user_id, intent_schema)
         return job
 
     async def get_job(self, job_id: str) -> Optional[Dict[str, Any]]:
@@ -245,6 +251,27 @@ class RuntimeStateAdapter:
         if not row:
             return None
         return row.get("data")
+
+    async def _create_steps_from_dag(
+        self, job_id: str, project_id: str, user_id: Optional[str], intent_schema: Optional[IntentSchema]
+    ) -> None:
+        if not intent_schema:
+            return
+
+        dynamic_dag = build_dynamic_dag(intent_schema)
+        
+        # Create steps based on the dynamic DAG
+        order_index = 0
+        for agent_name, agent_info in dynamic_dag.items():
+            await self.create_step(
+                job_id=job_id,
+                step_key=agent_name,
+                agent_name=agent_name,
+                phase="orchestration", # All dynamic DAG steps are part of orchestration phase
+                depends_on=agent_info.get("depends_on", []),
+                order_index=order_index,
+            )
+            order_index += 1
 
     def _job_view(self, task: Dict[str, Any]) -> Dict[str, Any]:
         meta = task.get("metadata") or {}

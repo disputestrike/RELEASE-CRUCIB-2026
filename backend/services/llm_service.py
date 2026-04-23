@@ -524,6 +524,7 @@ async def _call_llama_direct(
                 "max_tokens": 8192,
                 "temperature": 0.7,
                 "top_p": 0.9,
+                "intent_schema": intent_schema,
             },
             timeout=120,
         )
@@ -556,6 +557,7 @@ async def _call_cerebras_direct(
                 ],
                 "max_tokens": 8192,
                 "temperature": 0.7,
+                "intent_schema": intent_schema,
             },
             timeout=120,
         )
@@ -567,14 +569,15 @@ async def _call_cerebras_direct(
                     "https://api.cerebras.ai/v1/chat/completions",
                     headers={"Authorization": f"Bearer {next_key}"},
                     json={
-                        "model": model,
-                        "messages": [
-                            {"role": "system", "content": system_message},
-                            {"role": "user", "content": message},
-                        ],
-                        "max_tokens": 4096,
-                        "temperature": 0.7,
-                    },
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": system_message},
+                        {"role": "user", "content": message},
+                    ],
+                    "max_tokens": 4096,
+                    "temperature": 0.7,
+                    "intent_schema": intent_schema,
+                },
                     timeout=120,
                 )
                 if response2.status_code == 200:
@@ -618,6 +621,7 @@ async def _call_anthropic_direct(
                 "max_tokens": 4096,
                 "system": system_message,
                 "messages": [{"role": "user", "content": message}],
+                "intent_schema": intent_schema,
             },
             timeout=120,
         )
@@ -654,6 +658,7 @@ async def _call_llm_with_fallback(
     content_blocks: Optional[List[Dict[str, Any]]] = None,
     idempotency_key: Optional[str] = None,
     require_runtime_scope: bool = False,
+    intent_schema: Optional[Dict[str, Any]] = None,
 ) -> tuple:
     """Intelligent LLM router with Cerebras primary and Haiku fallback.
 

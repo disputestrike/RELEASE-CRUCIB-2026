@@ -7,6 +7,7 @@ import uuid
 from dataclasses import dataclass
 from threading import Lock
 from typing import Any, Dict, List, Optional
+from ...backend.agents.clarification_agent import IntentSchema
 
 from ..events import event_bus
 from .task_store import delete_task, list_tasks, load_task, save_task
@@ -31,7 +32,7 @@ class TaskManager:
     def __init__(self) -> None:
         self._lock = Lock()
 
-    def create_task(self, project_id: str, description: str, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def create_task(self, project_id: str, description: str, metadata: Optional[Dict[str, Any]] = None, intent_schema: Optional[IntentSchema] = None) -> Dict[str, Any]:
         now = time.time()
         task_id = f"tsk_{uuid.uuid4().hex[:12]}"
         task = {
@@ -42,6 +43,7 @@ class TaskManager:
             "created_at": now,
             "updated_at": now,
             "metadata": metadata or {},
+            "intent_schema": intent_schema.model_dump() if intent_schema else None,
         }
         with self._lock:
             save_task(project_id, task_id, task)
